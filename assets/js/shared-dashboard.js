@@ -103,22 +103,28 @@ window.showAddTransactionModal = function() {
             const user = auth.currentUser;
 
             if (user) {
-                const { default: DataService } = await import('./db-service.js');
+                // Fixed Path: Ensures the service is found correctly from the root
+                const { default: DataService } = await import('./assets/js/db-service.js');
                 const ds = new DataService(app); 
                 await ds.addTransaction(user.uid, data);
                 
                 window.closeAddTransactionModal();
-                if (window.loadDashboard) window.loadDashboard();
-                if (window.loadLedger) window.loadLedger();
+                
+                // Trigger refresh on all possible pages
+                if (window.loadDashboard) await window.loadDashboard();
+                if (window.loadLedger) await window.loadLedger();
+                
+                // Optional: Show success toast/alert
+                alert("Transaction successfully deployed to your live ledger!");
             } else {
                 alert("Session expired. Please log in again.");
             }
         } catch (err) {
-            console.error(err);
-            if (err.code === 'permission-denied') {
-                alert("Permission Denied: Please ensure Firestore is enabled in your Firebase Console and rules are set to allow authenticated users.");
+            console.error("FluxyOS Engine Error:", err);
+            if (err.message.includes('permission-denied') || err.code === 'permission-denied') {
+                alert("CRITICAL: Permission Denied.\n\nPlease go to your Firebase Console -> Firestore -> Rules and ensure they are set to allow authenticated users to write.");
             } else {
-                alert("Error deploying transaction: " + err.message);
+                alert("FluxyOS Engine Error: " + err.message);
             }
         } finally {
             btn.disabled = false;
