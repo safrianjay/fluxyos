@@ -13,7 +13,7 @@
 <body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
 
     <!-- SIDEBAR -->
-    <aside id="sidebar" class="w-[260px] bg-[#0B0F19] text-gray-300 flex flex-col flex-shrink-0 z-20 md:flex border-r border-gray-800">
+    <aside id="sidebar" class="w-[260px] bg-[#0B0F19] text-gray-300 flex flex-col flex-shrink-0 z-20 md:flex border-r border-gray-800 transition-all duration-300">
         <!-- Sidebar content will be loaded by sidebar-loader.js -->
     </aside>
 
@@ -34,22 +34,12 @@
                 </div>
             </div>
 
-            <!-- Right: Actions & Notifications -->
+            <!-- Right: AI Entry Point -->
             <div class="flex items-center gap-4">
-                <!-- Notifications -->
-                <button class="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                    <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
+                <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Fluxy AI
                 </button>
-
-                <!-- USER PROFILE -->
-                <div class="flex items-center gap-3 pl-4 border-l border-gray-100">
-                    <div class="text-right hidden sm:block">
-                        <p class="text-[12px] font-bold text-gray-900 leading-none mb-1" id="user-name">Loading...</p>
-                        <p class="text-[10px] font-medium text-gray-500 leading-none" id="user-role">Account Owner</p>
-                    </div>
-                    <img id="user-avatar" src="https://ui-avatars.com/api/?name=User&background=EA580C&color=fff" alt="User" class="w-8 h-8 rounded-full border border-gray-200">
-                </div>
             </div>
         </header>
 
@@ -101,7 +91,7 @@
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
 
-    <!-- AUTH GUARD & UI SYNC -->
+    <!-- AUTH GUARD -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -127,15 +117,11 @@
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 clearTimeout(checkTimeout);
-                const userNameElem = document.getElementById('user-name');
-                const userAvatarElem = document.getElementById('user-avatar');
-                if (userNameElem) userNameElem.innerText = user.displayName || user.email.split('@')[0];
-                if (userAvatarElem && user.photoURL) userAvatarElem.src = user.photoURL;
                 if (typeof loadBills === 'function') loadBills();
             }
         });
 
-        function loadBills() {
+        window.loadBills = function() {
             const tableBody = document.getElementById('bill-table-body');
             const mockBills = [
                 { vendor: 'AWS Cloud Services', amount: 'Rp 12.500.000', due: 'May 15, 2024', status: 'Pending' },

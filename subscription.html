@@ -11,7 +11,8 @@
 </head>
 <body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
 
-    <aside id="sidebar" class="w-[260px] bg-[#0B0F19] text-gray-300 flex flex-col flex-shrink-0 z-20 md:flex border-r border-gray-800">
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="w-[260px] bg-[#0B0F19] text-gray-300 flex flex-col flex-shrink-0 z-20 md:flex border-r border-gray-800 transition-all duration-300">
         <!-- Sidebar content will be loaded by sidebar-loader.js -->
     </aside>
 
@@ -25,14 +26,12 @@
                 <h1 class="text-lg font-bold text-gray-900">Subscriptions</h1>
             </div>
 
+            <!-- Right: AI Entry Point -->
             <div class="flex items-center gap-4">
-                <div class="flex items-center gap-3 pl-4 border-l border-gray-100">
-                    <div class="text-right hidden sm:block">
-                        <p class="text-[12px] font-bold text-gray-900 leading-none mb-1" id="user-name">Loading...</p>
-                        <p class="text-[10px] font-medium text-gray-500 leading-none" id="user-role">Account Owner</p>
-                    </div>
-                    <img id="user-avatar" src="https://ui-avatars.com/api/?name=User&background=EA580C&color=fff" alt="User" class="w-8 h-8 rounded-full border border-gray-200">
-                </div>
+                <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Fluxy AI
+                </button>
             </div>
         </header>
 
@@ -85,15 +84,11 @@
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 clearTimeout(checkTimeout);
-                const userNameElem = document.getElementById('user-name');
-                const userAvatarElem = document.getElementById('user-avatar');
-                if (userNameElem) userNameElem.innerText = user.displayName || user.email.split('@')[0];
-                if (userAvatarElem && user.photoURL) userAvatarElem.src = user.photoURL;
                 if (typeof loadSubs === 'function') loadSubs();
             }
         });
 
-        function loadSubs() {
+        window.loadSubs = function() {
             const grid = document.getElementById('subs-grid');
             const data = [
                 { name: 'Adobe Creative Cloud', cost: 'Rp 750.000', period: '/mo', next: 'May 24', color: 'bg-red-500' },
