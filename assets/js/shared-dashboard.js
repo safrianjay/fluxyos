@@ -9,11 +9,9 @@ window.showAddTransactionModal = function(options = {}) {
         defaultCategory = 'Operations'
     } = options;
 
-    if (document.getElementById('global-tx-modal')) {
-        document.getElementById('global-tx-modal').classList.remove('hidden');
-        document.getElementById('global-tx-modal').classList.add('flex');
-        return;
-    }
+    // Always destroy and recreate so context options (title, labels) are fresh
+    const existing = document.getElementById('global-tx-modal');
+    if (existing) existing.parentElement.remove();
 
     const modalHTML = `
         <div id="global-tx-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">

@@ -96,9 +96,5 @@ function renderLedgerRows(txs) {
     `).join('');
 }
 
-// Auth State Listener
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        window.loadDashboard();
-    }
-});
+// Auth state is handled by the page-level script in dashboard.html
+// Do NOT add another onAuthStateChanged here — it causes loadDashboard() to run twice.
