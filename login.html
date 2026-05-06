@@ -255,8 +255,10 @@
         </div>
     </div>
 
-    <!-- FIREBASE INTEGRATION -->
+    <!-- FIREBASE     <!-- FIREBASE INTEGRATION (HARDENED) -->
     <script type="module">
+        console.log("FluxyOS Auth Script: Initializing...");
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { 
             getAuth, 
@@ -266,7 +268,6 @@
             onAuthStateChanged 
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // Real Firebase project config
         const firebaseConfig = {
             apiKey: "AIzaSyBeua0457J12V_M1eQByxPVHG8hW_4Lv8c",
             authDomain: "fluxyos.firebaseapp.com",
@@ -277,55 +278,76 @@
             measurementId: "G-ZN7J6DRD2L"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const googleProvider = new GoogleAuthProvider();
+        try {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const googleProvider = new GoogleAuthProvider();
 
-        // Elements
-        const loginForm = document.getElementById('login-form');
-        const googleBtn = document.getElementById('google-btn');
-        const emailInput = document.getElementById('email');
-        const passwordInput = document.getElementById('password');
+            console.log("Firebase App Initialized Successfully");
 
-        console.log("Firebase Auth Initialized");
+            // Elements
+            const loginForm = document.getElementById('login-form');
+            const googleBtn = document.getElementById('google-btn');
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
 
-        // Handle Redirect if already logged in
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                console.log("User logged in, redirecting...");
-                window.location.href = 'dashboard.html';
+            // Handle Redirect if already logged in
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    console.log("User detected:", user.email);
+                    window.location.replace('dashboard.html');
+                } else {
+                    console.log("No user session active");
+                }
+            });
+
+            // Google Login
+            if (googleBtn) {
+                googleBtn.onclick = async (e) => {
+                    e.preventDefault();
+                    console.log("Google Button Clicked");
+                    googleBtn.innerText = "Connecting...";
+                    googleBtn.disabled = true;
+                    try {
+                        await signInWithPopup(auth, googleProvider);
+                    } catch (error) {
+                        console.error("Popup Error:", error);
+                        alert("Popup blocked or failed: " + error.message);
+                        googleBtn.innerText = "Continue with Google";
+                        googleBtn.disabled = false;
+                    }
+                };
             }
-        });
 
-        // Google Login
-        if (googleBtn) {
-            googleBtn.addEventListener('click', async () => {
-                console.log("Google login initiated");
-                try {
-                    await signInWithPopup(auth, googleProvider);
-                } catch (error) {
-                    console.error("Google Auth Error:", error);
-                    alert("Google Login Error: " + error.message);
-                }
-            });
-        }
+            // Email/Password Login
+            if (loginForm) {
+                loginForm.onsubmit = async (e) => {
+                    e.preventDefault();
+                    console.log("Login Form Submitted");
+                    const submitBtn = loginForm.querySelector('button[type="submit"]');
+                    const originalText = submitBtn.innerText;
+                    
+                    submitBtn.innerText = "Signing in...";
+                    submitBtn.disabled = true;
 
-        // Email/Password Login
-        if (loginForm) {
-            loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                console.log("Email login initiated");
-                const email = emailInput.value;
-                const password = passwordInput.value;
+                    try {
+                        await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+                    } catch (error) {
+                        console.error("Auth Error:", error);
+                        alert("Login Failed: " + error.message);
+                        submitBtn.innerText = originalText;
+                        submitBtn.disabled = false;
+                    }
+                };
+            }
 
-                try {
-                    await signInWithEmailAndPassword(auth, email, password);
-                } catch (error) {
-                    console.error("Email Auth Error:", error);
-                    alert("Invalid credentials: " + error.message);
-                }
-            });
+        } catch (initError) {
+            console.error("Critical Init Error:", initError);
+            alert("System Error: Could not load auth. Check your connection.");
         }
     </script>
+</body>
+</html>
+
 </body>
 </html>
