@@ -16,9 +16,16 @@ body {
     100% { transform: translateY(0px); }
 }
 
-.pricing-nav-menu { color: rgba(255, 255, 255, 0.72); }
-.pricing-nav-menu:hover,
-.pricing-nav-menu.active { color: #ffffff; }
+.pricing-nav-menu { 
+    color: rgba(255, 255, 255, 0.8) !important; 
+}
+.pricing-nav-menu:hover { 
+    color: #ffffff !important; 
+}
+.pricing-nav-menu.active { 
+    color: #EA580C !important;
+    font-weight: 700;
+}
 
 .pricing-mobile-menu {
     height: calc(100vh - 64px);
