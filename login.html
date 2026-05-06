@@ -262,8 +262,7 @@
             getAuth, 
             signInWithEmailAndPassword, 
             GoogleAuthProvider, 
-            signInWithRedirect,
-            getRedirectResult,
+            signInWithPopup,
             onAuthStateChanged 
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
@@ -286,24 +285,27 @@
             const loginForm = document.getElementById('login-form');
             const googleBtn = document.getElementById('google-btn');
 
-            console.log("Checking for redirect result...");
-            getRedirectResult(auth).catch(err => {
-                console.error("Redirect Result Error:", err);
-            });
-
-            // Handle Auth State
+            // Handle Auth State (Auto-Redirect)
             onAuthStateChanged(auth, (user) => {
                 if (user) {
-                    window.location.replace('dashboard.html');
+                    console.log("User detected, moving to dashboard...");
+                    window.location.href = 'dashboard.html';
                 }
             });
 
-            // Google Login (Redirect Method)
+            // Google Login (Popup Method - Better for Mobile/SSO)
             if (googleBtn) {
-                googleBtn.addEventListener('click', () => {
-                    console.log("Redirecting to Google...");
-                    googleBtn.innerText = "Redirecting...";
-                    signInWithRedirect(auth, googleProvider);
+                googleBtn.addEventListener('click', async () => {
+                    const originalText = googleBtn.innerHTML;
+                    googleBtn.innerHTML = "Authenticating...";
+                    try {
+                        await signInWithPopup(auth, googleProvider);
+                    } catch (error) {
+                        console.error("Popup Error:", error);
+                        // Fallback if popups are blocked by browser settings
+                        alert("Please allow popups for this site or try again.");
+                        googleBtn.innerHTML = originalText;
+                    }
                 });
             }
 
@@ -321,7 +323,6 @@
                     }
                 });
             }
-
         } catch (e) {
             console.error("Firebase Init Error", e);
         }
