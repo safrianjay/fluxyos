@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const API_BASE = 'http://localhost:8000/api/v1';
+    const API_BASE = '/api/v1';
 
     // Elements
     const kpiRevenue = document.getElementById('kpi-revenue');
