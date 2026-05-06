@@ -21,18 +21,18 @@
     });
 
     const sidebarHTML = `
-        <!-- Logo Area (Neural Brain Logo) -->
+        <!-- Logo Area (Stylized F Logo) -->
         <div class="logo-area h-16 flex items-center px-5 border-b border-gray-800/60 bg-[#0B0F19] sticky top-0 z-10 transition-all duration-300" id="sidebar-header">
-            <div class="flex items-center gap-3 cursor-pointer group overflow-hidden" onclick="window.location.href='dashboard.html'">
-                <div class="w-8 h-8 text-[#EA580C] flex-shrink-0">
+            <div id="logo-container" class="flex items-center gap-3 cursor-pointer group overflow-hidden w-full transition-all duration-300">
+                <div class="w-9 h-9 text-[#EA580C] flex-shrink-0 transition-all duration-300 mx-auto lg:mx-0" id="logo-icon">
                     <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
                         <rect width="40" height="40" rx="10" fill="currentColor" />
-                        <path d="M21 16V6L8 23h10v11l13-17h-12z" fill="white" />
+                        <path d="M11 9h18l-7 7h-7v6h10l-7 7h-3v5h-4V9z" fill="white" />
                     </svg>
                 </div>
                 <span class="logo-text font-bold text-[17px] tracking-tight text-white group-hover:text-[#EA580C] transition-colors sidebar-hide">FluxyOS</span>
             </div>
-            <button id="sidebar-toggle" class="ml-auto p-1.5 text-gray-500 hover:text-white rounded-md hover:bg-gray-800 transition-colors">
+            <button id="sidebar-toggle" class="ml-auto p-1.5 text-gray-500 hover:text-white rounded-md hover:bg-gray-800 transition-colors sidebar-hide">
                 <svg class="w-5 h-5 transition-transform duration-300" id="toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
             </button>
         </div>
@@ -89,10 +89,6 @@
         const sidebar = document.getElementById('sidebar');
         if (!sidebar) return;
 
-        // Apply slimmer width initially
-        sidebar.classList.add('w-[240px]', 'transition-all', 'duration-300');
-        sidebar.classList.remove('w-[260px]');
-
         sidebar.innerHTML = sidebarHTML;
         
         // Highlight Active
@@ -117,24 +113,24 @@
 
         // Sidebar Toggle Logic
         const toggleBtn = document.getElementById('sidebar-toggle');
-        const toggleIcon = document.getElementById('toggle-icon');
         const header = document.getElementById('sidebar-header');
+        const logoContainer = document.getElementById('logo-container');
 
         toggleBtn.onclick = () => {
             const isCollapsed = sidebar.classList.contains('w-[80px]');
             
             if (isCollapsed) {
-                // Expand to slimer 240px
+                // Expand
                 sidebar.classList.replace('w-[80px]', 'w-[240px]');
                 header.classList.add('px-5');
-                header.classList.remove('px-4', 'justify-center');
-                toggleIcon.classList.remove('rotate-180');
+                header.classList.remove('justify-center');
+                logoContainer.classList.remove('justify-center');
             } else {
                 // Collapse
                 sidebar.classList.replace('w-[240px]', 'w-[80px]');
                 header.classList.remove('px-5');
-                header.classList.add('px-4', 'justify-center');
-                toggleIcon.classList.add('rotate-180');
+                header.classList.add('justify-center');
+                logoContainer.classList.add('justify-center');
             }
 
             const hides = sidebar.querySelectorAll('.sidebar-hide');
