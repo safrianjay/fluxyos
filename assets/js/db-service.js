@@ -32,7 +32,7 @@ class DataService {
     }
 
     async getBills(userId) {
-        const q = query(collection(this.db, `users/${userId}/bills`), orderBy('dueDate', 'asc'));
+        const q = query(collection(this.db, `users/${userId}/bills`), orderBy('timestamp', 'desc'));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
@@ -46,7 +46,7 @@ class DataService {
     }
 
     async getSubscriptions(userId) {
-        const q = query(collection(this.db, `users/${userId}/subscriptions`), orderBy('amount', 'desc'));
+        const q = query(collection(this.db, `users/${userId}/subscriptions`), orderBy('timestamp', 'desc'));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
