@@ -2,6 +2,14 @@
  * Global Transaction Modal
  */
 window.showAddTransactionModal = function() {
+window.showAddTransactionModal = function(options = {}) {
+    const {
+        title = "Add Transaction",
+        submitLabel = "Add Transaction",
+        defaultType = 'expense',
+        defaultCategory = 'Operations'
+    } = options;
+
     if (document.getElementById('global-tx-modal')) {
         document.getElementById('global-tx-modal').classList.remove('hidden');
         document.getElementById('global-tx-modal').classList.add('flex');
@@ -9,10 +17,11 @@ window.showAddTransactionModal = function() {
     }
 
     const modalHTML = `
-        <div id="global-tx-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#0B0F19]/60 backdrop-blur-sm animate-in fade-in duration-300">
-            <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in zoom-in-95 duration-300">
-                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                    <h3 class="text-lg font-bold text-gray-900">Add Transaction</h3>
+        <div id="global-tx-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+            <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onclick="window.closeAddTransactionModal()"></div>
+            <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-300">
+                <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                    <h3 class="text-lg font-bold text-gray-900">${title}</h3>
                     <button onclick="window.closeAddTransactionModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
@@ -30,23 +39,23 @@ window.showAddTransactionModal = function() {
                         <div>
                             <label for="tx-category" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Category</label>
                             <select id="tx-category" name="category" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
-                                <option value="Revenue">Revenue</option>
-                                <option value="Marketing">Marketing</option>
-                                <option value="Infrastructure">Infrastructure</option>
-                                <option value="Operations">Operations</option>
-                                <option value="SaaS">SaaS</option>
+                                <option value="Revenue" ${defaultCategory === 'Revenue' ? 'selected' : ''}>Revenue</option>
+                                <option value="Marketing" ${defaultCategory === 'Marketing' ? 'selected' : ''}>Marketing</option>
+                                <option value="Infrastructure" ${defaultCategory === 'Infrastructure' ? 'selected' : ''}>Infrastructure</option>
+                                <option value="Operations" ${defaultCategory === 'Operations' ? 'selected' : ''}>Operations</option>
+                                <option value="SaaS" ${defaultCategory === 'SaaS' ? 'selected' : ''}>SaaS</option>
                             </select>
                         </div>
                         <div>
                             <label for="tx-type" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Type</label>
                             <select id="tx-type" name="type" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
-                                <option value="expense">Expense</option>
-                                <option value="revenue">Revenue</option>
+                                <option value="expense" ${defaultType === 'expense' ? 'selected' : ''}>Expense</option>
+                                <option value="revenue" ${defaultType === 'revenue' ? 'selected' : ''}>Revenue</option>
                             </select>
                         </div>
                     </div>
                     <button type="submit" id="tx-submit-btn" class="w-full py-4 bg-[#E85D19] hover:bg-[#D44400] text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-                        <span>Add Transaction</span>
+                        <span>${submitLabel}</span>
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     </button>
                 </form>
