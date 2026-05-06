@@ -21,18 +21,19 @@
     });
 
     const sidebarHTML = `
-        <!-- Logo Area (Solid Geometric Logo) -->
+        <!-- Logo Area (Official Login Page Logo) -->
         <div class="logo-area h-16 flex items-center px-5 border-b border-gray-800/60 bg-[#0B0F19] sticky top-0 z-10 transition-all duration-300" id="sidebar-header">
             <div id="logo-container" class="flex items-center gap-3 cursor-pointer group overflow-hidden w-full transition-all duration-300">
-                <div class="w-9 h-9 flex-shrink-0 transition-all duration-300 mx-auto lg:mx-0" id="logo-icon">
-                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full shadow-sm">
-                        <!-- Solid Orange Rounded Background -->
-                        <rect width="100" height="100" rx="22" fill="#E85D19" />
-                        <!-- Precise Geometric "F" Path -->
-                        <path d="M 26 22 L 82 22 L 60 44 L 48 44 L 48 53 L 68 53 L 52 69 L 48 69 L 48 82 L 26 82 Z" fill="#FFFFFF" />
+                <div class="w-8 h-8 text-[#EA580C] flex-shrink-0 transition-all duration-300 mx-auto lg:mx-0" id="logo-icon">
+                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                        <rect width="40" height="40" rx="8" fill="currentColor" />
+                        <g transform="translate(1.5, 0)">
+                            <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                            <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                        </g>
                     </svg>
                 </div>
-                <span class="logo-text font-bold text-[17px] tracking-tight text-white group-hover:text-[#E85D19] transition-colors sidebar-hide">FluxyOS</span>
+                <span class="logo-text font-bold text-[17px] tracking-tight text-white group-hover:text-[#EA580C] transition-colors sidebar-hide">FluxyOS</span>
             </div>
             <button id="sidebar-toggle" class="ml-auto p-1.5 text-gray-500 hover:text-white rounded-md hover:bg-gray-800 transition-colors sidebar-hide">
                 <svg class="w-5 h-5 transition-transform duration-300" id="toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
@@ -109,7 +110,7 @@
             if (el) {
                 el.classList.add('bg-[#1A1F26]', 'text-white', 'border', 'border-gray-700/50', 'shadow-sm');
                 const icon = el.querySelector('svg');
-                if (icon) icon.classList.add('text-[#E85D19]');
+                if (icon) icon.classList.add('text-[#EA580C]');
             }
         }
 
