@@ -351,11 +351,15 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
+        // SMART AUTH GUARD
+        let checkTimeout = setTimeout(() => {
+            console.log("Auth Timeout: No user found after 2 seconds.");
+            window.location.replace('login.html');
+        }, 2000);
+
         onAuthStateChanged(auth, (user) => {
-            if (!user) {
-                // If not logged in, boot to login page
-                window.location.href = 'login.html';
-            } else {
+            if (user) {
+                clearTimeout(checkTimeout);
                 console.log("Authenticated as:", user.email);
                 
                 // Update Profile UI
@@ -364,6 +368,11 @@
                 
                 if (userNameElem) userNameElem.innerText = user.displayName || user.email.split('@')[0];
                 if (userAvatarElem && user.photoURL) userAvatarElem.src = user.photoURL;
+
+                // Load page specific data
+                if (typeof loadDashboard === 'function') loadDashboard();
+            } else {
+                console.log("No user session. Waiting for timeout or redirect...");
             }
         });
     </script>

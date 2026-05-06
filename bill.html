@@ -119,21 +119,19 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
+        // SMART AUTH GUARD
+        let checkTimeout = setTimeout(() => {
+            window.location.replace('login.html');
+        }, 2000);
+
         onAuthStateChanged(auth, (user) => {
-            if (!user) {
-                window.location.href = 'login.html';
-            } else {
-                console.log("Authenticated on Bills as:", user.email);
-                
-                // Update Profile UI
+            if (user) {
+                clearTimeout(checkTimeout);
                 const userNameElem = document.getElementById('user-name');
                 const userAvatarElem = document.getElementById('user-avatar');
-                
                 if (userNameElem) userNameElem.innerText = user.displayName || user.email.split('@')[0];
                 if (userAvatarElem && user.photoURL) userAvatarElem.src = user.photoURL;
-
-                // Mock Bills Loading
-                loadBills();
+                if (typeof loadBills === 'function') loadBills();
             }
         });
 
