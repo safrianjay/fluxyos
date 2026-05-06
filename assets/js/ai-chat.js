@@ -1,6 +1,6 @@
 (function() {
     const chatHTML = `
-        <div id="ai-chat-container">
+        <div id="ai-chat-container" style="display: none;">
             <div id="ai-chat-window">
                 <div class="chat-header">
                     <div class="w-9 h-9 rounded-lg bg-[#EA580C] flex items-center justify-center text-white shadow-lg">
@@ -32,28 +32,35 @@
     function init() {
         if (document.getElementById('ai-chat-container')) return;
         
-        // Inject HTML
         const wrapper = document.createElement('div');
         wrapper.innerHTML = chatHTML;
         document.body.appendChild(wrapper);
 
-        // Elements
+        const container = document.getElementById('ai-chat-container');
         const windowElem = document.getElementById('ai-chat-window');
         const closeBtn = document.getElementById('close-chat');
         const form = document.getElementById('chat-form');
         const input = document.getElementById('chat-input');
         const messages = document.getElementById('chat-messages');
 
-        // Toggle Logic (Exported globally)
+        // Global Toggle Function
         window.toggleFluxyAI = (state) => {
-            if (state === true) windowElem.classList.add('active');
-            else if (state === false) windowElem.classList.remove('active');
-            else windowElem.classList.toggle('active');
+            console.log("Fluxy AI Toggled:", state);
+            container.style.display = 'flex'; // Ensure container is visible
+            
+            if (state === true) {
+                windowElem.classList.add('active');
+            } else if (state === false) {
+                windowElem.classList.remove('active');
+                setTimeout(() => { container.style.display = 'none'; }, 400); // Hide after slide
+            } else {
+                const isActive = windowElem.classList.toggle('active');
+                if (!isActive) setTimeout(() => { container.style.display = 'none'; }, 400);
+            }
         };
 
         closeBtn.onclick = () => window.toggleFluxyAI(false);
 
-        // Handle Chat
         form.onsubmit = async (e) => {
             e.preventDefault();
             const text = input.value.trim();
@@ -87,5 +94,10 @@
         }
     }
 
-    init();
+    // Run init immediately if DOM ready, otherwise wait
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        init();
+    } else {
+        document.addEventListener('DOMContentLoaded', init);
+    }
 })();
