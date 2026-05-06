@@ -1,0 +1,13 @@
+[[redirects]]
+  from = "/"
+  to = "/fluxyos.html"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/:splat"
+  status = 200
+
+[build]
+  publish = "."
