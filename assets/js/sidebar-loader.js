@@ -21,23 +21,18 @@
     });
 
     const sidebarHTML = `
-        <!-- Logo Area (Premium App Icon Logo) -->
+        <!-- Logo Area (Solid Geometric Logo) -->
         <div class="logo-area h-16 flex items-center px-5 border-b border-gray-800/60 bg-[#0B0F19] sticky top-0 z-10 transition-all duration-300" id="sidebar-header">
             <div id="logo-container" class="flex items-center gap-3 cursor-pointer group overflow-hidden w-full transition-all duration-300">
-                <div class="w-10 h-10 flex-shrink-0 transition-all duration-300 mx-auto lg:mx-0" id="logo-icon">
-                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full shadow-lg">
-                        <rect width="100" height="100" rx="20" fill="url(#sidebar-bg-gradient)" />
-                        <path d="M 24 20 L 82 20 L 62 40 L 44 40 L 44 80 L 24 80 Z" fill="#FFFFFF" />
-                        <path d="M 44 50 L 72 50 L 52 70 L 44 70 Z" fill="#EA580C" />
-                        <defs>
-                            <linearGradient id="sidebar-bg-gradient" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-                                <stop stop-color="#111827" />
-                                <stop offset="1" stop-color="#0B0F19" />
-                            </linearGradient>
-                        </defs>
+                <div class="w-9 h-9 flex-shrink-0 transition-all duration-300 mx-auto lg:mx-0" id="logo-icon">
+                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full shadow-sm">
+                        <!-- Solid Orange Rounded Background -->
+                        <rect width="100" height="100" rx="22" fill="#E85D19" />
+                        <!-- Precise Geometric "F" Path -->
+                        <path d="M 26 22 L 82 22 L 60 44 L 48 44 L 48 53 L 68 53 L 52 69 L 48 69 L 48 82 L 26 82 Z" fill="#FFFFFF" />
                     </svg>
                 </div>
-                <span class="logo-text font-bold text-[17px] tracking-tight text-white group-hover:text-[#EA580C] transition-colors sidebar-hide">FluxyOS</span>
+                <span class="logo-text font-bold text-[17px] tracking-tight text-white group-hover:text-[#E85D19] transition-colors sidebar-hide">FluxyOS</span>
             </div>
             <button id="sidebar-toggle" class="ml-auto p-1.5 text-gray-500 hover:text-white rounded-md hover:bg-gray-800 transition-colors sidebar-hide">
                 <svg class="w-5 h-5 transition-transform duration-300" id="toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
@@ -114,7 +109,7 @@
             if (el) {
                 el.classList.add('bg-[#1A1F26]', 'text-white', 'border', 'border-gray-700/50', 'shadow-sm');
                 const icon = el.querySelector('svg');
-                if (icon) icon.classList.add('text-[#EA580C]');
+                if (icon) icon.classList.add('text-[#E85D19]');
             }
         }
 
