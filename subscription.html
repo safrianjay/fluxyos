@@ -6,7 +6,6 @@
     <title>FluxyOS | Subscriptions</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="assets/css/shared-dashboard.css">
 </head>
 <body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
@@ -17,16 +16,16 @@
     </aside>
 
     <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
-        
         <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
             <div class="flex items-center gap-4 flex-1">
                 <button class="md:hidden text-gray-500 hover:text-gray-900">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
-                <h1 class="text-lg font-bold text-gray-900">Subscriptions</h1>
+                <div class="hidden sm:flex relative w-full max-w-lg">
+                    <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <input type="text" placeholder="Search subscriptions, SaaS tools..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[13px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
+                </div>
             </div>
-
-            <!-- Right: AI Entry Point -->
             <div class="flex items-center gap-4">
                 <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
                     <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -37,19 +36,39 @@
 
         <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
             <div class="max-w-7xl mx-auto space-y-6">
-                
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h2 class="text-3xl font-bold text-gray-900 tracking-tight">Vendors & SaaS</h2>
-                        <p class="text-[14px] text-gray-500 mt-1">Track recurring monthly and yearly software costs.</p>
+                        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Active Subscriptions</h1>
+                        <p class="text-[14px] text-gray-500 mt-1">Track your recurring SaaS spend and renewal cycles.</p>
                     </div>
-                    <button class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors">
-                        Add New Subscription
-                    </button>
+                    <div class="flex items-center gap-3">
+                        <button onclick="window.showAddTransactionModal()" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                            Add Subscription
+                        </button>
+                    </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="subs-grid">
-                    <!-- Loading... -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6">
+                    <div id="sub-empty-state" class="hidden"></div>
+                    <div id="sub-table-container" class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Service</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Monthly Cost</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Renewal Date</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sub-table-body" class="divide-y divide-gray-100 text-[13px]">
+                                <tr>
+                                    <td colspan="5" class="px-6 py-12 text-center text-gray-400">Loading your subscriptions...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -58,10 +77,10 @@
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
 
-    <!-- AUTH GUARD -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyCaJqmpEMulLdMvRT7mYf2K-XDw46-dT7A",
@@ -69,55 +88,60 @@
             projectId: "fluxyos",
             storageBucket: "fluxyos.firebasestorage.app",
             messagingSenderId: "1084252368929",
-            appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
-            measurementId: "G-ZN7J6DRD2L"
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
         };
 
-        const app = initializeApp(firebaseConfig);
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
         const auth = getAuth(app);
-
-        // SMART AUTH GUARD
-        let checkTimeout = setTimeout(() => {
-            window.location.replace('login.html');
-        }, 2000);
+        const ds = new DataService(app);
 
         onAuthStateChanged(auth, (user) => {
-            if (user) {
-                clearTimeout(checkTimeout);
-                if (typeof loadSubs === 'function') loadSubs();
-            }
+            if (user) window.loadSubscriptions();
+            else window.location.replace('login.html');
         });
 
-        window.loadSubs = function() {
-            const grid = document.getElementById('subs-grid');
-            const data = [
-                { name: 'Adobe Creative Cloud', cost: 'Rp 750.000', period: '/mo', next: 'May 24', color: 'bg-red-500' },
-                { name: 'Slack Pro', cost: 'Rp 2.100.000', period: '/mo', next: 'Jun 01', color: 'bg-[#4A154B]' },
-                { name: 'Notion Plus', cost: 'Rp 150.000', period: '/mo', next: 'May 15', color: 'bg-gray-900' },
-                { name: 'Zoom Enterprise', cost: 'Rp 3.500.000', period: '/yr', next: 'Dec 12', color: 'bg-blue-500' }
-            ];
+        window.loadSubscriptions = async function() {
+            const user = auth.currentUser;
+            if (!user) return;
 
-            grid.innerHTML = data.map(sub => `
-                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
-                    <div class="flex items-center gap-4 mb-4">
-                        <div class="w-12 h-12 rounded-lg ${sub.color} flex items-center justify-center text-white font-bold text-xl">
-                            ${sub.name.charAt(0)}
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-gray-900">${sub.name}</h3>
-                            <p class="text-[12px] text-gray-500">Next payment: ${sub.next}</p>
-                        </div>
-                    </div>
-                    <div class="pt-4 border-t border-gray-50 flex justify-between items-end">
-                        <div>
-                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Amount</p>
-                            <p class="text-xl font-mono font-bold text-gray-900">${sub.cost}<span class="text-sm font-medium text-gray-400">${sub.period}</span></p>
-                        </div>
-                        <button class="text-[12px] font-bold text-[#EA580C] hover:underline">Manage</button>
-                    </div>
-                </div>
-            `).join('');
-        }
+            const body = document.getElementById('sub-table-body');
+            const tableContainer = document.getElementById('sub-table-container');
+            const emptyContainer = document.getElementById('sub-empty-state');
+            
+            const subs = await ds.getSubscriptions(user.uid);
+
+            if (subs.length === 0) {
+                tableContainer.classList.add('hidden');
+                emptyContainer.classList.remove('hidden');
+                window.renderEmptyState('sub-empty-state', {
+                    title: "No active subscriptions.",
+                    description: "Track your SaaS stack burn rate. Add your first subscription to start monitoring recurring costs.",
+                    buttonText: "Add First Subscription",
+                    onAction: () => window.showAddTransactionModal()
+                });
+            } else {
+                tableContainer.classList.remove('hidden');
+                emptyContainer.classList.add('hidden');
+                body.innerHTML = subs.map(sub => `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 flex items-center gap-3">
+                            <div class="w-8 h-8 rounded bg-blue-50 flex items-center justify-center text-[14px]">
+                                ${sub.icon || '🛠️'}
+                            </div>
+                            <span class="font-bold text-gray-900">${sub.name}</span>
+                        </td>
+                        <td class="px-6 py-4 font-mono font-bold">Rp ${sub.amount.toLocaleString()}</td>
+                        <td class="px-6 py-4 text-gray-500">${sub.renewal_date?.toDate().toLocaleDateString() || 'Next month'}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-blue-100 text-blue-700">Active</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <button class="text-[12px] font-bold text-gray-400 hover:text-red-500 transition-colors">Manage</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        };
     </script>
 </body>
 </html>
