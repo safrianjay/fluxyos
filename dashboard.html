@@ -286,25 +286,28 @@
                         </div>
                     </div>
 
-                    <!-- Table -->
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-gray-50/50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                                    <th class="px-5 py-3 font-medium">Transaction</th>
-                                    <th class="px-5 py-3 font-medium">Budget/Category</th>
-                                    <th class="px-5 py-3 font-medium">Entity</th>
-                                    <th class="px-5 py-3 font-medium text-right">Amount</th>
-                                    <th class="px-5 py-3 font-medium text-right">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="text-[13px]" id="ledger-body">
-                                <!-- Dynamic rows will be inserted here -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="p-3 border-t border-gray-100 bg-gray-50/30 text-center">
-                        <a href="#" class="text-[12px] font-bold text-gray-500 hover:text-gray-800 transition-colors">View all 142 transactions &rarr;</a>
+                    <!-- Ledger Wrapper (For Empty States) -->
+                    <div id="ledger-wrapper">
+                        <!-- Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-50/50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                                        <th class="px-5 py-3 font-medium">Transaction</th>
+                                        <th class="px-5 py-3 font-medium">Budget/Category</th>
+                                        <th class="px-5 py-3 font-medium">Entity</th>
+                                        <th class="px-5 py-3 font-medium text-right">Amount</th>
+                                        <th class="px-5 py-3 font-medium text-right">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-[13px]" id="ledger-body">
+                                    <!-- Dynamic rows will be inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="p-3 border-t border-gray-100 bg-gray-50/30 text-center">
+                            <a href="#" class="text-[12px] font-bold text-gray-500 hover:text-gray-800 transition-colors">View all transactions &rarr;</a>
+                        </div>
                     </div>
                 </div>
 
@@ -323,7 +326,8 @@
 
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
-    <script src="assets/js/dashboard.js"></script>
+    <script type="module" src="assets/js/dashboard.js"></script>
+
     <!-- AUTH GUARD -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
