@@ -103,8 +103,8 @@ window.showAddTransactionModal = function() {
             const user = auth.currentUser;
 
             if (user) {
-                // Fixed Path: Ensures the service is found correctly from the root
-                const { default: DataService } = await import('./assets/js/db-service.js');
+                // Absolute Path Fix: Prevents "assets/js/assets/js" doubling error
+                const { default: DataService } = await import('/assets/js/db-service.js');
                 const ds = new DataService(app); 
                 await ds.addTransaction(user.uid, data);
                 
