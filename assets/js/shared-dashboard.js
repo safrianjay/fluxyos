@@ -113,24 +113,66 @@ window.showAddTransactionModal = function() {
                 // Trigger refresh on all possible pages
                 if (window.loadDashboard) await window.loadDashboard();
                 if (window.loadLedger) await window.loadLedger();
-                
-                // Optional: Show success toast/alert
-                alert("Transaction successfully deployed to your live ledger!");
+                // Show Premium Success Toast
+                window.showToast("Transaction successfully deployed to your live ledger!", "success");
             } else {
-                alert("Session expired. Please log in again.");
+                window.showToast("Session expired. Please log in again.", "error");
             }
         } catch (err) {
             console.error("FluxyOS Engine Error:", err);
             if (err.message.includes('permission-denied') || err.code === 'permission-denied') {
-                alert("CRITICAL: Permission Denied.\n\nPlease go to your Firebase Console -> Firestore -> Rules and ensure they are set to allow authenticated users to write.");
+                window.showToast("CRITICAL: Permission Denied. Check Firestore Rules.", "error");
             } else {
-                alert("FluxyOS Engine Error: " + err.message);
+                window.showToast("FluxyOS Engine Error: " + err.message, "error");
             }
         } finally {
             btn.disabled = false;
             btn.innerText = "Add Transaction";
         }
     };
+};
+
+/**
+ * Global Toast System
+ */
+window.showToast = function(message, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'fixed top-6 right-6 z-[200] flex flex-col gap-3 pointer-events-none';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    const colors = {
+        success: 'bg-green-600 border-green-500',
+        error: 'bg-red-600 border-red-500',
+        info: 'bg-blue-600 border-blue-500'
+    };
+    
+    toast.className = `
+        flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl border text-white font-bold text-[13px] 
+        animate-in slide-in-from-right-full duration-500 pointer-events-auto min-w-[300px]
+        ${colors[type] || colors.info}
+    `;
+
+    const icon = type === 'success' 
+        ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>'
+        : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+
+    toast.innerHTML = `
+        <div class="flex-shrink-0">${icon}</div>
+        <div class="flex-1">${message}</div>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto-remove
+    setTimeout(() => {
+        toast.classList.add('animate-out', 'fade-out', 'slide-out-to-right-full', 'duration-500');
+        setTimeout(() => toast.remove(), 500);
+    }, 4000);
 };
 
 window.closeAddTransactionModal = function() {
