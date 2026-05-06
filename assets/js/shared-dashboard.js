@@ -1,7 +1,6 @@
 /**
  * Global Transaction Modal
  */
-window.showAddTransactionModal = function() {
 window.showAddTransactionModal = function(options = {}) {
     const {
         title = "Add Transaction",
@@ -227,4 +226,24 @@ window.renderEmptyState = function(containerId, config) {
 window.toggleFluxyAI = (state) => {
     if (window.toggleAI) window.toggleAI(state);
     else console.warn("AI Chat not loaded yet");
+};
+
+/**
+ * Shimmer Loading System
+ */
+window.renderShimmer = function(containerId, rowCount = 5) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const rows = Array(rowCount).fill(0).map(() => `
+        <tr class="animate-pulse">
+            <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
+            <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-48"></div></td>
+            <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
+            <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-16"></div></td>
+            <td class="px-6 py-4 text-right"><div class="h-4 bg-gray-200 rounded w-12 ml-auto"></div></td>
+        </tr>
+    `).join('');
+
+    container.innerHTML = rows;
 };

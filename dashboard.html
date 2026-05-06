@@ -329,7 +329,7 @@
 
     <!-- AUTH GUARD -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -342,7 +342,7 @@
             measurementId: "G-ZN7J6DRD2L"
         };
 
-        const app = initializeApp(firebaseConfig);
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
         const auth = getAuth(app);
 
         // SMART AUTH GUARD
