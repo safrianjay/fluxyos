@@ -24,6 +24,13 @@ class DataService {
     }
 
     // --- BILLS ---
+    async addBill(userId, data) {
+        return await addDoc(collection(this.db, `users/${userId}/bills`), {
+            ...data,
+            timestamp: serverTimestamp()
+        });
+    }
+
     async getBills(userId) {
         const q = query(collection(this.db, `users/${userId}/bills`), orderBy('dueDate', 'asc'));
         const snapshot = await getDocs(q);
@@ -31,6 +38,13 @@ class DataService {
     }
 
     // --- SUBSCRIPTIONS ---
+    async addSubscription(userId, data) {
+        return await addDoc(collection(this.db, `users/${userId}/subscriptions`), {
+            ...data,
+            timestamp: serverTimestamp()
+        });
+    }
+
     async getSubscriptions(userId) {
         const q = query(collection(this.db, `users/${userId}/subscriptions`), orderBy('amount', 'desc'));
         const snapshot = await getDocs(q);
@@ -51,8 +65,8 @@ class DataService {
         const margin = revenue > 0 ? ((revenue - opex) / revenue) * 100 : 0;
 
         return {
-            revenue: `Rp ${revenue.toLocaleString()}`,
-            opex: `Rp ${opex.toLocaleString()}`,
+            revenue: revenue,
+            opex: opex,
             margin: margin,
             revenue_change: "0%", // Placeholder for growth calculation
             action_items_count: txs.filter(t => t.status === 'Missing Receipt').length

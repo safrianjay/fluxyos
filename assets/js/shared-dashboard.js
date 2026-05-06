@@ -6,7 +6,8 @@ window.showAddTransactionModal = function(options = {}) {
         title = "Add Transaction",
         submitLabel = "Add Transaction",
         defaultType = 'expense',
-        defaultCategory = 'Operations'
+        defaultCategory = 'Operations',
+        context = 'transaction' // 'transaction', 'bill', 'subscription'
     } = options;
 
     // Always destroy and recreate so context options (title, labels) are fresh
@@ -112,15 +113,24 @@ window.showAddTransactionModal = function(options = {}) {
                 // Absolute Path Fix: Prevents "assets/js/assets/js" doubling error
                 const { default: DataService } = await import('/assets/js/db-service.js');
                 const ds = new DataService(app); 
-                await ds.addTransaction(user.uid, data);
-                
-                window.closeAddTransactionModal();
-                
-                // Trigger refresh on all possible pages
-                if (window.loadDashboard) await window.loadDashboard();
-                if (window.loadLedger) await window.loadLedger();
-                // Show Premium Success Toast
-                window.showToast("Transaction successfully deployed to your live ledger!", "success");
+
+                if (context === 'bill') {
+                    await ds.addBill(user.uid, data);
+                    window.closeAddTransactionModal();
+                    if (window.loadBills) await window.loadBills();
+                    window.showToast("Bill successfully added to your schedule!", "success");
+                } else if (context === 'subscription') {
+                    await ds.addSubscription(user.uid, data);
+                    window.closeAddTransactionModal();
+                    if (window.loadSubscriptions) await window.loadSubscriptions();
+                    window.showToast("Subscription successfully activated!", "success");
+                } else {
+                    await ds.addTransaction(user.uid, data);
+                    window.closeAddTransactionModal();
+                    if (window.loadDashboard) await window.loadDashboard();
+                    if (window.loadLedger) await window.loadLedger();
+                    window.showToast("Transaction successfully deployed to your live ledger!", "success");
+                }
             } else {
                 window.showToast("Session expired. Please log in again.", "error");
             }
