@@ -20,7 +20,7 @@ window.showAddTransactionModal = function() {
                 <form id="global-tx-form" class="p-6 space-y-5">
                     <div>
                         <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Amount (Rp)</label>
-                        <input type="number" id="tx-amount" required placeholder="0" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E85D19] focus:border-[#E85D19] outline-none font-mono font-bold text-lg">
+                        <input type="text" id="tx-amount" required placeholder="0" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E85D19] focus:border-[#E85D19] outline-none font-mono font-bold text-lg">
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Vendor / Description</label>
@@ -58,6 +58,13 @@ window.showAddTransactionModal = function() {
     wrapper.innerHTML = modalHTML;
     document.body.appendChild(wrapper);
 
+    // Live Formatting for Amount
+    const amountInput = document.getElementById('tx-amount');
+    amountInput.oninput = (e) => {
+        let value = e.target.value.replace(/\D/g, "");
+        e.target.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    };
+
     // Form Submission
     document.getElementById('global-tx-form').onsubmit = async (e) => {
         e.preventDefault();
@@ -66,8 +73,9 @@ window.showAddTransactionModal = function() {
         btn.innerText = "Deploying...";
 
         try {
+            const rawAmount = document.getElementById('tx-amount').value.replace(/\./g, "");
             const data = {
-                amount: parseFloat(document.getElementById('tx-amount').value),
+                amount: parseFloat(rawAmount),
                 vendor_name: document.getElementById('tx-vendor').value,
                 category: document.getElementById('tx-category').value,
                 type: document.getElementById('tx-type').value,
