@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FluxyOS | Bills</title>
+    <title>FluxyOS | Bills & Payments</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="assets/css/shared-dashboard.css">
     <link rel="stylesheet" href="assets/css/bill.css">
 </head>
-<body class="flex h-screen overflow-hidden text-gray-900">
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
 
     <!-- SIDEBAR -->
     <aside id="sidebar" class="w-[260px] bg-[#0B0F19] text-gray-300 flex flex-col flex-shrink-0 z-20 md:flex border-r border-gray-800">
@@ -30,34 +30,150 @@
                 
                 <div class="hidden sm:flex relative w-full max-w-lg">
                     <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    <input type="text" placeholder="Hi Safrian, search for anything here..." class="w-full pl-9 pr-4 py-2 bg-gray-50 hover:bg-gray-100 border border-transparent rounded-lg text-[13px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
-                    <div class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-gray-400 bg-white border border-gray-200 px-1.5 py-0.5 rounded">⌘K</div>
+                    <input type="text" placeholder="Search bills, vendors, or amounts..." class="w-full pl-9 pr-4 py-2 bg-gray-50 hover:bg-gray-100 border border-transparent rounded-lg text-[13px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
                 </div>
             </div>
 
             <!-- Right: Actions & Notifications -->
-            <div class="flex items-center gap-2">
-                <button class="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                </button>
-
+            <div class="flex items-center gap-4">
+                <!-- Notifications -->
                 <button class="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
                     <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
                 </button>
+
+                <!-- USER PROFILE -->
+                <div class="flex items-center gap-3 pl-4 border-l border-gray-100">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-[12px] font-bold text-gray-900 leading-none mb-1" id="user-name">Loading...</p>
+                        <p class="text-[10px] font-medium text-gray-500 leading-none" id="user-role">Account Owner</p>
+                    </div>
+                    <img id="user-avatar" src="https://ui-avatars.com/api/?name=User&background=EA580C&color=fff" alt="User" class="w-8 h-8 rounded-full border border-gray-200">
+                </div>
             </div>
         </header>
 
         <!-- Scrollable Content -->
         <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-            <div class="max-w-[1400px] mx-auto space-y-6">
-                <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Bills</h1>
-                <p class="text-gray-500">Manage your upcoming payments and subscriptions.</p>
+            <div class="max-w-7xl mx-auto space-y-6">
+                
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Bills & Payments</h1>
+                        <p class="text-[14px] text-gray-500 mt-1">Manage your upcoming obligations and subscription renewals.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-colors">Export CSV</button>
+                        <button class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] shadow-sm transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            Add New Bill
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bill Table Card -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Vendor</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Due Date</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bill-table-body" class="divide-y divide-gray-100">
+                                <tr>
+                                    <td colspan="5" class="px-6 py-12 text-center text-gray-400 text-[13px]">
+                                        Loading your bills...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
 
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
+
+    <!-- AUTH GUARD & UI SYNC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCaJqmpEMulLdMvRT7mYf2K-XDw46-dT7A",
+            authDomain: "fluxyos.firebaseapp.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
+            measurementId: "G-ZN7J6DRD2L"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.href = 'login.html';
+            } else {
+                console.log("Authenticated on Bills as:", user.email);
+                
+                // Update Profile UI
+                const userNameElem = document.getElementById('user-name');
+                const userAvatarElem = document.getElementById('user-avatar');
+                
+                if (userNameElem) userNameElem.innerText = user.displayName || user.email.split('@')[0];
+                if (userAvatarElem && user.photoURL) userAvatarElem.src = user.photoURL;
+
+                // Mock Bills Loading
+                loadBills();
+            }
+        });
+
+        function loadBills() {
+            const tableBody = document.getElementById('bill-table-body');
+            const mockBills = [
+                { vendor: 'AWS Cloud Services', amount: 'Rp 12.500.000', due: 'May 15, 2024', status: 'Pending' },
+                { vendor: 'Google Workspace', amount: 'Rp 1.200.000', due: 'May 18, 2024', status: 'Paid' },
+                { vendor: 'Office Rent (May)', amount: 'Rp 45.000.000', due: 'May 10, 2024', status: 'Overdue' },
+                { vendor: 'Internet Fiber', amount: 'Rp 850.000', due: 'May 20, 2024', status: 'Pending' }
+            ];
+
+            tableBody.innerHTML = mockBills.map(bill => `
+                <tr class="hover:bg-gray-50 transition-colors group">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-400 uppercase">
+                                ${bill.vendor.substring(0, 2)}
+                            </div>
+                            <span class="text-[13px] font-bold text-gray-900">${bill.vendor}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-[13px] font-mono font-bold text-gray-900">${bill.amount}</td>
+                    <td class="px-6 py-4 text-[13px] text-gray-500">${bill.due}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            bill.status === 'Paid' ? 'bg-green-100 text-green-700' : 
+                            bill.status === 'Overdue' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
+                        }">
+                            ${bill.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <button class="text-gray-400 hover:text-[#EA580C] transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+    </script>
 </body>
 </html>
