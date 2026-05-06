@@ -133,7 +133,7 @@ window.showAddTransactionModal = function(options = {}) {
             }
         } finally {
             btn.disabled = false;
-            btn.innerText = "Add Transaction";
+            btn.innerHTML = `<span>${submitLabel}</span><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>`;
         }
     };
 };
@@ -184,8 +184,8 @@ window.showToast = function(message, type = 'info') {
 window.closeAddTransactionModal = function() {
     const modal = document.getElementById('global-tx-modal');
     if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+        // Fully remove so next open creates fresh context
+        modal.parentElement.remove();
     }
 };
 
