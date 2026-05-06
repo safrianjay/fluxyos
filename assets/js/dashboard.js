@@ -23,25 +23,35 @@ window.loadDashboard = async () => {
     const transactions = await ds.getTransactions(user.uid, 5);
 
     // Update KPIs
-    updateKPI('kpi-revenue', stats.revenue);
-    updateKPI('kpi-opex', stats.opex);
+    updateKPI('kpi-revenue', `Rp ${stats.revenue.toLocaleString()}`);
+    updateKPI('kpi-opex', `Rp ${stats.opex.toLocaleString()}`);
     updateKPI('kpi-margin', `${stats.margin.toFixed(1)}%`);
     if (document.getElementById('kpi-margin-bar')) {
         document.getElementById('kpi-margin-bar').style.width = `${stats.margin}%`;
     }
 
     // Update Ledger Table or Show Empty State
-    const ledgerContainer = document.getElementById('ledger-container'); // Need to wrap the table in a container
+    const tableContainer = document.getElementById('ledger-table-container');
+    const emptyContainer = document.getElementById('ledger-empty-state');
+    const footer = document.getElementById('ledger-footer');
     const ledgerBody = document.getElementById('ledger-body');
     
     if (transactions.length === 0) {
-        window.renderEmptyState('ledger-wrapper', {
-            title: "Your financial trail starts here.",
-            description: "No transactions found in your live ledger. Log your first expense or revenue point to start tracking your business engine.",
-            buttonText: "Log First Transaction",
-            onAction: () => alert("Transaction modal coming soon!")
-        });
+        if (tableContainer) tableContainer.classList.add('hidden');
+        if (footer) footer.classList.add('hidden');
+        if (emptyContainer) {
+            emptyContainer.classList.remove('hidden');
+            window.renderEmptyState('ledger-empty-state', {
+                title: "Your financial trail starts here.",
+                description: "No transactions found in your live ledger. Log your first expense or revenue point to start tracking your business engine.",
+                buttonText: "Log First Transaction",
+                onAction: () => window.showAddTransactionModal()
+            });
+        }
     } else {
+        if (tableContainer) tableContainer.classList.remove('hidden');
+        if (footer) footer.classList.remove('hidden');
+        if (emptyContainer) emptyContainer.classList.add('hidden');
         renderLedgerRows(transactions);
     }
 };

@@ -59,8 +59,10 @@
                 </div>
 
                 <!-- Ledger Table Card -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6" id="ledger-wrapper">
-                    <div class="overflow-x-auto">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6">
+                    <div id="ledger-empty-state" class="hidden"></div>
+                    
+                    <div id="ledger-table-container" class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-50 border-b border-gray-200">
@@ -124,16 +126,25 @@
             if (!user) return;
 
             const body = document.getElementById('ledger-table-body');
+            const tableContainer = document.getElementById('ledger-table-container');
+            const emptyContainer = document.getElementById('ledger-empty-state');
+            
+            if (!body) return;
+            
             const transactions = await ds.getTransactions(user.uid, 100);
 
             if (transactions.length === 0) {
-                window.renderEmptyState('ledger-wrapper', {
+                tableContainer.classList.add('hidden');
+                emptyContainer.classList.remove('hidden');
+                window.renderEmptyState('ledger-empty-state', {
                     title: "Your financial trail starts here.",
                     description: "No transactions found in your live ledger. Log your first expense or revenue point to start tracking your business engine.",
                     buttonText: "Log First Transaction",
                     onAction: () => window.showAddTransactionModal()
                 });
             } else {
+                tableContainer.classList.remove('hidden');
+                emptyContainer.classList.add('hidden');
                 body.innerHTML = transactions.map(row => `
                     <tr class="hover:bg-gray-50 transition-colors">
                         <td class="px-6 py-4 text-gray-500">${row.timestamp?.toDate().toLocaleString() || 'Just now'}</td>

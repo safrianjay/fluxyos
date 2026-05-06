@@ -149,15 +149,29 @@
         };
 
         // Profile Sync
-        import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(mod => {
-            const auth = mod.getAuth();
-            mod.onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    const nameElem = document.getElementById('sidebar-user-name');
-                    const avatarElem = document.getElementById('sidebar-user-avatar');
-                    if (nameElem) nameElem.innerText = user.displayName || user.email.split('@')[0];
-                    if (avatarElem && user.photoURL) avatarElem.src = user.photoURL;
-                }
+        import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js").then(async appMod => {
+            const { getApps, initializeApp } = appMod;
+            const firebaseConfig = {
+                apiKey: "AIzaSyCaJqmpEMulLdMvRT7mYf2K-XDw46-dT7A",
+                authDomain: "fluxyos.firebaseapp.com",
+                projectId: "fluxyos",
+                storageBucket: "fluxyos.firebasestorage.app",
+                messagingSenderId: "1084252368929",
+                appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+            };
+            
+            let app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+
+            import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(mod => {
+                const auth = mod.getAuth(app);
+                mod.onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        const nameElem = document.getElementById('sidebar-user-name');
+                        const avatarElem = document.getElementById('sidebar-user-avatar');
+                        if (nameElem) nameElem.innerText = user.displayName || user.email.split('@')[0];
+                        if (avatarElem && user.photoURL) avatarElem.src = user.photoURL;
+                    }
+                });
             });
         });
     }
