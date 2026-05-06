@@ -51,14 +51,15 @@
                     </div>
                     <div class="flex items-center gap-3">
                         <button class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Download PDF</button>
-                        <button class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2">
+                        <button onclick="window.showAddTransactionModal()" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                             Add Transaction
                         </button>
                     </div>
                 </div>
 
                 <!-- Ledger Table Card -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6" id="ledger-wrapper">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
@@ -70,9 +71,9 @@
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                 </tr>
                             </thead>
-                            <tbody id="ledger-table-body" class="divide-y divide-gray-100">
+                            <tbody id="ledger-table-body" class="divide-y divide-gray-100 text-[13px]">
                                 <tr>
-                                    <td colspan="5" class="px-6 py-12 text-center text-gray-400 text-[13px]">
+                                    <td colspan="5" class="px-6 py-12 text-center text-gray-400">
                                         Fetching ledger data...
                                     </td>
                                 </tr>
@@ -91,6 +92,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyCaJqmpEMulLdMvRT7mYf2K-XDw46-dT7A",
@@ -98,12 +100,12 @@
             projectId: "fluxyos",
             storageBucket: "fluxyos.firebasestorage.app",
             messagingSenderId: "1084252368929",
-            appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
-            measurementId: "G-ZN7J6DRD2L"
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
         };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const ds = new DataService(app);
 
         // SMART AUTH GUARD
         let checkTimeout = setTimeout(() => {
@@ -113,32 +115,41 @@
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 clearTimeout(checkTimeout);
-                if (typeof loadLedger === 'function') loadLedger();
+                window.loadLedger();
             }
         });
 
-        window.loadLedger = function() {
-            const body = document.getElementById('ledger-table-body');
-            const data = [
-                { date: 'May 04, 2024', desc: 'Amazon Web Services', cat: 'Infrastructure', amount: '-Rp 12.500.000', status: 'Completed' },
-                { date: 'May 03, 2024', desc: 'Client Payment #9921', cat: 'Revenue', amount: '+Rp 85.000.000', status: 'Completed' },
-                { date: 'May 02, 2024', desc: 'Google Adwords', cat: 'Marketing', amount: '-Rp 4.200.000', status: 'Pending' },
-                { date: 'May 01, 2024', desc: 'WeWork Office Rent', cat: 'Operations', amount: '-Rp 45.000.000', status: 'Completed' }
-            ];
+        window.loadLedger = async function() {
+            const user = auth.currentUser;
+            if (!user) return;
 
-            body.innerHTML = data.map(row => `
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-6 py-4 text-[13px] text-gray-500">${row.date}</td>
-                    <td class="px-6 py-4 text-[13px] font-bold text-gray-900">${row.desc}</td>
-                    <td class="px-6 py-4 text-[13px] text-gray-500">${row.cat}</td>
-                    <td class="px-6 py-4 text-[13px] font-mono font-bold ${row.amount.startsWith('+') ? 'text-green-600' : 'text-gray-900'}">${row.amount}</td>
-                    <td class="px-6 py-4">
-                        <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${row.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">
-                            ${row.status}
-                        </span>
-                    </td>
-                </tr>
-            `).join('');
+            const body = document.getElementById('ledger-table-body');
+            const transactions = await ds.getTransactions(user.uid, 100);
+
+            if (transactions.length === 0) {
+                window.renderEmptyState('ledger-wrapper', {
+                    title: "Your financial trail starts here.",
+                    description: "No transactions found in your live ledger. Log your first expense or revenue point to start tracking your business engine.",
+                    buttonText: "Log First Transaction",
+                    onAction: () => window.showAddTransactionModal()
+                });
+            } else {
+                body.innerHTML = transactions.map(row => `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 text-gray-500">${row.timestamp?.toDate().toLocaleString() || 'Just now'}</td>
+                        <td class="px-6 py-4 font-bold text-gray-900">${row.vendor_name}</td>
+                        <td class="px-6 py-4 text-gray-500">${row.category}</td>
+                        <td class="px-6 py-4 font-mono font-bold ${row.type === 'revenue' ? 'text-green-600' : 'text-gray-900'}">
+                            ${row.type === 'revenue' ? '+' : ''}Rp ${Math.abs(row.amount).toLocaleString()}
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${row.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">
+                                ${row.status}
+                            </span>
+                        </td>
+                    </tr>
+                `).join('');
+            }
         }
     </script>
 </body>
