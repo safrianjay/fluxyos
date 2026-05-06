@@ -1,4 +1,9 @@
 [[redirects]]
+  from = "/api/v1/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+[[redirects]]
   from = "/"
   to = "/fluxyos.html"
   status = 301
@@ -11,3 +16,4 @@
 
 [build]
   publish = "."
+  functions = "netlify/functions"
