@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="w-[260px] bg-[#0B0F19] text-gray-300 flex flex-col flex-shrink-0 z-20 md:flex border-r border-gray-800">
+        <!-- Sidebar content will be loaded by sidebar-loader.js -->
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        
+        <!-- Header / Topbar -->
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm">
+            <!-- Left: Breadcrumb & Entity Switcher -->
+            <div class="flex items-center gap-4">
+                <button class="md:hidden text-gray-500 hover:text-gray-900">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                
+                <div class="hidden sm:flex items-center gap-2">
+                    <span class="text-[18px] font-bold text-gray-900 tracking-tight">Overview</span>
+                    <span class="text-gray-300">/</span>
+                    
+                    <!-- Multi-Entity Switcher -->
+                    <button class="flex items-center gap-2 text-[13px] font-medium text-gray-700 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-100 transition-colors shadow-sm">
+                        <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                        Global HQ (Consolidated)
+                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right: Search, Date, Actions -->
+            <div class="flex items-center gap-4">
+                <!-- Search -->
+                <div class="hidden md:flex relative">
+                    <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <input type="text" placeholder="Search transactions, vendors..." class="pl-9 pr-4 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-[13px] w-64 focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
+                    <div class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-gray-400 bg-white border border-gray-200 px-1.5 py-0.5 rounded">⌘K</div>
+                </div>
+
+                <!-- Date Range -->
+                <button class="hidden sm:flex items-center gap-2 text-[13px] font-medium text-gray-600 bg-white border border-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors shadow-sm">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    This Month
+                </button>
+
+                <!-- Notifications -->
+                <button class="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Scrollable Dashboard Content -->
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            <div class="max-w-7xl mx-auto space-y-6">
+
+                <!-- 1. KPI Cards Row -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    
+                    <!-- KPI 1 -->
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="text-[13px] font-bold text-gray-500 uppercase tracking-wider">Live Revenue</span>
+                            <div class="w-8 h-8 rounded bg-green-50 text-green-600 flex items-center justify-center">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-mono font-bold text-gray-900 leading-none" id="kpi-revenue">Rp 2.845M</div>
+                            <div class="flex items-center gap-1.5 mt-2 text-[12px]">
+                                <span class="text-green-600 font-bold flex items-center bg-green-50 px-1.5 py-0.5 rounded">
+                                    <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                                    <span id="kpi-revenue-change">14.2%</span>
+                                </span>
+                                <span class="text-gray-400">vs last month</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPI 2 -->
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="text-[13px] font-bold text-gray-500 uppercase tracking-wider">OpEx & Ad Spend</span>
+                            <div class="w-8 h-8 rounded bg-orange-50 text-[#EA580C] flex items-center justify-center">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-mono font-bold text-gray-900 leading-none" id="kpi-opex">Rp 682M</div>
+                            <div class="flex items-center gap-1.5 mt-2 text-[12px]">
+                                <span class="text-gray-600 font-medium">Mapped to 14 budgets</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPI 3 -->
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow cursor-default">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="text-[13px] font-bold text-gray-500 uppercase tracking-wider">Gross Margin</span>
+                            <div class="w-8 h-8 rounded bg-blue-50 text-blue-600 flex items-center justify-center">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v16a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-mono font-bold text-gray-900 leading-none" id="kpi-margin">76.0%</div>
+                            <div class="w-full bg-gray-100 rounded-full h-1.5 mt-3">
+                                <div class="bg-blue-500 h-1.5 rounded-full" id="kpi-margin-bar" style="width: 76.0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPI 4: Action Center -->
+                    <div class="bg-[#0B1527] p-5 rounded-xl border border-gray-800 shadow-md flex flex-col justify-between hover:-translate-y-0.5 transition-transform cursor-pointer relative overflow-hidden">
+                        <div class="absolute right-0 top-0 w-24 h-24 bg-[#EA580C] blur-[40px] opacity-20 rounded-full"></div>
+                        <div class="flex justify-between items-start mb-4 relative z-10">
+                            <span class="text-[13px] font-bold text-gray-400 uppercase tracking-wider">Needs Action</span>
+                            <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                        </div>
+                        <div class="relative z-10">
+                            <div class="text-3xl font-bold text-white leading-none mb-1" id="kpi-action-count">5 Items</div>
+                            <div class="text-[12px] text-gray-300" id="kpi-action-details">3 Missing Receipts &bull; 2 Approvals</div>
+                            <a href="#" class="text-[#EA580C] text-[12px] font-bold mt-2 inline-flex items-center gap-1 hover:text-orange-400">
+                                Resolve now <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- 2. Middle Section: Charts & FluxyOS Brain -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Left: Cashflow Graph -->
+                    <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-5 sm:p-6 flex flex-col">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="text-[16px] font-bold text-gray-900">Cash Flow Projection</h3>
+                                <p class="text-[12px] text-gray-500">Revenue sync vs. operational burn rate</p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-600"><div class="w-2.5 h-2.5 rounded-sm bg-green-400"></div> Revenue</div>
+                                <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-600"><div class="w-2.5 h-2.5 rounded-sm bg-gray-200"></div> Spend</div>
+                            </div>
+                        </div>
+
+                        <!-- Bar Chart Area (CSS Mockup) -->
+                        <div class="flex-1 relative min-h-[220px] flex items-end justify-between gap-2 sm:gap-4 pt-6 border-b border-gray-100 pb-2">
+                            <!-- Y-Axis labels -->
+                            <div class="absolute left-0 top-0 bottom-0 w-full flex flex-col justify-between text-[10px] font-mono text-gray-400 pointer-events-none z-0">
+                                <div class="w-full border-b border-gray-100 border-dashed pb-0.5 relative"><span class="absolute -top-2 bg-white pr-2">1.0B</span></div>
+                                <div class="w-full border-b border-gray-100 border-dashed pb-0.5 relative"><span class="absolute -top-2 bg-white pr-2">500M</span></div>
+                                <div class="w-full border-b border-gray-100 pb-0.5 relative"><span class="absolute -top-2 bg-white pr-2">0</span></div>
+                            </div>
+                            
+                            <!-- Bars (Z-index high to sit over lines) -->
+                            <div class="w-full h-full flex items-end justify-between pl-10 pr-2 z-10">
+                                <!-- Week 1 -->
+                                <div class="w-[12%] flex gap-1 items-end h-full group">
+                                    <div class="w-1/2 bg-green-400 rounded-t-sm h-[40%] transition-all group-hover:opacity-80"></div>
+                                    <div class="w-1/2 bg-gray-200 rounded-t-sm h-[25%] transition-all group-hover:opacity-80"></div>
+                                </div>
+                                <!-- Week 2 -->
+                                <div class="w-[12%] flex gap-1 items-end h-full group">
+                                    <div class="w-1/2 bg-green-400 rounded-t-sm h-[55%] transition-all group-hover:opacity-80"></div>
+                                    <div class="w-1/2 bg-gray-200 rounded-t-sm h-[30%] transition-all group-hover:opacity-80"></div>
+                                </div>
+                                <!-- Week 3 -->
+                                <div class="w-[12%] flex gap-1 items-end h-full group">
+                                    <div class="w-1/2 bg-green-400 rounded-t-sm h-[70%] transition-all group-hover:opacity-80"></div>
+                                    <div class="w-1/2 bg-gray-200 rounded-t-sm h-[45%] transition-all group-hover:opacity-80"></div>
+                                </div>
+                                <!-- Week 4 (Current) -->
+                                <div class="w-[12%] flex gap-1 items-end h-full group relative">
+                                    <div class="absolute -top-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Net: +Rp 380M</div>
+                                    <div class="w-1/2 bg-green-500 rounded-t-sm h-[90%] shadow-[0_0_10px_rgba(34,197,94,0.3)] transition-all"></div>
+                                    <div class="w-1/2 bg-gray-300 rounded-t-sm h-[50%] transition-all"></div>
+                                </div>
+                                <!-- Week 5 (Proj) -->
+                                <div class="w-[12%] flex gap-1 items-end h-full opacity-40">
+                                    <div class="w-1/2 bg-green-400 rounded-t-sm h-[60%] border-t border-dashed border-green-600"></div>
+                                    <div class="w-1/2 bg-gray-200 rounded-t-sm h-[35%] border-t border-dashed border-gray-400"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- X-Axis Labels -->
+                        <div class="flex justify-between pl-10 pr-2 pt-2 text-[10px] font-bold text-gray-400 uppercase">
+                            <span class="w-[12%] text-center">W1</span>
+                            <span class="w-[12%] text-center">W2</span>
+                            <span class="w-[12%] text-center">W3</span>
+                            <span class="w-[12%] text-center text-[#EA580C]">W4</span>
+                            <span class="w-[12%] text-center">W5</span>
+                        </div>
+                    </div>
+
+                    <!-- Right: FluxyOS Brain (Formerly Copilot) -->
+                    <div class="lg:col-span-1 ai-gradient-border bg-white shadow-sm flex flex-col p-5">
+                        <div class="flex items-center gap-2.5 mb-5">
+                            <!-- Unified Landing Page Logo for Brain -->
+                            <div class="w-8 h-8 text-[#EA580C] shadow-sm flex-shrink-0">
+                                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                                    <rect width="40" height="40" rx="8" fill="currentColor" />
+                                    <g transform="translate(1.5, 0)">
+                                        <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                                        <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                                    </g>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-[15px] font-bold text-gray-900 leading-tight">FluxyOS Brain</h3>
+                                <p class="text-[11px] text-gray-500">Live system insights</p>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 space-y-3 overflow-y-auto pr-1">
+                            
+                            <!-- Insight 1 -->
+                            <div class="bg-[#FFF7ED] border border-[#FFEDD5] rounded-lg p-3 hover:shadow-sm transition-shadow cursor-pointer">
+                                <div class="flex items-start gap-2 mb-1.5">
+                                    <svg class="w-3.5 h-3.5 text-[#EA580C] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    <p class="text-[12px] font-bold text-gray-900">Duplicate Subscription</p>
+                                </div>
+                                <p class="text-[11px] text-gray-600 leading-snug ml-5.5">Detected 2 active charges for "Canva Pro". Potential saving: <span class="font-mono font-bold text-gray-800">Rp 198.000/mo</span>.</p>
+                                <div class="mt-2 ml-5.5">
+                                    <span class="text-[10px] font-bold text-[#EA580C] bg-white border border-[#FFEDD5] px-2 py-1 rounded shadow-sm">Review Licenses</span>
+                                </div>
+                            </div>
+
+                            <!-- Insight 2 -->
+                            <div class="bg-gray-50 border border-gray-100 rounded-lg p-3 hover:shadow-sm transition-shadow cursor-pointer">
+                                <div class="flex items-start gap-2 mb-1.5">
+                                    <svg class="w-3.5 h-3.5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    <p class="text-[12px] font-bold text-gray-900">Settlement Reconciled</p>
+                                </div>
+                                <p class="text-[11px] text-gray-600 leading-snug ml-5.5">Midtrans payout of <span class="font-mono font-bold text-gray-800">Rp 42.5M</span> successfully matched to 142 POS transactions.</p>
+                            </div>
+
+                            <!-- Insight 3 -->
+                            <div class="bg-gray-50 border border-gray-100 rounded-lg p-3 hover:shadow-sm transition-shadow cursor-pointer">
+                                <div class="flex items-start gap-2 mb-1.5">
+                                    <svg class="w-3.5 h-3.5 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    <p class="text-[12px] font-bold text-gray-900">Uncategorized Spend</p>
+                                </div>
+                                <p class="text-[11px] text-gray-600 leading-snug ml-5.5">AI needs confirmation on a new vendor: "Biznet Gio Cloud". Defaulting to IT Operations.</p>
+                            </div>
+                        </div>
+
+                        <!-- Chat Input Mockup -->
+                        <div class="mt-3 relative">
+                            <input type="text" id="brain-chat-input" placeholder="Ask Brain about your spend..." class="w-full bg-white border border-gray-200 text-[12px] rounded-lg pl-3 pr-8 py-2.5 shadow-sm focus:outline-none focus:ring-1 focus:ring-[#EA580C]">
+                            <button id="brain-chat-submit" class="absolute right-2 top-1/2 -translate-y-1/2 text-[#EA580C] hover:text-orange-600 transition-colors">
+                                <svg class="w-4 h-4 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Lower Section: Live Ledger -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+                    <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-[16px] font-bold text-gray-900">Live Ledger</h3>
+                            <p class="text-[12px] text-gray-500">Auto-synced bank and gateway feeds</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="text-[12px] font-medium text-gray-600 bg-white border border-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors shadow-sm flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                                Filter
+                            </button>
+                            <button class="text-[12px] font-medium text-white bg-gray-900 px-3 py-1.5 rounded-md hover:bg-gray-800 transition-colors shadow-sm flex items-center gap-1.5">
+                                Export <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50/50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                                    <th class="px-5 py-3 font-medium">Transaction</th>
+                                    <th class="px-5 py-3 font-medium">Budget/Category</th>
+                                    <th class="px-5 py-3 font-medium">Entity</th>
+                                    <th class="px-5 py-3 font-medium text-right">Amount</th>
+                                    <th class="px-5 py-3 font-medium text-right">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-[13px]" id="ledger-body">
+                                <!-- Dynamic rows will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-3 border-t border-gray-100 bg-gray-50/30 text-center">
+                        <a href="#" class="text-[12px] font-bold text-gray-500 hover:text-gray-800 transition-colors">View all 142 transactions &rarr;</a>
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- Footer -->
+            <div class="max-w-7xl mx-auto mt-8 mb-4 flex justify-between items-center text-[11px] font-medium text-gray-400">
+                <p>FluxyOS Core System v2.4.1</p>
+                <div class="flex items-center gap-1.5">
+                    <div class="w-1.5 h-1.5 rounded-full bg-green-500"></div> All systems operational
+                </div>
+            </div>
+            
+        </div>
+    </main>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/dashboard.js"></script>
+</body>
+</html>

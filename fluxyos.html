@@ -1,0 +1,1798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Unified Business Economics</title>
+    <script>document.documentElement.classList.add('motion-ready');</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="assets/css/fluxyos.css">
+    
+</head>
+<body>
+
+    <!-- 1. Navigation with Mega Menu -->
+    <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
+        <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
+            <div class="flex items-center gap-12 h-full">
+                <div class="flex items-center gap-2.5 cursor-pointer group">
+                    <!-- NEW LOGO -->
+                    <div class="w-8 h-8 text-black shadow-sm group-hover:scale-105 transition-transform duration-200">
+                        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                            <rect width="40" height="40" rx="8" fill="currentColor" />
+                            <g transform="translate(1.5, 0)">
+                                <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                                <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                            </g>
+                        </svg>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-gray-900">FluxyOS</span>
+                </div>
+                
+                <div class="hidden lg:flex items-center gap-8 h-full">
+                    
+                    <!-- Platform Mega Menu Trigger -->
+                    <div class="group h-full flex items-center">
+                        <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
+                            Platform 
+                            <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+
+                        <!-- Platform Dropdown Panel -->
+                        <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="max-w-[1280px] mx-auto flex">
+                                
+                                <!-- Columns Area -->
+                                <div class="flex-1 py-10 px-6 flex gap-12">
+                                    
+                                    <!-- Features Column -->
+                                    <div class="flex-[2]">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Features</h4>
+                                        <div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Dynamic Budgeting</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Allocate and track funds live</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Vendor Spend</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Manage SaaS & contract payouts</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Revenue Sync</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Ingest client retainers & POS</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Receipt Capture</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Automate manual paper chasing</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <!-- Platform Column -->
+                                    <div class="flex-1">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Platform</h4>
+                                        <div class="space-y-8">
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] text-gray-600 transition-colors relative">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">FluxyOS AI Agents</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Multiply finance efficiency instantly</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Global Ready</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Reconcile 120+ currencies globally</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l-4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Native Integrations</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Connect ERPs, HRIS & Productivity</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Sidebar: New Release -->
+                                <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
+                                    <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">New Release</h4>
+                                    
+                                    <a href="#" class="block group/release cursor-pointer mb-4">
+                                        <div class="bg-black rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-md group-hover/release:shadow-lg transition-all">
+                                            <!-- Grainy Overlay Simulation -->
+                                            <div class="absolute inset-0 opacity-40 mix-blend-overlay bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiAvPgo8cGF0aCBkPSJNMCAwSDRWNEgwWiIgZmlsbD0ibm9uZSIvPjwvc3ZnPg==')]"></div>
+                                            <!-- Gradient -->
+                                            <div class="absolute inset-0 bg-gradient-to-tr from-gray-900 via-black to-gray-800"></div>
+                                            
+                                            <h3 class="relative z-10 text-white font-bold text-[36px] leading-[0.9] tracking-tighter">
+                                                SPRING<br/>RELEASE<br/><span class="text-gray-400">2026</span>
+                                            </h3>
+                                        </div>
+                                        
+                                        <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">
+                                            WhatsApp AI Agents &rarr;
+                                        </h5>
+                                        <p class="text-[13px] text-gray-500 leading-relaxed">
+                                            Chat directly with your ledger to resolve missing receipts, sync vendors, and check live budgets on the go.
+                                        </p>
+                                    </a>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NEW: Use Cases Mega Menu Trigger -->
+                    <div class="group h-full flex items-center">
+                        <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
+                            Use Cases 
+                            <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+
+                        <!-- Use Cases Dropdown Panel -->
+                        <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="max-w-[1280px] mx-auto flex">
+                                
+                                <!-- Columns Area -->
+                                <div class="flex-1 py-10 px-6 flex gap-12">
+                                    
+                                    <!-- Industry Column -->
+                                    <div class="flex-[2]">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">By Industry</h4>
+                                        <div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">E-Commerce Brands</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Reconcile thousands of POS & gateway transactions.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Tech Startups & SaaS</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Manage burn rates, runway, and software subscriptions.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Marketing Agencies</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Map digital ad spend to specific client budgets seamlessly.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Retail & Franchises</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Consolidate P&L records across multiple physical locations.</div>
+                                                </div>
+                                            </a>
+                                            <!-- Dropshippers -->
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Dropshippers & Digital Ads</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Scale your active stores by tracking live ad ROI against supplier costs to pinpoint true net margins.</div>
+                                                </div>
+                                            </a>
+                                            <!-- NEW USE CASE: Manufacturing -->
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Manufacturing</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Track live unit economics and manufacturer costs as you scale up operations.</div>
+                                                </div>
+                                            </a>
+                                            <!-- END OF NEW ITEM -->
+                                        </div>
+                                    </div>
+
+                                    <!-- Role Column -->
+                                    <div class="flex-1">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">By Role</h4>
+                                        <div class="space-y-8">
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] text-gray-600 transition-colors relative">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">CFOs & Finance Teams</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Automate reconciliation and month-end closes.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Founders & CEOs</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Real-time visibility into overall business economics.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Department Heads</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Track live spend against allocated internal budgets.</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Sidebar: Featured Case Study -->
+                                <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
+                                    <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">Featured Story</h4>
+                                    
+                                    <a href="#" class="block group/release cursor-pointer mb-4">
+                                        <div class="bg-gray-100 rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-sm border border-gray-200 group-hover/release:shadow-md transition-all">
+                                            <!-- Simple Abstract Image Replacement -->
+                                            <div class="absolute inset-0 bg-gradient-to-tr from-gray-200 to-gray-50 z-0"></div>
+                                            <svg class="absolute top-4 right-4 w-24 h-24 text-gray-300 opacity-50 z-0 transform -rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                                            
+                                            <div class="relative z-10 w-full">
+                                                <span class="bg-[#EA580C] text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wide inline-block mb-2">Case Study</span>
+                                                <h3 class="text-gray-900 font-bold text-[18px] leading-[1.2] tracking-tight">
+                                                    Scaling an Omnichannel Fashion Brand
+                                                </h3>
+                                            </div>
+                                        </div>
+                                        
+                                        <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">
+                                            Read the story &rarr;
+                                        </h5>
+                                        <p class="text-[13px] text-gray-500 leading-relaxed">
+                                            See how a growing modest fashion label unified their retail POS and e-commerce channels to track live unit economics.
+                                        </p>
+                                    </a>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="#" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Customers</a>
+                    <a href="pricing.html" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Pricing</a>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-6">
+                <!-- Language Dropdown -->
+                <div class="relative group cursor-pointer hidden sm:block h-full py-2">
+                    <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors h-full">
+                        <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        EN
+                        <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="absolute right-0 top-[100%] mt-2 w-36 bg-white border border-gray-100 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
+                        <a href="#" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">
+                            English (EN)
+                            <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        </a>
+                        <a href="#" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">Bahasa (ID)</a>
+                    </div>
+                </div>
+
+                <a href="login.html" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Sign in</a>
+                <a href="pricing.html" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-6 py-3 rounded-md transition-all duration-200 shadow-sm hover:shadow text-center">
+                    Try FluxyOS
+                </a>
+                <button type="button" class="mobile-menu-toggle lg:hidden w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-800 flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open navigation menu">
+                    <svg data-menu-open-icon class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M4 7h16M4 12h16M4 17h16"></path></svg>
+                    <svg data-menu-close-icon class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="mobile-menu" class="mobile-menu-panel hidden lg:hidden fixed left-0 right-0 top-[64px] z-[60] bg-white border-b border-gray-200 shadow-[0_20px_40px_-18px_rgba(0,0,0,0.2)] overflow-y-auto">
+            <div class="px-5 py-6 space-y-7">
+                <div>
+                    <h4 class="text-[12px] font-bold text-gray-900 uppercase tracking-wider mb-4">Platform</h4>
+                    <div class="grid grid-cols-1 gap-3">
+                        <a href="#" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Dynamic Budgeting</span><span class="block text-[13px] text-gray-500">Allocate and track funds live</span></span>
+                        </a>
+                        <a href="#" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Vendor Spend</span><span class="block text-[13px] text-gray-500">Manage SaaS & contract payouts</span></span>
+                        </a>
+                        <a href="#" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Revenue Sync</span><span class="block text-[13px] text-gray-500">Ingest client retainers & POS</span></span>
+                        </a>
+                        <a href="#" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">FluxyOS AI Agents</span><span class="block text-[13px] text-gray-500">Multiply finance efficiency instantly</span></span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-[12px] font-bold text-gray-900 uppercase tracking-wider mb-4">Use Cases</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">E-Commerce Brands</span><span class="block text-[13px] text-gray-500">Reconcile POS & gateway transactions.</span></a>
+                        <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Tech Startups & SaaS</span><span class="block text-[13px] text-gray-500">Manage burn, runway, and subscriptions.</span></a>
+                        <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Marketing Agencies</span><span class="block text-[13px] text-gray-500">Map ad spend to client budgets.</span></a>
+                        <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Manufacturing</span><span class="block text-[13px] text-gray-500">Track unit economics and costs.</span></a>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="#" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Customers</a>
+                    <a href="pricing.html" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Pricing</a>
+                    <a href="login.html" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Sign in</a>
+                    <a href="pricing.html" class="mobile-menu-link rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F97316] px-4 py-3 text-[15px] font-semibold text-white text-center shadow-sm">Try FluxyOS</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 2. Hero Section -->
+    <section class="landing-hero pt-10 pb-16 lg:pt-16 lg:pb-24 px-6 relative max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-8 items-center">
+        
+        <!-- Left Side: Copy & CTA -->
+        <div class="hero-copy lg:col-span-5 pr-0 lg:pr-4 relative z-10">            
+
+            <h1 class="text-[44px] lg:text-[56px] font-bold leading-[1.1] tracking-tight mb-6 text-gray-900 mt-4">
+                The Finance Operation System for modern scale-ups.
+            </h1>
+            <p class="text-lg text-gray-600 leading-relaxed mb-8 max-w-[500px]">
+                Connect your sales channels, digital ad platforms, and vendor invoices into one central Finance Operation System. Stop piecing together spreadsheets and start scaling with crystal-clear visibility.
+            </p>
+
+            <ul class="space-y-4 max-w-[480px] mb-10">
+                <li class="flex items-center gap-3">
+                    <div class="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    <span class="text-[15px] text-gray-700 font-medium">Track live operational costs against daily revenue.</span>
+                </li>
+                <li class="flex items-center gap-3">
+                    <div class="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    <span class="text-[15px] text-gray-700 font-medium">Automate manual receipt matching and reconciliation.</span>
+                </li>
+            </ul>
+
+            <div class="flex flex-col sm:flex-row gap-4">
+                <a href="pricing.html" class="w-full sm:w-auto bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[16px] px-8 py-3.5 rounded-lg transition-all shadow-md hover:shadow-lg text-center">
+                    Try FluxyOS
+                </a>
+                <button class="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 font-semibold text-[16px] px-8 py-3.5 rounded-lg transition-all shadow-sm text-center flex items-center justify-center gap-2">
+                    Book a demo
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Side: NEW Layered Device & Finance Mockup -->
+        <div class="hero-visual lg:col-span-7 relative h-[550px] lg:h-[650px] w-full flex items-center justify-center lg:justify-end pl-0 lg:pl-8 mt-10 lg:mt-0">
+            
+            <!-- Ambient Background Glow -->
+            <div class="absolute inset-0 bg-gradient-to-tr from-orange-100/40 via-indigo-50/40 to-transparent rounded-full blur-3xl -z-10 transform scale-110"></div>
+
+            <!-- Large Animated Dashed Circle Behind Hero Image -->
+            <div class="hero-orbit absolute top-1/2 left-1/2 lg:left-[55%] -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] lg:w-[600px] h-[600px] z-0 pointer-events-none opacity-40">
+                <svg viewBox="0 0 600 600" class="w-full h-full animate-[spin_30s_linear_infinite]">
+                    <circle cx="300" cy="300" r="290" fill="none" stroke="#94A3B8" stroke-width="2" stroke-dasharray="16 16" />
+                </svg>
+            </div>
+
+            <!-- LAYER 1: Main Dashboard (Tablet/Laptop View) -->
+            <div class="hero-dashboard hero-layer relative w-full max-w-[500px] lg:max-w-[600px] aspect-[4/3] lg:aspect-[16/10] bg-white rounded-2xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15)] border-8 border-gray-900 overflow-hidden flex flex-col z-10 translate-x-4 lg:translate-x-12 float-slower">
+                <!-- Inner App Layout -->
+                <div class="flex h-full bg-[#F8F9FB]">
+                    <!-- Sidebar -->
+                    <div class="w-1/4 lg:w-1/5 border-r border-gray-200 bg-white p-4 hidden sm:flex flex-col gap-3">
+                        <div class="w-full h-6 rounded bg-gray-100 mb-4"></div>
+                        <div class="w-full h-8 rounded bg-orange-50 border border-orange-100 flex items-center px-2"><div class="w-2 h-2 rounded-full bg-orange-500"></div></div>
+                        <div class="w-full h-8 rounded bg-gray-50 border border-gray-100"></div>
+                        <div class="w-full h-8 rounded bg-gray-50 border border-gray-100"></div>
+                    </div>
+                    <!-- Main Area -->
+                    <div class="flex-1 p-4 lg:p-6 flex flex-col gap-4">
+                        <div class="flex justify-between items-end mb-2">
+                            <div>
+                                <h3 class="text-[14px] font-bold text-gray-900">Card Usage</h3>
+                                <p class="text-[10px] text-gray-500">Current month spend</p>
+                            </div>
+                            <div class="text-[16px] font-mono font-bold text-[#EA580C]" data-count="18500000" data-prefix="Rp " data-locale="id-ID">Rp 18.500.000</div>
+                        </div>
+                        
+                        <!-- AI & Tax Automation Stats -->
+                        <div class="flex gap-3 mb-2">
+                            <div class="flex-1 border border-orange-100 bg-orange-50/50 rounded-lg p-2.5 shadow-sm flex flex-col justify-center">
+                                <div class="flex items-center gap-1.5 mb-1 text-orange-600">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    <span class="text-[9px] font-bold uppercase tracking-wider">AI Automation</span>
+                                </div>
+                                <span class="text-[11px] font-bold text-gray-900">98% Auto-Matched</span>
+                            </div>
+                            <div class="flex-1 border border-green-100 bg-green-50/50 rounded-lg p-2.5 shadow-sm flex flex-col justify-center">
+                                <div class="flex items-center gap-1.5 mb-1 text-green-600">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    <span class="text-[9px] font-bold uppercase tracking-wider">Tax Automation</span>
+                                </div>
+                                <span class="text-[11px] font-bold text-gray-900">VAT & Withholding</span>
+                            </div>
+                        </div>
+
+                        <!-- Transactions List -->
+                        <div class="flex-1 border border-gray-200 bg-white rounded-lg shadow-sm flex flex-col overflow-hidden">
+                            <div class="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                                <span class="text-[11px] font-bold text-gray-800">Transactions</span>
+                                <div class="w-16 h-5 bg-white border border-gray-200 rounded flex items-center px-1"><div class="w-3 h-1 bg-gray-200 rounded"></div></div>
+                            </div>
+                            <div class="flex flex-col p-2 gap-1.5">
+                                <div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-6 h-6 rounded bg-gray-100 flex items-center justify-center text-[10px]">💳</div>
+                                        <div>
+                                            <p class="text-[11px] font-bold text-gray-900">Biznet Gio</p>
+                                            <p class="text-[9px] text-gray-500">Auto-matched by AI</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-[11px] font-mono font-bold">-Rp 2.450.000</span>
+                                </div>
+                                <div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-6 h-6 rounded bg-gray-100 flex items-center justify-center text-[10px]">📢</div>
+                                        <div>
+                                            <p class="text-[11px] font-bold text-gray-900">TikTok Ads</p>
+                                            <p class="text-[9px] text-gray-500">Marketing Budget</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-[11px] font-mono font-bold">-Rp 1.200.000</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LAYER 2: Mobile App (Foreground Left) - Made Smaller -->
+            <div class="hero-phone hero-layer absolute -left-2 lg:-left-8 bottom-6 lg:bottom-12 w-[160px] lg:w-[180px] bg-white rounded-[1.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] border-[6px] border-gray-900 overflow-hidden z-30 flex flex-col h-[320px] lg:h-[360px] float-slow">
+                <!-- Mobile Notch -->
+                <div class="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-4 bg-gray-900 rounded-b-xl z-40"></div>
+                
+                <!-- Mobile Header -->
+                <div class="pt-8 pb-3 px-4 bg-white border-b border-gray-100 flex justify-between items-end relative z-30">
+                    <h2 class="text-[15px] font-bold text-gray-900">Expenses</h2>
+                    <div class="flex gap-1.5">
+                        <div class="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center"><svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg></div>
+                    </div>
+                </div>
+
+                <!-- Mobile List -->
+                <div class="flex-1 bg-[#F8F9FB] p-3 overflow-hidden flex flex-col gap-2 relative z-30">
+                    <p class="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">Today</p>
+                    
+                    <div class="bg-white p-2.5 rounded-xl border border-gray-100 shadow-sm">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-[11px] font-bold text-gray-900">Grab Car</span>
+                            <span class="text-[10px] font-mono font-bold text-gray-900">-Rp 125.000</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[9px] text-gray-500">Business Trip</span>
+                            <span class="text-[8px] bg-[#FFEDD5] text-[#C2410C] font-bold px-1.5 py-0.5 rounded-full">In review</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-2.5 rounded-xl border border-gray-100 shadow-sm">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-[11px] font-bold text-gray-900">TikTok Ads</span>
+                            <span class="text-[10px] font-mono font-bold text-gray-900">-Rp 1.400.000</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[9px] text-gray-500">Subscriptions</span>
+                            <span class="text-[8px] bg-green-100 text-green-700 font-bold px-1.5 py-0.5 rounded-full">Approved</span>
+                        </div>
+                    </div>
+
+                    <p class="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-0.5 mt-1.5">Yesterday</p>
+
+                    <div class="bg-white p-2.5 rounded-xl border border-gray-100 shadow-sm opacity-60">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-[11px] font-bold text-gray-900">Marugame Udon</span>
+                            <span class="text-[10px] font-mono font-bold text-gray-900">-Rp 82.000</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[9px] text-gray-500">Meals</span>
+                            <span class="text-[8px] bg-[#FFEDD5] text-[#C2410C] font-bold px-1.5 py-0.5 rounded-full">In review</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Bottom Nav with Icons -->
+                <div class="h-12 bg-white border-t border-gray-100 flex justify-around items-center px-4 relative z-30">
+                    <div class="flex flex-col items-center gap-1 opacity-40 hover:opacity-100 transition-opacity cursor-pointer">
+                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 text-[#EA580C] cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <div class="w-1 h-1 rounded-full bg-[#EA580C]"></div>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 opacity-40 hover:opacity-100 transition-opacity cursor-pointer">
+                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LAYER 3: Floating Notification (Moved to Top Left Side) -->
+            <div class="hero-note hero-layer absolute top-8 lg:top-12 -left-4 lg:-left-10 bg-white/95 backdrop-blur-md rounded-xl shadow-[0_15px_30px_-5px_rgba(0,0,0,0.15)] border border-gray-200 p-3 z-40 flex items-start gap-3 float-fast transform -rotate-[3deg] max-w-[260px]">
+                <div class="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 border border-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-0.5 gap-4">
+                        <p class="text-[12px] font-bold text-gray-900">Expense approved via AI</p>
+                        <span class="text-[9px] text-gray-400">Just now</span>
+                    </div>
+                    <p class="text-[10px] text-gray-500 leading-tight">Cardholders have submitted new expenses matching internal policies.</p>
+                </div>
+            </div>
+
+            <!-- LAYER 4: Floating Receipt (Bottom Right) -->
+            <div class="hero-receipt hero-layer absolute -right-4 lg:-right-10 bottom-16 lg:bottom-24 w-[160px] lg:w-[200px] bg-white shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] transform rotate-[6deg] z-20 p-5 border border-gray-100 float-slower text-gray-800 flex flex-col hover:rotate-0 transition-transform duration-300">
+                <div class="flex flex-col items-center border-b border-gray-300 border-dashed pb-4 mb-4">
+                    <div class="w-8 h-8 bg-[#EA580C] rounded-full text-white flex items-center justify-center text-[14px] font-bold mb-2">B</div>
+                    <span class="font-bold text-[16px] leading-none mb-1">Bill Payment</span>
+                    <span class="text-[8px] text-gray-500 text-center leading-tight">Jl. Jend. Sudirman Kav. 52-53<br/>Tel: +62 21 528 9245</span>
+                </div>
+                <div class="text-center text-[9px] font-bold text-gray-600 mb-4">11/11/2026 - 12:15PM</div>
+                <div class="space-y-2.5 mb-5">
+                    <div class="flex justify-between text-[10px] border-b border-gray-100 pb-1">
+                        <span class="text-gray-500 font-medium">1x Indihome 100Mbps</span>
+                        <span class="font-mono text-gray-900">Rp 799.000</span>
+                    </div>
+                    <div class="flex justify-between text-[10px] border-b border-gray-100 pb-1">
+                        <span class="text-gray-500 font-medium">1x Token Listrik PLN</span>
+                        <span class="font-mono text-gray-900">Rp 40.000</span>
+                    </div>
+                    <div class="flex justify-between text-[10px] border-b border-gray-100 pb-1">
+                        <span class="text-gray-500 font-medium">1x PDAM Air</span>
+                        <span class="font-mono text-gray-900">Rp 19.000</span>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center border-t-2 border-gray-900 pt-3">
+                    <span class="font-bold text-[14px]">Total</span>
+                    <span class="font-mono font-bold text-[14px]">Rp 858.000</span>
+                </div>
+                <!-- Jagged bottom edge using SVG pattern -->
+                <div class="absolute -bottom-1.5 left-0 w-full h-2 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjQiPjxwb2x5Z29uIHBvaW50cz0iMCAwIDQgNCA4IDAiIGZpbGw9IiNGRkYiLz48L3N2Zz4=')] bg-repeat-x drop-shadow-sm"></div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- 3. Platform Hub (Dark Bento Layout) -->
+    <section class="py-16 lg:py-24 bg-[#0B0F19] text-white overflow-hidden border-y border-gray-800">
+        <div class="max-w-[1280px] mx-auto px-6">
+            <div class="text-center mb-12">
+                <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight mb-4 text-white">Your operational economics on one platform</h2>
+                <p class="text-[16px] md:text-lg text-gray-400 max-w-2xl mx-auto">
+                    Software and integrations to manage everything from departmental budgets and ad spend to automated vendor reconciliation.
+                </p>
+            </div>
+
+            <!-- Tab Buttons -->
+            <div class="mobile-tab-shell flex justify-center mb-16 overflow-x-auto no-scrollbar pb-2">
+                <div class="mobile-tab-row flex space-x-1 sm:space-x-2 bg-[#1A1F26] p-1.5 rounded-full border border-gray-800 flex-shrink-0 items-center">
+                    <button class="tab-btn bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white px-5 sm:px-6 py-2.5 rounded-full text-[14px] font-semibold transition-all shadow-md" data-target="tab-budget">Budget Control</button>
+                    <button class="tab-btn text-gray-400 hover:text-white px-5 sm:px-6 py-2.5 rounded-full text-[14px] font-medium transition-colors" data-target="tab-vendor">Vendor Spend</button>
+                    <button class="tab-btn text-gray-400 hover:text-white px-5 sm:px-6 py-2.5 rounded-full text-[14px] font-medium transition-colors" data-target="tab-revenue">Revenue Sync</button>
+                    <button class="tab-btn text-gray-400 hover:text-white px-5 sm:px-6 py-2.5 rounded-full text-[14px] font-medium transition-colors hidden md:block" data-target="tab-ads">Ad Integrations</button>
+                    <button class="tab-btn text-gray-400 hover:text-white px-5 sm:px-6 py-2.5 rounded-full text-[14px] font-medium transition-colors hidden lg:flex items-center gap-1.5" data-target="tab-apis">
+                        Platform APIs
+                        <span class="bg-orange-500/10 text-orange-400 border border-orange-500/20 text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wider uppercase">Soon</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB CONTENT: Budget Control (Default Active) -->
+            <div id="tab-budget" class="tab-content grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+                <div class="lg:col-span-4 flex flex-col justify-between">
+                    <div>
+                        <h4 class="text-[11px] font-bold text-gray-500 uppercase tracking-[0.15em] mb-4">Budget Control</h4>
+                        <h3 class="text-[32px] lg:text-[40px] font-bold leading-[1.15] mb-6 text-white tracking-tight">
+                            A single source of truth to manage your departmental spending
+                        </h3>
+                        <p class="text-gray-400 text-[16px] leading-relaxed mb-10">
+                            Stop guessing your burn rate. Track live spend against set budgets for marketing, engineering, and external agencies dynamically.
+                        </p>
+                    </div>
+
+                    <div class="w-full max-w-[320px] bg-black border-[6px] border-gray-800 rounded-[2.5rem] p-4 mt-auto mx-auto lg:mx-0 relative overflow-hidden h-[240px]">
+                        <div class="w-32 h-6 bg-gray-800 absolute top-0 left-1/2 -translate-x-1/2 rounded-b-2xl"></div>
+                        <div class="mt-8 space-y-4">
+                            <div class="flex items-center justify-between pb-4 border-b border-gray-800">
+                                <div class="flex items-center gap-2">
+                                    <!-- NEW LOGO -->
+                                    <div class="w-6 h-6 text-[#EA580C] flex-shrink-0 rounded shadow-sm">
+                                        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                                            <rect width="40" height="40" rx="8" fill="currentColor" />
+                                            <g transform="translate(1.5, 0)">
+                                                <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                                                <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                                            </g>
+                                        </svg>
+                                    </div>
+                                    <span class="text-sm font-semibold">Q3 Marketing</span>
+                                </div>
+                                <span class="text-xs text-gray-500">Live</span>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">Remaining Budget</p>
+                                <p class="text-2xl font-mono font-semibold">Rp 87.5M</p>
+                            </div>
+                            <div class="w-full bg-gray-800 rounded-full h-1.5 mt-2">
+                                <div class="bg-[#EA580C] h-1.5 rounded-full w-[45%]"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                    <div class="bg-[#1A1F26] border border-gray-800/60 rounded-2xl p-6 lg:p-8 flex flex-col justify-between relative group hover:border-gray-700 transition-colors h-full min-h-[300px]">
+                        <div class="mb-8 relative z-10">
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg transform -rotate-1 group-hover:rotate-0 transition-transform">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="w-8 h-8 rounded bg-blue-900/30 flex items-center justify-center text-blue-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    </div>
+                                    <span class="text-sm font-medium">Auto-Categorization</span>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="text-gray-500">TikTok Ads Platform</span>
+                                        <span class="text-gray-300">Rp 4.2M</span>
+                                    </div>
+                                    <div class="w-full border-t border-gray-800 border-dashed my-2"></div>
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="text-green-400 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Matched to:</span>
+                                        <span class="font-mono text-gray-300 bg-gray-800 px-2 py-0.5 rounded">Digital Marketing</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative z-10 mt-auto">
+                            <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">Automated Reconciliation</h4>
+                            <p class="text-[15px] font-medium text-white leading-snug">Let AI map incoming expenses and ad spend directly to your internal budget centers instantly.</p>
+                        </div>
+                        <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent rounded-2xl pointer-events-none"></div>
+                    </div>
+
+                    <div class="bg-[#1A1F26] border border-gray-800/60 rounded-2xl p-6 lg:p-8 flex flex-col justify-between relative group hover:border-gray-700 transition-colors h-full min-h-[300px]">
+                        <div class="mb-8 relative z-10">
+                            <div class="bg-white rounded-xl p-4 shadow-lg transform rotate-1 group-hover:rotate-0 transition-transform text-gray-900">
+                                <h5 class="text-xs font-bold text-gray-500 mb-4 tracking-wide uppercase">Burn Rate Alert</h5>
+                                <div class="flex justify-between items-end mb-2">
+                                    <div>
+                                        <p class="text-[10px] text-gray-500 font-semibold mb-1">R&D Department</p>
+                                        <p class="text-lg font-mono font-bold leading-none">Rp 245M</p>
+                                    </div>
+                                    <div class="flex items-center text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded text-[10px] font-bold gap-1">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                        85% Used
+                                    </div>
+                                </div>
+                                <div class="w-full bg-gray-100 rounded-full h-1.5">
+                                    <div class="bg-orange-500 h-1.5 rounded-full w-[85%]"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative z-10 mt-auto">
+                            <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">Proactive Controls</h4>
+                            <p class="text-[15px] font-medium text-white leading-snug">Set threshold alerts. Block transactions or notify managers before a department exceeds its allocated funds.</p>
+                        </div>
+                        <div class="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent rounded-2xl pointer-events-none"></div>
+                    </div>
+
+                    <div class="md:col-span-2 bg-[#1A1F26] border border-gray-800/60 rounded-2xl p-6 lg:p-8 flex flex-col md:flex-row items-center justify-between relative group hover:border-gray-700 transition-colors gap-8">
+                        <div class="flex-1">
+                            <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">Vendor Spend Management</h4>
+                            <p class="text-[15px] font-medium text-white leading-snug max-w-sm">Consolidate SaaS subscriptions, web hosting, and external contractor payouts into a unified dashboard. Instantly detect duplicate charges.</p>
+                        </div>
+                        
+                        <div class="w-full md:w-auto relative z-10 flex gap-4 overflow-hidden">
+                            <div class="bg-gray-900 border border-gray-800 rounded-lg p-3 min-w-[140px] flex-shrink-0 shadow-sm">
+                                <div class="w-6 h-6 rounded bg-gray-800 flex items-center justify-center mb-3">
+                                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                </div>
+                                <p class="text-[10px] text-[#EA580C] font-semibold mb-0.5">Hosting Provider</p>
+                                <p class="text-xs font-mono text-gray-300">Rp 12.4M</p>
+                            </div>
+                            <div class="bg-gray-900 border border-gray-800 rounded-lg p-3 min-w-[140px] flex-shrink-0 shadow-sm opacity-60 group-hover:opacity-100 transition-opacity">
+                                <div class="w-6 h-6 rounded bg-gray-800 flex items-center justify-center mb-3">
+                                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                </div>
+                                <p class="text-[10px] text-gray-500 mb-0.5">Bubu Agency</p>
+                                <p class="text-xs font-mono text-gray-300">Rp 8.5M</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB CONTENT: Vendor Spend -->
+            <div id="tab-vendor" class="tab-content hidden grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+                <div class="lg:col-span-4 flex flex-col justify-between">
+                    <div>
+                        <h4 class="text-[11px] font-bold text-gray-500 uppercase tracking-[0.15em] mb-4">Vendor Spend</h4>
+                        <h3 class="text-[32px] lg:text-[40px] font-bold leading-[1.15] mb-6 text-white tracking-tight">
+                            Track every SaaS and vendor payout automatically
+                        </h3>
+                        <p class="text-gray-400 text-[16px] leading-relaxed mb-10">
+                            Consolidate your subscriptions. Detect duplicate software licenses and easily manage external contractor invoices without manual data entry.
+                        </p>
+                    </div>
+
+                    <div class="w-full max-w-[320px] bg-black border-[6px] border-gray-800 rounded-[2.5rem] p-4 mt-auto mx-auto lg:mx-0 relative overflow-hidden h-[240px]">
+                        <div class="w-32 h-6 bg-gray-800 absolute top-0 left-1/2 -translate-x-1/2 rounded-b-2xl"></div>
+                        <div class="mt-8 space-y-4">
+                            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                                <span class="text-xs text-gray-400">Recent Vendors</span>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-6 h-6 rounded bg-orange-900/50 flex justify-center items-center text-xs">☁️</div>
+                                        <span class="text-sm font-medium text-gray-300">Biznet Gio...</span>
+                                    </div>
+                                    <span class="text-sm font-mono text-white">Rp 12.4M</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-6 h-6 rounded bg-pink-900/50 flex justify-center items-center text-xs">📊</div>
+                                        <span class="text-sm font-medium text-gray-300">Mekari Talenta</span>
+                                    </div>
+                                    <span class="text-sm font-mono text-white">Rp 3.2M</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-6 h-6 rounded bg-blue-900/50 flex justify-center items-center text-xs">💬</div>
+                                        <span class="text-sm font-medium text-gray-300">Qontak</span>
+                                    </div>
+                                    <span class="text-sm font-mono text-white">Rp 8.5M</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                    <div class="bg-[#1A1F26] border border-gray-800/60 rounded-2xl p-6 lg:p-8 flex flex-col justify-between relative group hover:border-gray-700 transition-colors h-full min-h-[300px]">
+                        <div class="mb-8 relative z-10">
+                            <div class="bg-gray-900 border border-red-900/50 rounded-xl p-4 shadow-lg transform -rotate-1 group-hover:rotate-0 transition-transform">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="w-8 h-8 rounded bg-red-900/30 flex items-center justify-center text-red-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    </div>
+                                    <span class="text-sm font-medium">Duplicate Detected</span>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="text-gray-500">Moka POS Outlet A</span>
+                                        <span class="text-gray-300">Rp 1.5M</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="text-gray-500">Moka POS Outlet B</span>
+                                        <span class="text-gray-300">Rp 1.5M</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative z-10 mt-auto">
+                            <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">Identify Waste</h4>
+                            <p class="text-[15px] font-medium text-white leading-snug">Automatically flag duplicate charges or orphaned SaaS accounts from former employees.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#1A1F26] border border-gray-800/60 rounded-2xl p-6 lg:p-8 flex flex-col justify-between relative group hover:border-gray-700 transition-colors h-full min-h-[300px]">
+                        <div class="mb-8 relative z-10">
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg transform rotate-1 group-hover:rotate-0 transition-transform">
+                                <h5 class="text-xs font-bold text-gray-500 mb-3 tracking-wide uppercase">Upcoming Renewals</h5>
+                                <div class="space-y-3">
+                                    <div class="w-full bg-gray-800 rounded-lg p-2 flex justify-between items-center">
+                                        <span class="text-xs text-gray-300">Mekari Jurnal (Annual)</span>
+                                        <span class="text-xs text-orange-400 font-medium">In 14 days</span>
+                                    </div>
+                                    <div class="w-full bg-gray-800/50 rounded-lg p-2 flex justify-between items-center">
+                                        <span class="text-xs text-gray-500">Qiscus (Monthly)</span>
+                                        <span class="text-xs text-gray-500">In 21 days</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative z-10 mt-auto">
+                            <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">Renewal Intelligence</h4>
+                            <p class="text-[15px] font-medium text-white leading-snug">Never get caught off guard by auto-renewals. Get notified well before large SaaS contracts lock in.</p>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-2 bg-[#1A1F26] border border-gray-800/60 rounded-2xl p-6 lg:p-8 flex flex-col md:flex-row items-center justify-between relative group hover:border-gray-700 transition-colors gap-8">
+                        <div class="flex-1">
+                            <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">Virtual Cards & Controls</h4>
+                            <p class="text-[15px] font-medium text-white leading-snug max-w-sm">Issue single-use or vendor-specific virtual cards to employees. Cap spending limits per vendor and kill subscriptions with one click.</p>
+                        </div>
+                        <div class="w-full md:w-auto relative z-10 flex gap-4 overflow-hidden">
+                            <div class="w-40 h-24 bg-gradient-to-tr from-gray-800 to-gray-700 rounded-xl p-3 shadow-lg border border-gray-600 relative flex flex-col justify-between">
+                                <div class="flex justify-between items-start">
+                                    <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                                    <span class="text-[9px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">Active</span>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-gray-400">Marketing Team Card</p>
+                                    <p class="text-xs font-mono text-white tracking-widest">**** 4291</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB CONTENT: Revenue Sync -->
+            <div id="tab-revenue" class="tab-content hidden grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+                <div class="lg:col-span-4 flex flex-col justify-between">
+                    <div>
+                        <h4 class="text-[11px] font-bold text-gray-500 uppercase tracking-[0.15em] mb-4">Revenue Sync</h4>
+                        <h3 class="text-[32px] lg:text-[40px] font-bold leading-[1.15] mb-6 text-white tracking-tight">
+                            Real-time revenue ingestion mapping
+                        </h3>
+                        <p class="text-gray-400 text-[16px] leading-relaxed mb-10">
+                            Connect Midtrans, Tokopedia, and local POS systems to match your gross income directly against operational outflows without spreadsheets.
+                        </p>
+                    </div>
+
+                    <div class="w-full max-w-[320px] bg-black border-[6px] border-gray-800 rounded-[2.5rem] p-4 mt-auto mx-auto lg:mx-0 relative overflow-hidden h-[240px]">
+                        <div class="w-32 h-6 bg-gray-800 absolute top-0 left-1/2 -translate-x-1/2 rounded-b-2xl"></div>
+                        <div class="mt-8 space-y-4">
+                            <p class="text-xs text-gray-500 mb-1">Live Income (Today)</p>
+                            <p class="text-3xl font-mono font-bold text-green-400">+Rp 42.8M</p>
+                            
+                            <!-- Graph representation -->
+                            <div class="h-16 w-full flex items-end gap-1 mt-4">
+                                <div class="w-1/6 bg-green-900/50 rounded-t h-[30%]"></div>
+                                <div class="w-1/6 bg-green-900/50 rounded-t h-[50%]"></div>
+                                <div class="w-1/6 bg-green-900/50 rounded-t h-[40%]"></div>
+                                <div class="w-1/6 bg-green-500 rounded-t h-[70%] relative">
+                                    <div class="absolute -top-2 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-white rounded-full"></div>
+                                </div>
+                                <div class="w-1/6 bg-green-900/20 rounded-t h-[80%]"></div>
+                                <div class="w-1/6 bg-green-900/20 rounded-t h-[90%]"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                    <div class="bg-[#1A1F26] border border-gray-800/60 rounded-2xl p-6 lg:p-8 flex flex-col justify-between relative group hover:border-gray-700 transition-colors h-full min-h-[300px]">
+                        <div class="mb-8 relative z-10">
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg transform -rotate-1 group-hover:rotate-0 transition-transform">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="w-8 h-8 rounded bg-indigo-900/30 flex items-center justify-center text-indigo-400 font-bold font-serif">M</div>
+                                    <span class="text-sm font-medium">Midtrans Settlement</span>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="text-gray-500">Expected Payout</span>
+                                        <span class="text-gray-300">Rp 120.5M</span>
+                                    </div>
+                                    <div class="w-full border-t border-gray-800 border-dashed my-2"></div>
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="text-green-400">Reconciled to Bank</span>
+                                        <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative z-10 mt-auto">
+                            <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">Payout Reconciliation</h4>
+                            <p class="text-[15px] font-medium text-white leading-snug">Automatically match bulk payouts from gateways to the individual sales receipts in your ledger.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#1A1F26] border border-gray-800/60 rounded-2xl p-6 lg:p-8 flex flex-col justify-between relative group hover:border-gray-700 transition-colors h-full min-h-[300px]">
+                        <div class="mb-8 relative z-10">
+                            <div class="bg-white rounded-xl p-4 shadow-lg transform rotate-1 group-hover:rotate-0 transition-transform text-gray-900">
+                                <h5 class="text-xs font-bold text-gray-500 mb-3 tracking-wide uppercase">Multi-Currency Sync</h5>
+                                <div class="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-100">
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] text-gray-400 font-bold">USD</span>
+                                        <span class="text-sm font-mono font-bold">$1,250.00</span>
+                                    </div>
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                    <div class="flex flex-col text-right">
+                                        <span class="text-[10px] text-gray-400 font-bold">IDR (Live)</span>
+                                        <span class="text-sm font-mono font-bold text-green-600">Rp 19.3M</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative z-10 mt-auto">
+                            <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">Live FX Conversion</h4>
+                            <p class="text-[15px] font-medium text-white leading-snug">Global operations made simple. View all incoming international revenue consolidated into your base currency.</p>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-2 bg-[#1A1F26] border border-gray-800/60 rounded-2xl p-6 lg:p-8 flex flex-col md:flex-row items-center justify-between relative group hover:border-gray-700 transition-colors gap-8">
+                        <div class="flex-1">
+                            <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">Channel Profitability</h4>
+                            <p class="text-[15px] font-medium text-white leading-snug max-w-sm">See exactly which sales channels (Shopify, Amazon, Retail) are driving the most revenue vs the associated cost of goods.</p>
+                        </div>
+                        <div class="w-full md:w-auto relative z-10 flex gap-2 overflow-hidden">
+                            <div class="bg-gray-900 border border-gray-800 rounded px-3 py-2 text-xs font-mono text-gray-300">Tokopedia: 45%</div>
+                            <div class="bg-gray-900 border border-gray-800 rounded px-3 py-2 text-xs font-mono text-gray-300">Shopee: 35%</div>
+                            <div class="bg-gray-900 border border-gray-800 rounded px-3 py-2 text-xs font-mono text-gray-300">TikTok Shop: 20%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB CONTENT: Ad Integrations -->
+            <div id="tab-ads" class="tab-content hidden grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+                <div class="lg:col-span-4 flex flex-col justify-between">
+                    <div>
+                        <h4 class="text-[11px] font-bold text-gray-500 uppercase tracking-[0.15em] mb-4">Ad Integrations</h4>
+                        <h3 class="text-[32px] lg:text-[40px] font-bold leading-[1.15] mb-6 text-white tracking-tight">
+                            Unify your digital marketing spend
+                        </h3>
+                        <p class="text-gray-400 text-[16px] leading-relaxed mb-10">
+                            Stop logging into 5 different ad accounts. Map your TikTok, Shopee, and Tokopedia ad deductions directly to your marketing budgets.
+                        </p>
+                    </div>
+
+                    <div class="w-full max-w-[320px] bg-black border-[6px] border-gray-800 rounded-[2.5rem] p-4 mt-auto mx-auto lg:mx-0 relative overflow-hidden h-[240px]">
+                        <div class="w-32 h-6 bg-gray-800 absolute top-0 left-1/2 -translate-x-1/2 rounded-b-2xl"></div>
+                        <div class="mt-8 space-y-4">
+                            <p class="text-xs text-gray-500 mb-1">Total Ad Spend (7d)</p>
+                            <p class="text-3xl font-mono font-bold text-orange-400">Rp 28.5M</p>
+                            
+                            <div class="space-y-2 mt-4">
+                                <div class="w-full bg-gray-800 rounded-full h-2 overflow-hidden flex">
+                                    <div class="bg-blue-500 h-full w-[50%]"></div>
+                                    <div class="bg-red-500 h-full w-[30%]"></div>
+                                    <div class="bg-gray-400 h-full w-[20%]"></div>
+                                </div>
+                                <div class="flex justify-between text-[9px] text-gray-400 font-mono">
+                                    <span>TikTok (50%)</span>
+                                    <span>Shopee (30%)</span>
+                                    <span>Tokopedia (20%)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                    <div class="bg-[#1A1F26] border border-gray-800/60 rounded-2xl p-6 lg:p-8 flex flex-col justify-between relative group hover:border-gray-700 transition-colors h-full min-h-[300px]">
+                        <div class="mb-8 relative z-10">
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg transform -rotate-1 group-hover:rotate-0 transition-transform">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="w-8 h-8 rounded bg-yellow-900/30 flex items-center justify-center text-yellow-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    </div>
+                                    <span class="text-sm font-medium">Missing Invoice Alert</span>
+                                </div>
+                                <div class="space-y-2 border border-yellow-900/50 bg-yellow-900/10 rounded p-2 text-xs">
+                                    <p class="text-gray-300">Bank charge <span class="font-mono text-white">Rp 4.2M</span> from 'TIKTOK ADS' detected without matching PDF receipt.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative z-10 mt-auto">
+                            <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">Automated Fetching</h4>
+                            <p class="text-[15px] font-medium text-white leading-snug">FluxyOS connects to ad platforms to pull invoice PDFs automatically and matches them to bank feeds.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#1A1F26] border border-gray-800/60 rounded-2xl p-6 lg:p-8 flex flex-col justify-between relative group hover:border-gray-700 transition-colors h-full min-h-[300px]">
+                        <div class="mb-8 relative z-10">
+                            <div class="bg-white rounded-xl p-4 shadow-lg transform rotate-1 group-hover:rotate-0 transition-transform text-gray-300">
+                                <h5 class="text-xs font-bold text-gray-500 mb-3 tracking-wide uppercase">Campaign ROI Mapping</h5>
+                                <div class="flex justify-between text-xs mb-2">
+                                    <span>Campaign: Q3 Launch</span>
+                                    <span class="text-green-400 font-mono">+ 2.4x ROAS</span>
+                                </div>
+                                <div class="flex justify-between text-xs pb-2 border-b border-gray-800">
+                                    <span class="text-gray-500">Spend</span>
+                                    <span>Rp 10M</span>
+                                </div>
+                                <div class="flex justify-between text-xs pt-2">
+                                    <span class="text-gray-500">Attributed Rev</span>
+                                    <span>Rp 24M</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative z-10 mt-auto">
+                            <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">True ROI Tracking</h4>
+                            <p class="text-[15px] font-medium text-white leading-snug">Bring ad spend and finalized revenue together to see the true profitability of your marketing dollars.</p>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-2 bg-[#1A1F26] border border-gray-800/60 rounded-2xl p-6 lg:p-8 flex flex-col md:flex-row items-center justify-between relative group hover:border-gray-700 transition-colors gap-8">
+                        <div class="flex-1">
+                            <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">Agency Access</h4>
+                            <p class="text-[15px] font-medium text-white leading-snug max-w-sm">Give your external marketing agencies scoped access to upload invoices or view remaining monthly ad budgets securely.</p>
+                        </div>
+                        <div class="w-full md:w-auto relative z-10">
+                            <button class="bg-gray-800 text-white text-xs px-4 py-2 rounded-lg border border-gray-700 flex items-center gap-2 hover:bg-gray-700 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+                                Invite Agency Seat
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB CONTENT: Platform APIs -->
+            <div id="tab-apis" class="tab-content hidden grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+                <div class="lg:col-span-4 flex flex-col justify-between">
+                    <div>
+                        <h4 class="text-[11px] font-bold text-gray-500 uppercase tracking-[0.15em] mb-4">Platform APIs</h4>
+                        <h3 class="text-[32px] lg:text-[40px] font-bold leading-[1.15] mb-6 text-white tracking-tight">
+                            Build on top of the FluxyOS foundation
+                        </h3>
+                        <p class="text-gray-400 text-[16px] leading-relaxed mb-10">
+                            Use our RESTful and GraphQL APIs to pipe unified financial data into your own BI tools, internal dashboards, or custom ERP systems.
+                        </p>
+                    </div>
+
+                    <div class="w-full max-w-[320px] bg-[#0d1117] border border-gray-800 rounded-xl p-4 mt-auto mx-auto lg:mx-0 relative overflow-hidden h-[240px] font-mono text-[10px] sm:text-[11px] text-gray-300 leading-relaxed">
+                        <div class="flex gap-1.5 mb-3">
+                            <div class="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-yellow-500"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-[#FB923C]">const</span> response = <span class="text-[#FB923C]">await</span> fetch(<br/>
+                        &nbsp;&nbsp;<span class="text-green-300">'https://api.fluxyos.com/v1/budgets'</span>, {<br/>
+                        &nbsp;&nbsp;&nbsp;&nbsp;headers: {<br/>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-blue-300">'Authorization'</span>: <span class="text-green-300">'Bearer pk_...'</span><br/>
+                        &nbsp;&nbsp;&nbsp;&nbsp;}<br/>
+                        &nbsp;&nbsp;}<br/>
+                        );<br/>
+                        <br/>
+                        <span class="text-gray-500">// Returns live budget status</span><br/>
+                        <span class="text-[#FB923C]">const</span> data = <span class="text-[#FB923C]">await</span> response.json();
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                    <div class="bg-[#1A1F26] border border-gray-800/60 rounded-2xl p-6 lg:p-8 flex flex-col justify-between relative group hover:border-gray-700 transition-colors h-full min-h-[300px]">
+                        <div class="mb-8 relative z-10">
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg transform -rotate-1 group-hover:rotate-0 transition-transform">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="w-8 h-8 rounded bg-green-900/30 flex items-center justify-center text-green-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    </div>
+                                    <span class="text-sm font-medium">Real-time Webhooks</span>
+                                </div>
+                                <div class="space-y-2 text-xs font-mono">
+                                    <div class="text-gray-400">POST <span class="text-white">/webhook/transaction.created</span></div>
+                                    <div class="text-green-400">200 OK - 14ms</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative z-10 mt-auto">
+                            <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">Event-Driven Finance</h4>
+                            <p class="text-[15px] font-medium text-white leading-snug">Subscribe to webhooks to trigger actions in your own apps the moment a transaction clears or a budget is exceeded.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#1A1F26] border border-gray-800/60 rounded-2xl p-6 lg:p-8 flex flex-col justify-between relative group hover:border-gray-700 transition-colors h-full min-h-[300px]">
+                        <div class="mb-8 relative z-10">
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg transform rotate-1 group-hover:rotate-0 transition-transform">
+                                <h5 class="text-xs font-bold text-gray-500 mb-3 tracking-wide uppercase">ERP Synchronization</h5>
+                                <div class="flex items-center gap-3 p-2 bg-gray-800 rounded border border-gray-700">
+                                    <div class="text-xs font-bold text-white">FluxyOS</div>
+                                    <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                                    <div class="text-xs font-bold text-blue-400">Accurate</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative z-10 mt-auto">
+                            <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">Enterprise Ready</h4>
+                            <p class="text-[15px] font-medium text-white leading-snug">Keep FluxyOS as your modern operation layer while pushing clean, categorized journal entries directly to legacy ERPs.</p>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-2 bg-[#1A1F26] border border-gray-800/60 rounded-2xl p-6 lg:p-8 flex flex-col md:flex-row items-center justify-between relative group hover:border-gray-700 transition-colors gap-8">
+                        <div class="flex-1">
+                            <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">Granular Permissions</h4>
+                            <p class="text-[15px] font-medium text-white leading-snug max-w-sm">Generate scoped API keys for different departments. Control exactly what financial data can be read or written via the API.</p>
+                        </div>
+                        <div class="w-full md:w-auto relative z-10 flex gap-2 overflow-hidden">
+                            <div class="bg-gray-900 border border-gray-800 rounded px-3 py-2 text-xs font-mono text-gray-300">sk_test_4829...</div>
+                            <button class="bg-gray-800 hover:bg-gray-700 text-white rounded px-3 py-2 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- 4. Automation Section -->
+    <section class="py-16 lg:py-20 px-6 relative max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-12 items-center">
+        
+        <div class="automation-visual lg:col-span-6 relative h-[500px] w-full flex items-center justify-center lg:justify-start order-2 lg:order-1">
+            <div class="absolute w-[500px] h-[500px] glow-circle-blue rounded-full mix-blend-multiply -left-10"></div>
+            
+            <div class="absolute top-16 left-0 sm:left-12 w-full max-w-[440px] bg-white/60 backdrop-blur-sm rounded-2xl p-6 ui-shadow border border-gray-100 scale-95 opacity-50 z-10">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H20"></path></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-[15px] font-semibold text-gray-700">Budget deduction</h3>
+                            <p class="text-[12px] text-[#EA580C] font-medium">Hosting Fees</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="h-16 bg-gray-50 rounded border border-gray-100"></div>
+            </div>
+
+            <div class="relative w-full max-w-[480px] bg-white rounded-2xl p-6 sm:p-8 ui-shadow-hover border border-gray-100 z-20 mt-20 lg:mt-0">
+                <div class="flex items-start justify-between mb-8 pb-6 border-b border-gray-100">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center text-orange-600 border border-orange-100 flex-shrink-0">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <h3 class="text-[15px] sm:text-[16px] font-bold text-gray-900">Budget Allocation</h3>
+                                <span class="bg-gray-100 border border-gray-200 text-gray-600 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider hidden sm:inline-block">Auto-Matched</span>
+                            </div>
+                            <p class="text-[12px] sm:text-[13px] text-gray-500">From TikTok Ads Platform</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="w-10 h-10 rounded-md border border-gray-200 flex items-center justify-center text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg></button>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="grid grid-cols-[1fr_auto_1fr] gap-3 sm:gap-4 items-center">
+                        <div>
+                            <label class="block text-[11px] sm:text-[12px] font-medium text-gray-500 mb-2 ml-1">Expense Source</label>
+                            <div class="h-10 sm:h-12 border border-gray-200 rounded-lg flex items-center justify-between px-3 sm:px-4 text-[12px] sm:text-[14px] font-medium text-gray-900 bg-white shadow-sm hover:border-gray-300 transition-colors">
+                                TikTok Ads <svg class="w-4 h-4 text-gray-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </div>
+                        <div class="text-gray-300 mt-6"><svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></div>
+                        <div>
+                            <label class="block text-[11px] sm:text-[12px] font-medium text-gray-500 mb-2 ml-1">Budget Center</label>
+                            <div class="h-10 sm:h-12 border border-gray-200 rounded-lg flex items-center justify-between px-3 sm:px-4 text-[12px] sm:text-[14px] font-medium text-gray-900 bg-white shadow-sm ring-1 ring-orange-500 ring-opacity-20">
+                                Q3 Marketing <svg class="w-4 h-4 text-gray-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-[1fr_auto_1fr] gap-3 sm:gap-4 items-center opacity-60">
+                        <div>
+                            <label class="block text-[11px] sm:text-[12px] font-medium text-gray-500 mb-2 ml-1">Amount</label>
+                            <div class="h-10 sm:h-12 border border-gray-200 rounded-lg flex items-center px-3 sm:px-4 text-[12px] sm:text-[14px] font-mono text-gray-900 bg-gray-50">
+                                Rp 12.450.000
+                            </div>
+                        </div>
+                        <div class="text-gray-300 mt-6"><svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg></div>
+                        <div>
+                            <label class="block text-[11px] sm:text-[12px] font-medium text-gray-500 mb-2 ml-1">Budget Remaining</label>
+                            <div class="h-10 sm:h-12 border border-gray-200 rounded-lg flex items-center px-3 sm:px-4 text-[12px] sm:text-[14px] font-mono text-gray-900 bg-gray-50">
+                                Rp 87.550.000
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Floating WhatsApp Mockup -->
+            <div class="absolute -bottom-6 -right-2 sm:right-4 w-[280px] bg-white rounded-2xl shadow-2xl border border-gray-200 z-30 overflow-hidden float-fast transform rotate-2">
+                <!-- Header with NEW AI Logo -->
+                <div class="bg-[#25D366] px-4 py-3 flex items-center gap-2.5 text-white">
+                    <div class="w-[24px] h-[24px] text-white relative flex-shrink-0">
+                        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full drop-shadow-sm">
+                            <rect width="40" height="40" rx="8" fill="currentColor" />
+                            <g transform="translate(1.5, 0)">
+                                <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#25D366" />
+                                <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#25D366" />
+                            </g>
+                        </svg>
+                        <div class="absolute -top-1 -right-1 text-yellow-300 drop-shadow-sm">
+                            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C12 2 12 10 20 12C12 14 12 22 12 22C12 22 14 4 12C12 10 12 2 12 2Z"/></svg>
+                        </div>
+                    </div>
+                    <span class="font-bold text-[13px] tracking-wide">FluxyOS AI</span>
+                </div>
+                <!-- Chat Body -->
+                <div class="bg-[#EFEAE2] p-4 space-y-3 relative h-auto">
+                    <!-- User Msg -->
+                    <div class="flex justify-end">
+                        <div class="bg-[#D9FDD3] text-gray-800 text-[12px] px-3 py-2 rounded-lg rounded-tr-none shadow-sm max-w-[85%] relative leading-snug">
+                            What were our marketing expenses this week?
+                            <div class="text-[9px] text-gray-500 text-right mt-1">10:42 AM</div>
+                        </div>
+                    </div>
+                    <!-- AI Msg -->
+                    <div class="flex justify-start">
+                        <div class="bg-white text-gray-800 text-[12px] px-3 py-2.5 rounded-lg rounded-tl-none shadow-sm max-w-[90%] relative border border-gray-100 leading-snug">
+                            You've spent <span class="font-bold">Rp 12.450.000</span> on TikTok Ads this week.
+                            <div class="mt-2 pt-2 border-t border-gray-100">Remaining Q3 Budget: <br/><span class="font-mono font-bold text-green-600 text-[13px]">Rp 87.550.000</span></div>
+                            <div class="text-[9px] text-gray-400 text-right mt-1">10:42 AM</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="lg:col-span-6 lg:pl-12 order-1 lg:order-2">
+            <h2 class="text-[40px] lg:text-[48px] font-bold leading-[1.1] tracking-tight mb-6 text-gray-900">
+                AI categorizes it.<br/>You review it.
+            </h2>
+            <p class="text-lg text-gray-600 leading-relaxed mb-10 max-w-[500px]">
+                FluxyOS learns how your specific business operates. It automatically maps raw material purchases, software subscriptions, and ad spend directly to the correct internal department budgets.
+            </p>
+
+            <ul class="space-y-6 max-w-[500px]">
+                <li class="flex items-start gap-4">
+                    <div class="mt-1 bg-white border border-gray-200 rounded p-1 shadow-sm text-gray-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    </div>
+                    <span class="text-[16px] text-gray-700 leading-relaxed font-medium pt-0.5">Eliminate month-end manual data entry. Expenses are categorized the moment they happen.</span>
+                </li>
+                <li class="flex items-start gap-4">
+                    <div class="mt-1 bg-white border border-gray-200 rounded p-1 shadow-sm text-gray-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                    </div>
+                    <span class="text-[16px] text-gray-700 leading-relaxed font-medium pt-0.5">Set up intelligent rules to automatically alert managers if project burn rates spike.</span>
+                </li>
+                <li class="flex items-start gap-4">
+                    <div class="mt-1 bg-white border border-gray-200 rounded p-1 shadow-sm text-green-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                    </div>
+                    <span class="text-[16px] text-gray-700 leading-relaxed font-medium pt-0.5">Chat directly with our AI via WhatsApp to instantly check your current expenses, remaining budgets, or specific transaction statuses on the go.</span>
+                </li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- 5. NEW SECTION: Receipts & Integrations -->
+    <section class="py-16 lg:py-20 px-6 bg-[#F8F9FB] border-y border-gray-200">
+        <div class="max-w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
+            
+            <!-- Card 1: Say goodbye to manual paper chasing -->
+            <div class="bg-white border border-gray-100 rounded-[2rem] p-10 lg:p-12 pb-0 relative overflow-hidden ui-shadow-hover flex flex-col min-h-[580px]">
+                <div class="relative z-10 mb-8">
+                    <h3 class="text-[32px] md:text-[36px] font-bold text-[#0B1527] leading-[1.15] mb-8 pr-4 tracking-tight">Say goodbye to manual paper chasing</h3>
+                    <ul class="space-y-6">
+                        <li class="flex items-start gap-4">
+                            <div class="w-6 h-6 rounded-full border-2 border-[#EA580C] text-[#EA580C] flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                            <span class="text-[15px] text-gray-600 leading-relaxed font-medium">Automated receipt reminders and a seamless uploading experience makes manual paper chasing a thing of the past.</span>
+                        </li>
+                        <li class="flex items-start gap-4">
+                            <div class="w-6 h-6 rounded-full border-2 border-[#EA580C] text-[#EA580C] flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                            <span class="text-[15px] text-gray-600 leading-relaxed font-medium">Access and easily search all your transaction records, all in one place.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Graphic Area -->
+                <div class="receipt-graphic mt-auto relative w-full h-[280px]">
+                    <!-- Soft Orange Ambient Gradient Bottom -->
+                    <div class="mockup-ambient absolute bottom-0 bg-gradient-to-t from-[#FFEDD5]/80 via-[#FFEDD5]/35 to-transparent pointer-events-none z-0"></div>
+                    
+                    <!-- App UI Elements Mockup -->
+                    <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] h-[220px] flex items-end justify-center z-10">
+                        
+                        <!-- Floating Receipt -->
+                        <div class="absolute bottom-12 left-0 sm:left-4 w-32 sm:w-40 bg-white border border-gray-200 shadow-sm p-4 rotate-[-6deg] z-10 font-mono text-gray-400">
+                            <div class="text-center text-gray-800 font-bold text-[10px] mb-2 font-sans border-b border-gray-100 pb-2">% Arabica</div>
+                            <div class="space-y-1.5 mb-3 mt-3">
+                                <div class="w-full h-1 bg-gray-200 rounded"></div>
+                                <div class="w-5/6 h-1 bg-gray-200 rounded"></div>
+                                <div class="w-4/6 h-1 bg-gray-200 rounded"></div>
+                            </div>
+                            <div class="flex justify-between text-gray-800 font-bold mt-4 pt-2 border-t border-dashed border-gray-200 text-[9px]">
+                                <span>TOTAL</span>
+                                <span>Rp 75.000</span>
+                            </div>
+                            <!-- jagged edge bottom -->
+                            <div class="absolute -bottom-1 left-0 w-full h-2 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjQiPjxwb2x5Z29uIHBvaW50cz0iMCAwIDQgNCA4IDAiIGZpbGw9IndoaXRlIi8+PC9zdmc+')] bg-repeat-x"></div>
+                        </div>
+
+                        <!-- Orange Arrow -->
+                        <svg class="absolute bottom-16 left-[120px] sm:left-[140px] w-12 h-12 text-[#EA580C] z-20 transform rotate-12 drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+
+                        <!-- Main App Interface Card -->
+                        <div class="absolute -bottom-4 right-0 sm:right-6 w-56 sm:w-64 bg-white rounded-t-2xl shadow-[0_0_40px_rgba(0,0,0,0.08)] overflow-hidden border border-gray-100 z-30 flex flex-col">
+                            <!-- Header -->
+                            <div class="bg-[#0B1527] px-5 py-4 flex items-center justify-between">
+                                <span class="text-[14px] font-semibold text-white">Claim details</span>
+                            </div>
+                            <!-- Scanned Amount overlay logic simulation -->
+                            <div class="h-16 bg-gray-100 relative overflow-hidden flex items-center justify-center border-b border-gray-200">
+                                <div class="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiAvPgo8cGF0aCBkPSJNMCAwTDggOFpNOCAwTDAgOFoiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLXdpZHRoPSIxIiBmaWxsPSJub25lIiAvPgo8L3N2Zz4=')]"></div>
+                                <span class="font-mono text-xs font-bold text-gray-500 z-10 bg-white/80 px-2 py-0.5 rounded">Total: Rp 75.000</span>
+                                <div class="absolute -bottom-1 left-0 w-full h-2 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjQiPjxwb2x5Z29uIHBvaW50cz0iMCA0IDQgMCA4IDQiIGZpbGw9IndoaXRlIi8+PC9zdmc+')] bg-repeat-x z-20"></div>
+                            </div>
+                            <!-- Body -->
+                            <div class="p-5 space-y-5 bg-white pb-8">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-[#F8F9FB] border border-gray-100 rounded-md flex items-center justify-center text-[12px]">🏪</div>
+                                    <div class="flex-1">
+                                        <div class="text-[13px] font-bold text-[#0B1527]">% Arabica</div>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <span class="bg-[#FFEDD5] text-[#C2410C] text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">Paid</span>
+                                            <span class="text-[12px] font-mono font-bold text-[#0B1527]">Rp 75.000</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 items-center text-[11px] font-medium text-gray-500 bg-gray-50 p-2 rounded border border-gray-100">
+                                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+                                    Marketing Expense
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Floating VAT Pill -->
+                        <div class="absolute top-10 right-10 bg-white border border-gray-100 shadow-md px-3 py-1.5 rounded-full z-40 flex items-center gap-1.5 float-slow">
+                            <span class="bg-blue-600 text-white text-[8px] font-bold px-1 py-0.5 rounded">VAT</span>
+                            <span class="text-[11px] font-bold text-gray-700">10%</span>
+                            <div class="w-3.5 h-3.5 bg-orange-500 rounded-full flex items-center justify-center text-white ml-1">
+                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Integrated with your accounting software -->
+            <div class="bg-white border border-gray-100 rounded-[2rem] p-10 lg:p-12 pb-0 relative overflow-hidden ui-shadow-hover flex flex-col min-h-[580px]">
+                <div class="relative z-10 mb-8">
+                    <h3 class="text-[32px] md:text-[36px] font-bold text-[#0B1527] leading-[1.15] mb-8 pr-4 tracking-tight">Integrated with your accounting software</h3>
+                    <ul class="space-y-6">
+                        <li class="flex items-start gap-4">
+                            <div class="w-6 h-6 rounded-full border-2 border-[#EA580C] text-[#EA580C] flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                            <span class="text-[15px] text-gray-600 leading-relaxed font-medium">Close your books twice as fast, with all transactions synced with major accounting software. When you're building in hyper-growth mode, there's no room for errors.</span>
+                        </li>
+                        <li class="flex items-start gap-4">
+                            <div class="w-6 h-6 rounded-full border-2 border-[#EA580C] text-[#EA580C] flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                            <span class="text-[15px] text-gray-600 leading-relaxed font-medium">Our advanced integrations include receipt attachments with text recognition, line items, and payment status updates.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Graphic Area -->
+                <div class="integration-graphic mt-auto relative w-full h-[280px]">
+                    <!-- Soft Orange Ambient Gradient Bottom -->
+                    <div class="mockup-ambient absolute bottom-0 bg-gradient-to-t from-[#FFEDD5]/80 via-[#FFEDD5]/35 to-transparent pointer-events-none z-0"></div>
+                    
+                    <!-- Integrations UI Mockup -->
+                    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-[400px] h-[200px] z-10 flex items-center justify-center">
+                        
+                        <!-- Left Pillar: Integration Logos -->
+                        <div class="absolute left-0 bottom-4 w-28 space-y-3 z-20">
+                            <!-- Tokopedia App Card -->
+                            <div class="bg-white p-4 rounded-xl shadow-md border border-gray-100 flex flex-col items-center relative float-slow">
+                                <div class="w-12 h-12 bg-[#03AC0E] rounded-full flex items-center justify-center text-white font-bold text-[10px] tracking-tight mb-2">TOKO</div>
+                                <p class="text-[10px] font-bold text-center text-gray-700 leading-tight mb-3">Orders synced from Tokopedia</p>
+                                <div class="w-5 h-5 bg-[#EA580C] rounded-full flex items-center justify-center text-white absolute -bottom-2">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                            </div>
+                            <!-- Generic Finance Pill -->
+                            <div class="bg-white px-3 py-2.5 rounded-lg shadow-sm border border-gray-100 flex items-center justify-center float-slower">
+                                <span class="text-blue-600 font-bold text-[12px] flex items-center gap-1"><div class="w-3 h-3 bg-blue-600 rounded-full"></div> finance pro</span>
+                            </div>
+                            <!-- E-commerce Pills -->
+                            <div class="flex gap-2 float-fast">
+                                <div class="bg-[#EE4D2D] text-white flex-1 py-2 rounded-lg shadow-sm flex items-center justify-center font-bold text-[8px] tracking-wide">SHOPEE</div>
+                                <div class="bg-black text-white flex-1 py-2 rounded-lg shadow-sm flex items-center justify-center font-bold text-[8px] tracking-wide">TIKTOK</div>
+                            </div>
+                        </div>
+
+                        <!-- Right Area: Status List -->
+                        <div class="absolute right-0 bottom-2 w-64 z-10">
+                            
+                            <!-- Top Alert Pill -->
+                            <div class="absolute -top-10 right-4 bg-white shadow-lg border border-red-100 rounded-lg p-2.5 flex items-center gap-2 z-30 max-w-[200px] float-fast">
+                                <div class="w-4 h-4 bg-red-500 rounded-full text-white flex items-center justify-center flex-shrink-0"><svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></div>
+                                <p class="text-[9px] text-gray-700 font-medium leading-tight">Please upload a receipt for your purchase (Transaction <strong>#1268</strong>)</p>
+                            </div>
+
+                            <!-- List Container -->
+                            <div class="bg-white/95 backdrop-blur-sm rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.06)] border border-gray-100 p-4">
+                                <div class="space-y-4">
+                                    <!-- Item 1 -->
+                                    <div class="flex justify-between items-center pb-3 border-b border-gray-50">
+                                        <span class="text-[12px] font-bold text-[#0B1527]">Transaction #1268</span>
+                                        <span class="text-[9px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>Missing receipt</span>
+                                    </div>
+                                    <!-- Item 2 -->
+                                    <div class="flex justify-between items-center pb-3 border-b border-gray-50">
+                                        <span class="text-[12px] font-bold text-[#0B1527]">Transaction #1267</span>
+                                        <span class="text-[9px] font-bold text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-yellow-500"></div>Payment scheduled</span>
+                                    </div>
+                                    <!-- Item 3 -->
+                                    <div class="flex justify-between items-start pt-1">
+                                        <div>
+                                            <span class="text-[12px] font-bold text-[#0B1527] block mb-1.5">Transaction #1266</span>
+                                            <div class="text-[10px] font-medium text-gray-400 flex items-center gap-1.5 mb-1"><div class="w-1.5 h-1.5 rounded-full bg-[#EA580C]"></div>Synced</div>
+                                            <div class="text-[10px] font-medium text-gray-400 flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-[#EA580C]"></div>Reviewed for sync</div>
+                                        </div>
+                                        <span class="text-[9px] font-bold text-[#C2410C] bg-[#FFEDD5] px-2.5 py-1 rounded-full flex items-center gap-1">Paid</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Faint background receipts illustration -->
+                            <div class="absolute bottom-16 right-16 flex gap-2 opacity-30 z-0">
+                                <div class="w-12 h-16 bg-gray-200 rounded text-[8px] p-2 rotate-12">RECEIPT<div class="w-full h-0.5 bg-gray-300 mt-2"></div></div>
+                                <div class="w-12 h-16 bg-gray-200 rounded text-[8px] p-2 rotate-6">RECEIPT<div class="w-full h-0.5 bg-gray-300 mt-2"></div></div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. The Multi-Entity Network Map (Dark Theme) -->
+    <section class="py-16 lg:py-24 px-6 bg-[#0B0F19] text-white border-y border-gray-800 overflow-hidden relative flex flex-col items-center">
+        <div class="max-w-[1280px] w-full mx-auto relative z-10">
+            <div class="text-center max-w-[700px] mx-auto mb-16 lg:mb-20">
+                <h2 class="text-[36px] lg:text-[40px] font-bold text-white tracking-tight mb-6 leading-tight">Scale your operations.<br/>Centralize your control.</h2>
+                <p class="text-lg text-gray-400 leading-relaxed">
+                    Operating multiple business units, client accounts, or production facilities creates fragmented data. FluxyOS acts as your central nervous system—using AI to automatically intercept errors, route budgets, and reconcile expenses across every entity.
+                </p>
+            </div>
+        </div>
+            
+        <div class="w-full flex justify-center">
+            <div class="network-stage relative w-[1024px] h-[600px] transform scale-[0.35] sm:scale-[0.5] md:scale-[0.75] lg:scale-100 origin-top flex items-center justify-center transition-transform duration-300 flex-shrink-0 -mb-[390px] sm:-mb-[300px] md:-mb-[150px] lg:mb-0">
+                
+                <svg class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 0;">
+                    <path d="M 250 150 Q 400 150 512 300" fill="none" stroke="#374151" stroke-width="2" class="network-line" />
+                    <path d="M 774 150 Q 624 150 512 300" fill="none" stroke="#374151" stroke-width="2" class="network-line" />
+                    <path d="M 250 450 Q 400 450 512 300" fill="none" stroke="#374151" stroke-width="2" class="network-line" />
+                    <path d="M 774 450 Q 624 450 512 300" fill="none" stroke="#374151" stroke-width="2" class="network-line" />
+                </svg>
+
+                <div class="absolute top-[22%] left-[32%] bg-red-900/40 border border-red-500/30 text-red-400 text-[11px] px-3 py-1.5 rounded-md font-mono z-10 flex items-center gap-1.5 shadow-[0_0_15px_rgba(239,68,68,0.15)] float-fast backdrop-blur-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Uncategorized Spend
+                </div>
+
+                <div class="absolute top-[28%] right-[30%] bg-yellow-900/40 border border-yellow-500/30 text-yellow-400 text-[11px] px-3 py-1.5 rounded-md font-mono z-10 flex items-center gap-1.5 shadow-[0_0_15px_rgba(234,179,8,0.15)] float-slow backdrop-blur-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    Manual Sync Delayed
+                </div>
+
+                <div class="absolute bottom-[26%] left-[30%] bg-orange-900/40 border border-orange-500/30 text-orange-400 text-[11px] px-3 py-1.5 rounded-md font-mono z-10 flex items-center gap-1.5 shadow-[0_0_15px_rgba(249,115,22,0.15)] float-slower backdrop-blur-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Rev Mismatch: Rp 4.5M
+                </div>
+
+                <div class="absolute bottom-[20%] right-[32%] bg-gray-800/80 border border-gray-600 text-gray-300 text-[11px] px-3 py-1.5 rounded-md font-mono z-10 flex items-center gap-1.5 float-fast backdrop-blur-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Missing GL Codes
+                </div>
+
+                <div class="relative z-50 w-56 h-56 bg-[#1A1F26] rounded-full border border-gray-700 flex flex-col items-center justify-center shadow-[0_0_80px_rgba(234,88,12,0.2)] float-slow">
+                    <div class="absolute inset-0 rounded-full border border-[#EA580C] opacity-30 animate-ping" style="animation-duration: 3s;"></div>
+                    
+                    <!-- NEW FluxyOS AI Box Logo -->
+                    <div class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-4 relative shadow-inner">
+                        <div class="w-[42px] h-[42px] text-black relative flex-shrink-0 shadow-lg border border-gray-700 rounded-lg">
+                            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                                <rect width="40" height="40" rx="8" fill="currentColor" />
+                                <g transform="translate(1.5, 0)">
+                                    <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                                    <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                                </g>
+                            </svg>
+                            <div class="absolute -top-1.5 -right-1.5 text-[#EA580C]">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C12 2 12 10 20 12C12 14 12 22 12 22C12 22 12 14 4 12C12 10 12 2 12 2Z"/></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <span class="font-bold text-white text-[20px] tracking-tight">FluxyOS AI</span>
+                    <span class="text-[12px] text-green-400 font-mono mt-1.5 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        Resolving Errors...
+                    </span>
+                </div>
+
+                <div class="absolute top-10 left-[4%] w-[280px] bg-[#1A1F26] p-6 rounded-2xl border border-gray-800 shadow-2xl z-10 hover:-translate-y-1 transition-transform cursor-default">
+                    <div class="flex items-center gap-3 mb-5 border-b border-gray-800 pb-4">
+                        <div class="w-10 h-10 rounded-lg bg-blue-900/30 flex items-center justify-center text-blue-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg></div>
+                        <span class="font-bold text-white text-[15px]">Digital Storefront</span>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center text-[13px]">
+                            <span class="text-gray-400">Ad Spend (TikTok)</span>
+                            <span class="font-mono text-red-400">-Rp 4.200.000</span>
+                        </div>
+                        <div class="flex justify-between items-center text-[13px]">
+                            <span class="text-gray-400">Server Costs</span>
+                            <span class="font-mono text-red-400">-Rp 850.000</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="absolute top-10 right-[4%] w-[280px] bg-[#1A1F26] p-6 rounded-2xl border border-gray-800 shadow-2xl z-10 hover:-translate-y-1 transition-transform cursor-default">
+                    <div class="flex items-center gap-3 mb-5 border-b border-gray-800 pb-4">
+                        <div class="w-10 h-10 rounded-lg bg-orange-900/30 flex items-center justify-center text-orange-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg></div>
+                        <span class="font-bold text-white text-[15px]">Manufacturing Unit</span>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center text-[13px]">
+                            <span class="text-gray-400">Raw Materials</span>
+                            <span class="font-mono text-red-400">-Rp 12.400.000</span>
+                        </div>
+                        <div class="flex justify-between items-center text-[13px]">
+                            <span class="text-gray-400">Budget Status</span>
+                            <span class="text-green-400 font-medium">On Track</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="absolute bottom-10 left-[4%] w-[280px] bg-[#1A1F26] p-6 rounded-2xl border border-gray-800 shadow-2xl z-10 hover:-translate-y-1 transition-transform cursor-default">
+                    <div class="flex items-center gap-3 mb-5 border-b border-gray-800 pb-4">
+                        <div class="w-10 h-10 rounded-lg bg-green-900/30 flex items-center justify-center text-green-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg></div>
+                        <span class="font-bold text-white text-[15px]">E-Commerce</span>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center text-[13px]">
+                            <span class="text-gray-400">Gateway Volume</span>
+                            <span class="font-mono text-green-400">+Rp 24.500.000</span>
+                        </div>
+                        <div class="flex justify-between items-center text-[13px]">
+                            <span class="text-gray-400">Platform Fees</span>
+                            <span class="font-mono text-red-400">-Rp 6.100.000</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="absolute bottom-10 right-[4%] w-[280px] bg-[#1A1F26] p-6 rounded-2xl border border-gray-800 shadow-2xl z-10 hover:-translate-y-1 transition-transform cursor-default">
+                    <div class="flex items-center gap-3 mb-5 border-b border-gray-800 pb-4">
+                        <div class="w-10 h-10 rounded-lg bg-teal-900/30 flex items-center justify-center text-teal-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
+                        <span class="font-bold text-white text-[15px]">Consulting Arm</span>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center text-[13px]">
+                            <span class="text-gray-400">Payroll Run</span>
+                            <span class="font-mono text-red-400">-Rp 9.200.000</span>
+                        </div>
+                        <div class="flex justify-between items-center text-[13px]">
+                            <span class="text-gray-400">Software Subs.</span>
+                            <span class="font-mono text-red-400">-Rp 3.450.000</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- 7. Features Grid -->
+    <section class="py-24 px-6 bg-white border-y border-gray-200">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="text-center max-w-[600px] mx-auto mb-20">
+                <h2 class="text-[40px] font-bold text-gray-900 tracking-tight mb-4">Complete internal visibility.</h2>
+                <p class="text-lg text-gray-600 leading-relaxed">Everything you need to track burn rate, allocate project budgets, and measure true ROI.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Card 1 -->
+                <div class="bg-[#F8F9FB] rounded-2xl p-10 ui-shadow-hover border border-gray-100">
+                    <div class="w-14 h-14 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-orange-600 mb-8 ui-shadow shadow-sm">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    </div>
+                    <h3 class="text-[20px] font-bold mb-4 text-gray-900 tracking-tight">Dynamic Budgeting</h3>
+                    <p class="text-[16px] text-gray-600 leading-relaxed">Allocate funds to projects or departments and watch burn rates in real-time. Block overages before expenses clear.</p>
+                </div>
+                <!-- Card 2 -->
+                <div class="bg-[#F8F9FB] rounded-2xl p-10 ui-shadow-hover border border-gray-100">
+                    <div class="w-14 h-14 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-blue-600 mb-8 ui-shadow shadow-sm">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                    </div>
+                    <h3 class="text-[20px] font-bold mb-4 text-gray-900 tracking-tight">Revenue vs. Spend</h3>
+                    <p class="text-[16px] text-gray-600 leading-relaxed">Ingest client retainers, sales volume, or POS earnings and automatically compare them against operational run rates.</p>
+                </div>
+                <!-- Card 3 -->
+                <div class="bg-[#F8F9FB] rounded-2xl p-10 ui-shadow-hover border border-gray-100">
+                    <div class="w-14 h-14 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-green-600 mb-8 ui-shadow shadow-sm">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path></svg>
+                    </div>
+                    <h3 class="text-[20px] font-bold mb-4 text-gray-900 tracking-tight">Ad Spend Tracking</h3>
+                    <p class="text-[16px] text-gray-600 leading-relaxed">Connect directly to Meta, Google, and TikTok ad platforms. Match daily ad deductions directly to your marketing budgets.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 8. Global Network -->
+    <section class="py-24 px-6 bg-white relative overflow-hidden border-t border-dashed border-gray-300">
+        <div class="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 relative z-10">
+            <div class="lg:col-span-6 flex flex-col justify-center">
+                <h2 class="text-[36px] lg:text-[44px] font-bold text-gray-900 leading-[1.15] mb-6 tracking-tight">
+                    Tap into a unified global financial network
+                </h2>
+                <p class="text-[16px] lg:text-[18px] text-gray-600 leading-relaxed mb-16 max-w-[540px]">
+                    FluxyOS's proprietary data mapping network offers you a faster, more cost-effective, and transparent alternative to manual financial reporting. Operate like a localized business from anywhere—sync budgets with multi-currency accounts, accept international vendor invoices without costly conversion miscalculations, hold ledger records across borders, and make high-speed budget adjustments around the world in a few clicks.
+                </p>
+
+                <div class="global-stats grid grid-cols-2 gap-x-8 gap-y-12">
+                    <div>
+                        <h4 class="count-up text-[32px] lg:text-[40px] font-bold text-[#EA580C] mb-2" data-count="70" data-suffix="+">70+</h4>
+                        <p class="text-[14px] text-gray-700 font-medium leading-snug">software integrations with global accounting and ad platforms</p>
+                    </div>
+                    <div>
+                        <h4 class="count-up text-[32px] lg:text-[40px] font-bold text-[#EA580C] mb-2" data-count="120" data-suffix="+">120+</h4>
+                        <p class="text-[14px] text-gray-700 font-medium leading-snug">currencies supported for automated vendor reconciliation</p>
+                    </div>
+                    <div>
+                        <h4 class="count-up text-[32px] lg:text-[40px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-[#EA580C] mb-2" data-count="10" data-prefix="$" data-suffix="B+">$10B+</h4>
+                        <p class="text-[14px] text-gray-700 font-medium leading-snug">operational spend processed and categorized annually</p>
+                    </div>
+                    <div>
+                        <h4 class="count-up text-[32px] lg:text-[40px] font-bold text-[#EA580C] mb-2" data-count="180" data-suffix="+">180+</h4>
+                        <p class="text-[14px] text-gray-700 font-medium leading-snug">countries from which you can track localized expenses</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Graphic Side -->
+            <div class="lg:col-span-6 relative hidden lg:flex items-center justify-center">
+                <div class="absolute right-[-20%] top-1/2 -translate-y-1/2 w-[900px] h-[600px] opacity-70">
+                    <div class="w-full h-full" style="background-image: radial-gradient(rgba(234, 88, 12, 0.8) 2px, transparent 2px); background-size: 16px 16px; -webkit-mask-image: url('https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_low_resolution.svg'); -webkit-mask-size: contain; -webkit-mask-position: center; -webkit-mask-repeat: no-repeat; mask-image: url('https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_low_resolution.svg'); mask-size: contain; mask-position: center; mask-repeat: no-repeat;"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 9. Bottom CTA -->
+    <section class="bottom-cta py-24 px-6 text-center bg-gray-50 border-t border-gray-200">
+        <h2 class="text-[48px] font-bold text-gray-900 mb-6 tracking-tight">Control your operations today.</h2>
+        <p class="text-lg text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
+            Stop waiting for month-end reports. Get a live, unified view of your client revenue, budgets, and operational expenses.
+        </p>
+        <div class="flex flex-col sm:flex-row justify-center gap-4">
+            <a href="pricing.html" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-bold text-[18px] px-10 py-4 rounded-lg transition-all shadow-sm hover:shadow text-center">
+                Try FluxyOS
+            </a>
+            <button class="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 font-bold text-[18px] px-10 py-4 rounded-lg transition-all shadow-sm">
+                Book a demo
+            </button>
+        </div>
+    </section>
+
+    <!-- 10. Footer -->
+    <footer class="bg-white border-t border-gray-200 pt-24 pb-12 px-6">
+        <div class="max-w-[1280px] mx-auto grid grid-cols-2 md:grid-cols-12 gap-12 mb-20">
+            <div class="col-span-2 md:col-span-4 pr-8">
+                <div class="flex items-center gap-2 mb-6">
+                    <!-- NEW LOGO -->
+                    <div class="w-8 h-8 flex-shrink-0 text-black shadow-sm">
+                        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                            <rect width="40" height="40" rx="8" fill="currentColor" />
+                            <g transform="translate(1.5, 0)">
+                                <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                                <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                            </g>
+                        </svg>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-gray-900">FluxyOS</span>
+                </div>
+                <p class="text-[14px] text-gray-500 leading-relaxed max-w-[280px]">
+                    The intelligent financial operating system. Unify internal budgets, operational expenses, and revenue for agencies, manufacturers, and modern businesses.
+                </p>
+            </div>
+            
+            <div class="md:col-span-2">
+                <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Platform</h4>
+                <ul class="space-y-4 text-[14px] font-medium text-gray-500">
+                    <li><a href="#" class="hover:text-gray-900 transition-colors">Budget Management</a></li>
+                    <li><a href="#" class="hover:text-gray-900 transition-colors">Data Integration</a></li>
+                    <li><a href="#" class="hover:text-gray-900 transition-colors">Ad Spend Tracking</a></li>
+                    <li><a href="#" class="hover:text-gray-900 transition-colors">Auto-Categorization</a></li>
+                </ul>
+            </div>
+            
+            <div class="md:col-span-2">
+                <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Resources</h4>
+                <ul class="space-y-4 text-[14px] font-medium text-gray-500">
+                    <li><a href="#" class="hover:text-gray-900 transition-colors">Help Center</a></li>
+                    <li><a href="#" class="hover:text-gray-900 transition-colors">Case Studies</a></li>
+                    <li><a href="#" class="hover:text-gray-900 transition-colors">Security</a></li>
+                </ul>
+            </div>
+            
+            <div class="md:col-span-2">
+                <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Company</h4>
+                <ul class="space-y-4 text-[14px] font-medium text-gray-500">
+                    <li><a href="#" class="hover:text-gray-900 transition-colors">About Us</a></li>
+                    <li><a href="#" class="hover:text-gray-900 transition-colors">Careers</a></li>
+                    <li><a href="#" class="hover:text-gray-900 transition-colors">Contact</a></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="max-w-[1280px] mx-auto pt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
+            <p class="text-[14px] font-medium text-gray-400">© 2026 FluxyOS Technologies. All rights reserved.</p>
+            <div class="flex gap-8 text-[14px] font-medium text-gray-400">
+                <a href="#" class="hover:text-gray-900 transition-colors">Privacy Policy</a>
+                <a href="#" class="hover:text-gray-900 transition-colors">Terms of Service</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+
+    <!-- Tab Switching Logic -->
+    <script src="assets/js/fluxyos.js"></script>
+</body>
+</html>

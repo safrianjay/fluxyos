@@ -1,0 +1,59 @@
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #FFFFFF;
+    color: #111827;
+    -webkit-font-smoothing: antialiased;
+}
+.font-mono { font-family: 'Fira Code', monospace; }
+
+/* Floating & Network Animations */
+.float-slow {
+    animation: float 6s ease-in-out infinite;
+}
+.float-fast {
+    animation: float 4s ease-in-out infinite;
+    animation-delay: 1.5s;
+}
+.float-delayed {
+    animation: float 5s ease-in-out infinite;
+    animation-delay: 0.7s;
+}
+.float-alt {
+    animation: float 5.5s ease-in-out infinite;
+    animation-delay: 2s;
+}
+@keyframes float {
+    0% { transform: translate(-50%, calc(-50% + 0px)); }
+    50% { transform: translate(-50%, calc(-50% - 8px)); }
+    100% { transform: translate(-50%, calc(-50% + 0px)); }
+}
+
+/* Animated Data Flow Lines */
+.data-flow {
+    stroke-dasharray: 6 6;
+    animation: flow 1.5s linear infinite;
+}
+.data-flow-reverse {
+    stroke-dasharray: 6 6;
+    animation: flow-reverse 1.5s linear infinite;
+}
+.data-flow-fast {
+    stroke-dasharray: 6 6;
+    animation: flow 1s linear infinite;
+}
+@keyframes flow {
+    from { stroke-dashoffset: 12; }
+    to { stroke-dashoffset: 0; }
+}
+@keyframes flow-reverse {
+    from { stroke-dashoffset: 0; }
+    to { stroke-dashoffset: 12; }
+}
+
+/* Radar/Pulse Glow */
+.pulse-ring {
+    animation: ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes ping-slow {
+    75%, 100% { transform: scale(2); opacity: 0; }
+}

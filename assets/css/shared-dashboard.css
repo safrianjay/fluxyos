@@ -1,0 +1,27 @@
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #F8F9FB;
+    color: #111827;
+    -webkit-font-smoothing: antialiased;
+}
+.font-mono { font-family: 'Fira Code', monospace; }
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* Sidebar Collapse Styles */
+#sidebar { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+#sidebar.collapsed { width: 80px; }
+#sidebar.collapsed .sidebar-text,
+#sidebar.collapsed .section-label,
+#sidebar.collapsed .user-info,
+#sidebar.collapsed .user-chevron { display: none; }
+#sidebar.collapsed .nav-item { justify-content: center; padding-left: 0; padding-right: 0; }
+#sidebar.collapsed .nav-badge { display: none; }
+#sidebar.collapsed .logo-text { display: none; }
+#sidebar.collapsed .logo-area { padding-left: 0; padding-right: 0; justify-content: center; }
+#sidebar.collapsed .toggle-btn-container { justify-content: center; padding: 1rem 0; border-bottom: 1px solid rgba(31, 41, 55, 0.6); }
+#sidebar.collapsed .toggle-icon { transform: rotate(180deg); }

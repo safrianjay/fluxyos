@@ -1,0 +1,40 @@
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #F9FAFB;
+    color: #111827;
+    -webkit-font-smoothing: antialiased;
+}
+.font-mono { font-family: 'Fira Code', monospace; }
+
+/* Floating Animation for Badges */
+.float-slow {
+    animation: float 6s ease-in-out infinite;
+}
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-6px); }
+    100% { transform: translateY(0px); }
+}
+
+.pricing-nav-menu { color: rgba(255, 255, 255, 0.72); }
+.pricing-nav-menu:hover,
+.pricing-nav-menu.active { color: #ffffff; }
+
+.pricing-mobile-menu {
+    height: calc(100vh - 64px);
+    overscroll-behavior: contain;
+}
+
+body.mobile-menu-open {
+    overflow: hidden;
+    height: 100vh;
+    touch-action: none;
+}
+
+@media (max-width: 640px) {
+    .pricing-nav > div:first-child {
+        height: 64px !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+}
