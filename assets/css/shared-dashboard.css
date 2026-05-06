@@ -1,27 +1,97 @@
-body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background-color: #F8F9FB;
-    color: #111827;
-    -webkit-font-smoothing: antialiased;
+/* 
+ * FluxyOS Premium Dashboard Styles
+ */
+
+:root {
+    --fluxy-orange: #E85D19;
+    --fluxy-orange-hover: #D44400;
+    --sidebar-bg: #0B0F19;
 }
-.font-mono { font-family: 'Fira Code', monospace; }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+/* Smooth Fade-In for New Data */
+.animate-in {
+    animation-duration: 0.5s;
+    animation-fill-mode: both;
+}
 
-/* Sidebar Collapse Styles */
-#sidebar { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-#sidebar.collapsed { width: 80px; }
-#sidebar.collapsed .sidebar-text,
-#sidebar.collapsed .section-label,
-#sidebar.collapsed .user-info,
-#sidebar.collapsed .user-chevron { display: none; }
-#sidebar.collapsed .nav-item { justify-content: center; padding-left: 0; padding-right: 0; }
-#sidebar.collapsed .nav-badge { display: none; }
-#sidebar.collapsed .logo-text { display: none; }
-#sidebar.collapsed .logo-area { padding-left: 0; padding-right: 0; justify-content: center; }
-#sidebar.collapsed .toggle-btn-container { justify-content: center; padding: 1rem 0; border-bottom: 1px solid rgba(31, 41, 55, 0.6); }
-#sidebar.collapsed .toggle-icon { transform: rotate(180deg); }
+.fade-in {
+    animation-name: fadeIn;
+}
+
+.zoom-in-95 {
+    animation-name: zoomIn95;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes zoomIn95 {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Glassmorphism for Modal Background */
+.backdrop-blur-sm {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+/* AI Gradient Border (Premium Effect) */
+.ai-gradient-border {
+    position: relative;
+    border-radius: 0.75rem;
+    background: white;
+    padding: 1px;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.ai-gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(45deg, #EA580C, #F97316, #FB923C, #EA580C);
+    background-size: 400% 400%;
+    animation: gradientMove 8s ease infinite;
+    z-index: -1;
+}
+
+@keyframes gradientMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Interactive Sidebar Items */
+.nav-item {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-item:hover {
+    transform: translateX(4px);
+}
+
+#sidebar.w-\[80px\] .nav-item:hover {
+    transform: scale(1.1);
+}
+
+/* Custom Scrollbar for Premium Feel */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #E5E7EB;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #D1D5DB;
+}
