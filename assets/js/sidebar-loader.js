@@ -86,6 +86,19 @@
         sidebar.innerHTML = sidebarHTML;
         sidebar.style.display = 'flex';
 
+        // --- LOGOUT LOGIC ---
+        const logoutBtn = sidebar.querySelector('button:contains("Log out")') || 
+                          [...sidebar.querySelectorAll('button')].find(b => b.innerText.includes('Log out'));
+        
+        if (logoutBtn) {
+            logoutBtn.onclick = async () => {
+                const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+                const auth = getAuth();
+                await signOut(auth);
+                window.location.href = 'login.html';
+            };
+        }
+
         // Highlight Active
         const path = window.location.pathname;
         if (path.includes('dashboard.html')) {
