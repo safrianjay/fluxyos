@@ -46,7 +46,7 @@ window.showAddTransactionModal = function() {
                         </div>
                     </div>
                     <button type="submit" id="tx-submit-btn" class="w-full py-4 bg-[#E85D19] hover:bg-[#D44400] text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-                        <span>Deploy Transaction</span>
+                        <span>Add Transaction</span>
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     </button>
                 </form>
@@ -75,28 +75,46 @@ window.showAddTransactionModal = function() {
                 icon: document.getElementById('tx-type').value === 'revenue' ? '💰' : '💸'
             };
 
-            // This requires the global auth and ds (data service) to be available
-            // In a real app, we'd use a better pub/sub, but for now we'll trigger global reload
+            // Initialize Firebase if not already done
+            const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
+            const firebaseConfig = {
+                apiKey: "AIzaSyCaJqmpEMulLdMvRT7mYf2K-XDw46-dT7A",
+                authDomain: "fluxyos.firebaseapp.com",
+                projectId: "fluxyos",
+                storageBucket: "fluxyos.firebasestorage.app",
+                messagingSenderId: "1084252368929",
+                appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+            };
+            
+            let app;
+            if (getApps().length === 0) app = initializeApp(firebaseConfig);
+            else app = getApps()[0];
+
             const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-            const auth = getAuth();
+            const auth = getAuth(app);
             const user = auth.currentUser;
 
             if (user) {
-                // We need to import DataService here or use a global instance
                 const { default: DataService } = await import('./db-service.js');
-                const ds = new DataService(); 
+                const ds = new DataService(app); 
                 await ds.addTransaction(user.uid, data);
                 
                 window.closeAddTransactionModal();
                 if (window.loadDashboard) window.loadDashboard();
                 if (window.loadLedger) window.loadLedger();
+            } else {
+                alert("Session expired. Please log in again.");
             }
         } catch (err) {
             console.error(err);
-            alert("Error deploying transaction. Check console.");
+            if (err.code === 'permission-denied') {
+                alert("Permission Denied: Please ensure Firestore is enabled in your Firebase Console and rules are set to allow authenticated users.");
+            } else {
+                alert("Error deploying transaction: " + err.message);
+            }
         } finally {
             btn.disabled = false;
-            btn.innerText = "Deploy Transaction";
+            btn.innerText = "Add Transaction";
         }
     };
 };
