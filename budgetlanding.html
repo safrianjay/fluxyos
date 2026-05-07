@@ -426,75 +426,79 @@
                 </div>
             </div>
 
-            <div class="relative w-full max-w-lg mx-auto lg:ml-auto perspective-1000">
-                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-orange-500/20 blur-[100px] rounded-full z-0 pointer-events-none"></div>
-                
-                <div class="glass-card rounded-2xl p-6 relative z-10 shadow-2xl shadow-black/50 transform rotate-1 hover:rotate-0 transition-transform duration-500">
-                    
-                    <div class="flex items-center justify-between mb-6 border-b border-gray-700/50 pb-4">
-                        <h3 class="text-white font-bold text-lg">Active Budgets</h3>
-                        <span class="font-mono text-xs text-gray-400">IDR Account</span>
+            <div class="relative w-full max-w-lg mx-auto lg:ml-auto">
+                <div class="bg-white rounded-2xl p-6 relative shadow-[0_24px_64px_rgba(0,0,0,0.35)] border border-gray-200/80">
+
+                    <div class="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
+                        <div class="flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                            <h3 class="text-gray-900 font-bold text-[15px]">Active Budgets</h3>
+                        </div>
+                        <span class="text-[11px] font-medium text-gray-400 bg-gray-100 px-2.5 py-1 rounded-md">IDR Account</span>
                     </div>
 
-                    <div class="space-y-4">
-                        <div class="bg-[#111827] border border-red-500/30 rounded-xl p-4 relative overflow-hidden">
-                            <div class="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
-                            <div class="flex justify-between items-start mb-3 pl-2">
+                    <div class="space-y-3">
+                        <!-- Q3 Ops row -->
+                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-1 h-full bg-red-500 rounded-l-xl"></div>
+                            <div class="flex justify-between items-start mb-3 pl-3">
                                 <div>
-                                    <h4 class="text-sm font-bold text-white">Q3 Ops & Manufacturing</h4>
+                                    <h4 class="text-[13px] font-semibold text-gray-900">Q3 Ops & Manufacturing</h4>
                                     <p class="text-[11px] text-gray-500 mt-0.5">Mitra Tekstil, Logistics</p>
                                 </div>
                                 <div class="text-right">
-                                    <p class="text-[13px] font-mono font-bold text-red-400">Rp 276.0M</p>
-                                    <p class="text-[10px] text-gray-500 uppercase tracking-widest mt-0.5">Spent</p>
+                                    <p class="text-[13px] font-mono font-bold text-gray-900">Rp 276.0M</p>
+                                    <p class="text-[10px] text-gray-400 uppercase tracking-widest mt-0.5">Spent</p>
                                 </div>
                             </div>
-                            <div class="pl-2">
+                            <div class="pl-3">
                                 <div class="flex items-center justify-between mb-1.5">
-                                    <span class="text-[10px] font-bold text-red-400 flex items-center gap-1">
-                                        <div class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div> 92% Consumed
+                                    <span class="text-[10px] font-semibold text-red-600 flex items-center gap-1.5">
+                                        <div class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div>92% Consumed
                                     </span>
-                                    <span class="text-[10px] font-medium text-gray-400">Limit: Rp 300.0M</span>
+                                    <span class="text-[10px] text-gray-400">Limit: Rp 300.0M</span>
                                 </div>
-                                <div class="w-full bg-gray-800 rounded-full h-1.5">
+                                <div class="w-full bg-gray-200 rounded-full h-1.5">
                                     <div class="bg-red-500 h-1.5 rounded-full w-[92%]"></div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="bg-[#111827] border border-orange-500/30 rounded-xl p-4 relative overflow-hidden">
-                            <div class="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
-                            <div class="flex justify-between items-start mb-3 pl-2">
+                        <!-- TikTok Ads row -->
+                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-1 h-full bg-[#EA580C] rounded-l-xl"></div>
+                            <div class="flex justify-between items-start mb-3 pl-3">
                                 <div>
-                                    <h4 class="text-sm font-bold text-white">TikTok Ads Budget</h4>
+                                    <h4 class="text-[13px] font-semibold text-gray-900">TikTok Ads Budget</h4>
                                     <p class="text-[11px] text-gray-500 mt-0.5">Marketing & Growth</p>
                                 </div>
                                 <div class="text-right">
-                                    <p class="text-[13px] font-mono font-bold text-orange-400">Rp 120.5M</p>
-                                    <p class="text-[10px] text-gray-500 uppercase tracking-widest mt-0.5">Spent</p>
+                                    <p class="text-[13px] font-mono font-bold text-gray-900">Rp 120.5M</p>
+                                    <p class="text-[10px] text-gray-400 uppercase tracking-widest mt-0.5">Spent</p>
                                 </div>
                             </div>
-                            <div class="pl-2">
+                            <div class="pl-3">
                                 <div class="flex items-center justify-between mb-1.5">
-                                    <span class="text-[10px] font-bold text-orange-400 flex items-center gap-1">
-                                        <div class="w-1.5 h-1.5 rounded-full bg-orange-500"></div> 75% Consumed
+                                    <span class="text-[10px] font-semibold text-[#EA580C] flex items-center gap-1.5">
+                                        <div class="w-1.5 h-1.5 rounded-full bg-[#EA580C]"></div>75% Consumed
                                     </span>
-                                    <span class="text-[10px] font-medium text-gray-400">Limit: Rp 160.0M</span>
+                                    <span class="text-[10px] text-gray-400">Limit: Rp 160.0M</span>
                                 </div>
-                                <div class="w-full bg-gray-800 rounded-full h-1.5">
-                                    <div class="bg-gradient-to-r from-orange-500 to-[#EA580C] h-1.5 rounded-full w-[75%]"></div>
+                                <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                    <div class="bg-[#EA580C] h-1.5 rounded-full w-[75%]"></div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="bg-blue-900/20 border border-blue-500/20 rounded-xl p-3 flex items-start gap-3 mt-2">
-                            <div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <!-- Alert row -->
+                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-3">
+                            <div class="w-6 h-6 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0 mt-0.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                             </div>
                             <div>
-                                <h4 class="text-[11px] font-bold text-blue-300">FluxyOS Insight</h4>
-                                <p class="text-[11px] text-gray-400 mt-0.5 leading-tight">
-                                    Ops budget is depleting faster than projected. Re-allocate funds from Wealth Management surplus to avoid freeze.
+                                <h4 class="text-[11px] font-bold text-amber-800">Budget Alert</h4>
+                                <p class="text-[11px] text-amber-700 mt-0.5 leading-snug">
+                                    Ops budget depleting faster than projected. Re-allocate surplus funds to avoid freeze.
                                 </p>
                             </div>
                         </div>
