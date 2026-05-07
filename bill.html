@@ -98,7 +98,7 @@
 
         onAuthStateChanged(auth, (user) => {
             if (user) window.loadBills();
-            else window.location.replace('login.html');
+            else window.location.replace('/login');
         });
 
         window.loadBills = async function() {

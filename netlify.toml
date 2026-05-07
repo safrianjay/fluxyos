@@ -1,3 +1,10 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[build.processing.html]
+  pretty_urls = true
+
 [[redirects]]
   from = "/api/v1/*"
   to = "/.netlify/functions/api/:splat"
@@ -5,15 +12,6 @@
 
 [[redirects]]
   from = "/"
-  to = "/fluxyos.html"
+  to = "/fluxyos"
   status = 301
   force = true
-
-[[redirects]]
-  from = "/*"
-  to = "/:splat"
-  status = 200
-
-[build]
-  publish = "."
-  functions = "netlify/functions"

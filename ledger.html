@@ -111,7 +111,7 @@
 
         // SMART AUTH GUARD
         let checkTimeout = setTimeout(() => {
-            window.location.replace('login.html');
+            window.location.replace('/login');
         }, 2000);
 
         onAuthStateChanged(auth, (user) => {

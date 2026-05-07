@@ -181,7 +181,7 @@
         <div class="w-full max-w-[340px]">
             
             <!-- Logo -->
-            <a href="fluxyos.html" class="flex items-center gap-2 cursor-pointer group mb-4 inline-flex">
+            <a href="/fluxyos" class="flex items-center gap-2 cursor-pointer group mb-4 inline-flex">
                 <div class="w-7 h-7 text-[#EA580C] shadow-sm flex-shrink-0">
                     <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
                         <rect width="40" height="40" rx="8" fill="currentColor" />
@@ -289,7 +289,7 @@
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     console.log("User detected, moving to dashboard...");
-                    window.location.href = 'dashboard.html';
+                    window.location.href = '/dashboard';
                 }
             });
 
