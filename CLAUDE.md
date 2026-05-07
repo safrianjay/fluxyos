@@ -50,6 +50,8 @@ Key things it covers that prevent mistakes:
 - Footer loads on all **landing pages** only — never on dashboard app pages (`dashboard.html`, `bill.html`, `subscription.html`)
 - Amount formatting: Indonesian Rupiah with `.` as thousands separator (e.g. `1.234.567`)
 - Amount stored in Firestore as raw integer (dots stripped before save)
-- Brand colors: Orange `#EA580C` (CTA/accent), Dark Navy `#0B0F19` (footer/login bg), Purple glow for canvas animation
+- Brand colors: Orange `#EA580C` (accent only: text, icons, borders, gradients), Dark Navy `#0B0F19` (footer/login bg), Purple glow for canvas animation
+  - **DESIGN RULE: Orange backgrounds are PROHIBITED project-wide.** Orange is reserved for accents, CTAs, and visual highlights only. Never use orange as a background color on any page (landing or app).
+- Currency display: All monetary amounts must use Rp (Indonesian Rupiah) format with dot separators. Never use $ or other currencies.
 - Favicon: black F-logo SVG at `assets/images/favicon.svg`
 - Git: commit on worktree branch → merge to `main` in `/Users/slumdogmacbookair/Desktop/fluxionos` → push origin main
