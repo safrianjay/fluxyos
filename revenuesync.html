@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revenue Sync | FluxyOS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .font-mono { font-family: 'Fira Code', monospace; }
+
+        .gradient-text {
+            background: linear-gradient(to right, #F97316, #EA580C);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-gradient {
+            background: linear-gradient(135deg, #F9FAFB 0%, #FFFFFF 100%);
+        }
+
+        .platform-card {
+            transition: all 0.3s ease;
+        }
+
+        .platform-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-bg {
+            background: #F9FAFB;
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #FEE7DB;
+            color: #EA580C;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- NAVBAR -->
+    <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
+            <div class="flex items-center gap-12 h-full">
+                <a href="fluxyos.html" class="flex items-center gap-2.5 cursor-pointer group">
+                    <div class="w-8 h-8 text-black shadow-sm group-hover:scale-105 transition-transform duration-200">
+                        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                            <rect width="40" height="40" rx="8" fill="currentColor" />
+                            <g transform="translate(1.5, 0)">
+                                <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                                <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                            </g>
+                        </svg>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-gray-900">FluxyOS</span>
+                </a>
+
+                <div class="hidden lg:flex items-center gap-8 h-full">
+                    <div class="group h-full flex items-center">
+                        <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
+                            Platform
+                            <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+
+                        <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="max-w-[1280px] mx-auto flex">
+                                <div class="flex-1 py-10 px-6 flex gap-12">
+                                    <div class="flex-[2]">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Features</h4>
+                                        <div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                                            <a href="/budgetlanding" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Dynamic Budgeting</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Allocate and track funds live</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Vendor Spend</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Manage SaaS & contract payouts</div>
+                                                </div>
+                                            </a>
+                                            <a href="/revenuesync" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-[#EA580C] bg-orange-50 flex items-center justify-center flex-shrink-0 text-[#EA580C]">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 text-[#EA580C]">Revenue Sync</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Ingest client retainers & POS</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Receipt Capture</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Automate manual paper chasing</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex-1">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Platform</h4>
+                                        <div class="space-y-8">
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">FluxyOS AI Agents</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Multiply finance efficiency instantly</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Global Ready</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Reconcile 120+ currencies globally</div>
+                                                </div>
+                                            </a>
+                                            <a href="/integration" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l-4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Native Integrations</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Connect ERPs, HRIS & Productivity</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="#" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Customers</a>
+                    <a href="/pricing" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Pricing</a>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <a href="/login" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Sign in</a>
+                <a href="/pricing" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-6 py-3 rounded-md transition-all duration-200 shadow-sm hover:shadow text-center">
+                    Try FluxyOS
+                </a>
+                <button type="button" class="mobile-menu-toggle lg:hidden w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-800 flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M4 7h16M4 12h16M4 17h16"></path></svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <section class="hero-gradient py-20 md:py-32 px-6">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div>
+                    <div class="inline-block bg-orange-50 text-[#EA580C] px-4 py-2 rounded-full text-[13px] font-bold mb-6 border border-orange-100">
+                        Real-Time Revenue Intelligence
+                    </div>
+
+                    <h1 class="text-[48px] md:text-[56px] font-bold tracking-tight leading-[1.1] text-gray-900 mb-6">
+                        Sync revenue from every channel
+                    </h1>
+
+                    <p class="text-[18px] text-gray-600 leading-relaxed mb-8 max-w-xl">
+                        Connect Stripe, Shopify, Tokopedia, TikTok Shop, and 50+ payment platforms to unify all your revenue streams into one live ledger. No manual work. Real-time reconciliation.
+                    </p>
+
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-8 py-4 rounded-md transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
+                            Start Syncing Now
+                        </a>
+                        <a href="#platforms" class="border-2 border-gray-300 text-gray-900 font-semibold text-[15px] px-8 py-3 rounded-md hover:border-gray-400 transition-colors inline-block text-center">
+                            Explore Platforms
+                        </a>
+                    </div>
+
+                    <div class="mt-12 flex items-center gap-8">
+                        <div>
+                            <div class="text-[32px] font-bold text-gray-900">250+</div>
+                            <p class="text-[14px] text-gray-600">Payment Partners</p>
+                        </div>
+                        <div>
+                            <div class="text-[32px] font-bold text-gray-900">$50B+</div>
+                            <p class="text-[14px] text-gray-600">Annual TPV Synced</p>
+                        </div>
+                        <div>
+                            <div class="text-[32px] font-bold text-gray-900">&lt;30s</div>
+                            <p class="text-[14px] text-gray-600">Sync Latency</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hero Illustration -->
+                <div class="relative h-[400px] md:h-[500px] bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl border border-gray-200 flex items-center justify-center overflow-hidden group">
+                    <div class="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImEiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblRyYW5zZm9ybT0ic2NhbGUoMSkiPjxyZWN0IHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iIzAwMDAwMCIvPjwvcGF0dGVybj48L2RlZnM+PC9zdmc+')]"></div>
+
+                    <!-- Revenue Sync Flow Diagram -->
+                    <div class="relative z-10 w-full h-full flex flex-col items-center justify-center px-6 space-y-6">
+                        <!-- Top platforms -->
+                        <div class="flex gap-4">
+                            <div class="w-14 h-14 bg-white rounded-lg border border-gray-200 flex items-center justify-center font-bold text-[12px] shadow-sm">Stripe</div>
+                            <div class="w-14 h-14 bg-white rounded-lg border border-gray-200 flex items-center justify-center font-bold text-[12px] shadow-sm">Shopify</div>
+                            <div class="w-14 h-14 bg-white rounded-lg border border-gray-200 flex items-center justify-center font-bold text-[11px] shadow-sm">Tokopedia</div>
+                        </div>
+
+                        <!-- Flow arrows -->
+                        <div class="text-2xl text-gray-400">↓ ↓ ↓</div>
+
+                        <!-- Central sync -->
+                        <div class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white rounded-xl px-8 py-4 font-bold text-center shadow-lg">
+                            <div>Revenue Sync</div>
+                            <div class="text-[12px] font-normal mt-1 opacity-90">Unified in seconds</div>
+                        </div>
+
+                        <!-- Flow arrows down -->
+                        <div class="text-2xl text-gray-400">↓</div>
+
+                        <!-- Result -->
+                        <div class="bg-white rounded-lg border-2 border-[#EA580C] px-6 py-3 text-center shadow-sm">
+                            <div class="text-[12px] text-gray-600">Live Ledger Updated</div>
+                            <div class="font-bold text-gray-900">Rp 125.456.789</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- KEY BENEFITS -->
+    <section class="py-16 md:py-24 px-6">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-[40px] md:text-[48px] font-bold tracking-tight text-gray-900 mb-4">
+                    Why businesses choose Revenue Sync
+                </h2>
+                <p class="text-[18px] text-gray-600 max-w-2xl mx-auto">
+                    Stop losing money to manual reconciliation. Get real-time visibility into your revenue across all channels.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+                    <div class="feature-icon mb-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Instant Reconciliation</h3>
+                    <p class="text-[15px] text-gray-600 leading-relaxed">
+                        Every transaction syncs to your ledger in under 30 seconds. No more waiting for bank settlement windows or manual CSV uploads.
+                    </p>
+                </div>
+
+                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+                    <div class="feature-icon mb-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    </div>
+                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Multi-Channel Consolidation</h3>
+                    <p class="text-[15px] text-gray-600 leading-relaxed">
+                        Track revenue from your POS system, e-commerce stores, marketplaces, and payment gateways in a single unified dashboard.
+                    </p>
+                </div>
+
+                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+                    <div class="feature-icon mb-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Zero Manual Work</h3>
+                    <p class="text-[15px] text-gray-600 leading-relaxed">
+                        API-powered syncing means no copy-paste, no data entry errors, no Friday night reconciliation. Just set up once and forget.
+                    </p>
+                </div>
+
+                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+                    <div class="feature-icon mb-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Accurate Cash Flow</h3>
+                    <p class="text-[15px] text-gray-600 leading-relaxed">
+                        Know exactly how much money is flowing in from each channel. Track discrepancies instantly before they become problems.
+                    </p>
+                </div>
+
+                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+                    <div class="feature-icon mb-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    </div>
+                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Bank-Level Security</h3>
+                    <p class="text-[15px] text-gray-600 leading-relaxed">
+                        Encrypted connections to all payment providers. Read-only API access means your transactions are safe and auditable.
+                    </p>
+                </div>
+
+                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+                    <div class="feature-icon mb-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">AI-Powered Insights</h3>
+                    <p class="text-[15px] text-gray-600 leading-relaxed">
+                        Ask Fluxy AI to identify trends, spot anomalies, and find hidden revenue leaks across all your channels.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SUPPORTED PLATFORMS -->
+    <section id="platforms" class="section-bg py-16 md:py-24 px-6">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-[40px] md:text-[48px] font-bold tracking-tight text-gray-900 mb-4">
+                    Connect your favorite platforms
+                </h2>
+                <p class="text-[18px] text-gray-600 max-w-2xl mx-auto">
+                    Revenue Sync works with all major payment processors, POS systems, and marketplaces.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                <!-- Stripe -->
+                <div class="platform-card bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center mb-3 text-white font-bold">S</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">Stripe</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Payments</p>
+                </div>
+
+                <!-- Shopify -->
+                <div class="platform-card bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[18px]">◆</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">Shopify</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">E-Commerce</p>
+                </div>
+
+                <!-- Tokopedia -->
+                <div class="platform-card bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[12px]">TO</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">Tokopedia</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Marketplace</p>
+                </div>
+
+                <!-- TikTok Shop -->
+                <div class="platform-card bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 bg-black rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[12px]">TT</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">TikTok Shop</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Marketplace</p>
+                </div>
+
+                <!-- PayPal -->
+                <div class="platform-card bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 bg-yellow-600 rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[12px]">PP</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">PayPal</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Payments</p>
+                </div>
+
+                <!-- Square -->
+                <div class="platform-card bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[18px]">⬜</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">Square</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">POS / Payments</p>
+                </div>
+
+                <!-- Xendit -->
+                <div class="platform-card bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[12px]">XD</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">Xendit</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Payments</p>
+                </div>
+
+                <!-- Midtrans -->
+                <div class="platform-card bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[12px]">MD</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">Midtrans</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Payments</p>
+                </div>
+
+                <!-- WooCommerce -->
+                <div class="platform-card bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center">
+                    <div class="w-12 h-12 bg-purple-700 rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[12px]">WC</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">WooCommerce</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">E-Commerce</p>
+                </div>
+
+                <!-- Add More -->
+                <div class="platform-card bg-white rounded-xl border-2 border-dashed border-gray-300 p-6 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-[#EA580C] transition-colors">
+                    <div class="w-12 h-12 rounded-lg border-2 border-gray-300 flex items-center justify-center mb-3 group-hover:border-[#EA580C]">
+                        <svg class="w-6 h-6 text-gray-400 group-hover:text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    </div>
+                    <h3 class="font-bold text-gray-900 text-[14px] group-hover:text-[#EA580C]">More</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">250+ integrations</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- USE CASES -->
+    <section class="py-16 md:py-24 px-6">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-[40px] md:text-[48px] font-bold tracking-tight text-gray-900 mb-4">
+                    Built for growing businesses
+                </h2>
+                <p class="text-[18px] text-gray-600 max-w-2xl mx-auto">
+                    Whether you run a boutique e-commerce brand or manage multiple stores, Revenue Sync scales with you.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Use Case 1 -->
+                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+                    <div class="w-14 h-14 bg-orange-50 rounded-lg flex items-center justify-center mb-4 text-2xl">🛍️</div>
+                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">E-Commerce Brands</h3>
+                    <p class="text-[15px] text-gray-600 leading-relaxed mb-4">
+                        Selling on Tokopedia, Shopify, and your own website? Sync all revenue in real-time to see which channel drives the most profit.
+                    </p>
+                    <div class="space-y-2 text-[14px] text-gray-600">
+                        <p>✓ Track POS + online marketplace revenue</p>
+                        <p>✓ Identify top-performing channels</p>
+                        <p>✓ Catch discrepancies instantly</p>
+                    </div>
+                </div>
+
+                <!-- Use Case 2 -->
+                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+                    <div class="w-14 h-14 bg-orange-50 rounded-lg flex items-center justify-center mb-4 text-2xl">🏪</div>
+                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Multi-Store Retailers</h3>
+                    <p class="text-[15px] text-gray-600 leading-relaxed mb-4">
+                        Managing 5 physical stores with different POS systems? Consolidate all revenue in one dashboard for accurate P&L reporting.
+                    </p>
+                    <div class="space-y-2 text-[14px] text-gray-600">
+                        <p>✓ Unified P&L across all stores</p>
+                        <p>✓ Regional revenue comparison</p>
+                        <p>✓ Zero data duplication</p>
+                    </div>
+                </div>
+
+                <!-- Use Case 3 -->
+                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+                    <div class="w-14 h-14 bg-orange-50 rounded-lg flex items-center justify-center mb-4 text-2xl">💳</div>
+                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Payment Aggregators</h3>
+                    <p class="text-[15px] text-gray-600 leading-relaxed mb-4">
+                        Process payments through Stripe, PayPal, and local gateways? Track all incoming funds, fees, and refunds automatically.
+                    </p>
+                    <div class="space-y-2 text-[14px] text-gray-600">
+                        <p>✓ All payment methods in one place</p>
+                        <p>✓ Automatic fee deduction</p>
+                        <p>✓ Refund reconciliation</p>
+                    </div>
+                </div>
+
+                <!-- Use Case 4 -->
+                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+                    <div class="w-14 h-14 bg-orange-50 rounded-lg flex items-center justify-center mb-4 text-2xl">📊</div>
+                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Finance Teams</h3>
+                    <p class="text-[15px] text-gray-600 leading-relaxed mb-4">
+                        Spend hours on manual reconciliation? Automate 95% of the work and focus on analysis instead of data entry.
+                    </p>
+                    <div class="space-y-2 text-[14px] text-gray-600">
+                        <p>✓ Audit trail of all transactions</p>
+                        <p>✓ Instant month-end close</p>
+                        <p>✓ Exception reporting</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA SECTION -->
+    <section class="bg-gradient-to-r from-[#EA580C] to-[#F97316] py-16 md:py-24 px-6">
+        <div class="max-w-[1280px] mx-auto text-center">
+            <h2 class="text-[40px] md:text-[48px] font-bold tracking-tight text-white mb-6">
+                Stop losing revenue to manual work
+            </h2>
+            <p class="text-[18px] text-orange-50 max-w-2xl mx-auto mb-8 leading-relaxed">
+                Set up Revenue Sync in minutes. Sync transactions in real-time. Make smarter business decisions backed by accurate, live data.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/login" class="bg-white text-[#EA580C] font-semibold text-[15px] px-8 py-4 rounded-md hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
+                    Start Free Trial
+                </a>
+                <a href="#platforms" class="border-2 border-white text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:bg-white/10 transition-colors inline-block text-center">
+                    View Integrations
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER PLACEHOLDER -->
+    <footer id="footer"></footer>
+
+    <script src="assets/js/footer-loader.js"></script>
+</body>
+</html>
