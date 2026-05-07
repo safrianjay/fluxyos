@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FluxyOS | Sign In</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,11 +14,13 @@
 
     <!-- LEFT COMPONENT: Image, Branding & Network Graphic -->
     <div class="hidden lg:flex lg:w-1/2 bg-[#0B0F19] relative overflow-hidden flex-col justify-between p-12">
+        <!-- Universe starfield background -->
+        <canvas id="login-universe-canvas" class="absolute inset-0 w-full h-full" style="z-index:2;pointer-events:none;"></canvas>
         <!-- Background Image with Overlay -->
-        <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" alt="Abstract Tech Background" class="absolute inset-0 h-full w-full object-cover opacity-30 mix-blend-screen" />
-        
+        <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" alt="Abstract Tech Background" class="absolute inset-0 h-full w-full object-cover opacity-30 mix-blend-screen" style="z-index:1;" />
+
         <!-- Gradient overlay to ensure text readability -->
-        <div class="absolute inset-0 bg-gradient-to-t from-[#0B0F19] via-[#0B0F19]/80 to-transparent"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-[#0B0F19] via-[#0B0F19]/80 to-transparent" style="z-index:3;"></div>
 
         <!-- Top Area: System Status -->
         <div class="relative z-10 flex items-center gap-2">
@@ -164,9 +167,27 @@
             <!-- Testimonial/Metrics Mockup -->
             <div class="flex items-center gap-4 pt-6 border-t border-gray-800/60">
                 <div class="flex -space-x-2">
-                    <img class="w-8 h-8 rounded-full border-2 border-[#0B0F19]" src="https://i.pravatar.cc/100?img=1" alt="User">
-                    <img class="w-8 h-8 rounded-full border-2 border-[#0B0F19]" src="https://i.pravatar.cc/100?img=2" alt="User">
-                    <img class="w-8 h-8 rounded-full border-2 border-[#0B0F19]" src="https://i.pravatar.cc/100?img=3" alt="User">
+                    <!-- Stripe-like logo -->
+                    <div class="w-8 h-8 rounded-full border-2 border-[#0B0F19] overflow-hidden" title="Stripe">
+                        <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="32" height="32" fill="#635BFF"/>
+                            <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" fill="white" font-size="14" font-weight="700" font-family="Arial, sans-serif">S</text>
+                        </svg>
+                    </div>
+                    <!-- Notion-like logo -->
+                    <div class="w-8 h-8 rounded-full border-2 border-[#0B0F19] overflow-hidden" title="Notion">
+                        <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="32" height="32" fill="#191919"/>
+                            <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" fill="white" font-size="14" font-weight="700" font-family="Arial, sans-serif">N</text>
+                        </svg>
+                    </div>
+                    <!-- HubSpot-like logo -->
+                    <div class="w-8 h-8 rounded-full border-2 border-[#0B0F19] overflow-hidden" title="HubSpot">
+                        <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="32" height="32" fill="#FF7A59"/>
+                            <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" fill="white" font-size="14" font-weight="700" font-family="Arial, sans-serif">H</text>
+                        </svg>
+                    </div>
                 </div>
                 <div class="text-[12px] text-gray-400">
                     Trusted by <span class="text-white font-bold">1,200+</span> finance teams
@@ -327,5 +348,7 @@
             console.error("Firebase Init Error", e);
         }
     </script>
+    <script src="assets/js/universe-canvas.js"></script>
+    <script>initUniverseCanvas(document.getElementById('login-universe-canvas'));</script>
 </body>
 </html>

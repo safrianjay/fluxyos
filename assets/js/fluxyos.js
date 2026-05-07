@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+function _fluxyosInit() {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const canAnimate = !reduceMotion && window.anime;
     const tabButtons = document.querySelectorAll('.tab-btn');
@@ -203,4 +203,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _fluxyosInit);
+} else {
+    _fluxyosInit();
+}
