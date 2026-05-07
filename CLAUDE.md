@@ -1,6 +1,6 @@
 # FluxyOS — Claude Working Rules
 
-## QA Enforcement (MANDATORY)
+## QA Enforcement (MANDATORY) — see QA_CHECKLIST.md
 
 Every change — UI, new page, new feature, bug fix, or logic update — must follow this workflow before being marked complete:
 
