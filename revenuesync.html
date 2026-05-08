@@ -7,6 +7,7 @@
     <title>Revenue Sync | FluxyOS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/fluxyos.css">
 
     <style>
         body {
@@ -76,11 +77,12 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <!-- NAVBAR - Universal Header from fluxyos.html -->
-    <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+    <!-- 1. Navigation with Mega Menu -->
+    <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
         <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
             <div class="flex items-center gap-12 h-full">
                 <a href="fluxyos.html" class="flex items-center gap-2.5 cursor-pointer group">
+                    <!-- NEW LOGO -->
                     <div class="w-8 h-8 text-black shadow-sm group-hover:scale-105 transition-transform duration-200">
                         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
                             <rect width="40" height="40" rx="8" fill="currentColor" />
@@ -92,50 +94,347 @@
                     </div>
                     <span class="font-bold text-xl tracking-tight text-gray-900">FluxyOS</span>
                 </a>
-
+                
                 <div class="hidden lg:flex items-center gap-8 h-full">
+                    
+                    <!-- Platform Mega Menu Trigger -->
                     <div class="group h-full flex items-center">
                         <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
-                            Platform
+                            Platform 
                             <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
+
+                        <!-- Platform Dropdown Panel -->
                         <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                            <div class="max-w-[1280px] mx-auto flex py-10 px-6 gap-12">
-                                <div class="flex-[2]">
-                                    <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Features</h4>
-                                    <div class="grid grid-cols-2 gap-x-8 gap-y-8">
-                                        <a href="/budgetlanding" class="flex items-start gap-4 group/item">
-                                            <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                                            </div>
-                                            <div>
-                                                <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Dynamic Budgeting</div>
-                                                <div class="text-[13px] text-gray-500 leading-snug">Allocate and track funds live</div>
-                                            </div>
-                                        </a>
-                                        <a href="/revenuesync" class="flex items-start gap-4 group/item">
-                                            <div class="w-10 h-10 rounded-lg border border-[#EA580C] bg-white flex items-center justify-center flex-shrink-0 text-[#EA580C]">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
-                                            </div>
-                                            <div>
-                                                <div class="text-[15px] font-bold text-gray-900 mb-0.5 text-[#EA580C]">Revenue Sync</div>
-                                                <div class="text-[13px] text-gray-500 leading-snug">Ingest client retainers & POS</div>
-                                            </div>
-                                        </a>
+                            <div class="max-w-[1280px] mx-auto flex">
+                                
+                                <!-- Columns Area -->
+                                <div class="flex-1 py-10 px-6 flex gap-12">
+                                    
+                                    <!-- Features Column -->
+                                    <div class="flex-[2]">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Features</h4>
+                                        <div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                                            <a href="/budgetlanding" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Dynamic Budgeting</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Allocate and track funds live</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Vendor Spend</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Manage SaaS & contract payouts</div>
+                                                </div>
+                                            </a>
+                                            <a href="/revenuesync" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-[#EA580C] bg-white flex items-center justify-center flex-shrink-0 text-[#EA580C]">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-[#EA580C] mb-0.5 transition-colors">Revenue Sync</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Ingest client retainers & POS</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Receipt Capture</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Automate manual paper chasing</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <!-- Platform Column -->
+                                    <div class="flex-1">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Platform</h4>
+                                        <div class="space-y-8">
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] text-gray-600 transition-colors relative">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">FluxyOS AI Agents</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Multiply finance efficiency instantly</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Global Ready</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Reconcile 120+ currencies globally</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l-4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Native Integrations</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Connect ERPs, HRIS & Productivity</div>
+                                                </div>
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
+
+                                <!-- Right Sidebar: New Release -->
+                                <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
+                                    <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">New Release</h4>
+                                    
+                                    <a href="#" class="block group/release cursor-pointer mb-4">
+                                        <div class="bg-black rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-md group-hover/release:shadow-lg transition-all">
+                                            <!-- Grainy Overlay Simulation -->
+                                            <div class="absolute inset-0 opacity-40 mix-blend-overlay bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiAvPgo8cGF0aCBkPSJNMCAwSDRWNEgwWiIgZmlsbD0ibm9uZSIvPjwvc3ZnPg==')]"></div>
+                                            <!-- Gradient -->
+                                            <div class="absolute inset-0 bg-gradient-to-tr from-gray-900 via-black to-gray-800"></div>
+                                            
+                                            <h3 class="relative z-10 text-white font-bold text-[36px] leading-[0.9] tracking-tighter">
+                                                SPRING<br/>RELEASE<br/><span class="text-gray-400">2026</span>
+                                            </h3>
+                                        </div>
+                                        
+                                        <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">
+                                            WhatsApp AI Agents &rarr;
+                                        </h5>
+                                        <p class="text-[13px] text-gray-500 leading-relaxed">
+                                            Chat directly with your ledger to resolve missing receipts, sync vendors, and check live budgets on the go.
+                                        </p>
+                                    </a>
+                                </div>
+
                             </div>
                         </div>
                     </div>
-                    <a href="#platforms" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Integrations</a>
+
+                    <!-- NEW: Use Cases Mega Menu Trigger -->
+                    <div class="group h-full flex items-center">
+                        <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
+                            Use Cases 
+                            <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+
+                        <!-- Use Cases Dropdown Panel -->
+                        <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="max-w-[1280px] mx-auto flex">
+                                
+                                <!-- Columns Area -->
+                                <div class="flex-1 py-10 px-6 flex gap-12">
+                                    
+                                    <!-- Industry Column -->
+                                    <div class="flex-[2]">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">By Industry</h4>
+                                        <div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">E-Commerce Brands</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Reconcile thousands of POS & gateway transactions.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Tech Startups & SaaS</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Manage burn rates, runway, and software subscriptions.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Marketing Agencies</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Map digital ad spend to specific client budgets seamlessly.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Retail & Franchises</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Consolidate P&L records across multiple physical locations.</div>
+                                                </div>
+                                            </a>
+                                            <!-- Dropshippers -->
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Dropshippers & Digital Ads</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Scale your active stores by tracking live ad ROI against supplier costs to pinpoint true net margins.</div>
+                                                </div>
+                                            </a>
+                                            <!-- NEW USE CASE: Manufacturing -->
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Manufacturing</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Track live unit economics and manufacturer costs as you scale up operations.</div>
+                                                </div>
+                                            </a>
+                                            <!-- END OF NEW ITEM -->
+                                        </div>
+                                    </div>
+
+                                    <!-- Role Column -->
+                                    <div class="flex-1">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">By Role</h4>
+                                        <div class="space-y-8">
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] text-gray-600 transition-colors relative">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">CFOs & Finance Teams</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Automate reconciliation and month-end closes.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Founders & CEOs</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Real-time visibility into overall business economics.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Department Heads</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Track live spend against allocated internal budgets.</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Sidebar: Featured Case Study -->
+                                <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
+                                    <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">Featured Story</h4>
+                                    
+                                    <a href="#" class="block group/release cursor-pointer mb-4">
+                                        <div class="bg-gray-100 rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-sm border border-gray-200 group-hover/release:shadow-md transition-all">
+                                            <!-- Simple Abstract Image Replacement -->
+                                            <div class="absolute inset-0 bg-gradient-to-tr from-gray-200 to-gray-50 z-0"></div>
+                                            <svg class="absolute top-4 right-4 w-24 h-24 text-gray-300 opacity-50 z-0 transform -rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                                            
+                                            <div class="relative z-10 w-full">
+                                                <span class="bg-[#EA580C] text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wide inline-block mb-2">Case Study</span>
+                                                <h3 class="text-gray-900 font-bold text-[18px] leading-[1.2] tracking-tight">
+                                                    Scaling an Omnichannel Fashion Brand
+                                                </h3>
+                                            </div>
+                                        </div>
+                                        
+                                        <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">
+                                            Read the story &rarr;
+                                        </h5>
+                                        <p class="text-[13px] text-gray-500 leading-relaxed">
+                                            See how a growing modest fashion label unified their retail POS and e-commerce channels to track live unit economics.
+                                        </p>
+                                    </a>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="#" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Customers</a>
+                    <a href="/pricing" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Pricing</a>
                 </div>
             </div>
-
+            
             <div class="flex items-center gap-6">
+                <!-- Language Dropdown -->
+                <div class="relative group cursor-pointer hidden sm:block h-full py-2">
+                    <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors h-full">
+                        <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        EN
+                        <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="absolute right-0 top-[100%] mt-2 w-36 bg-white border border-gray-100 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
+                        <a href="#" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">
+                            English (EN)
+                            <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        </a>
+                        <a href="#" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">Bahasa (ID)</a>
+                    </div>
+                </div>
+
                 <a href="/login" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Sign in</a>
                 <a href="/pricing" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-6 py-3 rounded-md transition-all duration-200 shadow-sm hover:shadow text-center">
                     Try FluxyOS
                 </a>
+                <button type="button" class="mobile-menu-toggle lg:hidden w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-800 flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open navigation menu">
+                    <svg data-menu-open-icon class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M4 7h16M4 12h16M4 17h16"></path></svg>
+                    <svg data-menu-close-icon class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="mobile-menu" class="mobile-menu-panel hidden lg:hidden fixed left-0 right-0 top-[64px] z-[60] bg-white border-b border-gray-200 shadow-[0_20px_40px_-18px_rgba(0,0,0,0.2)] overflow-y-auto">
+            <div class="px-5 py-6 space-y-7">
+                <div>
+                    <h4 class="text-[12px] font-bold text-gray-900 uppercase tracking-wider mb-4">Platform</h4>
+                    <div class="grid grid-cols-1 gap-3">
+                        <a href="/budgetlanding" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Dynamic Budgeting</span><span class="block text-[13px] text-gray-500">Allocate and track funds live</span></span>
+                        </a>
+                        <a href="#" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Vendor Spend</span><span class="block text-[13px] text-gray-500">Manage SaaS & contract payouts</span></span>
+                        </a>
+                        <a href="/revenuesync" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Revenue Sync</span><span class="block text-[13px] text-gray-500">Ingest client retainers & POS</span></span>
+                        </a>
+                        <a href="#" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">FluxyOS AI Agents</span><span class="block text-[13px] text-gray-500">Multiply finance efficiency instantly</span></span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-[12px] font-bold text-gray-900 uppercase tracking-wider mb-4">Use Cases</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">E-Commerce Brands</span><span class="block text-[13px] text-gray-500">Reconcile POS & gateway transactions.</span></a>
+                        <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Tech Startups & SaaS</span><span class="block text-[13px] text-gray-500">Manage burn, runway, and subscriptions.</span></a>
+                        <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Marketing Agencies</span><span class="block text-[13px] text-gray-500">Map ad spend to client budgets.</span></a>
+                        <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Manufacturing</span><span class="block text-[13px] text-gray-500">Track unit economics and costs.</span></a>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="#" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Customers</a>
+                    <a href="/pricing" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Pricing</a>
+                    <a href="/login" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Sign in</a>
+                    <a href="/pricing" class="mobile-menu-link rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F97316] px-4 py-3 text-[15px] font-semibold text-white text-center shadow-sm">Try FluxyOS</a>
+                </div>
             </div>
         </div>
     </nav>
@@ -241,7 +540,11 @@
                                 <div class="text-xs text-gray-500">Marketplace</div>
                             </div>
                             <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center opacity-75">
-                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 24 24" fill="#36424b"><path d="M11.4 6h1.2v7.56H9v-1.2h2.4V6zm-7.2 0h4.8v1.2H6v2.4h3.6v1.2H6v3.96h4.8v1.2H4.2V6z"/></svg>
+                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                                    <polygon points="24,4 42,14 42,34 24,44 6,34 6,14" fill="none" stroke="#4A6CB7" stroke-width="3"/>
+                                    <line x1="14" y1="14" x2="34" y2="34" stroke="#E04E4E" stroke-width="3"/>
+                                    <line x1="34" y1="14" x2="14" y2="34" stroke="#4A6CB7" stroke-width="3"/>
+                                </svg>
                                 <div class="text-sm font-bold text-gray-900 mb-1">Xendit</div>
                                 <div class="text-xs text-gray-500">Payments</div>
                             </div>
@@ -456,25 +759,38 @@
                 </div>
 
                 <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 24 24" fill="#FF6B35"><text x="12" y="18" text-anchor="middle" font-size="16" font-weight="bold" font-family="Arial">M</text></svg>
+                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                        <text x="24" y="34" text-anchor="middle" font-size="22" font-weight="700" font-family="Arial, sans-serif" fill="#3853A4" font-style="italic">moka</text>
+                    </svg>
                     <h3 class="font-bold text-gray-900 text-[14px]">Moka</h3>
                     <p class="text-[12px] text-gray-500 mt-1">POS / Payments</p>
                 </div>
 
                 <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 24 24" fill="#7B2CBF"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
+                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                        <polygon points="24,4 42,14 42,34 24,44 6,34 6,14" fill="none" stroke="#4A6CB7" stroke-width="3"/>
+                        <line x1="14" y1="14" x2="34" y2="34" stroke="#E04E4E" stroke-width="3"/>
+                        <line x1="34" y1="14" x2="14" y2="34" stroke="#4A6CB7" stroke-width="3"/>
+                    </svg>
                     <h3 class="font-bold text-gray-900 text-[14px]">Xendit</h3>
                     <p class="text-[12px] text-gray-500 mt-1">Payments</p>
                 </div>
 
                 <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 24 24" fill="#E60000"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
+                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="8" y="14" width="3" height="20" rx="1.5" fill="#7BB7E8"/>
+                        <rect x="14" y="10" width="3" height="28" rx="1.5" fill="#0B2545"/>
+                        <rect x="20" y="14" width="3" height="20" rx="1.5" fill="#7BB7E8"/>
+                        <text x="40" y="32" text-anchor="middle" font-size="14" font-weight="700" font-family="Arial, sans-serif" fill="#0B2545">M</text>
+                    </svg>
                     <h3 class="font-bold text-gray-900 text-[14px]">Midtrans</h3>
                     <p class="text-[12px] text-gray-500 mt-1">Payments</p>
                 </div>
 
                 <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 24 24" fill="#96588A"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
+                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                        <text x="24" y="34" text-anchor="middle" font-size="20" font-weight="900" font-family="Arial, sans-serif" fill="#873EFF">Woo</text>
+                    </svg>
                     <h3 class="font-bold text-gray-900 text-[14px]">WooCommerce</h3>
                     <p class="text-[12px] text-gray-500 mt-1">E-Commerce</p>
                 </div>
@@ -514,5 +830,6 @@
     <footer id="footer"></footer>
 
     <script src="assets/js/footer-loader.js"></script>
+    <script src="assets/js/fluxyos.js"></script>
 </body>
 </html>
