@@ -45,6 +45,20 @@ Key things it covers that prevent mistakes:
 - Shared JS: `sidebar-loader.js`, `footer-loader.js`, `shared-dashboard.js`, `universe-canvas.js`
 - Shared CSS: `shared-dashboard.css`, `footer.css`
 
+## SEO & AI Overview Optimization
+
+Full SEO strategy lives in **`SEO_STRATEGY.md`** — read before adding new
+landing pages or changing meta/title/heading content.
+
+Quick rules:
+- Every new page MUST ship with: unique `<title>` (≤60 chars), `<meta name="description">` (≤160 chars), canonical URL, Open Graph + Twitter Card tags, and branded 1200×630 OG image.
+- Every page MUST include relevant Schema.org JSON-LD: at minimum `Organization` + `SoftwareApplication` (or `Product` for pricing). Feature pages should also have `FAQPage` and `BreadcrumbList`.
+- Validate schema via [Google Rich Results Test](https://search.google.com/test/rich-results) before pushing — broken JSON-LD silently disqualifies the page from AI Overview.
+- **Lighthouse SEO score ≥95 is a deploy gate** for every landing page.
+- Add new URLs to `sitemap.xml` and update `lastmod` when content materially changes.
+- For AI Overview eligibility: use the "**Product** is a [category] that [does X]" pattern in the first paragraph. Add real FAQ sections (visible on page) backed by `FAQPage` schema.
+- Tailwind CDN is **not** allowed in production (kills LCP). Use the built CSS at `assets/css/tailwind.min.css`.
+
 ## Localization (Bahasa Indonesia)
 
 Full localization strategy lives in **`LOCALIZATION_PLAN.md`** — read before
