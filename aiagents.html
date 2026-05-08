@@ -474,7 +474,7 @@
                     </h1>
 
                     <p class="text-[18px] text-gray-600 leading-relaxed mb-8 max-w-xl">
-                        Six specialists handle the work that keeps your team up late — categorizing transactions, reconciling bank feeds, chasing unpaid invoices, drafting reports. They don't take lunch breaks. They don't make typos. They run the moment a receipt lands.
+                        Six AI agents handle the work that keeps your team up late — categorizing transactions, reconciling bank feeds, chasing unpaid invoices, drafting reports. They read every line, show their reasoning, and ask before anything moves.
                     </p>
 
                     <div class="flex flex-col sm:flex-row gap-4 mb-10">
@@ -504,99 +504,118 @@
                     </div>
                 </div>
 
-                <!-- Right: Live operations dashboard mockup -->
+                <!-- Right: Live AI processing visual -->
                 <div class="lg:col-span-6 relative">
-                    <div class="bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden">
+                    <!-- MAIN: Reza analyzing a transaction in real-time -->
+                    <div class="bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden relative z-10">
                         <!-- Header bar -->
-                        <div class="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
-                            <div class="flex items-center gap-2">
-                                <div class="w-2.5 h-2.5 rounded-full bg-red-400"></div>
-                                <div class="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
-                                <div class="w-2.5 h-2.5 rounded-full bg-green-400"></div>
-                                <span class="ml-3 text-[12px] text-gray-500 font-semibold">Operations Console</span>
+                        <div class="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+                            <div class="flex items-center gap-3">
+                                <div class="avatar-2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0">R</div>
+                                <div>
+                                    <div class="text-[13px] font-bold text-gray-900 flex items-center gap-2">
+                                        Reza is analyzing
+                                        <span class="flex gap-0.5">
+                                            <span class="w-1 h-1 rounded-full bg-blue-500 live-dot"></span>
+                                            <span class="w-1 h-1 rounded-full bg-blue-500 live-dot" style="animation-delay: 0.2s"></span>
+                                            <span class="w-1 h-1 rounded-full bg-blue-500 live-dot" style="animation-delay: 0.4s"></span>
+                                        </span>
+                                    </div>
+                                    <div class="text-[11px] text-gray-500">The Categorizer • Decision in 1.2s</div>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <div class="w-2 h-2 rounded-full bg-green-500 live-dot"></div>
-                                <span class="text-[11px] text-green-700 font-bold uppercase tracking-wider">Live</span>
+                            <div class="flex items-center gap-1.5 text-[10px] bg-green-50 border border-green-100 px-2 py-1 rounded">
+                                <div class="w-1.5 h-1.5 rounded-full bg-green-500 live-dot"></div>
+                                <span class="text-green-700 font-bold uppercase tracking-wider">Live</span>
                             </div>
                         </div>
 
-                        <!-- Agent activity rows -->
-                        <div class="divide-y divide-gray-100">
-                            <!-- Agent 1: Reza working -->
-                            <div class="px-5 py-3.5 flex items-center gap-3 feed-1">
-                                <div class="avatar-2 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[14px] flex-shrink-0">R</div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-[13px] font-bold text-gray-900">Reza</span>
-                                        <span class="text-[11px] text-gray-500">Categorizer</span>
+                        <!-- Body -->
+                        <div class="p-5 space-y-4">
+                            <!-- Input -->
+                            <div>
+                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Input from BCA feed</div>
+                                <div class="bg-gray-50 border border-gray-200 rounded-md px-3 py-2.5 font-mono text-[12px] text-gray-700">
+                                    <div class="flex justify-between items-center">
+                                        <span class="truncate">BCA-OUT &nbsp;AMAZN-AWS-CLOUD</span>
+                                        <span class="font-bold text-gray-900">Rp 6.800.000</span>
                                     </div>
-                                    <div class="text-[12px] text-gray-600 truncate">Categorizing 47 transactions from BCA…</div>
-                                </div>
-                                <div class="flex flex-col items-end gap-0.5">
-                                    <div class="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                        <div class="h-full bg-blue-500 rounded-full progress-bar" style="--target-width: 72%; width: 72%;"></div>
-                                    </div>
-                                    <span class="text-[10px] text-gray-500 font-mono">72%</span>
+                                    <div class="text-[10px] text-gray-500 mt-0.5">14/11/2026 • 10:32 WIB</div>
                                 </div>
                             </div>
 
-                            <!-- Agent 2: Lia reconciling -->
-                            <div class="px-5 py-3.5 flex items-center gap-3 feed-2">
-                                <div class="avatar-3 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[14px] flex-shrink-0">L</div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-[13px] font-bold text-gray-900">Lia</span>
-                                        <span class="text-[11px] text-gray-500">Reconciliator</span>
+                            <!-- Reasoning -->
+                            <div>
+                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reasoning</div>
+                                <div class="space-y-1.5">
+                                    <div class="flex items-center gap-2 feed-1">
+                                        <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                        <span class="text-[12px] text-gray-700">Matched vendor: <b>Amazon Web Services</b></span>
                                     </div>
-                                    <div class="text-[12px] text-gray-600 truncate">Matched 247 lines • 3 mismatches flagged</div>
+                                    <div class="flex items-center gap-2 feed-2">
+                                        <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                        <span class="text-[12px] text-gray-700">Found 11 prior monthly charges (avg Rp 6.4M)</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 feed-3">
+                                        <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                        <span class="text-[12px] text-gray-700">Amount within 6% of normal range</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 feed-4">
+                                        <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                        <span class="text-[12px] text-gray-700">No duplicate detected this period</span>
+                                    </div>
                                 </div>
-                                <span class="bg-green-100 text-green-700 text-[10px] font-bold uppercase px-2 py-0.5 rounded">Done</span>
                             </div>
 
-                            <!-- Agent 3: Maya collecting -->
-                            <div class="px-5 py-3.5 flex items-center gap-3 feed-3">
-                                <div class="avatar-1 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[14px] flex-shrink-0">M</div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-[13px] font-bold text-gray-900">Maya</span>
-                                        <span class="text-[11px] text-gray-500">Collector</span>
-                                    </div>
-                                    <div class="text-[12px] text-gray-600 truncate">Sent 18 reminders • Recovered Rp 87M this week</div>
+                            <!-- Decision -->
+                            <div class="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-lg p-3.5">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="text-[10px] font-bold text-[#EA580C] uppercase tracking-wider">Decision</div>
+                                    <div class="text-[11px] font-mono text-gray-600">94% confidence</div>
                                 </div>
-                                <span class="bg-orange-100 text-orange-700 text-[10px] font-bold uppercase px-2 py-0.5 rounded">Working</span>
-                            </div>
-
-                            <!-- Agent 4: Iqbal flagging -->
-                            <div class="px-5 py-3.5 flex items-center gap-3 bg-amber-50/30 feed-4">
-                                <div class="avatar-4 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[14px] flex-shrink-0">I</div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-[13px] font-bold text-gray-900">Iqbal</span>
-                                        <span class="text-[11px] text-gray-500">Watchdog</span>
-                                    </div>
-                                    <div class="text-[12px] text-gray-700 truncate">⚠ Possible duplicate: AWS invoice #441</div>
+                                <div class="text-[14px] font-bold text-gray-900 mb-2">Operations &rarr; Cloud Infrastructure</div>
+                                <div class="h-1.5 bg-white/60 rounded-full overflow-hidden">
+                                    <div class="h-full bg-gradient-to-r from-[#EA580C] to-[#F97316] rounded-full progress-bar" style="--target-width: 94%; width: 94%"></div>
                                 </div>
-                                <span class="bg-amber-100 text-amber-700 text-[10px] font-bold uppercase px-2 py-0.5 rounded">Needs you</span>
                             </div>
                         </div>
 
-                        <!-- Footer summary -->
-                        <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-[12px]">
-                            <span class="text-gray-500">Today's activity</span>
-                            <span class="text-gray-900 font-mono"><span class="font-bold">1,284</span> actions • <span class="font-bold">3</span> need review</span>
+                        <!-- Footer action -->
+                        <div class="px-5 py-3 bg-green-50 border-t border-green-100 flex items-center justify-between text-[12px]">
+                            <div class="flex items-center gap-2 text-green-700">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                <span class="font-bold">Filed automatically</span>
+                            </div>
+                            <span class="text-gray-500">Posted to ledger &middot; 0.4s</span>
                         </div>
                     </div>
 
-                    <!-- Floating "saving you time" badge -->
-                    <div class="absolute -bottom-5 -left-5 bg-white rounded-xl shadow-xl border border-gray-200 px-4 py-3 max-w-[220px] hidden md:block">
-                        <div class="flex items-start gap-2.5">
-                            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-[#EA580C] to-[#F97316] flex items-center justify-center text-white flex-shrink-0">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <!-- FLOATING SIDE: Lia working in parallel -->
+                    <div class="absolute -top-4 -right-4 bg-white rounded-xl shadow-xl border border-gray-200 px-4 py-3 max-w-[210px] hidden md:block z-20">
+                        <div class="flex items-center gap-2.5 mb-2">
+                            <div class="avatar-3 w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-[11px] flex-shrink-0">L</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-[12px] font-bold text-gray-900">Lia</div>
+                                <div class="text-[10px] text-gray-500">Reconciling…</div>
                             </div>
+                            <div class="w-1.5 h-1.5 rounded-full bg-green-500 live-dot"></div>
+                        </div>
+                        <div class="text-[11px] text-gray-600 mb-1.5">Matched 247/250 lines</div>
+                        <div class="h-1 bg-gray-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-green-500 rounded-full progress-bar" style="--target-width: 98%; width: 98%"></div>
+                        </div>
+                    </div>
+
+                    <!-- FLOATING SIDE: Iqbal flagged something -->
+                    <div class="absolute -bottom-5 -left-5 bg-white rounded-xl shadow-xl border border-amber-200 px-4 py-3 max-w-[230px] hidden md:block z-20">
+                        <div class="flex items-start gap-2.5">
+                            <div class="avatar-4 w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-[11px] flex-shrink-0">I</div>
                             <div>
-                                <div class="text-[13px] font-bold text-gray-900">Saved 32 hrs this month</div>
-                                <div class="text-[11px] text-gray-500 leading-snug">vs. manual entry</div>
+                                <div class="text-[12px] font-bold text-gray-900 flex items-center gap-1.5">
+                                    Iqbal flagged a charge
+                                    <span class="bg-amber-100 text-amber-700 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded">Review</span>
+                                </div>
+                                <div class="text-[11px] text-gray-600 leading-snug mt-1">Possible duplicate: AWS invoice #441 looks like #432</div>
                             </div>
                         </div>
                     </div>
@@ -610,11 +629,11 @@
         <div class="max-w-[1280px] mx-auto">
             <div class="max-w-3xl mb-14">
                 <h2 class="text-[32px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4 leading-tight">
-                    Stop doing the work <br class="hidden md:block"/>
-                    <span class="text-gray-500">that doesn't need you.</span>
+                    What your AI team <br class="hidden md:block"/>
+                    <span class="text-gray-500">does, every day.</span>
                 </h2>
                 <p class="text-[16px] text-gray-600 leading-relaxed">
-                    Six specialists each take over one piece of your finance workflow. You step in only when they ask — about 4 minutes a day. Here's what comes off your plate, and who picks it up.
+                    Six AI agents. Six specific finance jobs. They run automatically — categorizing, reconciling, chasing, watching, reporting, filing — so you spend your day on judgment calls, not data entry.
                 </p>
             </div>
 
