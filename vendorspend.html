@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Revenue Sync | FluxyOS</title>
+    <title>Vendor Spend | FluxyOS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/fluxyos.css">
@@ -36,42 +36,24 @@
             color: #EA580C;
         }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-8px); }
+        .vendor-row {
+            transition: background-color 0.15s ease;
+        }
+        .vendor-row:hover {
+            background-color: #F9FAFB;
         }
 
-        .float-item {
-            animation: float 6s ease-in-out infinite;
+        .badge-approved {
+            background: #DCFCE7;
+            color: #166534;
         }
-
-        .float-item:nth-child(2) {
-            animation-delay: 0.5s;
+        .badge-pending {
+            background: #FEF3C7;
+            color: #92400E;
         }
-
-        .float-item:nth-child(3) {
-            animation-delay: 1s;
-        }
-
-        .float-item:nth-child(4) {
-            animation-delay: 1.5s;
-        }
-
-        .hero-orbit {
-            animation: spin 45s linear infinite;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        .gradient-border {
-            background: linear-gradient(135deg, rgba(234, 88, 12, 0.1) 0%, rgba(234, 88, 12, 0) 100%);
-        }
-
-        .hub-gradient {
-            background: linear-gradient(135deg, #FF6B35 0%, #EA580C 50%, #D44400 100%);
+        .badge-paid {
+            background: #DBEAFE;
+            color: #1E40AF;
         }
     </style>
 </head>
@@ -125,20 +107,20 @@
                                                 </div>
                                             </a>
                                             <a href="/vendorspend" class="flex items-start gap-4 group/item">
-                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                <div class="w-10 h-10 rounded-lg border border-[#EA580C] bg-white flex items-center justify-center flex-shrink-0 text-[#EA580C]">
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                                                 </div>
                                                 <div>
-                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Vendor Spend</div>
+                                                    <div class="text-[15px] font-bold text-[#EA580C] mb-0.5 transition-colors">Vendor Spend</div>
                                                     <div class="text-[13px] text-gray-500 leading-snug">Manage SaaS & contract payouts</div>
                                                 </div>
                                             </a>
                                             <a href="/revenuesync" class="flex items-start gap-4 group/item">
-                                                <div class="w-10 h-10 rounded-lg border border-[#EA580C] bg-white flex items-center justify-center flex-shrink-0 text-[#EA580C]">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
                                                 </div>
                                                 <div>
-                                                    <div class="text-[15px] font-bold text-[#EA580C] mb-0.5 transition-colors">Revenue Sync</div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Revenue Sync</div>
                                                     <div class="text-[13px] text-gray-500 leading-snug">Ingest client retainers & POS</div>
                                                 </div>
                                             </a>
@@ -438,119 +420,137 @@
             </div>
         </div>
     </nav>
-
     <!-- HERO SECTION -->
-    <section class="hero-gradient py-16 md:py-28 px-6">
+    <section class="hero-gradient py-16 md:py-24 px-6">
         <div class="max-w-[1280px] mx-auto">
-            <div class="grid md:grid-cols-2 gap-12 items-center">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
                 <div>
-                    <h1 class="text-[48px] md:text-[56px] font-bold tracking-tight leading-[1.1] text-gray-900 mb-6">
-                        Sync revenue from every channel, instantly
+                    <h1 class="text-[44px] md:text-[56px] font-bold tracking-tight leading-[1.05] text-gray-900 mb-6">
+                        Every vendor invoice. <br/>One place to control them.
                     </h1>
 
                     <p class="text-[18px] text-gray-600 leading-relaxed mb-8 max-w-xl">
-                        Connect Stripe, Shopify, Tokopedia, TikTok Shop, Gumroad, and 250+ platforms. Every transaction syncs to your ledger in under 30 seconds. No manual work. Pure automation.
+                        Stop chasing vendor invoices in email threads and Slack messages. Centralize every contract, subscription, and one-off payment so finance always knows what's going out — and why.
                     </p>
 
                     <div class="flex flex-col sm:flex-row gap-4">
                         <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-8 py-4 rounded-md transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
-                            Start Syncing Now
+                            Get started free
                         </a>
-                        <a href="#platforms" class="border-2 border-gray-300 text-gray-900 font-semibold text-[15px] px-8 py-3 rounded-md hover:border-gray-400 transition-colors inline-block text-center">
-                            Explore Integrations
+                        <a href="#workflow" class="border-2 border-gray-300 text-gray-900 font-semibold text-[15px] px-8 py-3 rounded-md hover:border-gray-400 transition-colors inline-block text-center">
+                            See how it works
                         </a>
                     </div>
 
                     <div class="mt-12 flex items-center gap-8">
                         <div>
-                            <div class="text-[32px] font-bold text-gray-900">250+</div>
-                            <p class="text-[14px] text-gray-600">Integrations</p>
+                            <div class="text-[28px] font-bold text-gray-900">12 hrs</div>
+                            <p class="text-[13px] text-gray-600">Saved per month</p>
                         </div>
                         <div>
-                            <div class="text-[32px] font-bold text-gray-900">Rp 50T+</div>
-                            <p class="text-[14px] text-gray-600">TPV Synced</p>
+                            <div class="text-[28px] font-bold text-gray-900">94%</div>
+                            <p class="text-[13px] text-gray-600">Fewer late payments</p>
                         </div>
                         <div>
-                            <div class="text-[32px] font-bold text-gray-900">&lt;30s</div>
-                            <p class="text-[14px] text-gray-600">Sync Latency</p>
+                            <div class="text-[28px] font-bold text-gray-900">3 min</div>
+                            <p class="text-[13px] text-gray-600">Avg. approval time</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Hero Visual: Multi-layer sync mockups -->
-                <div class="relative h-[450px] md:h-[550px] flex items-center justify-center">
-                    <!-- Ambient glow -->
-                    <div class="absolute inset-0 bg-gradient-to-tr from-blue-100/40 via-indigo-50/40 to-transparent rounded-full blur-3xl -z-10 transform scale-110"></div>
-
-                    <!-- Animated orbit -->
-                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] md:w-[450px] md:h-[450px] z-0 pointer-events-none opacity-20">
-                        <svg viewBox="0 0 600 600" class="w-full h-full hero-orbit">
-                            <circle cx="300" cy="300" r="290" fill="none" stroke="#0B0F19" stroke-width="2" stroke-dasharray="16 16" />
-                        </svg>
+                <!-- Hero Visual: Vendor Dashboard Mockup -->
+                <div class="relative">
+                    <div class="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+                        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+                                <span class="ml-3 text-[12px] text-gray-500 font-medium">Vendors • November 2026</span>
+                            </div>
+                            <div class="text-[12px] text-gray-500">Total: <span class="font-bold text-gray-900">Rp 247.8M</span></div>
+                        </div>
+                        <div class="divide-y divide-gray-100">
+                            <div class="vendor-row flex items-center justify-between px-5 py-3.5">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center font-bold text-[12px] text-orange-600">AWS</div>
+                                    <div>
+                                        <div class="text-[14px] font-semibold text-gray-900">Amazon Web Services</div>
+                                        <div class="text-[11px] text-gray-500">Infrastructure • Monthly</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="badge-paid text-[11px] font-bold px-2 py-1 rounded">Paid</span>
+                                    <div class="text-[13px] font-mono font-bold text-gray-900 w-24 text-right">Rp 42.5M</div>
+                                </div>
+                            </div>
+                            <div class="vendor-row flex items-center justify-between px-5 py-3.5">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[12px] text-purple-600">FG</div>
+                                    <div>
+                                        <div class="text-[14px] font-semibold text-gray-900">Figma</div>
+                                        <div class="text-[11px] text-gray-500">Design tools • Annual</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="badge-approved text-[11px] font-bold px-2 py-1 rounded">Approved</span>
+                                    <div class="text-[13px] font-mono font-bold text-gray-900 w-24 text-right">Rp 18.2M</div>
+                                </div>
+                            </div>
+                            <div class="vendor-row flex items-center justify-between px-5 py-3.5 bg-orange-50/30">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[12px] text-blue-600">SL</div>
+                                    <div>
+                                        <div class="text-[14px] font-semibold text-gray-900">Slack</div>
+                                        <div class="text-[11px] text-gray-500">Communication • Monthly</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="badge-pending text-[11px] font-bold px-2 py-1 rounded">Needs approval</span>
+                                    <div class="text-[13px] font-mono font-bold text-gray-900 w-24 text-right">Rp 8.4M</div>
+                                </div>
+                            </div>
+                            <div class="vendor-row flex items-center justify-between px-5 py-3.5">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center font-bold text-[12px] text-gray-700">N</div>
+                                    <div>
+                                        <div class="text-[14px] font-semibold text-gray-900">Notion</div>
+                                        <div class="text-[11px] text-gray-500">Productivity • Monthly</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="badge-paid text-[11px] font-bold px-2 py-1 rounded">Paid</span>
+                                    <div class="text-[13px] font-mono font-bold text-gray-900 w-24 text-right">Rp 3.1M</div>
+                                </div>
+                            </div>
+                            <div class="vendor-row flex items-center justify-between px-5 py-3.5">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center font-bold text-[12px] text-red-600">A</div>
+                                    <div>
+                                        <div class="text-[14px] font-semibold text-gray-900">Adobe Creative Cloud</div>
+                                        <div class="text-[11px] text-gray-500">Design tools • Annual</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="badge-approved text-[11px] font-bold px-2 py-1 rounded">Approved</span>
+                                    <div class="text-[13px] font-mono font-bold text-gray-900 w-24 text-right">Rp 12.8M</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 text-[12px] text-gray-500 flex items-center justify-between">
+                            <span>+ 23 more vendors</span>
+                            <span class="text-[#EA580C] font-semibold cursor-pointer">View all &rarr;</span>
+                        </div>
                     </div>
-
-                    <!-- Floating platform cards -->
-                    <div class="relative z-10 w-full flex flex-col items-center gap-6">
-                        <!-- Row 1: Stripe, Shopify, Tokopedia -->
-                        <div class="flex gap-4 float-item">
-                            <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center">
-                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 512 214" xmlns="http://www.w3.org/2000/svg"><path d="M35.982 83.484c0-5.546 4.551-7.68 12.09-7.68 10.808 0 24.461 3.272 35.27 9.103V51.484c-11.804-4.693-23.466-6.542-35.27-6.542C19.2 44.942 0 60.018 0 85.192c0 39.252 54.044 32.995 54.044 49.92 0 6.541-5.688 8.675-13.653 8.675-11.804 0-26.88-4.836-38.827-11.378v33.849c13.227 5.689 26.596 8.106 38.827 8.106 29.582 0 49.92-14.648 49.92-40.106-.142-42.382-54.329-34.845-54.329-50.774zm96.142-66.986l-34.702 7.395-.142 113.92c0 21.05 15.787 36.551 36.836 36.551 11.662 0 20.195-2.133 24.888-4.693V140.8c-4.55 1.849-27.022 8.391-27.022-12.658V77.653h27.022V47.36h-27.022l.142-30.862zm71.112 41.386L200.96 47.36h-30.72v124.444h35.556V87.467c8.39-10.951 22.613-8.96 27.022-7.396V47.36c-4.551-1.707-21.191-4.836-29.582 10.524zm38.257-10.524h35.698v124.444h-35.698V47.36zm0-4.7l35.698-7.68V0l-35.698 7.538V36.55zm109.938 8.391c-13.938 0-22.898 6.542-27.875 11.094l-1.85-8.818h-31.288v165.83l35.555-7.537.143-40.249c5.12 3.698 12.657 8.96 25.173 8.96 25.458 0 48.64-20.48 48.64-65.564-.142-41.245-23.609-63.716-48.498-63.716zm-8.533 97.991c-8.391 0-13.37-2.986-16.782-6.684l-.143-52.765c3.698-4.124 8.818-6.968 16.925-6.968 12.942 0 21.902 14.506 21.902 33.137 0 19.058-8.818 33.28-21.902 33.28zM512 110.08c0-36.409-17.636-65.138-51.342-65.138-33.85 0-54.33 28.73-54.33 64.854 0 42.808 24.179 64.426 58.88 64.426 16.925 0 29.725-3.84 39.396-9.244v-28.445c-9.67 4.836-20.764 7.823-34.844 7.823-13.796 0-26.027-4.836-27.591-21.618h69.547c0-1.85.284-9.245.284-12.658zm-70.258-13.511c0-16.071 9.814-22.756 18.774-22.756 8.675 0 17.92 6.685 17.92 22.756h-36.694z" fill="#6772E5"/></svg>
-                                <div class="text-sm font-bold text-gray-900 mb-1">Stripe</div>
-                                <div class="text-xs text-gray-500">Payments</div>
+                    <!-- Floating notification card -->
+                    <div class="absolute -bottom-6 -left-6 bg-white rounded-lg shadow-xl border border-gray-200 px-4 py-3 max-w-[260px] hidden md:block">
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                             </div>
-                            <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center">
-                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 256 292" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid"><path d="M223.774 57.34c-.201-1.46-1.48-2.268-2.537-2.357-1.055-.088-23.383-1.743-23.383-1.743s-15.507-15.395-17.209-17.099c-1.703-1.703-5.029-1.185-6.32-.805-.19.056-3.388 1.043-8.678 2.68-5.18-14.906-14.322-28.604-30.405-28.604-.444 0-.901.018-1.358.044C129.31 3.407 123.644.779 118.75.779c-37.465 0-55.364 46.835-60.976 70.635-14.558 4.511-24.9 7.718-26.221 8.133-8.126 2.549-8.383 2.805-9.45 10.462C21.3 95.806.038 260.235.038 260.235l165.678 31.042 89.77-19.42S223.973 58.8 223.775 57.34zM156.49 40.848l-14.019 4.339c.005-.988.01-1.96.01-3.023 0-9.264-1.286-16.723-3.349-22.636 8.287 1.04 13.806 10.469 17.358 21.32zm-27.638-19.483c2.304 5.773 3.802 14.058 3.802 25.238 0 .572-.005 1.095-.01 1.624-9.117 2.824-19.024 5.89-28.953 8.966 5.575-21.516 16.025-31.908 25.161-35.828zm-11.131-10.537c1.617 0 3.246.549 4.805 1.622-12.007 5.65-24.877 19.88-30.312 48.297l-22.886 7.088C75.694 46.16 90.81 10.828 117.72 10.828z" fill="#95BF46"/><path d="M221.237 54.983c-1.055-.088-23.383-1.743-23.383-1.743s-15.507-15.395-17.209-17.099c-.637-.634-1.496-.959-2.394-1.099l-12.527 256.233 89.762-19.418S223.972 58.8 223.774 57.34c-.201-1.46-1.48-2.268-2.537-2.357" fill="#5E8E3E"/><path d="M135.242 104.585l-11.069 32.926s-9.698-5.176-21.586-5.176c-17.428 0-18.305 10.937-18.305 13.693 0 15.038 39.2 20.8 39.2 56.024 0 27.713-17.577 45.558-41.277 45.558-28.44 0-42.984-17.7-42.984-17.7l7.615-25.16s14.95 12.835 27.565 12.835c8.243 0 11.596-6.49 11.596-11.232 0-19.616-32.16-20.491-32.16-52.724 0-27.129 19.472-53.382 58.778-53.382 15.145 0 22.627 4.338 22.627 4.338" fill="#FFF"/></svg>
-                                <div class="text-sm font-bold text-gray-900 mb-1">Shopify</div>
-                                <div class="text-xs text-gray-500">E-commerce</div>
-                            </div>
-                            <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center">
-                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M14 12c0-3.5 3-7 10-7s10 3.5 10 7v2h4c2 0 3 1 3 3v23c0 2-1 3-3 3H10c-2 0-3-1-3-3V17c0-2 1-3 3-3h4v-2zm4 0v2h12v-2c0-2.2-2-4-6-4s-6 1.8-6 4z" fill="#03AC0E"/><circle cx="19" cy="26" r="3" fill="#fff"/><circle cx="29" cy="26" r="3" fill="#fff"/><circle cx="19" cy="26" r="1.5" fill="#03AC0E"/><circle cx="29" cy="26" r="1.5" fill="#03AC0E"/><path d="M22 32 L24 35 L26 32 Z" fill="#FFC107"/></svg>
-                                <div class="text-sm font-bold text-gray-900 mb-1">Tokopedia</div>
-                                <div class="text-xs text-gray-500">Marketplace</div>
-                            </div>
-                        </div>
-
-                        <!-- Arrow down -->
-                        <div class="text-2xl text-gray-400">↓</div>
-
-                        <!-- Central sync hub with gradient -->
-                        <div class="hub-gradient text-white rounded-xl px-8 py-4 font-bold text-center shadow-xl float-item z-20">
-                            <div>Revenue Sync</div>
-                            <div class="text-[12px] font-normal mt-1 opacity-90">Unified in real-time</div>
-                        </div>
-
-                        <!-- Arrow down -->
-                        <div class="text-2xl text-gray-400">↓</div>
-
-                        <!-- Result: Live ledger -->
-                        <div class="bg-white border-2 border-[#EA580C] rounded-lg px-6 py-3 text-center shadow-lg float-item">
-                            <div class="text-[12px] text-gray-600 font-medium">Live Ledger</div>
-                            <div class="font-bold text-gray-900 font-mono">Rp 125.456.789</div>
-                            <div class="text-[11px] text-green-600 mt-1 flex items-center justify-center gap-1">
-                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                                Updated 2s ago
-                            </div>
-                        </div>
-
-                        <!-- Row 2: More integrations -->
-                        <div class="flex gap-4 float-item mt-4">
-                            <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center opacity-75">
-                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M24 8c-9 0-16 5-16 13s7 13 16 13c4 0 7-1 10-2-1 1-4 2-7 2 5 0 9-1 12-3l3-2-2 1c-3 1-7 2-12 2-7 0-12-3-12-8s5-9 12-9c4 0 7 1 9 3l-1-3c-3-3-7-7-12-7zm6 11c-1 0-3 0-4 1l4-1c2 0 4 1 5 2l-1-2c-1-0-2-0-4 0z" fill="#FF6B28"/><path d="M16 18c0-4 4-7 9-7 4 0 7 2 9 5l1-2c-3-3-6-5-10-5-6 0-11 4-11 9 0 0 1 0 2 0z" fill="#FF6B28"/></svg>
-                                <div class="text-sm font-bold text-gray-900 mb-1">Alibaba</div>
-                                <div class="text-xs text-gray-500">Marketplace</div>
-                            </div>
-                            <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center opacity-75">
-                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                                    <polygon points="24,4 42,14 42,34 24,44 6,34 6,14" fill="none" stroke="#4A6CB7" stroke-width="3"/>
-                                    <line x1="14" y1="14" x2="34" y2="34" stroke="#E04E4E" stroke-width="3"/>
-                                    <line x1="34" y1="14" x2="14" y2="34" stroke="#4A6CB7" stroke-width="3"/>
-                                </svg>
-                                <div class="text-sm font-bold text-gray-900 mb-1">Xendit</div>
-                                <div class="text-xs text-gray-500">Payments</div>
-                            </div>
-                            <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center opacity-75">
-                                <div class="text-sm font-bold text-gray-900">+ 247 More</div>
-                                <div class="text-xs text-gray-500">Integrations</div>
+                            <div>
+                                <div class="text-[13px] font-bold text-gray-900">Duplicate detected</div>
+                                <div class="text-[12px] text-gray-500 leading-snug">Slack invoice already processed last week</div>
                             </div>
                         </div>
                     </div>
@@ -559,80 +559,74 @@
         </div>
     </section>
 
-    <!-- DARK SECTION: How Revenue Sync Works -->
-    <section class="section-dark py-20 md:py-32 px-6 border-t border-gray-800">
+    <!-- DARK SECTION: How Vendor Spend Works -->
+    <section id="workflow" class="section-dark py-20 md:py-28 px-6 border-t border-gray-800">
         <div class="max-w-[1280px] mx-auto">
             <div class="max-w-2xl mx-auto text-center mb-16">
-                <h2 class="text-[40px] md:text-[48px] font-bold tracking-tight mb-6">
-                    Watch transactions sync in real-time
+                <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight mb-5">
+                    From invoice to payment, all in one flow
                 </h2>
-                <p class="text-[18px] text-gray-400">
-                    Every payment, invoice, and refund from any channel flows directly into your unified ledger — no middleware, no delays, no headaches.
+                <p class="text-[17px] text-gray-400 leading-relaxed">
+                    Three simple steps. No spreadsheets, no email back-and-forth, no missed renewals.
                 </p>
             </div>
 
-            <!-- Bento grid showcase -->
             <div class="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-                <!-- Card 1: Inbound Flow -->
-                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-8 flex flex-col justify-between h-full hover:border-gray-700 transition-colors">
-                    <div class="mb-6">
-                        <div class="w-12 h-12 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-4">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                        </div>
-                        <h3 class="text-[20px] font-bold mb-2">Inbound Revenue</h3>
-                        <p class="text-gray-400 text-[14px] leading-relaxed">
-                            Stripe, Shopify, Tokopedia—payments stream in from every source, all channels, all currencies unified automatically.
-                        </p>
+                <!-- Step 1 -->
+                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-8 flex flex-col h-full hover:border-gray-700 transition-colors">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold">1</div>
+                        <h3 class="text-[19px] font-bold">Capture every invoice</h3>
                     </div>
-                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm">
-                        <div class="flex items-center gap-2 text-green-400 mb-2">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                            <span className="font-semibold">12 channels detected</span>
+                    <p class="text-gray-400 text-[14px] leading-relaxed mb-6 flex-grow">
+                        Forward bills to your FluxyOS inbox or upload them in bulk. Vendor name, amount, and due date get pulled automatically — no manual entry.
+                    </p>
+                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[12px] text-gray-500">From: billing@figma.com</span>
+                            <span class="text-[11px] text-green-400 font-semibold">Captured</span>
                         </div>
-                        <div className="text-gray-500 text-[13px]">Rp 247.5M syncing right now</div>
+                        <div class="text-[13px] font-mono text-gray-300">Invoice #FG-2841</div>
+                        <div class="text-[18px] font-bold font-mono text-white mt-1">Rp 18.200.000</div>
                     </div>
                 </div>
 
-                <!-- Card 2: Processing -->
-                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-8 flex flex-col justify-between h-full hover:border-gray-700 transition-colors">
-                    <div class="mb-6">
-                        <div class="w-12 h-12 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                        </div>
-                        <h3 class="text-[20px] font-bold mb-2">Smart Processing</h3>
-                        <p class="text-gray-400 text-[14px] leading-relaxed">
-                            AI auto-classifies by channel, strips out duplicates, handles refunds—everything categorized and ready for your ledger.
-                        </p>
+                <!-- Step 2 -->
+                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-8 flex flex-col h-full hover:border-gray-700 transition-colors">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-9 h-9 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 font-bold">2</div>
+                        <h3 class="text-[19px] font-bold">Route for approval</h3>
                     </div>
-                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm">
-                        <div class="space-y-2">
-                            <div className="flex justify-between text-[13px]">
-                                <span className="text-gray-500">Processing time</span>
-                                <span className="text-gray-300 font-mono">&lt;5s</span>
-                            </div>
-                            <div className="flex justify-between text-[13px]">
-                                <span className="text-gray-500">Duplicates removed</span>
-                                <span className="text-gray-300 font-mono">847</span>
-                            </div>
+                    <p class="text-gray-400 text-[14px] leading-relaxed mb-6 flex-grow">
+                        Set rules once: who approves what, by amount, by category, by team. Approvers get a Slack ping and one-click approve.
+                    </p>
+                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 space-y-2">
+                        <div class="flex items-center gap-2 text-[12px]">
+                            <div class="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-[10px] font-bold text-white">✓</div>
+                            <span class="text-gray-300">Sarah (Team Lead)</span>
+                            <span class="text-gray-500 ml-auto">Approved</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-[12px]">
+                            <div class="w-5 h-5 rounded-full bg-yellow-500 flex items-center justify-center text-[10px] font-bold text-white">·</div>
+                            <span class="text-gray-300">David (Finance)</span>
+                            <span class="text-gray-500 ml-auto">Pending</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Card 3: Live Ledger -->
-                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-8 flex flex-col justify-between h-full hover:border-gray-700 transition-colors">
-                    <div class="mb-6">
-                        <div class="w-12 h-12 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 mb-4">
-                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                        </div>
-                        <h3 class="text-[20px] font-bold mb-2">Live Ledger Update</h3>
-                        <p class="text-gray-400 text-[14px] leading-relaxed">
-                            Your dashboard refreshes instantly. See exactly how much revenue is flowing in, from which channels, right now.
-                        </p>
+                <!-- Step 3 -->
+                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-8 flex flex-col h-full hover:border-gray-700 transition-colors">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-9 h-9 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 font-bold">3</div>
+                        <h3 class="text-[19px] font-bold">Pay on schedule</h3>
                     </div>
-                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm">
-                        <div className="font-mono font-bold text-2xl text-white mb-2">Rp 1.2B</div>
-                        <div className="text-gray-500 text-[12px]">Total synced this month</div>
-                        <div className="text-green-400 text-[12px] mt-2">✓ All categories reconciled</div>
+                    <p class="text-gray-400 text-[14px] leading-relaxed mb-6 flex-grow">
+                        Approved invoices queue for payment. Pay through your linked bank, or batch payments by due date. Every transaction lands in your ledger.
+                    </p>
+                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                        <div class="text-[12px] text-gray-500 mb-1">Scheduled this week</div>
+                        <div class="text-[20px] font-bold font-mono text-white mb-2">Rp 84.6M</div>
+                        <div class="text-[11px] text-gray-500">8 vendors • Auto-paid Friday</div>
                     </div>
                 </div>
             </div>
@@ -643,164 +637,142 @@
     <section class="py-16 md:py-24 px-6">
         <div class="max-w-[1280px] mx-auto">
             <div class="text-center mb-16">
-                <h2 class="text-[40px] md:text-[48px] font-bold tracking-tight text-gray-900 mb-4">
-                    Why businesses choose Revenue Sync
+                <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4">
+                    Built for finance teams who hate surprises
                 </h2>
-                <p class="text-[18px] text-gray-600 max-w-2xl mx-auto">
-                    Stop losing money to manual reconciliation. Get real-time visibility across all your revenue streams.
+                <p class="text-[17px] text-gray-600 max-w-2xl mx-auto">
+                    The unglamorous work of vendor management — done properly, so you can spend time on the real numbers.
                 </p>
             </div>
 
-            <div class="grid md:grid-cols-3 gap-8">
-                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md transition-shadow">
                     <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                     </div>
-                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Instant Reconciliation</h3>
-                    <p class="text-[15px] text-gray-600 leading-relaxed">
-                        Every transaction syncs in under 30 seconds. No more waiting for settlement windows or manual CSV uploads.
+                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Catch duplicate payments</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Same invoice forwarded twice? Same vendor charging the same amount in the same month? You'll see it before you pay.
                     </p>
                 </div>
 
-                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+                <div class="bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md transition-shadow">
                     <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m3-3v6a2 2 0 002 2h6a2 2 0 002-2v-6a2 2 0 00-2-2h-6a2 2 0 00-2 2z"/></svg>
                     </div>
-                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Multi-Channel View</h3>
-                    <p class="text-[15px] text-gray-600 leading-relaxed">
-                        Consolidate revenue from POS, e-commerce, marketplaces, and payment gateways in one unified dashboard.
+                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Approve before money leaves</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Set who signs off on what. Anything above Rp 5M needs a director. Anything from a new vendor needs procurement. Your call.
                     </p>
                 </div>
 
-                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+                <div class="bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md transition-shadow">
                     <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                     </div>
-                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Zero Manual Work</h3>
-                    <p class="text-[15px] text-gray-600 leading-relaxed">
-                        API-powered syncing means no copy-paste, no errors, no Friday night reconciliation sessions.
+                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Spot forgotten subscriptions</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        That tool the marketing team stopped using six months ago? It's still charging Rp 2.4M a month. We'll flag the renewal before it hits.
                     </p>
                 </div>
 
-                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+                <div class="bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md transition-shadow">
                     <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 014-4h4m0 0l-3-3m3 3l-3 3M3 12a9 9 0 1018 0 9 9 0 00-18 0z"/></svg>
                     </div>
-                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Accurate Cash Flow</h3>
-                    <p class="text-[15px] text-gray-600 leading-relaxed">
-                        Know exactly how much revenue flows from each channel. Spot discrepancies instantly before they become problems.
+                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">See recurring vs. one-off</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Separate the bills you'll pay forever from the bills you paid once. Understand your true monthly run rate at a glance.
                     </p>
                 </div>
 
-                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+                <div class="bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md transition-shadow">
                     <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1L15 8m-3-1v1m0 8v1m0-1c-1.11 0-2.08-.402-2.599-1L9 16m3-9V6m0 12a9 9 0 110-18 9 9 0 010 18z"/></svg>
                     </div>
-                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Bank-Level Security</h3>
-                    <p class="text-[15px] text-gray-600 leading-relaxed">
-                        Encrypted connections to all providers. Read-only API access means your transactions are safe and auditable.
+                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Multi-currency, no math</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Pay AWS in USD, your local agency in IDR, your team in Vietnam in VND. Everything reconciles to your reporting currency automatically.
                     </p>
                 </div>
 
-                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+                <div class="bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md transition-shadow">
                     <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
                     </div>
-                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">AI-Powered Insights</h3>
-                    <p class="text-[15px] text-gray-600 leading-relaxed">
-                        Ask Fluxy AI to identify trends, spot anomalies, and uncover hidden revenue leaks across all channels.
+                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Audit-ready, every quarter</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Every approval, every payment, every receipt — logged and exportable. When auditors ask, you have the answer in two clicks.
                     </p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- SUPPORTED PLATFORMS -->
-    <section id="platforms" class="bg-gray-50 py-16 md:py-24 px-6">
+    <!-- COMMON VENDORS -->
+    <section id="vendors" class="bg-gray-50 py-16 md:py-24 px-6 border-t border-gray-200">
         <div class="max-w-[1280px] mx-auto">
-            <div class="text-center mb-16">
-                <h2 class="text-[40px] md:text-[48px] font-bold tracking-tight text-gray-900 mb-4">
-                    Connect your favorite platforms
+            <div class="text-center mb-14">
+                <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4">
+                    Track the vendors you actually use
                 </h2>
-                <p class="text-[18px] text-gray-600 max-w-2xl mx-auto">
-                    Revenue Sync works with all major payment processors, POS systems, marketplaces, and product platforms.
+                <p class="text-[17px] text-gray-600 max-w-2xl mx-auto">
+                    Every SaaS, every contractor, every service provider — categorized and connected.
                 </p>
             </div>
 
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 512 214" xmlns="http://www.w3.org/2000/svg"><path d="M35.982 83.484c0-5.546 4.551-7.68 12.09-7.68 10.808 0 24.461 3.272 35.27 9.103V51.484c-11.804-4.693-23.466-6.542-35.27-6.542C19.2 44.942 0 60.018 0 85.192c0 39.252 54.044 32.995 54.044 49.92 0 6.541-5.688 8.675-13.653 8.675-11.804 0-26.88-4.836-38.827-11.378v33.849c13.227 5.689 26.596 8.106 38.827 8.106 29.582 0 49.92-14.648 49.92-40.106-.142-42.382-54.329-34.845-54.329-50.774zm96.142-66.986l-34.702 7.395-.142 113.92c0 21.05 15.787 36.551 36.836 36.551 11.662 0 20.195-2.133 24.888-4.693V140.8c-4.55 1.849-27.022 8.391-27.022-12.658V77.653h27.022V47.36h-27.022l.142-30.862zm71.112 41.386L200.96 47.36h-30.72v124.444h35.556V87.467c8.39-10.951 22.613-8.96 27.022-7.396V47.36c-4.551-1.707-21.191-4.836-29.582 10.524zm38.257-10.524h35.698v124.444h-35.698V47.36zm0-4.7l35.698-7.68V0l-35.698 7.538V36.55zm109.938 8.391c-13.938 0-22.898 6.542-27.875 11.094l-1.85-8.818h-31.288v165.83l35.555-7.537.143-40.249c5.12 3.698 12.657 8.96 25.173 8.96 25.458 0 48.64-20.48 48.64-65.564-.142-41.245-23.609-63.716-48.498-63.716zm-8.533 97.991c-8.391 0-13.37-2.986-16.782-6.684l-.143-52.765c3.698-4.124 8.818-6.968 16.925-6.968 12.942 0 21.902 14.506 21.902 33.137 0 19.058-8.818 33.28-21.902 33.28zM512 110.08c0-36.409-17.636-65.138-51.342-65.138-33.85 0-54.33 28.73-54.33 64.854 0 42.808 24.179 64.426 58.88 64.426 16.925 0 29.725-3.84 39.396-9.244v-28.445c-9.67 4.836-20.764 7.823-34.844 7.823-13.796 0-26.027-4.836-27.591-21.618h69.547c0-1.85.284-9.245.284-12.658zm-70.258-13.511c0-16.071 9.814-22.756 18.774-22.756 8.675 0 17.92 6.685 17.92 22.756h-36.694z" fill="#6772E5"/></svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">Stripe</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">Payments</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div class="bg-white rounded-xl border border-gray-200 p-5 flex flex-col items-center text-center hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center mb-3 font-bold text-[12px] text-orange-600">AWS</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">Amazon Web Services</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Infrastructure</p>
                 </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 256 292" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid"><path d="M223.774 57.34c-.201-1.46-1.48-2.268-2.537-2.357-1.055-.088-23.383-1.743-23.383-1.743s-15.507-15.395-17.209-17.099c-1.703-1.703-5.029-1.185-6.32-.805-.19.056-3.388 1.043-8.678 2.68-5.18-14.906-14.322-28.604-30.405-28.604-.444 0-.901.018-1.358.044C129.31 3.407 123.644.779 118.75.779c-37.465 0-55.364 46.835-60.976 70.635-14.558 4.511-24.9 7.718-26.221 8.133-8.126 2.549-8.383 2.805-9.45 10.462C21.3 95.806.038 260.235.038 260.235l165.678 31.042 89.77-19.42S223.973 58.8 223.775 57.34zM156.49 40.848l-14.019 4.339c.005-.988.01-1.96.01-3.023 0-9.264-1.286-16.723-3.349-22.636 8.287 1.04 13.806 10.469 17.358 21.32zm-27.638-19.483c2.304 5.773 3.802 14.058 3.802 25.238 0 .572-.005 1.095-.01 1.624-9.117 2.824-19.024 5.89-28.953 8.966 5.575-21.516 16.025-31.908 25.161-35.828zm-11.131-10.537c1.617 0 3.246.549 4.805 1.622-12.007 5.65-24.877 19.88-30.312 48.297l-22.886 7.088C75.694 46.16 90.81 10.828 117.72 10.828z" fill="#95BF46"/><path d="M221.237 54.983c-1.055-.088-23.383-1.743-23.383-1.743s-15.507-15.395-17.209-17.099c-.637-.634-1.496-.959-2.394-1.099l-12.527 256.233 89.762-19.418S223.972 58.8 223.774 57.34c-.201-1.46-1.48-2.268-2.537-2.357" fill="#5E8E3E"/><path d="M135.242 104.585l-11.069 32.926s-9.698-5.176-21.586-5.176c-17.428 0-18.305 10.937-18.305 13.693 0 15.038 39.2 20.8 39.2 56.024 0 27.713-17.577 45.558-41.277 45.558-28.44 0-42.984-17.7-42.984-17.7l7.615-25.16s14.95 12.835 27.565 12.835c8.243 0 11.596-6.49 11.596-11.232 0-19.616-32.16-20.491-32.16-52.724 0-27.129 19.472-53.382 58.778-53.382 15.145 0 22.627 4.338 22.627 4.338" fill="#FFF"/></svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">Shopify</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">E-Commerce</p>
+                <div class="bg-white rounded-xl border border-gray-200 p-5 flex flex-col items-center text-center hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center mb-3 font-bold text-[14px] text-purple-600">Fg</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">Figma</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Design</p>
                 </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M14 12c0-3.5 3-7 10-7s10 3.5 10 7v2h4c2 0 3 1 3 3v23c0 2-1 3-3 3H10c-2 0-3-1-3-3V17c0-2 1-3 3-3h4v-2zm4 0v2h12v-2c0-2.2-2-4-6-4s-6 1.8-6 4z" fill="#03AC0E"/><circle cx="19" cy="26" r="3" fill="#fff"/><circle cx="29" cy="26" r="3" fill="#fff"/><circle cx="19" cy="26" r="1.5" fill="#03AC0E"/><circle cx="29" cy="26" r="1.5" fill="#03AC0E"/><path d="M22 32 L24 35 L26 32 Z" fill="#FFC107"/></svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">Tokopedia</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">Marketplace</p>
+                <div class="bg-white rounded-xl border border-gray-200 p-5 flex flex-col items-center text-center hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center mb-3 font-bold text-[14px] text-blue-600">Sl</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">Slack</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Communication</p>
                 </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="80 130 920 800" xmlns="http://www.w3.org/2000/svg"><path fill="#000" fill-rule="evenodd" d="m704.17 170.42c153.2 0 136.11 41.22 155.26 171.05 13.81 93.58 22.13 190.41 34.99 284.67 11.64 85.35 37.9 186.75-57.25 236.66-47.64 25-241.73 13.52-306.14 13.52-300.51 0-409.98 43.57-366.67-253.46 13.67-93.81 23.41-190.72 34.96-284.69 15.68-127.65 5.44-167.34 151.9-167.75 0-225.19 352.95-227.04 352.95 0zm-86.57 0c0-122.34-179.8-125.08-179.8 0z"/><path fill="#ec2b89" d="m727.48 431.75c-55.16 0-99.87-44.71-99.87-99.87h-74.9v289.9c0 33.71-27.32 61.03-61.03 61.03-33.71 0-61.04-27.32-61.04-61.03 0.01-33.7 27.33-61.03 61.04-61.03 6.32 0 13.48 0.96 19.21 2.74v-76.3q-9.42-1.33-19.21-1.34c-75.08 0-135.94 60.86-135.94 135.93 0 75.08 60.86 135.94 135.94 135.94 75.07 0 135.93-60.86 135.93-135.94v-153.43c27.23 22.21 62 35.53 99.87 35.53z"/><path fill="#00efe8" d="m706.27 410.53c-55.16 0-99.88-44.71-99.88-99.87h-74.9v289.9c0 33.71-27.32 61.03-61.03 61.03-33.71 0-61.03-27.32-61.03-61.03 0-33.7 27.32-61.03 61.03-61.03 6.32 0 13.48 0.96 19.22 2.75v-76.3q-9.43-1.34-19.22-1.35c-75.08 0-135.94 60.86-135.94 135.93 0 75.08 60.86 135.94 135.94 135.94 75.07 0 135.93-60.86 135.93-135.94l0.01-153.43c27.22 22.21 61.98 35.53 99.87 35.53z"/><path fill="#fff" d="m706.27 429.47c-24.15-5.22-45.04-19.17-59.21-38.38-19.22-14.18-33.16-35.06-38.39-59.21h-55.96v289.9c0 33.71-27.32 61.03-61.03 61.03-22.3 0-41.79-11.96-52.44-29.81-17.85-10.65-29.81-30.14-29.81-52.44 0-33.7 27.32-61.03 61.03-61.03 6.32 0 13.48 0.96 19.22 2.75v-56.41c-74.15 1.07-133.94 61.51-133.94 135.91 0 32.13 11.16 61.66 29.8 84.92 23.26 18.64 52.79 29.8 84.92 29.8 75.07 0 135.93-60.86 135.93-135.94l0.01-153.43c27.22 22.21 61.98 35.53 99.87 35.53z"/></svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">TikTok Shop</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">Marketplace</p>
+                <div class="bg-white rounded-xl border border-gray-200 p-5 flex flex-col items-center text-center hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center mb-3 font-bold text-[14px] text-gray-700">N</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">Notion</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Productivity</p>
                 </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M24 8c-9 0-16 5-16 13s7 13 16 13c4 0 7-1 10-2-1 1-4 2-7 2 5 0 9-1 12-3l3-2-2 1c-3 1-7 2-12 2-7 0-12-3-12-8s5-9 12-9c4 0 7 1 9 3l-1-3c-3-3-7-7-12-7zm6 11c-1 0-3 0-4 1l4-1c2 0 4 1 5 2l-1-2c-1-0-2-0-4 0z" fill="#FF6B28"/><path d="M16 18c0-4 4-7 9-7 4 0 7 2 9 5l1-2c-3-3-6-5-10-5-6 0-11 4-11 9 0 0 1 0 2 0z" fill="#FF6B28"/></svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">Alibaba</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">Marketplace</p>
+                <div class="bg-white rounded-xl border border-gray-200 p-5 flex flex-col items-center text-center hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 rounded-lg bg-gray-900 flex items-center justify-center mb-3 font-bold text-[14px] text-white">Gh</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">GitHub</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Engineering</p>
                 </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                        <text x="24" y="34" text-anchor="middle" font-size="22" font-weight="700" font-family="Arial, sans-serif" fill="#3853A4" font-style="italic">moka</text>
-                    </svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">Moka</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">POS / Payments</p>
+                <div class="bg-white rounded-xl border border-gray-200 p-5 flex flex-col items-center text-center hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center mb-3 font-bold text-[14px] text-red-600">Ad</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">Adobe</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Design</p>
                 </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                        <polygon points="24,4 42,14 42,34 24,44 6,34 6,14" fill="none" stroke="#4A6CB7" stroke-width="3"/>
-                        <line x1="14" y1="14" x2="34" y2="34" stroke="#E04E4E" stroke-width="3"/>
-                        <line x1="34" y1="14" x2="14" y2="34" stroke="#4A6CB7" stroke-width="3"/>
-                    </svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">Xendit</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">Payments</p>
+                <div class="bg-white rounded-xl border border-gray-200 p-5 flex flex-col items-center text-center hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center mb-3 font-bold text-[14px] text-blue-700">Zm</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">Zoom</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Communication</p>
                 </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="8" y="14" width="3" height="20" rx="1.5" fill="#7BB7E8"/>
-                        <rect x="14" y="10" width="3" height="28" rx="1.5" fill="#0B2545"/>
-                        <rect x="20" y="14" width="3" height="20" rx="1.5" fill="#7BB7E8"/>
-                        <text x="40" y="32" text-anchor="middle" font-size="14" font-weight="700" font-family="Arial, sans-serif" fill="#0B2545">M</text>
-                    </svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">Midtrans</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">Payments</p>
+                <div class="bg-white rounded-xl border border-gray-200 p-5 flex flex-col items-center text-center hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center mb-3 font-bold text-[14px] text-blue-600">G</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">Google Workspace</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Productivity</p>
                 </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                        <text x="24" y="34" text-anchor="middle" font-size="20" font-weight="900" font-family="Arial, sans-serif" fill="#873EFF">Woo</text>
-                    </svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">WooCommerce</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">E-Commerce</p>
+                <div class="bg-white rounded-xl border border-gray-200 p-5 flex flex-col items-center text-center hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center mb-3 font-bold text-[14px] text-blue-700">Ms</div>
+                    <h3 class="font-bold text-gray-900 text-[14px]">Microsoft 365</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Productivity</p>
                 </div>
-
-                <div class="bg-white rounded-xl border-2 border-dashed border-gray-300 p-6 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-[#EA580C] transition-colors">
+                <div class="bg-white rounded-xl border-2 border-dashed border-gray-300 p-5 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-[#EA580C] transition-colors">
                     <div class="w-12 h-12 rounded-lg border-2 border-gray-300 flex items-center justify-center mb-3 group-hover:border-[#EA580C]">
-                        <svg class="w-6 h-6 text-gray-400 group-hover:text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        <svg class="w-5 h-5 text-gray-400 group-hover:text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     </div>
-                    <h3 class="font-bold text-gray-900 text-[14px] group-hover:text-[#EA580C]">More</h3>
-                    <p class="text-[12px] text-gray-500 group-hover:text-[#EA580C] mt-1">240+ integrations</p>
+                    <h3 class="font-bold text-gray-900 text-[14px] group-hover:text-[#EA580C]">Add any vendor</h3>
+                    <p class="text-[12px] text-gray-500 group-hover:text-[#EA580C] mt-1">Custom or one-off</p>
                 </div>
             </div>
         </div>
@@ -809,18 +781,18 @@
     <!-- CTA SECTION -->
     <section class="bg-[#0B0F19] py-16 md:py-24 px-6">
         <div class="max-w-[1280px] mx-auto text-center">
-            <h2 class="text-[40px] md:text-[48px] font-bold tracking-tight text-white mb-6">
-                Stop losing revenue to manual work
+            <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-white mb-5">
+                Take control of your vendor spend
             </h2>
-            <p class="text-[18px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
-                Set up Revenue Sync in minutes. Sync transactions in real-time. Make smarter business decisions backed by accurate, live data.
+            <p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
+                See every contract, every renewal, every payment. No more chasing invoices, no more surprise charges, no more manual reconciliation.
             </p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
                 <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
-                    Start Free Trial
+                    Get started free
                 </a>
-                <a href="#platforms" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">
-                    View Integrations
+                <a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">
+                    See pricing
                 </a>
             </div>
         </div>
