@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS AI Agents | FluxyOS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/fluxyos.css">
+
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .font-mono { font-family: 'Fira Code', monospace; }
+
+        .hero-bg {
+            background:
+                radial-gradient(ellipse 80% 60% at 50% -10%, rgba(234, 88, 12, 0.08) 0%, transparent 50%),
+                linear-gradient(180deg, #FFFFFF 0%, #F9FAFB 100%);
+        }
+
+        .section-dark {
+            background: #0B0F19;
+            color: white;
+        }
+
+        /* Pulsing live status */
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.1); }
+        }
+        .live-dot {
+            animation: livePulse 1.6s ease-in-out infinite;
+        }
+
+        /* Activity feed entries fade in */
+        @keyframes feedFade {
+            0% { opacity: 0; transform: translateY(8px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .feed-1 { animation: feedFade 0.5s ease-out 0.1s both; }
+        .feed-2 { animation: feedFade 0.5s ease-out 0.4s both; }
+        .feed-3 { animation: feedFade 0.5s ease-out 0.7s both; }
+        .feed-4 { animation: feedFade 0.5s ease-out 1.0s both; }
+
+        /* Progress bar fill */
+        @keyframes progressFill {
+            0% { width: 0; }
+            100% { width: var(--target-width); }
+        }
+        .progress-bar { animation: progressFill 1.8s ease-out forwards; }
+
+        /* Avatar gradients */
+        .avatar-1 { background: linear-gradient(135deg, #EA580C 0%, #F97316 100%); }
+        .avatar-2 { background: linear-gradient(135deg, #2563EB 0%, #60A5FA 100%); }
+        .avatar-3 { background: linear-gradient(135deg, #16A34A 0%, #4ADE80 100%); }
+        .avatar-4 { background: linear-gradient(135deg, #DC2626 0%, #F87171 100%); }
+        .avatar-5 { background: linear-gradient(135deg, #9333EA 0%, #C084FC 100%); }
+        .avatar-6 { background: linear-gradient(135deg, #0891B2 0%, #22D3EE 100%); }
+
+        /* Subtle grid pattern for backgrounds */
+        .grid-pattern {
+            background-image:
+                linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+
+        /* Timeline connector line */
+        .timeline-line {
+            background: linear-gradient(180deg, rgba(234, 88, 12, 0.2) 0%, rgba(234, 88, 12, 0.6) 50%, rgba(234, 88, 12, 0.2) 100%);
+        }
+
+        /* Pipeline arrow */
+        .pipe-arrow {
+            background: linear-gradient(90deg, rgba(234, 88, 12, 0.3) 0%, rgba(234, 88, 12, 0.7) 100%);
+        }
+
+        /* Card hover lift */
+        .agent-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .agent-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.08);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- 1. Navigation with Mega Menu -->
+    <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
+        <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
+            <div class="flex items-center gap-12 h-full">
+                <a href="fluxyos.html" class="flex items-center gap-2.5 cursor-pointer group">
+                    <!-- NEW LOGO -->
+                    <div class="w-8 h-8 text-black shadow-sm group-hover:scale-105 transition-transform duration-200">
+                        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                            <rect width="40" height="40" rx="8" fill="currentColor" />
+                            <g transform="translate(1.5, 0)">
+                                <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                                <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                            </g>
+                        </svg>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-gray-900">FluxyOS</span>
+                </a>
+                
+                <div class="hidden lg:flex items-center gap-8 h-full">
+                    
+                    <!-- Platform Mega Menu Trigger -->
+                    <div class="group h-full flex items-center">
+                        <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
+                            Platform 
+                            <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+
+                        <!-- Platform Dropdown Panel -->
+                        <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="max-w-[1280px] mx-auto flex">
+                                
+                                <!-- Columns Area -->
+                                <div class="flex-1 py-10 px-6 flex gap-12">
+                                    
+                                    <!-- Features Column -->
+                                    <div class="flex-[2]">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Features</h4>
+                                        <div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                                            <a href="/budgetlanding" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Dynamic Budgeting</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Allocate and track funds live</div>
+                                                </div>
+                                            </a>
+                                            <a href="/vendorspend" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Vendor Spend</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Manage SaaS & contract payouts</div>
+                                                </div>
+                                            </a>
+                                            <a href="/revenuesync" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Revenue Sync</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Ingest client retainers & POS</div>
+                                                </div>
+                                            </a>
+                                            <a href="/receiptcapture" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Receipt Capture</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Automate manual paper chasing</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <!-- Platform Column -->
+                                    <div class="flex-1">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Platform</h4>
+                                        <div class="space-y-8">
+                                            <a href="/aiagents" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-[#EA580C] bg-white flex items-center justify-center flex-shrink-0 text-[#EA580C] relative">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-[#EA580C] mb-0.5 transition-colors">FluxyOS AI Agents</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Multiply finance efficiency instantly</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Global Ready</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Reconcile 120+ currencies globally</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l-4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Native Integrations</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Connect ERPs, HRIS & Productivity</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Sidebar: New Release -->
+                                <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
+                                    <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">New Release</h4>
+                                    
+                                    <a href="#" class="block group/release cursor-pointer mb-4">
+                                        <div class="bg-black rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-md group-hover/release:shadow-lg transition-all">
+                                            <!-- Grainy Overlay Simulation -->
+                                            <div class="absolute inset-0 opacity-40 mix-blend-overlay bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiAvPgo8cGF0aCBkPSJNMCAwSDRWNEgwWiIgZmlsbD0ibm9uZSIvPjwvc3ZnPg==')]"></div>
+                                            <!-- Gradient -->
+                                            <div class="absolute inset-0 bg-gradient-to-tr from-gray-900 via-black to-gray-800"></div>
+                                            
+                                            <h3 class="relative z-10 text-white font-bold text-[36px] leading-[0.9] tracking-tighter">
+                                                SPRING<br/>RELEASE<br/><span class="text-gray-400">2026</span>
+                                            </h3>
+                                        </div>
+                                        
+                                        <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">
+                                            WhatsApp AI Agents &rarr;
+                                        </h5>
+                                        <p class="text-[13px] text-gray-500 leading-relaxed">
+                                            Chat directly with your ledger to resolve missing receipts, sync vendors, and check live budgets on the go.
+                                        </p>
+                                    </a>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NEW: Use Cases Mega Menu Trigger -->
+                    <div class="group h-full flex items-center">
+                        <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
+                            Use Cases 
+                            <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+
+                        <!-- Use Cases Dropdown Panel -->
+                        <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="max-w-[1280px] mx-auto flex">
+                                
+                                <!-- Columns Area -->
+                                <div class="flex-1 py-10 px-6 flex gap-12">
+                                    
+                                    <!-- Industry Column -->
+                                    <div class="flex-[2]">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">By Industry</h4>
+                                        <div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">E-Commerce Brands</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Reconcile thousands of POS & gateway transactions.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Tech Startups & SaaS</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Manage burn rates, runway, and software subscriptions.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Marketing Agencies</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Map digital ad spend to specific client budgets seamlessly.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Retail & Franchises</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Consolidate P&L records across multiple physical locations.</div>
+                                                </div>
+                                            </a>
+                                            <!-- Dropshippers -->
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Dropshippers & Digital Ads</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Scale your active stores by tracking live ad ROI against supplier costs to pinpoint true net margins.</div>
+                                                </div>
+                                            </a>
+                                            <!-- NEW USE CASE: Manufacturing -->
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Manufacturing</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Track live unit economics and manufacturer costs as you scale up operations.</div>
+                                                </div>
+                                            </a>
+                                            <!-- END OF NEW ITEM -->
+                                        </div>
+                                    </div>
+
+                                    <!-- Role Column -->
+                                    <div class="flex-1">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">By Role</h4>
+                                        <div class="space-y-8">
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] text-gray-600 transition-colors relative">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">CFOs & Finance Teams</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Automate reconciliation and month-end closes.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Founders & CEOs</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Real-time visibility into overall business economics.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Department Heads</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Track live spend against allocated internal budgets.</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Sidebar: Featured Case Study -->
+                                <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
+                                    <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">Featured Story</h4>
+                                    
+                                    <a href="#" class="block group/release cursor-pointer mb-4">
+                                        <div class="bg-gray-100 rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-sm border border-gray-200 group-hover/release:shadow-md transition-all">
+                                            <!-- Simple Abstract Image Replacement -->
+                                            <div class="absolute inset-0 bg-gradient-to-tr from-gray-200 to-gray-50 z-0"></div>
+                                            <svg class="absolute top-4 right-4 w-24 h-24 text-gray-300 opacity-50 z-0 transform -rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                                            
+                                            <div class="relative z-10 w-full">
+                                                <span class="bg-[#EA580C] text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wide inline-block mb-2">Case Study</span>
+                                                <h3 class="text-gray-900 font-bold text-[18px] leading-[1.2] tracking-tight">
+                                                    Scaling an Omnichannel Fashion Brand
+                                                </h3>
+                                            </div>
+                                        </div>
+                                        
+                                        <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">
+                                            Read the story &rarr;
+                                        </h5>
+                                        <p class="text-[13px] text-gray-500 leading-relaxed">
+                                            See how a growing modest fashion label unified their retail POS and e-commerce channels to track live unit economics.
+                                        </p>
+                                    </a>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="#" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Customers</a>
+                    <a href="/pricing" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Pricing</a>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-6">
+                <!-- Language Dropdown -->
+                <div class="relative group cursor-pointer hidden sm:block h-full py-2">
+                    <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors h-full">
+                        <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        EN
+                        <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="absolute right-0 top-[100%] mt-2 w-36 bg-white border border-gray-100 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
+                        <a href="#" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">
+                            English (EN)
+                            <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        </a>
+                        <a href="#" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">Bahasa (ID)</a>
+                    </div>
+                </div>
+
+                <a href="/login" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Sign in</a>
+                <a href="/pricing" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-6 py-3 rounded-md transition-all duration-200 shadow-sm hover:shadow text-center">
+                    Try FluxyOS
+                </a>
+                <button type="button" class="mobile-menu-toggle lg:hidden w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-800 flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open navigation menu">
+                    <svg data-menu-open-icon class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M4 7h16M4 12h16M4 17h16"></path></svg>
+                    <svg data-menu-close-icon class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="mobile-menu" class="mobile-menu-panel hidden lg:hidden fixed left-0 right-0 top-[64px] z-[60] bg-white border-b border-gray-200 shadow-[0_20px_40px_-18px_rgba(0,0,0,0.2)] overflow-y-auto">
+            <div class="px-5 py-6 space-y-7">
+                <div>
+                    <h4 class="text-[12px] font-bold text-gray-900 uppercase tracking-wider mb-4">Platform</h4>
+                    <div class="grid grid-cols-1 gap-3">
+                        <a href="/budgetlanding" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Dynamic Budgeting</span><span class="block text-[13px] text-gray-500">Allocate and track funds live</span></span>
+                        </a>
+                        <a href="/vendorspend" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Vendor Spend</span><span class="block text-[13px] text-gray-500">Manage SaaS & contract payouts</span></span>
+                        </a>
+                        <a href="/revenuesync" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Revenue Sync</span><span class="block text-[13px] text-gray-500">Ingest client retainers & POS</span></span>
+                        </a>
+                        <a href="#" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">FluxyOS AI Agents</span><span class="block text-[13px] text-gray-500">Multiply finance efficiency instantly</span></span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-[12px] font-bold text-gray-900 uppercase tracking-wider mb-4">Use Cases</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">E-Commerce Brands</span><span class="block text-[13px] text-gray-500">Reconcile POS & gateway transactions.</span></a>
+                        <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Tech Startups & SaaS</span><span class="block text-[13px] text-gray-500">Manage burn, runway, and subscriptions.</span></a>
+                        <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Marketing Agencies</span><span class="block text-[13px] text-gray-500">Map ad spend to client budgets.</span></a>
+                        <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Manufacturing</span><span class="block text-[13px] text-gray-500">Track unit economics and costs.</span></a>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="#" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Customers</a>
+                    <a href="/pricing" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Pricing</a>
+                    <a href="/login" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Sign in</a>
+                    <a href="/pricing" class="mobile-menu-link rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F97316] px-4 py-3 text-[15px] font-semibold text-white text-center shadow-sm">Try FluxyOS</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <!-- HERO -->
+    <section class="hero-bg pt-16 pb-20 md:pt-20 md:pb-28 px-6 relative overflow-hidden">
+        <!-- Subtle grid pattern -->
+        <div class="absolute inset-0 grid-pattern opacity-50 pointer-events-none"></div>
+        <!-- Soft accent orbs -->
+        <div class="absolute top-32 right-[-150px] w-[500px] h-[500px] bg-orange-100/40 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute bottom-0 left-[-200px] w-[600px] h-[400px] bg-amber-50/50 rounded-full blur-3xl pointer-events-none"></div>
+        <!-- Floating decorative dots -->
+        <div class="absolute top-24 left-[10%] w-2 h-2 rounded-full bg-[#EA580C]/40 pointer-events-none hidden md:block"></div>
+        <div class="absolute top-[35%] right-[8%] w-3 h-3 rounded-full border-2 border-[#EA580C]/30 pointer-events-none hidden md:block"></div>
+        <div class="absolute bottom-32 left-[6%] w-1.5 h-1.5 rounded-full bg-amber-500/50 pointer-events-none hidden md:block"></div>
+
+        <div class="max-w-[1280px] mx-auto relative">
+            <div class="grid lg:grid-cols-12 gap-12 items-center">
+                <!-- Left: Copy -->
+                <div class="lg:col-span-6">
+                    <h1 class="text-[44px] md:text-[60px] font-bold tracking-tight leading-[1.02] text-gray-900 mb-6">
+                        Your finance team, <br/>
+                        <span class="bg-gradient-to-r from-[#EA580C] to-[#F97316] bg-clip-text text-transparent">doubled overnight.</span>
+                    </h1>
+
+                    <p class="text-[18px] text-gray-600 leading-relaxed mb-8 max-w-xl">
+                        Six specialists handle the work that keeps your team up late — categorizing transactions, reconciling bank feeds, chasing unpaid invoices, drafting reports. They don't take lunch breaks. They don't make typos. They run the moment a receipt lands.
+                    </p>
+
+                    <div class="flex flex-col sm:flex-row gap-4 mb-10">
+                        <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-8 py-4 rounded-md transition-all duration-200 shadow-md hover:shadow-lg inline-block text-center">
+                            Get started free
+                        </a>
+                        <a href="#meet" class="border-2 border-gray-300 text-gray-900 font-semibold text-[15px] px-8 py-3 rounded-md hover:border-gray-400 transition-colors inline-flex items-center justify-center gap-2">
+                            Meet the team
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+                        </a>
+                    </div>
+
+                    <!-- Stats strip -->
+                    <div class="grid grid-cols-3 gap-4 pt-6 border-t border-gray-200">
+                        <div>
+                            <div class="text-[26px] font-bold text-gray-900">24/7</div>
+                            <p class="text-[12px] text-gray-600">Always running</p>
+                        </div>
+                        <div>
+                            <div class="text-[26px] font-bold text-gray-900">6</div>
+                            <p class="text-[12px] text-gray-600">Specialist agents</p>
+                        </div>
+                        <div>
+                            <div class="text-[26px] font-bold text-gray-900">99.2%</div>
+                            <p class="text-[12px] text-gray-600">Decision accuracy</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Live operations dashboard mockup -->
+                <div class="lg:col-span-6 relative">
+                    <div class="bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden">
+                        <!-- Header bar -->
+                        <div class="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+                                <span class="ml-3 text-[12px] text-gray-500 font-semibold">Operations Console</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-2 h-2 rounded-full bg-green-500 live-dot"></div>
+                                <span class="text-[11px] text-green-700 font-bold uppercase tracking-wider">Live</span>
+                            </div>
+                        </div>
+
+                        <!-- Agent activity rows -->
+                        <div class="divide-y divide-gray-100">
+                            <!-- Agent 1: Reza working -->
+                            <div class="px-5 py-3.5 flex items-center gap-3 feed-1">
+                                <div class="avatar-2 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[14px] flex-shrink-0">R</div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[13px] font-bold text-gray-900">Reza</span>
+                                        <span class="text-[11px] text-gray-500">Categorizer</span>
+                                    </div>
+                                    <div class="text-[12px] text-gray-600 truncate">Categorizing 47 transactions from BCA…</div>
+                                </div>
+                                <div class="flex flex-col items-end gap-0.5">
+                                    <div class="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                        <div class="h-full bg-blue-500 rounded-full progress-bar" style="--target-width: 72%; width: 72%;"></div>
+                                    </div>
+                                    <span class="text-[10px] text-gray-500 font-mono">72%</span>
+                                </div>
+                            </div>
+
+                            <!-- Agent 2: Lia reconciling -->
+                            <div class="px-5 py-3.5 flex items-center gap-3 feed-2">
+                                <div class="avatar-3 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[14px] flex-shrink-0">L</div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[13px] font-bold text-gray-900">Lia</span>
+                                        <span class="text-[11px] text-gray-500">Reconciliator</span>
+                                    </div>
+                                    <div class="text-[12px] text-gray-600 truncate">Matched 247 lines • 3 mismatches flagged</div>
+                                </div>
+                                <span class="bg-green-100 text-green-700 text-[10px] font-bold uppercase px-2 py-0.5 rounded">Done</span>
+                            </div>
+
+                            <!-- Agent 3: Maya collecting -->
+                            <div class="px-5 py-3.5 flex items-center gap-3 feed-3">
+                                <div class="avatar-1 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[14px] flex-shrink-0">M</div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[13px] font-bold text-gray-900">Maya</span>
+                                        <span class="text-[11px] text-gray-500">Collector</span>
+                                    </div>
+                                    <div class="text-[12px] text-gray-600 truncate">Sent 18 reminders • Recovered Rp 87M this week</div>
+                                </div>
+                                <span class="bg-orange-100 text-orange-700 text-[10px] font-bold uppercase px-2 py-0.5 rounded">Working</span>
+                            </div>
+
+                            <!-- Agent 4: Iqbal flagging -->
+                            <div class="px-5 py-3.5 flex items-center gap-3 bg-amber-50/30 feed-4">
+                                <div class="avatar-4 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[14px] flex-shrink-0">I</div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[13px] font-bold text-gray-900">Iqbal</span>
+                                        <span class="text-[11px] text-gray-500">Watchdog</span>
+                                    </div>
+                                    <div class="text-[12px] text-gray-700 truncate">⚠ Possible duplicate: AWS invoice #441</div>
+                                </div>
+                                <span class="bg-amber-100 text-amber-700 text-[10px] font-bold uppercase px-2 py-0.5 rounded">Needs you</span>
+                            </div>
+                        </div>
+
+                        <!-- Footer summary -->
+                        <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-[12px]">
+                            <span class="text-gray-500">Today's activity</span>
+                            <span class="text-gray-900 font-mono"><span class="font-bold">1,284</span> actions • <span class="font-bold">3</span> need review</span>
+                        </div>
+                    </div>
+
+                    <!-- Floating "saving you time" badge -->
+                    <div class="absolute -bottom-5 -left-5 bg-white rounded-xl shadow-xl border border-gray-200 px-4 py-3 max-w-[220px] hidden md:block">
+                        <div class="flex items-start gap-2.5">
+                            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-[#EA580C] to-[#F97316] flex items-center justify-center text-white flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div>
+                                <div class="text-[13px] font-bold text-gray-900">Saved 32 hrs this month</div>
+                                <div class="text-[11px] text-gray-500 leading-snug">vs. manual entry</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MEET THE AGENTS -->
+    <section id="meet" class="py-16 md:py-24 px-6 border-t border-gray-200">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="max-w-3xl mb-14">
+                <h2 class="text-[32px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4 leading-tight">
+                    Six specialists. Each one obsessed <br class="hidden md:block"/>with a different part of your books.
+                </h2>
+                <p class="text-[16px] text-gray-600 leading-relaxed">
+                    They work together, hand off tasks, and keep each other honest — like the best finance team you've ever had, except they're already trained and they start tomorrow morning.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <!-- Lia -->
+                <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6">
+                    <div class="flex items-start justify-between mb-5">
+                        <div class="flex items-center gap-3">
+                            <div class="avatar-3 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-[18px]">L</div>
+                            <div>
+                                <h3 class="text-[18px] font-bold text-gray-900">Lia</h3>
+                                <p class="text-[12px] text-gray-500 font-semibold">The Reconciliator</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-[11px]">
+                            <div class="w-1.5 h-1.5 rounded-full bg-green-500 live-dot"></div>
+                            <span class="text-green-700 font-bold uppercase tracking-wider">Active</span>
+                        </div>
+                    </div>
+                    <p class="text-[14px] text-gray-600 leading-relaxed mb-4">
+                        Matches every bank line to an invoice or expense. Catches mismatches before they hit your books.
+                    </p>
+                    <ul class="space-y-2 mb-5 text-[13px] text-gray-700">
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Reads BCA, Mandiri, BNI, BRI feeds</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Spots duplicate or split charges</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Flags multi-day settlement gaps</span>
+                        </li>
+                    </ul>
+                    <div class="bg-gray-50 rounded-lg px-3 py-2.5 text-[12px] flex items-center justify-between">
+                        <span class="text-gray-500">Today</span>
+                        <span class="font-mono font-bold text-gray-900">247 lines reconciled</span>
+                    </div>
+                </div>
+
+                <!-- Reza -->
+                <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6">
+                    <div class="flex items-start justify-between mb-5">
+                        <div class="flex items-center gap-3">
+                            <div class="avatar-2 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-[18px]">R</div>
+                            <div>
+                                <h3 class="text-[18px] font-bold text-gray-900">Reza</h3>
+                                <p class="text-[12px] text-gray-500 font-semibold">The Categorizer</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-[11px]">
+                            <div class="w-1.5 h-1.5 rounded-full bg-green-500 live-dot"></div>
+                            <span class="text-green-700 font-bold uppercase tracking-wider">Active</span>
+                        </div>
+                    </div>
+                    <p class="text-[14px] text-gray-600 leading-relaxed mb-4">
+                        Tags every transaction with the right account. Learns your chart of accounts in a week.
+                    </p>
+                    <ul class="space-y-2 mb-5 text-[13px] text-gray-700">
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Splits by department, project, vendor</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Adapts when you correct him</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Asks before guessing on edge cases</span>
+                        </li>
+                    </ul>
+                    <div class="bg-gray-50 rounded-lg px-3 py-2.5 text-[12px] flex items-center justify-between">
+                        <span class="text-gray-500">Today</span>
+                        <span class="font-mono font-bold text-gray-900">1,284 transactions tagged</span>
+                    </div>
+                </div>
+
+                <!-- Maya -->
+                <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6">
+                    <div class="flex items-start justify-between mb-5">
+                        <div class="flex items-center gap-3">
+                            <div class="avatar-1 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-[18px]">M</div>
+                            <div>
+                                <h3 class="text-[18px] font-bold text-gray-900">Maya</h3>
+                                <p class="text-[12px] text-gray-500 font-semibold">The Collector</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-[11px]">
+                            <div class="w-1.5 h-1.5 rounded-full bg-green-500 live-dot"></div>
+                            <span class="text-green-700 font-bold uppercase tracking-wider">Active</span>
+                        </div>
+                    </div>
+                    <p class="text-[14px] text-gray-600 leading-relaxed mb-4">
+                        Sends polite payment reminders when invoices go unpaid. Escalates after 14 days.
+                    </p>
+                    <ul class="space-y-2 mb-5 text-[13px] text-gray-700">
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Drafts reminders in your tone</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Pauses if a client just paid</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Escalates with full context to you</span>
+                        </li>
+                    </ul>
+                    <div class="bg-gray-50 rounded-lg px-3 py-2.5 text-[12px] flex items-center justify-between">
+                        <span class="text-gray-500">This week</span>
+                        <span class="font-mono font-bold text-gray-900">Rp 87M recovered</span>
+                    </div>
+                </div>
+
+                <!-- Iqbal -->
+                <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6">
+                    <div class="flex items-start justify-between mb-5">
+                        <div class="flex items-center gap-3">
+                            <div class="avatar-4 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-[18px]">I</div>
+                            <div>
+                                <h3 class="text-[18px] font-bold text-gray-900">Iqbal</h3>
+                                <p class="text-[12px] text-gray-500 font-semibold">The Watchdog</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-[11px]">
+                            <div class="w-1.5 h-1.5 rounded-full bg-amber-500 live-dot"></div>
+                            <span class="text-amber-700 font-bold uppercase tracking-wider">Watching</span>
+                        </div>
+                    </div>
+                    <p class="text-[14px] text-gray-600 leading-relaxed mb-4">
+                        Flags duplicates, unusual charges, and policy violations. Asks you to confirm before money moves.
+                    </p>
+                    <ul class="space-y-2 mb-5 text-[13px] text-gray-700">
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Knows your spending patterns</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Spots invoice & receipt mismatches</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Pauses payment on suspicion</span>
+                        </li>
+                    </ul>
+                    <div class="bg-gray-50 rounded-lg px-3 py-2.5 text-[12px] flex items-center justify-between">
+                        <span class="text-gray-500">This month</span>
+                        <span class="font-mono font-bold text-gray-900">Rp 12.4M caught</span>
+                    </div>
+                </div>
+
+                <!-- Sari -->
+                <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6">
+                    <div class="flex items-start justify-between mb-5">
+                        <div class="flex items-center gap-3">
+                            <div class="avatar-5 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-[18px]">S</div>
+                            <div>
+                                <h3 class="text-[18px] font-bold text-gray-900">Sari</h3>
+                                <p class="text-[12px] text-gray-500 font-semibold">The Reporter</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-[11px]">
+                            <div class="w-1.5 h-1.5 rounded-full bg-green-500 live-dot"></div>
+                            <span class="text-green-700 font-bold uppercase tracking-wider">Drafting</span>
+                        </div>
+                    </div>
+                    <p class="text-[14px] text-gray-600 leading-relaxed mb-4">
+                        Drafts monthly P&L, cash flow, and burn-rate reports. Ready by 8am on the 1st of every month.
+                    </p>
+                    <ul class="space-y-2 mb-5 text-[13px] text-gray-700">
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>P&L, cash flow, burn rate, runway</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Writes plain-English commentary</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Slack-pings the team when done</span>
+                        </li>
+                    </ul>
+                    <div class="bg-gray-50 rounded-lg px-3 py-2.5 text-[12px] flex items-center justify-between">
+                        <span class="text-gray-500">This month</span>
+                        <span class="font-mono font-bold text-gray-900">14-page board pack</span>
+                    </div>
+                </div>
+
+                <!-- Daud -->
+                <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6">
+                    <div class="flex items-start justify-between mb-5">
+                        <div class="flex items-center gap-3">
+                            <div class="avatar-6 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-[18px]">D</div>
+                            <div>
+                                <h3 class="text-[18px] font-bold text-gray-900">Daud</h3>
+                                <p class="text-[12px] text-gray-500 font-semibold">The Filer</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-[11px]">
+                            <div class="w-1.5 h-1.5 rounded-full bg-blue-500 live-dot"></div>
+                            <span class="text-blue-700 font-bold uppercase tracking-wider">Standing by</span>
+                        </div>
+                    </div>
+                    <p class="text-[14px] text-gray-600 leading-relaxed mb-4">
+                        Preps tax-ready exports for your accountant. PPN summary, withholding tax, and audit trail.
+                    </p>
+                    <ul class="space-y-2 mb-5 text-[13px] text-gray-700">
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>PPN 11% breakdown by month</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>Xero, QuickBooks, custom CSV</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <svg class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>7-year audit trail, searchable</span>
+                        </li>
+                    </ul>
+                    <div class="bg-gray-50 rounded-lg px-3 py-2.5 text-[12px] flex items-center justify-between">
+                        <span class="text-gray-500">Last quarter</span>
+                        <span class="font-mono font-bold text-gray-900">Q3 export ready</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- A DAY IN THE LIFE (DARK) -->
+    <section class="section-dark py-20 md:py-28 px-6 relative overflow-hidden">
+        <div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 32px 32px;"></div>
+
+        <div class="max-w-[1280px] mx-auto relative">
+            <div class="max-w-3xl mb-14">
+                <h2 class="text-[32px] md:text-[44px] font-bold tracking-tight leading-tight mb-4">
+                    A Tuesday in November.
+                </h2>
+                <p class="text-[16px] text-gray-400 leading-relaxed">
+                    Here's what your team gets done while you're in meetings, on Slack, or asleep. Real timestamps, real actions.
+                </p>
+            </div>
+
+            <div class="relative max-w-3xl">
+                <!-- Vertical timeline line -->
+                <div class="absolute left-[100px] top-0 bottom-0 w-px timeline-line hidden md:block"></div>
+
+                <div class="space-y-5">
+                    <!-- 06:00 -->
+                    <div class="flex items-start gap-5">
+                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">06:00</div>
+                        <div class="w-3 h-3 rounded-full bg-blue-500 ring-4 ring-blue-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
+                        <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
+                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">06:00</div>
+                            <div class="flex items-start gap-3">
+                                <div class="avatar-2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">R</div>
+                                <div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-blue-400">Reza</span> started categorizing overnight transactions</div>
+                                    <div class="text-[12px] text-gray-400 mt-1">68 entries from BCA, Mandiri, Stripe — auto-tagged in 4 minutes</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 07:30 -->
+                    <div class="flex items-start gap-5">
+                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">07:30</div>
+                        <div class="w-3 h-3 rounded-full bg-green-500 ring-4 ring-green-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
+                        <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
+                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">07:30</div>
+                            <div class="flex items-start gap-3">
+                                <div class="avatar-3 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">L</div>
+                                <div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-green-400">Lia</span> reconciled bank statements</div>
+                                    <div class="text-[12px] text-gray-400 mt-1">247 lines matched — 3 mismatches queued for your review</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 09:15 -->
+                    <div class="flex items-start gap-5">
+                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">09:15</div>
+                        <div class="w-3 h-3 rounded-full bg-orange-500 ring-4 ring-orange-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
+                        <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
+                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">09:15</div>
+                            <div class="flex items-start gap-3">
+                                <div class="avatar-1 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">M</div>
+                                <div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-orange-400">Maya</span> sent payment reminders</div>
+                                    <div class="text-[12px] text-gray-400 mt-1">3 polite nudges out the door — Sembrani Group, Pelangi Studio, Cikal Apparel</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 11:00 -->
+                    <div class="flex items-start gap-5">
+                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">11:00</div>
+                        <div class="w-3 h-3 rounded-full bg-amber-500 ring-4 ring-amber-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
+                        <div class="bg-amber-500/5 border border-amber-500/30 rounded-xl px-5 py-4 flex-1">
+                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">11:00</div>
+                            <div class="flex items-start gap-3">
+                                <div class="avatar-4 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">I</div>
+                                <div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-amber-400">Iqbal</span> flagged a possible duplicate payment</div>
+                                    <div class="text-[12px] text-gray-400 mt-1">AWS invoice #441 looks like #432 from last week — pinged you on Slack to confirm</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 13:00 -->
+                    <div class="flex items-start gap-5">
+                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">13:00</div>
+                        <div class="w-3 h-3 rounded-full bg-blue-500 ring-4 ring-blue-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
+                        <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
+                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">13:00</div>
+                            <div class="flex items-start gap-3">
+                                <div class="avatar-2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">R</div>
+                                <div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-blue-400">Reza</span> tagged team lunch receipts</div>
+                                    <div class="text-[12px] text-gray-400 mt-1">5 receipts uploaded via WhatsApp → Marketing → Client Meetings</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 15:30 -->
+                    <div class="flex items-start gap-5">
+                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">15:30</div>
+                        <div class="w-3 h-3 rounded-full bg-orange-500 ring-4 ring-orange-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
+                        <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
+                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">15:30</div>
+                            <div class="flex items-start gap-3">
+                                <div class="avatar-1 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">M</div>
+                                <div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-orange-400">Maya</span> escalated an overdue invoice</div>
+                                    <div class="text-[12px] text-gray-400 mt-1">Indra Catering — 17 days overdue, Rp 24M. Drafted firm follow-up for your review</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 18:00 -->
+                    <div class="flex items-start gap-5">
+                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">18:00</div>
+                        <div class="w-3 h-3 rounded-full bg-purple-500 ring-4 ring-purple-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
+                        <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
+                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">18:00</div>
+                            <div class="flex items-start gap-3">
+                                <div class="avatar-5 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">S</div>
+                                <div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-purple-400">Sari</span> drafted tomorrow's daily summary</div>
+                                    <div class="text-[12px] text-gray-400 mt-1">Cash position, top 5 vendors paid, runway update — ready in your inbox</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 23:00 -->
+                    <div class="flex items-start gap-5">
+                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">23:00</div>
+                        <div class="w-3 h-3 rounded-full bg-cyan-500 ring-4 ring-cyan-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
+                        <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
+                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">23:00</div>
+                            <div class="flex items-start gap-3">
+                                <div class="avatar-6 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">D</div>
+                                <div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-cyan-400">Daud</span> archived today's source documents</div>
+                                    <div class="text-[12px] text-gray-400 mt-1">68 invoices, 23 receipts, 14 bank statements — indexed for 7-year audit</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total at the bottom -->
+                <div class="mt-8 ml-0 md:ml-[100px] bg-gradient-to-r from-orange-500/10 to-amber-500/5 border border-orange-500/30 rounded-xl px-5 py-4 flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#EA580C] to-[#F97316] flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-[14px] font-bold text-white">End of day: 1,284 actions completed</div>
+                        <div class="text-[12px] text-gray-400">Your input needed on 2 items — about 4 minutes of your time</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- END-TO-END PIPELINE -->
+    <section class="py-16 md:py-24 px-6 border-t border-gray-200">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="max-w-3xl mb-14">
+                <h2 class="text-[32px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4 leading-tight">
+                    They hand off to each other. <br class="hidden md:block"/>
+                    <span class="text-gray-500">You don't manage anyone.</span>
+                </h2>
+                <p class="text-[16px] text-gray-600 leading-relaxed">
+                    A receipt arrives at 10:48. By 10:51 it's categorized, verified, reconciled, and on the books. Here's the relay.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-5 gap-4 relative">
+                <!-- Stage 1 -->
+                <div class="bg-white border border-gray-200 rounded-xl p-5 relative">
+                    <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Step 1 — 10:48</div>
+                    <div class="flex items-center gap-2.5 mb-3">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        </div>
+                        <span class="text-[13px] font-bold text-gray-900">Receipt arrives</span>
+                    </div>
+                    <p class="text-[12px] text-gray-600 leading-snug">Forwarded by ops via email. Office Mart Jakarta, Rp 555.000.</p>
+                </div>
+
+                <!-- Stage 2 -->
+                <div class="bg-white border border-gray-200 rounded-xl p-5 relative">
+                    <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Step 2 — 10:49</div>
+                    <div class="flex items-center gap-2.5 mb-3">
+                        <div class="avatar-2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px]">R</div>
+                        <span class="text-[13px] font-bold text-gray-900">Reza categorizes</span>
+                    </div>
+                    <p class="text-[12px] text-gray-600 leading-snug">Reads the receipt, tags it Operations → Office Supplies. 99% confidence.</p>
+                </div>
+
+                <!-- Stage 3 -->
+                <div class="bg-white border border-gray-200 rounded-xl p-5 relative">
+                    <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Step 3 — 10:49</div>
+                    <div class="flex items-center gap-2.5 mb-3">
+                        <div class="avatar-4 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px]">I</div>
+                        <span class="text-[13px] font-bold text-gray-900">Iqbal verifies</span>
+                    </div>
+                    <p class="text-[12px] text-gray-600 leading-snug">Cross-checks against vendor history. No duplicates, amount fits the pattern.</p>
+                </div>
+
+                <!-- Stage 4 -->
+                <div class="bg-white border border-gray-200 rounded-xl p-5 relative">
+                    <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Step 4 — 10:50</div>
+                    <div class="flex items-center gap-2.5 mb-3">
+                        <div class="avatar-3 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px]">L</div>
+                        <span class="text-[13px] font-bold text-gray-900">Lia reconciles</span>
+                    </div>
+                    <p class="text-[12px] text-gray-600 leading-snug">Matches it to the BCA debit at 10:32. Books are up to date.</p>
+                </div>
+
+                <!-- Stage 5 -->
+                <div class="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-[#EA580C] rounded-xl p-5 relative">
+                    <div class="text-[11px] font-bold text-[#EA580C] uppercase tracking-wider mb-3">Step 5 — 10:51</div>
+                    <div class="flex items-center gap-2.5 mb-3">
+                        <div class="avatar-5 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px]">S</div>
+                        <span class="text-[13px] font-bold text-gray-900">Sari logs it</span>
+                    </div>
+                    <p class="text-[12px] text-gray-700 leading-snug">Updates today's burn rate. Marks it for next month's P&L. <b>Done.</b></p>
+                </div>
+            </div>
+
+            <p class="text-center text-[13px] text-gray-500 mt-8">From inbox to ledger in 3 minutes. You did nothing.</p>
+        </div>
+    </section>
+
+    <!-- WHAT YOU GET BACK -->
+    <section class="bg-gray-50 py-16 md:py-24 px-6 border-t border-gray-200">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="max-w-3xl mb-14">
+                <h2 class="text-[32px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4 leading-tight">
+                    What you get back.
+                </h2>
+                <p class="text-[16px] text-gray-600 leading-relaxed">
+                    Real numbers from real teams running FluxyOS for six months or more.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white rounded-2xl border border-gray-200 p-6">
+                    <div class="text-[40px] md:text-[48px] font-bold text-gray-900 tracking-tight leading-none mb-2">32 hrs</div>
+                    <div class="text-[13px] font-semibold text-gray-700 mb-1">saved per month</div>
+                    <div class="text-[12px] text-gray-500 leading-snug">vs. manual data entry and reconciliation</div>
+                </div>
+                <div class="bg-white rounded-2xl border border-gray-200 p-6">
+                    <div class="text-[40px] md:text-[48px] font-bold text-gray-900 tracking-tight leading-none mb-2">99.2%</div>
+                    <div class="text-[13px] font-semibold text-gray-700 mb-1">categorization accuracy</div>
+                    <div class="text-[12px] text-gray-500 leading-snug">after one week of learning your books</div>
+                </div>
+                <div class="bg-white rounded-2xl border border-gray-200 p-6">
+                    <div class="text-[40px] md:text-[48px] font-bold text-gray-900 tracking-tight leading-none mb-2">4.2 days</div>
+                    <div class="text-[13px] font-semibold text-gray-700 mb-1">faster month-end close</div>
+                    <div class="text-[12px] text-gray-500 leading-snug">because the books are always current</div>
+                </div>
+                <div class="bg-white rounded-2xl border border-gray-200 p-6">
+                    <div class="text-[40px] md:text-[48px] font-bold text-gray-900 tracking-tight leading-none mb-2">Rp 47M</div>
+                    <div class="text-[13px] font-semibold text-gray-700 mb-1">avg. recovered per quarter</div>
+                    <div class="text-[12px] text-gray-500 leading-snug">duplicates caught + faster collections</div>
+                </div>
+            </div>
+
+            <!-- Pull quote -->
+            <div class="mt-12 max-w-3xl mx-auto bg-white rounded-2xl border border-gray-200 p-8 md:p-10">
+                <svg class="w-8 h-8 text-[#EA580C] mb-4 opacity-80" fill="currentColor" viewBox="0 0 24 24"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
+                <p class="text-[18px] md:text-[20px] text-gray-800 leading-relaxed mb-5 font-medium">
+                    Hiring two more accountants would have cost us Rp 480M a year. The agents do the same work, and they don't quit when payroll runs late. Honestly, our finance team is finally getting home before 8pm.
+                </p>
+                <div class="flex items-center gap-3">
+                    <div class="avatar-5 w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-[15px]">AP</div>
+                    <div>
+                        <div class="text-[14px] font-bold text-gray-900">Anita Prasetyo</div>
+                        <div class="text-[12px] text-gray-500">CFO • Bumi Kreatif Group</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="bg-[#0B0F19] py-16 md:py-24 px-6 relative overflow-hidden">
+        <div class="absolute inset-0 opacity-[0.04] pointer-events-none" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 32px 32px;"></div>
+        <div class="max-w-[1280px] mx-auto text-center relative">
+            <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-white mb-5 leading-tight">
+                Hire your first six agents <br class="hidden md:block"/>before lunch tomorrow.
+            </h2>
+            <p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
+                No training, no onboarding, no payroll. Connect your bank, point them at your chart of accounts, and watch them get to work.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-md inline-block text-center">
+                    Get started free
+                </a>
+                <a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">
+                    See pricing
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <script src="assets/js/universe-canvas.js"></script>
+    <script src="assets/js/footer-loader.js"></script>
+    <script src="assets/js/fluxyos.js"></script>
+</body>
+</html>
