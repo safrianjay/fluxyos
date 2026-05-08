@@ -709,227 +709,308 @@
         </div>
     </section>
 
-    <!-- COMMON VENDORS - Compact unified grid -->
-    <section id="vendors" class="bg-gray-50 py-16 md:py-24 px-6 border-t border-gray-200">
+    <!-- COMMON VENDORS - Spend-focused grid -->
+    <section id="vendors" class="bg-gray-50 py-14 md:py-20 px-6 border-t border-gray-200">
         <div class="max-w-[1280px] mx-auto">
-            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
-                <div class="max-w-2xl">
-                    <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-3">
+            <!-- Compact header: title + subtitle + CTA in one row -->
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
+                <div>
+                    <h2 class="text-[28px] md:text-[34px] font-bold tracking-tight text-gray-900 leading-tight whitespace-nowrap">
                         Track the vendors you actually use
                     </h2>
-                    <p class="text-[16px] text-gray-600 leading-relaxed">
+                    <p class="text-[15px] text-gray-600 mt-1.5">
                         Connect your stack — every charge lands in the right category, automatically.
                     </p>
                 </div>
-                <a href="/login" class="inline-flex items-center gap-2 text-[14px] font-bold text-[#EA580C] hover:text-[#D44400] transition-colors whitespace-nowrap">
+                <a href="/login" class="inline-flex items-center gap-2 text-[14px] font-bold text-[#EA580C] hover:text-[#D44400] transition-colors whitespace-nowrap self-start lg:self-auto">
                     Connect your stack
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                 </a>
             </div>
 
-            <!-- Category pills (visual indicators) -->
-            <div class="flex flex-wrap gap-2 mb-6 text-[12px]">
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 text-gray-700 font-semibold">
-                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                    Engineering
-                </span>
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 text-gray-700 font-semibold">
-                    <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                    Design
-                </span>
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 text-gray-700 font-semibold">
-                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                    Communication
-                </span>
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 text-gray-700 font-semibold">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                    Productivity
-                </span>
-            </div>
-
-            <!-- Unified vendor grid -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <!-- Vendor grid with monthly spend -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 <!-- Engineering -->
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-orange-50 border border-orange-100 flex items-center justify-center font-bold text-[10px] text-orange-600 flex-shrink-0">AWS</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">AWS</span>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-orange-50 border border-orange-100 flex items-center justify-center font-bold text-[11px] text-orange-600 flex-shrink-0">AWS</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">AWS</span>
                     </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-blue-500"></span>
-                        Engineering
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-gray-900 flex items-center justify-center font-bold text-[11px] text-white flex-shrink-0">Gh</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">GitHub</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-blue-500"></span>
-                        Engineering
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 42M</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                            Eng
+                        </span>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-gray-900 flex items-center justify-center font-bold text-[12px] text-white flex-shrink-0">▲</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">Vercel</span>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-gray-900 flex items-center justify-center font-bold text-[12px] text-white flex-shrink-0">Gh</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">GitHub</span>
                     </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-blue-500"></span>
-                        Engineering
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 1.2M</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                            Eng
+                        </span>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-orange-50 border border-orange-100 flex items-center justify-center font-bold text-[11px] text-orange-500 flex-shrink-0">Cf</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">Cloudflare</span>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-gray-900 flex items-center justify-center font-bold text-[13px] text-white flex-shrink-0">▲</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">Vercel</span>
                     </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-blue-500"></span>
-                        Engineering
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 1.8M</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                            Eng
+                        </span>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-orange-50 border border-orange-100 flex items-center justify-center font-bold text-[12px] text-orange-500 flex-shrink-0">Cf</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">Cloudflare</span>
+                    </div>
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 850K</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                            Eng
+                        </span>
                     </div>
                 </div>
 
                 <!-- Design -->
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[11px] text-purple-600 flex-shrink-0">Fg</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">Figma</span>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[12px] text-purple-600 flex-shrink-0">Fg</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">Figma</span>
                     </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-purple-500"></span>
-                        Design
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-red-50 border border-red-100 flex items-center justify-center font-bold text-[11px] text-red-600 flex-shrink-0">Ad</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">Adobe</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-purple-500"></span>
-                        Design
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 2.4M</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                            Design
+                        </span>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-cyan-50 border border-cyan-100 flex items-center justify-center font-bold text-[11px] text-cyan-600 flex-shrink-0">Cv</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">Canva</span>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-red-50 border border-red-100 flex items-center justify-center font-bold text-[12px] text-red-600 flex-shrink-0">Ad</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">Adobe</span>
                     </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-purple-500"></span>
-                        Design
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 1.6M</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                            Design
+                        </span>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-pink-50 border border-pink-100 flex items-center justify-center font-bold text-[11px] text-pink-600 flex-shrink-0">Db</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">Dribbble</span>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-cyan-50 border border-cyan-100 flex items-center justify-center font-bold text-[12px] text-cyan-600 flex-shrink-0">Cv</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">Canva</span>
                     </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-purple-500"></span>
-                        Design
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 480K</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                            Design
+                        </span>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-pink-50 border border-pink-100 flex items-center justify-center font-bold text-[12px] text-pink-600 flex-shrink-0">Db</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">Dribbble</span>
+                    </div>
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 280K</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                            Design
+                        </span>
                     </div>
                 </div>
 
                 <!-- Communication -->
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[11px] text-purple-600 flex-shrink-0">Sl</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">Slack</span>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[12px] text-purple-600 flex-shrink-0">Sl</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">Slack</span>
                     </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-green-500"></span>
-                        Communication
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[11px] text-blue-700 flex-shrink-0">Zm</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">Zoom</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-green-500"></span>
-                        Communication
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 8.4M</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                            Comm
+                        </span>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[11px] text-purple-700 flex-shrink-0">Lm</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">Loom</span>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[12px] text-blue-700 flex-shrink-0">Zm</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">Zoom</span>
                     </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-green-500"></span>
-                        Communication
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 2.1M</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                            Comm
+                        </span>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-indigo-50 border border-indigo-100 flex items-center justify-center font-bold text-[11px] text-indigo-600 flex-shrink-0">Dc</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">Discord</span>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[12px] text-purple-700 flex-shrink-0">Lm</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">Loom</span>
                     </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-green-500"></span>
-                        Communication
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 1.2M</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                            Comm
+                        </span>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-indigo-50 border border-indigo-100 flex items-center justify-center font-bold text-[12px] text-indigo-600 flex-shrink-0">Dc</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">Discord</span>
+                    </div>
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 320K</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                            Comm
+                        </span>
                     </div>
                 </div>
 
                 <!-- Productivity -->
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center font-bold text-[11px] text-gray-700 flex-shrink-0">N</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">Notion</span>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center font-bold text-[12px] text-gray-700 flex-shrink-0">N</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">Notion</span>
                     </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-amber-500"></span>
-                        Productivity
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[11px] text-blue-600 flex-shrink-0">G</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">Google Workspace</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-amber-500"></span>
-                        Productivity
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 3.1M</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            Prod
+                        </span>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[11px] text-blue-700 flex-shrink-0">Ms</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">Microsoft 365</span>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[12px] text-blue-600 flex-shrink-0">G</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">Google Workspace</span>
                     </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-amber-500"></span>
-                        Productivity
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
-                    <div class="flex items-center gap-2.5 mb-2">
-                        <div class="w-8 h-8 rounded-md bg-red-50 border border-red-100 flex items-center justify-center font-bold text-[11px] text-red-600 flex-shrink-0">A</div>
-                        <span class="text-[13px] font-bold text-gray-900 truncate">Asana</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
-                        <span class="w-1 h-1 rounded-full bg-amber-500"></span>
-                        Productivity
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 4.6M</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            Prod
+                        </span>
                     </div>
                 </div>
-
-                <!-- Add custom -->
-                <div class="bg-transparent rounded-xl border-2 border-dashed border-gray-300 p-4 flex items-center gap-2.5 cursor-pointer hover:border-[#EA580C] hover:bg-orange-50/30 transition-colors group">
-                    <div class="w-8 h-8 rounded-md border border-gray-300 flex items-center justify-center group-hover:border-[#EA580C] flex-shrink-0">
-                        <svg class="w-4 h-4 text-gray-400 group-hover:text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[12px] text-blue-700 flex-shrink-0">Ms</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">Microsoft 365</span>
                     </div>
-                    <div>
-                        <div class="text-[13px] font-bold text-gray-900 group-hover:text-[#EA580C] truncate">Add any vendor</div>
-                        <div class="text-[11px] text-gray-500">Custom or one-off</div>
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 5.2M</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            Prod
+                        </span>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-9 h-9 rounded-md bg-red-50 border border-red-100 flex items-center justify-center font-bold text-[12px] text-red-600 flex-shrink-0">A</div>
+                        <span class="text-[14px] font-bold text-gray-900 truncate">Asana</span>
+                    </div>
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 2.8M</div>
+                            <div class="text-[11px] text-gray-500">per month</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            Prod
+                        </span>
                     </div>
                 </div>
             </div>
 
-            <p class="text-center text-[13px] text-gray-500 mt-8">Plus 240+ more — from your local agency to one-off contractors.</p>
+            <!-- Total summary bar -->
+            <div class="mt-6 bg-white rounded-xl border border-gray-200 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-md bg-gradient-to-br from-[#EA580C] to-[#F97316] flex items-center justify-center text-white">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                    </div>
+                    <div>
+                        <div class="text-[14px] font-bold text-gray-900">Total tracked across 16 vendors</div>
+                        <div class="text-[12px] text-gray-500">Plus 240+ more — local agencies, contractors, one-offs</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-[24px] font-bold font-mono text-gray-900">Rp 78.6M</div>
+                    <div class="text-[11px] text-gray-500">monthly run rate</div>
+                </div>
+            </div>
         </div>
     </section>
 
