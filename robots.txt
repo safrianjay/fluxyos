@@ -1,0 +1,30 @@
+User-agent: *
+Allow: /
+
+# App pages — behind auth, no value to index
+Disallow: /dashboard
+Disallow: /bill
+Disallow: /subscription
+Disallow: /ledger
+Disallow: /integration
+
+# AI search engines — explicitly allow
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+Sitemap: https://fluxyos.com/sitemap.xml

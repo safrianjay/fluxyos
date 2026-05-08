@@ -456,6 +456,76 @@
         "No training, no onboarding, no payroll. Connect your bank, point them at your chart of accounts, and watch them get to work.":
             "Tanpa training, tanpa onboarding, tanpa gaji. Hubungkan bank Anda, arahkan ke daftar akun, dan lihat mereka bekerja.",
 
+
+        // ── FAQ section (visible Q&As on feature pages) ─────────────────────
+        "Frequently asked questions": "Pertanyaan yang sering ditanyakan",
+        "Quick answers to what people usually ask before signing up.": "Jawaban singkat untuk pertanyaan yang sering muncul sebelum daftar.",
+
+        // FAQ — Vendor Spend
+        "What is vendor spend management?":
+            "Apa itu vendor spend management?",
+        "Vendor spend management is the process of tracking, approving, and paying every supplier and SaaS bill in one centralized system instead of email threads and spreadsheets. It lets finance teams catch duplicate payments, enforce approval limits, and maintain a clean audit trail of who paid whom.":
+            "Vendor spend management adalah proses melacak, menyetujui, dan membayar setiap tagihan supplier dan SaaS dalam satu sistem terpusat — bukan di tumpukan email dan spreadsheet. Ini bantu tim keuangan menangkap pembayaran ganda, terapkan batas approval, dan jaga jejak audit siapa bayar siapa.",
+        "How is FluxyOS Vendor Spend different from a regular accounting tool?":
+            "Apa beda FluxyOS Vendor Spend dengan tools akuntansi biasa?",
+        "Accounting tools like Xero, QuickBooks, and Jurnal record what already happened. FluxyOS Vendor Spend automates the work that produces those records — it captures invoices, routes them for approval, schedules payment, and posts the entry. You can use FluxyOS alongside your existing accounting tool; we push cleaned data into it.":
+            "Tools akuntansi seperti Xero, QuickBooks, dan Jurnal mencatat apa yang sudah terjadi. FluxyOS Vendor Spend mengotomasi pekerjaan yang menghasilkan catatan itu — tangkap invoice, atur alur approval, jadwalkan pembayaran, dan posting ke ledger. Anda bisa pakai FluxyOS bersama tools akuntansi yang ada; kami push data yang sudah rapi ke sana.",
+        "Does FluxyOS support Indonesian banks?":
+            "Apakah FluxyOS mendukung bank Indonesia?",
+        "Yes. FluxyOS connects to BCA, Mandiri, BNI, BRI, and 10+ other Indonesian banks for automated reconciliation. Multi-currency support handles USD, SGD, and 120+ other currencies if you also pay international vendors.":
+            "Ya. FluxyOS terhubung ke BCA, Mandiri, BNI, BRI, dan 10+ bank Indonesia lain untuk rekonsiliasi otomatis. Dukungan multi-mata uang menangani USD, SGD, dan 120+ mata uang lain kalau Anda juga bayar vendor internasional.",
+        "Can I set custom approval rules for vendor payments?":
+            "Bisa atur aturan approval custom untuk pembayaran vendor?",
+        "Yes. You can set rules by amount (e.g., anything over Rp 5M needs a director), by category (new vendors require procurement review), or by team (marketing budget is approved by the marketing lead). Approvers get a Slack notification and approve in one click.":
+            "Bisa. Anda bisa atur aturan berdasarkan jumlah (misal di atas Rp 5 juta perlu direktur), kategori (vendor baru perlu review procurement), atau tim (budget marketing disetujui kepala marketing). Approver dapat notif Slack dan setujui dengan satu klik.",
+        "How does FluxyOS catch duplicate vendor payments?":
+            "Bagaimana FluxyOS menangkap pembayaran vendor ganda?",
+        "Every incoming invoice is checked against your vendor history — same supplier, same amount, same period. FluxyOS flags it for review before any money moves, so duplicates never become surprise charges on next month's bank statement.":
+            "Setiap invoice masuk dicek terhadap riwayat vendor Anda — supplier sama, jumlah sama, periode sama. FluxyOS flag untuk review sebelum uang keluar, jadi duplikat tidak pernah jadi tagihan kejutan di rekening koran bulan depan.",
+        "What does it cost?": "Berapa biayanya?",
+        "FluxyOS has a free tier for solo founders and small teams, with paid plans starting from Rp 490.000/month. See the pricing page for full breakdown.":
+            "FluxyOS punya tier gratis untuk founder solo dan tim kecil, dengan paket berbayar mulai Rp 490.000/bulan. Lihat halaman harga untuk rincian lengkap.",
+
+        // FAQ — AI Agents
+        "What are FluxyOS AI Agents?": "Apa itu FluxyOS AI Agents?",
+        "FluxyOS AI Agents are six specialized AI workers that automate the most time-consuming finance tasks — bank reconciliation, transaction categorization, invoice collection, anomaly detection, monthly report drafting, and tax-ready exports. They run 24/7 and ask before any money moves.":
+            "FluxyOS AI Agents adalah enam pekerja AI khusus yang mengotomasi tugas keuangan paling memakan waktu — rekonsiliasi bank, kategorisasi transaksi, penagihan invoice, deteksi anomali, penyusunan laporan bulanan, dan ekspor siap pajak. Mereka jalan 24/7 dan tanya sebelum uang keluar.",
+        "Do the AI agents replace my finance team?": "Apakah AI agent menggantikan tim keuangan saya?",
+        "No — they hand off the routine work so your finance team can focus on judgment calls and strategy. Most teams need 4 minutes per day to review what the agents flagged. Hiring two more accountants would cost roughly Rp 480M/year; the agents do the same routine work without payroll.":
+            "Tidak — mereka mengambil pekerjaan rutin supaya tim keuangan Anda bisa fokus ke keputusan dan strategi. Kebanyakan tim butuh 4 menit per hari untuk review hal yang di-flag agent. Tambah dua akuntan akan habis sekitar Rp 480 juta/tahun; agent kerjakan pekerjaan rutin yang sama tanpa gaji.",
+        "How accurate is the AI?": "Seberapa akurat AI-nya?",
+        "After one week of learning your chart of accounts, the AI achieves 99.2% transaction categorization accuracy. Anything below 90% confidence is automatically flagged for human review, so silent mistakes don't end up in your books.":
+            "Setelah seminggu belajar chart of accounts Anda, AI mencapai akurasi kategorisasi transaksi 99,2%. Apapun di bawah 90% confidence otomatis di-flag untuk review manusia, supaya kesalahan diam-diam tidak masuk pembukuan Anda.",
+        "Will it work with my Indonesian chart of accounts?": "Apakah jalan dengan chart of accounts Indonesia saya?",
+        "Yes. The AI learns from your existing chart of accounts — including custom categories like 'Biaya Bahan Baku' or 'Operasional Outlet'. It adapts when you correct its tags, getting better over time.":
+            "Ya. AI belajar dari chart of accounts yang sudah ada — termasuk kategori custom seperti 'Biaya Bahan Baku' atau 'Operasional Outlet'. Adaptif saat Anda koreksi tag-nya, makin baik seiring waktu.",
+        "Is my financial data safe?": "Apakah data keuangan saya aman?",
+        "FluxyOS uses bank-level encryption for all connections. Bank feed access is read-only, meaning the AI can see transactions but cannot move money without your explicit approval. All data is stored in compliance with Indonesian data protection requirements.":
+            "FluxyOS pakai enkripsi tingkat bank untuk semua koneksi. Akses bank feed read-only — AI bisa lihat transaksi tapi tidak bisa pindah uang tanpa approval eksplisit Anda. Semua data disimpan sesuai aturan perlindungan data Indonesia.",
+        "What languages does the AI support?": "AI mendukung bahasa apa saja?",
+        "The AI works in both English and Bahasa Indonesia, including local vendor names and Indonesian business terms. Reports can be drafted in either language depending on your team's preference.":
+            "AI jalan dalam Bahasa Indonesia dan English, termasuk nama vendor lokal dan istilah bisnis Indonesia. Laporan bisa disusun dalam bahasa mana saja sesuai preferensi tim Anda.",
+
+        // FAQ — Receipt Capture
+        "How does FluxyOS Receipt Capture work?": "Bagaimana cara kerja FluxyOS Receipt Capture?",
+        "FluxyOS Receipt Capture is an AI-powered tool that reads any receipt — phone photos, PDF invoices, or e-receipts — and extracts the vendor name, amount, date, tax breakdown, and line items. The data lands in your FluxyOS dashboard automatically, ready for categorization.":
+            "FluxyOS Receipt Capture adalah tools bertenaga AI yang membaca struk apa saja — foto HP, PDF invoice, atau e-struk — dan mengambil nama vendor, jumlah, tanggal, rincian pajak, dan item per item. Datanya otomatis masuk ke dashboard FluxyOS, siap dikategorikan.",
+        "Can I send receipts via WhatsApp?": "Bisa kirim struk via WhatsApp?",
+        "Yes. Send a photo of any receipt to FluxyOS AI on WhatsApp and the bot replies within 5 seconds with the extracted data. Tap to confirm the suggested category, and the receipt is filed in your dashboard. No app install needed — works on the WhatsApp account you already use.":
+            "Bisa. Kirim foto struk ke FluxyOS AI di WhatsApp dan bot balas dalam 5 detik dengan data yang sudah diekstrak. Tap untuk konfirmasi kategori yang disarankan, struk masuk ke dashboard. Tidak perlu install app — jalan di akun WhatsApp yang Anda pakai sehari-hari.",
+        "What file formats and sources are supported?": "Format file dan sumber apa saja yang didukung?",
+        "FluxyOS accepts JPG/PNG photos from phone cameras, PDF invoices forwarded by email, e-receipts from online checkouts, and bulk uploads of up to 100 files at once. The AI reads handwritten receipts and printed thermal-paper struk equally well.":
+            "FluxyOS terima foto JPG/PNG dari kamera HP, PDF invoice via email, e-struk dari checkout online, dan upload bulk sampai 100 file sekaligus. AI baca struk tulisan tangan dan struk thermal printer dengan baik.",
+        "How accurate is the data extraction?": "Seberapa akurat ekstraksi datanya?",
+        "Average extraction accuracy is 98.4% across vendor name, amount, and date. Individual fields are scored — anything below 90% confidence is flagged for a quick human review so silent mistakes never reach your books.":
+            "Akurasi ekstraksi rata-rata 98,4% untuk nama vendor, jumlah, dan tanggal. Setiap kolom punya skor — apapun di bawah 90% confidence di-flag untuk review cepat supaya kesalahan diam-diam tidak masuk pembukuan.",
+        "Does it handle Indonesian PPN tax correctly?": "Apakah menangani PPN Indonesia dengan benar?",
+        "Yes. The AI extracts PPN 11% as a separate line item, distinguishes it from service charges and discounts, and includes it in your tax-ready exports. PPN summaries by month are available with one click for your accountant.":
+            "Ya. AI ekstrak PPN 11% sebagai baris terpisah, bedakan dari service charge dan diskon, dan masukkan ke ekspor siap pajak Anda. Rangkuman PPN per bulan tersedia dengan satu klik untuk akuntan Anda.",
+        "Will my receipts be saved for audits?": "Apakah struk saya disimpan untuk audit?",
+        "Every receipt — photo, PDF, or e-receipt — is archived for 7 years and indexed by vendor, date, and amount. When auditors ask, you can pull any specific receipt in seconds.":
+            "Setiap struk — foto, PDF, atau e-struk — diarsipkan 7 tahun dan diindeks berdasarkan vendor, tanggal, dan jumlah. Saat auditor tanya, Anda bisa tarik struk spesifik dalam hitungan detik.",
+
         // ── Footer common ───────────────────────────────────────────────────
         "Product": "Produk",
         "Company": "Perusahaan",

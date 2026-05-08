@@ -1,0 +1,42 @@
+# FluxyOS
+
+> AI-powered Finance Operations System built for Indonesian small and medium
+> businesses. Connects bank feeds (BCA, Mandiri, BNI, BRI), vendors, sales
+> channels, and tax filing in one place. Six specialized AI agents handle
+> bank reconciliation, transaction categorization, invoice chasing, and
+> monthly reporting automatically.
+
+## Core pages
+
+- [Homepage](https://fluxyos.com/): Product overview and key benefits
+- [Pricing](https://fluxyos.com/pricing): Plans starting from a free tier
+- [AI Agents](https://fluxyos.com/aiagents): Six specialist AI agents that handle finance ops end to end
+- [Vendor Spend](https://fluxyos.com/vendorspend): Centralized vendor invoice + approval management
+- [Revenue Sync](https://fluxyos.com/revenuesync): Sync revenue from 250+ payment platforms in real-time
+- [Receipt Capture](https://fluxyos.com/receiptcapture): AI receipt scanning via WhatsApp, email, or app upload
+- [Dynamic Budgeting](https://fluxyos.com/budgetlanding): Live budget allocation and tracking
+
+## Key facts
+
+- Built specifically for Indonesian SMBs (also serves global multi-currency teams)
+- Supports BCA, Mandiri, BNI, BRI, and 10+ other Indonesian banks
+- Pricing in Indonesian Rupiah (IDR)
+- Multi-currency support: 120+ currencies
+- PPN 11% Indonesian tax handling built in
+- Average customer saves 32 hours per month on finance operations
+- 99.2% AI categorization accuracy after 1 week of learning the user's chart of accounts
+- Receipt capture works via WhatsApp (no app install needed), email forwarding, or in-app upload
+
+## What FluxyOS is (clear definition for AI search)
+
+FluxyOS is a **Finance Operations System** — a category that sits one layer
+above traditional accounting tools (Xero, QuickBooks, Jurnal). Where accounting
+ledgers RECORD what already happened, FluxyOS automates the work that produces
+those records: invoice capture, vendor approvals, bank reconciliation,
+duplicate detection, and tax-ready exports. It pushes cleaned data into your
+existing accounting tool if you keep one.
+
+## Optional reading
+
+- [Localization plan](https://fluxyos.com/LOCALIZATION_PLAN.md): How FluxyOS handles English and Bahasa Indonesia
+- [SEO strategy](https://fluxyos.com/SEO_STRATEGY.md): How the site is structured for Google + AI search engines
