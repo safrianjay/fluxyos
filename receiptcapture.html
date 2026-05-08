@@ -453,20 +453,26 @@
         </div>
     </nav>
     <!-- HERO -->
-    <section class="hero-gradient pt-12 pb-20 md:pt-16 md:pb-28 px-6 relative overflow-hidden">
+    <section class="hero-gradient pt-16 pb-20 md:pt-20 md:pb-28 px-6 relative overflow-hidden">
+        <!-- Subtle dot grid background -->
+        <div class="absolute inset-0 opacity-40 pointer-events-none" style="background-image: radial-gradient(circle at 1px 1px, rgba(234, 88, 12, 0.18) 1px, transparent 0); background-size: 28px 28px;"></div>
         <!-- Background accent shapes -->
         <div class="absolute top-20 right-[-100px] w-[400px] h-[400px] bg-orange-100/40 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute bottom-0 left-[-150px] w-[500px] h-[500px] bg-amber-50/60 rounded-full blur-3xl pointer-events-none"></div>
+        <!-- Decorative diagonal line -->
+        <svg class="absolute top-10 left-1/2 -translate-x-1/2 opacity-30 pointer-events-none hidden md:block" width="600" height="200" viewBox="0 0 600 200" fill="none">
+            <path d="M0 100 Q 150 20, 300 100 T 600 100" stroke="#EA580C" stroke-width="1.5" stroke-dasharray="4 6" fill="none"/>
+        </svg>
+        <!-- Floating decorative dots -->
+        <div class="absolute top-32 left-[8%] w-2 h-2 rounded-full bg-[#EA580C]/40 pointer-events-none hidden md:block"></div>
+        <div class="absolute top-[40%] right-[6%] w-3 h-3 rounded-full border-2 border-[#EA580C]/30 pointer-events-none hidden md:block"></div>
+        <div class="absolute bottom-32 left-[12%] w-1.5 h-1.5 rounded-full bg-amber-400/50 pointer-events-none hidden md:block"></div>
+        <div class="absolute top-[55%] left-[3%] w-4 h-4 rounded-md border border-[#EA580C]/30 rotate-45 pointer-events-none hidden lg:block"></div>
 
         <div class="max-w-[1280px] mx-auto relative">
             <div class="grid lg:grid-cols-2 gap-12 items-center">
                 <!-- Left: Copy -->
                 <div>
-                    <div class="inline-flex items-center gap-2 bg-white border border-orange-100 rounded-full px-3 py-1.5 mb-6 shadow-sm">
-                        <span class="w-2 h-2 rounded-full bg-[#EA580C] scan-pulse"></span>
-                        <span class="text-[12px] font-bold text-[#EA580C] uppercase tracking-wider">Powered by Fluxy AI</span>
-                    </div>
-
                     <h1 class="text-[44px] md:text-[58px] font-bold tracking-tight leading-[1.05] text-gray-900 mb-6">
                         Snap a receipt. <br/>
                         <span class="bg-gradient-to-r from-[#EA580C] to-[#F97316] bg-clip-text text-transparent">We'll do the rest.</span>
@@ -507,26 +513,26 @@
                     <!-- Receipt paper -->
                     <div class="receipt-float relative z-10 receipt-paper w-[280px] py-8 px-6 font-mono text-gray-800 text-[12px] leading-relaxed">
                         <div class="text-center mb-3">
-                            <div class="text-[16px] font-bold tracking-tight">KOPI KENANGAN</div>
-                            <div class="text-[10px] text-gray-500">Plaza Indonesia, Jakarta</div>
-                            <div class="text-[10px] text-gray-500">14 Nov 2026  •  14:32</div>
+                            <div class="text-[16px] font-bold tracking-tight">OFFICE MART JAKARTA</div>
+                            <div class="text-[10px] text-gray-500">Sudirman Plaza, Jakarta</div>
+                            <div class="text-[10px] text-gray-500">14 Nov 2026  •  10:48</div>
                         </div>
                         <div class="border-t border-dashed border-gray-300 my-3"></div>
                         <div class="space-y-1.5">
-                            <div class="flex justify-between"><span>Kopi Susu Tetangga (L)</span><span>Rp 32.000</span></div>
-                            <div class="flex justify-between"><span>Pandan Latte (L)</span><span>Rp 36.000</span></div>
-                            <div class="flex justify-between"><span>Croissant Almond</span><span>Rp 28.000</span></div>
-                            <div class="flex justify-between"><span>Pain au Chocolat</span><span>Rp 30.000</span></div>
-                            <div class="flex justify-between"><span>Avocado Toast</span><span>Rp 38.000</span></div>
+                            <div class="flex justify-between"><span>A4 Paper (5 reams)</span><span>Rp 240.000</span></div>
+                            <div class="flex justify-between"><span>Whiteboard Markers</span><span>Rp 50.000</span></div>
+                            <div class="flex justify-between"><span>Ring Binders Pack</span><span>Rp 85.000</span></div>
+                            <div class="flex justify-between"><span>Sticky Notes Set</span><span>Rp 35.000</span></div>
+                            <div class="flex justify-between"><span>HP Toner Cartridge</span><span>Rp 90.000</span></div>
                         </div>
                         <div class="border-t border-dashed border-gray-300 my-3"></div>
                         <div class="space-y-1">
-                            <div class="flex justify-between text-[11px]"><span>Subtotal</span><span>Rp 164.000</span></div>
-                            <div class="flex justify-between text-[11px]"><span>PPN 11%</span><span>Rp 16.000</span></div>
-                            <div class="flex justify-between font-bold text-[14px] mt-2"><span>TOTAL</span><span>Rp 180.000</span></div>
+                            <div class="flex justify-between text-[11px]"><span>Subtotal</span><span>Rp 500.000</span></div>
+                            <div class="flex justify-between text-[11px]"><span>PPN 11%</span><span>Rp 55.000</span></div>
+                            <div class="flex justify-between font-bold text-[14px] mt-2"><span>TOTAL</span><span>Rp 555.000</span></div>
                         </div>
                         <div class="text-center mt-4 text-[10px] text-gray-500">— Thank you —</div>
-                        <div class="text-center mt-1 text-[9px] text-gray-400">#KK-08412-2611</div>
+                        <div class="text-center mt-1 text-[9px] text-gray-400">#OM-08412-2611</div>
                     </div>
 
                     <!-- AI Scanning indicator overlay -->
@@ -536,7 +542,7 @@
                     <div class="absolute top-8 right-0 md:right-[-40px] callout-1">
                         <div class="bg-white rounded-lg shadow-lg border border-gray-200 px-3 py-2 max-w-[180px]">
                             <div class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Vendor</div>
-                            <div class="text-[13px] font-bold text-gray-900">Kopi Kenangan</div>
+                            <div class="text-[13px] font-bold text-gray-900">Office Mart Jakarta</div>
                             <div class="text-[10px] text-green-600 font-semibold mt-1">✓ 99% match</div>
                         </div>
                     </div>
@@ -544,16 +550,16 @@
                     <div class="absolute top-44 left-0 md:left-[-30px] callout-2">
                         <div class="bg-white rounded-lg shadow-lg border border-gray-200 px-3 py-2">
                             <div class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Amount</div>
-                            <div class="text-[14px] font-bold font-mono text-gray-900">Rp 180.000</div>
-                            <div class="text-[10px] text-gray-500 mt-1">PPN: Rp 16.000</div>
+                            <div class="text-[14px] font-bold font-mono text-gray-900">Rp 555.000</div>
+                            <div class="text-[10px] text-gray-500 mt-1">PPN: Rp 55.000</div>
                         </div>
                     </div>
 
                     <div class="absolute bottom-32 right-2 md:right-[-30px] callout-3">
                         <div class="bg-white rounded-lg shadow-lg border border-gray-200 px-3 py-2">
                             <div class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Category</div>
-                            <div class="text-[13px] font-bold text-gray-900">Marketing</div>
-                            <div class="text-[10px] text-orange-600 mt-1">→ Client Meeting</div>
+                            <div class="text-[13px] font-bold text-gray-900">Operations</div>
+                            <div class="text-[10px] text-orange-600 mt-1">→ Office Supplies</div>
                         </div>
                     </div>
 
@@ -695,9 +701,9 @@
                         </li>
                     </ul>
 
-                    <a href="/login" class="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold text-[15px] px-7 py-3.5 rounded-md transition-colors shadow-lg shadow-green-500/20">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
-                        Connect WhatsApp
+                    <a href="/login" class="inline-flex items-center gap-2 bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-7 py-3.5 rounded-md transition-all shadow-lg shadow-orange-500/20">
+                        Get started free
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                     </a>
                 </div>
 
@@ -719,18 +725,18 @@
                             <div class="wa-bubble-out max-w-[260px] p-1.5">
                                 <div class="bg-gradient-to-br from-amber-100 to-amber-50 rounded-md p-3 mb-1">
                                     <div class="bg-white rounded p-3 font-mono text-[8px] leading-tight text-gray-700">
-                                        <div class="text-center font-bold text-[10px]">KOPI KENANGAN</div>
-                                        <div class="text-center text-gray-500 text-[7px]">Plaza Indonesia</div>
+                                        <div class="text-center font-bold text-[10px]">OFFICE MART JKT</div>
+                                        <div class="text-center text-gray-500 text-[7px]">Sudirman Plaza</div>
                                         <div class="border-t border-dashed border-gray-300 my-1.5"></div>
                                         <div class="space-y-0.5">
-                                            <div class="flex justify-between"><span>Kopi Susu</span><span>32.000</span></div>
-                                            <div class="flex justify-between"><span>Pandan Latte</span><span>36.000</span></div>
-                                            <div class="flex justify-between"><span>Croissant</span><span>28.000</span></div>
-                                            <div class="flex justify-between"><span>Pain au Choc</span><span>30.000</span></div>
-                                            <div class="flex justify-between"><span>Avo Toast</span><span>38.000</span></div>
+                                            <div class="flex justify-between"><span>A4 Paper x5</span><span>240.000</span></div>
+                                            <div class="flex justify-between"><span>WB Markers</span><span>50.000</span></div>
+                                            <div class="flex justify-between"><span>Ring Binders</span><span>85.000</span></div>
+                                            <div class="flex justify-between"><span>Sticky Notes</span><span>35.000</span></div>
+                                            <div class="flex justify-between"><span>HP Toner</span><span>90.000</span></div>
                                         </div>
                                         <div class="border-t border-dashed border-gray-300 my-1.5"></div>
-                                        <div class="flex justify-between font-bold"><span>TOTAL</span><span>180.000</span></div>
+                                        <div class="flex justify-between font-bold"><span>TOTAL</span><span>555.000</span></div>
                                     </div>
                                 </div>
                                 <div class="px-2 pb-1 flex items-center justify-end gap-1">
@@ -747,17 +753,17 @@
                                     Got it! 📥 Here's what I found:
                                 </div>
                                 <div class="mt-3 bg-gray-50 rounded-md p-3 space-y-1.5 text-[12px]">
-                                    <div class="flex justify-between"><span class="text-gray-500">Vendor</span><span class="font-bold text-gray-900">Kopi Kenangan</span></div>
-                                    <div class="flex justify-between"><span class="text-gray-500">Amount</span><span class="font-bold font-mono text-gray-900">Rp 180.000</span></div>
+                                    <div class="flex justify-between"><span class="text-gray-500">Vendor</span><span class="font-bold text-gray-900">Office Mart Jakarta</span></div>
+                                    <div class="flex justify-between"><span class="text-gray-500">Amount</span><span class="font-bold font-mono text-gray-900">Rp 555.000</span></div>
                                     <div class="flex justify-between"><span class="text-gray-500">Date</span><span class="font-bold text-gray-900">14 Nov 2026</span></div>
-                                    <div class="flex justify-between"><span class="text-gray-500">Suggested</span><span class="font-bold text-orange-600">Marketing →</span></div>
+                                    <div class="flex justify-between"><span class="text-gray-500">Suggested</span><span class="font-bold text-orange-600">Operations →</span></div>
                                 </div>
                                 <div class="mt-3 text-[13px] text-gray-700">
-                                    Looks like a client meeting ☕ — confirm or change the category:
+                                    Looks like an office supply restock 📦 — confirm or change the category:
                                 </div>
                                 <div class="flex flex-wrap gap-1.5 mt-2">
-                                    <span class="bg-orange-100 text-orange-700 text-[11px] font-bold px-2.5 py-1 rounded-full">Confirm Marketing</span>
-                                    <span class="bg-gray-100 text-gray-600 text-[11px] font-semibold px-2.5 py-1 rounded-full">Team Meals</span>
+                                    <span class="bg-orange-100 text-orange-700 text-[11px] font-bold px-2.5 py-1 rounded-full">Confirm Operations</span>
+                                    <span class="bg-gray-100 text-gray-600 text-[11px] font-semibold px-2.5 py-1 rounded-full">Equipment</span>
                                     <span class="bg-gray-100 text-gray-600 text-[11px] font-semibold px-2.5 py-1 rounded-full">Other</span>
                                 </div>
                                 <div class="text-right text-[10px] text-gray-400 mt-2">14:34</div>
@@ -767,7 +773,7 @@
                         <!-- Outgoing: Confirm -->
                         <div class="flex justify-end">
                             <div class="wa-bubble-out max-w-[200px] px-3 py-2">
-                                <div class="text-[14px] text-gray-800">Confirm Marketing 👍</div>
+                                <div class="text-[14px] text-gray-800">Confirm Operations 👍</div>
                                 <div class="text-right text-[10px] text-gray-500 mt-0.5 flex items-center justify-end gap-1">
                                     14:35
                                     <svg class="w-3.5 h-3.5 text-blue-500" viewBox="0 0 16 11" fill="currentColor"><path d="M11.071.653a.5.5 0 0 1 .076.704l-7 8.5a.5.5 0 0 1-.704.076l-3-2.5a.5.5 0 0 1 .614-.79L3.95 8.83l6.418-7.79a.5.5 0 0 1 .704-.076zm4 0a.5.5 0 0 1 .076.704l-7 8.5a.5.5 0 0 1-.713.067l-3-2.5a.5.5 0 0 1 .614-.79l2.617 2.18 6.418-7.79a.5.5 0 0 1 .704-.076z"/></svg>
@@ -779,7 +785,7 @@
                         <div class="flex justify-start">
                             <div class="wa-bubble-in max-w-[260px] p-3">
                                 <div class="text-[14px] text-gray-800 leading-relaxed mb-2">
-                                    Done ✅ Filed under <b>Marketing → Client Meetings</b>.
+                                    Done ✅ Filed under <b>Operations → Office Supplies</b>.
                                 </div>
                                 <div class="bg-orange-50 border border-orange-100 rounded-md px-3 py-2 text-[12px] text-gray-700">
                                     📊 View in your dashboard →
