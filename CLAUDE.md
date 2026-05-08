@@ -45,6 +45,25 @@ Key things it covers that prevent mistakes:
 - Shared JS: `sidebar-loader.js`, `footer-loader.js`, `shared-dashboard.js`, `universe-canvas.js`
 - Shared CSS: `shared-dashboard.css`, `footer.css`
 
+## Localization (Bahasa Indonesia)
+
+Full localization strategy lives in **`LOCALIZATION_PLAN.md`** — read before
+making any user-facing copy change.
+
+Quick rules:
+- Indonesian translations live at `/id/*.html` (mirror of root structure).
+- Tone is **casual professional** for SMB owners — pronoun "Anda", short sentences,
+  active verbs, no bureaucratic language. See LOCALIZATION_PLAN.md §2 for the
+  glossary and sample translations.
+- **Brand & product names stay English** everywhere (FluxyOS, Fluxy AI, Revenue
+  Sync, Vendor Spend, Receipt Capture, Dynamic Budgeting, AI Agents, plus all
+  3rd-party brands).
+- **Pair edits.** Any change to user-facing copy in an EN page must include the
+  matching update to its `/id/` counterpart in the same commit. Don't ship
+  English-only copy changes.
+- New product term not in the glossary? Add it to LOCALIZATION_PLAN.md §2
+  before translating, so future copy stays consistent.
+
 ## Key Conventions
 
 - **Navigation & Footer**: All landing pages MUST use the universal header/navbar from `fluxyos.html` and load footer via `footer-loader.js`. Never create custom header markup — copy nav structure from fluxyos.html and maintain consistency across all pages.
