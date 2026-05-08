@@ -709,165 +709,227 @@
         </div>
     </section>
 
-    <!-- COMMON VENDORS - Categorized layout -->
+    <!-- COMMON VENDORS - Compact unified grid -->
     <section id="vendors" class="bg-gray-50 py-16 md:py-24 px-6 border-t border-gray-200">
         <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mx-auto text-center mb-16">
-                <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4">
-                    Track the vendors you actually use
-                </h2>
-                <p class="text-[17px] text-gray-600 leading-relaxed">
-                    Connect your stack so every charge — from cloud bills to design tools — lands in the right category automatically.
-                </p>
-            </div>
-
-            <!-- Category 1: Engineering & Infrastructure -->
-            <div class="bg-white rounded-2xl border border-gray-200 p-8 md:p-10 mb-6">
-                <div class="grid md:grid-cols-12 gap-8 items-center">
-                    <div class="md:col-span-4">
-                        <div class="inline-flex items-center gap-2 mb-3">
-                            <div class="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center">
-                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/></svg>
-                            </div>
-                        </div>
-                        <h3 class="text-[22px] font-bold text-gray-900 mb-2">Engineering & Infrastructure</h3>
-                        <p class="text-[14px] text-gray-600 leading-relaxed">Cloud bills, dev tools, hosting — the line items that grow with your traffic.</p>
-                    </div>
-                    <div class="md:col-span-8">
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center font-bold text-[11px] text-orange-600 flex-shrink-0">AWS</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">AWS</span>
-                            </div>
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-gray-900 flex items-center justify-center font-bold text-[12px] text-white flex-shrink-0">Gh</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">GitHub</span>
-                            </div>
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-gray-900 flex items-center justify-center font-bold text-[12px] text-white flex-shrink-0">▲</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">Vercel</span>
-                            </div>
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center font-bold text-[12px] text-orange-500 flex-shrink-0">Cf</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">Cloudflare</span>
-                            </div>
-                        </div>
-                    </div>
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
+                <div class="max-w-2xl">
+                    <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-3">
+                        Track the vendors you actually use
+                    </h2>
+                    <p class="text-[16px] text-gray-600 leading-relaxed">
+                        Connect your stack — every charge lands in the right category, automatically.
+                    </p>
                 </div>
-            </div>
-
-            <!-- Category 2: Design & Creative -->
-            <div class="bg-white rounded-2xl border border-gray-200 p-8 md:p-10 mb-6">
-                <div class="grid md:grid-cols-12 gap-8 items-center">
-                    <div class="md:col-span-4">
-                        <div class="inline-flex items-center gap-2 mb-3">
-                            <div class="w-9 h-9 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center">
-                                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
-                            </div>
-                        </div>
-                        <h3 class="text-[22px] font-bold text-gray-900 mb-2">Design & Creative</h3>
-                        <p class="text-[14px] text-gray-600 leading-relaxed">Annual licenses, per-seat plans, contractor renewals — kept in one running tally.</p>
-                    </div>
-                    <div class="md:col-span-8">
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[12px] text-purple-600 flex-shrink-0">Fg</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">Figma</span>
-                            </div>
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center font-bold text-[12px] text-red-600 flex-shrink-0">Ad</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">Adobe</span>
-                            </div>
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-cyan-50 border border-cyan-100 flex items-center justify-center font-bold text-[12px] text-cyan-600 flex-shrink-0">Cv</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">Canva</span>
-                            </div>
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-yellow-50 border border-yellow-100 flex items-center justify-center font-bold text-[12px] text-yellow-700 flex-shrink-0">Ds</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">Dribbble</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Category 3: Communication & Collaboration -->
-            <div class="bg-white rounded-2xl border border-gray-200 p-8 md:p-10 mb-6">
-                <div class="grid md:grid-cols-12 gap-8 items-center">
-                    <div class="md:col-span-4">
-                        <div class="inline-flex items-center gap-2 mb-3">
-                            <div class="w-9 h-9 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center">
-                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                            </div>
-                        </div>
-                        <h3 class="text-[22px] font-bold text-gray-900 mb-2">Communication & Collaboration</h3>
-                        <p class="text-[14px] text-gray-600 leading-relaxed">Per-seat tools that creep up as your team grows. We catch the seat overcounts.</p>
-                    </div>
-                    <div class="md:col-span-8">
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[12px] text-blue-600 flex-shrink-0">Sl</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">Slack</span>
-                            </div>
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[12px] text-blue-700 flex-shrink-0">Zm</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">Zoom</span>
-                            </div>
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[12px] text-purple-700 flex-shrink-0">Lm</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">Loom</span>
-                            </div>
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center font-bold text-[12px] text-indigo-600 flex-shrink-0">Ds</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">Discord</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Category 4: Productivity & Operations -->
-            <div class="bg-white rounded-2xl border border-gray-200 p-8 md:p-10 mb-8">
-                <div class="grid md:grid-cols-12 gap-8 items-center">
-                    <div class="md:col-span-4">
-                        <div class="inline-flex items-center gap-2 mb-3">
-                            <div class="w-9 h-9 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center">
-                                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                            </div>
-                        </div>
-                        <h3 class="text-[22px] font-bold text-gray-900 mb-2">Productivity & Operations</h3>
-                        <p class="text-[14px] text-gray-600 leading-relaxed">Day-to-day platforms for docs, email, and project management. All accounted for.</p>
-                    </div>
-                    <div class="md:col-span-8">
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center font-bold text-[12px] text-gray-700 flex-shrink-0">N</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">Notion</span>
-                            </div>
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[12px] text-blue-600 flex-shrink-0">G</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">Google Workspace</span>
-                            </div>
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[12px] text-blue-700 flex-shrink-0">Ms</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">Microsoft 365</span>
-                            </div>
-                            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                <div class="w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center font-bold text-[12px] text-indigo-600 flex-shrink-0">A</div>
-                                <span class="text-[13px] font-semibold text-gray-900 truncate">Asana</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="text-center">
-                <p class="text-[14px] text-gray-500 mb-4">Don't see yours? Add any vendor — recurring or one-off.</p>
-                <a href="/login" class="inline-flex items-center gap-2 text-[14px] font-bold text-[#EA580C] hover:text-[#D44400] transition-colors">
+                <a href="/login" class="inline-flex items-center gap-2 text-[14px] font-bold text-[#EA580C] hover:text-[#D44400] transition-colors whitespace-nowrap">
                     Connect your stack
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                 </a>
             </div>
+
+            <!-- Category pills (visual indicators) -->
+            <div class="flex flex-wrap gap-2 mb-6 text-[12px]">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 text-gray-700 font-semibold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                    Engineering
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 text-gray-700 font-semibold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                    Design
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 text-gray-700 font-semibold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                    Communication
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 text-gray-700 font-semibold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                    Productivity
+                </span>
+            </div>
+
+            <!-- Unified vendor grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <!-- Engineering -->
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-orange-50 border border-orange-100 flex items-center justify-center font-bold text-[10px] text-orange-600 flex-shrink-0">AWS</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">AWS</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-blue-500"></span>
+                        Engineering
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-gray-900 flex items-center justify-center font-bold text-[11px] text-white flex-shrink-0">Gh</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">GitHub</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-blue-500"></span>
+                        Engineering
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-gray-900 flex items-center justify-center font-bold text-[12px] text-white flex-shrink-0">▲</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">Vercel</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-blue-500"></span>
+                        Engineering
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-orange-50 border border-orange-100 flex items-center justify-center font-bold text-[11px] text-orange-500 flex-shrink-0">Cf</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">Cloudflare</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-blue-500"></span>
+                        Engineering
+                    </div>
+                </div>
+
+                <!-- Design -->
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[11px] text-purple-600 flex-shrink-0">Fg</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">Figma</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-purple-500"></span>
+                        Design
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-red-50 border border-red-100 flex items-center justify-center font-bold text-[11px] text-red-600 flex-shrink-0">Ad</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">Adobe</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-purple-500"></span>
+                        Design
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-cyan-50 border border-cyan-100 flex items-center justify-center font-bold text-[11px] text-cyan-600 flex-shrink-0">Cv</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">Canva</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-purple-500"></span>
+                        Design
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-pink-50 border border-pink-100 flex items-center justify-center font-bold text-[11px] text-pink-600 flex-shrink-0">Db</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">Dribbble</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-purple-500"></span>
+                        Design
+                    </div>
+                </div>
+
+                <!-- Communication -->
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[11px] text-purple-600 flex-shrink-0">Sl</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">Slack</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-green-500"></span>
+                        Communication
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[11px] text-blue-700 flex-shrink-0">Zm</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">Zoom</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-green-500"></span>
+                        Communication
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[11px] text-purple-700 flex-shrink-0">Lm</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">Loom</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-green-500"></span>
+                        Communication
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-indigo-50 border border-indigo-100 flex items-center justify-center font-bold text-[11px] text-indigo-600 flex-shrink-0">Dc</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">Discord</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-green-500"></span>
+                        Communication
+                    </div>
+                </div>
+
+                <!-- Productivity -->
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center font-bold text-[11px] text-gray-700 flex-shrink-0">N</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">Notion</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-amber-500"></span>
+                        Productivity
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[11px] text-blue-600 flex-shrink-0">G</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">Google Workspace</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-amber-500"></span>
+                        Productivity
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[11px] text-blue-700 flex-shrink-0">Ms</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">Microsoft 365</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-amber-500"></span>
+                        Productivity
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all group">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-8 h-8 rounded-md bg-red-50 border border-red-100 flex items-center justify-center font-bold text-[11px] text-red-600 flex-shrink-0">A</div>
+                        <span class="text-[13px] font-bold text-gray-900 truncate">Asana</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <span class="w-1 h-1 rounded-full bg-amber-500"></span>
+                        Productivity
+                    </div>
+                </div>
+
+                <!-- Add custom -->
+                <div class="bg-transparent rounded-xl border-2 border-dashed border-gray-300 p-4 flex items-center gap-2.5 cursor-pointer hover:border-[#EA580C] hover:bg-orange-50/30 transition-colors group">
+                    <div class="w-8 h-8 rounded-md border border-gray-300 flex items-center justify-center group-hover:border-[#EA580C] flex-shrink-0">
+                        <svg class="w-4 h-4 text-gray-400 group-hover:text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                    </div>
+                    <div>
+                        <div class="text-[13px] font-bold text-gray-900 group-hover:text-[#EA580C] truncate">Add any vendor</div>
+                        <div class="text-[11px] text-gray-500">Custom or one-off</div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-center text-[13px] text-gray-500 mt-8">Plus 240+ more — from your local agency to one-off contractors.</p>
         </div>
     </section>
 
