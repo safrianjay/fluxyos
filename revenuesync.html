@@ -68,11 +68,15 @@
         .gradient-border {
             background: linear-gradient(135deg, rgba(234, 88, 12, 0.1) 0%, rgba(234, 88, 12, 0) 100%);
         }
+
+        .hub-gradient {
+            background: linear-gradient(135deg, #FF6B35 0%, #EA580C 50%, #D44400 100%);
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <!-- NAVBAR -->
+    <!-- NAVBAR - Universal Header from fluxyos.html -->
     <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
         <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
             <div class="flex items-center gap-12 h-full">
@@ -137,20 +141,16 @@
     </nav>
 
     <!-- HERO SECTION -->
-    <section class="hero-gradient py-20 md:py-32 px-6">
+    <section class="hero-gradient py-16 md:py-28 px-6">
         <div class="max-w-[1280px] mx-auto">
             <div class="grid md:grid-cols-2 gap-12 items-center">
                 <div>
-                    <div class="inline-block bg-white border border-gray-200 text-[#EA580C] px-4 py-2 rounded-full text-[13px] font-bold mb-6">
-                        Multi-Channel Revenue Intelligence
-                    </div>
-
                     <h1 class="text-[48px] md:text-[56px] font-bold tracking-tight leading-[1.1] text-gray-900 mb-6">
                         Sync revenue from every channel, instantly
                     </h1>
 
                     <p class="text-[18px] text-gray-600 leading-relaxed mb-8 max-w-xl">
-                        Connect Stripe, Shopify, Tokopedia, TikTok Shop, and 250+ payment platforms. Every transaction syncs to your ledger in under 30 seconds. No manual work. Pure automation.
+                        Connect Stripe, Shopify, Tokopedia, TikTok Shop, Gumroad, and 250+ platforms. Every transaction syncs to your ledger in under 30 seconds. No manual work. Pure automation.
                     </p>
 
                     <div class="flex flex-col sm:flex-row gap-4">
@@ -165,7 +165,7 @@
                     <div class="mt-12 flex items-center gap-8">
                         <div>
                             <div class="text-[32px] font-bold text-gray-900">250+</div>
-                            <p class="text-[14px] text-gray-600">Payment Partners</p>
+                            <p class="text-[14px] text-gray-600">Integrations</p>
                         </div>
                         <div>
                             <div class="text-[32px] font-bold text-gray-900">Rp 50T+</div>
@@ -195,14 +195,17 @@
                         <!-- Row 1: Stripe, Shopify, Tokopedia -->
                         <div class="flex gap-4 float-item">
                             <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center">
+                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 24 24" fill="currentColor"><path d="M13.976 9.15c-2.172.806-3.356 1.948-3.356 3.379 0 1.902 1.521 2.841 3.912 2.841 1.632 0 3.151-.26 4.639-.934V15.5c-1.798.547-2.885.666-4.19.666-2.663 0-4.595-1.245-4.589-3.957.006-2.744 1.921-4.248 4.582-4.248 1.331 0 2.26.273 4.56 1.307l.456-1.364c-1.921-1.157-3.767-1.548-5.016-1.548-2.775 0-4.57 1.314-4.57 3.649 0 2.673 1.941 4.062 4.876 4.062.962 0 1.857-.193 2.355-.477v-1.97zm-.192-3.341c-1.969 0-3.261 1.129-3.384 2.897.12-1.451 1.11-2.586 3.074-2.896.05-.01.119-.026.31-.026z"/></svg>
                                 <div class="text-sm font-bold text-gray-900 mb-1">Stripe</div>
-                                <div class="text-xs text-gray-500">Payment</div>
+                                <div class="text-xs text-gray-500">Payments</div>
                             </div>
                             <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center">
+                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 24 24" fill="#96bf48"><path d="M5.325 2h13.35c1.792 0 3.325 1.533 3.325 3.325v13.35c0 1.792-1.533 3.325-3.325 3.325H5.325C3.533 22 2 20.467 2 18.675V5.325C2 3.533 3.533 2 5.325 2zm2.084 5.66v7.02h2.088v-4.16h1.824c1.428 0 2.088-.66 2.088-2.088 0-1.512-.66-2.088-2.088-2.088h-3.912v.316zm1.428 3.912v-2.268h1.428c.66 0 1.032.336 1.032.84 0 .672-.3 1.08-.924 1.08h-.84v.348zm7.536-3.912h2.088v7.02h-2.088zm.036-1.68c0 .744.588 1.344 1.32 1.344.744 0 1.344-.6 1.344-1.344-.012-.744-.6-1.344-1.344-1.344-1.056 0-1.32.6-1.32 1.344z"/></svg>
                                 <div class="text-sm font-bold text-gray-900 mb-1">Shopify</div>
                                 <div class="text-xs text-gray-500">E-commerce</div>
                             </div>
                             <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center">
+                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 24 24" fill="#1FAB89"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm.63 18.06H8.88v-9.09h3.75v9.09zm-1.88-10.32c-1.2 0-2.16-.97-2.16-2.17 0-1.2.97-2.16 2.16-2.16s2.16.97 2.16 2.16c0 1.2-.97 2.17-2.16 2.17zm11.25 10.32h-3.74v-4.42c0-1.05-.02-2.4-1.46-2.4-1.47 0-1.69 1.14-1.69 2.33v4.49h-3.74v-9.09h3.59v1.23h.05c.5-.95 1.72-1.95 3.54-1.95 3.78 0 4.48 2.49 4.48 5.73v4.08z"/></svg>
                                 <div class="text-sm font-bold text-gray-900 mb-1">Tokopedia</div>
                                 <div class="text-xs text-gray-500">Marketplace</div>
                             </div>
@@ -211,8 +214,8 @@
                         <!-- Arrow down -->
                         <div class="text-2xl text-gray-400">↓</div>
 
-                        <!-- Central sync hub -->
-                        <div class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white rounded-xl px-8 py-4 font-bold text-center shadow-lg float-item z-20">
+                        <!-- Central sync hub with gradient -->
+                        <div class="hub-gradient text-white rounded-xl px-8 py-4 font-bold text-center shadow-xl float-item z-20">
                             <div>Revenue Sync</div>
                             <div class="text-[12px] font-normal mt-1 opacity-90">Unified in real-time</div>
                         </div>
@@ -233,15 +236,17 @@
                         <!-- Row 2: More integrations -->
                         <div class="flex gap-4 float-item mt-4">
                             <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center opacity-75">
-                                <div class="text-sm font-bold text-gray-900 mb-1">PayPal</div>
-                                <div class="text-xs text-gray-500">Payment</div>
+                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 24 24" fill="#FF5733"><path d="M3 3h18v18H3z"/></svg>
+                                <div class="text-sm font-bold text-gray-900 mb-1">Etsy</div>
+                                <div class="text-xs text-gray-500">Marketplace</div>
                             </div>
                             <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center opacity-75">
+                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 24 24" fill="#36424b"><path d="M11.4 6h1.2v7.56H9v-1.2h2.4V6zm-7.2 0h4.8v1.2H6v2.4h3.6v1.2H6v3.96h4.8v1.2H4.2V6z"/></svg>
                                 <div class="text-sm font-bold text-gray-900 mb-1">Xendit</div>
-                                <div class="text-xs text-gray-500">Payment</div>
+                                <div class="text-xs text-gray-500">Payments</div>
                             </div>
                             <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center opacity-75">
-                                <div class="text-sm font-bold text-gray-900 mb-1">+ 247 More</div>
+                                <div class="text-sm font-bold text-gray-900">+ 247 More</div>
                                 <div class="text-xs text-gray-500">Integrations</div>
                             </div>
                         </div>
@@ -415,61 +420,61 @@
                     Connect your favorite platforms
                 </h2>
                 <p class="text-[18px] text-gray-600 max-w-2xl mx-auto">
-                    Revenue Sync works with all major payment processors, POS systems, and marketplaces.
+                    Revenue Sync works with all major payment processors, POS systems, marketplaces, and product platforms.
                 </p>
             </div>
 
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
                 <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <div class="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center mb-3 text-white font-bold">S</div>
+                    <svg class="w-12 h-12 mb-3" viewBox="0 0 24 24" fill="#0066ff"><path d="M13.976 9.15c-2.172.806-3.356 1.948-3.356 3.379 0 1.902 1.521 2.841 3.912 2.841 1.632 0 3.151-.26 4.639-.934V15.5c-1.798.547-2.885.666-4.19.666-2.663 0-4.595-1.245-4.589-3.957.006-2.744 1.921-4.248 4.582-4.248 1.331 0 2.26.273 4.56 1.307l.456-1.364c-1.921-1.157-3.767-1.548-5.016-1.548-2.775 0-4.57 1.314-4.57 3.649 0 2.673 1.941 4.062 4.876 4.062.962 0 1.857-.193 2.355-.477v-1.97z"/></svg>
                     <h3 class="font-bold text-gray-900 text-[14px]">Stripe</h3>
                     <p class="text-[12px] text-gray-500 mt-1">Payments</p>
                 </div>
 
                 <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <div class="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[18px]">◆</div>
+                    <svg class="w-12 h-12 mb-3" viewBox="0 0 24 24" fill="#96bf48"><path d="M5.325 2h13.35c1.792 0 3.325 1.533 3.325 3.325v13.35c0 1.792-1.533 3.325-3.325 3.325H5.325C3.533 22 2 20.467 2 18.675V5.325C2 3.533 3.533 2 5.325 2zm2.084 5.66v7.02h2.088v-4.16h1.824c1.428 0 2.088-.66 2.088-2.088 0-1.512-.66-2.088-2.088-2.088h-3.912v.316zm1.428 3.912v-2.268h1.428c.66 0 1.032.336 1.032.84 0 .672-.3 1.08-.924 1.08h-.84v.348zm7.536-3.912h2.088v7.02h-2.088zm.036-1.68c0 .744.588 1.344 1.32 1.344.744 0 1.344-.6 1.344-1.344-.012-.744-.6-1.344-1.344-1.344-1.056 0-1.32.6-1.32 1.344z"/></svg>
                     <h3 class="font-bold text-gray-900 text-[14px]">Shopify</h3>
                     <p class="text-[12px] text-gray-500 mt-1">E-Commerce</p>
                 </div>
 
                 <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[12px]">TO</div>
+                    <svg class="w-12 h-12 mb-3" viewBox="0 0 24 24" fill="#1FAB89"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm.63 18.06H8.88v-9.09h3.75v9.09zm-1.88-10.32c-1.2 0-2.16-.97-2.16-2.17 0-1.2.97-2.16 2.16-2.16s2.16.97 2.16 2.16c0 1.2-.97 2.17-2.16 2.17zm11.25 10.32h-3.74v-4.42c0-1.05-.02-2.4-1.46-2.4-1.47 0-1.69 1.14-1.69 2.33v4.49h-3.74v-9.09h3.59v1.23h.05c.5-.95 1.72-1.95 3.54-1.95 3.78 0 4.48 2.49 4.48 5.73v4.08z"/></svg>
                     <h3 class="font-bold text-gray-900 text-[14px]">Tokopedia</h3>
                     <p class="text-[12px] text-gray-500 mt-1">Marketplace</p>
                 </div>
 
                 <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <div class="w-12 h-12 bg-black rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[12px]">TT</div>
+                    <svg class="w-12 h-12 mb-3" viewBox="0 0 24 24" fill="#000"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm0 22.5C6.2 22.5 1.5 17.8 1.5 12S6.2 1.5 12 1.5 22.5 6.2 22.5 12 17.8 22.5 12 22.5z"/></svg>
                     <h3 class="font-bold text-gray-900 text-[14px]">TikTok Shop</h3>
                     <p class="text-[12px] text-gray-500 mt-1">Marketplace</p>
                 </div>
 
                 <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <div class="w-12 h-12 bg-yellow-600 rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[12px]">PP</div>
-                    <h3 class="font-bold text-gray-900 text-[14px]">PayPal</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">Payments</p>
+                    <svg class="w-12 h-12 mb-3" viewBox="0 0 24 24" fill="#F1641E"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/></svg>
+                    <h3 class="font-bold text-gray-900 text-[14px]">Etsy</h3>
+                    <p class="text-[12px] text-gray-500 mt-1">Marketplace</p>
                 </div>
 
                 <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[18px]">⬜</div>
+                    <svg class="w-12 h-12 mb-3" viewBox="0 0 24 24" fill="#FF5E00"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
                     <h3 class="font-bold text-gray-900 text-[14px]">Square</h3>
                     <p class="text-[12px] text-gray-500 mt-1">POS / Payments</p>
                 </div>
 
                 <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <div class="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[12px]">XD</div>
+                    <svg class="w-12 h-12 mb-3" viewBox="0 0 24 24" fill="#7B2CBF"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
                     <h3 class="font-bold text-gray-900 text-[14px]">Xendit</h3>
                     <p class="text-[12px] text-gray-500 mt-1">Payments</p>
                 </div>
 
                 <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[12px]">MD</div>
+                    <svg class="w-12 h-12 mb-3" viewBox="0 0 24 24" fill="#E60000"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
                     <h3 class="font-bold text-gray-900 text-[14px]">Midtrans</h3>
                     <p class="text-[12px] text-gray-500 mt-1">Payments</p>
                 </div>
 
                 <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <div class="w-12 h-12 bg-purple-700 rounded-lg flex items-center justify-center mb-3 text-white font-bold text-[12px]">WC</div>
+                    <svg class="w-12 h-12 mb-3" viewBox="0 0 24 24" fill="#96588A"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
                     <h3 class="font-bold text-gray-900 text-[14px]">WooCommerce</h3>
                     <p class="text-[12px] text-gray-500 mt-1">E-Commerce</p>
                 </div>

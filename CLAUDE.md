@@ -47,6 +47,7 @@ Key things it covers that prevent mistakes:
 
 ## Key Conventions
 
+- **Navigation & Footer**: All landing pages MUST use the universal header/navbar from `fluxyos.html` and load footer via `footer-loader.js`. Never create custom header markup — copy nav structure from fluxyos.html and maintain consistency across all pages.
 - Footer loads on all **landing pages** only — never on dashboard app pages (`dashboard.html`, `bill.html`, `subscription.html`)
 - Amount formatting: Indonesian Rupiah with `.` as thousands separator (e.g. `1.234.567`)
 - Amount stored in Firestore as raw integer (dots stripped before save)
