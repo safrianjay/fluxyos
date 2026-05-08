@@ -506,22 +506,24 @@
 
                 <!-- Right: Live AI processing visual -->
                 <div class="lg:col-span-6 relative">
-                    <!-- MAIN: Reza analyzing a transaction in real-time -->
+                    <!-- MAIN: AI analyzing a transaction in real-time -->
                     <div class="bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden relative z-10">
                         <!-- Header bar -->
                         <div class="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
                             <div class="flex items-center gap-3">
-                                <div class="avatar-2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0">R</div>
+                                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-[#EA580C] to-[#F97316] flex items-center justify-center text-white flex-shrink-0 shadow-md shadow-orange-500/20">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                </div>
                                 <div>
                                     <div class="text-[13px] font-bold text-gray-900 flex items-center gap-2">
-                                        Reza is analyzing
+                                        AI is analyzing
                                         <span class="flex gap-0.5">
-                                            <span class="w-1 h-1 rounded-full bg-blue-500 live-dot"></span>
-                                            <span class="w-1 h-1 rounded-full bg-blue-500 live-dot" style="animation-delay: 0.2s"></span>
-                                            <span class="w-1 h-1 rounded-full bg-blue-500 live-dot" style="animation-delay: 0.4s"></span>
+                                            <span class="w-1 h-1 rounded-full bg-[#EA580C] live-dot"></span>
+                                            <span class="w-1 h-1 rounded-full bg-[#EA580C] live-dot" style="animation-delay: 0.2s"></span>
+                                            <span class="w-1 h-1 rounded-full bg-[#EA580C] live-dot" style="animation-delay: 0.4s"></span>
                                         </span>
                                     </div>
-                                    <div class="text-[11px] text-gray-500">The Categorizer • Decision in 1.2s</div>
+                                    <div class="text-[11px] text-gray-500">Decision ready in 1.2 seconds</div>
                                 </div>
                             </div>
                             <div class="flex items-center gap-1.5 text-[10px] bg-green-50 border border-green-100 px-2 py-1 rounded">
@@ -534,35 +536,35 @@
                         <div class="p-5 space-y-4">
                             <!-- Input -->
                             <div>
-                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Input from BCA feed</div>
+                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">A new charge just hit your bank</div>
                                 <div class="bg-gray-50 border border-gray-200 rounded-md px-3 py-2.5 font-mono text-[12px] text-gray-700">
                                     <div class="flex justify-between items-center">
-                                        <span class="truncate">BCA-OUT &nbsp;AMAZN-AWS-CLOUD</span>
+                                        <span class="truncate">PT NUSANTARA SUPPLIER</span>
                                         <span class="font-bold text-gray-900">Rp 6.800.000</span>
                                     </div>
-                                    <div class="text-[10px] text-gray-500 mt-0.5">14/11/2026 • 10:32 WIB</div>
+                                    <div class="text-[10px] text-gray-500 mt-0.5">14 Nov 2026  &middot;  10:32  &middot;  via BCA</div>
                                 </div>
                             </div>
 
                             <!-- Reasoning -->
                             <div>
-                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reasoning</div>
+                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">What the AI checked</div>
                                 <div class="space-y-1.5">
                                     <div class="flex items-center gap-2 feed-1">
                                         <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                        <span class="text-[12px] text-gray-700">Matched vendor: <b>Amazon Web Services</b></span>
+                                        <span class="text-[12px] text-gray-700">It's your usual supplier — <b>Nusantara</b></span>
                                     </div>
                                     <div class="flex items-center gap-2 feed-2">
                                         <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                        <span class="text-[12px] text-gray-700">Found 11 prior monthly charges (avg Rp 6.4M)</span>
+                                        <span class="text-[12px] text-gray-700">You've paid them 11 times before (avg Rp 6.4M)</span>
                                     </div>
                                     <div class="flex items-center gap-2 feed-3">
                                         <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                        <span class="text-[12px] text-gray-700">Amount within 6% of normal range</span>
+                                        <span class="text-[12px] text-gray-700">Amount looks normal (within 6%)</span>
                                     </div>
                                     <div class="flex items-center gap-2 feed-4">
                                         <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                        <span class="text-[12px] text-gray-700">No duplicate detected this period</span>
+                                        <span class="text-[12px] text-gray-700">Not a duplicate</span>
                                     </div>
                                 </div>
                             </div>
@@ -570,10 +572,10 @@
                             <!-- Decision -->
                             <div class="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-lg p-3.5">
                                 <div class="flex items-center justify-between mb-2">
-                                    <div class="text-[10px] font-bold text-[#EA580C] uppercase tracking-wider">Decision</div>
-                                    <div class="text-[11px] font-mono text-gray-600">94% confidence</div>
+                                    <div class="text-[10px] font-bold text-[#EA580C] uppercase tracking-wider">Filed under</div>
+                                    <div class="text-[11px] font-mono text-gray-600">94% confident</div>
                                 </div>
-                                <div class="text-[14px] font-bold text-gray-900 mb-2">Operations &rarr; Cloud Infrastructure</div>
+                                <div class="text-[14px] font-bold text-gray-900 mb-2">Cost of Sales &rarr; Inventory &amp; Supplies</div>
                                 <div class="h-1.5 bg-white/60 rounded-full overflow-hidden">
                                     <div class="h-full bg-gradient-to-r from-[#EA580C] to-[#F97316] rounded-full progress-bar" style="--target-width: 94%; width: 94%"></div>
                                 </div>
@@ -584,38 +586,42 @@
                         <div class="px-5 py-3 bg-green-50 border-t border-green-100 flex items-center justify-between text-[12px]">
                             <div class="flex items-center gap-2 text-green-700">
                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                                <span class="font-bold">Filed automatically</span>
+                                <span class="font-bold">Filed for you. Done.</span>
                             </div>
-                            <span class="text-gray-500">Posted to ledger &middot; 0.4s</span>
+                            <span class="text-gray-500">0.4 seconds total</span>
                         </div>
                     </div>
 
-                    <!-- FLOATING SIDE: Lia working in parallel -->
+                    <!-- FLOATING SIDE: Reconciling -->
                     <div class="absolute -top-4 -right-4 bg-white rounded-xl shadow-xl border border-gray-200 px-4 py-3 max-w-[210px] hidden md:block z-20">
                         <div class="flex items-center gap-2.5 mb-2">
-                            <div class="avatar-3 w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-[11px] flex-shrink-0">L</div>
+                            <div class="w-7 h-7 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-green-600 flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                            </div>
                             <div class="flex-1 min-w-0">
-                                <div class="text-[12px] font-bold text-gray-900">Lia</div>
-                                <div class="text-[10px] text-gray-500">Reconciling…</div>
+                                <div class="text-[12px] font-bold text-gray-900">Matching bank lines</div>
+                                <div class="text-[10px] text-gray-500">In progress</div>
                             </div>
                             <div class="w-1.5 h-1.5 rounded-full bg-green-500 live-dot"></div>
                         </div>
-                        <div class="text-[11px] text-gray-600 mb-1.5">Matched 247/250 lines</div>
+                        <div class="text-[11px] text-gray-600 mb-1.5">247 of 250 matched</div>
                         <div class="h-1 bg-gray-100 rounded-full overflow-hidden">
                             <div class="h-full bg-green-500 rounded-full progress-bar" style="--target-width: 98%; width: 98%"></div>
                         </div>
                     </div>
 
-                    <!-- FLOATING SIDE: Iqbal flagged something -->
+                    <!-- FLOATING SIDE: Flagged charge -->
                     <div class="absolute -bottom-5 -left-5 bg-white rounded-xl shadow-xl border border-amber-200 px-4 py-3 max-w-[230px] hidden md:block z-20">
                         <div class="flex items-start gap-2.5">
-                            <div class="avatar-4 w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-[11px] flex-shrink-0">I</div>
+                            <div class="w-7 h-7 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            </div>
                             <div>
                                 <div class="text-[12px] font-bold text-gray-900 flex items-center gap-1.5">
-                                    Iqbal flagged a charge
+                                    Possible duplicate
                                     <span class="bg-amber-100 text-amber-700 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded">Review</span>
                                 </div>
-                                <div class="text-[11px] text-gray-600 leading-snug mt-1">Possible duplicate: AWS invoice #441 looks like #432</div>
+                                <div class="text-[11px] text-gray-600 leading-snug mt-1">Same supplier billed you twice this week. Want to confirm?</div>
                             </div>
                         </div>
                     </div>
@@ -627,227 +633,89 @@
     <!-- WORK YOU HAND OFF -->
     <section id="meet" class="py-16 md:py-24 px-6 border-t border-gray-200">
         <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-14">
+            <div class="max-w-3xl mb-12">
                 <h2 class="text-[32px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4 leading-tight">
-                    What your AI team <br class="hidden md:block"/>
-                    <span class="text-gray-500">does, every day.</span>
+                    Six finance jobs. <br class="hidden md:block"/>
+                    <span class="text-gray-500">Done automatically.</span>
                 </h2>
                 <p class="text-[16px] text-gray-600 leading-relaxed">
-                    Six AI agents. Six specific finance jobs. They run automatically — categorizing, reconciling, chasing, watching, reporting, filing — so you spend your day on judgment calls, not data entry.
+                    Here's exactly what your AI team takes off your plate every day. Each one runs on its own — you only step in when something needs your call.
                 </p>
             </div>
 
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-                <!-- Card: Categorize -->
+                <!-- 1. Categorize -->
                 <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6 flex flex-col">
-                    <div class="flex items-start gap-3 mb-4">
-                        <div class="w-10 h-10 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
-                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
-                        </div>
-                        <div class="flex-1">
-                            <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Categorize transactions</div>
-                            <div class="text-[24px] font-bold text-gray-900 leading-none">1,284 <span class="text-[14px] font-semibold text-gray-500">today</span></div>
-                        </div>
+                    <div class="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
                     </div>
-                    <div class="border-t border-gray-100 pt-4 mb-4">
-                        <div class="flex items-center gap-2.5 mb-3">
-                            <div class="avatar-2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[13px]">R</div>
-                            <div>
-                                <div class="text-[13px] font-bold text-gray-900">Reza</div>
-                                <div class="text-[11px] text-gray-500">The Categorizer</div>
-                            </div>
-                            <div class="ml-auto flex items-center gap-1.5 text-[10px]">
-                                <div class="w-1.5 h-1.5 rounded-full bg-green-500 live-dot"></div>
-                                <span class="text-green-700 font-bold uppercase tracking-wider">Active</span>
-                            </div>
-                        </div>
-                        <p class="text-[13px] text-gray-600 leading-snug">Tags every transaction to your chart of accounts. Asks before guessing on edge cases.</p>
-                    </div>
-                    <ul class="space-y-1.5 mb-4 text-[12px] text-gray-700 flex-1">
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Splits by department, project, vendor</span></li>
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Adapts when you correct him</span></li>
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>99.2% accuracy after a week</span></li>
-                    </ul>
+                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">Sort every transaction</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Every purchase gets put in the right category — supplies, rent, marketing, payroll. Asks before guessing on anything unusual.</p>
                     <div class="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5 flex items-center justify-between">
                         <span class="text-[11px] font-semibold text-gray-700">Saves you</span>
                         <span class="text-[13px] font-bold text-[#EA580C]">~12 hrs / month</span>
                     </div>
                 </div>
 
-                <!-- Card: Reconcile -->
+                <!-- 2. Match bank lines -->
                 <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6 flex flex-col">
-                    <div class="flex items-start gap-3 mb-4">
-                        <div class="w-10 h-10 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center flex-shrink-0">
-                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                        </div>
-                        <div class="flex-1">
-                            <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Reconcile bank lines</div>
-                            <div class="text-[24px] font-bold text-gray-900 leading-none">247 <span class="text-[14px] font-semibold text-gray-500">today</span></div>
-                        </div>
+                    <div class="w-12 h-12 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
                     </div>
-                    <div class="border-t border-gray-100 pt-4 mb-4">
-                        <div class="flex items-center gap-2.5 mb-3">
-                            <div class="avatar-3 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[13px]">L</div>
-                            <div>
-                                <div class="text-[13px] font-bold text-gray-900">Lia</div>
-                                <div class="text-[11px] text-gray-500">The Reconciliator</div>
-                            </div>
-                            <div class="ml-auto flex items-center gap-1.5 text-[10px]">
-                                <div class="w-1.5 h-1.5 rounded-full bg-green-500 live-dot"></div>
-                                <span class="text-green-700 font-bold uppercase tracking-wider">Active</span>
-                            </div>
-                        </div>
-                        <p class="text-[13px] text-gray-600 leading-snug">Matches every bank line to an invoice. Catches mismatches before they hit your books.</p>
-                    </div>
-                    <ul class="space-y-1.5 mb-4 text-[12px] text-gray-700 flex-1">
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>BCA, Mandiri, BNI, BRI feeds</span></li>
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Spots duplicate or split charges</span></li>
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Flags multi-day settlement gaps</span></li>
-                    </ul>
+                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">Match your bank to your books</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Every charge in your bank account gets paired with the right invoice or expense. If something doesn't match, it's flagged for you.</p>
                     <div class="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5 flex items-center justify-between">
                         <span class="text-[11px] font-semibold text-gray-700">Saves you</span>
                         <span class="text-[13px] font-bold text-[#EA580C]">~8 hrs / month</span>
                     </div>
                 </div>
 
-                <!-- Card: Chase invoices -->
+                <!-- 3. Chase invoices -->
                 <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6 flex flex-col">
-                    <div class="flex items-start gap-3 mb-4">
-                        <div class="w-10 h-10 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center flex-shrink-0">
-                            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                        </div>
-                        <div class="flex-1">
-                            <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Chase unpaid invoices</div>
-                            <div class="text-[24px] font-bold font-mono text-gray-900 leading-none">Rp 87M <span class="text-[14px] font-semibold text-gray-500">recovered</span></div>
-                        </div>
+                    <div class="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                     </div>
-                    <div class="border-t border-gray-100 pt-4 mb-4">
-                        <div class="flex items-center gap-2.5 mb-3">
-                            <div class="avatar-1 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[13px]">M</div>
-                            <div>
-                                <div class="text-[13px] font-bold text-gray-900">Maya</div>
-                                <div class="text-[11px] text-gray-500">The Collector</div>
-                            </div>
-                            <div class="ml-auto flex items-center gap-1.5 text-[10px]">
-                                <div class="w-1.5 h-1.5 rounded-full bg-green-500 live-dot"></div>
-                                <span class="text-green-700 font-bold uppercase tracking-wider">Active</span>
-                            </div>
-                        </div>
-                        <p class="text-[13px] text-gray-600 leading-snug">Sends polite payment reminders. Escalates after 14 days. Pauses if a client just paid.</p>
-                    </div>
-                    <ul class="space-y-1.5 mb-4 text-[12px] text-gray-700 flex-1">
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Drafts in your tone of voice</span></li>
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>3 reminder cadences</span></li>
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Escalates with full context</span></li>
-                    </ul>
+                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">Chase the customers who haven't paid</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Sends polite reminders for every overdue invoice, in your tone. Knows to stop the moment a customer pays.</p>
                     <div class="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5 flex items-center justify-between">
-                        <span class="text-[11px] font-semibold text-gray-700">Saves you</span>
-                        <span class="text-[13px] font-bold text-[#EA580C]">~6 hrs / month</span>
+                        <span class="text-[11px] font-semibold text-gray-700">Brings back</span>
+                        <span class="text-[13px] font-bold text-[#EA580C]">avg Rp 87M / week</span>
                     </div>
                 </div>
 
-                <!-- Card: Watch for anomalies -->
+                <!-- 4. Catch mistakes -->
                 <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6 flex flex-col">
-                    <div class="flex items-start gap-3 mb-4">
-                        <div class="w-10 h-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
-                            <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                        </div>
-                        <div class="flex-1">
-                            <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Catch costly mistakes</div>
-                            <div class="text-[24px] font-bold font-mono text-gray-900 leading-none">Rp 12.4M <span class="text-[14px] font-semibold text-gray-500">caught</span></div>
-                        </div>
+                    <div class="w-12 h-12 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                     </div>
-                    <div class="border-t border-gray-100 pt-4 mb-4">
-                        <div class="flex items-center gap-2.5 mb-3">
-                            <div class="avatar-4 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[13px]">I</div>
-                            <div>
-                                <div class="text-[13px] font-bold text-gray-900">Iqbal</div>
-                                <div class="text-[11px] text-gray-500">The Watchdog</div>
-                            </div>
-                            <div class="ml-auto flex items-center gap-1.5 text-[10px]">
-                                <div class="w-1.5 h-1.5 rounded-full bg-amber-500 live-dot"></div>
-                                <span class="text-amber-700 font-bold uppercase tracking-wider">Watching</span>
-                            </div>
-                        </div>
-                        <p class="text-[13px] text-gray-600 leading-snug">Flags duplicates, unusual charges, and policy breaches. Asks before money moves.</p>
-                    </div>
-                    <ul class="space-y-1.5 mb-4 text-[12px] text-gray-700 flex-1">
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Knows your spending patterns</span></li>
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Spots invoice & receipt mismatches</span></li>
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Pauses payment on suspicion</span></li>
-                    </ul>
+                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">Catch the costly mistakes</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Spots double payments, oddly large charges, and bills that don't fit your usual pattern — before any money leaves.</p>
                     <div class="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5 flex items-center justify-between">
                         <span class="text-[11px] font-semibold text-gray-700">Saves you</span>
                         <span class="text-[13px] font-bold text-[#EA580C]">avg Rp 47M / quarter</span>
                     </div>
                 </div>
 
-                <!-- Card: Draft reports -->
+                <!-- 5. Monthly reports -->
                 <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6 flex flex-col">
-                    <div class="flex items-start gap-3 mb-4">
-                        <div class="w-10 h-10 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center flex-shrink-0">
-                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 014-4h4m0 0l-3-3m3 3l-3 3M3 12a9 9 0 1018 0 9 9 0 00-18 0z"/></svg>
-                        </div>
-                        <div class="flex-1">
-                            <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Draft monthly reports</div>
-                            <div class="text-[24px] font-bold text-gray-900 leading-none">14-page <span class="text-[14px] font-semibold text-gray-500">board pack</span></div>
-                        </div>
+                    <div class="w-12 h-12 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 014-4h4m0 0l-3-3m3 3l-3 3M3 12a9 9 0 1018 0 9 9 0 00-18 0z"/></svg>
                     </div>
-                    <div class="border-t border-gray-100 pt-4 mb-4">
-                        <div class="flex items-center gap-2.5 mb-3">
-                            <div class="avatar-5 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[13px]">S</div>
-                            <div>
-                                <div class="text-[13px] font-bold text-gray-900">Sari</div>
-                                <div class="text-[11px] text-gray-500">The Reporter</div>
-                            </div>
-                            <div class="ml-auto flex items-center gap-1.5 text-[10px]">
-                                <div class="w-1.5 h-1.5 rounded-full bg-green-500 live-dot"></div>
-                                <span class="text-green-700 font-bold uppercase tracking-wider">Drafting</span>
-                            </div>
-                        </div>
-                        <p class="text-[13px] text-gray-600 leading-snug">Drafts P&L, cash flow, burn rate, and runway. Ready by 8am on the 1st of every month.</p>
-                    </div>
-                    <ul class="space-y-1.5 mb-4 text-[12px] text-gray-700 flex-1">
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Plain-English commentary</span></li>
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Variance vs. last month</span></li>
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Slack-pings team when ready</span></li>
-                    </ul>
+                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">Write your monthly report</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Your profit and loss, cash position, and where your money went last month — written in plain English, ready by 8am on the 1st.</p>
                     <div class="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5 flex items-center justify-between">
                         <span class="text-[11px] font-semibold text-gray-700">Saves you</span>
                         <span class="text-[13px] font-bold text-[#EA580C]">~4 days / month-end</span>
                     </div>
                 </div>
 
-                <!-- Card: File for tax -->
+                <!-- 6. Tax prep -->
                 <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6 flex flex-col">
-                    <div class="flex items-start gap-3 mb-4">
-                        <div class="w-10 h-10 rounded-lg bg-cyan-50 border border-cyan-100 flex items-center justify-center flex-shrink-0">
-                            <svg class="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                        </div>
-                        <div class="flex-1">
-                            <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Prep tax exports</div>
-                            <div class="text-[24px] font-bold text-gray-900 leading-none">Q3 <span class="text-[14px] font-semibold text-gray-500">ready</span></div>
-                        </div>
+                    <div class="w-12 h-12 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                     </div>
-                    <div class="border-t border-gray-100 pt-4 mb-4">
-                        <div class="flex items-center gap-2.5 mb-3">
-                            <div class="avatar-6 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[13px]">D</div>
-                            <div>
-                                <div class="text-[13px] font-bold text-gray-900">Daud</div>
-                                <div class="text-[11px] text-gray-500">The Filer</div>
-                            </div>
-                            <div class="ml-auto flex items-center gap-1.5 text-[10px]">
-                                <div class="w-1.5 h-1.5 rounded-full bg-blue-500 live-dot"></div>
-                                <span class="text-blue-700 font-bold uppercase tracking-wider">Standing by</span>
-                            </div>
-                        </div>
-                        <p class="text-[13px] text-gray-600 leading-snug">Preps PPN summaries, withholding tax, and audit trail for your accountant.</p>
-                    </div>
-                    <ul class="space-y-1.5 mb-4 text-[12px] text-gray-700 flex-1">
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>PPN 11% by month</span></li>
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>Xero, QuickBooks, custom CSV</span></li>
-                        <li class="flex items-start gap-2"><svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>7-year searchable archive</span></li>
-                    </ul>
+                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">Get you ready for tax season</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">PPN summaries, tax-ready exports, and a clean record of every receipt — so when your accountant asks, the answer is two clicks away.</p>
                     <div class="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5 flex items-center justify-between">
                         <span class="text-[11px] font-semibold text-gray-700">Saves you</span>
                         <span class="text-[13px] font-bold text-[#EA580C]">~2 days / quarter</span>
@@ -862,7 +730,7 @@
                 </div>
                 <div class="flex-1">
                     <div class="text-[15px] font-bold text-gray-900">All six together: about 32 hours back every month.</div>
-                    <div class="text-[13px] text-gray-600">That's 4 working days you spend on strategy instead of spreadsheets.</div>
+                    <div class="text-[13px] text-gray-600">That's 4 working days you spend on running your business instead of bookkeeping.</div>
                 </div>
             </div>
         </div>
@@ -896,9 +764,9 @@
                         <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
                             <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">06:00</div>
                             <div class="flex items-start gap-3">
-                                <div class="avatar-2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">R</div>
+                                <div class="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg></div>
                                 <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-blue-400">Reza</span> started categorizing overnight transactions</div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-blue-400">Sorted</span> overnight transactions</div>
                                     <div class="text-[12px] text-gray-400 mt-1">68 entries from BCA, Mandiri, Stripe — auto-tagged in 4 minutes</div>
                                 </div>
                             </div>
@@ -912,9 +780,9 @@
                         <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
                             <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">07:30</div>
                             <div class="flex items-start gap-3">
-                                <div class="avatar-3 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">L</div>
+                                <div class="w-8 h-8 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-green-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg></div>
                                 <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-green-400">Lia</span> reconciled bank statements</div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-green-400">Matched</span> bank statements to invoices</div>
                                     <div class="text-[12px] text-gray-400 mt-1">247 lines matched — 3 mismatches queued for your review</div>
                                 </div>
                             </div>
@@ -928,9 +796,9 @@
                         <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
                             <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">09:15</div>
                             <div class="flex items-start gap-3">
-                                <div class="avatar-1 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">M</div>
+                                <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
                                 <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-orange-400">Maya</span> sent payment reminders</div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-orange-400">Sent</span> polite payment reminders</div>
                                     <div class="text-[12px] text-gray-400 mt-1">3 polite nudges out the door — Sembrani Group, Pelangi Studio, Cikal Apparel</div>
                                 </div>
                             </div>
@@ -944,10 +812,10 @@
                         <div class="bg-amber-500/5 border border-amber-500/30 rounded-xl px-5 py-4 flex-1">
                             <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">11:00</div>
                             <div class="flex items-start gap-3">
-                                <div class="avatar-4 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">I</div>
+                                <div class="w-8 h-8 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
                                 <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-amber-400">Iqbal</span> flagged a possible duplicate payment</div>
-                                    <div class="text-[12px] text-gray-400 mt-1">AWS invoice #441 looks like #432 from last week — pinged you on Slack to confirm</div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-amber-400">Flagged</span> a possible duplicate payment</div>
+                                    <div class="text-[12px] text-gray-400 mt-1">Same supplier billed twice this week — sent you a quick note to confirm</div>
                                 </div>
                             </div>
                         </div>
@@ -960,10 +828,10 @@
                         <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
                             <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">13:00</div>
                             <div class="flex items-start gap-3">
-                                <div class="avatar-2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">R</div>
+                                <div class="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg></div>
                                 <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-blue-400">Reza</span> tagged team lunch receipts</div>
-                                    <div class="text-[12px] text-gray-400 mt-1">5 receipts uploaded via WhatsApp → Marketing → Client Meetings</div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-blue-400">Sorted</span> team lunch receipts</div>
+                                    <div class="text-[12px] text-gray-400 mt-1">5 receipts came in via WhatsApp — filed under Client Meetings</div>
                                 </div>
                             </div>
                         </div>
@@ -976,10 +844,10 @@
                         <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
                             <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">15:30</div>
                             <div class="flex items-start gap-3">
-                                <div class="avatar-1 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">M</div>
+                                <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
                                 <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-orange-400">Maya</span> escalated an overdue invoice</div>
-                                    <div class="text-[12px] text-gray-400 mt-1">Indra Catering — 17 days overdue, Rp 24M. Drafted firm follow-up for your review</div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-orange-400">Escalated</span> an overdue invoice</div>
+                                    <div class="text-[12px] text-gray-400 mt-1">Indra Catering — 17 days overdue, Rp 24M. Wrote a firmer follow-up for you to review</div>
                                 </div>
                             </div>
                         </div>
@@ -992,10 +860,10 @@
                         <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
                             <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">18:00</div>
                             <div class="flex items-start gap-3">
-                                <div class="avatar-5 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">S</div>
+                                <div class="w-8 h-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 014-4h4m0 0l-3-3m3 3l-3 3M3 12a9 9 0 1018 0 9 9 0 00-18 0z"/></svg></div>
                                 <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-purple-400">Sari</span> drafted tomorrow's daily summary</div>
-                                    <div class="text-[12px] text-gray-400 mt-1">Cash position, top 5 vendors paid, runway update — ready in your inbox</div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-purple-400">Drafted</span> tomorrow's daily summary</div>
+                                    <div class="text-[12px] text-gray-400 mt-1">Cash on hand, top 5 suppliers paid, where money went — ready in your inbox</div>
                                 </div>
                             </div>
                         </div>
@@ -1008,10 +876,10 @@
                         <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
                             <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">23:00</div>
                             <div class="flex items-start gap-3">
-                                <div class="avatar-6 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0">D</div>
+                                <div class="w-8 h-8 rounded-lg bg-cyan-50 border border-cyan-100 flex items-center justify-center text-cyan-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
                                 <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-cyan-400">Daud</span> archived today's source documents</div>
-                                    <div class="text-[12px] text-gray-400 mt-1">68 invoices, 23 receipts, 14 bank statements — indexed for 7-year audit</div>
+                                    <div class="text-[14px] font-semibold text-white"><span class="text-cyan-400">Filed</span> today's receipts and bills</div>
+                                    <div class="text-[12px] text-gray-400 mt-1">68 invoices, 23 receipts, 14 bank statements — saved for 7 years if your accountant asks</div>
                                 </div>
                             </div>
                         </div>
@@ -1071,9 +939,9 @@
                             <span class="text-[10px] text-gray-500 font-mono">UTC+7</span>
                         </div>
                         <div class="space-y-2.5">
-                            <!-- Reza -->
+                            <!-- Sort transactions -->
                             <div class="flex items-center gap-2">
-                                <div class="avatar-2 w-5 h-5 rounded-full flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0">R</div>
+                                <div class="w-5 h-5 rounded bg-blue-500/20 flex items-center justify-center text-blue-300 flex-shrink-0"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg></div>
                                 <div class="flex-1 flex gap-0.5 h-4 items-end">
                                     <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
                                     <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
@@ -1089,9 +957,9 @@
                                     <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
                                 </div>
                             </div>
-                            <!-- Lia -->
+                            <!-- Match bank lines -->
                             <div class="flex items-center gap-2">
-                                <div class="avatar-3 w-5 h-5 rounded-full flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0">L</div>
+                                <div class="w-5 h-5 rounded bg-green-500/20 flex items-center justify-center text-green-300 flex-shrink-0"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg></div>
                                 <div class="flex-1 flex gap-0.5 h-4 items-end">
                                     <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
                                     <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
@@ -1107,9 +975,9 @@
                                     <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
                                 </div>
                             </div>
-                            <!-- Maya -->
+                            <!-- Chase invoices -->
                             <div class="flex items-center gap-2">
-                                <div class="avatar-1 w-5 h-5 rounded-full flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0">M</div>
+                                <div class="w-5 h-5 rounded bg-orange-500/20 flex items-center justify-center text-orange-300 flex-shrink-0"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
                                 <div class="flex-1 flex gap-0.5 h-4 items-end">
                                     <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
                                     <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
@@ -1125,9 +993,9 @@
                                     <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
                                 </div>
                             </div>
-                            <!-- Iqbal -->
+                            <!-- Catch mistakes -->
                             <div class="flex items-center gap-2">
-                                <div class="avatar-4 w-5 h-5 rounded-full flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0">I</div>
+                                <div class="w-5 h-5 rounded bg-red-500/20 flex items-center justify-center text-red-300 flex-shrink-0"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
                                 <div class="flex-1 flex gap-0.5 h-4 items-end">
                                     <div class="flex-1 bg-red-500/30 rounded-sm" style="height: 20%"></div>
                                     <div class="flex-1 bg-red-500/30 rounded-sm" style="height: 20%"></div>
@@ -1143,9 +1011,9 @@
                                     <div class="flex-1 bg-red-500/30 rounded-sm" style="height: 20%"></div>
                                 </div>
                             </div>
-                            <!-- Sari -->
+                            <!-- Draft reports -->
                             <div class="flex items-center gap-2">
-                                <div class="avatar-5 w-5 h-5 rounded-full flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0">S</div>
+                                <div class="w-5 h-5 rounded bg-purple-500/20 flex items-center justify-center text-purple-300 flex-shrink-0"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 014-4h4m0 0l-3-3m3 3l-3 3M3 12a9 9 0 1018 0 9 9 0 00-18 0z"/></svg></div>
                                 <div class="flex-1 flex gap-0.5 h-4 items-end">
                                     <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
                                     <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
@@ -1161,9 +1029,9 @@
                                     <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
                                 </div>
                             </div>
-                            <!-- Daud -->
+                            <!-- Prep tax -->
                             <div class="flex items-center gap-2">
-                                <div class="avatar-6 w-5 h-5 rounded-full flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0">D</div>
+                                <div class="w-5 h-5 rounded bg-cyan-500/20 flex items-center justify-center text-cyan-300 flex-shrink-0"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
                                 <div class="flex-1 flex gap-0.5 h-4 items-end">
                                     <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
                                     <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
@@ -1190,18 +1058,18 @@
                         <h3 class="text-[14px] font-bold text-white mb-4">Currently active</h3>
                         <div class="space-y-3">
                             <div class="flex items-center gap-3">
-                                <div class="avatar-1 w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-[11px]">M</div>
+                                <div class="w-7 h-7 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-300 flex-shrink-0"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
                                 <div class="flex-1">
-                                    <div class="text-[12px] font-bold text-white">Maya</div>
-                                    <div class="text-[11px] text-gray-400">Drafting reminder for Indra Catering</div>
+                                    <div class="text-[12px] font-bold text-white">Drafting payment reminder</div>
+                                    <div class="text-[11px] text-gray-400">For Indra Catering &middot; 17 days overdue</div>
                                 </div>
                                 <div class="w-2 h-2 rounded-full bg-green-500 live-dot"></div>
                             </div>
                             <div class="flex items-center gap-3">
-                                <div class="avatar-4 w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-[11px]">I</div>
+                                <div class="w-7 h-7 rounded-lg bg-red-500/20 flex items-center justify-center text-red-300 flex-shrink-0"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
                                 <div class="flex-1">
-                                    <div class="text-[12px] font-bold text-white">Iqbal</div>
-                                    <div class="text-[11px] text-gray-400">Watching for unusual charges</div>
+                                    <div class="text-[12px] font-bold text-white">Watching for unusual charges</div>
+                                    <div class="text-[11px] text-gray-400">All quiet so far today</div>
                                 </div>
                                 <div class="w-2 h-2 rounded-full bg-amber-500 live-dot"></div>
                             </div>
@@ -1228,11 +1096,11 @@
         <div class="max-w-[1280px] mx-auto">
             <div class="max-w-3xl mb-14">
                 <h2 class="text-[32px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4 leading-tight">
-                    They hand off to each other. <br class="hidden md:block"/>
-                    <span class="text-gray-500">You don't manage anyone.</span>
+                    One charge. One smooth flow. <br class="hidden md:block"/>
+                    <span class="text-gray-500">No clicks from you.</span>
                 </h2>
                 <p class="text-[16px] text-gray-600 leading-relaxed">
-                    A receipt arrives at 10:48. By 10:51 it's categorized, verified, reconciled, and on the books. Here's the relay.
+                    A new bill lands at 10:48. By 10:51 it's sorted, checked, matched to your bank, and on your books — without you touching a thing.
                 </p>
             </div>
 
@@ -1253,40 +1121,40 @@
                 <div class="bg-white border border-gray-200 rounded-xl p-5 relative">
                     <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Step 2 — 10:49</div>
                     <div class="flex items-center gap-2.5 mb-3">
-                        <div class="avatar-2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px]">R</div>
-                        <span class="text-[13px] font-bold text-gray-900">Reza categorizes</span>
+                        <div class="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg></div>
+                        <span class="text-[13px] font-bold text-gray-900">It gets sorted</span>
                     </div>
-                    <p class="text-[12px] text-gray-600 leading-snug">Reads the receipt, tags it Operations → Office Supplies. 99% confidence.</p>
+                    <p class="text-[12px] text-gray-600 leading-snug">Tags it Cost of Sales → Inventory. 99% sure.</p>
                 </div>
 
                 <!-- Stage 3 -->
                 <div class="bg-white border border-gray-200 rounded-xl p-5 relative">
                     <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Step 3 — 10:49</div>
                     <div class="flex items-center gap-2.5 mb-3">
-                        <div class="avatar-4 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px]">I</div>
-                        <span class="text-[13px] font-bold text-gray-900">Iqbal verifies</span>
+                        <div class="w-8 h-8 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
+                        <span class="text-[13px] font-bold text-gray-900">Then verified</span>
                     </div>
-                    <p class="text-[12px] text-gray-600 leading-snug">Cross-checks against vendor history. No duplicates, amount fits the pattern.</p>
+                    <p class="text-[12px] text-gray-600 leading-snug">Checks supplier history. No duplicates, amount looks normal.</p>
                 </div>
 
                 <!-- Stage 4 -->
                 <div class="bg-white border border-gray-200 rounded-xl p-5 relative">
                     <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Step 4 — 10:50</div>
                     <div class="flex items-center gap-2.5 mb-3">
-                        <div class="avatar-3 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px]">L</div>
-                        <span class="text-[13px] font-bold text-gray-900">Lia reconciles</span>
+                        <div class="w-8 h-8 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-green-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg></div>
+                        <span class="text-[13px] font-bold text-gray-900">Then matched</span>
                     </div>
-                    <p class="text-[12px] text-gray-600 leading-snug">Matches it to the BCA debit at 10:32. Books are up to date.</p>
+                    <p class="text-[12px] text-gray-600 leading-snug">Pairs it with the BCA debit at 10:32. Your books are up to date.</p>
                 </div>
 
                 <!-- Stage 5 -->
                 <div class="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-[#EA580C] rounded-xl p-5 relative">
                     <div class="text-[11px] font-bold text-[#EA580C] uppercase tracking-wider mb-3">Step 5 — 10:51</div>
                     <div class="flex items-center gap-2.5 mb-3">
-                        <div class="avatar-5 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-[12px]">S</div>
-                        <span class="text-[13px] font-bold text-gray-900">Sari logs it</span>
+                        <div class="w-8 h-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 014-4h4m0 0l-3-3m3 3l-3 3M3 12a9 9 0 1018 0 9 9 0 00-18 0z"/></svg></div>
+                        <span class="text-[13px] font-bold text-gray-900">Then logged</span>
                     </div>
-                    <p class="text-[12px] text-gray-700 leading-snug">Updates today's burn rate. Marks it for next month's P&L. <b>Done.</b></p>
+                    <p class="text-[12px] text-gray-700 leading-snug">Added to this month's report. <b>Done.</b></p>
                 </div>
             </div>
 
