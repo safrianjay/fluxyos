@@ -132,11 +132,26 @@ function _fluxyosInit() {
 
     document.querySelectorAll('[data-count]').forEach(item => countObserver.observe(item));
 
+    let _savedScrollY = 0;
+
     const setMobileMenu = isOpen => {
         if (!mobileMenu || !mobileMenuToggle) return;
 
         const openIcon = mobileMenuToggle.querySelector('[data-menu-open-icon]');
         const closeIcon = mobileMenuToggle.querySelector('[data-menu-close-icon]');
+
+        if (isOpen) {
+            _savedScrollY = window.scrollY;
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${_savedScrollY}px`;
+            document.body.style.width = '100%';
+            mobileMenu.scrollTop = 0;
+        } else {
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            window.scrollTo(0, _savedScrollY);
+        }
 
         mobileMenu.classList.toggle('hidden', !isOpen);
         document.body.classList.toggle('mobile-menu-open', isOpen);
