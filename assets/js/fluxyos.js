@@ -55,7 +55,10 @@ function _fluxyosInit() {
             opacity: [0, 1],
             translateY: [-12, 0],
             duration: 650,
-            easing: 'easeOutCubic'
+            easing: 'easeOutCubic',
+            complete: anim => {
+                anim.animatables.forEach(({ target }) => { target.style.transform = ''; });
+            }
         });
 
         anime({

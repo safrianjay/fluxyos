@@ -80,6 +80,12 @@ body {
     overscroll-behavior: contain;
 }
 
+@media (min-width: 640px) {
+    .mobile-menu-panel {
+        height: calc(100vh - 80px);
+    }
+}
+
 body.mobile-menu-open {
     overflow: hidden;
     height: 100vh;
