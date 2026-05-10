@@ -55,6 +55,63 @@
             background: #DBEAFE;
             color: #1E40AF;
         }
+        .commerce-surface {
+            background:
+                linear-gradient(135deg, rgba(11, 15, 25, 0.035) 0%, rgba(255, 255, 255, 0) 45%),
+                radial-gradient(circle at 82% 18%, rgba(234, 88, 12, 0.08), transparent 30%),
+                #F7F7F2;
+        }
+
+        .premium-panel {
+            box-shadow: 0 24px 70px -38px rgba(11, 15, 25, 0.45);
+        }
+
+        .commerce-grid {
+            background-image:
+                linear-gradient(rgba(11, 15, 25, 0.055) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(11, 15, 25, 0.055) 1px, transparent 1px);
+            background-size: 42px 42px;
+        }
+
+        .product-shell {
+            background: linear-gradient(180deg, #111827 0%, #0B0F19 100%);
+        }
+
+        .signal-line {
+            background: linear-gradient(90deg, transparent, rgba(234, 88, 12, 0.55), transparent);
+        }
+
+        .channel-pill {
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+        }
+
+        .bento-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .bento-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 22px 55px -38px rgba(11, 15, 25, 0.55);
+            border-color: rgba(11, 15, 25, 0.18);
+        }
+
+        .mobile-viewport-bound {
+            min-width: 0 !important;
+            width: 100% !important;
+            max-width: calc(100vw - 48px) !important;
+        }
+
+        .mobile-viewport-bound h1,
+        .mobile-viewport-bound p {
+            max-width: 100% !important;
+            overflow-wrap: normal;
+        }
+
+        @media (min-width: 1024px) {
+            .mobile-viewport-bound {
+                max-width: none !important;
+            }
+        }
+
     </style>
     <meta name="description" content="Cocokkan transaksi Tokopedia, Shopee, TikTok Shop, Shopify. Lihat margin asli per channel, otomatisasi COGS, dan tutup buku tanpa spreadsheet.">
     <link rel="canonical" href="https://fluxyos.com/id/use-cases/ecommerce-brands">
@@ -499,7 +556,7 @@
                 </div>
 
                 <a href="/login" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Masuk</a>
-                <a href="/pricing" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-6 py-3 rounded-md transition-all duration-200 shadow-sm hover:shadow text-center">
+                <a href="/pricing" class="bg-[#0B0F19] hover:bg-black text-white font-semibold text-[15px] px-6 py-3 rounded-md transition-all duration-200 shadow-sm hover:shadow text-center">
                     Try FluxyOS
                 </a>
                 <button type="button" class="mobile-menu-toggle lg:hidden w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-800 flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors" aria-controls="mobile-menu" aria-expanded="false" aria-label="Buka menu navigasi">
@@ -536,7 +593,7 @@
                 <div>
                     <h4 class="text-[12px] font-bold text-gray-900 uppercase tracking-wider mb-4">Use Cases</h4>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <a href="/id/use-cases/ecommerce-brands" class="mobile-menu-link rounded-xl border border-[#EA580C] bg-orange-50/30 px-4 py-3"><span class="block text-[15px] font-bold text-[#EA580C]">E-Commerce Brands</span><span class="block text-[13px] text-gray-500">Cocokkan transaksi POS & gateway.</span></a>
+                        <a href="/id/use-cases/ecommerce-brands" class="mobile-menu-link rounded-xl border border-[#EA580C] bg-white px-4 py-3"><span class="block text-[15px] font-bold text-[#EA580C]">E-Commerce Brands</span><span class="block text-[13px] text-gray-500">Cocokkan transaksi POS & gateway.</span></a>
                         <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Tech Startups & SaaS</span><span class="block text-[13px] text-gray-500">Kelola burn, runway, dan langganan.</span></a>
                         <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Marketing Agencies</span><span class="block text-[13px] text-gray-500">Petakan ad spend ke budget klien.</span></a>
                         <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Manufacturing</span><span class="block text-[13px] text-gray-500">Lacak unit economics dan biaya.</span></a>
@@ -547,279 +604,269 @@
                     <a href="#" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Pelanggan</a>
                     <a href="/pricing" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Harga</a>
                     <a href="/login" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Masuk</a>
-                    <a href="/pricing" class="mobile-menu-link rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F97316] px-4 py-3 text-[15px] font-semibold text-white text-center shadow-sm">Try FluxyOS</a>
+                    <a href="/pricing" class="mobile-menu-link rounded-xl bg-[#0B0F19] px-4 py-3 text-[15px] font-semibold text-white text-center shadow-sm">Try FluxyOS</a>
                 </div>
             </div>
         </div>
     </nav>
 
     <!-- HERO SECTION -->
-    <section class="hero-gradient py-12 md:py-20 px-6">
+    <section class="commerce-surface commerce-grid border-b border-gray-200 px-6 py-12 md:py-16 overflow-hidden">
         <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-2 gap-12 items-center">
-                <div>
-                    <h1 class="text-[44px] md:text-[56px] font-bold tracking-tight leading-[1.05] text-gray-900 mb-6">
+            <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-gray-200/80 pb-6">
+                <div class="flex items-center gap-3 text-[12px] font-semibold uppercase tracking-[0.22em] text-gray-500">
+                    <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                    <span>Payout Tokopedia cocok</span>
+                </div>
+                <div class="font-mono text-[12px] text-gray-500">4 channel selesai sebelum 09.00</div>
+            </div>
+
+            <div class="grid max-w-full lg:grid-cols-[0.92fr_1.08fr] gap-10 lg:gap-14 items-center">
+                <div class="mobile-viewport-bound min-w-0 w-full">
+                    <h1 class="max-w-3xl text-[30px] sm:text-[42px] md:text-[64px] font-bold tracking-tight leading-[0.96] text-gray-950 mb-6">
                         Kelola sisi finance toko online Anda semulus storefront-nya.
                     </h1>
 
-                    <p class="text-[18px] text-gray-600 leading-relaxed mb-8 max-w-xl">
+                    <p class="text-[16px] sm:text-[18px] md:text-[19px] text-gray-600 leading-relaxed mb-8">
                         FluxyOS adalah finance OS untuk online store — Tokopedia, Shopee, TikTok Shop, Lazada, Shopify, dan checkout sendiri Anda. Cocokkan setiap payout, lihat net margin asli per channel, dan tutup buku tanpa spreadsheet.
                     </p>
 
-                    <div class="flex flex-col sm:flex-row gap-4">
-                        <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-8 py-4 rounded-md transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <a href="/login" class="bg-[#0B0F19] hover:bg-black text-white font-semibold text-[15px] px-7 py-4 rounded-md transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
                             Coba FluxyOS gratis
                         </a>
-                        <a href="#how-it-works" class="border-2 border-gray-300 text-gray-900 font-semibold text-[15px] px-8 py-3 rounded-md hover:border-gray-400 transition-colors inline-block text-center">
+                        <a href="#how-it-works" class="border border-gray-300 bg-white/70 text-gray-950 font-semibold text-[15px] px-7 py-4 rounded-md hover:border-gray-500 transition-colors inline-block text-center">
                             Lihat cara kerjanya
                         </a>
                     </div>
 
-                    <div class="mt-12 flex items-center gap-8">
-                        <div>
-                            <div class="text-[28px] font-bold text-gray-900">5+</div>
-                            <p class="text-[13px] text-gray-600">Channel di satu ledger</p>
+                    <div class="mt-10 grid max-w-xl grid-cols-1 divide-y divide-gray-200 border-y border-gray-200 py-2 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:py-5">
+                        <div class="py-4 sm:py-0 sm:pr-5">
+                            <div class="text-[26px] md:text-[32px] font-bold text-gray-950 tracking-tight">9.4M+</div>
+                            <p class="text-[12px] md:text-[13px] text-gray-600 mt-1 leading-snug">Payout marketplace tercocokkan</p>
                         </div>
-                        <div>
-                            <div class="text-[28px] font-bold text-gray-900">98%</div>
-                            <p class="text-[13px] text-gray-600">Payout auto-match</p>
+                        <div class="py-4 sm:px-5 sm:py-0">
+                            <div class="text-[26px] md:text-[32px] font-bold text-gray-950 tracking-tight">98.6%</div>
+                            <p class="text-[12px] md:text-[13px] text-gray-600 mt-1 leading-snug">Akurasi auto-match</p>
                         </div>
-                        <div>
-                            <div class="text-[28px] font-bold text-gray-900">3 hari</div>
-                            <p class="text-[13px] text-gray-600">Tutup buku lebih cepat</p>
+                        <div class="py-4 sm:py-0 sm:pl-5">
+                            <div class="text-[26px] md:text-[32px] font-bold text-gray-950 tracking-tight">3.1d</div>
+                            <p class="text-[12px] md:text-[13px] text-gray-600 mt-1 leading-snug">Tutup buku lebih cepat</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Hero Visual: Channels & Payouts mockup -->
-                <div class="relative">
-                    <div class="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-                        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                            <div class="flex items-center gap-2">
-                                <div class="w-2.5 h-2.5 rounded-full bg-red-400"></div>
-                                <div class="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
-                                <div class="w-2.5 h-2.5 rounded-full bg-green-400"></div>
-                                <span class="ml-3 text-[12px] text-gray-500 font-medium">Channel &amp; Payout • Minggu ini</span>
+                <div class="mobile-viewport-bound relative min-w-0 w-full lg:max-w-full lg:-mr-10">
+                    <div class="absolute -left-8 top-12 hidden h-44 w-44 rounded-full border border-gray-300/70 md:block"></div>
+                    <div class="absolute -right-8 -top-8 hidden h-28 w-28 rounded-full border border-[#EA580C]/35 md:block"></div>
+                    <div class="product-shell premium-panel relative max-w-full overflow-hidden rounded-[28px] border border-gray-900 p-3 text-white">
+                        <div class="max-w-full overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03]">
+                            <div class="flex items-center justify-between border-b border-white/10 px-5 py-4">
+                                <div>
+                                    <p class="text-[11px] uppercase tracking-[0.2em] text-gray-400">Kokpit finance omnichannel</p>
+                                    <h2 class="mt-1 text-[18px] font-bold">Rekonsiliasi live</h2>
+                                </div>
+                                <div class="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[12px] font-semibold text-emerald-300">Live</div>
                             </div>
-                            <div class="text-[12px] text-gray-500">Net: <span class="font-bold text-gray-900">Rp 312.4M</span></div>
-                        </div>
-                        <div class="divide-y divide-gray-100">
-                            <div class="vendor-row flex items-center justify-between px-5 py-3.5">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center font-bold text-[12px] text-green-700">TP</div>
-                                    <div>
-                                        <div class="text-[14px] font-semibold text-gray-900">Tokopedia</div>
-                                        <div class="text-[11px] text-gray-500">412 order • Marketplace fee 4.5%</div>
+
+                            <div class="grid gap-3 p-4 sm:grid-cols-3">
+                                <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+                                    <p class="text-[12px] text-gray-400">Net margin</p>
+                                    <div class="mt-2 text-[28px] font-bold tracking-tight">22.4%</div>
+                                    <div class="mt-3 h-1.5 rounded-full bg-white/10"><div class="h-full w-[72%] rounded-full bg-emerald-400"></div></div>
+                                </div>
+                                <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+                                    <p class="text-[12px] text-gray-400">ROI iklan</p>
+                                    <div class="mt-2 text-[28px] font-bold tracking-tight">3.8x</div>
+                                    <div class="mt-3 flex items-end gap-1.5 h-8"><span class="w-4 h-3 rounded bg-white/20"></span><span class="w-4 h-5 rounded bg-white/30"></span><span class="w-4 h-8 rounded bg-[#EA580C]"></span></div>
+                                </div>
+                                <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+                                    <p class="text-[12px] text-gray-400">COGS tercatat</p>
+                                    <div class="mt-2 text-[28px] font-bold tracking-tight">Rp 81M</div>
+                                    <p class="mt-2 text-[11px] text-gray-500">Invoice, 3PL, supplier</p>
+                                </div>
+                            </div>
+
+                            <div class="px-4 pb-4">
+                                <div class="overflow-x-auto rounded-2xl border border-white/10 bg-[#070A11]">
+                                    <div class="grid min-w-[540px] grid-cols-[1.1fr_.8fr_.7fr_.9fr_.7fr] gap-3 border-b border-white/10 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                                        <span>Channel</span><span>Gross</span><span>Fee</span><span>Net payout</span><span>Status</span>
+                                    </div>
+                                    <div class="grid min-w-[540px] grid-cols-[1.1fr_.8fr_.7fr_.9fr_.7fr] gap-3 px-4 py-3 text-[12px] text-gray-300 border-b border-white/5 last:border-b-0">
+                                        <span class="font-semibold text-white">Tokopedia</span><span>Rp 124.3M</span><span>-4.5%</span><span>Rp 118.7M</span><span><span class="rounded-full border bg-emerald-400/10 text-emerald-300 border-emerald-400/20 px-2 py-1 text-[10px] font-bold">Cocok</span></span>
+                                    </div>
+                                    <div class="grid min-w-[540px] grid-cols-[1.1fr_.8fr_.7fr_.9fr_.7fr] gap-3 px-4 py-3 text-[12px] text-gray-300 border-b border-white/5 last:border-b-0">
+                                        <span class="font-semibold text-white">Shopee</span><span>Rp 96.8M</span><span>-7.2%</span><span>Rp 89.8M</span><span><span class="rounded-full border bg-emerald-400/10 text-emerald-300 border-emerald-400/20 px-2 py-1 text-[10px] font-bold">Cocok</span></span>
+                                    </div>
+                                    <div class="grid min-w-[540px] grid-cols-[1.1fr_.8fr_.7fr_.9fr_.7fr] gap-3 px-4 py-3 text-[12px] text-gray-300 border-b border-white/5 last:border-b-0">
+                                        <span class="font-semibold text-white">TikTok Shop</span><span>Rp 58.2M</span><span>-9.1%</span><span>Rp 52.9M</span><span><span class="rounded-full border bg-amber-400/10 text-amber-300 border-amber-400/20 px-2 py-1 text-[10px] font-bold">Review</span></span>
+                                    </div>
+                                    <div class="grid min-w-[540px] grid-cols-[1.1fr_.8fr_.7fr_.9fr_.7fr] gap-3 px-4 py-3 text-[12px] text-gray-300 border-b border-white/5 last:border-b-0">
+                                        <span class="font-semibold text-white">Shopify</span><span>Rp 24.7M</span><span>-2.8%</span><span>Rp 24.0M</span><span><span class="rounded-full border bg-emerald-400/10 text-emerald-300 border-emerald-400/20 px-2 py-1 text-[10px] font-bold">Cocok</span></span>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="badge-approved text-[11px] font-bold px-2 py-1 rounded">Cocok</span>
-                                    <div class="text-[13px] font-mono font-bold text-gray-900 w-24 text-right">Rp 124.3M</div>
-                                </div>
                             </div>
-                            <div class="vendor-row flex items-center justify-between px-5 py-3.5">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center font-bold text-[12px] text-orange-600">SP</div>
-                                    <div>
-                                        <div class="text-[14px] font-semibold text-gray-900">Shopee</div>
-                                        <div class="text-[11px] text-gray-500">588 order • Promo gratis ongkir aktif</div>
+
+                            <div class="px-4 pb-4">
+                                <div class="rounded-2xl border border-[#EA580C]/25 bg-white/[0.06] p-4">
+                                    <div class="mb-2 flex items-center justify-between gap-3">
+                                        <span class="text-[12px] font-bold uppercase tracking-wider text-[#FDBA74]">Temuan AI</span>
+                                        <span class="font-mono text-[11px] text-gray-500">09:14</span>
                                     </div>
+                                    <p class="text-[13px] leading-relaxed text-gray-100">Margin Shopee turun setelah promo gratis ongkir berakhir. SKU best-seller siap ditandai untuk restock.</p>
                                 </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="badge-approved text-[11px] font-bold px-2 py-1 rounded">Cocok</span>
-                                    <div class="text-[13px] font-mono font-bold text-gray-900 w-24 text-right">Rp 96.8M</div>
-                                </div>
-                            </div>
-                            <div class="vendor-row flex items-center justify-between px-5 py-3.5 bg-orange-50/30">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-lg bg-gray-900 border border-gray-800 flex items-center justify-center font-bold text-[12px] text-white">TT</div>
-                                    <div>
-                                        <div class="text-[14px] font-semibold text-gray-900">TikTok Shop</div>
-                                        <div class="text-[11px] text-gray-500">271 order • 3 refund perlu cek</div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="badge-pending text-[11px] font-bold px-2 py-1 rounded">3 perlu cek</span>
-                                    <div class="text-[13px] font-mono font-bold text-gray-900 w-24 text-right">Rp 58.2M</div>
-                                </div>
-                            </div>
-                            <div class="vendor-row flex items-center justify-between px-5 py-3.5">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center font-bold text-[12px] text-emerald-700">SH</div>
-                                    <div>
-                                        <div class="text-[14px] font-semibold text-gray-900">Shopify (D2C)</div>
-                                        <div class="text-[11px] text-gray-500">94 order • Midtrans + Xendit</div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="badge-approved text-[11px] font-bold px-2 py-1 rounded">Cocok</span>
-                                    <div class="text-[13px] font-mono font-bold text-gray-900 w-24 text-right">Rp 24.7M</div>
-                                </div>
-                            </div>
-                            <div class="vendor-row flex items-center justify-between px-5 py-3.5">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[12px] text-blue-600">LZ</div>
-                                    <div>
-                                        <div class="text-[14px] font-semibold text-gray-900">Lazada</div>
-                                        <div class="text-[11px] text-gray-500">61 order • Settlement mingguan</div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="badge-paid text-[11px] font-bold px-2 py-1 rounded">Settled</span>
-                                    <div class="text-[13px] font-mono font-bold text-gray-900 w-24 text-right">Rp 8.4M</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 text-[12px] text-gray-500 flex items-center justify-between">
-                            <span>+ Blibli, WooCommerce, BCA, Mandiri</span>
-                            <span class="text-[#EA580C] font-semibold cursor-pointer">Lihat semua &rarr;</span>
-                        </div>
-                    </div>
-                    <!-- Floating margin card -->
-                    <div class="absolute -bottom-6 -left-6 bg-white rounded-lg shadow-xl border border-gray-200 px-4 py-3 max-w-[260px] hidden md:block">
-                        <div class="flex items-start gap-3">
-                            <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-                            </div>
-                            <div>
-                                <div class="text-[13px] font-bold text-gray-900">Net margin: 22.4%</div>
-                                <div class="text-[12px] text-gray-500 leading-snug">Setelah fee, ad spend & COGS</div>
                             </div>
                         </div>
                     </div>
+                    <div class="signal-line absolute -bottom-5 left-10 right-10 h-px"></div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- CHANNEL STRIP -->
-    <section class="border-t border-gray-200 bg-white py-10 px-6">
+        <!-- CHANNEL STRIP -->
+    <section class="border-b border-gray-200 bg-white px-6 py-8">
         <div class="max-w-[1280px] mx-auto">
-            <p class="text-[12px] font-bold text-gray-500 uppercase tracking-wider text-center mb-6">Dibangun untuk channel tempat Anda jualan</p>
-            <div class="flex flex-wrap items-center justify-center gap-3">
-                <span class="inline-flex items-center px-4 py-2 rounded-full border border-gray-200 text-[13px] font-semibold text-gray-700">Tokopedia</span>
-                <span class="inline-flex items-center px-4 py-2 rounded-full border border-gray-200 text-[13px] font-semibold text-gray-700">Shopee</span>
-                <span class="inline-flex items-center px-4 py-2 rounded-full border border-gray-200 text-[13px] font-semibold text-gray-700">TikTok Shop</span>
-                <span class="inline-flex items-center px-4 py-2 rounded-full border border-gray-200 text-[13px] font-semibold text-gray-700">Lazada</span>
-                <span class="inline-flex items-center px-4 py-2 rounded-full border border-gray-200 text-[13px] font-semibold text-gray-700">Blibli</span>
-                <span class="inline-flex items-center px-4 py-2 rounded-full border border-gray-200 text-[13px] font-semibold text-gray-700">Shopify</span>
-                <span class="inline-flex items-center px-4 py-2 rounded-full border border-gray-200 text-[13px] font-semibold text-gray-700">WooCommerce</span>
-                <span class="inline-flex items-center px-4 py-2 rounded-full border border-gray-200 text-[13px] font-semibold text-gray-700">Midtrans</span>
-                <span class="inline-flex items-center px-4 py-2 rounded-full border border-gray-200 text-[13px] font-semibold text-gray-700">Xendit</span>
-            </div>
-        </div>
-    </section>
-
-    <!-- WHO IT'S FOR -->
-    <section class="py-16 md:py-20 px-6 bg-gray-50 border-t border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mx-auto text-center mb-12">
-                <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-4">
-                    Kalau Anda jualan online, Anda kenal ribetnya
-                </h2>
-                <p class="text-[16px] text-gray-600 leading-relaxed">
-                    Apakah Anda jalankan storefront marketplace, website D2C sendiri, atau brand retail dengan channel online — gambaran finance Anda tersebar di setidaknya lima platform. FluxyOS adalah lapisan yang merangkainya kembali.
-                </p>
-            </div>
-            <div class="grid md:grid-cols-3 gap-6">
-                <div class="bg-white rounded-2xl border border-gray-200 p-7">
-                    <div class="w-10 h-10 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center text-[#EA580C] mb-4">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3" stroke-width="2"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">Seller marketplace</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Jualan di Tokopedia, Shopee, TikTok Shop, Lazada, atau Blibli? Setiap platform settle di jadwal beda, potong fee beda, dan export data dengan caranya sendiri. Kami menyatukannya.
-                    </p>
-                </div>
-                <div class="bg-white rounded-2xl border border-gray-200 p-7">
-                    <div class="w-10 h-10 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center text-[#EA580C] mb-4">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0zM13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 011-1h2a1 1 0 011 1m0 0h2a1 1 0 001-1V9.586a1 1 0 00-.293-.707L17.707 6.293A1 1 0 0017 6h-4a1 1 0 00-1 1v9a1 1 0 001 1m0 0a1 1 0 001-1V9.586"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">D2C &amp; brand Shopify</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Punya checkout sendiri? FluxyOS membaca dari Shopify, WooCommerce, dan gateway Indonesia seperti Midtrans dan Xendit, jadi revenue D2C Anda ada di ledger yang sama dengan semua channel lain.
-                    </p>
-                </div>
-                <div class="bg-white rounded-2xl border border-gray-200 p-7">
-                    <div class="w-10 h-10 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center text-[#EA580C] mb-4">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">Retail dengan channel online</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Toko fisik dengan Shopify atau WooCommerce sebagai channel tambahan? Penjualan POS, order online, dan invoice supplier masuk satu tempat. Satu P&L, bukan tiga.
-                    </p>
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <p class="text-[12px] font-bold text-gray-500 uppercase tracking-[0.2em]">Storefront, bank, gateway, dan spend supplier terhubung</p>
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Tokopedia</span>
+                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-[#EA580C]"></span>Shopee</span>
+                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>TikTok Shop</span>
+                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Lazada</span>
+                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-[#EA580C]"></span>Blibli</span>
+                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>Shopify</span>
+                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>WooCommerce</span>
+                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-[#EA580C]"></span>Midtrans</span>
+                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>Xendit</span>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- HOW IT WORKS (3-step dark section) -->
-    <section id="how-it-works" class="section-dark py-20 md:py-28 px-6 border-t border-gray-800">
+        <!-- WHO IT'S FOR -->
+    <section class="bg-[#F7F7F2] px-6 py-16 md:py-24 border-b border-gray-200">
         <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-2xl mx-auto text-center mb-16">
-                <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight mb-5">
-                    Dari storefront ke buku rapi, dalam tiga langkah
-                </h2>
-                <p class="text-[17px] text-gray-400 leading-relaxed">
-                    Hubungkan channel sekali. Setelah itu, FluxyOS menjaga setiap payout, refund, dan biaya iklan tetap sinkron — otomatis.
+            <div class="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-end mb-12">
+                <div>
+                    <p class="mb-4 text-[12px] font-bold uppercase tracking-[0.22em] text-[#EA580C]">Omnichannel control</p>
+                    <h2 class="text-[36px] md:text-[50px] font-bold tracking-tight leading-[1] text-gray-950">
+                        Lapisan finance yang hilang dari commerce stack Anda
+                    </h2>
+                </div>
+                <p class="text-[17px] leading-relaxed text-gray-600 max-w-2xl lg:justify-self-end">
+                    Dashboard marketplace menunjukkan sales. Platform iklan menunjukkan spend. Invoice supplier menunjukkan cost. FluxyOS menyatukan semuanya ke sistem yang siap tutup buku.
                 </p>
             </div>
 
-            <div class="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-8 flex flex-col h-full hover:border-gray-700 transition-colors">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold">1</div>
-                        <h3 class="text-[19px] font-bold">Hubungkan setiap channel</h3>
-                    </div>
-                    <p class="text-gray-400 text-[14px] leading-relaxed mb-6 flex-grow">
-                        Hubungkan Tokopedia, Shopee, TikTok Shop, Shopify, bank Anda, dan akun iklan. Order, payout, fee, dan refund mulai mengalir dalam hitungan menit.
-                    </p>
-                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 space-y-2">
-                        <div class="flex items-center gap-2 text-[12px]"><div class="w-2 h-2 rounded-full bg-green-400"></div><span class="text-gray-300">Tokopedia terhubung</span></div>
-                        <div class="flex items-center gap-2 text-[12px]"><div class="w-2 h-2 rounded-full bg-green-400"></div><span class="text-gray-300">Shopee terhubung</span></div>
-                        <div class="flex items-center gap-2 text-[12px]"><div class="w-2 h-2 rounded-full bg-green-400"></div><span class="text-gray-300">Shopify + Midtrans</span></div>
-                        <div class="flex items-center gap-2 text-[12px]"><div class="w-2 h-2 rounded-full bg-yellow-400"></div><span class="text-gray-300">TikTok Shop sinkronisasi…</span></div>
+            <div class="grid gap-5 lg:grid-cols-4 lg:grid-rows-2">
+                <div class="bento-card lg:col-span-2 lg:row-span-2 rounded-[24px] border border-gray-900 bg-[#0B0F19] p-8 text-white overflow-hidden relative">
+                    <div class="absolute right-6 top-6 h-28 w-28 rounded-full border border-white/10"></div>
+                    <p class="mb-16 text-[12px] font-bold uppercase tracking-[0.22em] text-gray-500">P&L engine</p>
+                    <h3 class="max-w-lg text-[30px] md:text-[38px] font-bold tracking-tight leading-tight">Dari GMV ke profit asli</h3>
+                    <p class="mt-5 max-w-xl text-[15px] leading-relaxed text-gray-400">Lihat setiap order setelah marketplace fee, biaya payment gateway, subsidi promo, ad spend, refund, dan COGS. Tidak ada lagi merayakan channel yang diam-diam rugi.</p>
+                    <div class="mt-10 grid grid-cols-3 gap-3 text-[12px]">
+                        <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4"><div class="font-mono text-[20px] font-bold">GMV</div><div class="mt-2 text-gray-500">gross</div></div>
+                        <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4"><div class="font-mono text-[20px] font-bold">Fees</div><div class="mt-2 text-gray-500">deducted</div></div>
+                        <div class="rounded-2xl border border-[#EA580C]/30 bg-white/[0.06] p-4"><div class="font-mono text-[20px] font-bold">Margin</div><div class="mt-2 text-[#FDBA74]">real</div></div>
                     </div>
                 </div>
 
-                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-8 flex flex-col h-full hover:border-gray-700 transition-colors">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-9 h-9 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 font-bold">2</div>
-                        <h3 class="text-[19px] font-bold">Auto-cocokkan setiap order</h3>
+                <div class="bento-card rounded-[24px] border border-gray-200 bg-white p-6">
+                    <p class="text-[12px] font-bold uppercase tracking-[0.2em] text-gray-400">Marketplace</p>
+                    <h3 class="mt-5 text-[22px] font-bold tracking-tight text-gray-950">Seller marketplace</h3>
+                    <p class="mt-3 text-[14px] leading-relaxed text-gray-600">File settlement Tokopedia, Shopee, TikTok Shop, Lazada, dan Blibli masuk satu ledger dengan potongan sudah terpisah rapi.</p>
+                </div>
+                <div class="bento-card rounded-[24px] border border-gray-200 bg-white p-6">
+                    <p class="text-[12px] font-bold uppercase tracking-[0.2em] text-gray-400">D2C</p>
+                    <h3 class="mt-5 text-[22px] font-bold tracking-tight text-gray-950">D2C & brand Shopify</h3>
+                    <p class="mt-3 text-[14px] leading-relaxed text-gray-600">Shopify, WooCommerce, Midtrans, Xendit, dan Stripe berdampingan dengan revenue marketplace sehingga performa channel bisa dibandingkan.</p>
+                </div>
+                <div class="bento-card rounded-[24px] border border-gray-200 bg-white p-6">
+                    <p class="text-[12px] font-bold uppercase tracking-[0.2em] text-gray-400">Retail</p>
+                    <h3 class="mt-5 text-[22px] font-bold tracking-tight text-gray-950">Retail dengan channel online</h3>
+                    <p class="mt-3 text-[14px] leading-relaxed text-gray-600">Sales POS, order online, tagihan supplier, dan biaya inventory masuk satu P&L, bukan tiga tampilan terpisah.</p>
+                </div>
+                <div class="bento-card rounded-[24px] border border-gray-200 bg-white p-6">
+                    <p class="text-[12px] font-bold uppercase tracking-[0.2em] text-gray-400">Close-ready</p>
+                    <div class="mt-6 flex items-end gap-2">
+                        <div class="h-12 w-9 rounded-t-lg bg-gray-200"></div>
+                        <div class="h-20 w-9 rounded-t-lg bg-gray-300"></div>
+                        <div class="h-28 w-9 rounded-t-lg bg-[#0B0F19]"></div>
+                        <div class="h-16 w-9 rounded-t-lg bg-[#EA580C]"></div>
                     </div>
-                    <p class="text-gray-400 text-[14px] leading-relaxed mb-6 flex-grow">
-                        FluxyOS mencocokkan setiap order dengan marketplace fee, gateway fee, refund, dan settlement bank. Yang tidak cocok muncul untuk dicek — sisanya membukukan dirinya sendiri.
-                    </p>
-                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
-                        <div class="text-[12px] text-gray-500 mb-2">Order #SP-984213 • Shopee</div>
-                        <div class="space-y-1 text-[12px] font-mono">
-                            <div class="flex justify-between text-gray-300"><span>Gross revenue</span><span>Rp 845.000</span></div>
-                            <div class="flex justify-between text-red-400"><span>Marketplace fee</span><span>– Rp 38.000</span></div>
-                            <div class="flex justify-between text-red-400"><span>Subsidi promo</span><span>– Rp 25.000</span></div>
-                            <div class="flex justify-between text-white border-t border-gray-800 pt-1 mt-1 font-bold"><span>Net payout</span><span>Rp 782.000</span></div>
+                    <p class="mt-6 text-[14px] leading-relaxed text-gray-600">Channel economics, budget burn, and supplier cost stay in one decision view.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+        <!-- HOW IT WORKS (3-step dark section) -->
+    <section id="how-it-works" class="section-dark px-6 py-20 md:py-28 border-t border-gray-800">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start mb-14">
+                <div>
+                    <p class="mb-4 text-[12px] font-bold uppercase tracking-[0.22em] text-[#FDBA74]">Operating flow</p>
+                    <h2 class="text-[36px] md:text-[50px] font-bold tracking-tight leading-[1.02]">
+                        Dari storefront ke buku rapi, dalam tiga langkah
+                    </h2>
+                </div>
+                <p class="max-w-2xl text-[17px] leading-relaxed text-gray-400 lg:pt-11">
+                    Tools finance terbaik membuat sistemnya terlihat bekerja. FluxyOS memberi kejelasan itu untuk payout, fee, COGS, dan tutup buku e-commerce.
+                </p>
+            </div>
+
+            <div class="grid gap-5 md:grid-cols-3">
+                <div class="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.055] p-7">
+                    <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-blue-400/20 to-transparent"></div>
+                    <div class="relative">
+                        <div class="mb-12 flex items-center justify-between">
+                            <span class="font-mono text-[13px] text-gray-500">01</span>
+                            <span class="h-px flex-1 mx-4 bg-white/10"></span>
+                            <span class="h-2 w-2 rounded-full bg-[#EA580C]"></span>
+                        </div>
+                        <h3 class="text-[24px] font-bold tracking-tight">Hubungkan channel</h3>
+                        <p class="mt-4 min-h-[88px] text-[14px] leading-relaxed text-gray-400">Storefront, bank, gateway, akun iklan, dan invoice supplier mulai mengalir otomatis ke ledger.</p>
+                        <div class="mt-8 flex flex-wrap gap-2">
+                            <span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Tokopedia</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Shopee</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Shopify</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Bank</span>
                         </div>
                     </div>
                 </div>
-
-                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-8 flex flex-col h-full hover:border-gray-700 transition-colors">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-9 h-9 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 font-bold">3</div>
-                        <h3 class="text-[19px] font-bold">Lihat margin asli Anda</h3>
+                <div class="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.055] p-7">
+                    <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-purple-400/20 to-transparent"></div>
+                    <div class="relative">
+                        <div class="mb-12 flex items-center justify-between">
+                            <span class="font-mono text-[13px] text-gray-500">02</span>
+                            <span class="h-px flex-1 mx-4 bg-white/10"></span>
+                            <span class="h-2 w-2 rounded-full bg-[#EA580C]"></span>
+                        </div>
+                        <h3 class="text-[24px] font-bold tracking-tight">Cocokkan setiap payout</h3>
+                        <p class="mt-4 min-h-[88px] text-[14px] leading-relaxed text-gray-400">Order dipecah menjadi gross revenue, fee, refund, subsidi promo, dan settlement bank dengan exception yang jelas.</p>
+                        <div class="mt-8 flex flex-wrap gap-2">
+                            <span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Gross</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Fees</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Refunds</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Payout</span>
+                        </div>
                     </div>
-                    <p class="text-gray-400 text-[14px] leading-relaxed mb-6 flex-grow">
-                        Pisahkan fee, ad spend, dan COGS untuk lihat profit asli per channel dan per SKU. Tidak perlu menebak lagi produk dan storefront mana yang benar-benar menopang bisnis.
-                    </p>
-                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
-                        <div class="text-[12px] text-gray-500 mb-1">Net margin minggu ini</div>
-                        <div class="text-[20px] font-bold font-mono text-white mb-2">22.4%</div>
-                        <div class="text-[11px] text-gray-500">Tokopedia 24% • Shopee 19% • Shopify 31%</div>
+                </div>
+                <div class="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.055] p-7">
+                    <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-emerald-400/20 to-transparent"></div>
+                    <div class="relative">
+                        <div class="mb-12 flex items-center justify-between">
+                            <span class="font-mono text-[13px] text-gray-500">03</span>
+                            <span class="h-px flex-1 mx-4 bg-white/10"></span>
+                            <span class="h-2 w-2 rounded-full bg-[#EA580C]"></span>
+                        </div>
+                        <h3 class="text-[24px] font-bold tracking-tight">Tutup dengan margin</h3>
+                        <p class="mt-4 min-h-[88px] text-[14px] leading-relaxed text-gray-400">Review margin channel, profit SKU, COGS, dan export siap PPN sebelum rush tutup buku dimulai.</p>
+                        <div class="mt-8 flex flex-wrap gap-2">
+                            <span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Margin</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">COGS</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">VAT</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Export</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- KEY BENEFITS / FEATURE GRID -->
+        <!-- KEY BENEFITS / FEATURE GRID -->
     <section class="py-16 md:py-24 px-6">
         <div class="max-w-[1280px] mx-auto">
             <div class="text-center mb-16">
@@ -921,7 +968,7 @@
         <div class="max-w-[1280px] mx-auto">
             <div class="grid lg:grid-cols-2 gap-12 items-center">
                 <div>
-                    <span class="inline-block bg-orange-500/10 text-[#EA580C] text-[12px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full mb-5 border border-orange-500/20">FluxyOS AI Agents</span>
+                    <span class="inline-block bg-white/[0.04] text-[#EA580C] text-[12px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full mb-5 border border-orange-500/20">FluxyOS AI Agents</span>
                     <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight mb-5 leading-tight">
                         Tanya kenapa revenue Shopee turun — dapat chart, bukan utas Slack.
                     </h2>
@@ -941,8 +988,8 @@
                         </div>
                     </div>
                     <div class="flex items-start gap-3 flex-row-reverse">
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#EA580C] to-[#F97316] flex items-center justify-center flex-shrink-0 text-[12px] font-bold text-white">F</div>
-                        <div class="bg-orange-500/10 border border-orange-500/20 rounded-2xl rounded-tr-sm px-4 py-3 text-[14px] text-gray-100 leading-relaxed">
+                        <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 text-[12px] font-bold text-[#EA580C]">F</div>
+                        <div class="bg-white/[0.04] border border-orange-500/20 rounded-2xl rounded-tr-sm px-4 py-3 text-[14px] text-gray-100 leading-relaxed">
                             Gross revenue Shopee Rp 11.2M, turun 38% dari Senin. Dua penyebab utama: promo gratis ongkir berakhir jam 12 (-Rp 4.1M est.) dan SKU best-seller Anda habis stok jam 15:14. SKU sudah saya tandai untuk restock.
                         </div>
                     </div>
@@ -970,7 +1017,7 @@
                         Kami jualan di Tokopedia, Shopee, dan Shopify sendiri. Dulu, rekonsiliasi satu akhir pekan adalah proyek Selasa siang. Sekarang selesai sebelum kopi habis.
                     </p>
                     <div class="flex items-center gap-3 pt-4 border-t border-gray-100">
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-200 to-orange-100 flex items-center justify-center font-bold text-[14px] text-orange-700">DP</div>
+                        <div class="w-10 h-10 rounded-full bg-gray-100 border border-[#EA580C]/25 flex items-center justify-center font-bold text-[14px] text-orange-700">DP</div>
                         <div>
                             <div class="text-[14px] font-bold text-gray-900">Dewi Pratiwi</div>
                             <div class="text-[12px] text-gray-500">Founder, Hapa Skincare</div>
@@ -984,7 +1031,7 @@
                         TikTok Shop adalah top-line revenue kami. Dashboard net margin kasih tahu itu sebenarnya yang terburuk — terlalu banyak ad spend, terlalu banyak refund. Kami potong spend separuh dan profit naik.
                     </p>
                     <div class="flex items-center gap-3 pt-4 border-t border-gray-100">
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-200 to-blue-100 flex items-center justify-center font-bold text-[14px] text-blue-700">AW</div>
+                        <div class="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[14px] text-blue-700">AW</div>
                         <div>
                             <div class="text-[14px] font-bold text-gray-900">Andre Wijaya</div>
                             <div class="text-[12px] text-gray-500">CEO, Kanvas Apparel</div>
@@ -998,7 +1045,7 @@
                         Akuntan kami dulu menandai setiap baris PPN dari penjualan marketplace. Sekarang mereka tarik export FluxyOS, tanda tangan, selesai. Tutup buku akhirnya membosankan — seperti seharusnya.
                     </p>
                     <div class="flex items-center gap-3 pt-4 border-t border-gray-100">
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-200 to-green-100 flex items-center justify-center font-bold text-[14px] text-green-700">FN</div>
+                        <div class="w-10 h-10 rounded-full bg-green-50 border border-green-100 flex items-center justify-center font-bold text-[14px] text-green-700">FN</div>
                         <div>
                             <div class="text-[14px] font-bold text-gray-900">Farah Nuraini</div>
                             <div class="text-[12px] text-gray-500">Finance Lead, Toko Loka Home</div>
@@ -1094,7 +1141,7 @@
                 Hubungkan channel Anda, lihat margin asli, dan biarkan FluxyOS menjaga buku tetap rapi di belakang layar. Gratis untuk mulai, berbayar saat siap berkembang.
             </p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
+                <a href="/login" class="bg-white text-[#0B0F19] font-semibold text-[15px] px-8 py-4 rounded-md hover:bg-gray-100 transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
                     Coba FluxyOS gratis
                 </a>
                 <a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">
