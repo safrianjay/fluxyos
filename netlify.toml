@@ -30,6 +30,6 @@
 
 [[redirects]]
   from = "/"
-  to = "/fluxyos"
-  status = 301
+  to = "/fluxyos.html"
+  status = 200
   force = true
