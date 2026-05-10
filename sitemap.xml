@@ -52,10 +52,23 @@
   </url>
 
   <url>
-    <loc>https://fluxyos.com/id/use-cases/ecommerce-brands</loc>
-    <lastmod>2026-05-10</lastmod>
+    <loc>https://fluxyos.com/use-cases/ecommerce-brands</loc>
+    <lastmod>2026-05-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/ecommerce-brands"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/ecommerce-brands"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/ecommerce-brands"/>
+  </url>
+
+  <url>
+    <loc>https://fluxyos.com/id/use-cases/ecommerce-brands</loc>
+    <lastmod>2026-05-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/ecommerce-brands"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/ecommerce-brands"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/ecommerce-brands"/>
   </url>
 
 </urlset>
