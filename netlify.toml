@@ -6,6 +6,24 @@
   pretty_urls = true
 
 [[redirects]]
+  from = "https://fluxyos.netlify.app/fluxyos"
+  to = "https://fluxyos.com/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://fluxyos.netlify.app/*"
+  to = "https://fluxyos.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.fluxyos.com/*"
+  to = "https://fluxyos.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/api/v1/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
