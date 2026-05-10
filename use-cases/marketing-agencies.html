@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance OS for Marketing Agencies | FluxyOS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/fluxyos.css">
+
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .font-mono { font-family: 'Fira Code', monospace; }
+
+        .agency-paper {
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 250, 252, 0.98) 100%),
+                linear-gradient(90deg, rgba(11, 15, 25, 0.04) 1px, transparent 1px),
+                linear-gradient(rgba(11, 15, 25, 0.04) 1px, transparent 1px);
+            background-size: auto, 56px 56px, 56px 56px;
+        }
+
+        .agency-shadow {
+            box-shadow: 0 28px 80px -48px rgba(11, 15, 25, 0.58);
+        }
+
+        .board-row {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr 1fr 1fr 0.9fr;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .board-cell {
+            min-width: 0;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            background: #FFFFFF;
+            padding: 12px;
+        }
+
+        .path-lane {
+            position: relative;
+        }
+
+        .path-lane::before {
+            content: "";
+            position: absolute;
+            left: 18px;
+            right: 18px;
+            top: 50%;
+            height: 1px;
+            background: #D1D5DB;
+            z-index: 0;
+        }
+
+        .path-node {
+            position: relative;
+            z-index: 1;
+        }
+
+        .memo-paper {
+            background:
+                linear-gradient(#FFFFFF 0 0) padding-box,
+                linear-gradient(135deg, rgba(234, 88, 12, 0.55), rgba(11, 15, 25, 0.12)) border-box;
+            border: 1px solid transparent;
+        }
+
+        .timeline-dot {
+            box-shadow: 0 0 0 6px #FFFFFF;
+        }
+
+        @media (max-width: 767px) {
+            .board-row {
+                grid-template-columns: minmax(150px, 1.2fr) repeat(4, minmax(118px, 1fr));
+            }
+        }
+
+    </style>
+    <meta name="description" content="Track retainers, media spend, freelancers, and client profitability in one finance OS built for marketing agencies.">
+    <link rel="canonical" href="https://fluxyos.com/use-cases/marketing-agencies">
+    <link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/marketing-agencies">
+    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/marketing-agencies">
+    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/marketing-agencies">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://fluxyos.com/use-cases/marketing-agencies">
+    <meta property="og:title" content="Finance OS for Marketing Agencies | FluxyOS">
+    <meta property="og:description" content="Track retainers, media spend, freelancers, and client profitability in one finance OS built for marketing agencies.">
+    <meta property="og:image" content="https://fluxyos.com/assets/images/og-marketing-agencies.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="FluxyOS">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:locale:alternate" content="id_ID">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Finance OS for Marketing Agencies | FluxyOS">
+    <meta name="twitter:description" content="Track retainers, media spend, freelancers, and client profitability in one finance OS built for marketing agencies.">
+    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-marketing-agencies.png">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-ZN7J6DRD2L');
+    </script>
+
+    <!-- Schema.org structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "FluxyOS",
+      "url": "https://fluxyos.com",
+      "logo": "https://fluxyos.com/assets/images/favicon.svg",
+      "description": "AI-powered finance operations system for Indonesian small and medium businesses.",
+      "areaServed": {
+        "@type": "Country",
+        "name": "Indonesia"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "email": "support@fluxyos.com",
+        "availableLanguage": [
+          "English",
+          "Indonesian"
+        ]
+      }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "FluxyOS for Marketing Agencies",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Marketing Agency Finance Software",
+      "operatingSystem": "Web, iOS, Android",
+      "url": "https://fluxyos.com/use-cases/marketing-agencies",
+      "inLanguage": "en-US",
+      "description": "FluxyOS is a finance OS for marketing agencies. Track retainers, pass-through media spend, contractors, software, reimbursements, and client profitability from one dashboard.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "IDR",
+        "availability": "https://schema.org/InStock"
+      },
+      "featureList": [
+        "Client retainer and project revenue tracking",
+        "Pass-through ad spend and media budget monitoring",
+        "Client profitability reporting after contractors, tools, production, and media costs",
+        "Receipt capture for production costs, reimbursements, and vendor invoices",
+        "Budget pacing for Meta, Google, TikTok, LinkedIn, and creator spend",
+        "Cash-flow forecasting across retainers, one-off projects, and late invoices",
+        "PPN-ready audit trail for client billing and vendor spend",
+        "AI agents for daily client margin, budget, and invoice questions"
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://fluxyos.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Use Cases",
+          "item": "https://fluxyos.com/use-cases/marketing-agencies"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Marketing Agencies",
+          "item": "https://fluxyos.com/use-cases/marketing-agencies"
+        }
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "inLanguage": "en-US",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Can FluxyOS separate client media spend from agency revenue?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. FluxyOS tags pass-through ad spend separately from service revenue, then assigns it to the right client, campaign, or budget. Your P&L shows agency fees, media spend, and actual margin without mixing them together."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I see profitability by client?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Each client view can include retainers, project invoices, contractor cost, creative production, software, reimbursements, and media spend. You see billed revenue, pass-through cost, internal cost, and net client margin."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does FluxyOS handle PPN and client billing?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "FluxyOS keeps a PPN-ready audit trail for client invoices, vendor bills, reimbursements, and pass-through expenses. Your accountant can export clean ledger data instead of rebuilding tax lines from payment screenshots."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What if we manage both retainers and one-off projects?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "FluxyOS handles both. Monthly retainers, campaign fees, project deposits, production budgets, and reimbursements can be tracked in the same finance system while staying separated by client and job."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need a finance team to set this up?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. FluxyOS starts with agency-friendly categories for retainers, media spend, freelancers, production, software, reimbursements, and tax. Your accountant or finance lead can adjust mappings later."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is there a free tier for small agencies?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. FluxyOS has a free tier for smaller teams. Paid plans unlock more client accounts, AI agents, approval flows, and advanced profitability reporting — see the pricing page for details."
+          }
+        }
+      ]
+    }
+    </script>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- 1. Navigation with Mega Menu -->
+    <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
+        <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
+            <div class="flex items-center gap-12 h-full">
+                <a href="/fluxyos" class="flex items-center gap-2.5 cursor-pointer group">
+                    <div class="w-8 h-8 text-black shadow-sm group-hover:scale-105 transition-transform duration-200">
+                        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                            <rect width="40" height="40" rx="8" fill="currentColor" />
+                            <g transform="translate(1.5, 0)">
+                                <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                                <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                            </g>
+                        </svg>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-gray-900">FluxyOS</span>
+                </a>
+
+                <div class="hidden lg:flex items-center gap-8 h-full">
+
+                    <!-- Platform Mega Menu Trigger -->
+                    <div class="group h-full flex items-center">
+                        <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
+                            Platform
+                            <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="max-w-[1280px] mx-auto flex">
+                                <div class="flex-1 py-10 px-6 flex gap-12">
+                                    <div class="flex-[2]">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Fitur</h4>
+                                        <div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                                            <a href="/budgetlanding" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Dynamic Budgeting</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Allocate and track funds live</div>
+                                                </div>
+                                            </a>
+                                            <a href="/vendorspend" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Vendor Spend</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Manage SaaS & contract payouts</div>
+                                                </div>
+                                            </a>
+                                            <a href="/revenuesync" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Revenue Sync</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Ingest client retainers & POS</div>
+                                                </div>
+                                            </a>
+                                            <a href="/receiptcapture" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Receipt Capture</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Automate manual paper chasing</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Platform</h4>
+                                        <div class="space-y-8">
+                                            <a href="/aiagents" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] text-gray-600 transition-colors relative">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">FluxyOS AI Agents</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Multiply finance efficiency instantly</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Global Ready</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Reconcile 120+ currencies globally</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l-4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Native Integrations</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Connect ERPs, HRIS & Productivity</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
+                                    <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">New Release</h4>
+                                    <a href="#" class="block group/release cursor-pointer mb-4">
+                                        <div class="bg-black rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-md group-hover/release:shadow-lg transition-all">
+                                            <div class="absolute inset-0 bg-gradient-to-tr from-gray-900 via-black to-gray-800"></div>
+                                            <h3 class="relative z-10 text-white font-bold text-[36px] leading-[0.9] tracking-tighter">
+                                                SPRING<br/>RELEASE<br/><span class="text-gray-400">2026</span>
+                                            </h3>
+                                        </div>
+                                        <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">
+                                            See what's new &rarr;
+                                        </h5>
+                                        <p class="text-[13px] text-gray-500 leading-relaxed">
+                                            Multi-channel margin reports, faster Kopi Nusantara and Mitra Clinic reconciliation, and AI agent updates.
+                                        </p>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Use Cases Mega Menu Trigger -->
+                    <div class="group h-full flex items-center">
+                        <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
+                            Use Cases
+                            <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="max-w-[1280px] mx-auto flex">
+                                <div class="flex-1 py-10 px-6 flex gap-12">
+                                    <div class="flex-[2]">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">By Industry</h4>
+                                        <div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                                            <a href="/use-cases/ecommerce-brands" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">E-Commerce Brands</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Reconcile POS & gateway transactions.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Tech Startups & SaaS</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Manage burn rates, runway, and software subscriptions.</div>
+                                                </div>
+                                            </a>
+                                            <a href="/use-cases/marketing-agencies" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-[#EA580C] bg-white flex items-center justify-center flex-shrink-0 text-[#EA580C]">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-[#EA580C] mb-0.5 transition-colors">Marketing Agencies</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Map digital ad spend to specific client budgets seamlessly.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Media & Franchise</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Consolidate P&L records across multiple physical locations.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Dropshippers & Digital Ads</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Track live ad ROI against supplier costs to see true net margin.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Manufacturing</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Track live unit economics and manufacturing costs as operations scale.</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">By Role</h4>
+                                        <div class="space-y-8">
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] text-gray-600 transition-colors relative">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">CFOs & Finance Teams</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Automate reconciliation and month-end close.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Founder & CEO</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Real-time visibility into business economics.</div>
+                                                </div>
+                                            </a>
+                                            <a href="#" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Department Heads</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Track actual spend against internal budgets.</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
+                                    <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">Featured Story</h4>
+                                    <a href="#" class="block group/release cursor-pointer mb-4">
+                                        <div class="bg-gray-100 rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-sm border border-gray-200 group-hover/release:shadow-md transition-all">
+                                            <div class="absolute inset-0 bg-gradient-to-tr from-gray-200 to-gray-50 z-0"></div>
+                                            <svg class="absolute top-4 right-4 w-24 h-24 text-gray-300 opacity-50 z-0 transform -rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                                            <div class="relative z-10 w-full">
+                                                <span class="bg-[#EA580C] text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wide inline-block mb-2">Case Study</span>
+                                                <h3 class="text-gray-900 font-bold text-[18px] leading-[1.2] tracking-tight">
+                                                    Making Every Client Account Profitable
+                                                </h3>
+                                            </div>
+                                        </div>
+                                        <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">
+                                            Read the story &rarr;
+                                        </h5>
+                                        <p class="text-[13px] text-gray-500 leading-relaxed">
+                                            See how a growing agency brought retainers, contractors, media spend, and client P&L into one operating view.
+                                        </p>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="#" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Customers</a>
+                    <a href="/pricing" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Pricing</a>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <div class="relative group cursor-pointer hidden sm:block h-full py-2">
+                    <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors h-full">
+                        <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        EN
+                        <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="absolute right-0 top-[100%] mt-2 w-36 bg-white border border-gray-100 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
+                        <a href="/use-cases/marketing-agencies" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">
+                            English (EN)
+                            <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        </a>
+                        <a href="/id/use-cases/marketing-agencies" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">Bahasa (ID)</a>
+                    </div>
+                </div>
+
+                <a href="/login" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Sign in</a>
+                <a href="/pricing" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-6 py-3 rounded-md transition-all duration-200 shadow-sm hover:shadow text-center">
+                    Try FluxyOS
+                </a>
+                <button type="button" class="mobile-menu-toggle lg:hidden w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-800 flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open navigation menu">
+                    <svg data-menu-open-icon class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M4 7h16M4 12h16M4 17h16"></path></svg>
+                    <svg data-menu-close-icon class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="mobile-menu" class="mobile-menu-panel hidden lg:hidden fixed left-0 right-0 top-[64px] z-[60] bg-white border-b border-gray-200 shadow-[0_20px_40px_-18px_rgba(0,0,0,0.2)] overflow-y-auto">
+            <div class="px-5 py-6 space-y-7">
+                <div>
+                    <h4 class="text-[12px] font-bold text-gray-900 uppercase tracking-wider mb-4">Platform</h4>
+                    <div class="grid grid-cols-1 gap-3">
+                        <a href="/budgetlanding" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Dynamic Budgeting</span><span class="block text-[13px] text-gray-500">Allocate and track funds live</span></span>
+                        </a>
+                        <a href="/vendorspend" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Vendor Spend</span><span class="block text-[13px] text-gray-500">Manage SaaS & contract payouts</span></span>
+                        </a>
+                        <a href="/revenuesync" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Revenue Sync</span><span class="block text-[13px] text-gray-500">Ingest client retainers & POS</span></span>
+                        </a>
+                        <a href="/aiagents" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">FluxyOS AI Agents</span><span class="block text-[13px] text-gray-500">Multiply finance efficiency instantly</span></span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-[12px] font-bold text-gray-900 uppercase tracking-wider mb-4">Use Cases</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <a href="/use-cases/ecommerce-brands" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">E-Commerce Brands</span><span class="block text-[13px] text-gray-500">Reconcile POS & gateway transactions.</span></a>
+                        <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Tech Startups & SaaS</span><span class="block text-[13px] text-gray-500">Manage burn, runway, and subscriptions.</span></a>
+                        <a href="/use-cases/marketing-agencies" class="mobile-menu-link rounded-xl border border-[#EA580C] bg-white px-4 py-3"><span class="block text-[15px] font-bold text-[#EA580C]">Marketing Agencies</span><span class="block text-[13px] text-gray-500">Map ad spend to client budgets.</span></a>
+                        <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Manufacturing</span><span class="block text-[13px] text-gray-500">Track unit economics and costs.</span></a>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="#" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Customers</a>
+                    <a href="/pricing" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Pricing</a>
+                    <a href="/login" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Sign in</a>
+                    <a href="/pricing" class="mobile-menu-link rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F97316] px-4 py-3 text-[15px] font-semibold text-white text-center shadow-sm">Try FluxyOS</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <section class="agency-paper border-b border-gray-200 px-6 py-14 md:py-20 overflow-hidden">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="max-w-4xl mb-10">
+                <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">For marketing agencies</p>
+                <h1 class="text-[44px] md:text-[56px] font-bold tracking-tight leading-[1.05] text-gray-950 mb-6">Keep every client account honest before the Friday call.</h1>
+                <p class="max-w-3xl text-[18px] md:text-[20px] text-gray-700 leading-relaxed mb-8">FluxyOS is a finance OS for marketing agencies that connects retainers, media pass-through, production costs, freelancers, invoices, and client margin without asking account leads to live inside spreadsheets.</p>
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-7 py-4 rounded-md transition-all duration-200 shadow-sm hover:shadow text-center">Try FluxyOS free</a>
+                    <a href="#agency-workflow" class="border border-gray-300 bg-white text-gray-900 font-semibold text-[15px] px-7 py-4 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors text-center">Walk the workflow</a>
+                </div>
+            </div>
+
+            <div class="rounded-[28px] border border-gray-200 bg-white/95 p-4 md:p-6 agency-shadow">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-200 pb-5 mb-5">
+                    <div>
+                        <p class="font-mono text-[11px] uppercase tracking-[0.22em] text-gray-400">Client account board</p>
+                        <h2 class="text-[22px] md:text-[28px] font-bold tracking-tight text-gray-950 mt-1">Retainers, spend, cost, and billing status in one working view.</h2>
+                    </div>
+                    <div class="flex gap-2 text-[12px] font-semibold">
+                        <span class="rounded-full border border-green-200 bg-white px-3 py-1 text-green-700">3 healthy</span>
+                        <span class="rounded-full border border-[#EA580C]/30 bg-white px-3 py-1 text-[#EA580C]">2 need action</span>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto pb-2">
+                    <div class="min-w-[820px] space-y-3">
+                        <div class="board-row text-[11px] font-bold uppercase tracking-wider text-gray-500"><div>Client</div><div>Retainer</div><div>Media budget</div><div>Contractor cost</div><div>Invoice status</div></div>
+                        <div class="board-row">
+                            <div class="board-cell"><p class="text-[13px] font-bold text-gray-950">Sora Beauty</p><p class="text-[12px] text-gray-500 mt-1">Launch sprint</p></div>
+                            <div class="board-cell"><p class="text-[12px] text-gray-500">Booked</p><p class="text-[15px] font-bold text-gray-950">Rp 96M</p></div>
+                            <div class="board-cell border-[#EA580C]/30"><p class="text-[12px] text-[#EA580C]">Pacing</p><p class="text-[15px] font-bold text-gray-950">82%</p></div>
+                            <div class="board-cell"><p class="text-[12px] text-gray-500">Approved</p><p class="text-[15px] font-bold text-gray-950">Rp 21M</p></div>
+                            <div class="board-cell border-green-200"><p class="text-[12px] text-green-700">Paid</p><p class="text-[15px] font-bold text-gray-950">Margin 31%</p></div>
+                        </div>
+                        <div class="board-row">
+                            <div class="board-cell"><p class="text-[13px] font-bold text-gray-950">Bima Eats</p><p class="text-[12px] text-gray-500 mt-1">Always-on ads</p></div>
+                            <div class="board-cell border-[#EA580C]/30"><p class="text-[12px] text-[#EA580C]">Due today</p><p class="text-[15px] font-bold text-gray-950">Rp 44M</p></div>
+                            <div class="board-cell"><p class="text-[12px] text-gray-500">Pacing</p><p class="text-[15px] font-bold text-gray-950">67%</p></div>
+                            <div class="board-cell"><p class="text-[12px] text-gray-500">Pending proof</p><p class="text-[15px] font-bold text-gray-950">Rp 12M</p></div>
+                            <div class="board-cell border-[#EA580C]/30"><p class="text-[12px] text-[#EA580C]">Chase</p><p class="text-[15px] font-bold text-gray-950">2 invoices</p></div>
+                        </div>
+                        <div class="board-row">
+                            <div class="board-cell"><p class="text-[13px] font-bold text-gray-950">Northline SaaS</p><p class="text-[12px] text-gray-500 mt-1">Pipeline campaign</p></div>
+                            <div class="board-cell"><p class="text-[12px] text-gray-500">Booked</p><p class="text-[15px] font-bold text-gray-950">Rp 72M</p></div>
+                            <div class="board-cell"><p class="text-[12px] text-gray-500">Pacing</p><p class="text-[15px] font-bold text-gray-950">41%</p></div>
+                            <div class="board-cell"><p class="text-[12px] text-gray-500">Forecast</p><p class="text-[15px] font-bold text-gray-950">Rp 18M</p></div>
+                            <div class="board-cell border-green-200"><p class="text-[12px] text-green-700">Ready</p><p class="text-[15px] font-bold text-gray-950">Review sent</p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-5 grid md:grid-cols-3 gap-3">
+                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-4"><p class="font-mono text-[11px] uppercase tracking-wider text-gray-400">Pain</p><p class="mt-2 text-[14px] font-semibold text-gray-900">Spend lives in ad platforms, contractor chats, and receipt photos.</p></div>
+                    <div class="rounded-xl border border-[#EA580C]/30 bg-white p-4"><p class="font-mono text-[11px] uppercase tracking-wider text-[#EA580C]">Fix</p><p class="mt-2 text-[14px] font-semibold text-gray-900">FluxyOS tags every cost to a client, campaign, budget, or internal line.</p></div>
+                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-4"><p class="font-mono text-[11px] uppercase tracking-wider text-gray-400">Outcome</p><p class="mt-2 text-[14px] font-semibold text-gray-900">Leads can explain budget usage and margin without rebuilding reports.</p></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MONEY PATHS -->
+    <section id="agency-workflow" class="py-16 md:py-24 px-6 bg-white">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="grid lg:grid-cols-[0.8fr_1.2fr] gap-12 items-start">
+                <div>
+                    <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Money paths</p>
+                    <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Separate agency revenue from client money passing through.</h2>
+                    <p class="text-[18px] text-gray-600 leading-relaxed">Agencies do not just have income and expenses. They have retainers, media top-ups, creator payments, production reimbursements, and late client invoices moving at the same time. FluxyOS keeps each path readable.</p>
+                </div>
+                <div class="space-y-4">
+                    <div class="path-lane rounded-2xl border border-gray-200 bg-gray-50 p-4"><div class="grid grid-cols-3 gap-3 text-center text-[13px] font-semibold"><span class="path-node rounded-xl bg-white border border-gray-200 px-3 py-3">Client retainer</span><span class="path-node rounded-xl bg-white border border-[#EA580C]/30 text-[#EA580C] px-3 py-3">FluxyOS ledger</span><span class="path-node rounded-xl bg-white border border-gray-200 px-3 py-3">Agency revenue</span></div></div>
+                    <div class="path-lane rounded-2xl border border-gray-200 bg-white p-4"><div class="grid grid-cols-3 gap-3 text-center text-[13px] font-semibold"><span class="path-node rounded-xl bg-gray-50 border border-gray-200 px-3 py-3">Media top-up</span><span class="path-node rounded-xl bg-white border border-[#EA580C]/30 text-[#EA580C] px-3 py-3">Budget pacing</span><span class="path-node rounded-xl bg-gray-50 border border-gray-200 px-3 py-3">Client P&L</span></div></div>
+                    <div class="path-lane rounded-2xl border border-gray-200 bg-gray-50 p-4"><div class="grid grid-cols-3 gap-3 text-center text-[13px] font-semibold"><span class="path-node rounded-xl bg-white border border-gray-200 px-3 py-3">Freelancer bill</span><span class="path-node rounded-xl bg-white border border-[#EA580C]/30 text-[#EA580C] px-3 py-3">Cost tag</span><span class="path-node rounded-xl bg-white border border-gray-200 px-3 py-3">Margin impact</span></div></div>
+                    <div class="path-lane rounded-2xl border border-gray-200 bg-white p-4"><div class="grid grid-cols-3 gap-3 text-center text-[13px] font-semibold"><span class="path-node rounded-xl bg-gray-50 border border-gray-200 px-3 py-3">Receipt upload</span><span class="path-node rounded-xl bg-white border border-[#EA580C]/30 text-[#EA580C] px-3 py-3">PPN trail</span><span class="path-node rounded-xl bg-gray-50 border border-gray-200 px-3 py-3">Clean export</span></div></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MARGIN LEAKS -->
+    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-y border-gray-200">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="grid lg:grid-cols-[1fr_1fr] gap-12 items-center">
+                <div>
+                    <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Where margin leaks</p>
+                    <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-6">The expensive problems are usually ordinary.</h2>
+                    <div class="space-y-4">
+                        <div class="rounded-2xl bg-white border border-gray-200 p-5"><h3 class="text-[19px] font-bold text-gray-950 mb-2">Unbilled production extras</h3><p class="text-[15px] text-gray-600 leading-relaxed">Shoots, props, editors, and rush work get approved fast, then disappear before they reach the invoice.</p></div>
+                        <div class="rounded-2xl bg-white border border-gray-200 p-5"><h3 class="text-[19px] font-bold text-gray-950 mb-2">Media spend treated like revenue</h3><p class="text-[15px] text-gray-600 leading-relaxed">Pass-through spend can make top-line numbers look healthy while actual agency margin shrinks.</p></div>
+                        <div class="rounded-2xl bg-white border border-gray-200 p-5"><h3 class="text-[19px] font-bold text-gray-950 mb-2">Late retainers discovered too late</h3><p class="text-[15px] text-gray-600 leading-relaxed">Vendor payments, contractor bills, and ad top-ups still go out even when client cash has not arrived.</p></div>
+                    </div>
+                </div>
+                <div class="rounded-[24px] bg-white border border-gray-200 p-6 agency-shadow">
+                    <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-5"><div><p class="font-mono text-[11px] uppercase tracking-[0.22em] text-gray-400">Reconciliation panel</p><h3 class="text-[22px] font-bold text-gray-950 mt-1">Bima Eats account</h3></div><span class="rounded-full bg-white border border-[#EA580C]/30 px-3 py-1 text-[12px] font-semibold text-[#EA580C]">Review</span></div>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between gap-4"><span class="text-[14px] text-gray-600">Retainer invoice</span><span class="text-[14px] font-bold text-[#EA580C]">Rp 44M unpaid</span></div>
+                        <div class="flex items-center justify-between gap-4"><span class="text-[14px] text-gray-600">Meta and TikTok spend</span><span class="text-[14px] font-bold text-gray-950">Rp 38M used</span></div>
+                        <div class="flex items-center justify-between gap-4"><span class="text-[14px] text-gray-600">Creator batch</span><span class="text-[14px] font-bold text-gray-950">Rp 12M pending proof</span></div>
+                        <div class="h-px bg-gray-200"></div>
+                        <div class="rounded-2xl bg-gray-950 p-5 text-white"><p class="font-mono text-[11px] uppercase tracking-[0.2em] text-orange-200 mb-2">Recommended next action</p><p class="text-[15px] leading-relaxed text-gray-200">Send retainer reminder and bill creator costs before approving the next media top-up.</p></div>
+                        <div><div class="flex justify-between text-[12px] font-semibold text-gray-500 mb-2"><span>Margin target</span><span>24% minimum</span></div><div class="h-2 rounded-full bg-gray-100 overflow-hidden"><div class="h-full w-[68%] bg-gray-950 rounded-full"></div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CLIENT ACCOUNT ROOM -->
+    <section class="py-16 md:py-24 px-6 bg-white">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="max-w-3xl mb-12"><p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Client account room</p><h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">One client record, four practical views.</h2><p class="text-[18px] text-gray-600 leading-relaxed">The founder, account lead, operations team, and finance admin should not have to ask four different tools what is happening with the same client.</p></div>
+            <div class="grid lg:grid-cols-4 gap-4">
+                <div class="rounded-2xl border border-gray-200 bg-gray-950 p-6 text-white lg:row-span-2"><p class="font-mono text-[12px] uppercase tracking-wider text-orange-200 mb-4">Founder</p><h3 class="text-[24px] font-bold mb-4">Which accounts deserve more attention?</h3><p class="text-[15px] text-gray-300 leading-relaxed">See client concentration, unpaid invoices, margin trend, and upcoming cash pressure before renewal conversations.</p></div>
+                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 lg:col-span-2"><p class="font-mono text-[12px] uppercase tracking-wider text-gray-400 mb-4">Account lead</p><h3 class="text-[22px] font-bold text-gray-950 mb-3">What can I say on the client call?</h3><p class="text-[15px] text-gray-600 leading-relaxed">Budget used, costs waiting for approval, reimbursables, and invoice status are ready before the status update starts.</p></div>
+                <div class="rounded-2xl border border-gray-200 bg-white p-6"><p class="font-mono text-[12px] uppercase tracking-wider text-gray-400 mb-4">Ops</p><h3 class="text-[22px] font-bold text-gray-950 mb-3">What still needs proof?</h3><p class="text-[15px] text-gray-600 leading-relaxed">Missing receipts, vendor invoices, approvals, and production expenses stay visible.</p></div>
+                <div class="rounded-2xl border border-gray-200 bg-white p-6"><p class="font-mono text-[12px] uppercase tracking-wider text-gray-400 mb-4">Finance</p><h3 class="text-[22px] font-bold text-gray-950 mb-3">What closes cleanly?</h3><p class="text-[15px] text-gray-600 leading-relaxed">Categories, PPN trails, invoice references, and exports are prepared for month-end.</p></div>
+                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 lg:col-span-2"><p class="font-mono text-[12px] uppercase tracking-wider text-gray-400 mb-4">Shared context</p><div class="grid sm:grid-cols-3 gap-3"><div class="rounded-xl bg-white border border-gray-200 p-4"><div class="text-[22px] font-bold text-gray-950">31%</div><p class="text-[12px] text-gray-500 mt-1">current margin</p></div><div class="rounded-xl bg-white border border-gray-200 p-4"><div class="text-[22px] font-bold text-gray-950">Rp 18M</div><p class="text-[12px] text-gray-500 mt-1">unbilled extras</p></div><div class="rounded-xl bg-white border border-gray-200 p-4"><div class="text-[22px] font-bold text-gray-950">6</div><p class="text-[12px] text-gray-500 mt-1">proofs needed</p></div></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FRIDAY STATUS CALL -->
+    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-y border-gray-200">
+        <div class="max-w-[1120px] mx-auto"><div class="grid lg:grid-cols-[0.9fr_1.1fr] gap-12 items-start"><div><p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Before the Friday status call</p><h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">The numbers are ready before the meeting starts.</h2><p class="text-[18px] text-gray-600 leading-relaxed">Account teams can walk through campaign performance with the finance context behind it: what was spent, what is reimbursable, what is unpaid, and what margin remains.</p></div><div class="relative pl-8"><div class="absolute left-[11px] top-2 bottom-2 w-px bg-gray-200"></div><div class="relative mb-8"><div class="timeline-dot absolute -left-8 top-1 w-6 h-6 rounded-full bg-white border-4 border-[#EA580C]"></div><p class="font-mono text-[12px] text-gray-500 mb-2">09:00</p><h3 class="text-[21px] font-bold text-gray-950 mb-2">Budget pacing is reconciled</h3><p class="text-[15px] text-gray-600 leading-relaxed">Ad platform spend, creator invoices, and production costs are matched to the client budget.</p></div><div class="relative mb-8"><div class="timeline-dot absolute -left-8 top-1 w-6 h-6 rounded-full bg-white border-4 border-[#EA580C]"></div><p class="font-mono text-[12px] text-gray-500 mb-2">12:30</p><h3 class="text-[21px] font-bold text-gray-950 mb-2">Billing gaps are surfaced</h3><p class="text-[15px] text-gray-600 leading-relaxed">The account lead sees unpaid retainers, reimbursable costs, and unbilled extras before promising more work.</p></div><div class="relative"><div class="timeline-dot absolute -left-8 top-1 w-6 h-6 rounded-full bg-white border-4 border-[#EA580C]"></div><p class="font-mono text-[12px] text-gray-500 mb-2">16:00</p><h3 class="text-[21px] font-bold text-gray-950 mb-2">Client margin story is clear</h3><p class="text-[15px] text-gray-600 leading-relaxed">The team can explain budget usage, next steps, and margin tradeoffs without screenshots and guesses.</p></div></div></div></div>
+    </section>
+
+    <!-- AI MEMO -->
+    <section class="py-16 md:py-24 px-6 bg-white"><div class="max-w-[1120px] mx-auto"><div class="rounded-[28px] border border-gray-200 bg-[#F8FAFC] p-6 md:p-8 agency-shadow"><div class="grid lg:grid-cols-[0.85fr_1.15fr] gap-8 items-start"><div><p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Fluxy AI for agencies</p><h2 class="text-[34px] md:text-[44px] font-bold tracking-tight text-gray-950 mb-5">Ask questions in agency language.</h2><p class="text-[17px] text-gray-600 leading-relaxed">Fluxy AI reads the agency ledger and returns answers that founders, account leads, and finance admins can act on today.</p></div><div class="memo-paper rounded-2xl bg-white p-5 md:p-6"><div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-5"><div><p class="font-mono text-[11px] uppercase tracking-[0.22em] text-gray-400">Client review memo</p><h3 class="text-[22px] font-bold text-gray-950 mt-1">Sora Beauty, May billing</h3></div><span class="rounded-full bg-gray-950 px-3 py-1 text-[12px] font-semibold text-white">AI</span></div><div class="space-y-3"><div class="rounded-xl bg-gray-50 border border-gray-200 p-4"><p class="text-[13px] font-bold text-gray-950">Can we approve one more creator batch?</p><p class="text-[14px] text-gray-600 mt-2 leading-relaxed">Yes, if the Rp 18M production add-on is billed before the next media top-up. Otherwise margin falls under target.</p></div><div class="rounded-xl bg-gray-50 border border-gray-200 p-4"><p class="text-[13px] font-bold text-gray-950">What invoices should we chase today?</p><p class="text-[14px] text-gray-600 mt-2 leading-relaxed">Two retainers and one reimbursement invoice are overdue across active clients.</p></div><div class="rounded-xl bg-gray-50 border border-gray-200 p-4"><p class="text-[13px] font-bold text-gray-950">What proofs are missing for PPN?</p><p class="text-[14px] text-gray-600 mt-2 leading-relaxed">Six production receipts and one contractor invoice need proof before export.</p></div></div></div></div></div></div></section>
+
+    <!-- PROOF -->
+    <section class="py-16 md:py-24 px-6 bg-[#0B0F19] text-white"><div class="max-w-[1120px] mx-auto"><div class="grid lg:grid-cols-[1.15fr_0.85fr] gap-10 items-center"><div><p class="font-mono text-[13px] uppercase tracking-[0.24em] text-orange-300 mb-8">Agency proof</p><blockquote class="text-[30px] md:text-[42px] font-bold leading-tight tracking-tight mb-8">"FluxyOS made client profitability visible before the month was over. We stopped treating media spend, freelancers, and retainers like separate conversations."</blockquote><div class="flex items-center gap-4"><div class="w-12 h-12 rounded-full bg-white/10 border border-white/15 flex items-center justify-center font-bold text-orange-200">RA</div><div><div class="font-bold">Raka Adiwijaya</div><div class="text-[14px] text-gray-400">Founder, Northstar Creative Ops</div></div></div></div><div class="grid gap-4"><div class="rounded-2xl border border-white/10 bg-white/8 p-6"><div class="text-[38px] font-bold tracking-tight">3.1 days</div><p class="text-[14px] text-gray-300 mt-2">faster month-end close after account costs were tagged by client</p></div><div class="rounded-2xl border border-white/10 bg-white/8 p-6"><div class="text-[38px] font-bold tracking-tight">98.6%</div><p class="text-[14px] text-gray-300 mt-2">invoice match accuracy across retainers, vendors, and reimbursements</p></div></div></div></div></section>
+
+    <!-- FAQ -->
+    <section id="faq" class="py-16 md:py-20 px-6 border-t border-gray-200 bg-white"><div class="max-w-[1120px] mx-auto"><div class="grid lg:grid-cols-[0.75fr_1.25fr] gap-10"><div><p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">FAQ</p><h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">Frequently asked questions</h2><p class="text-[16px] text-gray-600">Short answers to what agency owners and operators usually ask before signing up.</p></div><div class="grid md:grid-cols-2 gap-x-8 gap-y-2"><details class="border-b border-gray-200 py-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can FluxyOS separate client media spend from agency revenue?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. FluxyOS tags pass-through ad spend separately from service revenue, then assigns it to the right client, campaign, or budget.</p></details><details class="border-b border-gray-200 py-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can I see profitability by client?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. Each client view can include retainers, project invoices, contractor cost, creative production, software, reimbursements, and media spend.</p></details><details class="border-b border-gray-200 py-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">How does FluxyOS handle PPN and client billing?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">FluxyOS keeps a PPN-ready audit trail for client invoices, vendor bills, reimbursements, and pass-through expenses.</p></details><details class="border-b border-gray-200 py-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">What if we manage both retainers and one-off projects?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">FluxyOS handles both. Retainers, campaign fees, project deposits, production budgets, and reimbursements stay separated by client and job.</p></details><details class="border-b border-gray-200 py-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Do I need a finance team to set this up?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">No. FluxyOS starts with agency-friendly categories for retainers, media spend, freelancers, production, software, reimbursements, and tax.</p></details><details class="border-b border-gray-200 py-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Is there a free tier for small agencies?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. FluxyOS has a free tier for smaller teams. Paid plans unlock more client accounts, AI Agents, approval flows, and advanced profitability reporting.</p></details></div></div></div></section>
+
+    <!-- CTA SECTION -->
+    <section class="bg-[#0B0F19] py-16 md:py-24 px-6"><div class="max-w-[1280px] mx-auto text-center"><h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-white mb-5">Stop guessing. Start running every account with margin clarity.</h2><p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">Connect your agency finances, see true client profitability, and let FluxyOS keep the books clean in the background. Free to start, paid when your team is ready to grow.</p><div class="flex flex-col sm:flex-row gap-4 justify-center"><a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow inline-block text-center">Try FluxyOS free</a><a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">See pricing</a></div></div></section>
+
+    <script src="/assets/js/universe-canvas.js" defer></script>
+    <script src="/assets/js/footer-loader.js" defer></script>
+    <script src="/assets/js/fluxyos.js" defer></script>
+</body>
+</html>

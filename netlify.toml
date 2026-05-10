@@ -30,6 +30,12 @@
   force = true
 
 [[redirects]]
+  from = "/marketing-agencies"
+  to = "/use-cases/marketing-agencies"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/api/v1/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
