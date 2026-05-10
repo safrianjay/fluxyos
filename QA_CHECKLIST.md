@@ -75,6 +75,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 7 | CTA buttons link to correct pages (`/pricing`, `/login`) |
 | 8 | Bottom CTA section flows into footer without visual gap or hard line |
 | 9 | Page is readable at 375px, 768px, 1280px widths |
+| 10 | Use-case pages use light hero/product visuals, no dark hero cards, consistent `text-[44px] md:text-[56px]` H1 scale, and no mobile horizontal overflow |
 
 ### B. Footer Changes (includes/footer.html, assets/css/footer.css, assets/js/footer-loader.js)
 

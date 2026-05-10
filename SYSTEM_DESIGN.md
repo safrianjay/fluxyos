@@ -263,6 +263,19 @@ Feature pages are landing pages with product-specific SEO and conversion copy.
 They should also include SoftwareApplication schema and, when relevant,
 FAQPage schema backed by visible FAQ content.
 
+### Use-case page design language
+
+Use-case pages under `/use-cases/...` and `/id/use-cases/...` are
+light-first marketing pages.
+
+Rules:
+
+- Hero sections use light product visuals only; no black or dark dashboard cards in the hero.
+- Hero H1 uses the shared marketing title scale: `text-[44px] md:text-[56px]`.
+- Use orange only for accents, CTAs, borders, dots, and highlights.
+- Use-case body cards, including P&L or workflow cards, should use white/off-white surfaces with gray borders.
+- English and `/id/` use-case pages must be updated in the same commit.
+
 ---
 
 ## 7. Extension Recipes
