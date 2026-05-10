@@ -257,11 +257,11 @@ Base URL (Netlify): `/.netlify/functions/api/v1`
 | Icons | Heroicons SVG (stroke, not filled) | All UI icons |
 | Amount locale | Indonesian (`id-ID`) | Dot as thousands separator |
 
-Use-case pages are light-first marketing pages. Their hero product visuals and
-use-case-specific body cards must use white/off-white surfaces with gray
-borders, not black/dark dashboard cards. Use-case hero titles should use the
-shared marketing scale `text-[44px] md:text-[56px]`, and orange remains an
-accent only.
+Use-case hero product visuals are light-first: use white/off-white surfaces with
+gray borders, not black/dark dashboard cards. Use-case hero titles should use
+the shared marketing scale `text-[44px] md:text-[56px]`. Non-hero use-case
+sections may use the established dark section pattern when it improves contrast
+or hierarchy.
 
 ---
 

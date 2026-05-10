@@ -273,7 +273,7 @@ Rules:
 - Hero sections use light product visuals only; no black or dark dashboard cards in the hero.
 - Hero H1 uses the shared marketing title scale: `text-[44px] md:text-[56px]`.
 - Use orange only for accents, CTAs, borders, dots, and highlights.
-- Use-case body cards, including P&L or workflow cards, should use white/off-white surfaces with gray borders.
+- Non-hero use-case sections may use the established dark section pattern when it improves contrast or hierarchy.
 - English and `/id/` use-case pages must be updated in the same commit.
 
 ---
