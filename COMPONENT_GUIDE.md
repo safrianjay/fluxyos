@@ -2,6 +2,7 @@
 
 Step-by-step recipes for the most common extension tasks.
 Follow these exactly to keep new code consistent with the existing architecture.
+For the system boundaries behind these recipes, read `SYSTEM_DESIGN.md` first.
 
 ---
 

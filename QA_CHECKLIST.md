@@ -4,6 +4,10 @@
 
 FluxyOS is a multi-page financial operations platform (static HTML + vanilla JS + Firebase Firestore). Every time a change or new feature is requested, this checklist is run to verify the affected area works correctly and that no other parts of the app have broken. The goal is a fast, consistent QA pass that can be done in the browser after each implementation.
 
+For architecture contracts, page types, module ownership, and extension rules,
+read `SYSTEM_DESIGN.md` before planning a new dashboard page, landing page, or
+Firestore-backed feature.
+
 ---
 
 ## Workflow — Every Request Follows This Order

@@ -2,6 +2,7 @@
 
 > Read this before implementing any new feature, page, or logic change.
 > This is the single source of truth for architecture, data schema, logic rules, and conventions.
+> For extension contracts and module ownership, also read `SYSTEM_DESIGN.md`.
 
 ---
 
