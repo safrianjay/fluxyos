@@ -24,6 +24,18 @@
   force = true
 
 [[redirects]]
+  from = "/use-cases/ecommerce-brands"
+  to = "/id/use-cases/ecommerce-brands"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/ecommerce-brands"
+  to = "/id/use-cases/ecommerce-brands"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/api/v1/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
