@@ -9,6 +9,117 @@ body {
 
 .font-mono { font-family: 'Fira Code', monospace; }
 
+.landing-hero {
+    isolation: isolate;
+}
+
+.hero-ribbon-field {
+    position: absolute;
+    inset: -120px -120px auto -120px;
+    height: min(760px, 92vh);
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.hero-ribbon-field::before {
+    content: "";
+    position: absolute;
+    inset: 12% -4% 0 6%;
+    background:
+        linear-gradient(116deg, transparent 0 34%, rgba(255, 255, 255, 0.78) 44%, transparent 54%),
+        repeating-linear-gradient(116deg, rgba(255, 255, 255, 0.18) 0 2px, transparent 2px 12px);
+    filter: blur(0.5px);
+    opacity: 0.78;
+    mix-blend-mode: screen;
+    transform: skewY(-8deg);
+}
+
+.hero-ribbon {
+    position: absolute;
+    border-radius: 999px 999px 42% 42%;
+    filter: blur(0.2px) saturate(1.18);
+    opacity: 0.9;
+    transform-origin: center;
+    will-change: transform, background-position, opacity;
+}
+
+.hero-ribbon-primary {
+    top: -240px;
+    right: -310px;
+    width: min(960px, 78vw);
+    height: 1040px;
+    background:
+        linear-gradient(108deg, rgba(255, 255, 255, 0) 0 18%, rgba(255, 255, 255, 0.46) 27%, rgba(234, 88, 12, 0.88) 42%, rgba(249, 115, 22, 0.76) 55%, rgba(236, 72, 153, 0.62) 71%, rgba(124, 58, 237, 0.78) 88%),
+        repeating-linear-gradient(108deg, rgba(255, 255, 255, 0.2) 0 1px, transparent 1px 10px);
+    background-size: 160% 160%, 44px 44px;
+    box-shadow: inset 34px 0 54px rgba(255, 255, 255, 0.42), inset -34px 0 60px rgba(91, 33, 182, 0.25);
+    transform: rotate(-30deg) translate3d(0, 0, 0);
+    animation: heroRibbonPrimary 18s ease-in-out infinite alternate;
+}
+
+.hero-ribbon-secondary {
+    top: -120px;
+    left: -240px;
+    width: min(820px, 76vw);
+    height: 760px;
+    background:
+        linear-gradient(118deg, rgba(191, 219, 254, 0.56), rgba(199, 210, 254, 0.5) 36%, rgba(244, 114, 182, 0.34) 64%, rgba(255, 255, 255, 0) 82%),
+        repeating-linear-gradient(118deg, rgba(255, 255, 255, 0.22) 0 1px, transparent 1px 12px);
+    background-size: 170% 170%, 54px 54px;
+    transform: rotate(-44deg) translate3d(0, 0, 0);
+    animation: heroRibbonSecondary 22s ease-in-out infinite alternate;
+}
+
+.hero-ribbon-tertiary {
+    right: -120px;
+    bottom: -250px;
+    width: min(520px, 45vw);
+    height: 720px;
+    background:
+        linear-gradient(102deg, rgba(255, 255, 255, 0) 4%, rgba(253, 186, 116, 0.74) 25%, rgba(251, 113, 133, 0.58) 52%, rgba(79, 70, 229, 0.72) 87%),
+        repeating-linear-gradient(102deg, rgba(255, 255, 255, 0.24) 0 1px, transparent 1px 11px);
+    background-size: 150% 150%, 46px 46px;
+    box-shadow: inset 26px 0 40px rgba(255, 255, 255, 0.42), inset -28px 0 48px rgba(67, 56, 202, 0.25);
+    transform: rotate(-4deg) translate3d(0, 0, 0);
+    animation: heroRibbonTertiary 20s ease-in-out infinite alternate;
+}
+
+@keyframes heroRibbonPrimary {
+    0% {
+        background-position: 0% 50%, 0 0;
+        transform: rotate(-31deg) translate3d(-16px, -10px, 0) scale(1);
+    }
+    100% {
+        background-position: 100% 50%, 38px 22px;
+        transform: rotate(-27deg) translate3d(24px, 18px, 0) scale(1.035);
+    }
+}
+
+@keyframes heroRibbonSecondary {
+    0% {
+        background-position: 15% 50%, 0 0;
+        opacity: 0.78;
+        transform: rotate(-45deg) translate3d(-18px, 18px, 0) scale(0.98);
+    }
+    100% {
+        background-position: 88% 50%, -34px 24px;
+        opacity: 0.92;
+        transform: rotate(-41deg) translate3d(28px, -14px, 0) scale(1.04);
+    }
+}
+
+@keyframes heroRibbonTertiary {
+    0% {
+        background-position: 0% 50%, 0 0;
+        transform: rotate(-5deg) translate3d(0, 26px, 0) scale(0.98);
+    }
+    100% {
+        background-position: 100% 50%, 32px -18px;
+        transform: rotate(-1deg) translate3d(-26px, -12px, 0) scale(1.045);
+    }
+}
+
 /* Smooth Floating Animations */
 .float-slow { animation: float 7s ease-in-out infinite; }
 .float-slower { animation: float 9s ease-in-out infinite; animation-delay: 1.5s; }
@@ -121,6 +232,11 @@ body.mobile-menu-open {
         opacity: revert;
         transform: none !important;
     }
+
+    .hero-ribbon,
+    .hero-ribbon-field::before {
+        animation: none !important;
+    }
 }
 
 @media (max-width: 1023px) {
@@ -176,6 +292,39 @@ body.mobile-menu-open {
         padding: 28px 16px 48px !important;
         gap: 36px !important;
         overflow: clip;
+    }
+
+    .hero-ribbon-field {
+        inset: -72px -70px auto -70px;
+        height: 720px;
+        opacity: 0.72;
+    }
+
+    .hero-ribbon-field::before {
+        inset: 8% -16% 16% 0;
+    }
+
+    .hero-ribbon-primary {
+        top: -150px;
+        right: -300px;
+        width: 650px;
+        height: 760px;
+    }
+
+    .hero-ribbon-secondary {
+        top: -44px;
+        left: -340px;
+        width: 620px;
+        height: 520px;
+        opacity: 0.62;
+    }
+
+    .hero-ribbon-tertiary {
+        right: -170px;
+        bottom: -120px;
+        width: 330px;
+        height: 520px;
+        opacity: 0.66;
     }
 
     .landing-hero h1 {
