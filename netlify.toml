@@ -36,6 +36,12 @@
   force = true
 
 [[redirects]]
+  from = "/dropshippers-digital-ads"
+  to = "/use-cases/dropshippers-digital-ads"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/api/v1/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
