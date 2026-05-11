@@ -133,12 +133,10 @@
       "@type": "FAQPage",
       "inLanguage": "en-US",
       "mainEntity": [
-        { "@type": "Question", "name": "How does FluxyOS help manufacturing finance teams?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS connects supplier bills, raw material purchases, payroll, overhead, production costs, invoices, and collections so owners and finance teams can see where cash is tied up and which product lines protect margin." } },
-        { "@type": "Question", "name": "Can FluxyOS track cost by batch or production run?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Manufacturing teams can group material costs, labor, overhead, packaging, and delivery expenses by batch, product line, or customer order to review real production margin." } },
-        { "@type": "Question", "name": "Does FluxyOS replace an ERP?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS is not a heavy manufacturing ERP. It focuses on finance operations visibility: cash flow, vendor spend, receipt capture, invoices, budgets, and margin review around production activity." } },
-        { "@type": "Question", "name": "Can owners use FluxyOS without a large finance department?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. FluxyOS is designed so owners, heads of production, and finance admins can understand cost movement without waiting for month-end spreadsheets." } },
-        { "@type": "Question", "name": "Does FluxyOS support supplier invoices and receipts?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Teams can capture supplier invoices, receipts, courier costs, maintenance bills, and other operating costs so the ledger stays ready for review." } },
-        { "@type": "Question", "name": "Does FluxyOS prepare data for tax and PPN reporting?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS keeps transaction history, receipts, supplier invoices, vendor costs, and sales invoices organized for PPN-ready exports and accountant review." } }
+        { "@type": "Question", "name": "How does FluxyOS help manufacturing finance teams?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS connects supplier bills, material purchases, payroll, overhead, invoices, and collections so teams can understand cash and margin without waiting for month-end spreadsheets." } },
+        { "@type": "Question", "name": "Can FluxyOS track cost by batch or product line?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Costs can be grouped around batches, product lines, customer orders, or departments so each run has a clearer margin picture." } },
+        { "@type": "Question", "name": "Does FluxyOS replace a manufacturing ERP?", "acceptedAnswer": { "@type": "Answer", "text": "No. FluxyOS focuses on finance operations visibility around production: vendor spend, cash flow, receipts, bills, budgets, invoices, and margin review." } },
+        { "@type": "Question", "name": "Can it support PPN-ready exports?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Supplier invoices, receipts, customer invoices, and operating costs stay organized for accountant review and PPN-ready exports." } }
       ]
     }
     </script>
@@ -483,29 +481,36 @@
                 </div>
             </div>
             <div class="control-shadow rounded-[30px] border border-gray-200 bg-white p-4 md:p-6 ad-grid">
-                <div class="rounded-[22px] border border-gray-200 bg-white p-5 md:p-6">
-                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
-                        <div>
-                            <h2 class="text-[24px] md:text-[30px] font-bold tracking-tight text-gray-950">Factory finance board</h2>
-                            <p class="text-[14px] text-gray-500 mt-1">Batch A-118, kitchen appliance line</p>
+                <div class="grid md:grid-cols-[0.92fr_1.08fr] gap-4">
+                    <div class="rounded-[22px] border border-gray-200 bg-white p-5">
+                        <div class="flex items-start justify-between gap-3 mb-5">
+                            <div>
+                                <h2 class="text-[23px] md:text-[28px] font-bold tracking-tight text-gray-950">Factory cash control room</h2>
+                                <p class="text-[13px] text-gray-500 mt-1">BCA operating account, May 2026</p>
+                            </div>
+                            <span class="rounded-full border border-[#EA580C]/40 px-3 py-1 text-[12px] font-semibold text-[#EA580C]">Live</span>
                         </div>
-                        <span class="rounded-full border border-[#EA580C]/40 px-3 py-1 text-[12px] font-semibold text-[#EA580C]">Live costs</span>
-                    </div>
-                    <div class="grid sm:grid-cols-3 gap-3 mb-5">
-                        <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] font-semibold text-gray-500">Materials committed</p><p class="text-[24px] font-bold text-gray-950 mt-2">Rp 312M</p></div>
-                        <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] font-semibold text-gray-500">WIP value</p><p class="text-[24px] font-bold text-gray-950 mt-2">Rp 184M</p></div>
-                        <div class="rounded-2xl bg-white border border-[#EA580C]/35 p-4"><p class="text-[12px] font-semibold text-gray-500">Margin drift</p><p class="text-[24px] font-bold text-gray-950 mt-2">-4.2%</p></div>
-                    </div>
-                    <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4">
-                        <div class="grid grid-cols-[1fr_auto] gap-3 text-[13px]">
-                            <span class="text-gray-600">Supplier invoice due Thursday</span><span class="font-bold text-gray-950">Rp 87M</span>
-                            <span class="text-gray-600">Machine downtime logged</span><span class="font-bold text-[#EA580C]">6.5 hrs</span>
-                            <span class="text-gray-600">Customer invoice not collected</span><span class="font-bold text-gray-950">Rp 241M</span>
-                            <span class="text-gray-600">PPN export readiness</span><span class="font-bold text-gray-950">92%</span>
+                        <div class="space-y-3">
+                            <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Customer payment</p><p class="text-[12px] text-gray-500 mt-1">PT Ritel Nusantara invoice 0841</p></div><span class="text-[14px] font-bold text-gray-950">+Rp 241M</span></div>
+                            <div class="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Supplier transfer</p><p class="text-[12px] text-gray-500 mt-1">Aluminium sheet deposit</p></div><span class="text-[14px] font-bold text-gray-950">-Rp 87M</span></div>
+                            <div class="rounded-2xl border border-[#EA580C]/30 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Machine maintenance</p><p class="text-[12px] text-gray-500 mt-1">Press line bearing replacement</p></div><span class="text-[14px] font-bold text-[#EA580C]">-Rp 18M</span></div>
+                            <div class="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Operator payroll</p><p class="text-[12px] text-gray-500 mt-1">Shift A and overtime</p></div><span class="text-[14px] font-bold text-gray-950">-Rp 64M</span></div>
+                            <div class="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">PPN reserve</p><p class="text-[12px] text-gray-500 mt-1">Tax-ready cash set aside</p></div><span class="text-[14px] font-bold text-gray-950">-Rp 22M</span></div>
                         </div>
                     </div>
-                    <div class="mt-5 rounded-2xl bg-gray-950 p-5 text-white">
-                        <p class="text-[15px] font-semibold leading-relaxed">Hold batch expansion until collections clear or supplier payment will collide with payroll week.</p>
+                    <div class="rounded-[22px] bg-[#0B0F19] text-white p-5 md:p-6">
+                        <h3 class="text-[22px] md:text-[28px] font-bold tracking-tight">Batch A-118 cost build</h3>
+                        <p class="text-[13px] text-gray-300 mt-1">Kitchen appliance line, 1.240 units</p>
+                        <div class="mt-6 space-y-4">
+                            <div><div class="flex justify-between text-[13px] mb-2"><span class="text-gray-300">Raw materials</span><span class="font-bold">Rp 312M</span></div><div class="h-2 rounded-full bg-white/10 overflow-hidden"><div class="h-full w-[78%] rounded-full bg-white"></div></div></div>
+                            <div><div class="flex justify-between text-[13px] mb-2"><span class="text-gray-300">Operator labor</span><span class="font-bold">Rp 88M</span></div><div class="h-2 rounded-full bg-white/10 overflow-hidden"><div class="h-full w-[44%] rounded-full bg-white"></div></div></div>
+                            <div><div class="flex justify-between text-[13px] mb-2"><span class="text-gray-300">Machine overhead</span><span class="font-bold text-orange-200">Rp 63M</span></div><div class="h-2 rounded-full bg-white/10 overflow-hidden"><div class="h-full w-[31%] rounded-full bg-[#EA580C]"></div></div></div>
+                            <div class="grid grid-cols-2 gap-3 pt-2">
+                                <div class="rounded-2xl bg-white/8 border border-white/10 p-4"><p class="text-[12px] text-gray-400">WIP value</p><p class="text-[22px] font-bold mt-1">Rp 184M</p></div>
+                                <div class="rounded-2xl bg-white/8 border border-white/10 p-4"><p class="text-[12px] text-gray-400">Finished goods</p><p class="text-[22px] font-bold mt-1">Rp 526M</p></div>
+                            </div>
+                            <div class="rounded-2xl bg-white text-gray-950 p-4"><p class="text-[14px] font-semibold leading-relaxed">Delay next material PO until customer invoice clears or payroll week collides with supplier deposit.</p></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -518,26 +523,45 @@
                 <div class="lg:pt-6">
                     <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Manufacturing profit leaks rarely show up in one obvious place.</h2>
                     <p class="text-[18px] text-gray-600 leading-relaxed">A finished product can look profitable until late supplier invoices, scrap, overtime, maintenance, packaging, freight, and delayed customer collections are tied back to the same production run.</p>
-                    <div class="mt-8 grid sm:grid-cols-2 gap-3">
-                        <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5"><p class="text-[13px] font-semibold text-gray-500">Cost added after plan</p><p class="text-[30px] font-bold text-gray-950 mt-2">Rp 46M</p><p class="text-[13px] text-gray-500 mt-1">Scrap, overtime, maintenance</p></div>
-                        <div class="rounded-2xl border border-[#EA580C]/30 bg-white p-5"><p class="text-[13px] font-semibold text-gray-500">Cash tied in WIP</p><p class="text-[30px] font-bold text-gray-950 mt-2">Rp 184M</p><p class="text-[13px] text-gray-500 mt-1">Not yet invoiced or collected</p></div>
+                    <div class="mt-8 rounded-3xl border border-gray-200 bg-[#F8FAFC] p-5">
+                        <p class="text-[15px] font-bold text-gray-950">The batch looked healthy at quote stage.</p>
+                        <p class="text-[14px] text-gray-600 leading-relaxed mt-2">The real margin changed only after the shop floor posted overtime, maintenance, scrap, and freight.</p>
                     </div>
                 </div>
                 <div class="control-shadow rounded-[28px] border border-gray-200 bg-[#F8FAFC] p-4 md:p-6">
                     <div class="rounded-[22px] border border-gray-200 bg-white p-5 md:p-6">
-                        <h3 class="text-[24px] font-bold tracking-tight text-gray-950 mb-1">Batch A-118 cost movement</h3>
-                        <p class="text-[14px] text-gray-600 mb-6">FluxyOS keeps the production math connected to the ledger, not trapped in side spreadsheets.</p>
-                        <div class="grid gap-3">
-                            <div class="grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-center rounded-2xl border border-gray-200 bg-white p-4"><span class="font-bold text-gray-950">Raw materials</span><div class="h-3 rounded-full bg-gray-100 overflow-hidden"><div class="h-full w-[78%] rounded-full bg-gray-950"></div></div><span class="font-bold text-gray-950">Rp 312M</span></div>
-                            <div class="grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-center rounded-2xl border border-gray-200 bg-white p-4"><span class="font-bold text-gray-950">Labor + overtime</span><div class="h-3 rounded-full bg-gray-100 overflow-hidden"><div class="h-full w-[44%] rounded-full bg-gray-950"></div></div><span class="font-bold text-gray-950">Rp 88M</span></div>
-                            <div class="grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-center rounded-2xl border border-gray-200 bg-white p-4"><span class="font-bold text-gray-950">Machine overhead</span><div class="h-3 rounded-full bg-gray-100 overflow-hidden"><div class="h-full w-[31%] rounded-full bg-[#EA580C]"></div></div><span class="font-bold text-gray-950">Rp 63M</span></div>
-                            <div class="grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-center rounded-2xl border border-gray-200 bg-white p-4"><span class="font-bold text-gray-950">Packaging + freight</span><div class="h-3 rounded-full bg-gray-100 overflow-hidden"><div class="h-full w-[22%] rounded-full bg-gray-950"></div></div><span class="font-bold text-gray-950">Rp 41M</span></div>
+                        <h3 class="text-[24px] font-bold tracking-tight text-gray-950 mb-1">Margin waterfall for Batch A-118</h3>
+                        <p class="text-[14px] text-gray-600 mb-6">Planned margin moved from 24.5% to 18.9% after the real production events landed.</p>
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4"><div><p class="font-bold text-gray-950">Quoted production margin</p><p class="text-[12px] text-gray-500 mt-1">Materials and labor from the original plan</p></div><span class="text-[22px] font-bold text-gray-950">24.5%</span></div>
+                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-white p-4"><div><p class="font-bold text-gray-950">Raw material price change</p><p class="text-[12px] text-gray-500 mt-1">Aluminium sheet and imported components</p></div><span class="text-[18px] font-bold text-gray-950">-2.1%</span></div>
+                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-white p-4"><div><p class="font-bold text-gray-950">Overtime and operator meals</p><p class="text-[12px] text-gray-500 mt-1">Extra shift to recover late supplier delivery</p></div><span class="text-[18px] font-bold text-gray-950">-1.4%</span></div>
+                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-[#EA580C]/30 bg-white p-4"><div><p class="font-bold text-gray-950">Scrap, rework, and machine maintenance</p><p class="text-[12px] text-gray-500 mt-1">Press line bearing replacement and rejected casing</p></div><span class="text-[18px] font-bold text-[#EA580C]">-1.6%</span></div>
+                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-white p-4"><div><p class="font-bold text-gray-950">Freight and delayed collection</p><p class="text-[12px] text-gray-500 mt-1">Finished goods shipped before customer payment cleared</p></div><span class="text-[18px] font-bold text-gray-950">-0.5%</span></div>
+                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-950 bg-gray-950 p-4 text-white"><div><p class="font-bold">Current margin</p><p class="text-[12px] text-gray-300 mt-1">Finance, production, and owner see the same result</p></div><span class="text-[24px] font-bold">18.9%</span></div>
                         </div>
-                        <div class="mt-5 grid md:grid-cols-3 gap-3">
-                            <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[13px] text-gray-500">Planned margin</p><p class="text-[26px] font-bold text-gray-950 mt-1">24.5%</p></div>
-                            <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[13px] text-gray-500">Current margin</p><p class="text-[26px] font-bold text-gray-950 mt-1">18.9%</p></div>
-                            <div class="rounded-2xl bg-gray-950 text-white p-4"><p class="text-[13px] text-gray-300">Action</p><p class="text-[16px] font-bold mt-1">Review overtime and supplier price change</p></div>
-                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-16 md:py-24 px-6 bg-white border-y border-gray-200">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="grid lg:grid-cols-[0.86fr_1.14fr] gap-10 lg:gap-14 items-start">
+                <div>
+                    <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Factory expenses should not wait for someone to collect paper receipts.</h2>
+                    <p class="text-[18px] text-gray-600 leading-relaxed">Operator reimbursements, spare parts, electricity, packaging, freight, and supplier invoices land throughout the week. FluxyOS keeps each cost tied to the right batch, vendor, and proof.</p>
+                </div>
+                <div class="rounded-[28px] border border-gray-200 bg-[#F8FAFC] p-4 md:p-6 control-shadow">
+                    <div class="grid gap-3">
+                        <div class="rounded-2xl bg-white border border-[#EA580C]/30 p-4 grid sm:grid-cols-[1fr_auto] gap-3"><div><h3 class="font-bold text-gray-950">Operator expenses</h3><p class="text-[13px] text-gray-500 mt-1">Meals and transport, Shift B overtime</p></div><div class="text-left sm:text-right"><p class="font-bold text-gray-950">Rp 8.4M</p><p class="text-[12px] text-[#EA580C] mt-1">2 receipts missing</p></div></div>
+                        <div class="rounded-2xl bg-white border border-gray-200 p-4 grid sm:grid-cols-[1fr_auto] gap-3"><div><h3 class="font-bold text-gray-950">Machine maintenance</h3><p class="text-[13px] text-gray-500 mt-1">Press line bearing and technician visit</p></div><div class="text-left sm:text-right"><p class="font-bold text-gray-950">Rp 18M</p><p class="text-[12px] text-gray-500 mt-1">Approved</p></div></div>
+                        <div class="rounded-2xl bg-white border border-gray-200 p-4 grid sm:grid-cols-[1fr_auto] gap-3"><div><h3 class="font-bold text-gray-950">Spare parts and tooling</h3><p class="text-[13px] text-gray-500 mt-1">Mold insert, cutting oil, sensor cable</p></div><div class="text-left sm:text-right"><p class="font-bold text-gray-950">Rp 26M</p><p class="text-[12px] text-gray-500 mt-1">Batch A-118</p></div></div>
+                        <div class="rounded-2xl bg-white border border-gray-200 p-4 grid sm:grid-cols-[1fr_auto] gap-3"><div><h3 class="font-bold text-gray-950">Electricity and compressor power</h3><p class="text-[13px] text-gray-500 mt-1">Peak usage during two extra production shifts</p></div><div class="text-left sm:text-right"><p class="font-bold text-gray-950">Rp 34M</p><p class="text-[12px] text-gray-500 mt-1">Needs allocation</p></div></div>
+                        <div class="rounded-2xl bg-white border border-gray-200 p-4 grid sm:grid-cols-[1fr_auto] gap-3"><div><h3 class="font-bold text-gray-950">Packaging and freight</h3><p class="text-[13px] text-gray-500 mt-1">Cartons, pallet wrap, outbound delivery</p></div><div class="text-left sm:text-right"><p class="font-bold text-gray-950">Rp 41M</p><p class="text-[12px] text-gray-500 mt-1">Invoice captured</p></div></div>
+                        <div class="rounded-2xl bg-white border border-gray-200 p-4 grid sm:grid-cols-[1fr_auto] gap-3"><div><h3 class="font-bold text-gray-950">Supplier invoices</h3><p class="text-[13px] text-gray-500 mt-1">Steel sheet, motor assembly, packaging vendor</p></div><div class="text-left sm:text-right"><p class="font-bold text-gray-950">Rp 529M</p><p class="text-[12px] text-gray-500 mt-1">3-way match</p></div></div>
+                        <div class="rounded-2xl bg-gray-950 text-white p-5"><p class="text-[15px] font-semibold">Finance review: clear missing operator receipts before PPN export, allocate electricity to the right batch, and attach maintenance invoice to Batch A-118.</p></div>
                     </div>
                 </div>
             </div>
@@ -546,24 +570,28 @@
 
     <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-y border-gray-200">
         <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-start">
+            <div class="grid lg:grid-cols-[0.95fr_1.05fr] gap-10 items-start">
                 <div>
                     <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">From purchase order to paid invoice, everyone sees the same numbers.</h2>
                     <p class="text-[18px] text-gray-600 leading-relaxed max-w-3xl">Owners can see cash exposure. Production heads can see which batch is drifting. Finance can see vendor bills, receipts, due dates, and collection gaps before month end.</p>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="rounded-2xl border border-gray-200 bg-white p-5"><p class="text-[13px] text-gray-500">Supplier bills</p><p class="text-[24px] font-bold text-gray-950 mt-2">Rp 529M</p></div>
-                    <div class="rounded-2xl border border-gray-200 bg-white p-5"><p class="text-[13px] text-gray-500">Open invoices</p><p class="text-[24px] font-bold text-gray-950 mt-2">Rp 741M</p></div>
-                    <div class="rounded-2xl border border-gray-200 bg-white p-5"><p class="text-[13px] text-gray-500">Receipts missing</p><p class="text-[24px] font-bold text-gray-950 mt-2">18</p></div>
-                    <div class="rounded-2xl border border-[#EA580C]/30 bg-white p-5"><p class="text-[13px] text-gray-500">Cash pressure</p><p class="text-[24px] font-bold text-gray-950 mt-2">12 days</p></div>
+                <div class="rounded-[28px] bg-white border border-gray-200 p-5 control-shadow">
+                    <h3 class="text-[22px] font-bold text-gray-950">Bank statement timing</h3>
+                    <div class="mt-4 space-y-3 text-[13px]">
+                        <div class="flex items-center justify-between gap-3 rounded-xl bg-[#F8FAFC] p-3"><span class="text-gray-600">Customer invoice due</span><span class="font-bold">Rp 241M</span></div>
+                        <div class="flex items-center justify-between gap-3 rounded-xl bg-white border border-gray-200 p-3"><span class="text-gray-600">Supplier deposit due</span><span class="font-bold">Rp 87M</span></div>
+                        <div class="flex items-center justify-between gap-3 rounded-xl bg-white border border-[#EA580C]/30 p-3"><span class="text-gray-600">Payroll week cash need</span><span class="font-bold text-[#EA580C]">Rp 64M</span></div>
+                        <div class="rounded-xl bg-gray-950 p-4 text-white"><p class="font-semibold">If collection slips by 5 days, the next material PO should wait.</p></div>
+                    </div>
                 </div>
             </div>
-            <div class="mt-12 grid lg:grid-cols-5 gap-4">
+            <div class="mt-12 grid lg:grid-cols-6 gap-4">
                 <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">01</span><h3 class="font-bold text-gray-950 mt-3">Purchase order</h3><p class="text-[13px] text-gray-600 mt-2">Materials, packaging, and supplier deposits.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">02</span><h3 class="font-bold text-gray-950 mt-3">Production</h3><p class="text-[13px] text-gray-600 mt-2">Labor, WIP, machine time, and waste.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">03</span><h3 class="font-bold text-gray-950 mt-3">Finished goods</h3><p class="text-[13px] text-gray-600 mt-2">Stock value ready to ship or invoice.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">04</span><h3 class="font-bold text-gray-950 mt-3">Sales invoice</h3><p class="text-[13px] text-gray-600 mt-2">Customer billing, taxes, and due dates.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-950 bg-gray-950 text-white p-5"><span class="font-mono text-[12px] text-orange-200">05</span><h3 class="font-bold mt-3">Cash collected</h3><p class="text-[13px] text-gray-300 mt-2">Actual cash available for the next run.</p></div>
+                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">02</span><h3 class="font-bold text-gray-950 mt-3">Factory floor</h3><p class="text-[13px] text-gray-600 mt-2">Operators, machine time, maintenance, and scrap.</p></div>
+                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">03</span><h3 class="font-bold text-gray-950 mt-3">WIP</h3><p class="text-[13px] text-gray-600 mt-2">Cash tied up before goods are finished.</p></div>
+                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">04</span><h3 class="font-bold text-gray-950 mt-3">Finished goods</h3><p class="text-[13px] text-gray-600 mt-2">Stock value ready to ship or invoice.</p></div>
+                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">05</span><h3 class="font-bold text-gray-950 mt-3">Sales invoice</h3><p class="text-[13px] text-gray-600 mt-2">Customer billing, taxes, and due dates.</p></div>
+                <div class="loop-step rounded-2xl border border-gray-950 bg-gray-950 text-white p-5"><span class="font-mono text-[12px] text-orange-200">06</span><h3 class="font-bold mt-3">Bank collection</h3><p class="text-[13px] text-gray-300 mt-2">Payment clears and funds the next run.</p></div>
             </div>
         </div>
     </section>

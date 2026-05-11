@@ -133,12 +133,10 @@
       "@type": "FAQPage",
       "inLanguage": "id-ID",
       "mainEntity": [
-        { "@type": "Question", "name": "Bagaimana FluxyOS membantu tim finance manufaktur?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS menghubungkan tagihan supplier, pembelian bahan, payroll, overhead, biaya produksi, invoice, dan collection agar owner dan tim finance melihat kas yang tertahan dan lini produk yang menjaga margin." } },
-        { "@type": "Question", "name": "Apakah FluxyOS bisa melacak biaya per batch produksi?", "acceptedAnswer": { "@type": "Answer", "text": "Bisa. Tim manufaktur dapat mengelompokkan biaya bahan, tenaga kerja, overhead, packaging, dan pengiriman per batch, lini produk, atau order pelanggan untuk melihat margin produksi yang lebih nyata." } },
-        { "@type": "Question", "name": "Apakah FluxyOS menggantikan ERP?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS bukan ERP manufaktur yang berat. Fokusnya adalah visibilitas finance operations: arus kas, vendor spend, Receipt Capture, invoice, budget, dan review margin di sekitar aktivitas produksi." } },
-        { "@type": "Question", "name": "Apakah owner bisa pakai tanpa tim finance besar?", "acceptedAnswer": { "@type": "Answer", "text": "Bisa. FluxyOS dirancang agar owner, kepala produksi, dan admin finance bisa memahami pergerakan biaya tanpa menunggu spreadsheet akhir bulan." } },
-        { "@type": "Question", "name": "Apakah FluxyOS mendukung invoice supplier dan struk?", "acceptedAnswer": { "@type": "Answer", "text": "Bisa. Tim dapat menangkap invoice supplier, struk, biaya kurir, tagihan maintenance, dan biaya operasional lain agar ledger siap direview." } },
-        { "@type": "Question", "name": "Apakah FluxyOS menyiapkan data untuk pajak dan PPN?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS merapikan riwayat transaksi, struk, invoice supplier, biaya vendor, dan invoice penjualan untuk ekspor siap PPN dan review akuntan." } }
+        { "@type": "Question", "name": "Bagaimana FluxyOS membantu tim finance manufaktur?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS menghubungkan tagihan supplier, pembelian bahan, payroll, overhead, invoice, dan collection supaya tim memahami kas dan margin tanpa menunggu spreadsheet akhir bulan." } },
+        { "@type": "Question", "name": "Apakah FluxyOS bisa melacak biaya per batch?", "acceptedAnswer": { "@type": "Answer", "text": "Bisa. Biaya dapat dikelompokkan per batch, lini produk, order pelanggan, atau departemen agar margin tiap produksi lebih jelas." } },
+        { "@type": "Question", "name": "Apakah FluxyOS menggantikan ERP manufaktur?", "acceptedAnswer": { "@type": "Answer", "text": "Tidak. FluxyOS fokus pada visibilitas finance operations di sekitar produksi: vendor spend, arus kas, struk, tagihan, budget, invoice, dan review margin." } },
+        { "@type": "Question", "name": "Apakah bisa mendukung ekspor siap PPN?", "acceptedAnswer": { "@type": "Answer", "text": "Bisa. Invoice supplier, struk, invoice pelanggan, dan biaya operasional tetap rapi untuk review akuntan dan ekspor siap PPN." } }
       ]
     }
     </script>
@@ -481,29 +479,36 @@
                 </div>
             </div>
             <div class="control-shadow rounded-[30px] border border-gray-200 bg-white p-4 md:p-6 ad-grid">
-                <div class="rounded-[22px] border border-gray-200 bg-white p-5 md:p-6">
-                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
-                        <div>
-                            <h2 class="text-[24px] md:text-[30px] font-bold tracking-tight text-gray-950">Factory finance board</h2>
-                            <p class="text-[14px] text-gray-500 mt-1">Batch A-118, lini kitchen appliance</p>
+                <div class="grid md:grid-cols-[0.92fr_1.08fr] gap-4">
+                    <div class="rounded-[22px] border border-gray-200 bg-white p-5">
+                        <div class="flex items-start justify-between gap-3 mb-5">
+                            <div>
+                                <h2 class="text-[23px] md:text-[28px] font-bold tracking-tight text-gray-950">Factory cash control room</h2>
+                                <p class="text-[13px] text-gray-500 mt-1">Rekening operasional BCA, Mei 2026</p>
+                            </div>
+                            <span class="rounded-full border border-[#EA580C]/40 px-3 py-1 text-[12px] font-semibold text-[#EA580C]">Live</span>
                         </div>
-                        <span class="rounded-full border border-[#EA580C]/40 px-3 py-1 text-[12px] font-semibold text-[#EA580C]">Biaya live</span>
-                    </div>
-                    <div class="grid sm:grid-cols-3 gap-3 mb-5">
-                        <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] font-semibold text-gray-500">Bahan terkunci</p><p class="text-[24px] font-bold text-gray-950 mt-2">Rp 312M</p></div>
-                        <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] font-semibold text-gray-500">Nilai WIP</p><p class="text-[24px] font-bold text-gray-950 mt-2">Rp 184M</p></div>
-                        <div class="rounded-2xl bg-white border border-[#EA580C]/35 p-4"><p class="text-[12px] font-semibold text-gray-500">Margin bergeser</p><p class="text-[24px] font-bold text-gray-950 mt-2">-4.2%</p></div>
-                    </div>
-                    <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4">
-                        <div class="grid grid-cols-[1fr_auto] gap-3 text-[13px]">
-                            <span class="text-gray-600">Invoice supplier jatuh tempo Kamis</span><span class="font-bold text-gray-950">Rp 87M</span>
-                            <span class="text-gray-600">Downtime mesin tercatat</span><span class="font-bold text-[#EA580C]">6.5 jam</span>
-                            <span class="text-gray-600">Invoice pelanggan belum tertagih</span><span class="font-bold text-gray-950">Rp 241M</span>
-                            <span class="text-gray-600">Kesiapan ekspor PPN</span><span class="font-bold text-gray-950">92%</span>
+                        <div class="space-y-3">
+                            <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Pembayaran pelanggan</p><p class="text-[12px] text-gray-500 mt-1">PT Ritel Nusantara invoice 0841</p></div><span class="text-[14px] font-bold text-gray-950">+Rp 241M</span></div>
+                            <div class="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Transfer supplier</p><p class="text-[12px] text-gray-500 mt-1">Deposit aluminium sheet</p></div><span class="text-[14px] font-bold text-gray-950">-Rp 87M</span></div>
+                            <div class="rounded-2xl border border-[#EA580C]/30 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Maintenance mesin</p><p class="text-[12px] text-gray-500 mt-1">Ganti bearing press line</p></div><span class="text-[14px] font-bold text-[#EA580C]">-Rp 18M</span></div>
+                            <div class="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Payroll operator</p><p class="text-[12px] text-gray-500 mt-1">Shift A dan overtime</p></div><span class="text-[14px] font-bold text-gray-950">-Rp 64M</span></div>
+                            <div class="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Cadangan PPN</p><p class="text-[12px] text-gray-500 mt-1">Kas pajak disisihkan</p></div><span class="text-[14px] font-bold text-gray-950">-Rp 22M</span></div>
                         </div>
                     </div>
-                    <div class="mt-5 rounded-2xl bg-gray-950 p-5 text-white">
-                        <p class="text-[15px] font-semibold leading-relaxed">Tahan ekspansi batch sampai collection masuk, atau pembayaran supplier akan bentrok dengan minggu payroll.</p>
+                    <div class="rounded-[22px] bg-[#0B0F19] text-white p-5 md:p-6">
+                        <h3 class="text-[22px] md:text-[28px] font-bold tracking-tight">Biaya Batch A-118</h3>
+                        <p class="text-[13px] text-gray-300 mt-1">Lini kitchen appliance, 1.240 unit</p>
+                        <div class="mt-6 space-y-4">
+                            <div><div class="flex justify-between text-[13px] mb-2"><span class="text-gray-300">Bahan baku</span><span class="font-bold">Rp 312M</span></div><div class="h-2 rounded-full bg-white/10 overflow-hidden"><div class="h-full w-[78%] rounded-full bg-white"></div></div></div>
+                            <div><div class="flex justify-between text-[13px] mb-2"><span class="text-gray-300">Tenaga kerja operator</span><span class="font-bold">Rp 88M</span></div><div class="h-2 rounded-full bg-white/10 overflow-hidden"><div class="h-full w-[44%] rounded-full bg-white"></div></div></div>
+                            <div><div class="flex justify-between text-[13px] mb-2"><span class="text-gray-300">Overhead mesin</span><span class="font-bold text-orange-200">Rp 63M</span></div><div class="h-2 rounded-full bg-white/10 overflow-hidden"><div class="h-full w-[31%] rounded-full bg-[#EA580C]"></div></div></div>
+                            <div class="grid grid-cols-2 gap-3 pt-2">
+                                <div class="rounded-2xl bg-white/8 border border-white/10 p-4"><p class="text-[12px] text-gray-400">Nilai WIP</p><p class="text-[22px] font-bold mt-1">Rp 184M</p></div>
+                                <div class="rounded-2xl bg-white/8 border border-white/10 p-4"><p class="text-[12px] text-gray-400">Barang jadi</p><p class="text-[22px] font-bold mt-1">Rp 526M</p></div>
+                            </div>
+                            <div class="rounded-2xl bg-white text-gray-950 p-4"><p class="text-[14px] font-semibold leading-relaxed">Tunda PO bahan berikutnya sampai invoice pelanggan masuk, atau minggu payroll akan bentrok dengan deposit supplier.</p></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -516,26 +521,45 @@
                 <div class="lg:pt-6">
                     <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Kebocoran profit manufaktur jarang muncul di satu tempat yang jelas.</h2>
                     <p class="text-[18px] text-gray-600 leading-relaxed">Produk jadi bisa terlihat profit sampai invoice supplier terlambat, scrap, overtime, maintenance, packaging, freight, dan collection pelanggan yang mundur ditarik kembali ke batch yang sama.</p>
-                    <div class="mt-8 grid sm:grid-cols-2 gap-3">
-                        <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5"><p class="text-[13px] font-semibold text-gray-500">Biaya tambahan</p><p class="text-[30px] font-bold text-gray-950 mt-2">Rp 46M</p><p class="text-[13px] text-gray-500 mt-1">Scrap, overtime, maintenance</p></div>
-                        <div class="rounded-2xl border border-[#EA580C]/30 bg-white p-5"><p class="text-[13px] font-semibold text-gray-500">Kas tertahan di WIP</p><p class="text-[30px] font-bold text-gray-950 mt-2">Rp 184M</p><p class="text-[13px] text-gray-500 mt-1">Belum jadi invoice atau collection</p></div>
+                    <div class="mt-8 rounded-3xl border border-gray-200 bg-[#F8FAFC] p-5">
+                        <p class="text-[15px] font-bold text-gray-950">Batch ini terlihat sehat saat quotation dibuat.</p>
+                        <p class="text-[14px] text-gray-600 leading-relaxed mt-2">Margin berubah setelah shop floor mencatat overtime, maintenance, scrap, dan freight yang benar-benar terjadi.</p>
                     </div>
                 </div>
                 <div class="control-shadow rounded-[28px] border border-gray-200 bg-[#F8FAFC] p-4 md:p-6">
                     <div class="rounded-[22px] border border-gray-200 bg-white p-5 md:p-6">
-                        <h3 class="text-[24px] font-bold tracking-tight text-gray-950 mb-1">Pergerakan biaya Batch A-118</h3>
-                        <p class="text-[14px] text-gray-600 mb-6">FluxyOS menjaga hitungan produksi tetap terhubung ke ledger, bukan terkunci di spreadsheet sampingan.</p>
-                        <div class="grid gap-3">
-                            <div class="grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-center rounded-2xl border border-gray-200 bg-white p-4"><span class="font-bold text-gray-950">Bahan baku</span><div class="h-3 rounded-full bg-gray-100 overflow-hidden"><div class="h-full w-[78%] rounded-full bg-gray-950"></div></div><span class="font-bold text-gray-950">Rp 312M</span></div>
-                            <div class="grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-center rounded-2xl border border-gray-200 bg-white p-4"><span class="font-bold text-gray-950">Tenaga kerja + overtime</span><div class="h-3 rounded-full bg-gray-100 overflow-hidden"><div class="h-full w-[44%] rounded-full bg-gray-950"></div></div><span class="font-bold text-gray-950">Rp 88M</span></div>
-                            <div class="grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-center rounded-2xl border border-gray-200 bg-white p-4"><span class="font-bold text-gray-950">Overhead mesin</span><div class="h-3 rounded-full bg-gray-100 overflow-hidden"><div class="h-full w-[31%] rounded-full bg-[#EA580C]"></div></div><span class="font-bold text-gray-950">Rp 63M</span></div>
-                            <div class="grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-center rounded-2xl border border-gray-200 bg-white p-4"><span class="font-bold text-gray-950">Packaging + freight</span><div class="h-3 rounded-full bg-gray-100 overflow-hidden"><div class="h-full w-[22%] rounded-full bg-gray-950"></div></div><span class="font-bold text-gray-950">Rp 41M</span></div>
+                        <h3 class="text-[24px] font-bold tracking-tight text-gray-950 mb-1">Waterfall margin Batch A-118</h3>
+                        <p class="text-[14px] text-gray-600 mb-6">Margin rencana bergerak dari 24.5% ke 18.9% setelah kejadian produksi nyata masuk.</p>
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4"><div><p class="font-bold text-gray-950">Margin produksi saat quotation</p><p class="text-[12px] text-gray-500 mt-1">Bahan dan tenaga kerja dari rencana awal</p></div><span class="text-[22px] font-bold text-gray-950">24.5%</span></div>
+                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-white p-4"><div><p class="font-bold text-gray-950">Perubahan harga bahan baku</p><p class="text-[12px] text-gray-500 mt-1">Aluminium sheet dan komponen impor</p></div><span class="text-[18px] font-bold text-gray-950">-2.1%</span></div>
+                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-white p-4"><div><p class="font-bold text-gray-950">Overtime dan makan operator</p><p class="text-[12px] text-gray-500 mt-1">Shift tambahan untuk mengejar supplier terlambat</p></div><span class="text-[18px] font-bold text-gray-950">-1.4%</span></div>
+                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-[#EA580C]/30 bg-white p-4"><div><p class="font-bold text-gray-950">Scrap, rework, dan maintenance mesin</p><p class="text-[12px] text-gray-500 mt-1">Ganti bearing press line dan casing reject</p></div><span class="text-[18px] font-bold text-[#EA580C]">-1.6%</span></div>
+                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-white p-4"><div><p class="font-bold text-gray-950">Freight dan collection terlambat</p><p class="text-[12px] text-gray-500 mt-1">Barang jadi dikirim sebelum pembayaran pelanggan clear</p></div><span class="text-[18px] font-bold text-gray-950">-0.5%</span></div>
+                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-950 bg-gray-950 p-4 text-white"><div><p class="font-bold">Margin sekarang</p><p class="text-[12px] text-gray-300 mt-1">Finance, produksi, dan owner melihat hasil yang sama</p></div><span class="text-[24px] font-bold">18.9%</span></div>
                         </div>
-                        <div class="mt-5 grid md:grid-cols-3 gap-3">
-                            <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[13px] text-gray-500">Margin rencana</p><p class="text-[26px] font-bold text-gray-950 mt-1">24.5%</p></div>
-                            <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[13px] text-gray-500">Margin sekarang</p><p class="text-[26px] font-bold text-gray-950 mt-1">18.9%</p></div>
-                            <div class="rounded-2xl bg-gray-950 text-white p-4"><p class="text-[13px] text-gray-300">Aksi</p><p class="text-[16px] font-bold mt-1">Review overtime dan perubahan harga supplier</p></div>
-                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-16 md:py-24 px-6 bg-white border-y border-gray-200">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="grid lg:grid-cols-[0.86fr_1.14fr] gap-10 lg:gap-14 items-start">
+                <div>
+                    <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Biaya pabrik tidak perlu menunggu orang mengumpulkan struk kertas.</h2>
+                    <p class="text-[18px] text-gray-600 leading-relaxed">Reimburse operator, spare part, listrik, packaging, freight, dan invoice supplier muncul sepanjang minggu. FluxyOS menjaga setiap biaya terikat ke batch, vendor, dan bukti yang tepat.</p>
+                </div>
+                <div class="rounded-[28px] border border-gray-200 bg-[#F8FAFC] p-4 md:p-6 control-shadow">
+                    <div class="grid gap-3">
+                        <div class="rounded-2xl bg-white border border-[#EA580C]/30 p-4 grid sm:grid-cols-[1fr_auto] gap-3"><div><h3 class="font-bold text-gray-950">Expense operator</h3><p class="text-[13px] text-gray-500 mt-1">Makan dan transport, overtime Shift B</p></div><div class="text-left sm:text-right"><p class="font-bold text-gray-950">Rp 8.4M</p><p class="text-[12px] text-[#EA580C] mt-1">2 struk hilang</p></div></div>
+                        <div class="rounded-2xl bg-white border border-gray-200 p-4 grid sm:grid-cols-[1fr_auto] gap-3"><div><h3 class="font-bold text-gray-950">Maintenance mesin</h3><p class="text-[13px] text-gray-500 mt-1">Bearing press line dan kunjungan teknisi</p></div><div class="text-left sm:text-right"><p class="font-bold text-gray-950">Rp 18M</p><p class="text-[12px] text-gray-500 mt-1">Disetujui</p></div></div>
+                        <div class="rounded-2xl bg-white border border-gray-200 p-4 grid sm:grid-cols-[1fr_auto] gap-3"><div><h3 class="font-bold text-gray-950">Spare part dan tooling</h3><p class="text-[13px] text-gray-500 mt-1">Mold insert, cutting oil, kabel sensor</p></div><div class="text-left sm:text-right"><p class="font-bold text-gray-950">Rp 26M</p><p class="text-[12px] text-gray-500 mt-1">Batch A-118</p></div></div>
+                        <div class="rounded-2xl bg-white border border-gray-200 p-4 grid sm:grid-cols-[1fr_auto] gap-3"><div><h3 class="font-bold text-gray-950">Listrik dan daya kompresor</h3><p class="text-[13px] text-gray-500 mt-1">Pemakaian puncak saat dua shift tambahan</p></div><div class="text-left sm:text-right"><p class="font-bold text-gray-950">Rp 34M</p><p class="text-[12px] text-gray-500 mt-1">Perlu alokasi</p></div></div>
+                        <div class="rounded-2xl bg-white border border-gray-200 p-4 grid sm:grid-cols-[1fr_auto] gap-3"><div><h3 class="font-bold text-gray-950">Packaging dan freight</h3><p class="text-[13px] text-gray-500 mt-1">Karton, pallet wrap, pengiriman keluar</p></div><div class="text-left sm:text-right"><p class="font-bold text-gray-950">Rp 41M</p><p class="text-[12px] text-gray-500 mt-1">Invoice tercatat</p></div></div>
+                        <div class="rounded-2xl bg-white border border-gray-200 p-4 grid sm:grid-cols-[1fr_auto] gap-3"><div><h3 class="font-bold text-gray-950">Invoice supplier</h3><p class="text-[13px] text-gray-500 mt-1">Steel sheet, motor assembly, vendor packaging</p></div><div class="text-left sm:text-right"><p class="font-bold text-gray-950">Rp 529M</p><p class="text-[12px] text-gray-500 mt-1">3-way match</p></div></div>
+                        <div class="rounded-2xl bg-gray-950 text-white p-5"><p class="text-[15px] font-semibold">Review finance: selesaikan struk operator yang hilang sebelum ekspor PPN, alokasikan listrik ke batch yang tepat, dan kaitkan invoice maintenance ke Batch A-118.</p></div>
                     </div>
                 </div>
             </div>
@@ -544,24 +568,28 @@
 
     <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-y border-gray-200">
         <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-start">
+            <div class="grid lg:grid-cols-[0.95fr_1.05fr] gap-10 items-start">
                 <div>
                     <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Dari purchase order sampai invoice dibayar, semua orang melihat angka yang sama.</h2>
                     <p class="text-[18px] text-gray-600 leading-relaxed max-w-3xl">Owner bisa melihat eksposur kas. Kepala produksi bisa melihat batch yang mulai melenceng. Finance bisa melihat tagihan vendor, struk, due date, dan collection gap sebelum akhir bulan.</p>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="rounded-2xl border border-gray-200 bg-white p-5"><p class="text-[13px] text-gray-500">Tagihan supplier</p><p class="text-[24px] font-bold text-gray-950 mt-2">Rp 529M</p></div>
-                    <div class="rounded-2xl border border-gray-200 bg-white p-5"><p class="text-[13px] text-gray-500">Invoice terbuka</p><p class="text-[24px] font-bold text-gray-950 mt-2">Rp 741M</p></div>
-                    <div class="rounded-2xl border border-gray-200 bg-white p-5"><p class="text-[13px] text-gray-500">Struk hilang</p><p class="text-[24px] font-bold text-gray-950 mt-2">18</p></div>
-                    <div class="rounded-2xl border border-[#EA580C]/30 bg-white p-5"><p class="text-[13px] text-gray-500">Tekanan kas</p><p class="text-[24px] font-bold text-gray-950 mt-2">12 hari</p></div>
+                <div class="rounded-[28px] bg-white border border-gray-200 p-5 control-shadow">
+                    <h3 class="text-[22px] font-bold text-gray-950">Timing rekening bank</h3>
+                    <div class="mt-4 space-y-3 text-[13px]">
+                        <div class="flex items-center justify-between gap-3 rounded-xl bg-[#F8FAFC] p-3"><span class="text-gray-600">Invoice pelanggan jatuh tempo</span><span class="font-bold">Rp 241M</span></div>
+                        <div class="flex items-center justify-between gap-3 rounded-xl bg-white border border-gray-200 p-3"><span class="text-gray-600">Deposit supplier jatuh tempo</span><span class="font-bold">Rp 87M</span></div>
+                        <div class="flex items-center justify-between gap-3 rounded-xl bg-white border border-[#EA580C]/30 p-3"><span class="text-gray-600">Kebutuhan payroll minggu ini</span><span class="font-bold text-[#EA580C]">Rp 64M</span></div>
+                        <div class="rounded-xl bg-gray-950 p-4 text-white"><p class="font-semibold">Jika collection mundur 5 hari, PO bahan berikutnya harus ditahan.</p></div>
+                    </div>
                 </div>
             </div>
-            <div class="mt-12 grid lg:grid-cols-5 gap-4">
+            <div class="mt-12 grid lg:grid-cols-6 gap-4">
                 <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">01</span><h3 class="font-bold text-gray-950 mt-3">Purchase order</h3><p class="text-[13px] text-gray-600 mt-2">Bahan, packaging, dan deposit supplier.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">02</span><h3 class="font-bold text-gray-950 mt-3">Produksi</h3><p class="text-[13px] text-gray-600 mt-2">Tenaga kerja, WIP, waktu mesin, dan waste.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">03</span><h3 class="font-bold text-gray-950 mt-3">Barang jadi</h3><p class="text-[13px] text-gray-600 mt-2">Nilai stok siap kirim atau invoice.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">04</span><h3 class="font-bold text-gray-950 mt-3">Invoice penjualan</h3><p class="text-[13px] text-gray-600 mt-2">Tagihan pelanggan, pajak, dan due date.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-950 bg-gray-950 text-white p-5"><span class="font-mono text-[12px] text-orange-200">05</span><h3 class="font-bold mt-3">Kas masuk</h3><p class="text-[13px] text-gray-300 mt-2">Kas aktual untuk produksi berikutnya.</p></div>
+                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">02</span><h3 class="font-bold text-gray-950 mt-3">Lantai produksi</h3><p class="text-[13px] text-gray-600 mt-2">Operator, waktu mesin, maintenance, dan scrap.</p></div>
+                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">03</span><h3 class="font-bold text-gray-950 mt-3">WIP</h3><p class="text-[13px] text-gray-600 mt-2">Kas tertahan sebelum barang selesai.</p></div>
+                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">04</span><h3 class="font-bold text-gray-950 mt-3">Barang jadi</h3><p class="text-[13px] text-gray-600 mt-2">Nilai stok siap kirim atau invoice.</p></div>
+                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">05</span><h3 class="font-bold text-gray-950 mt-3">Invoice penjualan</h3><p class="text-[13px] text-gray-600 mt-2">Tagihan pelanggan, pajak, dan due date.</p></div>
+                <div class="loop-step rounded-2xl border border-gray-950 bg-gray-950 text-white p-5"><span class="font-mono text-[12px] text-orange-200">06</span><h3 class="font-bold mt-3">Collection bank</h3><p class="text-[13px] text-gray-300 mt-2">Pembayaran clear dan membiayai produksi berikutnya.</p></div>
             </div>
         </div>
     </section>
