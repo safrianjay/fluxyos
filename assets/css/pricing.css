@@ -6,6 +6,14 @@ body {
 }
 .font-mono { font-family: 'Fira Code', monospace; }
 
+.pricing-nav {
+    background: rgba(11, 15, 25, 0.86);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    margin-bottom: -80px;
+}
+
 /* Floating Animation for Badges */
 .float-slow {
     animation: float 6s ease-in-out infinite;
@@ -39,6 +47,10 @@ body.mobile-menu-open {
 }
 
 @media (max-width: 640px) {
+    .pricing-nav {
+        margin-bottom: -64px;
+    }
+
     .pricing-nav > div:first-child {
         height: 64px !important;
         padding-left: 16px !important;
