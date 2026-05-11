@@ -4,14 +4,28 @@ body {
     color: #111827;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 
 html {
-    overflow-x: hidden;
+    overflow-x: clip;
+}
+
+@supports not (overflow: clip) {
+    body,
+    html {
+        overflow-x: hidden;
+    }
 }
 
 .font-mono { font-family: 'Fira Code', monospace; }
+
+nav[data-animate="nav"] {
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 50 !important;
+}
 
 .landing-hero {
     max-width: none !important;
@@ -67,13 +81,13 @@ html {
 
 .hero-spline-bg__frame iframe {
     position: absolute;
-    inset: -6% -4%;
-    width: 108%;
-    height: 112%;
+    inset: -14% -16%;
+    width: 132%;
+    height: 128%;
     border: 0;
-    opacity: 0.42;
+    opacity: 0.48;
     pointer-events: none;
-    transform: scale(1.02);
+    transform: scale(1.08);
     transform-origin: center;
     filter: invert(1) hue-rotate(330deg) saturate(1.38) brightness(1.08) contrast(0.88) blur(1px);
 }
@@ -305,7 +319,7 @@ body.mobile-menu-open {
     }
 
     .hero-spline-bg__frame iframe {
-        opacity: 0.3;
+        opacity: 0.36;
     }
 
     .hero-bg-softener {
@@ -381,7 +395,11 @@ body.mobile-menu-open {
     }
 
     .hero-spline-bg__frame iframe {
-        opacity: 0.18;
+        inset: -10% -20%;
+        width: 140%;
+        height: 120%;
+        opacity: 0.22;
+        transform: scale(1.05);
         filter: invert(1) hue-rotate(330deg) saturate(1.22) brightness(1.14) contrast(0.86) blur(1.4px);
     }
 
@@ -417,12 +435,6 @@ body.mobile-menu-open {
     .hero-visual > .absolute.inset-0 {
         transform: scale(0.9) !important;
         opacity: 0.65;
-    }
-
-    .hero-orbit {
-        width: 330px !important;
-        height: 330px !important;
-        opacity: 0.22 !important;
     }
 
     .hero-dashboard {

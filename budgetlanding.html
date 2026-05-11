@@ -14,9 +14,19 @@
             background-color: #0B0F19; /* Dark premium background for the landing page */
             color: #F3F4F6;
             -webkit-font-smoothing: antialiased;
-            overflow-x: hidden;
+            overflow-x: clip;
+        }
+        @supports not (overflow: clip) {
+            body { overflow-x: hidden; }
         }
         .font-mono { font-family: 'Fira Code', monospace; }
+
+        nav[data-animate="nav"] {
+            position: -webkit-sticky !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 50 !important;
+        }
         
         /* Subtle Grid Background for Hero */
         .hero-bg {

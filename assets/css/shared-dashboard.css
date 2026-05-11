@@ -8,6 +8,13 @@
     --sidebar-bg: #0B0F19;
 }
 
+main > header {
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 30;
+}
+
 /* Smooth Fade-In for New Data */
 .animate-in {
     animation-duration: 0.5s;

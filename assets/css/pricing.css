@@ -7,6 +7,10 @@ body {
 .font-mono { font-family: 'Fira Code', monospace; }
 
 .pricing-nav {
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 50;
     background: rgba(11, 15, 25, 0.86);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     -webkit-backdrop-filter: blur(16px);
