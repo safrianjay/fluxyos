@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Finance OS for Manufacturing Companies</title>
+  <desc id="desc">Track production cost, WIP, invoices, and cash movement.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B0F19"/>
+      <stop offset="0.6" stop-color="#111827"/>
+      <stop offset="1" stop-color="#1F2937"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.76" cy="0.2" r="0.74">
+      <stop offset="0" stop-color="#EA580C" stop-opacity="0.35"/>
+      <stop offset="0.46" stop-color="#7C3AED" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#0B0F19" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M 44 0 L 0 0 0 44" fill="none" stroke="#FFFFFF" stroke-opacity="0.055" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <circle cx="1008" cy="136" r="214" fill="#EA580C" opacity="0.13"/>
+  <circle cx="1110" cy="505" r="190" fill="#7C3AED" opacity="0.11"/>
+  <g transform="translate(84 110)">
+    <rect x="0" y="0" width="58" height="58" rx="12" fill="#FFFFFF"/>
+    <g transform="translate(2 0)">
+      <path d="M 10 9 L 48 9 L 39 18 L 19 18 L 19 49 L 10 49 Z" fill="#0B0F19"/>
+      <path d="M 25 27 L 39 27 L 30 36 L 25 36 Z" fill="#0B0F19"/>
+    </g>
+    <text x="78" y="39" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="800" letter-spacing="0">FluxyOS</text>
+  </g>
+  <g transform="translate(84 230)">
+    <text x="0" y="0" fill="#FDBA74" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="3">MANUFACTURING FINANCE OS</text>
+    <text x="0" y="82" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="54" font-weight="850" letter-spacing="0">See production cost</text>
+    <text x="0" y="148" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="54" font-weight="850" letter-spacing="0">before margin disappears</text>
+    <text x="0" y="230" fill="#D1D5DB" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="500" letter-spacing="0">Track materials, labor, machine overhead, WIP,</text>
+    <text x="0" y="266" fill="#D1D5DB" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="500" letter-spacing="0">finished goods, invoices, and cash movement.</text>
+  </g>
+  <g transform="translate(828 202)" opacity="0.96">
+    <rect x="0" y="0" width="312" height="318" rx="26" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.18"/>
+    <rect x="32" y="34" width="248" height="48" rx="16" fill="#FFFFFF" fill-opacity="0.14"/>
+    <rect x="52" y="52" width="118" height="12" rx="6" fill="#FFFFFF" fill-opacity="0.56"/>
+    <rect x="206" y="50" width="48" height="16" rx="8" fill="#EA580C" fill-opacity="0.85"/>
+    <g transform="translate(34 112)">
+      <rect x="0" y="0" width="244" height="38" rx="13" fill="#FFFFFF" fill-opacity="0.13"/>
+      <rect x="18" y="14" width="94" height="10" rx="5" fill="#FFFFFF" fill-opacity="0.42"/>
+      <rect x="142" y="14" width="78" height="10" rx="5" fill="#FFFFFF" fill-opacity="0.2"/>
+    </g>
+    <g transform="translate(34 166)">
+      <rect x="0" y="0" width="244" height="38" rx="13" fill="#FFFFFF" fill-opacity="0.13"/>
+      <rect x="18" y="14" width="128" height="10" rx="5" fill="#FFFFFF" fill-opacity="0.42"/>
+      <rect x="166" y="14" width="54" height="10" rx="5" fill="#EA580C" fill-opacity="0.82"/>
+    </g>
+    <g transform="translate(34 220)">
+      <rect x="0" y="0" width="244" height="38" rx="13" fill="#FFFFFF" fill-opacity="0.13"/>
+      <rect x="18" y="14" width="108" height="10" rx="5" fill="#FFFFFF" fill-opacity="0.42"/>
+      <rect x="154" y="14" width="66" height="10" rx="5" fill="#FFFFFF" fill-opacity="0.2"/>
+    </g>
+    <path d="M54 286 C110 254 158 310 254 270" fill="none" stroke="#EA580C" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="254" cy="270" r="8" fill="#EA580C"/>
+  </g>
+  <text x="84" y="574" fill="#9CA3AF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="600" letter-spacing="0">https://fluxyos.com/use-cases/manufacturing</text>
+</svg>

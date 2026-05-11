@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finance OS for Marketing Agencies | FluxyOS</title>
+    <title>Finance OS for Manufacturing Companies | FluxyOS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/fluxyos.css">
@@ -15,84 +15,51 @@
             -webkit-font-smoothing: antialiased;
         }
         .font-mono { font-family: 'Fira Code', monospace; }
-
-        .agency-paper {
+        .manufacturing-hero {
             background:
-                linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 250, 252, 0.98) 100%),
-                linear-gradient(90deg, rgba(11, 15, 25, 0.04) 1px, transparent 1px),
-                linear-gradient(rgba(11, 15, 25, 0.04) 1px, transparent 1px);
-            background-size: auto, 56px 56px, 56px 56px;
+                radial-gradient(circle at 8% 12%, rgba(234, 88, 12, 0.10), transparent 26%),
+                linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
         }
-
-        .agency-shadow {
-            box-shadow: 0 28px 80px -48px rgba(11, 15, 25, 0.58);
+        .control-shadow { box-shadow: 0 28px 90px -52px rgba(11, 15, 25, 0.72); }
+        .ad-grid {
+            background-image:
+                linear-gradient(rgba(11, 15, 25, 0.055) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(11, 15, 25, 0.055) 1px, transparent 1px);
+            background-size: 34px 34px;
         }
-
-        .board-row {
-            display: grid;
-            grid-template-columns: 1.1fr 0.9fr 1fr 1fr 0.9fr;
-            gap: 10px;
-            align-items: stretch;
-        }
-
-        .board-cell {
-            min-width: 0;
-            border: 1px solid #E5E7EB;
-            border-radius: 8px;
-            background: #FFFFFF;
-            padding: 12px;
-        }
-
-        .path-lane {
-            position: relative;
-        }
-
-        .path-lane::before {
+        .signal-card { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
+        .signal-card:hover { transform: translateY(-2px); border-color: rgba(234, 88, 12, 0.35); box-shadow: 0 20px 50px -38px rgba(11, 15, 25, 0.5); }
+        .loop-step { position: relative; }
+        .loop-step::after {
             content: "";
             position: absolute;
-            left: 18px;
-            right: 18px;
             top: 50%;
+            right: -32px;
+            width: 30px;
             height: 1px;
             background: #D1D5DB;
-            z-index: 0;
         }
-
-        .path-node {
-            position: relative;
-            z-index: 1;
-        }
-
-        .memo-paper {
+        .loop-step:last-child::after { display: none; }
+        .audit-paper {
             background:
                 linear-gradient(#FFFFFF 0 0) padding-box,
-                linear-gradient(135deg, rgba(234, 88, 12, 0.55), rgba(11, 15, 25, 0.12)) border-box;
+                linear-gradient(135deg, rgba(234, 88, 12, 0.55), rgba(11, 15, 25, 0.14)) border-box;
             border: 1px solid transparent;
         }
-
-        .timeline-dot {
-            box-shadow: 0 0 0 6px #FFFFFF;
-        }
-
-        @media (max-width: 767px) {
-            .board-row {
-                grid-template-columns: minmax(150px, 1.2fr) repeat(4, minmax(118px, 1fr));
-            }
-        }
-
+        @media (max-width: 1023px) { .loop-step::after { display: none; } }
     </style>
-    <meta name="description" content="Track retainers, media spend, freelancers, and client profitability in one finance OS built for marketing agencies.">
-    <link rel="canonical" href="https://fluxyos.com/use-cases/marketing-agencies">
-    <link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/marketing-agencies">
-    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/marketing-agencies">
-    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/marketing-agencies">
+    <meta name="description" content="Track raw materials, labor, machine overhead, WIP, finished goods, invoices, and cash movement for manufacturing finance teams.">
+    <link rel="canonical" href="https://fluxyos.com/use-cases/manufacturing">
+    <link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/manufacturing">
+    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/manufacturing">
+    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/manufacturing">
 
     <!-- Open Graph -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://fluxyos.com/use-cases/marketing-agencies">
-    <meta property="og:title" content="Finance OS for Marketing Agencies | FluxyOS">
-    <meta property="og:description" content="Track retainers, media spend, freelancers, and client profitability in one finance OS built for marketing agencies.">
-    <meta property="og:image" content="https://fluxyos.com/assets/images/og-marketing-agencies.png">
+    <meta property="og:url" content="https://fluxyos.com/use-cases/manufacturing">
+    <meta property="og:title" content="Finance OS for Manufacturing Companies | FluxyOS">
+    <meta property="og:description" content="Track raw materials, labor, machine overhead, WIP, finished goods, invoices, and cash movement for manufacturing finance teams.">
+    <meta property="og:image" content="https://fluxyos.com/assets/images/og-manufacturing.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:site_name" content="FluxyOS">
@@ -101,9 +68,9 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Finance OS for Marketing Agencies | FluxyOS">
-    <meta name="twitter:description" content="Track retainers, media spend, freelancers, and client profitability in one finance OS built for marketing agencies.">
-    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-marketing-agencies.png">
+    <meta name="twitter:title" content="Finance OS for Manufacturing Companies | FluxyOS">
+    <meta name="twitter:description" content="Track raw materials, labor, machine overhead, WIP, finished goods, invoices, and cash movement for manufacturing finance teams.">
+    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-manufacturing.png">
 
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script>
@@ -123,47 +90,29 @@
       "url": "https://fluxyos.com",
       "logo": "https://fluxyos.com/assets/images/favicon.svg",
       "description": "AI-powered finance operations system for Indonesian small and medium businesses.",
-      "areaServed": {
-        "@type": "Country",
-        "name": "Indonesia"
-      },
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "customer support",
-        "email": "support@fluxyos.com",
-        "availableLanguage": [
-          "English",
-          "Indonesian"
-        ]
-      }
+      "areaServed": { "@type": "Country", "name": "Indonesia" },
+      "contactPoint": { "@type": "ContactPoint", "contactType": "customer support", "email": "support@fluxyos.com", "availableLanguage": ["English", "Indonesian"] }
     }
     </script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      "name": "FluxyOS for Marketing Agencies",
+      "name": "FluxyOS for Manufacturing Companies",
       "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "Marketing Agency Finance Software",
+      "applicationSubCategory": "Manufacturing Finance Software",
       "operatingSystem": "Web, iOS, Android",
-      "url": "https://fluxyos.com/use-cases/marketing-agencies",
+      "url": "https://fluxyos.com/use-cases/manufacturing",
       "inLanguage": "en-US",
-      "description": "FluxyOS is a finance OS for marketing agencies. Track retainers, pass-through media spend, contractors, software, reimbursements, and client profitability from one dashboard.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "IDR",
-        "availability": "https://schema.org/InStock"
-      },
+      "description": "FluxyOS is a finance OS for manufacturing companies. Track raw materials, supplier bills, labor, machine overhead, work in progress, finished goods, invoices, and cash movement in one operating view.",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "IDR", "availability": "https://schema.org/InStock" },
       "featureList": [
-        "Client retainer and project revenue tracking",
-        "Pass-through ad spend and media budget monitoring",
-        "Client profitability reporting after contractors, tools, production, and media costs",
-        "Receipt capture for production costs, reimbursements, and vendor invoices",
-        "Budget pacing for Meta, Google, TikTok, LinkedIn, and creator spend",
-        "Cash-flow forecasting across retainers, one-off projects, and late invoices",
-        "PPN-ready audit trail for client billing and vendor spend",
-        "AI agents for daily client margin, budget, and invoice questions"
+        "Batch-level production cost visibility for materials, labor, and overhead",
+        "Supplier bill and purchase order tracking for raw materials and packaging",
+        "Work-in-progress and finished goods cost monitoring",
+        "Cash-flow visibility across deposits, vendor payments, payroll, invoices, and collections",
+        "Margin review by product line, production run, or customer order",
+        "PPN-ready exports for transactions, receipts, supplier invoices, and operating costs"
       ]
     }
     </script>
@@ -172,24 +121,9 @@
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://fluxyos.com/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Use Cases",
-          "item": "https://fluxyos.com/use-cases/marketing-agencies"
-        },
-        {
-          "@type": "ListItem",
-          "position": 3,
-          "name": "Marketing Agencies",
-          "item": "https://fluxyos.com/use-cases/marketing-agencies"
-        }
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://fluxyos.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Use Cases", "item": "https://fluxyos.com/use-cases/manufacturing" },
+        { "@type": "ListItem", "position": 3, "name": "Manufacturing", "item": "https://fluxyos.com/use-cases/manufacturing" }
       ]
     }
     </script>
@@ -199,54 +133,12 @@
       "@type": "FAQPage",
       "inLanguage": "en-US",
       "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "Can FluxyOS separate client media spend from agency revenue?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. FluxyOS tags pass-through ad spend separately from service revenue, then assigns it to the right client, campaign, or budget. Your P&L shows agency fees, media spend, and actual margin without mixing them together."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I see profitability by client?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. Each client view can include retainers, project invoices, contractor cost, creative production, software, reimbursements, and media spend. You see billed revenue, pass-through cost, internal cost, and net client margin."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How does FluxyOS handle PPN and client billing?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS keeps a PPN-ready audit trail for client invoices, vendor bills, reimbursements, and pass-through expenses. Your accountant can export clean ledger data instead of rebuilding tax lines from payment screenshots."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What if we manage both retainers and one-off projects?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS handles both. Monthly retainers, campaign fees, project deposits, production budgets, and reimbursements can be tracked in the same finance system while staying separated by client and job."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Do I need a finance team to set this up?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. FluxyOS starts with agency-friendly categories for retainers, media spend, freelancers, production, software, reimbursements, and tax. Your accountant or finance lead can adjust mappings later."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is there a free tier for small agencies?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. FluxyOS has a free tier for smaller teams. Paid plans unlock more client accounts, AI agents, approval flows, and advanced profitability reporting — see the pricing page for details."
-          }
-        }
+        { "@type": "Question", "name": "How does FluxyOS help manufacturing finance teams?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS connects supplier bills, raw material purchases, payroll, overhead, production costs, invoices, and collections so owners and finance teams can see where cash is tied up and which product lines protect margin." } },
+        { "@type": "Question", "name": "Can FluxyOS track cost by batch or production run?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Manufacturing teams can group material costs, labor, overhead, packaging, and delivery expenses by batch, product line, or customer order to review real production margin." } },
+        { "@type": "Question", "name": "Does FluxyOS replace an ERP?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS is not a heavy manufacturing ERP. It focuses on finance operations visibility: cash flow, vendor spend, receipt capture, invoices, budgets, and margin review around production activity." } },
+        { "@type": "Question", "name": "Can owners use FluxyOS without a large finance department?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. FluxyOS is designed so owners, heads of production, and finance admins can understand cost movement without waiting for month-end spreadsheets." } },
+        { "@type": "Question", "name": "Does FluxyOS support supplier invoices and receipts?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Teams can capture supplier invoices, receipts, courier costs, maintenance bills, and other operating costs so the ledger stays ready for review." } },
+        { "@type": "Question", "name": "Does FluxyOS prepare data for tax and PPN reporting?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS keeps transaction history, receipts, supplier invoices, vendor costs, and sales invoices organized for PPN-ready exports and accountant review." } }
       ]
     }
     </script>
@@ -282,7 +174,7 @@
                             <div class="max-w-[1280px] mx-auto flex">
                                 <div class="flex-1 py-10 px-6 flex gap-12">
                                     <div class="flex-[2]">
-                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Fitur</h4>
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Features</h4>
                                         <div class="grid grid-cols-2 gap-x-8 gap-y-8">
                                             <a href="/budgetlanding" class="flex items-start gap-4 group/item">
                                                 <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
@@ -308,7 +200,7 @@
                                                 </div>
                                                 <div>
                                                     <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Revenue Sync</div>
-                                                    <div class="text-[13px] text-gray-500 leading-snug">Ingest client retainers & POS</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Sync orders, payouts, and revenue</div>
                                                 </div>
                                             </a>
                                             <a href="/receiptcapture" class="flex items-start gap-4 group/item">
@@ -407,11 +299,11 @@
                                                 </div>
                                             </a>
                                             <a href="/use-cases/marketing-agencies" class="flex items-start gap-4 group/item">
-                                                <div class="w-10 h-10 rounded-lg border border-[#EA580C] bg-white flex items-center justify-center flex-shrink-0 text-[#EA580C]">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                                                 </div>
                                                 <div>
-                                                    <div class="text-[15px] font-bold text-[#EA580C] mb-0.5 transition-colors">Marketing Agencies</div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Marketing Agencies</div>
                                                     <div class="text-[13px] text-gray-500 leading-snug">Map digital ad spend to specific client budgets seamlessly.</div>
                                                 </div>
                                             </a>
@@ -433,12 +325,12 @@
                                                     <div class="text-[13px] text-gray-500 leading-snug">Track live ad ROI against supplier costs to see true net margin.</div>
                                                 </div>
                                             </a>
-                                            <a href="/use-cases/manufacturing" class="flex items-start gap-4 group/item">
-                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                            <a href="/use-cases/manufacturing" class="flex items-start gap-4">
+                                                <div class="w-10 h-10 rounded-lg border border-[#EA580C] bg-white flex items-center justify-center flex-shrink-0 text-[#EA580C]">
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                                                 </div>
                                                 <div>
-                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Manufacturing</div>
+                                                    <div class="text-[15px] font-bold text-[#EA580C] mb-0.5 transition-colors">Manufacturing</div>
                                                     <div class="text-[13px] text-gray-500 leading-snug">Track live unit economics and manufacturing costs as operations scale.</div>
                                                 </div>
                                             </a>
@@ -486,7 +378,7 @@
                                             <div class="relative z-10 w-full">
                                                 <span class="bg-[#EA580C] text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wide inline-block mb-2">Case Study</span>
                                                 <h3 class="text-gray-900 font-bold text-[18px] leading-[1.2] tracking-tight">
-                                                    Making Every Client Account Profitable
+                                                    Production Cost Visibility Before Month End
                                                 </h3>
                                             </div>
                                         </div>
@@ -494,7 +386,7 @@
                                             Read the story &rarr;
                                         </h5>
                                         <p class="text-[13px] text-gray-500 leading-relaxed">
-                                            See how a growing agency brought retainers, contractors, media spend, and client P&L into one operating view.
+                                            See how a manufacturer tied materials, labor, overhead, invoices, and collections into one operating view.
                                         </p>
                                     </a>
                                 </div>
@@ -515,11 +407,11 @@
                         <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
                     <div class="absolute right-0 top-[100%] mt-2 w-36 bg-white border border-gray-100 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
-                        <a href="/use-cases/marketing-agencies" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">
+                        <a href="/use-cases/manufacturing" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">
                             English (EN)
                             <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
                         </a>
-                        <a href="/id/use-cases/marketing-agencies" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">Bahasa (ID)</a>
+                        <a href="/id/use-cases/manufacturing" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">Bahasa (ID)</a>
                     </div>
                 </div>
 
@@ -549,7 +441,7 @@
                         </a>
                         <a href="/revenuesync" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                             <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></span>
-                            <span><span class="block text-[15px] font-bold text-gray-900">Revenue Sync</span><span class="block text-[13px] text-gray-500">Ingest client retainers & POS</span></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Revenue Sync</span><span class="block text-[13px] text-gray-500">Sync orders, payouts, and revenue</span></span>
                         </a>
                         <a href="/aiagents" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                             <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span>
@@ -563,9 +455,9 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <a href="/use-cases/ecommerce-brands" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">E-Commerce Brands</span><span class="block text-[13px] text-gray-500">Reconcile POS & gateway transactions.</span></a>
                         <a href="#" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Tech Startups & SaaS</span><span class="block text-[13px] text-gray-500">Manage burn, runway, and subscriptions.</span></a>
-                        <a href="/use-cases/marketing-agencies" class="mobile-menu-link rounded-xl border border-[#EA580C] bg-white px-4 py-3"><span class="block text-[15px] font-bold text-[#EA580C]">Marketing Agencies</span><span class="block text-[13px] text-gray-500">Map ad spend to client budgets.</span></a>
+                        <a href="/use-cases/marketing-agencies" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Marketing Agencies</span><span class="block text-[13px] text-gray-500">Map ad spend to client budgets.</span></a>
                         <a href="/use-cases/dropshippers-digital-ads" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Dropshippers & Digital Ads</span><span class="block text-[13px] text-gray-500">Spot ad waste and product margin.</span></a>
-                        <a href="/use-cases/manufacturing" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Manufacturing</span><span class="block text-[13px] text-gray-500">Track unit economics and costs.</span></a>
+                        <a href="/use-cases/manufacturing" class="mobile-menu-link rounded-xl border border-[#EA580C] bg-white px-4 py-3"><span class="block text-[15px] font-bold text-[#EA580C]">Manufacturing</span><span class="block text-[13px] text-gray-500">Track unit economics and costs.</span></a>
                     </div>
                 </div>
 
@@ -580,123 +472,130 @@
     </nav>
 
     <!-- HERO SECTION -->
-    <section class="agency-paper border-b border-gray-200 px-6 py-10 md:py-14 overflow-hidden">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-4xl mb-8">
-                <h1 class="text-[44px] md:text-[56px] font-bold tracking-tight leading-[1.05] text-gray-950 mb-6">Keep every client account honest before the Friday call.</h1>
-                <p class="max-w-3xl text-[18px] md:text-[20px] text-gray-700 leading-relaxed mb-8">FluxyOS is a finance OS for marketing agencies that connects retainers, media pass-through, production costs, freelancers, invoices, and client margin without asking account leads to live inside spreadsheets.</p>
+    <section class="manufacturing-hero border-b border-gray-200 px-6 py-12 md:py-18 overflow-hidden">
+        <div class="max-w-[1280px] mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-10 lg:gap-14 items-center">
+            <div>
+                <h1 class="text-[44px] md:text-[56px] font-bold tracking-tight leading-[1.05] text-gray-950 mb-6">See the true cost of every production run before margin disappears.</h1>
+                <p class="text-[18px] md:text-[20px] text-gray-700 leading-relaxed mb-8">FluxyOS is a finance OS for manufacturing owners, production heads, and finance teams that connects raw materials, supplier bills, labor, machine overhead, WIP, finished goods, invoices, and collections in one operating view.</p>
                 <div class="flex flex-col sm:flex-row gap-4">
                     <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-7 py-4 rounded-md transition-all duration-200 shadow-sm hover:shadow text-center">Try FluxyOS free</a>
-                    <a href="#agency-workflow" class="border border-gray-300 bg-white text-gray-900 font-semibold text-[15px] px-7 py-4 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors text-center">Walk the workflow</a>
+                    <a href="#production-cost" class="border border-gray-300 bg-white text-gray-900 font-semibold text-[15px] px-7 py-4 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors text-center">View production cost map</a>
                 </div>
             </div>
-
-            <div class="rounded-[28px] border border-gray-200 bg-white/95 p-4 md:p-6 agency-shadow">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-200 pb-5 mb-5">
-                    <div>
-                        <p class="font-mono text-[11px] uppercase tracking-[0.22em] text-gray-400">Client account board</p>
-                        <h2 class="text-[22px] md:text-[28px] font-bold tracking-tight text-gray-950 mt-1">Retainers, spend, cost, and billing status in one working view.</h2>
-                    </div>
-                    <div class="flex gap-2 text-[12px] font-semibold">
-                        <span class="rounded-full border border-green-200 bg-white px-3 py-1 text-green-700">3 healthy</span>
-                        <span class="rounded-full border border-[#EA580C]/30 bg-white px-3 py-1 text-[#EA580C]">2 need action</span>
-                    </div>
-                </div>
-
-                <div class="overflow-x-auto pb-2">
-                    <div class="min-w-[820px] space-y-3">
-                        <div class="board-row text-[11px] font-bold uppercase tracking-wider text-gray-500"><div>Client</div><div>Retainer</div><div>Media budget</div><div>Contractor cost</div><div>Invoice status</div></div>
-                        <div class="board-row">
-                            <div class="board-cell"><p class="text-[13px] font-bold text-gray-950">Sora Beauty</p><p class="text-[12px] text-gray-500 mt-1">Launch sprint</p></div>
-                            <div class="board-cell"><p class="text-[12px] text-gray-500">Booked</p><p class="text-[15px] font-bold text-gray-950">Rp 96M</p></div>
-                            <div class="board-cell border-[#EA580C]/30"><p class="text-[12px] text-[#EA580C]">Pacing</p><p class="text-[15px] font-bold text-gray-950">82%</p></div>
-                            <div class="board-cell"><p class="text-[12px] text-gray-500">Approved</p><p class="text-[15px] font-bold text-gray-950">Rp 21M</p></div>
-                            <div class="board-cell border-green-200"><p class="text-[12px] text-green-700">Paid</p><p class="text-[15px] font-bold text-gray-950">Margin 31%</p></div>
+            <div class="control-shadow rounded-[30px] border border-gray-200 bg-white p-4 md:p-6 ad-grid">
+                <div class="rounded-[22px] border border-gray-200 bg-white p-5 md:p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+                        <div>
+                            <h2 class="text-[24px] md:text-[30px] font-bold tracking-tight text-gray-950">Factory finance board</h2>
+                            <p class="text-[14px] text-gray-500 mt-1">Batch A-118, kitchen appliance line</p>
                         </div>
-                        <div class="board-row">
-                            <div class="board-cell"><p class="text-[13px] font-bold text-gray-950">Bima Eats</p><p class="text-[12px] text-gray-500 mt-1">Always-on ads</p></div>
-                            <div class="board-cell border-[#EA580C]/30"><p class="text-[12px] text-[#EA580C]">Due today</p><p class="text-[15px] font-bold text-gray-950">Rp 44M</p></div>
-                            <div class="board-cell"><p class="text-[12px] text-gray-500">Pacing</p><p class="text-[15px] font-bold text-gray-950">67%</p></div>
-                            <div class="board-cell"><p class="text-[12px] text-gray-500">Pending proof</p><p class="text-[15px] font-bold text-gray-950">Rp 12M</p></div>
-                            <div class="board-cell border-[#EA580C]/30"><p class="text-[12px] text-[#EA580C]">Chase</p><p class="text-[15px] font-bold text-gray-950">2 invoices</p></div>
-                        </div>
-                        <div class="board-row">
-                            <div class="board-cell"><p class="text-[13px] font-bold text-gray-950">Northline SaaS</p><p class="text-[12px] text-gray-500 mt-1">Pipeline campaign</p></div>
-                            <div class="board-cell"><p class="text-[12px] text-gray-500">Booked</p><p class="text-[15px] font-bold text-gray-950">Rp 72M</p></div>
-                            <div class="board-cell"><p class="text-[12px] text-gray-500">Pacing</p><p class="text-[15px] font-bold text-gray-950">41%</p></div>
-                            <div class="board-cell"><p class="text-[12px] text-gray-500">Forecast</p><p class="text-[15px] font-bold text-gray-950">Rp 18M</p></div>
-                            <div class="board-cell border-green-200"><p class="text-[12px] text-green-700">Ready</p><p class="text-[15px] font-bold text-gray-950">Review sent</p></div>
+                        <span class="rounded-full border border-[#EA580C]/40 px-3 py-1 text-[12px] font-semibold text-[#EA580C]">Live costs</span>
+                    </div>
+                    <div class="grid sm:grid-cols-3 gap-3 mb-5">
+                        <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] font-semibold text-gray-500">Materials committed</p><p class="text-[24px] font-bold text-gray-950 mt-2">Rp 312M</p></div>
+                        <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] font-semibold text-gray-500">WIP value</p><p class="text-[24px] font-bold text-gray-950 mt-2">Rp 184M</p></div>
+                        <div class="rounded-2xl bg-white border border-[#EA580C]/35 p-4"><p class="text-[12px] font-semibold text-gray-500">Margin drift</p><p class="text-[24px] font-bold text-gray-950 mt-2">-4.2%</p></div>
+                    </div>
+                    <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4">
+                        <div class="grid grid-cols-[1fr_auto] gap-3 text-[13px]">
+                            <span class="text-gray-600">Supplier invoice due Thursday</span><span class="font-bold text-gray-950">Rp 87M</span>
+                            <span class="text-gray-600">Machine downtime logged</span><span class="font-bold text-[#EA580C]">6.5 hrs</span>
+                            <span class="text-gray-600">Customer invoice not collected</span><span class="font-bold text-gray-950">Rp 241M</span>
+                            <span class="text-gray-600">PPN export readiness</span><span class="font-bold text-gray-950">92%</span>
                         </div>
                     </div>
-                </div>
-
-                <div class="mt-5 grid md:grid-cols-3 gap-3">
-                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-4"><p class="font-mono text-[11px] uppercase tracking-wider text-gray-400">Pain</p><p class="mt-2 text-[14px] font-semibold text-gray-900">Spend lives in ad platforms, contractor chats, and receipt photos.</p></div>
-                    <div class="rounded-xl border border-[#EA580C]/30 bg-white p-4"><p class="font-mono text-[11px] uppercase tracking-wider text-[#EA580C]">Fix</p><p class="mt-2 text-[14px] font-semibold text-gray-900">FluxyOS tags every cost to a client, campaign, budget, or internal line.</p></div>
-                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-4"><p class="font-mono text-[11px] uppercase tracking-wider text-gray-400">Outcome</p><p class="mt-2 text-[14px] font-semibold text-gray-900">Leads can explain budget usage and margin without rebuilding reports.</p></div>
+                    <div class="mt-5 rounded-2xl bg-gray-950 p-5 text-white">
+                        <p class="text-[15px] font-semibold leading-relaxed">Hold batch expansion until collections clear or supplier payment will collide with payroll week.</p>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- MONEY PATHS -->
-    <section id="agency-workflow" class="py-16 md:py-24 px-6 bg-white">
+    <section id="production-cost" class="py-16 md:py-24 px-6 bg-white">
         <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-[0.8fr_1.2fr] gap-12 items-start">
-                <div>
-                    <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Money paths</p>
-                    <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Separate agency revenue from client money passing through.</h2>
-                    <p class="text-[18px] text-gray-600 leading-relaxed">Agencies do not just have income and expenses. They have retainers, media top-ups, creator payments, production reimbursements, and late client invoices moving at the same time. FluxyOS keeps each path readable.</p>
+            <div class="grid lg:grid-cols-[0.78fr_1.22fr] gap-10 lg:gap-14 items-start">
+                <div class="lg:pt-6">
+                    <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Manufacturing profit leaks rarely show up in one obvious place.</h2>
+                    <p class="text-[18px] text-gray-600 leading-relaxed">A finished product can look profitable until late supplier invoices, scrap, overtime, maintenance, packaging, freight, and delayed customer collections are tied back to the same production run.</p>
+                    <div class="mt-8 grid sm:grid-cols-2 gap-3">
+                        <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5"><p class="text-[13px] font-semibold text-gray-500">Cost added after plan</p><p class="text-[30px] font-bold text-gray-950 mt-2">Rp 46M</p><p class="text-[13px] text-gray-500 mt-1">Scrap, overtime, maintenance</p></div>
+                        <div class="rounded-2xl border border-[#EA580C]/30 bg-white p-5"><p class="text-[13px] font-semibold text-gray-500">Cash tied in WIP</p><p class="text-[30px] font-bold text-gray-950 mt-2">Rp 184M</p><p class="text-[13px] text-gray-500 mt-1">Not yet invoiced or collected</p></div>
+                    </div>
                 </div>
-                <div class="space-y-4">
-                    <div class="path-lane rounded-2xl border border-gray-200 bg-gray-50 p-4"><div class="grid grid-cols-3 gap-3 text-center text-[13px] font-semibold"><span class="path-node rounded-xl bg-white border border-gray-200 px-3 py-3">Client retainer</span><span class="path-node rounded-xl bg-white border border-[#EA580C]/30 text-[#EA580C] px-3 py-3">FluxyOS ledger</span><span class="path-node rounded-xl bg-white border border-gray-200 px-3 py-3">Agency revenue</span></div></div>
-                    <div class="path-lane rounded-2xl border border-gray-200 bg-white p-4"><div class="grid grid-cols-3 gap-3 text-center text-[13px] font-semibold"><span class="path-node rounded-xl bg-gray-50 border border-gray-200 px-3 py-3">Media top-up</span><span class="path-node rounded-xl bg-white border border-[#EA580C]/30 text-[#EA580C] px-3 py-3">Budget pacing</span><span class="path-node rounded-xl bg-gray-50 border border-gray-200 px-3 py-3">Client P&L</span></div></div>
-                    <div class="path-lane rounded-2xl border border-gray-200 bg-gray-50 p-4"><div class="grid grid-cols-3 gap-3 text-center text-[13px] font-semibold"><span class="path-node rounded-xl bg-white border border-gray-200 px-3 py-3">Freelancer bill</span><span class="path-node rounded-xl bg-white border border-[#EA580C]/30 text-[#EA580C] px-3 py-3">Cost tag</span><span class="path-node rounded-xl bg-white border border-gray-200 px-3 py-3">Margin impact</span></div></div>
-                    <div class="path-lane rounded-2xl border border-gray-200 bg-white p-4"><div class="grid grid-cols-3 gap-3 text-center text-[13px] font-semibold"><span class="path-node rounded-xl bg-gray-50 border border-gray-200 px-3 py-3">Receipt upload</span><span class="path-node rounded-xl bg-white border border-[#EA580C]/30 text-[#EA580C] px-3 py-3">PPN trail</span><span class="path-node rounded-xl bg-gray-50 border border-gray-200 px-3 py-3">Clean export</span></div></div>
+                <div class="control-shadow rounded-[28px] border border-gray-200 bg-[#F8FAFC] p-4 md:p-6">
+                    <div class="rounded-[22px] border border-gray-200 bg-white p-5 md:p-6">
+                        <h3 class="text-[24px] font-bold tracking-tight text-gray-950 mb-1">Batch A-118 cost movement</h3>
+                        <p class="text-[14px] text-gray-600 mb-6">FluxyOS keeps the production math connected to the ledger, not trapped in side spreadsheets.</p>
+                        <div class="grid gap-3">
+                            <div class="grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-center rounded-2xl border border-gray-200 bg-white p-4"><span class="font-bold text-gray-950">Raw materials</span><div class="h-3 rounded-full bg-gray-100 overflow-hidden"><div class="h-full w-[78%] rounded-full bg-gray-950"></div></div><span class="font-bold text-gray-950">Rp 312M</span></div>
+                            <div class="grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-center rounded-2xl border border-gray-200 bg-white p-4"><span class="font-bold text-gray-950">Labor + overtime</span><div class="h-3 rounded-full bg-gray-100 overflow-hidden"><div class="h-full w-[44%] rounded-full bg-gray-950"></div></div><span class="font-bold text-gray-950">Rp 88M</span></div>
+                            <div class="grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-center rounded-2xl border border-gray-200 bg-white p-4"><span class="font-bold text-gray-950">Machine overhead</span><div class="h-3 rounded-full bg-gray-100 overflow-hidden"><div class="h-full w-[31%] rounded-full bg-[#EA580C]"></div></div><span class="font-bold text-gray-950">Rp 63M</span></div>
+                            <div class="grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-center rounded-2xl border border-gray-200 bg-white p-4"><span class="font-bold text-gray-950">Packaging + freight</span><div class="h-3 rounded-full bg-gray-100 overflow-hidden"><div class="h-full w-[22%] rounded-full bg-gray-950"></div></div><span class="font-bold text-gray-950">Rp 41M</span></div>
+                        </div>
+                        <div class="mt-5 grid md:grid-cols-3 gap-3">
+                            <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[13px] text-gray-500">Planned margin</p><p class="text-[26px] font-bold text-gray-950 mt-1">24.5%</p></div>
+                            <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[13px] text-gray-500">Current margin</p><p class="text-[26px] font-bold text-gray-950 mt-1">18.9%</p></div>
+                            <div class="rounded-2xl bg-gray-950 text-white p-4"><p class="text-[13px] text-gray-300">Action</p><p class="text-[16px] font-bold mt-1">Review overtime and supplier price change</p></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- MARGIN LEAKS -->
     <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-y border-gray-200">
         <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-[1fr_1fr] gap-12 items-center">
+            <div class="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-start">
                 <div>
-                    <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Where margin leaks</p>
-                    <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-6">The expensive problems are usually ordinary.</h2>
-                    <div class="space-y-4">
-                        <div class="rounded-2xl bg-white border border-gray-200 p-5"><h3 class="text-[19px] font-bold text-gray-950 mb-2">Unbilled production extras</h3><p class="text-[15px] text-gray-600 leading-relaxed">Shoots, props, editors, and rush work get approved fast, then disappear before they reach the invoice.</p></div>
-                        <div class="rounded-2xl bg-white border border-gray-200 p-5"><h3 class="text-[19px] font-bold text-gray-950 mb-2">Media spend treated like revenue</h3><p class="text-[15px] text-gray-600 leading-relaxed">Pass-through spend can make top-line numbers look healthy while actual agency margin shrinks.</p></div>
-                        <div class="rounded-2xl bg-white border border-gray-200 p-5"><h3 class="text-[19px] font-bold text-gray-950 mb-2">Late retainers discovered too late</h3><p class="text-[15px] text-gray-600 leading-relaxed">Vendor payments, contractor bills, and ad top-ups still go out even when client cash has not arrived.</p></div>
-                    </div>
+                    <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">From purchase order to paid invoice, everyone sees the same numbers.</h2>
+                    <p class="text-[18px] text-gray-600 leading-relaxed max-w-3xl">Owners can see cash exposure. Production heads can see which batch is drifting. Finance can see vendor bills, receipts, due dates, and collection gaps before month end.</p>
                 </div>
-                <div class="rounded-[24px] bg-white border border-gray-200 p-6 agency-shadow">
-                    <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-5"><div><p class="font-mono text-[11px] uppercase tracking-[0.22em] text-gray-400">Reconciliation panel</p><h3 class="text-[22px] font-bold text-gray-950 mt-1">Bima Eats account</h3></div><span class="rounded-full bg-white border border-[#EA580C]/30 px-3 py-1 text-[12px] font-semibold text-[#EA580C]">Review</span></div>
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between gap-4"><span class="text-[14px] text-gray-600">Retainer invoice</span><span class="text-[14px] font-bold text-[#EA580C]">Rp 44M unpaid</span></div>
-                        <div class="flex items-center justify-between gap-4"><span class="text-[14px] text-gray-600">Meta and TikTok spend</span><span class="text-[14px] font-bold text-gray-950">Rp 38M used</span></div>
-                        <div class="flex items-center justify-between gap-4"><span class="text-[14px] text-gray-600">Creator batch</span><span class="text-[14px] font-bold text-gray-950">Rp 12M pending proof</span></div>
-                        <div class="h-px bg-gray-200"></div>
-                        <div class="rounded-2xl bg-gray-950 p-5 text-white"><p class="font-mono text-[11px] uppercase tracking-[0.2em] text-orange-200 mb-2">Recommended next action</p><p class="text-[15px] leading-relaxed text-gray-200">Send retainer reminder and bill creator costs before approving the next media top-up.</p></div>
-                        <div><div class="flex justify-between text-[12px] font-semibold text-gray-500 mb-2"><span>Margin target</span><span>24% minimum</span></div><div class="h-2 rounded-full bg-gray-100 overflow-hidden"><div class="h-full w-[68%] bg-gray-950 rounded-full"></div></div></div>
-                    </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="rounded-2xl border border-gray-200 bg-white p-5"><p class="text-[13px] text-gray-500">Supplier bills</p><p class="text-[24px] font-bold text-gray-950 mt-2">Rp 529M</p></div>
+                    <div class="rounded-2xl border border-gray-200 bg-white p-5"><p class="text-[13px] text-gray-500">Open invoices</p><p class="text-[24px] font-bold text-gray-950 mt-2">Rp 741M</p></div>
+                    <div class="rounded-2xl border border-gray-200 bg-white p-5"><p class="text-[13px] text-gray-500">Receipts missing</p><p class="text-[24px] font-bold text-gray-950 mt-2">18</p></div>
+                    <div class="rounded-2xl border border-[#EA580C]/30 bg-white p-5"><p class="text-[13px] text-gray-500">Cash pressure</p><p class="text-[24px] font-bold text-gray-950 mt-2">12 days</p></div>
+                </div>
+            </div>
+            <div class="mt-12 grid lg:grid-cols-5 gap-4">
+                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">01</span><h3 class="font-bold text-gray-950 mt-3">Purchase order</h3><p class="text-[13px] text-gray-600 mt-2">Materials, packaging, and supplier deposits.</p></div>
+                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">02</span><h3 class="font-bold text-gray-950 mt-3">Production</h3><p class="text-[13px] text-gray-600 mt-2">Labor, WIP, machine time, and waste.</p></div>
+                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">03</span><h3 class="font-bold text-gray-950 mt-3">Finished goods</h3><p class="text-[13px] text-gray-600 mt-2">Stock value ready to ship or invoice.</p></div>
+                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">04</span><h3 class="font-bold text-gray-950 mt-3">Sales invoice</h3><p class="text-[13px] text-gray-600 mt-2">Customer billing, taxes, and due dates.</p></div>
+                <div class="loop-step rounded-2xl border border-gray-950 bg-gray-950 text-white p-5"><span class="font-mono text-[12px] text-orange-200">05</span><h3 class="font-bold mt-3">Cash collected</h3><p class="text-[13px] text-gray-300 mt-2">Actual cash available for the next run.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-16 md:py-24 px-6 bg-white">
+        <div class="max-w-[1180px] mx-auto grid lg:grid-cols-[0.85fr_1.15fr] gap-10 items-center">
+            <div><h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Ask practical factory finance questions before the cash problem lands.</h2><p class="text-[18px] text-gray-600 leading-relaxed">Fluxy AI reads the ledger, receipts, bills, budgets, and production cost tags already inside FluxyOS, so the answer is grounded in your actual money movement.</p></div>
+            <div class="audit-paper rounded-[24px] bg-white text-gray-950 p-5 md:p-6">
+                <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-5"><div><h3 class="text-[22px] font-bold">Batch A-118 review</h3></div><span class="rounded-full bg-gray-950 px-3 py-1 text-[12px] font-semibold text-white">AI</span></div>
+                <div class="space-y-3">
+                    <div class="rounded-xl bg-gray-50 border border-gray-200 p-4"><p class="text-[13px] font-bold">Why did margin drop this week?</p><p class="text-[14px] text-gray-600 mt-2 leading-relaxed">Material price rose 8%, overtime added Rp 14M, and two maintenance bills were posted after the batch plan.</p></div>
+                    <div class="rounded-xl bg-gray-50 border border-gray-200 p-4"><p class="text-[13px] font-bold">Can we start the next production run?</p><p class="text-[14px] text-gray-600 mt-2 leading-relaxed">Yes if the Rp 241M customer invoice clears by Friday. Otherwise reduce supplier deposits by Rp 62M.</p></div>
+                    <div class="rounded-xl bg-gray-50 border border-gray-200 p-4"><p class="text-[13px] font-bold">Which costs still need receipts?</p><p class="text-[14px] text-gray-600 mt-2 leading-relaxed">Three courier payments, one spare-part purchase, and two petty cash entries need proof before export.</p></div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- AI MEMO -->
-    <section class="py-16 md:py-24 px-6 bg-white"><div class="max-w-[1120px] mx-auto"><div class="rounded-[28px] border border-gray-200 bg-[#F8FAFC] p-6 md:p-8 agency-shadow"><div class="grid lg:grid-cols-[0.85fr_1.15fr] gap-8 items-start"><div><p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Fluxy AI for agencies</p><h2 class="text-[34px] md:text-[44px] font-bold tracking-tight text-gray-950 mb-5">Ask questions in agency language.</h2><p class="text-[17px] text-gray-600 leading-relaxed">Fluxy AI reads the agency ledger and returns answers that founders, account leads, and finance admins can act on today.</p></div><div class="memo-paper rounded-2xl bg-white p-5 md:p-6"><div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-5"><div><p class="font-mono text-[11px] uppercase tracking-[0.22em] text-gray-400">Client review memo</p><h3 class="text-[22px] font-bold text-gray-950 mt-1">Sora Beauty, May billing</h3></div><span class="rounded-full bg-gray-950 px-3 py-1 text-[12px] font-semibold text-white">AI</span></div><div class="space-y-3"><div class="rounded-xl bg-gray-50 border border-gray-200 p-4"><p class="text-[13px] font-bold text-gray-950">Can we approve one more creator batch?</p><p class="text-[14px] text-gray-600 mt-2 leading-relaxed">Yes, if the Rp 18M production add-on is billed before the next media top-up. Otherwise margin falls under target.</p></div><div class="rounded-xl bg-gray-50 border border-gray-200 p-4"><p class="text-[13px] font-bold text-gray-950">What invoices should we chase today?</p><p class="text-[14px] text-gray-600 mt-2 leading-relaxed">Two retainers and one reimbursement invoice are overdue across active clients.</p></div><div class="rounded-xl bg-gray-50 border border-gray-200 p-4"><p class="text-[13px] font-bold text-gray-950">What proofs are missing for PPN?</p><p class="text-[14px] text-gray-600 mt-2 leading-relaxed">Six production receipts and one contractor invoice need proof before export.</p></div></div></div></div></div></div></section>
+    <section class="py-16 md:py-24 px-6 bg-[#0B0F19] text-white">
+        <div class="max-w-[1180px] mx-auto">
+            <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight mb-10 max-w-3xl">Built for the people who have to explain the numbers.</h2>
+            <div class="grid md:grid-cols-3 gap-4">
+                <div class="rounded-2xl border border-white/10 bg-white/5 p-6"><h3 class="text-[21px] font-bold mb-3">Owner</h3><p class="text-[15px] text-gray-300 leading-relaxed">See whether cash can support the next material purchase, payroll week, and customer payment gap.</p></div>
+                <div class="rounded-2xl border border-white/10 bg-white/5 p-6"><h3 class="text-[21px] font-bold mb-3">Head of production</h3><p class="text-[15px] text-gray-300 leading-relaxed">Connect batch costs, overtime, downtime, and rework to the financial result of each run.</p></div>
+                <div class="rounded-2xl border border-white/10 bg-white/5 p-6"><h3 class="text-[21px] font-bold mb-3">Finance admin</h3><p class="text-[15px] text-gray-300 leading-relaxed">Keep supplier bills, receipts, due dates, collections, and PPN-ready exports organized without chasing folders.</p></div>
+            </div>
+        </div>
+    </section>
 
-    <!-- PROOF -->
-    <section class="py-16 md:py-24 px-6 bg-[#0B0F19] text-white"><div class="max-w-[1120px] mx-auto"><div class="grid lg:grid-cols-[1.15fr_0.85fr] gap-10 items-center"><div><p class="font-mono text-[13px] uppercase tracking-[0.24em] text-orange-300 mb-8">Agency proof</p><blockquote class="text-[30px] md:text-[42px] font-bold leading-tight tracking-tight mb-8">"FluxyOS made client profitability visible before the month was over. We stopped treating media spend, freelancers, and retainers like separate conversations."</blockquote><div class="flex items-center gap-4"><div class="w-12 h-12 rounded-full bg-white/10 border border-white/15 flex items-center justify-center font-bold text-orange-200">RA</div><div><div class="font-bold">Raka Adiwijaya</div><div class="text-[14px] text-gray-400">Founder, Northstar Creative Ops</div></div></div></div><div class="grid gap-4"><div class="rounded-2xl border border-white/10 bg-white/8 p-6"><div class="text-[38px] font-bold tracking-tight">3.1 days</div><p class="text-[14px] text-gray-300 mt-2">faster month-end close after account costs were tagged by client</p></div><div class="rounded-2xl border border-white/10 bg-white/8 p-6"><div class="text-[38px] font-bold tracking-tight">98.6%</div><p class="text-[14px] text-gray-300 mt-2">invoice match accuracy across retainers, vendors, and reimbursements</p></div></div></div></div></section>
+    <section id="faq" class="py-16 md:py-20 px-6 border-y border-gray-200 bg-[#F8FAFC]"><div class="max-w-[1120px] mx-auto"><div class="max-w-3xl mb-8"><h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">Frequently asked questions</h2><p class="text-[16px] text-gray-600">Short answers for manufacturing owners, production heads, and finance teams.</p></div><div class="grid md:grid-cols-2 gap-4"><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">How does FluxyOS help manufacturing finance teams?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">FluxyOS connects supplier bills, material purchases, payroll, overhead, invoices, and collections so teams can understand cash and margin without waiting for month-end spreadsheets.</p></details><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can FluxyOS track cost by batch or product line?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. Costs can be grouped around batches, product lines, customer orders, or departments so each run has a clearer margin picture.</p></details><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Does FluxyOS replace a manufacturing ERP?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">No. FluxyOS focuses on finance operations visibility around production: vendor spend, cash flow, receipts, bills, budgets, invoices, and margin review.</p></details><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can it support PPN-ready exports?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. Supplier invoices, receipts, customer invoices, and operating costs stay organized for accountant review and PPN-ready exports.</p></details></div></div></section>
 
-    <!-- FAQ -->
-    <section id="faq" class="py-16 md:py-20 px-6 border-t border-gray-200 bg-white"><div class="max-w-[1120px] mx-auto"><div class="grid lg:grid-cols-[0.75fr_1.25fr] gap-10"><div><h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">Frequently asked questions</h2><p class="text-[16px] text-gray-600">Short answers to what agency owners and operators usually ask before signing up.</p></div><div class="grid md:grid-cols-2 gap-x-8 gap-y-2"><details class="border-b border-gray-200 py-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can FluxyOS separate client media spend from agency revenue?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. FluxyOS tags pass-through ad spend separately from service revenue, then assigns it to the right client, campaign, or budget.</p></details><details class="border-b border-gray-200 py-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can I see profitability by client?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. Each client view can include retainers, project invoices, contractor cost, creative production, software, reimbursements, and media spend.</p></details><details class="border-b border-gray-200 py-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">How does FluxyOS handle PPN and client billing?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">FluxyOS keeps a PPN-ready audit trail for client invoices, vendor bills, reimbursements, and pass-through expenses.</p></details><details class="border-b border-gray-200 py-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">What if we manage both retainers and one-off projects?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">FluxyOS handles both. Retainers, campaign fees, project deposits, production budgets, and reimbursements stay separated by client and job.</p></details><details class="border-b border-gray-200 py-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Do I need a finance team to set this up?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">No. FluxyOS starts with agency-friendly categories for retainers, media spend, freelancers, production, software, reimbursements, and tax.</p></details><details class="border-b border-gray-200 py-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Is there a free tier for small agencies?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. FluxyOS has a free tier for smaller teams. Paid plans unlock more client accounts, AI Agents, approval flows, and advanced profitability reporting.</p></details></div></div></div></section>
-
-    <!-- CTA SECTION -->
-    <section class="bg-[#0B0F19] py-16 md:py-24 px-6"><div class="max-w-[1280px] mx-auto text-center"><h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-white mb-5">Stop guessing. Start running every account with margin clarity.</h2><p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">Connect your agency finances, see true client profitability, and let FluxyOS keep the books clean in the background. Free to start, paid when your team is ready to grow.</p><div class="flex flex-col sm:flex-row gap-4 justify-center"><a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow inline-block text-center">Try FluxyOS free</a><a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">See pricing</a></div></div></section>
+    <section class="bg-[#0B0F19] py-16 md:py-24 px-6"><div class="max-w-[1280px] mx-auto text-center"><h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-white mb-5">Run production with finance visibility, not finance surprises.</h2><p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">Connect material spend, production costs, vendor bills, invoices, and cash movement before the next batch decision.</p><div class="flex flex-col sm:flex-row gap-4 justify-center"><a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow inline-block text-center">Try FluxyOS free</a><a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">See pricing</a></div></div></section>
 
     <script src="/assets/js/universe-canvas.js" defer></script>
     <script src="/assets/js/footer-loader.js" defer></script>

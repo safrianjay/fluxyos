@@ -42,6 +42,12 @@
   force = true
 
 [[redirects]]
+  from = "/manufacturing"
+  to = "/use-cases/manufacturing"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/api/v1/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
