@@ -39,6 +39,9 @@ html {
     background:
         radial-gradient(ellipse at 92% 6%, rgba(255, 138, 0, 0.16), transparent 28%),
         linear-gradient(90deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.96) 38%, rgba(250, 252, 255, 0.8) 54%, rgba(255, 246, 242, 0.72) 100%);
+    opacity: 1;
+    will-change: opacity;
+    animation: heroAmbientFieldPulse 24s ease-in-out infinite alternate;
 }
 
 .hero-ambient-background::before,
@@ -51,71 +54,74 @@ html {
 }
 
 .hero-ambient-background::before {
-    top: -34vh;
-    right: -45vw;
-    width: 142vw;
-    height: 138vh;
+    top: -32vh;
+    right: -56vw;
+    width: 146vw;
+    height: 140vh;
     background:
-        radial-gradient(ellipse at 80% 12%, rgba(255, 138, 0, 0.78) 0 12%, rgba(255, 90, 61, 0.58) 25%, transparent 46%),
-        radial-gradient(ellipse at 86% 58%, rgba(255, 138, 0, 0.62) 0 12%, rgba(255, 79, 216, 0.42) 34%, transparent 56%),
-        conic-gradient(from 228deg at 58% 36%,
+        radial-gradient(ellipse at 78% 12%, rgba(255, 138, 0, 0.78) 0 12%, rgba(255, 90, 61, 0.56) 25%, transparent 48%),
+        radial-gradient(ellipse at 84% 58%, rgba(255, 138, 0, 0.6) 0 12%, rgba(255, 79, 216, 0.4) 34%, transparent 58%),
+        conic-gradient(from 230deg at 62% 36%,
             rgba(255, 255, 255, 0) 0deg,
-            rgba(255, 255, 255, 0.18) 18deg,
-            rgba(167, 199, 255, 0.44) 48deg,
-            rgba(99, 91, 255, 0.64) 82deg,
-            rgba(139, 92, 246, 0.68) 108deg,
+            rgba(255, 255, 255, 0.12) 22deg,
+            rgba(167, 199, 255, 0.2) 54deg,
+            rgba(99, 91, 255, 0.44) 92deg,
+            rgba(139, 92, 246, 0.58) 118deg,
             rgba(255, 79, 216, 0.74) 144deg,
             rgba(255, 90, 61, 0.74) 182deg,
             rgba(255, 138, 0, 0.86) 222deg,
             rgba(255, 255, 255, 0) 284deg);
-    clip-path: polygon(38% 0%, 80% 0%, 100% 100%, 48% 100%, 18% 36%);
+    clip-path: polygon(46% 0%, 82% 0%, 100% 100%, 52% 100%, 30% 40%);
     border-radius: 52% 44% 42% 58% / 16% 24% 76% 72%;
-    opacity: 0.9;
-    filter: blur(0.6px) saturate(1.18);
-    transform: rotate(-13deg) translate3d(0, 0, 0) scale(1);
-    -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.12) 12%, rgba(0, 0, 0, 0.82) 34%, #000 100%);
-    mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.12) 12%, rgba(0, 0, 0, 0.82) 34%, #000 100%);
+    opacity: 0.76;
+    filter: blur(1.2px) saturate(1.14);
+    transform: rotate(-12deg) translate3d(0, 0, 0) scale(1);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 30%, rgba(0, 0, 0, 0.06) 42%, rgba(0, 0, 0, 0.52) 56%, #000 72%);
+    mask-image: linear-gradient(90deg, transparent 0%, transparent 30%, rgba(0, 0, 0, 0.06) 42%, rgba(0, 0, 0, 0.52) 56%, #000 72%);
     mix-blend-mode: multiply;
     animation: heroAmbientRibbonFloat 26s ease-in-out infinite alternate;
 }
 
 .hero-ambient-background::after {
-    top: -20vh;
-    right: -26vw;
-    width: 98vw;
+    top: -18vh;
+    right: -38vw;
+    width: 108vw;
     height: 122vh;
     background:
-        linear-gradient(112deg, transparent 0 17%, rgba(255, 255, 255, 0.7) 26%, rgba(167, 199, 255, 0.44) 40%, rgba(99, 91, 255, 0.28) 54%, transparent 68%),
-        repeating-linear-gradient(112deg, rgba(255, 255, 255, 0.24) 0 1px, transparent 1px 12px),
+        linear-gradient(112deg, transparent 0 26%, rgba(255, 255, 255, 0.72) 36%, rgba(167, 199, 255, 0.26) 50%, rgba(99, 91, 255, 0.16) 64%, transparent 78%),
+        repeating-linear-gradient(112deg, rgba(255, 255, 255, 0.2) 0 1px, transparent 1px 12px),
         radial-gradient(ellipse at 86% 18%, rgba(255, 255, 255, 0.36), transparent 34%);
-    clip-path: polygon(42% 0%, 78% 0%, 100% 100%, 54% 100%, 22% 34%);
+    clip-path: polygon(54% 0%, 82% 0%, 100% 100%, 60% 100%, 34% 38%);
     border-radius: 56% 44% 42% 60% / 16% 22% 76% 72%;
-    opacity: 0.76;
-    filter: blur(0.8px);
+    opacity: 0.48;
+    filter: blur(1px);
     mix-blend-mode: screen;
-    transform: rotate(-16deg) translate3d(0, 0, 0) scale(1);
+    transform: rotate(-15deg) translate3d(0, 0, 0) scale(1);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 28%, rgba(0, 0, 0, 0.1) 46%, rgba(0, 0, 0, 0.82) 68%, #000 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, transparent 28%, rgba(0, 0, 0, 0.1) 46%, rgba(0, 0, 0, 0.82) 68%, #000 100%);
     animation: heroAmbientRibbonSheen 30s ease-in-out infinite alternate;
+}
+
+@keyframes heroAmbientFieldPulse {
+    0% { opacity: 0.94; }
+    100% { opacity: 1; }
 }
 
 @keyframes heroAmbientRibbonFloat {
     0% {
-        opacity: 0.84;
-        transform: rotate(-14deg) translate3d(-12px, -16px, 0) scale(0.99);
+        transform: rotate(-13deg) translate3d(-22px, -18px, 0) scale(0.985);
     }
     100% {
-        opacity: 0.94;
-        transform: rotate(-10deg) translate3d(26px, 18px, 0) scale(1.025);
+        transform: rotate(-8deg) translate3d(38px, 24px, 0) scale(1.035);
     }
 }
 
 @keyframes heroAmbientRibbonSheen {
     0% {
-        opacity: 0.56;
-        transform: rotate(-17deg) translate3d(-16px, -10px, 0) scale(0.985);
+        transform: rotate(-17deg) translate3d(-24px, -14px, 0) scale(0.98);
     }
     100% {
-        opacity: 0.82;
-        transform: rotate(-13deg) translate3d(22px, 16px, 0) scale(1.03);
+        transform: rotate(-12deg) translate3d(34px, 22px, 0) scale(1.04);
     }
 }
 
@@ -246,18 +252,18 @@ body.mobile-menu-open {
 
     .hero-ambient-background::before {
         top: -26vh;
-        right: -56vw;
-        width: 148vw;
+        right: -86vw;
+        width: 174vw;
         height: 118vh;
-        opacity: 0.56;
+        opacity: 0.08;
     }
 
     .hero-ambient-background::after {
         top: -16vh;
-        right: -44vw;
-        width: 118vw;
+        right: -76vw;
+        width: 148vw;
         height: 98vh;
-        opacity: 0.54;
+        opacity: 0.06;
     }
 }
 
@@ -318,19 +324,19 @@ body.mobile-menu-open {
 
     .hero-ambient-background::before {
         top: -18vh;
-        right: -92vw;
-        width: 162vw;
+        right: -132vw;
+        width: 202vw;
         height: 84vh;
-        opacity: 0.12;
+        opacity: 0;
         filter: blur(0.8px) saturate(1.05);
     }
 
     .hero-ambient-background::after {
         top: -12vh;
-        right: -76vw;
-        width: 132vw;
+        right: -116vw;
+        width: 176vw;
         height: 74vh;
-        opacity: 0.18;
+        opacity: 0;
     }
 
     .landing-hero h1 {
