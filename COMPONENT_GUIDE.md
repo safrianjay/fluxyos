@@ -243,6 +243,7 @@ window.showToast('FYI: something happened', 'info'); // blue
 ## Recipe 6: Add a New Nav Link to the Marketing Header
 
 The marketing nav is in `fluxyos.html` (desktop nav + mobile menu). Both must be updated together.
+Many landing pages contain copied versions of this nav. When adding a new page or use case, update every copied desktop mega-menu entry and every mobile menu entry in the affected EN/ID pages. Do not leave a visible, live entry with `href="#"`.
 
 ### Desktop nav — find and add after existing links:
 ```html
@@ -259,6 +260,13 @@ The marketing nav is in `fluxyos.html` (desktop nav + mobile menu). Both must be
 </a>
 ```
 
+### Required entry-point check
+After adding or changing a marketing nav item:
+1. Search for the visible label across all `.html` files.
+2. Confirm every desktop mega-menu copy and mobile menu copy points to the real route.
+3. Check localized pages use the localized route, e.g. `/id/use-cases/...`.
+4. Run a browser check that clicks or reads the desktop and mobile nav hrefs.
+
 ---
 
 ## Common Mistakes to Avoid
@@ -268,6 +276,7 @@ The marketing nav is in `fluxyos.html` (desktop nav + mobile menu). Both must be
 | Storing formatted amount (`"1.234.567"`) in Firestore | Strip dots first: `parseFloat(value.replace(/\./g, ''))` |
 | Using `new Date()` for Firestore timestamp | Always use `serverTimestamp()` from Firebase |
 | Renaming any HTML element ID that JS references | Check `PROJECT_BACKGROUND.md` Section 7 before renaming |
+| Adding a visible nav/use-case entry that still points to `#` | Search every copied nav block and verify the desktop and mobile hrefs load the intended route |
 | Adding footer to a dashboard app page | Footer auto-skips `/dashboard`, `/bill`, `/subscription` — don't add it manually |
 | Creating a new modal from scratch for data entry | Use `window.showAddTransactionModal()` with a custom context instead |
 | Using `document.addEventListener('DOMContentLoaded', fn)` | Use `readyState` guard pattern (see `fluxyos.js`) |

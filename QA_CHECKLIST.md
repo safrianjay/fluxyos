@@ -57,6 +57,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 6 | **Footer NOT on dashboard pages** | `dashboard.html`, `bill.html`, `subscription.html` — footer must NOT appear |
 | 7 | **No broken console errors** | Open DevTools Console on every page you changed — zero red errors |
 | 8 | **Mobile nav works** | Resize browser to 375px on `fluxyos.html` — hamburger icon visible, click opens menu, Escape closes it |
+| 9 | **New nav entry points work** | For any new page/use case, verify the production entry point from BOTH desktop mega-menu and mobile menu. The visible label must be inside an `<a>` whose `href` is the real route, never `#`; click it and confirm the target page loads. |
 
 ---
 
@@ -76,6 +77,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 8 | Bottom CTA section flows into footer without visual gap or hard line |
 | 9 | Page is readable at 375px, 768px, 1280px widths |
 | 10 | Use-case pages use light hero/product visuals, no dark hero cards, consistent `text-[44px] md:text-[56px]` H1 scale, and no mobile horizontal overflow |
+| 11 | Use-case menu entry is clickable from desktop and mobile nav. Search all copied landing-page nav blocks for the new label and confirm every non-active entry uses the real localized route, not `href="#"`. |
 
 ### B. Footer Changes (includes/footer.html, assets/css/footer.css, assets/js/footer-loader.js)
 
