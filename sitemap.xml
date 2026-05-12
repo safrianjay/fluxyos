@@ -131,4 +131,24 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/manufacturing"/>
   </url>
 
+  <url>
+    <loc>https://fluxyos.com/use-cases/retail-franchises</loc>
+    <lastmod>2026-05-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/retail-franchises"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/retail-franchises"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/retail-franchises"/>
+  </url>
+
+  <url>
+    <loc>https://fluxyos.com/id/use-cases/retail-franchises</loc>
+    <lastmod>2026-05-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/retail-franchises"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/retail-franchises"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/retail-franchises"/>
+  </url>
+
 </urlset>

@@ -48,6 +48,12 @@
   force = true
 
 [[redirects]]
+  from = "/retail-franchises"
+  to = "/use-cases/retail-franchises"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/api/v1/*"
   to = "/.netlify/functions/api/:splat"
   status = 200

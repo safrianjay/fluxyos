@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance OS untuk Retail & Franchise | FluxyOS</title>
+    <meta name="description" content="Bandingkan profit outlet, cocokkan revenue POS, kontrol biaya supplier, struk, budget, dan month-end close lintas cabang retail.">
+    <link rel="canonical" href="https://fluxyos.com/id/use-cases/retail-franchises">
+    <link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/retail-franchises">
+    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/retail-franchises">
+    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/retail-franchises">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://fluxyos.com/id/use-cases/retail-franchises">
+    <meta property="og:title" content="Finance OS untuk Retail & Franchise | FluxyOS">
+    <meta property="og:description" content="Lihat profit cabang yang sebenarnya dari revenue POS, biaya supplier, pengeluaran, budget, struk, dan pencocokan bank.">
+    <meta property="og:image" content="https://fluxyos.com/assets/images/og-retail-franchises.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="FluxyOS">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:locale:alternate" content="id_ID">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Finance OS untuk Retail & Franchise | FluxyOS">
+    <meta name="twitter:description" content="Tahu outlet mana yang benar-benar untung, bukan cuma ramai penjualan.">
+    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-retail-franchises.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/fluxyos.css">
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
+        .font-mono { font-family: 'Fira Code', monospace; }
+        .retail-hero {
+            background:
+                radial-gradient(circle at 12% 10%, rgba(234, 88, 12, 0.10), transparent 26%),
+                radial-gradient(circle at 84% 22%, rgba(11, 15, 25, 0.07), transparent 28%),
+                linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+        }
+        .retail-grid {
+            background-image:
+                linear-gradient(rgba(11, 15, 25, 0.055) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(11, 15, 25, 0.055) 1px, transparent 1px);
+            background-size: 36px 36px;
+        }
+        .dashboard-shadow { box-shadow: 0 30px 100px -56px rgba(11, 15, 25, 0.76); }
+        .soft-card { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
+        .soft-card:hover { transform: translateY(-2px); border-color: rgba(234, 88, 12, 0.32); box-shadow: 0 22px 55px -38px rgba(11, 15, 25, 0.48); }
+        .status-healthy { background: #DCFCE7; color: #166534; }
+        .status-review { background: #FEF3C7; color: #92400E; }
+        .status-track { background: #DBEAFE; color: #1E40AF; }
+        .step-card { position: relative; }
+        .step-card::after { content: ""; position: absolute; top: 50%; right: -28px; width: 28px; height: 1px; background: #D1D5DB; }
+        .step-card:last-child::after { display: none; }
+        @media (max-width: 1023px) { .step-card::after { display: none; } }
+    </style>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-ZN7J6DRD2L');
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "FluxyOS",
+      "url": "https://fluxyos.com",
+      "logo": "https://fluxyos.com/assets/images/favicon.svg",
+      "description": "AI-powered finance operations system for Indonesian small and medium businesses.",
+      "areaServed": { "@type": "Country", "name": "Indonesia" },
+      "contactPoint": { "@type": "ContactPoint", "contactType": "customer support", "email": "support@fluxyos.com", "availableLanguage": ["English", "Indonesian"] }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "FluxyOS untuk Retail dan Franchise",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Software Operasi Keuangan Retail",
+      "operatingSystem": "Web, iOS, Android",
+      "url": "https://fluxyos.com/id/use-cases/retail-franchises",
+      "inLanguage": "id-ID",
+      "description": "FluxyOS is a finance operations system for retail and franchise businesses. It consolidates POS revenue, bank settlements, supplier invoices, receipts, budgets, vendor payments, and branch-level P&L across multiple outlets.",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "IDR", "availability": "https://schema.org/InStock" },
+      "featureList": [
+        "P&L per cabang berdasarkan outlet",
+        "Pencocokan POS dan settlement bank",
+        "Pelacakan biaya supplier dan inventori",
+        "Kontrol budget toko",
+        "Receipt capture lewat WhatsApp, email, dan upload",
+        "Deteksi pembayaran vendor ganda",
+        "Perbandingan performa franchise",
+        "Persiapan month-end close"
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://fluxyos.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Studi Kasus", "item": "https://fluxyos.com/id/use-cases/retail-franchises" },
+        { "@type": "ListItem", "position": 3, "name": "Retail & Franchises", "item": "https://fluxyos.com/id/use-cases/retail-franchises" }
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "inLanguage": "id-ID",
+      "mainEntity": [
+        { "@type": "Question", "name": "Bagaimana FluxyOS membantu owner retail dan franchise?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS menyatukan revenue POS, invoice supplier, biaya outlet, struk, budget, pembayaran vendor, dan settlement bank dalam satu tampilan operasi keuangan agar owner bisa membandingkan profit cabang yang sebenarnya." } },
+        { "@type": "Question", "name": "Bisakah FluxyOS membandingkan profitabilitas outlet?", "acceptedAnswer": { "@type": "Answer", "text": "Ya. Setiap transaksi bisa ditandai per outlet sehingga owner dan tim finance dapat membandingkan revenue, biaya operasional, belanja supplier, selisih budget, dan margin bersih per cabang." } },
+        { "@type": "Question", "name": "Does FluxyOS track customer footfall or CCTV analytics?", "acceptedAnswer": { "@type": "Answer", "text": "No. FluxyOS fokus pada operasi keuangan: revenue POS, settlement, biaya supplier, biaya toko, struk, budget, pencocokan, dan P&L per cabang." } },
+        { "@type": "Question", "name": "Bisakah manager toko mengirim struk lewat WhatsApp?", "acceptedAnswer": { "@type": "Answer", "text": "Ya. Tim toko bisa mengirim struk lewat WhatsApp, email, atau upload. FluxyOS mengekstrak vendor, nominal, pajak, dan kategori untuk review finance." } }
+      ]
+    }
+    </script>
+</head>
+<body class="min-h-screen flex flex-col bg-white">
+    <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
+        <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
+            <div class="flex items-center gap-12 h-full">
+                <a href="/fluxyos" class="flex items-center gap-2.5 cursor-pointer group">
+                    <div class="w-8 h-8 text-black shadow-sm group-hover:scale-105 transition-transform duration-200">
+                        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full"><rect width="40" height="40" rx="8" fill="currentColor"/><g transform="translate(1.5, 0)"><path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF"/><path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF"/></g></svg>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-gray-900">FluxyOS</span>
+                </a>
+                <div class="hidden lg:flex items-center gap-8 h-full">
+                    <div class="group h-full flex items-center">
+                        <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">Platform <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg></button>
+                        <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="max-w-[1280px] mx-auto py-10 px-6 grid grid-cols-[1.5fr_1fr_340px] gap-12">
+                                <div><h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Fitur</h4><div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                                    <a href="/budgetlanding" class="flex items-start gap-4 group/item"><span class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-600 group-hover/item:text-[#EA580C] group-hover/item:border-[#EA580C]"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10"/></svg></span><span><span class="block text-[15px] font-bold text-gray-900 group-hover/item:text-[#EA580C]">Dynamic Budgeting</span><span class="block text-[13px] text-gray-500">Allocate and track funds live</span></span></a>
+                                    <a href="/vendorspend" class="flex items-start gap-4 group/item"><span class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-600 group-hover/item:text-[#EA580C] group-hover/item:border-[#EA580C]"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2"/></svg></span><span><span class="block text-[15px] font-bold text-gray-900 group-hover/item:text-[#EA580C]">Vendor Spend</span><span class="block text-[13px] text-gray-500">Kelola pembayaran supplier</span></span></a>
+                                    <a href="/revenuesync" class="flex items-start gap-4 group/item"><span class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-600 group-hover/item:text-[#EA580C] group-hover/item:border-[#EA580C]"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4"/></svg></span><span><span class="block text-[15px] font-bold text-gray-900 group-hover/item:text-[#EA580C]">Revenue Sync</span><span class="block text-[13px] text-gray-500">Sinkronkan order, payout, dan revenue</span></span></a>
+                                    <a href="/receiptcapture" class="flex items-start gap-4 group/item"><span class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-600 group-hover/item:text-[#EA580C] group-hover/item:border-[#EA580C]"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h6l6 6v10a2 2 0 01-2 2z"/></svg></span><span><span class="block text-[15px] font-bold text-gray-900 group-hover/item:text-[#EA580C]">Receipt Capture</span><span class="block text-[13px] text-gray-500">Otomatiskan pengejaran struk</span></span></a>
+                                </div></div>
+                                <div><h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Platform</h4><div class="space-y-8">
+                                    <a href="/aiagents" class="flex items-start gap-4 group/item"><span class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-600 group-hover/item:text-[#EA580C] group-hover/item:border-[#EA580C]"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span><span><span class="block text-[15px] font-bold text-gray-900 group-hover/item:text-[#EA580C]">FluxyOS AI Agents</span><span class="block text-[13px] text-gray-500">Tanya data keuangan Anda</span></span></a>
+                                    <a href="/integration" class="flex items-start gap-4 group/item"><span class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-600 group-hover/item:text-[#EA580C] group-hover/item:border-[#EA580C]"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l-4 4-4 4M6 16l-4-4 4-4"/></svg></span><span><span class="block text-[15px] font-bold text-gray-900 group-hover/item:text-[#EA580C]">Native Integrations</span><span class="block text-[13px] text-gray-500">Hubungkan bank dan tools</span></span></a>
+                                </div></div>
+                                <div class="bg-[#F8F9FB] border border-gray-200 rounded-2xl p-6"><h4 class="text-[13px] font-bold text-gray-900 mb-4 uppercase tracking-wider">Tampilan Retail</h4><p class="text-[14px] text-gray-600 leading-relaxed">Lihat revenue POS, settlement bank, belanja supplier, struk, dan budget outlet bersama-sama.</p></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="group h-full flex items-center">
+                        <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">Studi Kasus <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg></button>
+                        <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="max-w-[1280px] mx-auto py-10 px-6 grid grid-cols-[1.7fr_1fr_340px] gap-12">
+                                <div><h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Berdasarkan Industri</h4><div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                                    <a href="/id/use-cases/ecommerce-brands" class="flex items-start gap-4 group/item"><span class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-600 group-hover/item:text-[#EA580C] group-hover/item:border-[#EA580C]"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg></span><span><span class="block text-[15px] font-bold text-gray-900 group-hover/item:text-[#EA580C]">E-Commerce Brands</span><span class="block text-[13px] text-gray-500">Cocokkan marketplace dan payout.</span></span></a>
+                                    <a href="/id/use-cases/retail-franchises" class="flex items-start gap-4 group/item"><span class="w-10 h-10 rounded-lg border border-[#EA580C] bg-white flex items-center justify-center text-[#EA580C]"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m4 0h1M9 11h1m4 0h1"/></svg></span><span><span class="block text-[15px] font-bold text-[#EA580C]">Retail & Franchises</span><span class="block text-[13px] text-gray-500">Bandingkan P&L outlet dan settlement.</span></span></a>
+                                    <a href="/id/use-cases/marketing-agencies" class="flex items-start gap-4 group/item"><span class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-600 group-hover/item:text-[#EA580C] group-hover/item:border-[#EA580C]"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span><span><span class="block text-[15px] font-bold text-gray-900 group-hover/item:text-[#EA580C]">Marketing Agencies</span><span class="block text-[13px] text-gray-500">Petakan ad spend ke budget klien.</span></span></a>
+                                    <a href="/id/use-cases/dropshippers-digital-ads" class="flex items-start gap-4 group/item"><span class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-600 group-hover/item:text-[#EA580C] group-hover/item:border-[#EA580C]"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4M4 7v10l8 4"/></svg></span><span><span class="block text-[15px] font-bold text-gray-900 group-hover/item:text-[#EA580C]">Dropshippers & Digital Ads</span><span class="block text-[13px] text-gray-500">Temukan ad waste dan margin produk.</span></span></a>
+                                    <a href="/id/use-cases/manufacturing" class="flex items-start gap-4 group/item"><span class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-600 group-hover/item:text-[#EA580C] group-hover/item:border-[#EA580C]"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37"/></svg></span><span><span class="block text-[15px] font-bold text-gray-900 group-hover/item:text-[#EA580C]">Manufacturing</span><span class="block text-[13px] text-gray-500">Lacak unit economics dan biaya.</span></span></a>
+                                </div></div>
+                                <div><h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Berdasarkan Peran</h4><div class="space-y-8"><a href="/fluxyos" class="flex items-start gap-4 group/item"><span class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-600">P&L</span><span><span class="block text-[15px] font-bold text-gray-900">Owner & Tim Keuangan</span><span class="block text-[13px] text-gray-500">Kontrol close, budget, dan kas.</span></span></a></div></div>
+                                <div class="bg-[#F8F9FB] border border-gray-200 rounded-2xl p-6"><h4 class="text-[13px] font-bold text-gray-900 mb-4 uppercase tracking-wider">Studi Kasus Utama</h4><p class="text-[14px] text-gray-600 leading-relaxed">Retail & Franchises menghubungkan revenue POS, biaya supplier, struk, dan profitabilitas per cabang.</p></div>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="/fluxyos" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Pelanggan</a>
+                    <a href="/pricing" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Harga</a>
+                </div>
+            </div>
+            <div class="hidden lg:flex items-center gap-3"><a href="/login" class="text-[15px] font-medium text-gray-600 hover:text-gray-900">Masuk</a><a href="/pricing" class="bg-gray-900 text-white px-5 py-2.5 rounded-md text-[15px] font-semibold hover:bg-gray-800">Coba FluxyOS</a></div>
+            <button type="button" class="mobile-menu-toggle lg:hidden w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-800 flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors" aria-controls="mobile-menu" aria-expanded="false" aria-label="Buka menu navigasi"><svg class="mobile-menu-icon-open w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg><svg class="mobile-menu-icon-close hidden w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+        </div>
+        <div id="mobile-menu" class="mobile-menu-panel hidden lg:hidden fixed left-0 right-0 top-[64px] z-[60] bg-white border-b border-gray-200 shadow-[0_20px_40px_-18px_rgba(0,0,0,0.2)] overflow-y-auto">
+            <div class="px-5 py-6 space-y-6 max-h-[calc(100vh-64px)]">
+                <div><h4 class="text-[12px] font-bold text-gray-900 uppercase tracking-wider mb-4">Studi Kasus</h4><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <a href="/id/use-cases/ecommerce-brands" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">E-Commerce Brands</span><span class="block text-[13px] text-gray-500">Cocokkan marketplace dan payout.</span></a>
+                    <a href="/id/use-cases/retail-franchises" class="mobile-menu-link rounded-xl border border-[#EA580C] bg-white px-4 py-3"><span class="block text-[15px] font-bold text-[#EA580C]">Retail & Franchises</span><span class="block text-[13px] text-gray-500">Bandingkan P&L outlet dan settlement.</span></a>
+                    <a href="/id/use-cases/marketing-agencies" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Marketing Agencies</span><span class="block text-[13px] text-gray-500">Petakan ad spend ke budget klien.</span></a>
+                    <a href="/id/use-cases/dropshippers-digital-ads" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Dropshippers & Digital Ads</span><span class="block text-[13px] text-gray-500">Temukan ad waste dan margin produk.</span></a>
+                    <a href="/id/use-cases/manufacturing" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Manufacturing</span><span class="block text-[13px] text-gray-500">Lacak unit economics dan biaya.</span></a>
+                </div></div>
+                <div class="grid grid-cols-2 gap-3"><a href="/pricing" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Harga</a><a href="/login" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Masuk</a><a href="/pricing" class="mobile-menu-link rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F97316] px-4 py-3 text-[15px] font-semibold text-white text-center shadow-sm col-span-2">Coba FluxyOS</a></div>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section class="retail-hero retail-grid pt-16 md:pt-24 pb-14 md:pb-20 px-6">
+            <div class="max-w-[1280px] mx-auto grid lg:grid-cols-[0.92fr_1.08fr] gap-12 items-center">
+                <div>
+                    <div class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-[13px] font-semibold text-gray-700 shadow-sm mb-6"><span class="h-2 w-2 rounded-full bg-[#EA580C]"></span> Operasi keuangan retail & franchise</div>
+                    <h1 class="text-[44px] md:text-[56px] leading-[1.03] font-bold tracking-tight text-gray-950 mb-6">Tahu outlet mana yang benar-benar untung, bukan cuma ramai penjualan.</h1>
+                    <p class="text-[18px] md:text-[20px] text-gray-600 leading-relaxed mb-8 max-w-2xl">FluxyOS menyatukan revenue POS, invoice supplier, biaya toko, struk, budget, dan payout dalam satu tampilan operasi keuangan, sehingga owner retail dan franchise bisa melacak profit nyata di setiap lokasi sebelum month-end.</p>
+                    <div class="grid sm:grid-cols-2 gap-3 mb-8 text-[15px] text-gray-700">
+                        <div class="flex items-center gap-3"><span class="h-2.5 w-2.5 rounded-full bg-[#16A34A]"></span> Bandingkan profit outlet</div>
+                        <div class="flex items-center gap-3"><span class="h-2.5 w-2.5 rounded-full bg-[#3B82F6]"></span> Cocokkan POS ke settlement bank</div>
+                        <div class="flex items-center gap-3"><span class="h-2.5 w-2.5 rounded-full bg-[#EA580C]"></span> Kontrol biaya supplier dan toko</div>
+                        <div class="flex items-center gap-3"><span class="h-2.5 w-2.5 rounded-full bg-gray-950"></span> Kurangi kerja close di spreadsheet</div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-4"><a href="/pricing" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[16px] px-8 py-4 rounded-md transition-all shadow-sm text-center">Coba FluxyOS</a><a href="/pricing" class="bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 font-semibold text-[16px] px-8 py-4 rounded-md transition-all shadow-sm text-center">Jadwalkan demo</a></div>
+                </div>
+                <div class="dashboard-shadow rounded-[28px] border border-gray-200 bg-white p-4 md:p-5">
+                    <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-4"><div><p class="text-[12px] font-bold text-[#EA580C] uppercase tracking-wider">P&L multi-outlet</p><h2 class="text-[22px] font-bold text-gray-950">Kokpit keuangan retail</h2></div><span class="rounded-full bg-gray-950 text-white text-[12px] font-semibold px-3 py-1">Close live</span></div>
+                    <div class="grid md:grid-cols-3 gap-3">
+                        <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-gray-950">Outlet A - Kemang</h3><span class="status-healthy rounded-full px-2 py-1 text-[11px] font-bold">Healthy</span></div><p class="text-[12px] text-gray-500">Revenue</p><p class="font-mono text-[22px] font-bold">Rp 128.4M</p><div class="mt-3 grid grid-cols-2 gap-2 text-[12px]"><span class="text-gray-500">Biaya operasional</span><strong class="text-right">Rp 82.1M</strong><span class="text-gray-500">Margin bersih</span><strong class="text-right text-[#16A34A]">18.6%</strong></div></div>
+                        <div class="rounded-2xl border border-[#EA580C]/35 bg-white p-4"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-gray-950">Outlet B - Senopati</h3><span class="status-review rounded-full px-2 py-1 text-[11px] font-bold">Review</span></div><p class="text-[12px] text-gray-500">Revenue</p><p class="font-mono text-[22px] font-bold">Rp 96.2M</p><div class="mt-3 grid grid-cols-2 gap-2 text-[12px]"><span class="text-gray-500">Biaya operasional</span><strong class="text-right">Rp 89.7M</strong><span class="text-gray-500">Margin bersih</span><strong class="text-right text-[#EA580C]">4.1%</strong></div></div>
+                        <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-gray-950">Outlet C - Bandung</h3><span class="status-track rounded-full px-2 py-1 text-[11px] font-bold">On track</span></div><p class="text-[12px] text-gray-500">Revenue</p><p class="font-mono text-[22px] font-bold">Rp 142.8M</p><div class="mt-3 grid grid-cols-2 gap-2 text-[12px]"><span class="text-gray-500">Biaya operasional</span><strong class="text-right">Rp 101.5M</strong><span class="text-gray-500">Margin bersih</span><strong class="text-right text-[#16A34A]">16.9%</strong></div></div>
+                    </div>
+                    <div class="mt-4 grid md:grid-cols-[1fr_1fr_1.2fr] gap-3">
+                        <div class="rounded-2xl border border-gray-200 p-4"><p class="text-[12px] text-gray-500 mb-1">Biaya supplier</p><p class="font-mono text-[20px] font-bold">Rp 117.6M</p><div class="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden"><span class="block h-full w-[64%] bg-[#EA580C]"></span></div></div>
+                        <div class="rounded-2xl border border-gray-200 p-4"><p class="text-[12px] text-gray-500 mb-1">Sewa & utilitas</p><p class="font-mono text-[20px] font-bold">Rp 48.3M</p><p class="mt-3 text-[12px] font-semibold text-[#92400E]">Senopati utility spend +18%</p></div>
+                        <div class="rounded-2xl bg-gray-950 p-4 text-white"><div class="flex items-center justify-between mb-3"><h3 class="font-bold">Insight keuangan AI</h3><span class="text-[11px] rounded-full bg-white/10 px-2 py-1">Needs review</span></div><p class="text-[14px] text-gray-200 leading-relaxed">Margin Senopati turun setelah biaya supplier naik 12% dan sewa tercatat dua kali. Review pembayaran ganda sebelum close.</p></div>
+                    </div>
+                    <div class="mt-4 grid md:grid-cols-3 gap-3 text-[13px]">
+                        <div class="rounded-xl border border-gray-200 bg-[#F8FAFC] p-3"><strong>Settlement POS</strong><p class="text-gray-500 mt-1">BCA deposit matched for 2 of 3 outlets.</p></div>
+                        <div class="rounded-xl border border-[#F59E0B]/30 bg-[#FFFBEB] p-3"><strong>Struk hilang</strong><p class="text-gray-600 mt-1">Repairs receipt missing from Bandung.</p></div>
+                        <div class="rounded-xl border border-[#EF4444]/25 bg-[#FEF2F2] p-3"><strong>Pembayaran ganda</strong><p class="text-gray-600 mt-1">Rent invoice repeated in Senopati.</p></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-10 px-6 bg-white border-y border-gray-200">
+            <div class="max-w-[1180px] mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="rounded-2xl border border-gray-200 p-5"><p class="font-mono text-[28px] font-bold text-gray-950">30s</p><p class="text-[14px] text-gray-600 mt-1">Revenue sync latency placeholder</p></div>
+                <div class="rounded-2xl border border-gray-200 p-5"><p class="font-mono text-[28px] font-bold text-gray-950">98%+</p><p class="text-[14px] text-gray-600 mt-1">Auto-categorization accuracy placeholder</p></div>
+                <div class="rounded-2xl border border-gray-200 p-5"><p class="font-mono text-[28px] font-bold text-gray-950">3.1 days</p><p class="text-[14px] text-gray-600 mt-1">Faster month-end close placeholder</p></div>
+                <div class="rounded-2xl border border-gray-950 bg-gray-950 p-5 text-white"><p class="font-mono text-[28px] font-bold">P&L</p><p class="text-[14px] text-gray-300 mt-1">Multi-outlet visibility</p></div>
+            </div>
+        </section>
+
+        <section class="py-16 md:py-24 px-6 bg-[#F8FAFC]">
+            <div class="max-w-[1180px] mx-auto">
+                <div class="max-w-3xl mb-10"><h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Laporan penjualan tidak menunjukkan cerita lengkap.</h2><p class="text-[18px] text-gray-600 leading-relaxed">POS menunjukkan revenue. Rekening bank menunjukkan kas. Invoice supplier menunjukkan biaya. Spreadsheet mencoba menghubungkan semuanya. Tapi owner tetap sulit tahu cabang mana yang benar-benar profit.</p></div>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="soft-card rounded-2xl border border-gray-200 bg-white p-6"><h3 class="text-[19px] font-bold text-gray-950 mb-2">POS revenue is separated from bank settlement</h3><p class="text-[15px] text-gray-600 leading-relaxed">Sales look healthy, but bank deposits can include timing gaps, gateway fees, refunds, or pending payouts.</p></div>
+                    <div class="soft-card rounded-2xl border border-gray-200 bg-white p-6"><h3 class="text-[19px] font-bold text-gray-950 mb-2">Biaya suppliers are tracked manually</h3><p class="text-[15px] text-gray-600 leading-relaxed">Food, inventory, packaging, uniforms, and store supplies often sit in separate invoice folders.</p></div>
+                    <div class="soft-card rounded-2xl border border-gray-200 bg-white p-6"><h3 class="text-[19px] font-bold text-gray-950 mb-2">Outlet expenses are scattered</h3><p class="text-[15px] text-gray-600 leading-relaxed">Receipts arrive through WhatsApp, email, cash boxes, and manager uploads without a clean branch tag.</p></div>
+                    <div class="soft-card rounded-2xl border border-gray-200 bg-white p-6"><h3 class="text-[19px] font-bold text-gray-950 mb-2">Branch costs are hard to compare</h3><p class="text-[15px] text-gray-600 leading-relaxed">Rent, utilities, payroll, repairs, and staff meals can quietly eat margin in one location.</p></div>
+                    <div class="soft-card rounded-2xl border border-gray-200 bg-white p-6"><h3 class="text-[19px] font-bold text-gray-950 mb-2">Month-end depends on spreadsheets</h3><p class="text-[15px] text-gray-600 leading-relaxed">Finance teams spend closing week rebuilding what happened across branches.</p></div>
+                    <div class="soft-card rounded-2xl border border-gray-200 bg-white p-6"><h3 class="text-[19px] font-bold text-gray-950 mb-2">Franchise performance is hard to read</h3><p class="text-[15px] text-gray-600 leading-relaxed">Owners see gross sales, but not always cost ratio, budget variance, and true outlet margin.</p></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-16 md:py-24 px-6 bg-white">
+            <div class="max-w-[1180px] mx-auto grid lg:grid-cols-[0.85fr_1.15fr] gap-10 items-start">
+                <div><h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Satu kokpit keuangan untuk setiap outlet.</h2><p class="text-[18px] text-gray-600 leading-relaxed">FluxyOS connects the money sources behind each store, organizes transactions by outlet, and flags reconciliation gaps before the close process turns into spreadsheet cleanup.</p></div>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5"><h3 class="font-bold text-gray-950 mb-2">Connect money sources</h3><p class="text-[15px] text-gray-600">POS, bank, payment gateway, supplier invoices, receipts, and vendor payments flow into FluxyOS.</p></div>
+                    <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5"><h3 class="font-bold text-gray-950 mb-2">Categorize by outlet</h3><p class="text-[15px] text-gray-600">Every revenue, expense, supplier cost, receipt, and budget line can land under the right branch.</p></div>
+                    <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5"><h3 class="font-bold text-gray-950 mb-2">Compare margin and budgets</h3><p class="text-[15px] text-gray-600">Review branch revenue, expenses, cost ratio, net margin, and remaining budget in real time.</p></div>
+                    <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5"><h3 class="font-bold text-gray-950 mb-2">Catch close issues earlier</h3><p class="text-[15px] text-gray-600">Detect missing receipts, duplicate payments, unusual costs, and cleaner exports for accounting and tax.</p></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-16 md:py-24 px-6 bg-[#0B0F19] text-white">
+            <div class="max-w-[1280px] mx-auto">
+                <div class="max-w-3xl mb-10"><h2 class="text-[36px] md:text-[48px] font-bold tracking-tight mb-5">Finance workflows built for stores, outlets, and franchise locations.</h2><p class="text-[18px] text-gray-300 leading-relaxed">Every card focuses on a practical retail finance question: what came in, what went out, which outlet owns it, and what needs review before close.</p></div>
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-5"><h3 class="font-bold text-[18px] mb-2">Branch-Level P&L</h3><p class="text-[14px] text-gray-300">See revenue, COGS, rent, payroll, utilities, supplier cost, and net margin per outlet.</p></div>
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-5"><h3 class="font-bold text-[18px] mb-2">POS & Bank Reconciliation</h3><p class="text-[14px] text-gray-300">Match POS sales and payment gateway settlement against actual bank deposits.</p></div>
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-5"><h3 class="font-bold text-[18px] mb-2">Supplier & Inventory Cost</h3><p class="text-[14px] text-gray-300">Track supplier invoices by outlet, product category, or operating budget.</p></div>
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-5"><h3 class="font-bold text-[18px] mb-2">Store Budget Control</h3><p class="text-[14px] text-gray-300">Set budgets for marketing, utilities, repairs, rent, meals, supplies, and operations.</p></div>
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-5"><h3 class="font-bold text-[18px] mb-2">Receipt Capture via WhatsApp</h3><p class="text-[14px] text-gray-300">Extract vendor, amount, tax, and category from WhatsApp, email, or upload.</p></div>
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-5"><h3 class="font-bold text-[18px] mb-2">Duplicate Payment Detection</h3><p class="text-[14px] text-gray-300">Catch repeated supplier invoices, rent payments, and vendor charges before money leaves.</p></div>
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-5"><h3 class="font-bold text-[18px] mb-2">Franchise Comparison</h3><p class="text-[14px] text-gray-300">Bandingkan profit outlet, cost ratio, efficiency, and budget variance.</p></div>
+                    <div class="rounded-2xl border border-white/10 bg-white/5 p-5"><h3 class="font-bold text-[18px] mb-2">Month-End Close</h3><p class="text-[14px] text-gray-300">Keep transactions, receipts, categories, and outlet-level records clean.</p></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-16 md:py-24 px-6 bg-white">
+            <div class="max-w-[1280px] mx-auto">
+                <div class="grid lg:grid-cols-[0.8fr_1.2fr] gap-10 items-start">
+                    <div><h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">A larger dashboard for the questions owners ask every week.</h2><p class="text-[18px] text-gray-600 leading-relaxed">Outlet Senopati has healthy sales volume, but net margin is below other branches because supplier cost and utility spend increased faster than revenue.</p></div>
+                    <div class="dashboard-shadow rounded-[28px] border border-gray-200 bg-[#F8FAFC] p-5">
+                        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                            <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Total outlet revenue</p><p class="font-mono text-[22px] font-bold">Rp 367.4M</p></div>
+                            <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Outlet net margin</p><p class="font-mono text-[22px] font-bold">13.2%</p></div>
+                            <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Cost ratio</p><p class="font-mono text-[22px] font-bold">71.9%</p></div>
+                            <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Supplier spend</p><p class="font-mono text-[22px] font-bold">Rp 117.6M</p></div>
+                        </div>
+                        <div class="grid lg:grid-cols-[1.15fr_0.85fr] gap-4">
+                            <div class="rounded-2xl bg-white border border-gray-200 overflow-hidden"><div class="grid grid-cols-5 bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500 font-bold px-4 py-3"><span>Outlet</span><span>Revenue</span><span>Expenses</span><span>Margin</span><span>Status</span></div><div class="divide-y divide-gray-100 text-[13px]"><div class="grid grid-cols-5 px-4 py-3"><strong>Kemang</strong><span>Rp 128.4M</span><span>Rp 82.1M</span><span class="text-[#16A34A] font-bold">18.6%</span><span>Matched</span></div><div class="grid grid-cols-5 px-4 py-3"><strong>Senopati</strong><span>Rp 96.2M</span><span>Rp 89.7M</span><span class="text-[#EA580C] font-bold">4.1%</span><span>Review</span></div><div class="grid grid-cols-5 px-4 py-3"><strong>Bandung</strong><span>Rp 142.8M</span><span>Rp 101.5M</span><span class="text-[#16A34A] font-bold">16.9%</span><span>Matched</span></div></div></div>
+                            <div class="space-y-3"><div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Budget remaining</p><p class="font-mono text-[22px] font-bold">Rp 54.8M</p></div><div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Struk hilangs</p><p class="font-mono text-[22px] font-bold text-[#EA580C]">7</p></div><div class="rounded-2xl bg-gray-950 text-white p-4"><p class="text-[12px] text-gray-400">Insight keuangan AI</p><p class="text-[14px] leading-relaxed mt-2">Biaya supplier and utility spend increased faster than revenue in Senopati. Review rent duplication before close.</p></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-y border-gray-200">
+            <div class="max-w-[1180px] mx-auto grid lg:grid-cols-[0.85fr_1.15fr] gap-10 items-start">
+                <div><h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Built for owners managing more than one location.</h2><p class="text-[18px] text-gray-600 leading-relaxed">For franchise owners, the real challenge is not just opening more outlets. It is keeping every branch financially readable.</p></div>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="rounded-2xl border border-gray-200 bg-white p-5">Compare franchise branches side by side</div>
+                    <div class="rounded-2xl border border-gray-200 bg-white p-5">Identify outlets with weak margin</div>
+                    <div class="rounded-2xl border border-gray-200 bg-white p-5">Track owner-level and branch-level spending</div>
+                    <div class="rounded-2xl border border-gray-200 bg-white p-5">Keep supplier payments controlled</div>
+                    <div class="rounded-2xl border border-gray-200 bg-white p-5">Standardize finance reporting across locations</div>
+                    <div class="rounded-2xl border border-gray-200 bg-white p-5">Make expansion decisions using real profit</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-16 md:py-24 px-6 bg-white">
+            <div class="max-w-[1180px] mx-auto">
+                <div class="max-w-3xl mb-10"><h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Cara kerjanya</h2><p class="text-[18px] text-gray-600">Three steps turn scattered retail finance data into branch-level operating clarity.</p></div>
+                <div class="grid lg:grid-cols-3 gap-4">
+                    <div class="step-card rounded-2xl border border-gray-200 bg-[#F8FAFC] p-6"><span class="font-mono text-[12px] text-[#EA580C]">01</span><h3 class="text-[22px] font-bold text-gray-950 mt-3 mb-2">Connect your money sources</h3><p class="text-[15px] text-gray-600">POS, bank accounts, payment gateways, supplier invoices, receipts, and vendor payments flow into FluxyOS.</p></div>
+                    <div class="step-card rounded-2xl border border-gray-200 bg-[#F8FAFC] p-6"><span class="font-mono text-[12px] text-[#EA580C]">02</span><h3 class="text-[22px] font-bold text-gray-950 mt-3 mb-2">FluxyOS organizes transactions by outlet</h3><p class="text-[15px] text-gray-600">AI categorizes revenue, expenses, supplier costs, receipts, and budgets by location.</p></div>
+                    <div class="step-card rounded-2xl border border-gray-950 bg-gray-950 text-white p-6"><span class="font-mono text-[12px] text-orange-200">03</span><h3 class="text-[22px] font-bold mt-3 mb-2">Review real outlet performance</h3><p class="text-[15px] text-gray-300">Owners and finance teams see branch-level P&L, margin, budget variance, and reconciliation issues.</p></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-12 px-6 bg-[#F8FAFC] border-y border-gray-200">
+            <div class="max-w-[1180px] mx-auto">
+                <p class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-5">Example retail finance sources and categories</p>
+                <div class="flex flex-wrap gap-3">
+                    <span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Moka POS</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Qasir</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Majoo</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Pawoon</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Tokopedia</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Shopee</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">TikTok Shop</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Midtrans</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Xendit</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Bank BCA</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Bank Mandiri</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Jurnal</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Accurate</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">WhatsApp</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Email Upload</span>
+                </div>
+                <p class="text-[13px] text-gray-500 mt-4">Shown as example source categories for retail finance workflows, not a confirmed live integration list.</p>
+            </div>
+        </section>
+
+        <section class="py-16 md:py-24 px-6 bg-white">
+            <div class="max-w-[1180px] mx-auto">
+                <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-10">Buat setiap outlet lebih mudah dipahami.</h2>
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5">Know true margin by branch</div>
+                    <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5">Catch cost leaks earlier</div>
+                    <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5">Close books faster</div>
+                    <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5">Reduce spreadsheet dependency</div>
+                    <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5">Improve outlet-level budget discipline</div>
+                    <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5">Compare franchise performance</div>
+                    <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5">Keep receipts and invoices audit-ready</div>
+                    <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5">Make better expansion decisions</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="faq" class="py-16 md:py-20 px-6 border-y border-gray-200 bg-[#F8FAFC]">
+            <div class="max-w-[1120px] mx-auto">
+                <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-8">Pertanyaan umum</h2>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Bagaimana FluxyOS membantu owner retail dan franchise?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">FluxyOS menyatukan revenue POS, invoice supplier, biaya outlet, struk, budget, pembayaran vendor, dan settlement bank dalam satu tampilan operasi keuangan agar owner bisa membandingkan profit cabang yang sebenarnya.</p></details>
+                    <details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Bisakah FluxyOS membandingkan profitabilitas outlet?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Ya. Setiap transaksi bisa ditandai per outlet sehingga owner dan tim finance dapat membandingkan revenue, biaya operasional, belanja supplier, selisih budget, dan margin bersih per cabang.</p></details>
+                    <details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah FluxyOS melacak footfall atau analitik CCTV?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">No. FluxyOS fokus pada operasi keuangan: revenue POS, settlement, biaya supplier, biaya toko, struk, budget, pencocokan, dan P&L per cabang.</p></details>
+                    <details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Bisakah manager toko mengirim struk lewat WhatsApp?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Ya. Tim toko bisa mengirim struk lewat WhatsApp, email, atau upload. FluxyOS mengekstrak vendor, nominal, pajak, dan kategori untuk review finance.</p></details>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-[#0B0F19] py-16 md:py-24 px-6 text-white">
+            <div class="max-w-[1280px] mx-auto text-center">
+                <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight mb-5">Lihat gambaran keuangan nyata di setiap outlet.</h2>
+                <p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">FluxyOS membantu owner retail dan franchise menghubungkan revenue, biaya, budget, supplier, struk, dan pencocokan dalam satu tampilan operasional.</p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center"><a href="/pricing" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm inline-block text-center">Coba FluxyOS</a><a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">Jadwalkan demo</a></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="/assets/js/universe-canvas.js" defer></script>
+    <script src="/assets/js/footer-loader.js" defer></script>
+    <script src="/assets/js/fluxyos.js" defer></script>
+</body>
+</html>
