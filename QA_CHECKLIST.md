@@ -80,6 +80,12 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 11 | Use-case menu entry is clickable from desktop and mobile nav. Search all copied landing-page nav blocks for the new label and confirm every non-active entry uses the real localized route, not `href="#"`. |
 | 12 | If the request is only for navbar link/content consistency, preserve the existing navbar layout, spacing, styling, DOM structure, and interaction behavior unless the user explicitly asks for visual or layout changes. |
 | 13 | Marketing nav consistency: all public landing/use-case navbars expose consistent working routes; desktop and mobile menus must not include broken `href="#"` links; every navbar URL returns a valid page. |
+| 14 | **Anti-AI-Slop Gate (Hierarchy):** In a 3-second blur/squint test, primary message, primary action, and primary content priority are obvious. |
+| 15 | **Anti-AI-Slop Gate (Actions):** Exactly one visually dominant primary action per viewport zone unless user explicitly requested equal priority actions. |
+| 16 | **Anti-AI-Slop Gate (Color Semantics):** Primary, secondary, success, warning, error, and disabled states are visually distinct and used consistently. |
+| 17 | **Anti-AI-Slop Gate (Contrast):** Core text, controls, and state labels remain legible in default, hover, focus, and disabled states on desktop and mobile. |
+| 18 | **Anti-AI-Slop Gate (Banned Patterns):** No banned patterns from `design_system.md` are present (generic purple-neon default, excessive glass/glow, decorative-first hero, color-only meaning, cloned equal-weight card grids). |
+| 19 | **Anti-AI-Slop Gate (Responsive Hierarchy):** Hierarchy and action priority are preserved at both `375px` and `1280px`; key action/data is not displaced by decoration. |
 
 ### B. Footer Changes (includes/footer.html, assets/css/footer.css, assets/js/footer-loader.js)
 
@@ -265,6 +271,21 @@ Open each page and confirm no visual breakage:
 | 5 | Tested at desktop width (1280px) — layout correct |
 | 6 | New feature does not break any existing feature on the same page |
 | 7 | Shared file changes verified on all pages in Cross-Page Regression table |
+| 8 | Anti-AI-Slop Gate checks (Section 2A items 14-19) pass, or a documented exception is recorded per Exception Protocol. |
+
+---
+
+## Anti-AI-Slop Exception Protocol (Mandatory When Waiving a Gate)
+
+Only use this when a user explicitly requests a style direction that conflicts with anti-slop hard rules, or a documented product requirement requires an exception.
+
+When an exception is used, QA output must include:
+- The exact waived check id(s) from Section 2A items 14-19
+- Why the exception is needed
+- Which page/component is impacted
+- The tradeoff/risk accepted
+
+If no exception log is provided, anti-slop QA is considered failed.
 
 ---
 
