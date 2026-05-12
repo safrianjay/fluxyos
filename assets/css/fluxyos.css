@@ -65,9 +65,9 @@ nav[data-animate="nav"] {
 .hero-spline-bg__fallback {
     z-index: 0;
     background:
-        radial-gradient(ellipse at 82% 0%, rgba(234, 88, 12, 0.3), transparent 30%),
-        radial-gradient(ellipse at 96% 34%, rgba(249, 115, 22, 0.24), transparent 34%),
-        radial-gradient(ellipse at 78% 72%, rgba(234, 88, 12, 0.18), transparent 42%),
+        radial-gradient(ellipse at 82% 0%, rgba(234, 88, 12, 0.38), transparent 30%),
+        radial-gradient(ellipse at 96% 34%, rgba(249, 115, 22, 0.3), transparent 34%),
+        radial-gradient(ellipse at 78% 72%, rgba(234, 88, 12, 0.22), transparent 42%),
         radial-gradient(ellipse at 70% 18%, rgba(11, 15, 25, 0.08), transparent 36%),
         linear-gradient(90deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.95) 42%, rgba(255, 247, 242, 0.78) 100%);
 }
@@ -87,12 +87,12 @@ nav[data-animate="nav"] {
     width: 132%;
     height: 128%;
     border: 0;
-    opacity: 0.5;
+    opacity: 0.54;
     pointer-events: none;
     transform: scale(1.08);
     transform-origin: center;
     backface-visibility: hidden;
-    filter: invert(1) sepia(0.68) saturate(1.55) hue-rotate(342deg) brightness(1.1) contrast(0.88);
+    filter: invert(1) sepia(0.72) saturate(1.75) hue-rotate(344deg) brightness(1.1) contrast(0.88);
 }
 
 .hero-bg-gradient-blur {
@@ -272,7 +272,7 @@ body.mobile-menu-open {
     }
 
     .hero-spline-bg__frame iframe {
-        opacity: 0.36;
+        opacity: 0.38;
     }
 
     .hero-bg-softener {
