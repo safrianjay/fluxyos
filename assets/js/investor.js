@@ -21,12 +21,13 @@
     const ARR_MULTIPLE_PRESETS = [3, 5, 10, 15];
     const MAX_INVESTMENT = 50000000;
     const BASE_INVESTMENT = 5000000;
-    const BASE_EQUITY_PERCENT = 0.6;
+    const BASE_EQUITY_PERCENT = 0.7;
+    const MAX_EQUITY_PERCENT = 4;
     const ACCESS_PASSWORD = "syududu";
 
     const state = {
         investment: 5000000,
-        equity: 0.6,
+        equity: 0.7,
         dilution: 0,
         monthlyPrice: 2790000,
         arrMultiple: 5,
@@ -83,8 +84,10 @@
     }
 
     function calculateEquityForInvestment(investmentAmount) {
-        const investment = Math.max(safeNumber(investmentAmount), 0);
-        return clamp((investment / BASE_INVESTMENT) * BASE_EQUITY_PERCENT, 0, 100);
+        const investment = clamp(safeNumber(investmentAmount), BASE_INVESTMENT, MAX_INVESTMENT);
+        const investmentRange = MAX_INVESTMENT - BASE_INVESTMENT;
+        const equityRange = MAX_EQUITY_PERCENT - BASE_EQUITY_PERCENT;
+        return BASE_EQUITY_PERCENT + ((investment - BASE_INVESTMENT) / investmentRange) * equityRange;
     }
 
     function calculateImpliedPostMoney(investmentAmount, equityPercent) {
@@ -253,7 +256,7 @@
     }
 
     function setSafeInvestment(value) {
-        state.investment = clamp(safeNumber(value), 0, MAX_INVESTMENT);
+        state.investment = clamp(safeNumber(value), BASE_INVESTMENT, MAX_INVESTMENT);
         state.equity = calculateEquityForInvestment(state.investment);
     }
 
