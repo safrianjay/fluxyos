@@ -106,16 +106,9 @@ a {
     z-index: 4;
 }
 
-.access-card h1,
 .hero-section h1,
 .table-heading h2 {
     margin: 0;
-}
-
-.access-card h1 {
-    font-size: 24px;
-    line-height: 1.16;
-    letter-spacing: -0.03em;
 }
 
 .hero-copy,

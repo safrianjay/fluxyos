@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="assets/css/investor.css">
 </head>
 <body>
-    <div class="access-overlay" id="access-overlay" role="dialog" aria-modal="true" aria-labelledby="access-title">
+    <div class="access-overlay" id="access-overlay" role="dialog" aria-modal="true" aria-label="Investor password access">
         <canvas id="investor-universe-canvas" class="access-universe-canvas" aria-hidden="true"></canvas>
         <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" alt="" class="access-background-image" aria-hidden="true">
         <div class="access-gradient-overlay" aria-hidden="true"></div>
@@ -29,9 +29,6 @@
                 </span>
                 <span>FluxyOS</span>
             </a>
-            <div>
-                <h1 id="access-title">Enter password to continue</h1>
-            </div>
             <label class="field-label" for="investor-password">Password</label>
             <input class="access-input" id="investor-password" name="password" type="password" autocomplete="current-password" autofocus required>
             <p class="access-error" id="access-error" role="alert" hidden>Incorrect password. Please try again.</p>

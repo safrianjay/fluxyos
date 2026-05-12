@@ -21,7 +21,6 @@
 
     const ARR_MULTIPLE_PRESETS = [3, 5, 10, 15];
     const ACCESS_PASSWORD = "syududu";
-    const ACCESS_KEY = "fluxyos-investor-access";
 
     const state = {
         investment: 5000000,
@@ -277,11 +276,6 @@
         const input = $("investor-password");
         const error = $("access-error");
 
-        if (sessionStorage.getItem(ACCESS_KEY) === "granted") {
-            unlockPage();
-            return;
-        }
-
         document.body.classList.add("access-locked");
         input.focus();
 
@@ -289,7 +283,6 @@
             event.preventDefault();
 
             if (input.value === ACCESS_PASSWORD) {
-                sessionStorage.setItem(ACCESS_KEY, "granted");
                 unlockPage();
                 return;
             }
