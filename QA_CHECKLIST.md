@@ -78,6 +78,8 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 9 | Page is readable at 375px, 768px, 1280px widths |
 | 10 | Use-case pages use light hero/product visuals, no dark hero cards, consistent `text-[44px] md:text-[56px]` H1 scale, and no mobile horizontal overflow |
 | 11 | Use-case menu entry is clickable from desktop and mobile nav. Search all copied landing-page nav blocks for the new label and confirm every non-active entry uses the real localized route, not `href="#"`. |
+| 12 | If the request is only for navbar link/content consistency, preserve the existing navbar layout, spacing, styling, DOM structure, and interaction behavior unless the user explicitly asks for visual or layout changes. |
+| 13 | Marketing nav consistency: all public landing/use-case navbars expose consistent working routes; desktop and mobile menus must not include broken `href="#"` links; every navbar URL returns a valid page. |
 
 ### B. Footer Changes (includes/footer.html, assets/css/footer.css, assets/js/footer-loader.js)
 
