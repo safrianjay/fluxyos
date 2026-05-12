@@ -322,9 +322,17 @@
                 authMessage.classList.add('hidden');
             };
 
+            const getAuthErrorMessage = (error) => {
+                if (error?.code === 'auth/unauthorized-domain') {
+                    return `This domain (${window.location.hostname}) is not authorized for Google sign-in. Add it in Firebase Authentication settings.`;
+                }
+
+                return "Google sign-in failed. Please try again.";
+            };
+
             getRedirectResult(auth).catch((error) => {
                 console.error("Redirect Result Error:", error);
-                showAuthMessage("We couldn't complete Google sign-in. Please try again.");
+                showAuthMessage(getAuthErrorMessage(error));
             });
 
             // Handle Auth State (Auto-Redirect)
@@ -360,10 +368,10 @@
                                 return;
                             } catch (redirectError) {
                                 console.error("Redirect Error:", redirectError);
-                                showAuthMessage("Google sign-in failed. Please try again.");
+                                showAuthMessage(getAuthErrorMessage(redirectError));
                             }
                         } else {
-                            showAuthMessage("Google sign-in failed. Please try again.");
+                            showAuthMessage(getAuthErrorMessage(error));
                         }
                     }
 
