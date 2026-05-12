@@ -127,10 +127,6 @@ a {
     height: 100%;
 }
 
-.page-header .brand-mark {
-    color: #FFFFFF;
-}
-
 .private-badge,
 .panel-label {
     color: var(--accent);
