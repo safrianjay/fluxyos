@@ -284,6 +284,8 @@
             signInWithEmailAndPassword, 
             GoogleAuthProvider, 
             signInWithPopup,
+            signInWithRedirect,
+            getRedirectResult,
             onAuthStateChanged 
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
@@ -305,6 +307,25 @@
             // Elements
             const loginForm = document.getElementById('login-form');
             const googleBtn = document.getElementById('google-btn');
+            const authMessage = document.createElement('p');
+            authMessage.className = 'hidden mb-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-[12px] font-medium text-red-700';
+            authMessage.setAttribute('role', 'alert');
+            googleBtn?.insertAdjacentElement('afterend', authMessage);
+
+            const showAuthMessage = (message) => {
+                authMessage.textContent = message;
+                authMessage.classList.remove('hidden');
+            };
+
+            const clearAuthMessage = () => {
+                authMessage.textContent = '';
+                authMessage.classList.add('hidden');
+            };
+
+            getRedirectResult(auth).catch((error) => {
+                console.error("Redirect Result Error:", error);
+                showAuthMessage("We couldn't complete Google sign-in. Please try again.");
+            });
 
             // Handle Auth State (Auto-Redirect)
             onAuthStateChanged(auth, (user) => {
@@ -318,15 +339,36 @@
             if (googleBtn) {
                 googleBtn.addEventListener('click', async () => {
                     const originalText = googleBtn.innerHTML;
+                    const popupFallbackErrors = new Set([
+                        'auth/popup-blocked',
+                        'auth/popup-closed-by-user',
+                        'auth/cancelled-popup-request',
+                        'auth/operation-not-supported-in-this-environment'
+                    ]);
+
+                    clearAuthMessage();
                     googleBtn.innerHTML = "Authenticating...";
+                    googleBtn.disabled = true;
                     try {
                         await signInWithPopup(auth, googleProvider);
                     } catch (error) {
                         console.error("Popup Error:", error);
-                        // Fallback if popups are blocked by browser settings
-                        alert("Please allow popups for this site or try again.");
-                        googleBtn.innerHTML = originalText;
+                        if (popupFallbackErrors.has(error.code)) {
+                            try {
+                                googleBtn.innerHTML = "Redirecting...";
+                                await signInWithRedirect(auth, googleProvider);
+                                return;
+                            } catch (redirectError) {
+                                console.error("Redirect Error:", redirectError);
+                                showAuthMessage("Google sign-in failed. Please try again.");
+                            }
+                        } else {
+                            showAuthMessage("Google sign-in failed. Please try again.");
+                        }
                     }
+
+                    googleBtn.innerHTML = originalText;
+                    googleBtn.disabled = false;
                 });
             }
 
@@ -337,9 +379,10 @@
                     const submitBtn = loginForm.querySelector('button[type="submit"]');
                     submitBtn.innerText = "Signing in...";
                     try {
+                        clearAuthMessage();
                         await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value);
                     } catch (error) {
-                        alert("Error: " + error.message);
+                        showAuthMessage("Email sign-in failed. Please check your credentials and try again.");
                         submitBtn.innerText = "Sign In";
                     }
                 });
