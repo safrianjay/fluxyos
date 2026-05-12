@@ -13,6 +13,9 @@
 </head>
 <body>
     <div class="access-overlay" id="access-overlay" role="dialog" aria-modal="true" aria-labelledby="access-title">
+        <canvas id="investor-universe-canvas" class="access-universe-canvas" aria-hidden="true"></canvas>
+        <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" alt="" class="access-background-image" aria-hidden="true">
+        <div class="access-gradient-overlay" aria-hidden="true"></div>
         <form class="access-card" id="access-form">
             <a href="/fluxyos" class="brand-lockup" aria-label="FluxyOS home">
                 <span class="brand-mark" aria-hidden="true">
@@ -170,6 +173,10 @@
         </section>
     </main>
 
+    <script src="assets/js/universe-canvas.js"></script>
     <script src="assets/js/investor.js"></script>
+    <script>
+        initUniverseCanvas(document.getElementById('investor-universe-canvas'));
+    </script>
 </body>
 </html>
