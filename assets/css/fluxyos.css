@@ -65,11 +65,13 @@ nav[data-animate="nav"] {
 .hero-spline-bg__fallback {
     z-index: 0;
     background:
-        radial-gradient(ellipse at 82% 0%, rgba(234, 88, 12, 0.38), transparent 30%),
-        radial-gradient(ellipse at 96% 34%, rgba(249, 115, 22, 0.3), transparent 34%),
-        radial-gradient(ellipse at 78% 72%, rgba(234, 88, 12, 0.22), transparent 42%),
-        radial-gradient(ellipse at 70% 18%, rgba(11, 15, 25, 0.08), transparent 36%),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.95) 42%, rgba(255, 247, 242, 0.78) 100%);
+        radial-gradient(ellipse at 82% 0%, rgba(71, 6, 91, 0.34), transparent 30%),
+        radial-gradient(ellipse at 96% 34%, rgba(136, 31, 121, 0.3), transparent 34%),
+        radial-gradient(ellipse at 78% 72%, rgba(39, 1, 63, 0.22), transparent 42%),
+        radial-gradient(ellipse at 70% 18%, rgba(13, 0, 16, 0.1), transparent 36%),
+        radial-gradient(ellipse at 91% 16%, rgba(252, 211, 126, 0.16), transparent 18%),
+        radial-gradient(ellipse at 92% 58%, rgba(247, 140, 45, 0.06), transparent 28%),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.95) 42%, rgba(252, 248, 255, 0.8) 100%);
 }
 
 .hero-spline-bg__frame {
@@ -87,12 +89,12 @@ nav[data-animate="nav"] {
     width: 132%;
     height: 128%;
     border: 0;
-    opacity: 0.54;
+    opacity: 0.52;
     pointer-events: none;
     transform: scale(1.08);
     transform-origin: center;
     backface-visibility: hidden;
-    filter: invert(1) sepia(0.72) saturate(1.75) hue-rotate(344deg) brightness(1.1) contrast(0.88);
+    filter: invert(1) sepia(0.42) saturate(2.05) hue-rotate(236deg) brightness(1.08) contrast(0.92);
 }
 
 .hero-bg-gradient-blur {
@@ -104,7 +106,7 @@ nav[data-animate="nav"] {
     contain: paint;
     background:
         linear-gradient(to bottom, transparent 0%, rgba(255, 255, 255, 0.28) 36%, rgba(255, 255, 255, 0.84) 82%, #fff 100%),
-        radial-gradient(ellipse at 78% 0%, rgba(234, 88, 12, 0.08), transparent 48%);
+        radial-gradient(ellipse at 78% 0%, rgba(136, 31, 121, 0.08), transparent 48%);
 }
 
 .hero-bg-gradient-blur > div {
@@ -124,14 +126,14 @@ nav[data-animate="nav"] {
     position: absolute;
     inset: 0;
     z-index: 2;
-    background: radial-gradient(ellipse at 82% 20%, rgba(11, 15, 25, 0.05), transparent 42%);
+    background: radial-gradient(ellipse at 82% 20%, rgba(13, 0, 16, 0.05), transparent 42%);
 }
 
 .hero-bg-softener {
     z-index: 4;
     background:
         radial-gradient(ellipse at 14% 46%, rgba(255, 255, 255, 0.9), transparent 44%),
-        radial-gradient(ellipse at 76% 0%, rgba(11, 15, 25, 0.04), transparent 38%),
+        radial-gradient(ellipse at 76% 0%, rgba(39, 1, 63, 0.05), transparent 38%),
         linear-gradient(90deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.94) 34%, rgba(255, 255, 255, 0.48) 62%, rgba(255, 255, 255, 0.04) 100%);
 }
 
@@ -272,7 +274,7 @@ body.mobile-menu-open {
     }
 
     .hero-spline-bg__frame iframe {
-        opacity: 0.38;
+        opacity: 0.36;
     }
 
     .hero-bg-softener {
@@ -337,10 +339,11 @@ body.mobile-menu-open {
 
     .hero-spline-bg__fallback {
         background:
-            radial-gradient(ellipse at 100% 0%, rgba(234, 88, 12, 0.14), transparent 28%),
-            radial-gradient(ellipse at 92% 62%, rgba(249, 115, 22, 0.1), transparent 34%),
-            radial-gradient(ellipse at 88% 18%, rgba(11, 15, 25, 0.04), transparent 30%),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.97) 58%, rgba(255, 248, 244, 0.86) 100%);
+            radial-gradient(ellipse at 100% 0%, rgba(71, 6, 91, 0.14), transparent 28%),
+            radial-gradient(ellipse at 92% 62%, rgba(136, 31, 121, 0.1), transparent 34%),
+            radial-gradient(ellipse at 88% 18%, rgba(13, 0, 16, 0.04), transparent 30%),
+            radial-gradient(ellipse at 100% 12%, rgba(252, 211, 126, 0.08), transparent 18%),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.97) 58%, rgba(252, 248, 255, 0.86) 100%);
     }
 
     .hero-spline-bg__frame {
@@ -352,9 +355,9 @@ body.mobile-menu-open {
         inset: -10% -20%;
         width: 140%;
         height: 120%;
-        opacity: 0.2;
+        opacity: 0.18;
         transform: scale(1.05);
-        filter: invert(1) sepia(0.64) saturate(1.36) hue-rotate(342deg) brightness(1.14) contrast(0.86);
+        filter: invert(1) sepia(0.42) saturate(2.05) hue-rotate(236deg) brightness(1.08) contrast(0.92);
     }
 
     .hero-bg-gradient-blur {
