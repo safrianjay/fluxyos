@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>FluxyOS Investor Access</title>
+    <meta name="description" content="Private FluxyOS investor scenario calculator for invited investors.">
+    <link rel="canonical" href="https://fluxyos.com/investor">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/investor.css">
+</head>
+<body>
+    <div class="access-overlay" id="access-overlay" role="dialog" aria-modal="true" aria-labelledby="access-title">
+        <form class="access-card" id="access-form">
+            <a href="/fluxyos" class="brand-lockup" aria-label="FluxyOS home">
+                <span class="brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="40" height="40" rx="8" fill="currentColor" />
+                        <g transform="translate(1.5, 0)">
+                            <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#0B0F19" />
+                            <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#0B0F19" />
+                        </g>
+                    </svg>
+                </span>
+                <span>FluxyOS</span>
+            </a>
+            <div>
+                <p class="eyebrow">Private investor room</p>
+                <h1 id="access-title">Enter password to continue</h1>
+                <p class="access-copy">This page is available only to people who have been given the direct investor link.</p>
+            </div>
+            <label class="field-label" for="investor-password">Password</label>
+            <input class="access-input" id="investor-password" name="password" type="password" autocomplete="current-password" autofocus required>
+            <p class="access-error" id="access-error" role="alert" hidden>Incorrect password. Please try again.</p>
+            <button class="primary-button" type="submit">Unlock investor page</button>
+        </form>
+    </div>
+
+    <main class="investor-page" id="investor-page" hidden>
+        <header class="page-header">
+            <a href="/fluxyos" class="brand-lockup" aria-label="FluxyOS home">
+                <span class="brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="40" height="40" rx="8" fill="currentColor" />
+                        <g transform="translate(1.5, 0)">
+                            <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#0B0F19" />
+                            <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#0B0F19" />
+                        </g>
+                    </svg>
+                </span>
+                <span>FluxyOS</span>
+            </a>
+            <span class="private-badge">Private link</span>
+        </header>
+
+        <section class="hero-section">
+            <div>
+                <p class="pill"><span aria-hidden="true">SUM</span> Startup Exit ROI Calculator</p>
+                <h1>Friend Investment Exit Logic</h1>
+                <p class="hero-copy">
+                    Adjust investment amount, equity, dilution, subscription price, and ARR multiple to model how much an investor could receive at different exit values.
+                </p>
+            </div>
+            <div class="hero-panel">
+                <p class="panel-label">Current model</p>
+                <strong id="hero-effective-equity">0.00%</strong>
+                <span>effective ownership after dilution</span>
+            </div>
+        </section>
+
+        <section class="controls-grid" aria-label="Investment assumptions">
+            <article class="card">
+                <label class="field-label" for="investment-select">Initial investment</label>
+                <select class="control-input" id="investment-select"></select>
+                <input class="control-input" id="investment-input" type="number" min="0" step="1">
+                <p class="muted" id="investment-raw">Raw: Rp0</p>
+            </article>
+
+            <article class="card">
+                <label class="field-label" for="equity-range">Equity today: <span id="equity-label">1.00%</span></label>
+                <input class="range-input" id="equity-range" type="range" min="0.1" max="25" step="0.1">
+                <input class="control-input" id="equity-input" type="number" min="0" max="100" step="0.1">
+            </article>
+
+            <article class="card">
+                <label class="field-label" for="dilution-range">Future dilution: <span id="dilution-label">0%</span></label>
+                <input class="range-input" id="dilution-range" type="range" min="0" max="80" step="5">
+                <input class="control-input" id="dilution-input" type="number" min="0" max="100" step="1">
+                <p class="muted">Effective equity: <span id="effective-equity-copy">0.00%</span></p>
+            </article>
+
+            <article class="card">
+                <label class="field-label" for="monthly-price-input">Monthly subscription price</label>
+                <input class="control-input" id="monthly-price-input" type="number" min="0" step="1">
+                <p class="muted">ARR/customer: <span id="arr-per-customer">Rp0</span></p>
+            </article>
+        </section>
+
+        <section class="stats-grid" aria-label="Investment summary">
+            <article class="stat-card">
+                <span class="stat-badge">Rp</span>
+                <p>Implied post-money</p>
+                <strong id="implied-post-money">Rp0</strong>
+            </article>
+            <article class="stat-card">
+                <span class="stat-badge">%</span>
+                <p>Effective equity</p>
+                <strong id="effective-equity-stat">0.00%</strong>
+            </article>
+            <article class="stat-card">
+                <span class="stat-badge">BE</span>
+                <p>Break-even exit</p>
+                <strong id="break-even-exit">Rp0</strong>
+            </article>
+            <article class="card">
+                <label class="field-label" for="arr-multiple-select">ARR valuation multiple</label>
+                <select class="control-input" id="arr-multiple-select"></select>
+                <input class="control-input" id="arr-multiple-input" type="number" min="0" step="0.5">
+            </article>
+        </section>
+
+        <section class="table-card">
+            <div class="table-heading">
+                <h2>Exit valuation scenario</h2>
+                <p>This shows how much the investor receives at different company exit values.</p>
+            </div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Company exit valuation</th>
+                            <th>Effective ownership</th>
+                            <th>Investor receives</th>
+                            <th>ROI multiple</th>
+                            <th>Profit</th>
+                            <th>ROI %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="exit-scenario-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="table-card">
+            <div class="table-heading">
+                <h2>Revenue-based valuation scenario</h2>
+                <p>This estimates valuation based on customer count x subscription price x 12 x ARR multiple.</p>
+            </div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Customers</th>
+                            <th>MRR</th>
+                            <th>ARR</th>
+                            <th>Valuation</th>
+                            <th>Investor receives</th>
+                            <th>ROI multiple</th>
+                            <th>Profit</th>
+                        </tr>
+                    </thead>
+                    <tbody id="revenue-scenario-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="formula-note">
+            <p>
+                Formula: investor proceeds = exit valuation x effective ownership. Profit = proceeds - initial investment. ROI multiple = proceeds / initial investment. Effective ownership = equity today x (1 - dilution%).
+            </p>
+        </section>
+    </main>
+
+    <script src="assets/js/investor.js"></script>
+</body>
+</html>
