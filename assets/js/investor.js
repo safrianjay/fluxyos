@@ -20,11 +20,13 @@
     ];
 
     const ARR_MULTIPLE_PRESETS = [3, 5, 10, 15];
+    const BASE_INVESTMENT = 5000000;
+    const BASE_EQUITY_PERCENT = 0.8;
     const ACCESS_PASSWORD = "syududu";
 
     const state = {
         investment: 5000000,
-        equity: 1,
+        equity: 0.8,
         dilution: 0,
         monthlyPrice: 2790000,
         arrMultiple: 5,
@@ -78,6 +80,11 @@
         const equity = clamp(safeNumber(equityPercent), 0, 100);
         const dilution = clamp(safeNumber(dilutionPercent), 0, 100);
         return equity * (1 - dilution / 100);
+    }
+
+    function calculateEquityForInvestment(investmentAmount) {
+        const investment = Math.max(safeNumber(investmentAmount), 0);
+        return clamp((investment / BASE_INVESTMENT) * BASE_EQUITY_PERCENT, 0, 100);
     }
 
     function calculateImpliedPostMoney(investmentAmount, equityPercent) {
@@ -247,10 +254,7 @@
 
     function setSafeInvestment(value) {
         state.investment = Math.max(safeNumber(value), 0);
-    }
-
-    function setSafeEquity(value) {
-        state.equity = clamp(safeNumber(value), 0, 100);
+        state.equity = calculateEquityForInvestment(state.investment);
     }
 
     function setSafeDilution(value) {
@@ -298,8 +302,6 @@
         renderPresetOptions();
         bindControl("investment-select", setSafeInvestment);
         bindControl("investment-input", setSafeInvestment);
-        bindControl("equity-range", setSafeEquity);
-        bindControl("equity-input", setSafeEquity);
         bindControl("dilution-range", setSafeDilution);
         bindControl("dilution-input", setSafeDilution);
         bindControl("monthly-price-input", setSafeMonthlyPrice);
