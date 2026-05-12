@@ -331,7 +331,7 @@
             };
 
             getRedirectResult(auth).catch((error) => {
-                console.error("Redirect Result Error:", error);
+                console.warn("Redirect Result Error:", error);
                 showAuthMessage(getAuthErrorMessage(error));
             });
 
@@ -360,14 +360,14 @@
                     try {
                         await signInWithPopup(auth, googleProvider);
                     } catch (error) {
-                        console.error("Popup Error:", error);
+                        console.warn("Popup Auth Error:", error);
                         if (popupFallbackErrors.has(error.code)) {
                             try {
                                 googleBtn.innerHTML = "Redirecting...";
                                 await signInWithRedirect(auth, googleProvider);
                                 return;
                             } catch (redirectError) {
-                                console.error("Redirect Error:", redirectError);
+                                console.warn("Redirect Auth Error:", redirectError);
                                 showAuthMessage(getAuthErrorMessage(redirectError));
                             }
                         } else {

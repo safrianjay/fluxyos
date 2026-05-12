@@ -106,6 +106,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 7 | Form submits to Firebase Auth — test with valid and invalid credentials |
 | 8 | On successful login → redirects to `/dashboard` |
 | 9 | On failed login → error message shown near form |
+| 10 | Google SSO domains are authorized in Firebase Console: every production/login host used for QA (e.g. `fluxyos.com`, `www.fluxyos.com`, and any preview domain tested) is listed under Authentication → Settings → Authorized domains |
 
 ### D. Dashboard / App Page Changes (dashboard.html, bill.html, subscription.html, ledger.html)
 
