@@ -71,15 +71,15 @@
             <article class="card">
                 <label class="field-label" for="investment-select">Initial investment</label>
                 <select class="control-input" id="investment-select"></select>
-                <input class="control-input" id="investment-input" type="number" min="0" step="1">
+                <input class="control-input" id="investment-input" type="number" min="0" max="50000000" step="1">
                 <p class="muted" id="investment-raw">Raw: Rp0</p>
             </article>
 
             <article class="card">
-                <label class="field-label" for="equity-input">Equity allocated: <span id="equity-label">0.80%</span></label>
+                <label class="field-label" for="equity-input">Equity allocated: <span id="equity-label">0.60%</span></label>
                 <input class="range-input" id="equity-range" type="range" min="0" max="100" step="0.1" disabled aria-hidden="true">
                 <input class="control-input" id="equity-input" type="number" min="0" max="100" step="0.1" readonly aria-readonly="true">
-                <p class="muted">Based on Rp5M = 0.8% equity.</p>
+                <p class="muted">Based on Rp5M = 0.6% equity.</p>
             </article>
 
             <article class="card">

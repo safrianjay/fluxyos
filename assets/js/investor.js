@@ -16,17 +16,17 @@
         { label: "Rp20M", value: 20000000 },
         { label: "Rp25M", value: 25000000 },
         { label: "Rp50M", value: 50000000 },
-        { label: "Rp100M", value: 100000000 },
     ];
 
     const ARR_MULTIPLE_PRESETS = [3, 5, 10, 15];
+    const MAX_INVESTMENT = 50000000;
     const BASE_INVESTMENT = 5000000;
-    const BASE_EQUITY_PERCENT = 0.8;
+    const BASE_EQUITY_PERCENT = 0.6;
     const ACCESS_PASSWORD = "syududu";
 
     const state = {
         investment: 5000000,
-        equity: 0.8,
+        equity: 0.6,
         dilution: 0,
         monthlyPrice: 2790000,
         arrMultiple: 5,
@@ -253,7 +253,7 @@
     }
 
     function setSafeInvestment(value) {
-        state.investment = Math.max(safeNumber(value), 0);
+        state.investment = clamp(safeNumber(value), 0, MAX_INVESTMENT);
         state.equity = calculateEquityForInvestment(state.investment);
     }
 
