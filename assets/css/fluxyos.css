@@ -65,23 +65,37 @@ nav[data-animate="nav"] {
 .hero-spline-bg__fallback {
     z-index: 0;
     background:
-        radial-gradient(ellipse at 82% 0%, rgba(71, 6, 91, 0.34), transparent 30%),
-        radial-gradient(ellipse at 96% 34%, rgba(136, 31, 121, 0.3), transparent 34%),
-        radial-gradient(ellipse at 78% 72%, rgba(39, 1, 63, 0.22), transparent 42%),
-        radial-gradient(ellipse at 70% 18%, rgba(13, 0, 16, 0.1), transparent 36%),
-        radial-gradient(ellipse at 91% 16%, rgba(252, 211, 126, 0.16), transparent 18%),
-        radial-gradient(ellipse at 92% 58%, rgba(247, 140, 45, 0.06), transparent 28%),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.95) 42%, rgba(252, 248, 255, 0.8) 100%);
+        radial-gradient(ellipse at 86% 12%, rgba(252, 211, 126, 0.26), transparent 24%),
+        radial-gradient(ellipse at 92% 46%, rgba(184, 38, 20, 0.18), transparent 34%),
+        radial-gradient(ellipse at 78% 64%, rgba(71, 6, 91, 0.18), transparent 40%),
+        radial-gradient(ellipse at 62% 26%, rgba(136, 31, 121, 0.08), transparent 36%),
+        linear-gradient(90deg, #fff 0%, rgba(255, 255, 255, 0.98) 44%, rgba(255, 249, 243, 0.74) 100%);
 }
 
 .hero-spline-bg__frame {
+    inset: 0 -6% auto auto;
+    width: 74%;
+    height: 100%;
     z-index: 1;
     overflow: hidden;
     contain: paint;
-    opacity: 0.92;
+    opacity: 0.98;
     transform: translateZ(0);
-    -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.16) 34%, rgba(0, 0, 0, 0.78) 62%, #000 100%);
-    mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.16) 34%, rgba(0, 0, 0, 0.78) 62%, #000 100%);
+    will-change: transform, opacity;
+    background:
+        radial-gradient(circle at 58% 50%, rgba(252, 211, 126, 0.95) 0%, rgba(247, 140, 45, 0.76) 8%, rgba(228, 77, 14, 0.42) 18%, transparent 36%),
+        radial-gradient(circle at 24% 42%, rgba(136, 31, 121, 0.72) 0%, rgba(71, 6, 91, 0.42) 30%, transparent 50%),
+        radial-gradient(circle at 82% 34%, rgba(255, 106, 0, 0.42) 0%, transparent 34%),
+        radial-gradient(circle at 48% 78%, rgba(99, 91, 255, 0.18) 0%, transparent 42%),
+        linear-gradient(135deg, #0d0010 0%, #170023 28%, #27013f 50%, #610921 73%, #b82614 100%);
+    background-size: 160% 160%;
+    animation: hero-gradient-orbit 18s ease-in-out infinite alternate;
+    -webkit-mask-image:
+        radial-gradient(ellipse 92% 118% at 80% 50%, #000 0%, #000 58%, rgba(0, 0, 0, 0.7) 70%, rgba(0, 0, 0, 0.26) 82%, transparent 96%),
+        linear-gradient(105deg, transparent 0%, rgba(0, 0, 0, 0.08) 16%, rgba(0, 0, 0, 0.54) 36%, #000 54%);
+    mask-image:
+        radial-gradient(ellipse 92% 118% at 80% 50%, #000 0%, #000 58%, rgba(0, 0, 0, 0.7) 70%, rgba(0, 0, 0, 0.26) 82%, transparent 96%),
+        linear-gradient(105deg, transparent 0%, rgba(0, 0, 0, 0.08) 16%, rgba(0, 0, 0, 0.54) 36%, #000 54%);
 }
 
 .hero-spline-bg__frame::before,
@@ -95,41 +109,176 @@ nav[data-animate="nav"] {
 }
 
 .hero-spline-bg__frame::before {
-    top: -24%;
-    right: -22%;
-    width: max(72vw, 820px);
-    height: 118vh;
-    border-radius: 50% 46% 48% 52% / 38% 46% 54% 62%;
+    inset: -25%;
+    z-index: 0;
     background:
-        conic-gradient(from 216deg at 58% 42%, transparent 0deg, rgba(71, 6, 91, 0.16) 36deg, rgba(136, 31, 121, 0.5) 92deg, rgba(71, 6, 91, 0.34) 148deg, rgba(252, 211, 126, 0.16) 194deg, transparent 260deg, transparent 360deg),
-        radial-gradient(ellipse at 70% 22%, rgba(252, 211, 126, 0.18), transparent 24%),
-        radial-gradient(ellipse at 52% 48%, rgba(136, 31, 121, 0.32), transparent 46%),
-        linear-gradient(115deg, transparent 12%, rgba(71, 6, 91, 0.24) 36%, rgba(136, 31, 121, 0.34) 54%, transparent 78%);
-    animation: hero-ai-field 24s ease-in-out infinite alternate;
+        conic-gradient(from 220deg at 52% 52%,
+            transparent 0deg,
+            rgba(255, 133, 22, 0.08) 32deg,
+            rgba(255, 201, 92, 0.58) 48deg,
+            rgba(139, 45, 255, 0.3) 68deg,
+            transparent 94deg,
+            transparent 180deg,
+            rgba(255, 103, 0, 0.22) 232deg,
+            rgba(75, 10, 104, 0.42) 272deg,
+            transparent 330deg),
+        radial-gradient(circle at 50% 50%, rgba(255, 145, 36, 0.22), transparent 40%);
+    filter: blur(8px) saturate(1.28);
+    opacity: 0.92;
+    transform: scale(1.08) rotate(-8deg);
+    animation: hero-liquid-aurora 22s ease-in-out infinite alternate;
 }
 
 .hero-spline-bg__frame::after {
-    top: -18%;
-    right: -10%;
-    width: max(58vw, 680px);
-    height: 124vh;
-    border-radius: 46% 54% 42% 58% / 34% 44% 56% 66%;
+    inset: -20%;
+    z-index: 2;
     background:
-        linear-gradient(118deg, transparent 0%, transparent 34%, rgba(252, 211, 126, 0.16) 43%, rgba(136, 31, 121, 0.28) 53%, rgba(71, 6, 91, 0.2) 64%, transparent 78%),
-        radial-gradient(ellipse at 60% 34%, rgba(71, 6, 91, 0.22), transparent 38%),
-        radial-gradient(ellipse at 82% 64%, rgba(13, 0, 16, 0.12), transparent 46%);
-    opacity: 0.76;
-    animation: hero-ai-sheen 29s ease-in-out infinite alternate;
+        radial-gradient(circle at 60% 50%, rgba(255, 168, 54, 0.34), transparent 38%),
+        radial-gradient(circle at 34% 40%, rgba(159, 62, 255, 0.24), transparent 42%);
+    mix-blend-mode: screen;
+    opacity: 0.5;
+    transform: scale(1.1) rotate(0deg);
+    animation: hero-shimmer-pulse 10s ease-in-out infinite alternate;
 }
 
-@keyframes hero-ai-field {
-    0% { transform: translate3d(0, -1.5%, 0) rotate(-8deg) scale(1); opacity: 0.82; }
-    100% { transform: translate3d(-4%, 2%, 0) rotate(-3deg) scale(1.06); opacity: 0.94; }
+.hero-ai-ribbon {
+    position: absolute;
+    width: 92%;
+    height: 26%;
+    right: -14%;
+    top: 52%;
+    z-index: 1;
+    border-radius: 999px;
+    background:
+        linear-gradient(90deg,
+            transparent 0%,
+            rgba(104, 26, 160, 0.2) 15%,
+            rgba(255, 91, 0, 0.72) 44%,
+            rgba(255, 209, 113, 0.88) 50%,
+            rgba(255, 100, 0, 0.56) 58%,
+            rgba(103, 19, 155, 0.28) 78%,
+            transparent 100%);
+    filter: blur(1px) drop-shadow(0 0 22px rgba(255, 107, 0, 0.48));
+    opacity: 0.9;
+    transform: perspective(900px) rotateX(58deg) rotateZ(-13deg) translateY(-18%);
+    animation: hero-ribbon-wave 13s ease-in-out infinite alternate;
+    pointer-events: none;
+    will-change: transform, opacity;
 }
 
-@keyframes hero-ai-sheen {
-    0% { transform: translate3d(2%, 1%, 0) rotate(6deg) scale(0.98); opacity: 0.58; }
-    100% { transform: translate3d(-3%, -2%, 0) rotate(10deg) scale(1.04); opacity: 0.8; }
+.hero-ai-ribbon--secondary {
+    top: 34%;
+    right: -6%;
+    width: 78%;
+    height: 18%;
+    opacity: 0.44;
+    filter: blur(3px) drop-shadow(0 0 18px rgba(128, 42, 255, 0.38));
+    transform: perspective(900px) rotateX(58deg) rotateZ(12deg) translateY(-40%);
+    animation-duration: 15s;
+}
+
+.hero-ai-particles {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background-image:
+        radial-gradient(circle, rgba(255, 208, 113, 0.74) 0 1px, transparent 1.7px),
+        radial-gradient(circle, rgba(177, 76, 255, 0.48) 0 1px, transparent 1.8px),
+        radial-gradient(circle, rgba(255, 95, 0, 0.56) 0 1px, transparent 2px);
+    background-size: 120px 120px, 180px 180px, 240px 240px;
+    background-position: 0 0, 60px 80px, 140px 20px;
+    opacity: 0.22;
+    animation: hero-particle-orbit 24s ease-in-out infinite alternate;
+    pointer-events: none;
+    will-change: transform, opacity;
+}
+
+@keyframes hero-gradient-orbit {
+    0% {
+        transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+        opacity: 0.92;
+    }
+
+    50% {
+        transform: translate3d(-1.8%, 1%, 0) scale(1.025) rotate(0.8deg);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate3d(1%, -1%, 0) scale(1.015) rotate(-0.6deg);
+        opacity: 0.96;
+    }
+}
+
+@keyframes hero-liquid-aurora {
+    0% {
+        transform: scale(1.08) rotate(-14deg) translate3d(-2%, 1%, 0);
+        opacity: 0.72;
+    }
+
+    45% {
+        transform: scale(1.16) rotate(8deg) translate3d(3%, -2%, 0);
+        opacity: 0.96;
+    }
+
+    100% {
+        transform: scale(1.12) rotate(-3deg) translate3d(-1%, 3%, 0);
+        opacity: 0.82;
+    }
+}
+
+@keyframes hero-shimmer-pulse {
+    0% {
+        transform: scale(1.05) rotate(-8deg) translate3d(-3%, 2%, 0);
+        opacity: 0.24;
+    }
+
+    50% {
+        transform: scale(1.16) rotate(10deg) translate3d(2%, -3%, 0);
+        opacity: 0.62;
+    }
+
+    100% {
+        transform: scale(1.1) rotate(2deg) translate3d(4%, 1%, 0);
+        opacity: 0.38;
+    }
+}
+
+@keyframes hero-ribbon-wave {
+    0% {
+        transform: perspective(900px) rotateX(58deg) rotateZ(-18deg) translateY(-18%) translateX(-4%) scaleX(1);
+        opacity: 0.76;
+    }
+
+    50% {
+        transform: perspective(900px) rotateX(52deg) rotateZ(-6deg) translateY(-6%) translateX(2%) scaleX(1.08);
+        opacity: 0.98;
+    }
+
+    100% {
+        transform: perspective(900px) rotateX(60deg) rotateZ(-12deg) translateY(-14%) translateX(5%) scaleX(0.98);
+        opacity: 0.86;
+    }
+}
+
+@keyframes hero-particle-orbit {
+    0% {
+        background-position: 0 0, 60px 80px, 140px 20px;
+        opacity: 0.16;
+        transform: rotate(0deg) scale(1);
+    }
+
+    50% {
+        background-position: 120px -80px, -40px 120px, 220px -140px;
+        opacity: 0.3;
+        transform: rotate(1.5deg) scale(1.02);
+    }
+
+    100% {
+        background-position: -80px -180px, 160px -80px, 20px -260px;
+        opacity: 0.22;
+        transform: rotate(-1deg) scale(1.01);
+    }
 }
 
 .hero-bg-gradient-blur {
@@ -167,9 +316,8 @@ nav[data-animate="nav"] {
 .hero-bg-softener {
     z-index: 4;
     background:
-        radial-gradient(ellipse at 14% 46%, rgba(255, 255, 255, 0.9), transparent 44%),
-        radial-gradient(ellipse at 76% 0%, rgba(39, 1, 63, 0.05), transparent 38%),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.94) 34%, rgba(255, 255, 255, 0.48) 62%, rgba(255, 255, 255, 0.04) 100%);
+        radial-gradient(ellipse 72% 120% at 18% 46%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 1) 34%, rgba(255, 255, 255, 0.94) 48%, rgba(255, 255, 255, 0.62) 62%, rgba(255, 255, 255, 0.24) 74%, rgba(255, 255, 255, 0) 88%),
+        linear-gradient(105deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.98) 30%, rgba(255, 255, 255, 0.72) 48%, rgba(255, 255, 255, 0.24) 66%, rgba(255, 255, 255, 0) 82%);
 }
 
 /* Smooth Floating Animations */
@@ -293,8 +441,11 @@ body.mobile-menu-open {
         animation: none !important;
     }
 
+    .hero-spline-bg__frame,
     .hero-spline-bg__frame::before,
-    .hero-spline-bg__frame::after {
+    .hero-spline-bg__frame::after,
+    .hero-ai-ribbon,
+    .hero-ai-particles {
         animation: none !important;
     }
 }
@@ -305,15 +456,21 @@ body.mobile-menu-open {
     }
 
     .hero-spline-bg__frame {
-        opacity: 0.74;
-        -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.04) 0%, rgba(0, 0, 0, 0.12) 42%, rgba(0, 0, 0, 0.7) 70%, #000 100%);
-        mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.04) 0%, rgba(0, 0, 0, 0.12) 42%, rgba(0, 0, 0, 0.7) 70%, #000 100%);
+        right: -14%;
+        width: 84%;
+        opacity: 0.68;
+        -webkit-mask-image:
+            radial-gradient(ellipse 92% 116% at 84% 54%, #000 0%, #000 54%, rgba(0, 0, 0, 0.62) 70%, rgba(0, 0, 0, 0.18) 84%, transparent 97%),
+            linear-gradient(105deg, transparent 0%, rgba(0, 0, 0, 0.03) 24%, rgba(0, 0, 0, 0.42) 48%, #000 68%);
+        mask-image:
+            radial-gradient(ellipse 92% 116% at 84% 54%, #000 0%, #000 54%, rgba(0, 0, 0, 0.62) 70%, rgba(0, 0, 0, 0.18) 84%, transparent 97%),
+            linear-gradient(105deg, transparent 0%, rgba(0, 0, 0, 0.03) 24%, rgba(0, 0, 0, 0.42) 48%, #000 68%);
     }
 
     .hero-bg-softener {
         background:
-            radial-gradient(ellipse at 10% 34%, rgba(255, 255, 255, 0.92), transparent 48%),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.95) 48%, rgba(255, 255, 255, 0.72) 74%, rgba(255, 255, 255, 0.32) 100%);
+            radial-gradient(ellipse 112% 92% at 28% 30%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.995) 54%, rgba(255, 255, 255, 0.86) 72%, rgba(255, 255, 255, 0.38) 100%),
+            linear-gradient(102deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.995) 56%, rgba(255, 255, 255, 0.72) 82%, rgba(255, 255, 255, 0.24) 100%);
     }
 }
 
@@ -372,34 +529,47 @@ body.mobile-menu-open {
 
     .hero-spline-bg__fallback {
         background:
-            radial-gradient(ellipse at 100% 0%, rgba(71, 6, 91, 0.14), transparent 28%),
-            radial-gradient(ellipse at 92% 62%, rgba(136, 31, 121, 0.1), transparent 34%),
-            radial-gradient(ellipse at 88% 18%, rgba(13, 0, 16, 0.04), transparent 30%),
-            radial-gradient(ellipse at 100% 12%, rgba(252, 211, 126, 0.08), transparent 18%),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.99) 0%, rgba(255, 255, 255, 0.97) 58%, rgba(252, 248, 255, 0.86) 100%);
+            radial-gradient(ellipse at 88% 92%, rgba(252, 211, 126, 0.2), transparent 26%),
+            radial-gradient(ellipse at 74% 100%, rgba(184, 38, 20, 0.14), transparent 34%),
+            radial-gradient(ellipse at 98% 76%, rgba(71, 6, 91, 0.14), transparent 42%),
+            linear-gradient(180deg, #fff 0%, rgba(255, 255, 255, 0.98) 54%, rgba(255, 249, 243, 0.76) 100%);
     }
 
     .hero-spline-bg__frame {
-        opacity: 0.42;
-        -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.08) 58%, rgba(0, 0, 0, 0.62) 84%, #000 100%);
-        mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.08) 58%, rgba(0, 0, 0, 0.62) 84%, #000 100%);
+        inset: auto 0 0 0;
+        width: 100%;
+        height: 58%;
+        opacity: 0.78;
+        -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.14) 14%, rgba(0, 0, 0, 0.64) 32%, #000 52%);
+        mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.14) 14%, rgba(0, 0, 0, 0.64) 32%, #000 52%);
     }
 
     .hero-spline-bg__frame::before {
-        top: -12%;
-        right: -64%;
-        width: 116vw;
-        min-width: 0;
-        height: 92vh;
+        inset: -24% -18% -18% -20%;
     }
 
     .hero-spline-bg__frame::after {
-        top: -8%;
-        right: -46%;
-        width: 98vw;
-        min-width: 0;
-        height: 86vh;
-        opacity: 0.56;
+        inset: -20% -14% -12% -18%;
+        opacity: 0.46;
+    }
+
+    .hero-ai-ribbon {
+        top: 56%;
+        right: -22%;
+        width: 112%;
+        height: 24%;
+        opacity: 0.68;
+    }
+
+    .hero-ai-ribbon--secondary {
+        top: 34%;
+        right: -12%;
+        width: 92%;
+        opacity: 0.34;
+    }
+
+    .hero-ai-particles {
+        opacity: 0.16;
     }
 
     .hero-bg-gradient-blur {
@@ -408,8 +578,7 @@ body.mobile-menu-open {
 
     .hero-bg-softener {
         background:
-            radial-gradient(ellipse at 10% 22%, rgba(255, 255, 255, 0.96), transparent 54%),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.995) 0%, rgba(255, 255, 255, 0.98) 68%, rgba(255, 255, 255, 0.76) 100%);
+            linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.995) 38%, rgba(255, 255, 255, 0.9) 58%, rgba(255, 255, 255, 0.54) 74%, rgba(255, 255, 255, 0.12) 92%, transparent 100%);
     }
 
     .landing-hero h1 {
