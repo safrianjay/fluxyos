@@ -7,8 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const activePrices = document.querySelectorAll('.active-price');
     const slashPrices = document.querySelectorAll('.slash-price');
-    const mobileMenu = document.getElementById('mobile-menu') || document.getElementById('pricing-mobile-menu');
-    const mobileMenuToggle = document.querySelector('.mobile-menu-toggle') || document.querySelector('.pricing-mobile-menu-toggle');
+    const mobileMenu = document.getElementById('pricing-mobile-menu');
+    const mobileMenuToggle = document.querySelector('.pricing-mobile-menu-toggle');
 
     const setMobileMenu = isOpen => {
         if (!mobileMenu || !mobileMenuToggle) return;
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setMobileMenu(mobileMenu?.classList.contains('hidden'));
     });
 
-    document.querySelectorAll('.mobile-menu-link, .pricing-mobile-menu-link').forEach(link => {
+    document.querySelectorAll('.pricing-mobile-menu-link').forEach(link => {
         link.addEventListener('click', () => setMobileMenu(false));
     });
 

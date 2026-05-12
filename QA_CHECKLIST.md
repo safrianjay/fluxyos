@@ -78,7 +78,6 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 9 | Page is readable at 375px, 768px, 1280px widths |
 | 10 | Use-case pages use light hero/product visuals, no dark hero cards, consistent `text-[44px] md:text-[56px]` H1 scale, and no mobile horizontal overflow |
 | 11 | Use-case menu entry is clickable from desktop and mobile nav. Search all copied landing-page nav blocks for the new label and confirm every non-active entry uses the real localized route, not `href="#"`. |
-| 12 | Marketing nav consistency: all public landing/use-case navbars expose the same Platform, Use Cases, Pricing, Sign in, and Try FluxyOS routes; desktop and mobile menus match; no navbar link uses `href="#"`; every navbar URL returns a valid page. |
 
 ### B. Footer Changes (includes/footer.html, assets/css/footer.css, assets/js/footer-loader.js)
 
