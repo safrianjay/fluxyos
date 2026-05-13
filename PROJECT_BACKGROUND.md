@@ -352,6 +352,6 @@ Netlify auto-deploys on main push. No manual deploy step needed.
 - Real AI backend — `/api/v1/brain/chat` exists but returns mock data
 - CSV export for bills (button exists, no handler)
 - Date range filtering on dashboard (button exists, no handler)
-- Search on any table (input exists, no handler)
+- Search on bills/subscriptions tables (input exists, no handler). Ledger search is implemented client-side against the selected date period.
 
 **Before building any of the above: check this list first to avoid rebuilding from scratch.**

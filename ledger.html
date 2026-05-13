@@ -28,7 +28,7 @@
                 </button>
                 <div class="hidden sm:flex relative w-full max-w-lg">
                     <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    <input type="text" placeholder="Search transactions, tags, or vendors..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[13px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
+                    <input id="ledger-search-input" type="search" placeholder="Search transactions, tags, or vendors..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[13px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
                 </div>
             </div>
 
@@ -205,6 +205,7 @@
         let ledgerCurrentPage = 1;
         let ledgerSortKey = 'date';
         let ledgerSortDirection = 'desc';
+        let ledgerSearchTerm = '';
         let ledgerRangeStart = getMonthStartKey();
         let ledgerRangeEnd = getMonthEndKey();
         window.FluxyDateRangePicker?.mount('#ledger-date-range-picker', {
@@ -296,7 +297,7 @@
             if (downloadBtn) downloadBtn.disabled = transactions.length === 0;
             applyLedgerMonthFilter();
 
-            if (currentLedgerTransactions.length === 0) {
+            if (allLedgerTransactions.length === 0) {
                 tableContainer.classList.add('hidden');
                 pagination?.classList.add('hidden');
                 emptyContainer.classList.remove('hidden');
@@ -316,12 +317,37 @@
         function applyLedgerMonthFilter() {
             const downloadBtn = document.getElementById('download-csv-btn');
 
-            currentLedgerTransactions = [...allLedgerTransactions];
+            currentLedgerTransactions = allLedgerTransactions.filter(transaction => matchesLedgerSearch(transaction, ledgerSearchTerm));
             renderLedgerSummaryCards(currentLedgerTransactions);
             renderLedgerActivity(currentLedgerTransactions);
             if (downloadBtn) downloadBtn.disabled = currentLedgerTransactions.length === 0;
             ledgerCurrentPage = 1;
             renderLedgerTable();
+        }
+
+        function normalizeSearchText(value) {
+            return String(value ?? '').toLowerCase().trim();
+        }
+
+        function matchesLedgerSearch(transaction, term) {
+            const queryText = normalizeSearchText(term);
+            if (!queryText) return true;
+
+            const dateText = transaction.timestamp?.toDate
+                ? transaction.timestamp.toDate().toLocaleString()
+                : '';
+            const searchableText = [
+                transaction.vendor_name,
+                transaction.category,
+                transaction.status,
+                transaction.type,
+                getTransactionType(transaction),
+                transaction.amount,
+                formatTransactionAmount(transaction),
+                dateText
+            ].map(normalizeSearchText).join(' ');
+
+            return searchableText.includes(queryText);
         }
 
         function getTimestampMs(row) {
@@ -598,6 +624,23 @@
             const startIndex = (ledgerCurrentPage - 1) * LEDGER_PAGE_SIZE;
             const visibleRows = sortedRows.slice(startIndex, startIndex + LEDGER_PAGE_SIZE);
 
+            if (sortedRows.length === 0) {
+                body.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center">
+                            <p class="text-[13px] font-bold text-gray-700">No matching transactions</p>
+                            <p class="mt-1 text-[12px] text-gray-400">Try another vendor, category, type, status, amount, or date.</p>
+                        </td>
+                    </tr>
+                `;
+                if (summary) summary.textContent = allLedgerTransactions.length === 0 ? 'Showing 0 transactions' : `Showing 0 of ${allLedgerTransactions.length} transactions`;
+                if (indicator) indicator.textContent = '1 / 1';
+                if (prevButton) prevButton.disabled = true;
+                if (nextButton) nextButton.disabled = true;
+                updateSortIndicators();
+                return;
+            }
+
             body.innerHTML = visibleRows.map(row => `
                 <tr class="hover:bg-gray-50 transition-colors">
                     <td class="px-6 py-4 text-gray-500">${row.timestamp?.toDate().toLocaleString() || 'Just now'}</td>
@@ -628,6 +671,11 @@
             if (nextButton) nextButton.disabled = ledgerCurrentPage === totalPages;
             updateSortIndicators();
         }
+
+        document.getElementById('ledger-search-input')?.addEventListener('input', (event) => {
+            ledgerSearchTerm = event.target.value;
+            applyLedgerMonthFilter();
+        });
 
         document.querySelectorAll('.ledger-sort-btn').forEach(button => {
             button.addEventListener('click', () => {
