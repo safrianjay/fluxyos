@@ -5,7 +5,7 @@
 :root {
     --fluxy-orange: #E85D19;
     --fluxy-orange-hover: #D44400;
-    --sidebar-bg: #0B0F19;
+    --sidebar-bg: #FFFFFF;
 }
 
 main > header {
@@ -71,6 +71,142 @@ main > header {
     100% { background-position: 0% 50%; }
 }
 
+/* App Sidebar Design System */
+#sidebar.app-sidebar-light {
+    width: 220px !important;
+    background: #FFFFFF !important;
+    color: #1E2F4A !important;
+    border-color: #E2E8F0 !important;
+    border-top-left-radius: 8px;
+    box-shadow: none;
+}
+
+#sidebar.app-sidebar-light #sidebar-header,
+#sidebar.app-sidebar-light #profile-area {
+    height: 64px;
+    min-height: 64px;
+    background: #FFFFFF !important;
+    border-color: #E2E8F0 !important;
+}
+
+#sidebar.app-sidebar-light #sidebar-header {
+    align-items: center;
+    padding: 0 16px !important;
+}
+
+#sidebar.app-sidebar-light #logo-container {
+    gap: 12px;
+}
+
+#sidebar.app-sidebar-light #logo-icon {
+    width: 36px;
+    height: 36px;
+    color: #F3F6FA !important;
+}
+
+#sidebar.app-sidebar-light .logo-text {
+    color: #1E2F4A !important;
+    font-size: 18px !important;
+    line-height: 1.25;
+    letter-spacing: 0;
+}
+
+#sidebar.app-sidebar-light #nav-container {
+    padding: 20px 14px 24px !important;
+    gap: 4px;
+    align-items: stretch !important;
+}
+
+#sidebar.app-sidebar-light .section-label {
+    color: #1E2F4A !important;
+    font-size: 13px !important;
+    line-height: 1.2;
+    font-weight: 600 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    padding: 0 4px !important;
+    margin: 20px 0 8px !important;
+}
+
+#sidebar.app-sidebar-light .section-label:first-child {
+    margin-top: 0 !important;
+}
+
+#sidebar.app-sidebar-light .nav-item {
+    min-height: 38px;
+    gap: 12px !important;
+    padding: 8px 10px !important;
+    border: 0 !important;
+    border-radius: 8px !important;
+    color: #1E2F4A !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    justify-content: flex-start !important;
+}
+
+#sidebar.app-sidebar-light .nav-item:hover {
+    background: #F8FAFC !important;
+    color: #13233A !important;
+    transform: none;
+}
+
+#sidebar.app-sidebar-light .sidebar-icon {
+    width: 20px;
+    height: 20px;
+    color: #64748B;
+    flex-shrink: 0;
+}
+
+#sidebar.app-sidebar-light .sidebar-text {
+    color: inherit;
+    font-size: 15px !important;
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: 0;
+}
+
+#sidebar.app-sidebar-light .dashboard-active {
+    color: #EA580C !important;
+    background: transparent !important;
+}
+
+#sidebar.app-sidebar-light .dashboard-active .sidebar-icon {
+    color: #EA580C !important;
+}
+
+#sidebar.app-sidebar-light #profile-area {
+    height: auto;
+    min-height: 0;
+    padding: 14px !important;
+}
+
+#sidebar.app-sidebar-light #sidebar-user-avatar {
+    width: 36px;
+    height: 36px;
+    border-color: #E2E8F0 !important;
+}
+
+#sidebar.app-sidebar-light #sidebar-user-name {
+    color: #1E2F4A !important;
+    font-size: 14px !important;
+}
+
+#sidebar.app-sidebar-light #logout-btn {
+    color: #64748B !important;
+    padding: 8px 10px !important;
+    border-radius: 8px !important;
+    justify-content: flex-start !important;
+}
+
+#sidebar.app-sidebar-light #logout-btn:hover {
+    background: #FEF2F2 !important;
+    color: #DC2626 !important;
+}
+
+#sidebar.app-sidebar-light #logout-btn .sidebar-text {
+    font-size: 14px !important;
+}
+
 /* Interactive Sidebar Items */
 .nav-item {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -78,10 +214,6 @@ main > header {
 
 .nav-item:hover {
     transform: translateX(4px);
-}
-
-#sidebar.w-\[80px\] .nav-item:hover {
-    transform: scale(1.1);
 }
 
 /* Custom Scrollbar for Premium Feel */

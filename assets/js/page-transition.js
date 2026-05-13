@@ -70,8 +70,8 @@
             }
 
             .fluxy-page-transition__sidebar {
-                width: 240px;
-                flex: 0 0 240px;
+                width: 220px;
+                flex: 0 0 220px;
                 background: #FFFFFF;
                 border-right: 1px solid #E2E8F0;
                 padding: 20px 18px;
@@ -189,8 +189,8 @@
 
             @media (max-width: 760px) {
                 .fluxy-page-transition__sidebar {
-                    width: 72px;
-                    flex-basis: 72px;
+                    width: 64px;
+                    flex-basis: 64px;
                     padding: 16px 12px;
                 }
 

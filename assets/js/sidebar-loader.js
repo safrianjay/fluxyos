@@ -22,22 +22,19 @@
 
     const sidebarHTML = `
         <!-- Logo Area (Official Login Page Logo) -->
-        <div class="logo-area h-16 flex items-center px-5 border-b border-gray-800/60 bg-[#0B0F19] sticky top-0 z-10 transition-all duration-300" id="sidebar-header">
-            <div id="logo-container" class="flex items-center gap-3 cursor-pointer group overflow-hidden w-full transition-all duration-300">
-                <div class="w-8 h-8 text-[#EA580C] flex-shrink-0 transition-all duration-300 mx-auto lg:mx-0" id="logo-icon">
+        <div class="logo-area h-16 flex items-center px-4 border-b border-slate-200 bg-white sticky top-0 z-10" id="sidebar-header">
+            <div id="logo-container" class="flex items-center gap-3 cursor-pointer group overflow-hidden w-full">
+                <div class="w-9 h-9 text-[#F3F6FA] flex-shrink-0" id="logo-icon">
                     <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
                         <rect width="40" height="40" rx="8" fill="currentColor" />
                         <g transform="translate(1.5, 0)">
-                            <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
-                            <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                            <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#1E2F4A" />
+                            <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#1E2F4A" />
                         </g>
                     </svg>
                 </div>
-                <span class="logo-text font-bold text-[17px] tracking-tight text-white group-hover:text-[#EA580C] transition-colors sidebar-hide">FluxyOS</span>
+                <span class="logo-text font-bold text-[18px] tracking-tight text-[#1E2F4A] transition-colors">FluxyOS</span>
             </div>
-            <button id="sidebar-toggle" class="ml-auto p-1.5 text-gray-500 hover:text-white rounded-md hover:bg-gray-800 transition-colors sidebar-hide">
-                <svg class="w-5 h-5 transition-transform duration-300" id="toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
-            </button>
         </div>
 
         <!-- Navigation Menu -->
@@ -97,13 +94,10 @@
         'logout-btn': '<svg class="sidebar-icon sidebar-logout-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>'
     };
 
-    function applyDashboardSidebarTheme(sidebar) {
-        const isDashboard = window.location.pathname.includes('dashboard');
-        if (!isDashboard) return;
-
-        sidebar.classList.add('dashboard-sidebar-light');
-        sidebar.classList.remove('w-[260px]', 'w-[452px]', 'bg-[#0B0F19]', 'text-gray-300', 'border-gray-800');
-        sidebar.classList.add('w-[240px]', 'bg-white', 'text-[#1E2F4A]', 'border-slate-200', 'rounded-tl-[8px]', 'overflow-hidden');
+    function applyAppSidebarTheme(sidebar) {
+        sidebar.classList.add('app-sidebar-light');
+        sidebar.classList.remove('w-[260px]', 'w-[240px]', 'w-[452px]', 'bg-[#0B0F19]', 'text-gray-300', 'border-gray-800');
+        sidebar.classList.add('w-[220px]', 'bg-white', 'text-[#1E2F4A]', 'border-slate-200', 'rounded-tl-[8px]', 'overflow-hidden');
 
         Object.entries(dashboardLucideIcons).forEach(([id, svg]) => {
             const node = document.getElementById(id);
@@ -117,7 +111,7 @@
         if (!sidebar) return;
 
         sidebar.innerHTML = sidebarHTML;
-        applyDashboardSidebarTheme(sidebar);
+        applyAppSidebarTheme(sidebar);
         
         // Highlight Active
         const path = window.location.pathname;
@@ -133,43 +127,11 @@
         if (activeId) {
             const el = document.getElementById(pageIdMap[activeId]);
             if (el) {
-                if (path.includes('dashboard')) {
-                    el.classList.add('dashboard-active');
-                } else {
-                    el.classList.add('bg-[#1A1F26]', 'text-white', 'border', 'border-gray-700/50', 'shadow-sm');
-                }
+                el.classList.add('dashboard-active');
                 const icon = el.querySelector('svg');
                 if (icon) icon.classList.add('text-[#EA580C]');
             }
         }
-
-        // Sidebar Toggle Logic
-        const toggleBtn = document.getElementById('sidebar-toggle');
-        const header = document.getElementById('sidebar-header');
-        const logoContainer = document.getElementById('logo-container');
-
-        toggleBtn.onclick = () => {
-            const isDashboard = sidebar.classList.contains('dashboard-sidebar-light');
-            const expandedWidth = 'w-[240px]';
-            const isCollapsed = sidebar.classList.contains('w-[80px]');
-            
-            if (isCollapsed) {
-                // Expand
-                sidebar.classList.replace('w-[80px]', expandedWidth);
-                header.classList.add('px-5');
-                header.classList.remove('justify-center');
-                logoContainer.classList.remove('justify-center');
-            } else {
-                // Collapse
-                sidebar.classList.replace(expandedWidth, 'w-[80px]');
-                header.classList.remove('px-5');
-                header.classList.add('justify-center');
-                logoContainer.classList.add('justify-center');
-            }
-
-            const hides = sidebar.querySelectorAll('.sidebar-hide');
-            hides.forEach(el => el.classList.toggle('hidden'));
-        };
 
         // Logout
         document.getElementById('logout-btn').onclick = async () => {

@@ -54,7 +54,10 @@ This document defines the visual and functional standards for FluxyOS. Follow th
 ---
 
 ## 📐 Layout & Spacing
-- **Sidebar Width**: `260px` (Collapsed: `80px`).
+- **Dashboard/App Sidebar Width**: `220px` fixed. There is no collapsed sidebar state.
+- **Dashboard/App Sidebar Theme**: `bg-white`, `border-slate-200`, dark navy text `#1E2F4A`, active item text/icon `#EA580C` with no orange background.
+- **Dashboard/App Sidebar Header**: `64px` tall to align with the main app topbar divider. Logo mark is `36px`, logo text is `18px`, vertically centered.
+- **Dashboard/App Sidebar Icons**: Lucide-style stroke icons, `20px`, no mixed icon systems inside the sidebar.
 - **Main Padding**: `p-6` or `p-8` for desktop.
 - **Content Max-Width**: `1400px`.
 - **Gap Standards**: 
@@ -65,7 +68,7 @@ This document defines the visual and functional standards for FluxyOS. Follow th
 
 ## ✨ Animations & Micro-interactions
 - **Transitions**: Use `transition-all duration-200 ease-in-out` for hovers.
-- **Sidebar Collapse**: Use CSS `transition: width 0.3s ease`.
+- **Dashboard/App Sidebar Hover**: Use only subtle `#F8FAFC` hover backgrounds. Do not add collapse/expand interactions.
 - **Shadows**: Elevate cards on hover using `hover:shadow-md`.
 
 ---
@@ -75,6 +78,7 @@ This document defines the visual and functional standards for FluxyOS. Follow th
 2. [ ] Is the primary action color `#EA580C`?
 3. [ ] Are corners rounded with `rounded-xl` or `rounded-lg`?
 4. [ ] Does the page use the centralized `sidebar-loader.js`?
+5. [ ] For dashboard/app pages, does the page use the shared `220px` light sidebar without custom page-level sidebar markup?
 
 ---
 
