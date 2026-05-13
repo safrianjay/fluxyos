@@ -112,8 +112,8 @@ main > header {
 }
 
 #sidebar.app-sidebar-light #nav-container {
-    padding: 20px 14px 24px !important;
-    gap: 4px;
+    padding: 16px 14px 20px !important;
+    gap: 2px;
     align-items: stretch !important;
 }
 
@@ -125,7 +125,7 @@ main > header {
     letter-spacing: 0 !important;
     text-transform: none !important;
     padding: 0 4px !important;
-    margin: 20px 0 8px !important;
+    margin: 16px 0 6px !important;
 }
 
 #sidebar.app-sidebar-light .section-label:first-child {
@@ -133,9 +133,9 @@ main > header {
 }
 
 #sidebar.app-sidebar-light .nav-item {
-    min-height: 38px;
+    min-height: 32px;
     gap: 12px !important;
-    padding: 8px 10px !important;
+    padding: 6px 8px !important;
     border: 0 !important;
     border-radius: 8px !important;
     color: #1E2F4A !important;
