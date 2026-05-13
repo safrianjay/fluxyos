@@ -141,6 +141,11 @@ The Add Transaction modal supports bulk CSV upload only for the
 `'transaction'` context. Bills and subscriptions keep their single-record modal
 flow.
 
+The transaction modal must separate single entry and CSV import with tabs. Bulk
+CSV mode reuses the same primary submit button as the modal footer (`Upload CSV`
+while the bulk tab is active); do not add a second upload CTA inside the upload
+panel.
+
 Accepted headers:
 
 | Header | Required | Notes |

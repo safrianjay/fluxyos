@@ -36,52 +36,64 @@ window.showAddTransactionModal = function(options = {}) {
                     </button>
                 </div>
                 <form id="global-tx-form" class="p-6 space-y-5 overflow-y-auto">
-                    <div>
-                        <label for="tx-amount" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Amount (Rp)</label>
-                        <input type="text" id="tx-amount" name="amount" required placeholder="0" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E85D19] focus:border-[#E85D19] outline-none font-mono font-bold text-lg">
+                    ${supportsBulkCsv ? `
+                    <div class="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" role="tablist" aria-label="Transaction entry method">
+                        <button type="button" id="tx-tab-single" class="tx-entry-tab rounded-lg px-3 py-2 text-[13px] font-bold transition-all bg-white text-gray-900 shadow-sm" aria-selected="true" aria-controls="tx-single-panel">Single transaction</button>
+                        <button type="button" id="tx-tab-bulk" class="tx-entry-tab rounded-lg px-3 py-2 text-[13px] font-bold transition-all text-gray-500 hover:text-gray-900" aria-selected="false" aria-controls="tx-bulk-panel">CSV bulk upload</button>
                     </div>
-                    <div>
-                        <label for="tx-vendor" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Vendor / Description</label>
-                        <input type="text" id="tx-vendor" name="vendor" required placeholder="e.g. AWS, Client Payment" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    ` : ''}
+                    <div id="tx-single-panel" class="space-y-5">
                         <div>
-                            <label for="tx-category" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Category</label>
-                            <select id="tx-category" name="category" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
-                                <option value="Revenue" ${defaultCategory === 'Revenue' ? 'selected' : ''}>Revenue</option>
-                                <option value="Marketing" ${defaultCategory === 'Marketing' ? 'selected' : ''}>Marketing</option>
-                                <option value="Infrastructure" ${defaultCategory === 'Infrastructure' ? 'selected' : ''}>Infrastructure</option>
-                                <option value="Operations" ${defaultCategory === 'Operations' ? 'selected' : ''}>Operations</option>
-                                <option value="SaaS" ${defaultCategory === 'SaaS' ? 'selected' : ''}>SaaS</option>
-                            </select>
+                            <label for="tx-amount" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Amount (Rp)</label>
+                            <input type="text" id="tx-amount" name="amount" required placeholder="0" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E85D19] focus:border-[#E85D19] outline-none font-mono font-bold text-lg">
                         </div>
                         <div>
-                            <label for="tx-type" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Type</label>
-                            <select id="tx-type" name="type" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
-                                <option value="expense" ${defaultType === 'expense' ? 'selected' : ''}>Expense</option>
-                                <option value="revenue" ${defaultType === 'revenue' ? 'selected' : ''}>Revenue</option>
-                            </select>
+                            <label for="tx-vendor" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Vendor / Description</label>
+                            <input type="text" id="tx-vendor" name="vendor" required placeholder="e.g. AWS, Client Payment" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="tx-category" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Category</label>
+                                <select id="tx-category" name="category" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                                    <option value="Revenue" ${defaultCategory === 'Revenue' ? 'selected' : ''}>Revenue</option>
+                                    <option value="Marketing" ${defaultCategory === 'Marketing' ? 'selected' : ''}>Marketing</option>
+                                    <option value="Infrastructure" ${defaultCategory === 'Infrastructure' ? 'selected' : ''}>Infrastructure</option>
+                                    <option value="Operations" ${defaultCategory === 'Operations' ? 'selected' : ''}>Operations</option>
+                                    <option value="SaaS" ${defaultCategory === 'SaaS' ? 'selected' : ''}>SaaS</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="tx-type" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Type</label>
+                                <select id="tx-type" name="type" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                                    <option value="expense" ${defaultType === 'expense' ? 'selected' : ''}>Expense</option>
+                                    <option value="revenue" ${defaultType === 'revenue' ? 'selected' : ''}>Revenue</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                     ${supportsBulkCsv ? `
-                    <div class="border-t border-gray-100 pt-5">
-                        <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 transition-all duration-200" id="tx-csv-dropzone">
-                            <div class="flex items-start gap-3">
-                                <div class="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-[#E85D19] flex-shrink-0">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-[13px] font-bold text-gray-900">Bulk add from CSV</p>
-                                    <p class="text-[12px] text-gray-500 mt-1 leading-relaxed">Use headers: <span class="font-mono">Description, Category, Type, Amount, Status</span>. Type must be <span class="font-mono">revenue</span> or <span class="font-mono">expense</span>; Status may be <span class="font-mono">Completed</span> or <span class="font-mono">Missing Receipt</span>.</p>
-                                    <p class="text-[11px] text-gray-400 mt-2 font-mono">Example: Client Payment,Revenue,revenue,1250000,Completed</p>
-                                </div>
-                            </div>
-                            <div class="mt-4 flex flex-col sm:flex-row gap-2">
-                                <label for="tx-csv-file" class="flex-1 cursor-pointer px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors truncate" id="tx-csv-file-label">Choose CSV file</label>
-                                <input type="file" id="tx-csv-file" accept=".csv,text/csv" class="sr-only">
-                                <button type="button" id="tx-csv-upload-btn" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60" disabled>Upload CSV</button>
-                            </div>
+                    <div id="tx-bulk-panel" class="hidden space-y-4">
+                        <div class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 transition-all duration-200" id="tx-csv-dropzone">
+                            <label for="tx-csv-file" class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-7 text-center transition-all duration-200 hover:border-[#E85D19] hover:bg-gray-50">
+                                <span class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#E85D19]">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
+                                </span>
+                                <span id="tx-csv-file-label" class="max-w-full truncate text-[13px] font-bold text-gray-900">Choose or drop a CSV file</span>
+                                <span class="mt-1 text-[12px] text-gray-500">The file is validated before anything is saved.</span>
+                            </label>
+                            <input type="file" id="tx-csv-file" accept=".csv,text/csv" class="sr-only">
                             <div id="tx-csv-feedback" class="hidden mt-3 text-[12px] font-medium"></div>
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-white p-4">
+                            <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">CSV structure</p>
+                            <div class="mt-3 grid gap-2 text-[12px] text-gray-600">
+                                <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Description</span><span class="text-right">Required vendor or memo</span></div>
+                                <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Category</span><span class="text-right">Revenue, Marketing, Infrastructure, Operations, SaaS</span></div>
+                                <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Type</span><span class="text-right">revenue or expense</span></div>
+                                <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Amount</span><span class="text-right">Raw Rp number, e.g. 1250000</span></div>
+                                <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Status</span><span class="text-right">Optional: Completed or Missing Receipt</span></div>
+                            </div>
+                            <p class="mt-3 rounded-lg bg-gray-50 px-3 py-2 font-mono text-[11px] text-gray-500">Client Payment,Revenue,revenue,1250000,Completed</p>
                         </div>
                     </div>
                     ` : ''}
@@ -97,6 +109,7 @@ window.showAddTransactionModal = function(options = {}) {
     const wrapper = document.createElement('div');
     wrapper.innerHTML = modalHTML;
     document.body.appendChild(wrapper);
+    let activeEntryMode = 'single';
 
     // Live Formatting for Amount
     const amountInput = document.getElementById('tx-amount');
@@ -233,52 +246,81 @@ window.showAddTransactionModal = function(options = {}) {
         feedback.classList.remove('hidden');
     }
 
+    function setSubmitButton(label, disabled = false) {
+        const btn = document.getElementById('tx-submit-btn');
+        if (!btn) return;
+        btn.disabled = disabled;
+        btn.innerHTML = `<span>${label}</span><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>`;
+    }
+
     if (supportsBulkCsv) {
+        const singleTab = document.getElementById('tx-tab-single');
+        const bulkTab = document.getElementById('tx-tab-bulk');
+        const singlePanel = document.getElementById('tx-single-panel');
+        const bulkPanel = document.getElementById('tx-bulk-panel');
+        const singleFields = [amountInput, document.getElementById('tx-vendor'), document.getElementById('tx-category'), document.getElementById('tx-type')];
         const fileInput = document.getElementById('tx-csv-file');
         const fileLabel = document.getElementById('tx-csv-file-label');
-        const uploadButton = document.getElementById('tx-csv-upload-btn');
         const dropzone = document.getElementById('tx-csv-dropzone');
 
-        fileInput.onchange = () => {
-            const file = fileInput.files?.[0];
-            uploadButton.disabled = !file;
-            fileLabel.textContent = file ? file.name : 'Choose CSV file';
-            setCsvFeedback(file ? 'Ready to upload. We will validate the rows before saving.' : '', 'info');
+        const setEntryMode = (mode) => {
+            activeEntryMode = mode;
+            const isBulk = mode === 'bulk';
+            singlePanel.classList.toggle('hidden', isBulk);
+            bulkPanel.classList.toggle('hidden', !isBulk);
+            singleTab.className = `tx-entry-tab rounded-lg px-3 py-2 text-[13px] font-bold transition-all ${isBulk ? 'text-gray-500 hover:text-gray-900' : 'bg-white text-gray-900 shadow-sm'}`;
+            bulkTab.className = `tx-entry-tab rounded-lg px-3 py-2 text-[13px] font-bold transition-all ${isBulk ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`;
+            singleTab.setAttribute('aria-selected', String(!isBulk));
+            bulkTab.setAttribute('aria-selected', String(isBulk));
+            singleFields.forEach(field => {
+                field.disabled = isBulk;
+            });
+            setSubmitButton(isBulk ? 'Upload CSV' : submitLabel, isBulk && !fileInput.files?.[0]);
+            if (isBulk) {
+                setCsvFeedback(fileInput.files?.[0] ? 'Ready to upload. We will validate every row before saving.' : '', 'info');
+            }
         };
 
-        uploadButton.onclick = async () => {
+        singleTab.onclick = () => setEntryMode('single');
+        bulkTab.onclick = () => setEntryMode('bulk');
+
+        const updateSelectedCsvFile = () => {
             const file = fileInput.files?.[0];
-            if (!file) return;
+            setSubmitButton('Upload CSV', !file);
+            fileLabel.textContent = file ? file.name : 'Choose or drop a CSV file';
+            dropzone.classList.toggle('border-[#E85D19]', Boolean(file));
+            dropzone.classList.toggle('ring-2', Boolean(file));
+            dropzone.classList.toggle('ring-orange-100', Boolean(file));
+            setCsvFeedback(file ? 'Ready to upload. We will validate every row before saving.' : '', 'info');
+        };
 
-            uploadButton.disabled = true;
-            uploadButton.textContent = 'Reading...';
+        fileInput.onchange = () => {
+            updateSelectedCsvFile();
+        };
+
+        dropzone.ondragover = (event) => {
+            event.preventDefault();
             dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#E85D19]');
+        };
 
-            try {
-                const csvText = await file.text();
-                const transactions = parseBulkTransactions(csvText);
-                uploadButton.textContent = `Uploading ${transactions.length}...`;
-                const { ds, user } = await getTransactionDataService();
-                await ds.addTransactions(user.uid, transactions);
-                setCsvFeedback(`${transactions.length} transactions imported successfully.`, 'success');
-                uploadButton.textContent = 'Uploaded';
-                fileInput.value = '';
-                fileLabel.textContent = 'Choose CSV file';
-                if (window.loadDashboard) await window.loadDashboard();
-                if (window.loadLedger) await window.loadLedger();
-                window.showToast(`${transactions.length} transactions imported from CSV.`, "success");
-                window.setTimeout(() => {
-                    uploadButton.textContent = 'Upload CSV';
-                    uploadButton.disabled = true;
-                    dropzone.classList.remove('ring-2', 'ring-orange-100', 'border-[#E85D19]');
-                }, 1200);
-            } catch (err) {
-                console.error("CSV import failed:", err);
-                setCsvFeedback(err.message, 'error');
-                uploadButton.textContent = 'Upload CSV';
-                uploadButton.disabled = false;
+        dropzone.ondragleave = () => {
+            if (!fileInput.files?.[0]) {
                 dropzone.classList.remove('ring-2', 'ring-orange-100', 'border-[#E85D19]');
             }
+        };
+
+        dropzone.ondrop = (event) => {
+            event.preventDefault();
+            const file = event.dataTransfer?.files?.[0];
+            if (!file) return;
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                setCsvFeedback('Upload a .csv file.', 'error');
+                return;
+            }
+            const files = new DataTransfer();
+            files.items.add(file);
+            fileInput.files = files.files;
+            updateSelectedCsvFile();
         };
     }
 
@@ -287,9 +329,41 @@ window.showAddTransactionModal = function(options = {}) {
         e.preventDefault();
         const btn = document.getElementById('tx-submit-btn');
         btn.disabled = true;
-        btn.innerText = "Deploying...";
+        btn.innerText = activeEntryMode === 'bulk' ? "Reading..." : "Deploying...";
+        let keepSubmitState = false;
 
         try {
+            if (activeEntryMode === 'bulk') {
+                const fileInput = document.getElementById('tx-csv-file');
+                const dropzone = document.getElementById('tx-csv-dropzone');
+                const fileLabel = document.getElementById('tx-csv-file-label');
+                const file = fileInput?.files?.[0];
+                if (!file) {
+                    setCsvFeedback('Choose a CSV file before uploading.', 'error');
+                    return;
+                }
+
+                dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#E85D19]');
+                const csvText = await file.text();
+                const transactions = parseBulkTransactions(csvText);
+                btn.innerText = `Uploading ${transactions.length}...`;
+                const { ds, user } = await getTransactionDataService();
+                await ds.addTransactions(user.uid, transactions);
+                setCsvFeedback(`${transactions.length} transactions imported successfully.`, 'success');
+                if (window.loadDashboard) await window.loadDashboard();
+                if (window.loadLedger) await window.loadLedger();
+                window.showToast(`${transactions.length} transactions imported from CSV.`, "success");
+                btn.innerText = 'Uploaded';
+                keepSubmitState = true;
+                fileInput.value = '';
+                fileLabel.textContent = 'Choose or drop a CSV file';
+                window.setTimeout(() => {
+                    setSubmitButton('Upload CSV', true);
+                    dropzone.classList.remove('ring-2', 'ring-orange-100', 'border-[#E85D19]');
+                }, 1200);
+                return;
+            }
+
             const rawAmount = document.getElementById('tx-amount').value.replace(/\./g, "");
             const data = {
                 amount: parseFloat(rawAmount),
@@ -325,17 +399,24 @@ window.showAddTransactionModal = function(options = {}) {
                 window.showToast("Session expired. Please log in again.", "error");
             }
         } catch (err) {
-            console.error("FluxyOS Engine Error:", err);
+            console.error(activeEntryMode === 'bulk' ? "CSV import failed:" : "FluxyOS Engine Error:", err);
             if (err.message.includes('permission-denied') || err.code === 'permission-denied') {
                 window.showToast("CRITICAL: Permission Denied. Check Firestore Rules.", "error");
             } else if (err.message.includes('Session expired')) {
                 window.showToast("Session expired. Please log in again.", "error");
+            } else if (activeEntryMode === 'bulk') {
+                setCsvFeedback(err.message, 'error');
             } else {
                 window.showToast("FluxyOS Engine Error: " + err.message, "error");
             }
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = `<span>${submitLabel}</span><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>`;
+            if (keepSubmitState) return;
+            if (activeEntryMode === 'bulk') {
+                const hasFile = Boolean(document.getElementById('tx-csv-file')?.files?.[0]);
+                setSubmitButton('Upload CSV', !hasFile);
+            } else {
+                setSubmitButton(submitLabel, false);
+            }
         }
     };
 };
