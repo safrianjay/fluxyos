@@ -72,23 +72,23 @@
                                 <tr class="bg-gray-50 border-b border-gray-200">
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                         <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="date">
-                                            Date <span class="ledger-sort-icon text-gray-400">Sort</span>
+                                            Date <span class="ledger-sort-icon text-gray-400" aria-hidden="true"></span>
                                         </button>
                                     </th>
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Description</th>
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                         <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="category">
-                                            Category <span class="ledger-sort-icon text-gray-400">Sort</span>
+                                            Category <span class="ledger-sort-icon text-gray-400" aria-hidden="true"></span>
                                         </button>
                                     </th>
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                         <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="amount">
-                                            Amount <span class="ledger-sort-icon text-gray-400">Sort</span>
+                                            Amount <span class="ledger-sort-icon text-gray-400" aria-hidden="true"></span>
                                         </button>
                                     </th>
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                         <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="status">
-                                            Status <span class="ledger-sort-icon text-gray-400">Sort</span>
+                                            Status <span class="ledger-sort-icon text-gray-400" aria-hidden="true"></span>
                                         </button>
                                     </th>
                                 </tr>
@@ -137,7 +137,7 @@
         const auth = getAuth(app);
         const ds = new DataService(app);
         let currentLedgerTransactions = [];
-        const LEDGER_PAGE_SIZE = 15;
+        const LEDGER_PAGE_SIZE = 10;
         let ledgerCurrentPage = 1;
         let ledgerSortKey = 'date';
         let ledgerSortDirection = 'desc';
@@ -222,7 +222,13 @@
                 const icon = button.querySelector('.ledger-sort-icon');
                 const isActive = button.dataset.sortKey === ledgerSortKey;
                 button.classList.toggle('text-gray-900', isActive);
-                if (icon) icon.textContent = isActive ? (ledgerSortDirection === 'asc' ? 'Asc' : 'Desc') : 'Sort';
+                if (icon) {
+                    icon.innerHTML = isActive
+                        ? (ledgerSortDirection === 'asc'
+                            ? '<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m18 15-6-6-6 6"/></svg>'
+                            : '<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m6 9 6 6 6-6"/></svg>')
+                        : '<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m8 9 4-4 4 4M16 15l-4 4-4-4"/></svg>';
+                }
             });
         }
 

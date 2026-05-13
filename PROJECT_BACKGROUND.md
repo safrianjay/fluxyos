@@ -161,8 +161,9 @@ Imports are limited to 500 rows per file and are written as a Firestore batch,
 so validation failure prevents partial imports.
 
 After a successful single or CSV transaction add, the modal closes
-automatically. The ledger table renders 15 transactions per page and supports
-ascending/descending sort on Date, Amount, Category, and Status.
+automatically. The ledger table renders 10 transactions per page and supports
+ascending/descending sort on Date, Amount, Category, and Status with up/down
+icons.
 
 Example:
 
