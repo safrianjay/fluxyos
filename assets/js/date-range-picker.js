@@ -70,7 +70,7 @@
                     <button data-drp-prev type="button" class="h-9 w-9 inline-flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-95" aria-label="Previous period">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m15 18-6-6 6-6"></path></svg>
                     </button>
-                    <button data-drp-trigger type="button" class="h-9 w-auto min-w-[124px] max-w-[min(360px,calc(100vw-9rem))] border-x border-gray-100 bg-white px-3 text-left text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2" aria-expanded="false">
+                    <button data-drp-trigger type="button" class="h-9 w-auto min-w-[124px] border-x border-gray-100 bg-white px-3 text-left text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2" style="max-width:min(360px,calc(100vw - 9rem));" aria-expanded="false">
                         <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"></path></svg>
                         <span data-drp-label class="truncate">This month</span>
                     </button>
@@ -78,7 +78,7 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m9 18 6-6-6-6"></path></svg>
                     </button>
                 </div>
-                <div data-drp-panel class="hidden absolute right-0 top-11 z-50 w-[720px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+                <div data-drp-panel class="hidden fixed z-[9999] w-[720px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
                     <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
                         <div class="p-5">
                             <div class="flex items-center justify-between mb-5">
@@ -175,9 +175,6 @@
                 html += `<button type="button" class="${classes}" data-drp-day="${key}" ${isFuture ? 'disabled' : ''}>${date.getDate()}</button>`;
             }
             container.innerHTML = html;
-            container.querySelectorAll('[data-drp-day]').forEach(button => {
-                button.addEventListener('click', () => selectDraftDay(button.dataset.drpDay));
-            });
         }
 
         function renderPanel() {
@@ -209,13 +206,29 @@
                 draftStart = rangeStart;
                 draftEnd = rangeEnd;
                 calendarBaseMonth = getMonthStartKey(parseDayKey(draftStart));
+                positionPanel();
                 renderPanel();
             }
+        }
+
+        function positionPanel() {
+            const rect = trigger.getBoundingClientRect();
+            const panelWidth = Math.min(720, window.innerWidth - 32);
+            const left = Math.max(16, Math.min(rect.right - panelWidth, window.innerWidth - panelWidth - 16));
+            panel.style.width = `${panelWidth}px`;
+            panel.style.left = `${left}px`;
+            panel.style.top = `${rect.bottom + 8}px`;
         }
 
         trigger.addEventListener('click', event => {
             event.stopPropagation();
             togglePanel();
+        });
+        panel.addEventListener('click', event => {
+            event.stopPropagation();
+            const dayButton = event.target.closest('[data-drp-day]');
+            if (!dayButton || dayButton.disabled) return;
+            selectDraftDay(dayButton.dataset.drpDay);
         });
         get('[data-drp-prev]').addEventListener('click', () => shiftPeriod(-1));
         nextButton.addEventListener('click', () => shiftPeriod(1));
@@ -242,6 +255,12 @@
             if (host.contains(event.target)) return;
             togglePanel(false);
         });
+        window.addEventListener('resize', () => {
+            if (!panel.classList.contains('hidden')) positionPanel();
+        });
+        window.addEventListener('scroll', () => {
+            if (!panel.classList.contains('hidden')) positionPanel();
+        }, true);
 
         updateLabel();
 
