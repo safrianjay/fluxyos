@@ -165,11 +165,13 @@ automatically. The ledger table renders 10 transactions per page and supports
 ascending/descending sort on Date, Amount, Category, and Status with up/down
 icons.
 
-The Finance Ledger page defaults to the current month using the custom
-date-range calendar beside Download CSV. Single-day and custom-range views are
-selected inside the calendar, not through separate Day/Month tabs. Ledger
-control cards, Ledger Activity charts, table rows, pagination, and CSV export
-must all use the selected period so large ledgers do not overload the page.
+The Finance Ledger page defaults to the current month using the shared
+`FluxyDateRangePicker` in `assets/js/date-range-picker.js` beside Download CSV.
+Single-day and custom-range views are selected inside the calendar, not through
+separate Day/Month tabs. Ledger control cards, Ledger Activity charts, table
+rows, pagination, and CSV export must all use the selected period so large
+ledgers do not overload the page. Reuse this shared picker for future dashboard
+date filters instead of creating page-local calendar components.
 
 Example:
 
