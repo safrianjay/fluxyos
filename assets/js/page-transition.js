@@ -46,6 +46,116 @@
                 animation: fluxyLogoGlow 900ms ease-in-out infinite alternate;
             }
 
+            #${OVERLAY_ID}.is-app-transition {
+                align-items: stretch;
+                justify-content: flex-start;
+                background: rgba(249, 250, 251, 0.96);
+                -webkit-backdrop-filter: none;
+                backdrop-filter: none;
+            }
+
+            .fluxy-page-transition__app {
+                display: none;
+                width: 100%;
+                min-height: 100%;
+                background: #F9FAFB;
+            }
+
+            #${OVERLAY_ID}.is-app-transition .fluxy-page-transition__logo {
+                display: none;
+            }
+
+            #${OVERLAY_ID}.is-app-transition .fluxy-page-transition__app {
+                display: flex;
+            }
+
+            .fluxy-page-transition__sidebar {
+                width: 240px;
+                flex: 0 0 240px;
+                background: #FFFFFF;
+                border-right: 1px solid #E2E8F0;
+                padding: 20px 18px;
+            }
+
+            .fluxy-page-transition__main {
+                flex: 1;
+                padding: 18px 28px;
+            }
+
+            .fluxy-page-transition__topbar {
+                height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 24px;
+            }
+
+            .fluxy-page-transition__grid {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 16px;
+                margin-bottom: 24px;
+            }
+
+            .fluxy-page-transition__card,
+            .fluxy-page-transition__panel {
+                background: #FFFFFF;
+                border: 1px solid #E5E7EB;
+                border-radius: 12px;
+                padding: 20px;
+            }
+
+            .fluxy-page-transition__card {
+                min-height: 116px;
+            }
+
+            .fluxy-page-transition__panel {
+                min-height: 280px;
+            }
+
+            .fluxy-page-transition__line,
+            .fluxy-page-transition__block,
+            .fluxy-page-transition__avatar {
+                overflow: hidden;
+                position: relative;
+                background: #E5E7EB;
+            }
+
+            .fluxy-page-transition__line::after,
+            .fluxy-page-transition__block::after,
+            .fluxy-page-transition__avatar::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                transform: translateX(-100%);
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.75), transparent);
+                animation: fluxyShimmer 950ms ease-in-out infinite;
+            }
+
+            .fluxy-page-transition__line {
+                height: 12px;
+                border-radius: 999px;
+                margin-bottom: 12px;
+            }
+
+            .fluxy-page-transition__block {
+                height: 150px;
+                border-radius: 8px;
+            }
+
+            .fluxy-page-transition__avatar {
+                width: 36px;
+                height: 36px;
+                border-radius: 10px;
+                margin-bottom: 30px;
+            }
+
+            @keyframes fluxyShimmer {
+                to {
+                    transform: translateX(100%);
+                }
+            }
+
             @keyframes fluxyLogoBreathe {
                 from {
                     transform: translateY(0) scale(0.96) rotate(-2deg);
@@ -68,6 +178,28 @@
                 .fluxy-page-transition__logo,
                 .fluxy-page-transition__logo rect {
                     animation: none;
+                }
+
+                .fluxy-page-transition__line::after,
+                .fluxy-page-transition__block::after,
+                .fluxy-page-transition__avatar::after {
+                    animation: none;
+                }
+            }
+
+            @media (max-width: 760px) {
+                .fluxy-page-transition__sidebar {
+                    width: 72px;
+                    flex-basis: 72px;
+                    padding: 16px 12px;
+                }
+
+                .fluxy-page-transition__main {
+                    padding: 16px;
+                }
+
+                .fluxy-page-transition__grid {
+                    grid-template-columns: 1fr;
                 }
             }
         `;
@@ -92,18 +224,67 @@
                     <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
                 </g>
             </svg>
+            <div class="fluxy-page-transition__app" aria-hidden="true">
+                <div class="fluxy-page-transition__sidebar">
+                    <div class="fluxy-page-transition__avatar"></div>
+                    <div class="fluxy-page-transition__line" style="width: 74%"></div>
+                    <div class="fluxy-page-transition__line" style="width: 58%"></div>
+                    <div class="fluxy-page-transition__line" style="width: 68%; margin-top: 28px"></div>
+                    <div class="fluxy-page-transition__line" style="width: 82%"></div>
+                    <div class="fluxy-page-transition__line" style="width: 76%"></div>
+                </div>
+                <div class="fluxy-page-transition__main">
+                    <div class="fluxy-page-transition__topbar">
+                        <div class="fluxy-page-transition__line" style="width: 170px; margin-bottom: 0"></div>
+                        <div class="fluxy-page-transition__line" style="width: 220px; margin-bottom: 0"></div>
+                    </div>
+                    <div class="fluxy-page-transition__grid">
+                        <div class="fluxy-page-transition__card">
+                            <div class="fluxy-page-transition__line" style="width: 48%"></div>
+                            <div class="fluxy-page-transition__line" style="width: 72%; height: 22px; margin-top: 28px"></div>
+                        </div>
+                        <div class="fluxy-page-transition__card">
+                            <div class="fluxy-page-transition__line" style="width: 54%"></div>
+                            <div class="fluxy-page-transition__line" style="width: 66%; height: 22px; margin-top: 28px"></div>
+                        </div>
+                        <div class="fluxy-page-transition__card">
+                            <div class="fluxy-page-transition__line" style="width: 50%"></div>
+                            <div class="fluxy-page-transition__line" style="width: 58%; height: 22px; margin-top: 28px"></div>
+                        </div>
+                        <div class="fluxy-page-transition__card">
+                            <div class="fluxy-page-transition__line" style="width: 60%"></div>
+                            <div class="fluxy-page-transition__line" style="width: 46%; height: 22px; margin-top: 28px"></div>
+                        </div>
+                    </div>
+                    <div class="fluxy-page-transition__panel">
+                        <div class="fluxy-page-transition__line" style="width: 24%"></div>
+                        <div class="fluxy-page-transition__line" style="width: 36%"></div>
+                        <div class="fluxy-page-transition__block" style="margin-top: 28px"></div>
+                    </div>
+                </div>
+            </div>
         `;
         document.body.appendChild(overlay);
         return overlay;
     }
 
-    function showTransition() {
+    function isAppRoute(pathname = window.location.pathname) {
+        return /\/(dashboard|ledger|bill|subscription|integration)(\.html)?\/?$/.test(pathname);
+    }
+
+    function showTransition(useAppShimmer = isAppRoute()) {
         injectStyles();
-        createOverlay().classList.add('is-active');
+        const overlay = createOverlay();
+        overlay.classList.toggle('is-app-transition', useAppShimmer);
+        overlay.setAttribute('aria-label', useAppShimmer ? 'Loading dashboard' : 'Loading FluxyOS');
+        overlay.classList.add('is-active');
     }
 
     function hideTransition() {
-        document.getElementById(OVERLAY_ID)?.classList.remove('is-active');
+        const overlay = document.getElementById(OVERLAY_ID);
+        if (!overlay) return;
+        overlay.classList.remove('is-active');
+        overlay.classList.remove('is-app-transition');
     }
 
     function isNavigableLink(event, link) {
@@ -134,15 +315,14 @@
             if (!isNavigableLink(event, link)) return;
 
             event.preventDefault();
-            showTransition();
-
             const destination = new URL(link.getAttribute('href'), window.location.href).href;
+            showTransition(isAppRoute(window.location.pathname) || isAppRoute(new URL(destination).pathname));
             window.setTimeout(() => {
                 window.location.href = destination;
             }, 180);
         }, true);
 
-        window.addEventListener('beforeunload', showTransition);
+        window.addEventListener('beforeunload', () => showTransition(isAppRoute()));
         window.addEventListener('pageshow', hideTransition);
     }
 

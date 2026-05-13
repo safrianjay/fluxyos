@@ -102,8 +102,8 @@
         if (!isDashboard) return;
 
         sidebar.classList.add('dashboard-sidebar-light');
-        sidebar.classList.remove('w-[260px]', 'w-[240px]', 'bg-[#0B0F19]', 'text-gray-300', 'border-gray-800');
-        sidebar.classList.add('w-[452px]', 'bg-white', 'text-[#1E2F4A]', 'border-slate-200', 'rounded-tl-[8px]', 'overflow-hidden');
+        sidebar.classList.remove('w-[260px]', 'w-[452px]', 'bg-[#0B0F19]', 'text-gray-300', 'border-gray-800');
+        sidebar.classList.add('w-[240px]', 'bg-white', 'text-[#1E2F4A]', 'border-slate-200', 'rounded-tl-[8px]', 'overflow-hidden');
 
         Object.entries(dashboardLucideIcons).forEach(([id, svg]) => {
             const node = document.getElementById(id);
@@ -150,7 +150,7 @@
 
         toggleBtn.onclick = () => {
             const isDashboard = sidebar.classList.contains('dashboard-sidebar-light');
-            const expandedWidth = isDashboard ? 'w-[452px]' : 'w-[240px]';
+            const expandedWidth = 'w-[240px]';
             const isCollapsed = sidebar.classList.contains('w-[80px]');
             
             if (isCollapsed) {
