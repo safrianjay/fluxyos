@@ -62,6 +62,34 @@
                     </div>
                 </div>
 
+                <div id="ledger-control-cards" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Total Transactions</p>
+                        <p id="ledger-total-count" class="mt-2 text-2xl font-bold text-gray-900">0</p>
+                        <p class="mt-1 text-[12px] text-gray-500">Current ledger records</p>
+                    </div>
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Unreconciled</p>
+                        <p id="ledger-unreconciled-count" class="mt-2 text-2xl font-bold text-gray-900">0</p>
+                        <p id="ledger-unreconciled-subtitle" class="mt-1 text-[12px] text-gray-500">Not tracked yet</p>
+                    </div>
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Missing Receipts</p>
+                        <p id="ledger-missing-receipts-count" class="mt-2 text-2xl font-bold text-gray-900">0</p>
+                        <p class="mt-1 text-[12px] text-gray-500">Require attachment</p>
+                    </div>
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Pending Approval</p>
+                        <p id="ledger-pending-approval-count" class="mt-2 text-2xl font-bold text-gray-900">0</p>
+                        <p class="mt-1 text-[12px] text-gray-500">Waiting for review</p>
+                    </div>
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Uncategorized</p>
+                        <p id="ledger-uncategorized-count" class="mt-2 text-2xl font-bold text-gray-900">0</p>
+                        <p class="mt-1 text-[12px] text-gray-500">Need classification</p>
+                    </div>
+                </div>
+
                 <!-- Ledger Table Card -->
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6">
                     <div id="ledger-empty-state" class="hidden"></div>
@@ -75,6 +103,7 @@
                                             Date <span class="ledger-sort-icon text-gray-400" aria-hidden="true"></span>
                                         </button>
                                     </th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Type</th>
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Description</th>
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                         <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="category">
@@ -95,7 +124,7 @@
                             </thead>
                             <tbody id="ledger-table-body" class="divide-y divide-gray-100 text-[13px]">
                                 <tr>
-                                    <td colspan="5" class="px-6 py-12 text-center text-gray-400">
+                                    <td colspan="6" class="px-6 py-12 text-center text-gray-400">
                                         Fetching ledger data...
                                     </td>
                                 </tr>
@@ -168,6 +197,7 @@
             
             const transactions = await ds.getTransactions(user.uid, 100);
             currentLedgerTransactions = transactions;
+            renderLedgerSummaryCards(transactions);
             if (downloadBtn) downloadBtn.disabled = transactions.length === 0;
 
             if (transactions.length === 0) {
@@ -199,6 +229,82 @@
             if (key === 'category') return String(row.category || '').toLowerCase();
             if (key === 'status') return String(row.status || '').toLowerCase();
             return '';
+        }
+
+        function getTransactionType(transaction) {
+            const rawType = String(transaction.type || '').toLowerCase();
+            const category = String(transaction.category || '').toLowerCase();
+            const amount = Number(transaction.amount) || 0;
+
+            if (rawType === 'revenue' || rawType === 'income') return 'Income';
+            if (rawType === 'expense') return 'Expense';
+            if (rawType === 'transfer') return 'Transfer';
+            if (rawType === 'refund') return 'Refund';
+            if (rawType === 'adjustment') return 'Adjustment';
+            if (rawType === 'fee') return 'Fee';
+            if (rawType === 'tax') return 'Tax';
+
+            if (['revenue', 'sales', 'income'].some(term => category.includes(term))) return 'Income';
+            if (['operations', 'infrastructure', 'opex', 'ads', 'expense', 'vendor', 'saas', 'marketing'].some(term => category.includes(term))) return 'Expense';
+            if (amount < 0) return 'Expense';
+            if (amount > 0) return 'Income';
+            return 'Unknown';
+        }
+
+        function getTypeBadgeClass(type) {
+            if (type === 'Income') return 'bg-green-50 text-green-700 border-green-100';
+            if (type === 'Expense') return 'bg-orange-50 text-[#C2410C] border-orange-100';
+            if (type === 'Unknown') return 'bg-gray-100 text-gray-500 border-gray-200';
+            return 'bg-slate-100 text-slate-600 border-slate-200';
+        }
+
+        function formatTransactionAmount(transaction) {
+            const type = getTransactionType(transaction);
+            const amount = Math.abs(Number(transaction.amount) || 0).toLocaleString();
+            if (type === 'Income') return `+ Rp ${amount}`;
+            if (type === 'Expense') return `- Rp ${amount}`;
+            if (type === 'Refund' && Number(transaction.amount) > 0) return `+ Rp ${amount}`;
+            return `Rp ${amount}`;
+        }
+
+        function getAmountClass(transaction) {
+            const type = getTransactionType(transaction);
+            if (type === 'Income') return 'text-green-600';
+            if (type === 'Expense') return 'text-gray-900';
+            return 'text-gray-700';
+        }
+
+        function getLedgerSummary(transactions) {
+            return transactions.reduce((summary, transaction) => {
+                const category = String(transaction.category || '').trim().toLowerCase();
+                const status = String(transaction.status || '').trim().toLowerCase();
+
+                summary.totalTransactions += 1;
+                if (status === 'missing receipt') summary.missingReceipts += 1;
+                if (['pending approval', 'pending', 'waiting approval'].includes(status)) summary.pendingApproval += 1;
+                if (!category || ['unknown', 'uncategorized'].includes(category)) summary.uncategorized += 1;
+                return summary;
+            }, {
+                totalTransactions: 0,
+                unreconciled: 0,
+                missingReceipts: 0,
+                pendingApproval: 0,
+                uncategorized: 0
+            });
+        }
+
+        function setSummaryText(id, value) {
+            const element = document.getElementById(id);
+            if (element) element.textContent = value;
+        }
+
+        function renderLedgerSummaryCards(transactions) {
+            const summary = getLedgerSummary(transactions);
+            setSummaryText('ledger-total-count', summary.totalTransactions.toLocaleString());
+            setSummaryText('ledger-unreconciled-count', summary.unreconciled.toLocaleString());
+            setSummaryText('ledger-missing-receipts-count', summary.missingReceipts.toLocaleString());
+            setSummaryText('ledger-pending-approval-count', summary.pendingApproval.toLocaleString());
+            setSummaryText('ledger-uncategorized-count', summary.uncategorized.toLocaleString());
         }
 
         function getSortedLedgerRows() {
@@ -249,10 +355,15 @@
             body.innerHTML = visibleRows.map(row => `
                 <tr class="hover:bg-gray-50 transition-colors">
                     <td class="px-6 py-4 text-gray-500">${row.timestamp?.toDate().toLocaleString() || 'Just now'}</td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center rounded-md border px-2 py-1 text-[10px] font-bold uppercase ${getTypeBadgeClass(getTransactionType(row))}">
+                            ${getTransactionType(row)}
+                        </span>
+                    </td>
                     <td class="px-6 py-4 font-bold text-gray-900">${row.vendor_name}</td>
                     <td class="px-6 py-4 text-gray-500">${row.category}</td>
-                    <td class="px-6 py-4 font-mono font-bold ${row.type === 'revenue' ? 'text-green-600' : 'text-gray-900'}">
-                        ${row.type === 'revenue' ? '+' : ''}Rp ${Math.abs(row.amount).toLocaleString()}
+                    <td class="px-6 py-4 font-mono font-bold ${getAmountClass(row)}">
+                        ${formatTransactionAmount(row)}
                     </td>
                     <td class="px-6 py-4">
                         <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${row.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">
