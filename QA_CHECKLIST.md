@@ -152,6 +152,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 11 | Add Transaction modal separates single entry and CSV bulk upload with tabs; bulk mode uses the main submit button as `Upload CSV` with no second upload CTA |
 | 12 | Uploading a valid transaction CSV writes every row to `users/{uid}/transactions`, refreshes dashboard/ledger views, and shows a success state/toast |
 | 13 | Uploading an invalid CSV keeps the modal open, shows a row-specific validation error, and writes no partial rows |
+| 14 | Ledger table starts at 15 rows per page, pagination next/previous works, and Date, Amount, Category, and Status headers toggle ascending/descending sort |
 
 ### F. Database & Logic Verification (db-service.js, shared-dashboard.js, dashboard.js)
 

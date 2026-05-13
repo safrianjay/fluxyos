@@ -70,11 +70,27 @@
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-50 border-b border-gray-200">
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                        <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="date">
+                                            Date <span class="ledger-sort-icon text-gray-400">Sort</span>
+                                        </button>
+                                    </th>
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Description</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Category</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                        <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="category">
+                                            Category <span class="ledger-sort-icon text-gray-400">Sort</span>
+                                        </button>
+                                    </th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                        <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="amount">
+                                            Amount <span class="ledger-sort-icon text-gray-400">Sort</span>
+                                        </button>
+                                    </th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                        <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="status">
+                                            Status <span class="ledger-sort-icon text-gray-400">Sort</span>
+                                        </button>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody id="ledger-table-body" class="divide-y divide-gray-100 text-[13px]">
@@ -85,6 +101,14 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                    <div id="ledger-pagination" class="hidden border-t border-gray-100 bg-gray-50/50 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <p id="ledger-page-summary" class="text-[12px] font-medium text-gray-500">Showing 0 transactions</p>
+                        <div class="flex items-center gap-2">
+                            <button id="ledger-prev-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+                            <span id="ledger-page-indicator" class="min-w-16 text-center text-[12px] font-bold text-gray-600">1 / 1</span>
+                            <button id="ledger-next-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -113,6 +137,10 @@
         const auth = getAuth(app);
         const ds = new DataService(app);
         let currentLedgerTransactions = [];
+        const LEDGER_PAGE_SIZE = 15;
+        let ledgerCurrentPage = 1;
+        let ledgerSortKey = 'date';
+        let ledgerSortDirection = 'desc';
 
         // SMART AUTH GUARD
         let checkTimeout = setTimeout(() => {
@@ -133,6 +161,7 @@
             const body = document.getElementById('ledger-table-body');
             const tableContainer = document.getElementById('ledger-table-container');
             const emptyContainer = document.getElementById('ledger-empty-state');
+            const pagination = document.getElementById('ledger-pagination');
             const downloadBtn = document.getElementById('download-csv-btn');
             
             if (!body) return;
@@ -143,6 +172,7 @@
 
             if (transactions.length === 0) {
                 tableContainer.classList.add('hidden');
+                pagination?.classList.add('hidden');
                 emptyContainer.classList.remove('hidden');
                 window.renderEmptyState('ledger-empty-state', {
                     title: "Your financial trail starts here.",
@@ -152,24 +182,113 @@
                 });
             } else {
                 tableContainer.classList.remove('hidden');
+                pagination?.classList.remove('hidden');
                 emptyContainer.classList.add('hidden');
-                body.innerHTML = transactions.map(row => `
-                    <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4 text-gray-500">${row.timestamp?.toDate().toLocaleString() || 'Just now'}</td>
-                        <td class="px-6 py-4 font-bold text-gray-900">${row.vendor_name}</td>
-                        <td class="px-6 py-4 text-gray-500">${row.category}</td>
-                        <td class="px-6 py-4 font-mono font-bold ${row.type === 'revenue' ? 'text-green-600' : 'text-gray-900'}">
-                            ${row.type === 'revenue' ? '+' : ''}Rp ${Math.abs(row.amount).toLocaleString()}
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${row.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">
-                                ${row.status}
-                            </span>
-                        </td>
-                    </tr>
-                `).join('');
+                ledgerCurrentPage = 1;
+                renderLedgerTable();
             }
         }
+
+        function getTimestampMs(row) {
+            return row.timestamp?.toDate ? row.timestamp.toDate().getTime() : 0;
+        }
+
+        function getSortValue(row, key) {
+            if (key === 'date') return getTimestampMs(row);
+            if (key === 'amount') return Number(row.amount) || 0;
+            if (key === 'category') return String(row.category || '').toLowerCase();
+            if (key === 'status') return String(row.status || '').toLowerCase();
+            return '';
+        }
+
+        function getSortedLedgerRows() {
+            return [...currentLedgerTransactions].sort((a, b) => {
+                const first = getSortValue(a, ledgerSortKey);
+                const second = getSortValue(b, ledgerSortKey);
+                let result = 0;
+
+                if (typeof first === 'number' && typeof second === 'number') {
+                    result = first - second;
+                } else {
+                    result = String(first).localeCompare(String(second));
+                }
+
+                return ledgerSortDirection === 'asc' ? result : -result;
+            });
+        }
+
+        function updateSortIndicators() {
+            document.querySelectorAll('.ledger-sort-btn').forEach(button => {
+                const icon = button.querySelector('.ledger-sort-icon');
+                const isActive = button.dataset.sortKey === ledgerSortKey;
+                button.classList.toggle('text-gray-900', isActive);
+                if (icon) icon.textContent = isActive ? (ledgerSortDirection === 'asc' ? 'Asc' : 'Desc') : 'Sort';
+            });
+        }
+
+        function renderLedgerTable() {
+            const body = document.getElementById('ledger-table-body');
+            const summary = document.getElementById('ledger-page-summary');
+            const indicator = document.getElementById('ledger-page-indicator');
+            const prevButton = document.getElementById('ledger-prev-page');
+            const nextButton = document.getElementById('ledger-next-page');
+            if (!body) return;
+
+            const sortedRows = getSortedLedgerRows();
+            const totalPages = Math.max(1, Math.ceil(sortedRows.length / LEDGER_PAGE_SIZE));
+            ledgerCurrentPage = Math.min(Math.max(ledgerCurrentPage, 1), totalPages);
+            const startIndex = (ledgerCurrentPage - 1) * LEDGER_PAGE_SIZE;
+            const visibleRows = sortedRows.slice(startIndex, startIndex + LEDGER_PAGE_SIZE);
+
+            body.innerHTML = visibleRows.map(row => `
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-6 py-4 text-gray-500">${row.timestamp?.toDate().toLocaleString() || 'Just now'}</td>
+                    <td class="px-6 py-4 font-bold text-gray-900">${row.vendor_name}</td>
+                    <td class="px-6 py-4 text-gray-500">${row.category}</td>
+                    <td class="px-6 py-4 font-mono font-bold ${row.type === 'revenue' ? 'text-green-600' : 'text-gray-900'}">
+                        ${row.type === 'revenue' ? '+' : ''}Rp ${Math.abs(row.amount).toLocaleString()}
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${row.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">
+                            ${row.status}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+
+            if (summary) {
+                const endIndex = Math.min(startIndex + visibleRows.length, sortedRows.length);
+                summary.textContent = `Showing ${startIndex + 1}-${endIndex} of ${sortedRows.length} transactions`;
+            }
+            if (indicator) indicator.textContent = `${ledgerCurrentPage} / ${totalPages}`;
+            if (prevButton) prevButton.disabled = ledgerCurrentPage === 1;
+            if (nextButton) nextButton.disabled = ledgerCurrentPage === totalPages;
+            updateSortIndicators();
+        }
+
+        document.querySelectorAll('.ledger-sort-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const nextKey = button.dataset.sortKey;
+                if (ledgerSortKey === nextKey) {
+                    ledgerSortDirection = ledgerSortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    ledgerSortKey = nextKey;
+                    ledgerSortDirection = nextKey === 'date' ? 'desc' : 'asc';
+                }
+                ledgerCurrentPage = 1;
+                renderLedgerTable();
+            });
+        });
+
+        document.getElementById('ledger-prev-page')?.addEventListener('click', () => {
+            ledgerCurrentPage -= 1;
+            renderLedgerTable();
+        });
+
+        document.getElementById('ledger-next-page')?.addEventListener('click', () => {
+            ledgerCurrentPage += 1;
+            renderLedgerTable();
+        });
 
         function formatCsvDate(timestamp) {
             if (!timestamp?.toDate) return '';

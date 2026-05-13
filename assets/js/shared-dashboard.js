@@ -374,6 +374,7 @@ window.showAddTransactionModal = function(options = {}) {
                 fileInput.value = '';
                 fileLabel.textContent = 'Choose or drop a CSV file';
                 window.setTimeout(() => {
+                    window.closeAddTransactionModal();
                     setSubmitButton('Upload CSV', true);
                     dropzone.classList.remove('ring-2', 'ring-orange-100', 'border-[#E85D19]');
                 }, 1200);
