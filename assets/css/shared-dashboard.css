@@ -125,7 +125,7 @@ main > header {
     letter-spacing: 0 !important;
     text-transform: none !important;
     padding: 0 4px !important;
-    margin: 16px 0 6px !important;
+    margin: 20px 0 8px !important;
 }
 
 #sidebar.app-sidebar-light .section-label:first-child {
