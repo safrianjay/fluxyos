@@ -51,16 +51,20 @@
                         <p class="text-[14px] text-gray-500 mt-1">Full audit trail of all transactions across your network.</p>
                     </div>
                     <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <div class="flex items-center bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden" aria-label="Ledger month filter">
-                            <button id="ledger-prev-month" type="button" class="h-9 w-9 inline-flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-95" aria-label="Previous month">
+                        <div class="inline-flex h-9 rounded-lg border border-gray-200 bg-white p-1 shadow-sm" aria-label="Ledger period mode">
+                            <button id="ledger-period-month" type="button" class="px-3 rounded-md bg-gray-900 text-white text-[12px] font-bold transition-all" aria-pressed="true">Month</button>
+                            <button id="ledger-period-day" type="button" class="px-3 rounded-md text-gray-500 hover:text-gray-900 text-[12px] font-bold transition-all" aria-pressed="false">Day</button>
+                        </div>
+                        <div class="flex items-center bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden" aria-label="Ledger date filter">
+                            <button id="ledger-prev-period" type="button" class="h-9 w-9 inline-flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-95" aria-label="Previous period">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m15 18-6-6 6-6"></path></svg>
                             </button>
                             <div class="relative border-x border-gray-100">
                                 <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"></path></svg>
-                                <select id="ledger-month-filter" class="h-9 w-full min-w-[158px] cursor-pointer appearance-none bg-white pl-9 pr-8 text-[13px] font-bold text-gray-700 outline-none hover:bg-gray-50 transition-colors" aria-label="Select ledger month"></select>
+                                <select id="ledger-date-filter" class="h-9 w-full min-w-[158px] cursor-pointer appearance-none bg-white pl-9 pr-8 text-[13px] font-bold text-gray-700 outline-none hover:bg-gray-50 transition-colors" aria-label="Select ledger period"></select>
                                 <svg class="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m6 9 6 6 6-6"></path></svg>
                             </div>
-                            <button id="ledger-next-month" type="button" class="h-9 w-9 inline-flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-gray-500" aria-label="Next month">
+                            <button id="ledger-next-period" type="button" class="h-9 w-9 inline-flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-gray-500" aria-label="Next period">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m9 18 6-6-6-6"></path></svg>
                             </button>
                         </div>
@@ -108,15 +112,15 @@
                         <h2 class="text-[16px] font-bold text-gray-900">Ledger Activity</h2>
                         <p class="text-[12px] text-gray-500 mt-1">Transaction activity, status mix, and type quality for audit review.</p>
                     </div>
-                    <div class="grid grid-cols-1 xl:grid-cols-5 divide-y xl:divide-y-0 xl:divide-x divide-gray-100">
-                        <div class="p-4 xl:col-span-3">
+                    <div class="grid grid-cols-1 xl:grid-cols-5 divide-y xl:divide-y-0 xl:divide-x divide-gray-100 items-stretch">
+                        <div class="p-4 xl:col-span-3 flex flex-col">
                             <div class="flex items-center justify-between gap-3 mb-3">
                                 <div>
                                     <h3 class="text-[13px] font-bold text-gray-900">Transaction Volume Over Time</h3>
                                     <p class="text-[12px] text-gray-500">Count of ledger records by transaction date</p>
                                 </div>
                             </div>
-                            <div id="ledger-volume-chart"></div>
+                            <div id="ledger-volume-chart" class="flex-1"></div>
                         </div>
                         <div class="p-4 xl:col-span-2 grid gap-4 md:grid-cols-2 xl:grid-cols-1">
                             <div>
@@ -216,14 +220,28 @@
         let ledgerCurrentPage = 1;
         let ledgerSortKey = 'date';
         let ledgerSortDirection = 'desc';
+        let ledgerPeriodMode = 'month';
 
         function getMonthKey(date = new Date()) {
             return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         }
 
+        function getDayKey(date = new Date()) {
+            return [
+                date.getFullYear(),
+                String(date.getMonth() + 1).padStart(2, '0'),
+                String(date.getDate()).padStart(2, '0')
+            ].join('-');
+        }
+
         function addMonths(monthKey, delta) {
             const [year, month] = monthKey.split('-').map(Number);
             return getMonthKey(new Date(year, month - 1 + delta, 1));
+        }
+
+        function addDays(dayKey, delta) {
+            const [year, month, day] = dayKey.split('-').map(Number);
+            return getDayKey(new Date(year, month - 1, day + delta));
         }
 
         function formatMonthOption(monthKey) {
@@ -234,39 +252,75 @@
             });
         }
 
-        function populateMonthFilter() {
-            const monthFilter = document.getElementById('ledger-month-filter');
-            if (!monthFilter || monthFilter.options.length > 0) return;
+        function formatDayOption(dayKey) {
+            const [year, month, day] = dayKey.split('-').map(Number);
+            return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
 
-            const currentMonth = getMonthKey();
-            for (let offset = 0; offset < 24; offset += 1) {
-                const monthKey = addMonths(currentMonth, -offset);
-                monthFilter.add(new Option(formatMonthOption(monthKey), monthKey));
+        function populatePeriodFilter(force = false) {
+            const dateFilter = document.getElementById('ledger-date-filter');
+            if (!dateFilter || (!force && dateFilter.options.length > 0)) return;
+
+            dateFilter.innerHTML = '';
+            const currentKey = ledgerPeriodMode === 'month' ? getMonthKey() : getDayKey();
+            const optionCount = ledgerPeriodMode === 'month' ? 24 : 366;
+            for (let offset = 0; offset < optionCount; offset += 1) {
+                const periodKey = ledgerPeriodMode === 'month'
+                    ? addMonths(currentKey, -offset)
+                    : addDays(currentKey, -offset);
+                const label = ledgerPeriodMode === 'month'
+                    ? formatMonthOption(periodKey)
+                    : formatDayOption(periodKey);
+                dateFilter.add(new Option(label, periodKey));
             }
-            monthFilter.value = currentMonth;
-            updateMonthNavigation();
+            dateFilter.value = currentKey;
+            updatePeriodNavigation();
         }
 
-        function updateMonthNavigation() {
-            const monthFilter = document.getElementById('ledger-month-filter');
-            const nextButton = document.getElementById('ledger-next-month');
-            if (!monthFilter || !nextButton) return;
-            nextButton.disabled = monthFilter.value >= getMonthKey();
+        function updatePeriodModeButtons() {
+            const monthButton = document.getElementById('ledger-period-month');
+            const dayButton = document.getElementById('ledger-period-day');
+            if (!monthButton || !dayButton) return;
+
+            const isMonth = ledgerPeriodMode === 'month';
+            monthButton.className = `px-3 rounded-md text-[12px] font-bold transition-all ${isMonth ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`;
+            dayButton.className = `px-3 rounded-md text-[12px] font-bold transition-all ${isMonth ? 'text-gray-500 hover:text-gray-900' : 'bg-gray-900 text-white'}`;
+            monthButton.setAttribute('aria-pressed', String(isMonth));
+            dayButton.setAttribute('aria-pressed', String(!isMonth));
         }
 
-        function shiftLedgerMonth(delta) {
-            const monthFilter = document.getElementById('ledger-month-filter');
-            if (!monthFilter) return;
+        function updatePeriodNavigation() {
+            const dateFilter = document.getElementById('ledger-date-filter');
+            const nextButton = document.getElementById('ledger-next-period');
+            if (!dateFilter || !nextButton) return;
+            const currentKey = ledgerPeriodMode === 'month' ? getMonthKey() : getDayKey();
+            nextButton.disabled = dateFilter.value >= currentKey;
+        }
 
-            const nextMonth = addMonths(monthFilter.value || getMonthKey(), delta);
-            if (nextMonth > getMonthKey()) return;
+        function shiftLedgerPeriod(delta) {
+            const dateFilter = document.getElementById('ledger-date-filter');
+            if (!dateFilter) return;
 
-            const optionExists = Array.from(monthFilter.options).some(option => option.value === nextMonth);
+            const currentKey = ledgerPeriodMode === 'month' ? getMonthKey() : getDayKey();
+            const fallback = ledgerPeriodMode === 'month' ? getMonthKey() : getDayKey();
+            const nextPeriod = ledgerPeriodMode === 'month'
+                ? addMonths(dateFilter.value || fallback, delta)
+                : addDays(dateFilter.value || fallback, delta);
+            if (nextPeriod > currentKey) return;
+
+            const optionExists = Array.from(dateFilter.options).some(option => option.value === nextPeriod);
             if (!optionExists) {
-                monthFilter.add(new Option(formatMonthOption(nextMonth), nextMonth));
+                const label = ledgerPeriodMode === 'month'
+                    ? formatMonthOption(nextPeriod)
+                    : formatDayOption(nextPeriod);
+                dateFilter.add(new Option(label, nextPeriod));
             }
-            monthFilter.value = nextMonth;
-            updateMonthNavigation();
+            dateFilter.value = nextPeriod;
+            updatePeriodNavigation();
             window.loadLedger();
         }
 
@@ -277,8 +331,17 @@
             return { start, end };
         }
 
-        async function getLedgerTransactionsForMonth(userId, monthKey) {
-            const { start, end } = getMonthDateRange(monthKey);
+        function getDayDateRange(dayKey) {
+            const [year, month, day] = dayKey.split('-').map(Number);
+            const start = new Date(year, month - 1, day);
+            const end = new Date(year, month - 1, day + 1);
+            return { start, end };
+        }
+
+        async function getLedgerTransactionsForPeriod(userId, periodKey) {
+            const { start, end } = ledgerPeriodMode === 'month'
+                ? getMonthDateRange(periodKey)
+                : getDayDateRange(periodKey);
             const q = query(
                 collection(ds.db, `users/${userId}/transactions`),
                 where('timestamp', '>=', Timestamp.fromDate(start)),
@@ -288,6 +351,14 @@
             );
             const snapshot = await getDocs(q);
             return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        }
+
+        function setLedgerPeriodMode(mode) {
+            if (ledgerPeriodMode === mode) return;
+            ledgerPeriodMode = mode;
+            updatePeriodModeButtons();
+            populatePeriodFilter(true);
+            window.loadLedger();
         }
 
         // SMART AUTH GUARD
@@ -311,14 +382,15 @@
             const emptyContainer = document.getElementById('ledger-empty-state');
             const pagination = document.getElementById('ledger-pagination');
             const downloadBtn = document.getElementById('download-csv-btn');
-            const monthFilter = document.getElementById('ledger-month-filter');
+            const dateFilter = document.getElementById('ledger-date-filter');
             
             if (!body) return;
-            populateMonthFilter();
-            if (monthFilter && !monthFilter.value) monthFilter.value = getMonthKey();
-            updateMonthNavigation();
+            populatePeriodFilter();
+            updatePeriodModeButtons();
+            updatePeriodNavigation();
             
-            const transactions = await getLedgerTransactionsForMonth(user.uid, monthFilter?.value || getMonthKey());
+            const fallbackPeriod = ledgerPeriodMode === 'month' ? getMonthKey() : getDayKey();
+            const transactions = await getLedgerTransactionsForPeriod(user.uid, dateFilter?.value || fallbackPeriod);
             allLedgerTransactions = transactions;
             if (downloadBtn) downloadBtn.disabled = transactions.length === 0;
             applyLedgerMonthFilter();
@@ -328,8 +400,8 @@
                 pagination?.classList.add('hidden');
                 emptyContainer.classList.remove('hidden');
                 window.renderEmptyState('ledger-empty-state', {
-                    title: "No transactions for this month.",
-                    description: "Switch months or log a new expense, income, or finance event for the selected period.",
+                    title: ledgerPeriodMode === 'month' ? "No transactions for this month." : "No transactions for this day.",
+                    description: "Switch periods or log a new expense, income, or finance event for the selected period.",
                     buttonText: "Log First Transaction",
                     onAction: () => window.showAddTransactionModal()
                 });
@@ -511,12 +583,12 @@
             const maxCount = Math.max(...volume.map(item => item.count), 1);
             const chartedCount = volume.reduce((sum, item) => sum + item.count, 0);
             container.innerHTML = `
-                <div class="rounded-xl bg-slate-50 border border-slate-100 px-4 pt-3 pb-3">
-                    <div class="h-28 flex items-end gap-2">
+                <div class="h-full min-h-[318px] rounded-xl bg-slate-50 border border-slate-100 px-4 pt-4 pb-3 flex flex-col">
+                    <div class="flex-1 min-h-[242px] flex items-end gap-2">
                         ${volume.map(item => `
                         <div class="flex-1 min-w-8 flex flex-col items-center gap-1.5">
                             <div class="text-[11px] font-bold text-slate-700">${item.count}</div>
-                            <div class="w-full rounded-t-md bg-blue-500 shadow-sm" style="height: ${Math.max((item.count / maxCount) * 76, 12)}px"></div>
+                            <div class="w-full rounded-t-md bg-blue-500 shadow-sm" style="height: ${Math.max((item.count / maxCount) * 190, 16)}px"></div>
                             <div class="text-[10px] font-semibold text-slate-500 whitespace-nowrap">${item.label}</div>
                         </div>
                         `).join('')}
@@ -753,25 +825,33 @@
             window.setTimeout(() => {
                 const csv = buildLedgerCsv(currentLedgerTransactions);
                 const date = new Date().toISOString().slice(0, 10);
-                const monthFilter = document.getElementById('ledger-month-filter');
-                const period = monthFilter?.value || date.slice(0, 7);
-                downloadTextFile(`fluxyos-ledger-${period}.csv`, csv);
+                const dateFilter = document.getElementById('ledger-date-filter');
+                const period = dateFilter?.value || (ledgerPeriodMode === 'month' ? date.slice(0, 7) : date);
+                downloadTextFile(`fluxyos-ledger-${ledgerPeriodMode}-${period}.csv`, csv);
                 setDownloadButtonState('success');
                 window.setTimeout(() => setDownloadButtonState('idle'), 1200);
             }, 180);
         });
 
-        document.getElementById('ledger-month-filter')?.addEventListener('change', () => {
-            updateMonthNavigation();
+        document.getElementById('ledger-date-filter')?.addEventListener('change', () => {
+            updatePeriodNavigation();
             window.loadLedger();
         });
 
-        document.getElementById('ledger-prev-month')?.addEventListener('click', () => {
-            shiftLedgerMonth(-1);
+        document.getElementById('ledger-prev-period')?.addEventListener('click', () => {
+            shiftLedgerPeriod(-1);
         });
 
-        document.getElementById('ledger-next-month')?.addEventListener('click', () => {
-            shiftLedgerMonth(1);
+        document.getElementById('ledger-next-period')?.addEventListener('click', () => {
+            shiftLedgerPeriod(1);
+        });
+
+        document.getElementById('ledger-period-month')?.addEventListener('click', () => {
+            setLedgerPeriodMode('month');
+        });
+
+        document.getElementById('ledger-period-day')?.addEventListener('click', () => {
+            setLedgerPeriodMode('day');
         });
     </script>
 </body>
