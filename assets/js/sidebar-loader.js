@@ -88,11 +88,36 @@
         </div>
     `;
 
+    const dashboardLucideIcons = {
+        'nav-overview': '<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+        'nav-ledger': '<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h10"/><path d="M3 12h8"/><path d="M3 18h6"/><circle cx="17" cy="18" r="3"/></svg>',
+        'nav-bills': '<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>',
+        'nav-subscriptions': '<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20a6 6 0 0 0-12 0"/><circle cx="12" cy="10" r="4"/><circle cx="12" cy="12" r="10"/></svg>',
+        'nav-integrations': '<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>',
+        'logout-btn': '<svg class="sidebar-icon sidebar-logout-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>'
+    };
+
+    function applyDashboardSidebarTheme(sidebar) {
+        const isDashboard = window.location.pathname.includes('dashboard');
+        if (!isDashboard) return;
+
+        sidebar.classList.add('dashboard-sidebar-light');
+        sidebar.classList.remove('w-[260px]', 'w-[240px]', 'bg-[#0B0F19]', 'text-gray-300', 'border-gray-800');
+        sidebar.classList.add('w-[452px]', 'bg-white', 'text-[#1E2F4A]', 'border-slate-200', 'rounded-tl-[8px]', 'overflow-hidden');
+
+        Object.entries(dashboardLucideIcons).forEach(([id, svg]) => {
+            const node = document.getElementById(id);
+            const icon = node ? node.querySelector('svg') : null;
+            if (icon) icon.outerHTML = svg;
+        });
+    }
+
     function inject() {
         const sidebar = document.getElementById('sidebar');
         if (!sidebar) return;
 
         sidebar.innerHTML = sidebarHTML;
+        applyDashboardSidebarTheme(sidebar);
         
         // Highlight Active
         const path = window.location.pathname;
@@ -108,7 +133,11 @@
         if (activeId) {
             const el = document.getElementById(pageIdMap[activeId]);
             if (el) {
-                el.classList.add('bg-[#1A1F26]', 'text-white', 'border', 'border-gray-700/50', 'shadow-sm');
+                if (path.includes('dashboard')) {
+                    el.classList.add('dashboard-active');
+                } else {
+                    el.classList.add('bg-[#1A1F26]', 'text-white', 'border', 'border-gray-700/50', 'shadow-sm');
+                }
                 const icon = el.querySelector('svg');
                 if (icon) icon.classList.add('text-[#EA580C]');
             }
@@ -120,17 +149,19 @@
         const logoContainer = document.getElementById('logo-container');
 
         toggleBtn.onclick = () => {
+            const isDashboard = sidebar.classList.contains('dashboard-sidebar-light');
+            const expandedWidth = isDashboard ? 'w-[452px]' : 'w-[240px]';
             const isCollapsed = sidebar.classList.contains('w-[80px]');
             
             if (isCollapsed) {
                 // Expand
-                sidebar.classList.replace('w-[80px]', 'w-[240px]');
+                sidebar.classList.replace('w-[80px]', expandedWidth);
                 header.classList.add('px-5');
                 header.classList.remove('justify-center');
                 logoContainer.classList.remove('justify-center');
             } else {
                 // Collapse
-                sidebar.classList.replace('w-[240px]', 'w-[80px]');
+                sidebar.classList.replace(expandedWidth, 'w-[80px]');
                 header.classList.remove('px-5');
                 header.classList.add('justify-center');
                 logoContainer.classList.add('justify-center');

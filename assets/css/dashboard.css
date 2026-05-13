@@ -21,3 +21,173 @@
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
+
+/* Dashboard-only light sidebar */
+.dashboard-page #sidebar.dashboard-sidebar-light {
+    width: min(452px, 86vw) !important;
+    background: #FFFFFF !important;
+    color: #1E2F4A !important;
+    border-color: #E2E8F0 !important;
+    border-top-left-radius: 8px;
+    box-shadow: none;
+}
+
+.dashboard-page #sidebar.dashboard-sidebar-light.w-\[80px\] {
+    width: 80px !important;
+}
+
+.dashboard-page .dashboard-sidebar-light #sidebar-header,
+.dashboard-page .dashboard-sidebar-light #profile-area {
+    background: #FFFFFF !important;
+    border-color: #E2E8F0 !important;
+}
+
+.dashboard-page .dashboard-sidebar-light #sidebar-header {
+    min-height: 144px;
+    align-items: flex-start;
+    padding: 36px 40px 20px !important;
+}
+
+.dashboard-page .dashboard-sidebar-light #logo-container {
+    gap: 16px;
+}
+
+.dashboard-page .dashboard-sidebar-light #logo-icon {
+    width: 48px;
+    height: 48px;
+    color: #F3F6FA !important;
+}
+
+.dashboard-page .dashboard-sidebar-light #logo-icon path {
+    fill: #1E2F4A;
+}
+
+.dashboard-page .dashboard-sidebar-light .logo-text {
+    color: #1E2F4A !important;
+    font-size: 24px !important;
+    line-height: 1.25;
+    letter-spacing: 0;
+}
+
+.dashboard-page .dashboard-sidebar-light #sidebar-toggle {
+    color: #64748B !important;
+    margin-top: 2px;
+}
+
+.dashboard-page .dashboard-sidebar-light #sidebar-toggle:hover {
+    background: #F8FAFC !important;
+    color: #1E2F4A !important;
+}
+
+.dashboard-page .dashboard-sidebar-light #nav-container {
+    padding: 28px 40px 32px !important;
+    gap: 10px;
+    align-items: stretch !important;
+}
+
+.dashboard-page .dashboard-sidebar-light .section-label {
+    color: #1E2F4A !important;
+    font-size: 24px !important;
+    line-height: 1.2;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    padding: 0 !important;
+    margin: 34px 0 14px !important;
+}
+
+.dashboard-page .dashboard-sidebar-light .section-label:first-child {
+    margin-top: 0 !important;
+}
+
+.dashboard-page .dashboard-sidebar-light .nav-item {
+    min-height: 50px;
+    gap: 24px !important;
+    padding: 8px 8px !important;
+    border: 0 !important;
+    border-radius: 8px !important;
+    color: #1E2F4A !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    justify-content: flex-start !important;
+}
+
+.dashboard-page .dashboard-sidebar-light .nav-item:hover {
+    background: #F8FAFC !important;
+    color: #13233A !important;
+    transform: none;
+}
+
+.dashboard-page .dashboard-sidebar-light .sidebar-icon {
+    width: 31px;
+    height: 31px;
+    color: #64748B;
+    flex-shrink: 0;
+}
+
+.dashboard-page .dashboard-sidebar-light .sidebar-text {
+    color: inherit;
+    font-size: 28px !important;
+    line-height: 1.2;
+    font-weight: 500;
+    letter-spacing: 0;
+}
+
+.dashboard-page .dashboard-sidebar-light .dashboard-active {
+    color: #EA580C !important;
+    background: transparent !important;
+}
+
+.dashboard-page .dashboard-sidebar-light .dashboard-active .sidebar-icon {
+    color: #EA580C !important;
+}
+
+.dashboard-page .dashboard-sidebar-light #profile-area {
+    padding: 24px 40px !important;
+}
+
+.dashboard-page .dashboard-sidebar-light #sidebar-user-avatar {
+    width: 48px;
+    height: 48px;
+    border-color: #E2E8F0 !important;
+}
+
+.dashboard-page .dashboard-sidebar-light #sidebar-user-name {
+    color: #1E2F4A !important;
+    font-size: 16px !important;
+}
+
+.dashboard-page .dashboard-sidebar-light #logout-btn {
+    color: #64748B !important;
+    padding: 10px 8px !important;
+    border-radius: 8px !important;
+    justify-content: flex-start !important;
+}
+
+.dashboard-page .dashboard-sidebar-light #logout-btn:hover {
+    background: #FEF2F2 !important;
+    color: #DC2626 !important;
+}
+
+.dashboard-page .dashboard-sidebar-light #logout-btn .sidebar-text {
+    font-size: 16px !important;
+}
+
+.dashboard-page #sidebar.dashboard-sidebar-light.w-\[80px\] #sidebar-header,
+.dashboard-page #sidebar.dashboard-sidebar-light.w-\[80px\] #nav-container,
+.dashboard-page #sidebar.dashboard-sidebar-light.w-\[80px\] #profile-area {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+}
+
+.dashboard-page #sidebar.dashboard-sidebar-light.w-\[80px\] #sidebar-header {
+    min-height: 80px;
+    padding-top: 16px !important;
+    align-items: center;
+}
+
+.dashboard-page #sidebar.dashboard-sidebar-light.w-\[80px\] .nav-item,
+.dashboard-page #sidebar.dashboard-sidebar-light.w-\[80px\] #logout-btn {
+    justify-content: center !important;
+    gap: 0 !important;
+}
