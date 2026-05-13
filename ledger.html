@@ -354,7 +354,11 @@
             transactions.forEach(transaction => {
                 if (!transaction.timestamp?.toDate) return;
                 const date = transaction.timestamp.toDate();
-                const key = date.toISOString().slice(0, 10);
+                const key = [
+                    date.getFullYear(),
+                    String(date.getMonth() + 1).padStart(2, '0'),
+                    String(date.getDate()).padStart(2, '0')
+                ].join('-');
                 counts.set(key, {
                     label: formatActivityDate(date),
                     count: (counts.get(key)?.count || 0) + 1
@@ -404,15 +408,22 @@
             }
 
             const maxCount = Math.max(...volume.map(item => item.count), 1);
+            const totalCount = volume.reduce((sum, item) => sum + item.count, 0);
             container.innerHTML = `
-                <div class="h-36 flex items-end gap-2">
-                    ${volume.map(item => `
+                <div class="rounded-xl bg-slate-50 border border-slate-100 px-4 pt-4 pb-3">
+                    <div class="h-32 flex items-end gap-2">
+                        ${volume.map(item => `
                         <div class="flex-1 min-w-8 flex flex-col items-center gap-2">
-                            <div class="text-[11px] font-bold text-gray-600">${item.count}</div>
-                            <div class="w-full rounded-t-md bg-slate-300 border border-slate-300" style="height: ${Math.max((item.count / maxCount) * 92, 12)}px"></div>
-                            <div class="text-[10px] font-medium text-gray-400 whitespace-nowrap">${item.label}</div>
+                            <div class="text-[11px] font-bold text-slate-700">${item.count}</div>
+                            <div class="w-full rounded-t-md bg-blue-500 shadow-sm" style="height: ${Math.max((item.count / maxCount) * 88, 14)}px"></div>
+                            <div class="text-[10px] font-semibold text-slate-500 whitespace-nowrap">${item.label}</div>
                         </div>
-                    `).join('')}
+                        `).join('')}
+                    </div>
+                    <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-2 text-[11px] font-medium text-slate-500">
+                        <span>Last ${volume.length} active date${volume.length === 1 ? '' : 's'}</span>
+                        <span>${totalCount.toLocaleString()} loaded record${totalCount === 1 ? '' : 's'}</span>
+                    </div>
                 </div>
             `;
         }
@@ -423,6 +434,17 @@
             if (normalized.includes('missing')) return 'bg-red-500';
             if (normalized.includes('pending') || normalized.includes('waiting')) return 'bg-amber-500';
             if (normalized.includes('failed') || normalized.includes('void')) return 'bg-gray-500';
+            return 'bg-slate-400';
+        }
+
+        function getTypeColor(type) {
+            if (type === 'Income') return 'bg-green-500';
+            if (type === 'Expense') return 'bg-orange-500';
+            if (type === 'Refund') return 'bg-emerald-500';
+            if (type === 'Pending receivable') return 'bg-blue-500';
+            if (type === 'Pending payable') return 'bg-amber-500';
+            if (type === 'Fee' || type === 'Tax') return 'bg-rose-500';
+            if (type === 'Transfer' || type === 'Adjustment') return 'bg-violet-500';
             return 'bg-slate-400';
         }
 
@@ -437,14 +459,15 @@
             }
 
             const maxCount = Math.max(...rows.map(([, count]) => count), 1);
+            const totalCount = rows.reduce((sum, [, count]) => sum + count, 0);
             container.innerHTML = rows.map(([label, count]) => `
                 <div>
                     <div class="flex items-center justify-between gap-3 text-[12px]">
                         <span class="font-bold text-gray-700 truncate">${label}</span>
-                        <span class="font-mono font-bold text-gray-500">${count}</span>
+                        <span class="font-mono font-bold text-gray-500">${count} · ${Math.round((count / totalCount) * 100)}%</span>
                     </div>
                     <div class="mt-1.5 h-2 rounded-full bg-gray-100 overflow-hidden">
-                        <div class="h-full rounded-full ${colorResolver(label)}" style="width: ${Math.max((count / maxCount) * 100, 8)}%"></div>
+                        <div class="h-full rounded-full ${colorResolver(label)}" style="width: ${Math.max((count / maxCount) * 100, 10)}%"></div>
                     </div>
                 </div>
             `).join('');
@@ -453,7 +476,7 @@
         function renderLedgerActivity(transactions) {
             renderVolumeChart(transactions);
             renderBreakdownChart('ledger-status-chart', getStatusBreakdown(transactions), 'Status breakdown not available.', getStatusColor);
-            renderBreakdownChart('ledger-type-chart', getTransactionTypeBreakdown(transactions), 'Type breakdown not available.', label => getTypeBadgeClass(label).split(' ')[0]);
+            renderBreakdownChart('ledger-type-chart', getTransactionTypeBreakdown(transactions), 'Type breakdown not available.', getTypeColor);
         }
 
         function getSortedLedgerRows() {
