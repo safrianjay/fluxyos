@@ -51,22 +51,54 @@
                         <p class="text-[14px] text-gray-500 mt-1">Full audit trail of all transactions across your network.</p>
                     </div>
                     <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <div class="inline-flex h-9 rounded-lg border border-gray-200 bg-white p-1 shadow-sm" aria-label="Ledger period mode">
-                            <button id="ledger-period-month" type="button" class="px-3 rounded-md bg-gray-900 text-white text-[12px] font-bold transition-all" aria-pressed="true">Month</button>
-                            <button id="ledger-period-day" type="button" class="px-3 rounded-md text-gray-500 hover:text-gray-900 text-[12px] font-bold transition-all" aria-pressed="false">Day</button>
-                        </div>
-                        <div class="flex items-center bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden" aria-label="Ledger date filter">
+                        <div class="relative">
+                            <div class="flex items-center bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden" aria-label="Ledger date filter">
                             <button id="ledger-prev-period" type="button" class="h-9 w-9 inline-flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-95" aria-label="Previous period">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m15 18-6-6 6-6"></path></svg>
                             </button>
-                            <div class="relative border-x border-gray-100">
-                                <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"></path></svg>
-                                <select id="ledger-date-filter" class="h-9 w-full min-w-[158px] cursor-pointer appearance-none bg-white pl-9 pr-8 text-[13px] font-bold text-gray-700 outline-none hover:bg-gray-50 transition-colors" aria-label="Select ledger period"></select>
-                                <svg class="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m6 9 6 6 6-6"></path></svg>
-                            </div>
+                            <button id="ledger-date-filter-trigger" type="button" class="h-9 min-w-[210px] border-x border-gray-100 bg-white px-3 text-left text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2" aria-expanded="false">
+                                <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"></path></svg>
+                                <span id="ledger-date-filter-label">This month</span>
+                            </button>
                             <button id="ledger-next-period" type="button" class="h-9 w-9 inline-flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-gray-500" aria-label="Next period">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m9 18 6-6-6-6"></path></svg>
                             </button>
+                            </div>
+                            <div id="ledger-calendar-panel" class="hidden absolute right-0 top-11 z-50 w-[720px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+                                <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+                                    <div class="p-5">
+                                        <div class="flex items-center justify-between mb-5">
+                                            <button id="ledger-calendar-prev" type="button" class="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all" aria-label="Previous calendar month">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m15 18-6-6 6-6"></path></svg>
+                                            </button>
+                                            <h3 id="ledger-calendar-left-title" class="text-[15px] font-bold text-gray-900">Month</h3>
+                                            <span class="h-8 w-8"></span>
+                                        </div>
+                                        <div id="ledger-calendar-left" class="grid grid-cols-7 gap-y-2 text-center text-[13px]"></div>
+                                    </div>
+                                    <div class="p-5">
+                                        <div class="flex items-center justify-between mb-5">
+                                            <span class="h-8 w-8"></span>
+                                            <h3 id="ledger-calendar-right-title" class="text-[15px] font-bold text-gray-900">Month</h3>
+                                            <button id="ledger-calendar-next" type="button" class="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all disabled:cursor-not-allowed disabled:opacity-35" aria-label="Next calendar month">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m9 18 6-6-6-6"></path></svg>
+                                            </button>
+                                        </div>
+                                        <div id="ledger-calendar-right" class="grid grid-cols-7 gap-y-2 text-center text-[13px]"></div>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-5 py-4">
+                                    <div class="flex items-center gap-2 text-[13px] font-bold text-gray-700">
+                                        <span id="ledger-calendar-start" class="rounded-lg border border-gray-200 bg-white px-3 py-2 min-w-[128px]">Start</span>
+                                        <span class="text-gray-400">-</span>
+                                        <span id="ledger-calendar-end" class="rounded-lg border border-gray-200 bg-white px-3 py-2 min-w-[128px]">End</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button id="ledger-calendar-cancel" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all active:scale-95">Cancel</button>
+                                        <button id="ledger-calendar-apply" type="button" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-[13px] font-bold hover:bg-gray-800 transition-all active:scale-95">Apply</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <button id="download-csv-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60" disabled>
                             <svg id="download-csv-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
@@ -131,7 +163,7 @@
                             <div class="pt-4 border-t border-gray-100 md:border-t-0 md:pt-0 xl:border-t xl:pt-4">
                                 <h3 class="text-[13px] font-bold text-gray-900">Type Breakdown</h3>
                                 <p class="text-[12px] text-gray-500 mb-2">Distribution by transaction type</p>
-                                <div id="ledger-type-chart" class="space-y-3 max-h-[132px] overflow-y-auto pr-2"></div>
+                                <div id="ledger-type-chart" class="space-y-3 max-h-[176px] overflow-y-auto pr-2"></div>
                             </div>
                         </div>
                     </div>
@@ -220,7 +252,11 @@
         let ledgerCurrentPage = 1;
         let ledgerSortKey = 'date';
         let ledgerSortDirection = 'desc';
-        let ledgerPeriodMode = 'month';
+        let ledgerRangeStart = getMonthStartKey();
+        let ledgerRangeEnd = getMonthEndKey();
+        let draftRangeStart = ledgerRangeStart;
+        let draftRangeEnd = ledgerRangeEnd;
+        let calendarBaseMonth = ledgerRangeStart;
 
         function getMonthKey(date = new Date()) {
             return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -234,114 +270,77 @@
             ].join('-');
         }
 
+        function getMonthStartKey(date = new Date()) {
+            return getDayKey(new Date(date.getFullYear(), date.getMonth(), 1));
+        }
+
+        function getMonthEndKey(date = new Date()) {
+            return getDayKey(new Date(date.getFullYear(), date.getMonth() + 1, 0));
+        }
+
+        function parseDayKey(dayKey) {
+            const [year, month, day] = dayKey.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+
         function addMonths(monthKey, delta) {
             const [year, month] = monthKey.split('-').map(Number);
-            return getMonthKey(new Date(year, month - 1 + delta, 1));
+            return getDayKey(new Date(year, month - 1 + delta, 1));
         }
 
         function addDays(dayKey, delta) {
-            const [year, month, day] = dayKey.split('-').map(Number);
-            return getDayKey(new Date(year, month - 1, day + delta));
+            const date = parseDayKey(dayKey);
+            date.setDate(date.getDate() + delta);
+            return getDayKey(date);
         }
 
-        function formatMonthOption(monthKey) {
-            const [year, month] = monthKey.split('-').map(Number);
-            return new Date(year, month - 1, 1).toLocaleDateString('en-US', {
+        function formatMonthLabel(dayKey) {
+            const date = parseDayKey(dayKey);
+            return date.toLocaleDateString('en-US', {
                 month: 'short',
                 year: 'numeric'
             });
         }
 
-        function formatDayOption(dayKey) {
-            const [year, month, day] = dayKey.split('-').map(Number);
-            return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+        function formatDayLabel(dayKey) {
+            return parseDayKey(dayKey).toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric'
             });
         }
 
-        function populatePeriodFilter(force = false) {
-            const dateFilter = document.getElementById('ledger-date-filter');
-            if (!dateFilter || (!force && dateFilter.options.length > 0)) return;
-
-            dateFilter.innerHTML = '';
-            const currentKey = ledgerPeriodMode === 'month' ? getMonthKey() : getDayKey();
-            const optionCount = ledgerPeriodMode === 'month' ? 24 : 366;
-            for (let offset = 0; offset < optionCount; offset += 1) {
-                const periodKey = ledgerPeriodMode === 'month'
-                    ? addMonths(currentKey, -offset)
-                    : addDays(currentKey, -offset);
-                const label = ledgerPeriodMode === 'month'
-                    ? formatMonthOption(periodKey)
-                    : formatDayOption(periodKey);
-                dateFilter.add(new Option(label, periodKey));
-            }
-            dateFilter.value = currentKey;
-            updatePeriodNavigation();
-        }
-
-        function updatePeriodModeButtons() {
-            const monthButton = document.getElementById('ledger-period-month');
-            const dayButton = document.getElementById('ledger-period-day');
-            if (!monthButton || !dayButton) return;
-
-            const isMonth = ledgerPeriodMode === 'month';
-            monthButton.className = `px-3 rounded-md text-[12px] font-bold transition-all ${isMonth ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`;
-            dayButton.className = `px-3 rounded-md text-[12px] font-bold transition-all ${isMonth ? 'text-gray-500 hover:text-gray-900' : 'bg-gray-900 text-white'}`;
-            monthButton.setAttribute('aria-pressed', String(isMonth));
-            dayButton.setAttribute('aria-pressed', String(!isMonth));
-        }
-
         function updatePeriodNavigation() {
-            const dateFilter = document.getElementById('ledger-date-filter');
             const nextButton = document.getElementById('ledger-next-period');
-            if (!dateFilter || !nextButton) return;
-            const currentKey = ledgerPeriodMode === 'month' ? getMonthKey() : getDayKey();
-            nextButton.disabled = dateFilter.value >= currentKey;
+            if (!nextButton) return;
+            nextButton.disabled = ledgerRangeEnd >= getDayKey();
+            updateDateFilterLabel();
         }
 
         function shiftLedgerPeriod(delta) {
-            const dateFilter = document.getElementById('ledger-date-filter');
-            if (!dateFilter) return;
+            const daySpan = Math.max(1, Math.round((parseDayKey(ledgerRangeEnd) - parseDayKey(ledgerRangeStart)) / 86400000) + 1);
+            const isFullMonth = ledgerRangeStart === getMonthStartKey(parseDayKey(ledgerRangeStart))
+                && ledgerRangeEnd === getMonthEndKey(parseDayKey(ledgerRangeStart));
 
-            const currentKey = ledgerPeriodMode === 'month' ? getMonthKey() : getDayKey();
-            const fallback = ledgerPeriodMode === 'month' ? getMonthKey() : getDayKey();
-            const nextPeriod = ledgerPeriodMode === 'month'
-                ? addMonths(dateFilter.value || fallback, delta)
-                : addDays(dateFilter.value || fallback, delta);
-            if (nextPeriod > currentKey) return;
-
-            const optionExists = Array.from(dateFilter.options).some(option => option.value === nextPeriod);
-            if (!optionExists) {
-                const label = ledgerPeriodMode === 'month'
-                    ? formatMonthOption(nextPeriod)
-                    : formatDayOption(nextPeriod);
-                dateFilter.add(new Option(label, nextPeriod));
+            if (isFullMonth) {
+                const nextMonth = parseDayKey(ledgerRangeStart);
+                nextMonth.setMonth(nextMonth.getMonth() + delta);
+                ledgerRangeStart = getMonthStartKey(nextMonth);
+                ledgerRangeEnd = getMonthEndKey(nextMonth);
+            } else {
+                ledgerRangeStart = addDays(ledgerRangeStart, delta * daySpan);
+                ledgerRangeEnd = addDays(ledgerRangeEnd, delta * daySpan);
             }
-            dateFilter.value = nextPeriod;
+            if (ledgerRangeEnd > getDayKey()) ledgerRangeEnd = getDayKey();
+            if (ledgerRangeStart > ledgerRangeEnd) ledgerRangeStart = ledgerRangeEnd;
+            calendarBaseMonth = getMonthStartKey(parseDayKey(ledgerRangeStart));
             updatePeriodNavigation();
             window.loadLedger();
         }
 
-        function getMonthDateRange(monthKey) {
-            const [year, month] = monthKey.split('-').map(Number);
-            const start = new Date(year, month - 1, 1);
-            const end = new Date(year, month, 1);
-            return { start, end };
-        }
-
-        function getDayDateRange(dayKey) {
-            const [year, month, day] = dayKey.split('-').map(Number);
-            const start = new Date(year, month - 1, day);
-            const end = new Date(year, month - 1, day + 1);
-            return { start, end };
-        }
-
-        async function getLedgerTransactionsForPeriod(userId, periodKey) {
-            const { start, end } = ledgerPeriodMode === 'month'
-                ? getMonthDateRange(periodKey)
-                : getDayDateRange(periodKey);
+        async function getLedgerTransactionsForRange(userId) {
+            const start = parseDayKey(ledgerRangeStart);
+            const end = parseDayKey(addDays(ledgerRangeEnd, 1));
             const q = query(
                 collection(ds.db, `users/${userId}/transactions`),
                 where('timestamp', '>=', Timestamp.fromDate(start)),
@@ -353,11 +352,103 @@
             return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         }
 
-        function setLedgerPeriodMode(mode) {
-            if (ledgerPeriodMode === mode) return;
-            ledgerPeriodMode = mode;
-            updatePeriodModeButtons();
-            populatePeriodFilter(true);
+        function updateDateFilterLabel() {
+            const label = document.getElementById('ledger-date-filter-label');
+            if (!label) return;
+            const isFullMonth = ledgerRangeStart === getMonthStartKey(parseDayKey(ledgerRangeStart))
+                && ledgerRangeEnd === getMonthEndKey(parseDayKey(ledgerRangeStart));
+            if (isFullMonth) {
+                label.textContent = formatMonthLabel(ledgerRangeStart);
+            } else if (ledgerRangeStart === ledgerRangeEnd) {
+                label.textContent = formatDayLabel(ledgerRangeStart);
+            } else {
+                label.textContent = `${formatDayLabel(ledgerRangeStart)} - ${formatDayLabel(ledgerRangeEnd)}`;
+            }
+        }
+
+        function toggleCalendarPanel(show) {
+            const panel = document.getElementById('ledger-calendar-panel');
+            const trigger = document.getElementById('ledger-date-filter-trigger');
+            if (!panel || !trigger) return;
+
+            const shouldShow = typeof show === 'boolean' ? show : panel.classList.contains('hidden');
+            panel.classList.toggle('hidden', !shouldShow);
+            trigger.setAttribute('aria-expanded', String(shouldShow));
+            if (shouldShow) {
+                draftRangeStart = ledgerRangeStart;
+                draftRangeEnd = ledgerRangeEnd;
+                calendarBaseMonth = getMonthStartKey(parseDayKey(draftRangeStart));
+                renderCalendarPanel();
+            }
+        }
+
+        function renderCalendarMonth(containerId, titleId, monthStartKey) {
+            const container = document.getElementById(containerId);
+            const title = document.getElementById(titleId);
+            if (!container || !title) return;
+
+            const monthStart = parseDayKey(monthStartKey);
+            const month = monthStart.getMonth();
+            title.textContent = monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            const weekdays = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+            const firstGridDate = new Date(monthStart);
+            firstGridDate.setDate(firstGridDate.getDate() - ((firstGridDate.getDay() + 6) % 7));
+            let html = weekdays.map(day => `<div class="text-[12px] font-bold text-gray-900">${day}</div>`).join('');
+
+            for (let index = 0; index < 42; index += 1) {
+                const date = new Date(firstGridDate);
+                date.setDate(firstGridDate.getDate() + index);
+                const key = getDayKey(date);
+                const isOutside = date.getMonth() !== month;
+                const isFuture = key > getDayKey();
+                const isStart = key === draftRangeStart;
+                const isEnd = key === draftRangeEnd;
+                const isInRange = key >= draftRangeStart && key <= draftRangeEnd;
+                const classes = [
+                    'h-9 w-9 mx-auto rounded-full text-[13px] font-medium transition-all',
+                    isOutside ? 'text-gray-400' : 'text-gray-900',
+                    isInRange && !isStart && !isEnd ? 'bg-blue-50 text-blue-700' : '',
+                    isStart || isEnd ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-blue-50 hover:text-blue-700',
+                    isFuture ? 'opacity-30 cursor-not-allowed hover:bg-transparent hover:text-gray-400' : ''
+                ].join(' ');
+                html += `<button type="button" class="${classes}" data-calendar-day="${key}" ${isFuture ? 'disabled' : ''}>${date.getDate()}</button>`;
+            }
+            container.innerHTML = html;
+            container.querySelectorAll('[data-calendar-day]').forEach(button => {
+                button.addEventListener('click', () => selectDraftCalendarDay(button.dataset.calendarDay));
+            });
+        }
+
+        function renderCalendarPanel() {
+            renderCalendarMonth('ledger-calendar-left', 'ledger-calendar-left-title', calendarBaseMonth);
+            renderCalendarMonth('ledger-calendar-right', 'ledger-calendar-right-title', addMonths(calendarBaseMonth, 1));
+            const startLabel = document.getElementById('ledger-calendar-start');
+            const endLabel = document.getElementById('ledger-calendar-end');
+            const nextButton = document.getElementById('ledger-calendar-next');
+            if (startLabel) startLabel.textContent = formatDayLabel(draftRangeStart);
+            if (endLabel) endLabel.textContent = formatDayLabel(draftRangeEnd);
+            if (nextButton) nextButton.disabled = addMonths(calendarBaseMonth, 1) >= getMonthStartKey();
+        }
+
+        function selectDraftCalendarDay(dayKey) {
+            if (!draftRangeStart || (draftRangeStart && draftRangeEnd && draftRangeStart !== draftRangeEnd)) {
+                draftRangeStart = dayKey;
+                draftRangeEnd = dayKey;
+            } else if (dayKey < draftRangeStart) {
+                draftRangeEnd = draftRangeStart;
+                draftRangeStart = dayKey;
+            } else {
+                draftRangeEnd = dayKey;
+            }
+            renderCalendarPanel();
+        }
+
+        function applyCalendarRange() {
+            ledgerRangeStart = draftRangeStart;
+            ledgerRangeEnd = draftRangeEnd;
+            calendarBaseMonth = getMonthStartKey(parseDayKey(ledgerRangeStart));
+            toggleCalendarPanel(false);
+            updatePeriodNavigation();
             window.loadLedger();
         }
 
@@ -382,15 +473,11 @@
             const emptyContainer = document.getElementById('ledger-empty-state');
             const pagination = document.getElementById('ledger-pagination');
             const downloadBtn = document.getElementById('download-csv-btn');
-            const dateFilter = document.getElementById('ledger-date-filter');
             
             if (!body) return;
-            populatePeriodFilter();
-            updatePeriodModeButtons();
             updatePeriodNavigation();
             
-            const fallbackPeriod = ledgerPeriodMode === 'month' ? getMonthKey() : getDayKey();
-            const transactions = await getLedgerTransactionsForPeriod(user.uid, dateFilter?.value || fallbackPeriod);
+            const transactions = await getLedgerTransactionsForRange(user.uid);
             allLedgerTransactions = transactions;
             if (downloadBtn) downloadBtn.disabled = transactions.length === 0;
             applyLedgerMonthFilter();
@@ -400,8 +487,8 @@
                 pagination?.classList.add('hidden');
                 emptyContainer.classList.remove('hidden');
                 window.renderEmptyState('ledger-empty-state', {
-                    title: ledgerPeriodMode === 'month' ? "No transactions for this month." : "No transactions for this day.",
-                    description: "Switch periods or log a new expense, income, or finance event for the selected period.",
+                    title: ledgerRangeStart === ledgerRangeEnd ? "No transactions for this day." : "No transactions for this period.",
+                    description: "Switch dates or log a new expense, income, or finance event for the selected period.",
                     buttonText: "Log First Transaction",
                     onAction: () => window.showAddTransactionModal()
                 });
@@ -825,17 +912,15 @@
             window.setTimeout(() => {
                 const csv = buildLedgerCsv(currentLedgerTransactions);
                 const date = new Date().toISOString().slice(0, 10);
-                const dateFilter = document.getElementById('ledger-date-filter');
-                const period = dateFilter?.value || (ledgerPeriodMode === 'month' ? date.slice(0, 7) : date);
-                downloadTextFile(`fluxyos-ledger-${ledgerPeriodMode}-${period}.csv`, csv);
+                const period = ledgerRangeStart === ledgerRangeEnd ? ledgerRangeStart : `${ledgerRangeStart}-to-${ledgerRangeEnd}`;
+                downloadTextFile(`fluxyos-ledger-${period || date}.csv`, csv);
                 setDownloadButtonState('success');
                 window.setTimeout(() => setDownloadButtonState('idle'), 1200);
             }, 180);
         });
 
-        document.getElementById('ledger-date-filter')?.addEventListener('change', () => {
-            updatePeriodNavigation();
-            window.loadLedger();
+        document.getElementById('ledger-date-filter-trigger')?.addEventListener('click', () => {
+            toggleCalendarPanel();
         });
 
         document.getElementById('ledger-prev-period')?.addEventListener('click', () => {
@@ -846,12 +931,31 @@
             shiftLedgerPeriod(1);
         });
 
-        document.getElementById('ledger-period-month')?.addEventListener('click', () => {
-            setLedgerPeriodMode('month');
+        document.getElementById('ledger-calendar-prev')?.addEventListener('click', () => {
+            calendarBaseMonth = addMonths(calendarBaseMonth, -1);
+            renderCalendarPanel();
         });
 
-        document.getElementById('ledger-period-day')?.addEventListener('click', () => {
-            setLedgerPeriodMode('day');
+        document.getElementById('ledger-calendar-next')?.addEventListener('click', () => {
+            if (addMonths(calendarBaseMonth, 1) >= getMonthStartKey()) return;
+            calendarBaseMonth = addMonths(calendarBaseMonth, 1);
+            renderCalendarPanel();
+        });
+
+        document.getElementById('ledger-calendar-cancel')?.addEventListener('click', () => {
+            toggleCalendarPanel(false);
+        });
+
+        document.getElementById('ledger-calendar-apply')?.addEventListener('click', () => {
+            applyCalendarRange();
+        });
+
+        document.addEventListener('click', (event) => {
+            const panel = document.getElementById('ledger-calendar-panel');
+            const trigger = document.getElementById('ledger-date-filter-trigger');
+            if (!panel || !trigger || panel.classList.contains('hidden')) return;
+            if (panel.contains(event.target) || trigger.contains(event.target)) return;
+            toggleCalendarPanel(false);
         });
     </script>
 </body>

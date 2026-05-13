@@ -165,11 +165,11 @@ automatically. The ledger table renders 10 transactions per page and supports
 ascending/descending sort on Date, Amount, Category, and Status with up/down
 icons.
 
-The Finance Ledger page defaults to a monthly data window and also supports a
-single-day data window using the custom Month/Day selector beside Download CSV.
-Ledger control cards, Ledger Activity charts, table rows, pagination, and CSV
-export must all use the selected period so large ledgers do not overload the
-page.
+The Finance Ledger page defaults to the current month using the custom
+date-range calendar beside Download CSV. Single-day and custom-range views are
+selected inside the calendar, not through separate Day/Month tabs. Ledger
+control cards, Ledger Activity charts, table rows, pagination, and CSV export
+must all use the selected period so large ledgers do not overload the page.
 
 Example:
 
