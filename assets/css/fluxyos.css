@@ -41,12 +41,12 @@ nav[data-animate="nav"] {
 .promo-banner::before {
     content: "";
     position: absolute;
-    inset: -70% -6%;
+    inset: -120% -10%;
     z-index: -2;
     background:
-        radial-gradient(circle at 14% 45%, rgba(210, 127, 133, 0.72) 0%, rgba(185, 76, 101, 0.38) 22%, transparent 44%),
-        radial-gradient(circle at 86% 46%, rgba(150, 12, 74, 0.46) 0%, rgba(150, 12, 74, 0.26) 32%, transparent 58%),
-        linear-gradient(90deg, #D08A8D 0%, #B84468 43%, #930B4D 100%);
+        radial-gradient(circle at 80% 48%, rgba(255, 224, 151, 0.76) 0%, rgba(247, 140, 45, 0.34) 14%, rgba(228, 77, 14, 0.15) 30%, transparent 48%),
+        radial-gradient(circle at 24% 44%, rgba(234, 88, 12, 0.13) 0%, rgba(251, 146, 60, 0.08) 32%, transparent 54%),
+        linear-gradient(135deg, rgba(255, 247, 237, 0.64) 0%, rgba(255, 237, 213, 0.38) 52%, rgba(184, 38, 20, 0.08) 100%);
 }
 
 .promo-banner::after {
@@ -54,12 +54,7 @@ nav[data-animate="nav"] {
     position: absolute;
     inset: 0;
     z-index: -1;
-    background:
-        radial-gradient(circle at 15% 36%, rgba(236, 184, 111, 0.7) 0 2px, transparent 3px),
-        radial-gradient(circle at 39% 18%, rgba(236, 184, 111, 0.6) 0 2px, transparent 3px),
-        radial-gradient(circle at 62% 45%, rgba(236, 184, 111, 0.56) 0 2px, transparent 3px),
-        radial-gradient(circle at 88% 22%, rgba(236, 184, 111, 0.54) 0 2px, transparent 3px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.86) 0%, rgba(255, 255, 255, 0.74) 48%, rgba(255, 255, 255, 0.48) 100%);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.82) 48%, rgba(255, 255, 255, 0.6) 100%);
 }
 
 .promo-banner__inner {

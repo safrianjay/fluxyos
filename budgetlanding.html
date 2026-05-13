@@ -24,8 +24,105 @@
         nav[data-animate="nav"] {
             position: -webkit-sticky !important;
             position: sticky !important;
-            top: 0 !important;
+            top: var(--promo-banner-height, 0px) !important;
             z-index: 50 !important;
+        }
+
+        .promo-banner {
+            position: -webkit-sticky;
+            position: sticky;
+            top: 0;
+            z-index: 60;
+            overflow: hidden;
+            isolation: isolate;
+            background: #fff;
+            border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+        }
+
+        .promo-banner::before {
+            content: "";
+            position: absolute;
+            inset: -120% -10%;
+            z-index: -2;
+            background:
+                radial-gradient(circle at 80% 48%, rgba(255, 224, 151, 0.76) 0%, rgba(247, 140, 45, 0.34) 14%, rgba(228, 77, 14, 0.15) 30%, transparent 48%),
+                radial-gradient(circle at 24% 44%, rgba(234, 88, 12, 0.13) 0%, rgba(251, 146, 60, 0.08) 32%, transparent 54%),
+                linear-gradient(135deg, rgba(255, 247, 237, 0.64) 0%, rgba(255, 237, 213, 0.38) 52%, rgba(184, 38, 20, 0.08) 100%);
+        }
+
+        .promo-banner::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.82) 48%, rgba(255, 255, 255, 0.6) 100%);
+        }
+
+        .promo-banner__inner {
+            max-width: 1280px;
+            min-height: 44px;
+            margin: 0 auto;
+            padding: 8px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            text-align: center;
+        }
+
+        .promo-banner__copy {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            color: #111827;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.35;
+        }
+
+        .promo-banner__icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            flex: 0 0 auto;
+            border-radius: 9px;
+            background: linear-gradient(145deg, #FFE7BF 0%, #F97316 48%, #C2410C 100%);
+            border: 1px solid rgba(154, 52, 18, 0.18);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.65),
+                inset 0 -5px 10px rgba(154, 52, 18, 0.18),
+                0 6px 14px rgba(234, 88, 12, 0.2);
+            transform: rotate(-8deg);
+        }
+
+        .promo-banner__icon-mark {
+            color: #fff;
+            font-size: 15px;
+            font-weight: 900;
+            line-height: 1;
+            text-shadow: 0 1px 2px rgba(154, 52, 18, 0.45);
+        }
+
+        .promo-banner__link {
+            color: #C2410C;
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1.35;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .promo-banner__link:hover {
+            color: #9A3412;
+        }
+
+        .mobile-menu-panel {
+            top: calc(var(--promo-banner-height, 0px) + 64px) !important;
         }
         
         /* Subtle Grid Background for Hero */
