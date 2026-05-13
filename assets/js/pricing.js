@@ -7,8 +7,10 @@ document.addEventListener('DOMContentLoaded', () => {
         banner.setAttribute('aria-label', 'FluxyOS promotion');
         banner.innerHTML = `
             <div class="promo-banner__inner">
+                <span class="promo-banner__icon" aria-hidden="true">
+                    <span class="promo-banner__icon-mark">%</span>
+                </span>
                 <p class="promo-banner__copy">
-                    <span class="promo-banner__eyebrow">Launch promo</span>
                     <span>Save 20% on annual FluxyOS plans. Activate before the promo ends.</span>
                 </p>
                 <a class="promo-banner__link" href="/pricing">View plans</a>
@@ -18,11 +20,14 @@ document.addEventListener('DOMContentLoaded', () => {
         nav.insertAdjacentElement('beforebegin', banner);
 
         const updatePromoHeight = () => {
-            document.documentElement.style.setProperty('--promo-banner-height', `${banner.offsetHeight}px`);
+            document.documentElement.style.setProperty('--promo-banner-height', `${banner.getBoundingClientRect().height}px`);
         };
 
         updatePromoHeight();
         requestAnimationFrame(updatePromoHeight);
+        if ('ResizeObserver' in window) {
+            new ResizeObserver(updatePromoHeight).observe(banner);
+        }
         window.addEventListener('resize', updatePromoHeight);
     }
 

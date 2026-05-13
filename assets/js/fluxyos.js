@@ -10,8 +10,10 @@ function _fluxyosInit() {
         banner.setAttribute('aria-label', isIndonesian ? 'Promo FluxyOS' : 'FluxyOS promotion');
         banner.innerHTML = `
             <div class="promo-banner__inner">
+                <span class="promo-banner__icon" aria-hidden="true">
+                    <span class="promo-banner__icon-mark">%</span>
+                </span>
                 <p class="promo-banner__copy">
-                    <span class="promo-banner__eyebrow">${isIndonesian ? 'Promo launch' : 'Launch promo'}</span>
                     <span>${isIndonesian ? 'Hemat 20% untuk paket tahunan FluxyOS. Aktifkan sebelum promo berakhir.' : 'Save 20% on annual FluxyOS plans. Activate before the promo ends.'}</span>
                 </p>
                 <a class="promo-banner__link" href="${isIndonesian ? '/id/pricing' : '/pricing'}">${isIndonesian ? 'Lihat paket' : 'View plans'}</a>
@@ -21,11 +23,14 @@ function _fluxyosInit() {
         nav.insertAdjacentElement('beforebegin', banner);
 
         const updatePromoHeight = () => {
-            document.documentElement.style.setProperty('--promo-banner-height', `${banner.offsetHeight}px`);
+            document.documentElement.style.setProperty('--promo-banner-height', `${banner.getBoundingClientRect().height}px`);
         };
 
         updatePromoHeight();
         requestAnimationFrame(updatePromoHeight);
+        if ('ResizeObserver' in window) {
+            new ResizeObserver(updatePromoHeight).observe(banner);
+        }
         window.addEventListener('resize', updatePromoHeight);
     };
 
