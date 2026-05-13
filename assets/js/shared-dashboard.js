@@ -65,8 +65,15 @@ window.showAddTransactionModal = function(options = {}) {
                             <div>
                                 <label for="tx-type" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Type</label>
                                 <select id="tx-type" name="type" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                                    <option value="income" ${defaultType === 'income' || defaultType === 'revenue' ? 'selected' : ''}>Income</option>
                                     <option value="expense" ${defaultType === 'expense' ? 'selected' : ''}>Expense</option>
-                                    <option value="revenue" ${defaultType === 'revenue' ? 'selected' : ''}>Revenue</option>
+                                    <option value="transfer" ${defaultType === 'transfer' ? 'selected' : ''}>Transfer</option>
+                                    <option value="refund" ${defaultType === 'refund' ? 'selected' : ''}>Refund</option>
+                                    <option value="adjustment" ${defaultType === 'adjustment' ? 'selected' : ''}>Adjustment</option>
+                                    <option value="fee" ${defaultType === 'fee' ? 'selected' : ''}>Fee</option>
+                                    <option value="tax" ${defaultType === 'tax' ? 'selected' : ''}>Tax</option>
+                                    <option value="pending_receivable" ${defaultType === 'pending_receivable' ? 'selected' : ''}>Pending receivable</option>
+                                    <option value="pending_payable" ${defaultType === 'pending_payable' ? 'selected' : ''}>Pending payable</option>
                                 </select>
                             </div>
                         </div>
@@ -89,11 +96,11 @@ window.showAddTransactionModal = function(options = {}) {
                             <div class="mt-3 grid gap-2 text-[12px] text-gray-600">
                                 <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Description</span><span class="text-right">Required vendor or memo</span></div>
                                 <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Category</span><span class="text-right">Revenue, Marketing, Infrastructure, Operations, SaaS</span></div>
-                                <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Type</span><span class="text-right">revenue or expense</span></div>
+                                <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Type</span><span class="text-right">Income, Expense, Transfer, Refund, Adjustment, Fee, Tax, Pending receivable, or Pending payable</span></div>
                                 <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Amount</span><span class="text-right">Raw Rp number, e.g. 1250000</span></div>
                                 <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Status</span><span class="text-right">Optional: Completed or Missing Receipt</span></div>
                             </div>
-                            <p class="mt-3 rounded-lg bg-gray-50 px-3 py-2 font-mono text-[11px] text-gray-500">Client Payment,Revenue,revenue,1250000,Completed</p>
+                            <p class="mt-3 rounded-lg bg-gray-50 px-3 py-2 font-mono text-[11px] text-gray-500">Client Payment,Revenue,Income,1250000,Completed</p>
                         </div>
                     </div>
                     ` : ''}
@@ -207,21 +214,21 @@ window.showAddTransactionModal = function(options = {}) {
         }
 
         const allowedCategories = ['Revenue', 'Marketing', 'Infrastructure', 'Operations', 'SaaS'];
-        const allowedTypes = ['revenue', 'expense'];
+        const allowedTypes = ['income', 'revenue', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending receivable', 'pending_payable', 'pending payable'];
         const allowedStatuses = ['Completed', 'Missing Receipt'];
 
         return rows.slice(1).map((row, index) => {
             const line = index + 2;
             const amount = parseCsvAmount(row[indexes.amount]);
             const category = row[indexes.category];
-            const type = String(row[indexes.type] || '').toLowerCase();
+            const type = String(row[indexes.type] || '').toLowerCase().replace(/\s+/g, '_');
             const status = row[indexes.status] || 'Completed';
             const vendor = row[indexes.vendor];
 
             if (!vendor) throw new Error(`Row ${line}: Description is required.`);
             if (!Number.isFinite(amount) || amount <= 0) throw new Error(`Row ${line}: Amount must be a positive number.`);
             if (!allowedCategories.includes(category)) throw new Error(`Row ${line}: Category must be Revenue, Marketing, Infrastructure, Operations, or SaaS.`);
-            if (!allowedTypes.includes(type)) throw new Error(`Row ${line}: Type must be revenue or expense.`);
+            if (!allowedTypes.includes(type)) throw new Error(`Row ${line}: Type must be Income, Expense, Transfer, Refund, Adjustment, Fee, Tax, Pending receivable, or Pending payable.`);
             if (!allowedStatuses.includes(status)) throw new Error(`Row ${line}: Status must be Completed or Missing Receipt.`);
 
             return {
@@ -230,7 +237,7 @@ window.showAddTransactionModal = function(options = {}) {
                 category,
                 type,
                 status,
-                icon: type === 'revenue' ? '💰' : '💸'
+                icon: ['income', 'revenue', 'refund', 'pending_receivable'].includes(type) ? '💰' : '💸'
             };
         });
     }
@@ -393,7 +400,7 @@ window.showAddTransactionModal = function(options = {}) {
                 category: document.getElementById('tx-category').value,
                 type: document.getElementById('tx-type').value,
                 status: 'Completed',
-                icon: document.getElementById('tx-type').value === 'revenue' ? '💰' : '💸'
+                icon: ['income', 'refund', 'pending_receivable'].includes(document.getElementById('tx-type').value) ? '💰' : '💸'
             };
 
             // Initialize Firebase if not already done

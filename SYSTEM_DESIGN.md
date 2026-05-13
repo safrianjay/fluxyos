@@ -154,7 +154,7 @@ Required fields:
 - `amount`: number, raw integer
 - `vendor_name`: string
 - `category`: `Revenue`, `Marketing`, `Infrastructure`, `Operations`, or `SaaS`
-- `type`: lowercase `revenue` or `expense`
+- `type`: transaction type. Supported values are `income`, `expense`, `transfer`, `refund`, `adjustment`, `fee`, `tax`, `pending_receivable`, and `pending_payable`; legacy `revenue` is treated as income.
 - `status`: `Completed` or `Missing Receipt`
 - `icon`: display icon
 - `timestamp`: Firestore server timestamp
@@ -183,8 +183,8 @@ Primary consumers: `subscription.html`, shared add modal.
 
 Calculated by `DataService.getDashboardStats(userId)`:
 
-- Revenue: sum of `amount` where `type === 'revenue'`
-- OpEx: sum of absolute `amount` where `type === 'expense'`
+- Revenue: sum of `amount` where `type` is `income`, legacy `revenue`, `refund`, or `pending_receivable`
+- OpEx: sum of absolute `amount` where `type` is `expense`, `fee`, `tax`, or `pending_payable`
 - Margin: `(revenue - opex) / revenue * 100`, or `0` when revenue is zero
 - Needs Action: count of transactions where `status === 'Missing Receipt'`
 

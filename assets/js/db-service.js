@@ -72,8 +72,9 @@ class DataService {
         let opex = 0;
 
         txs.forEach(tx => {
-            if (tx.type === 'revenue') revenue += tx.amount;
-            else opex += Math.abs(tx.amount);
+            const type = String(tx.type || '').toLowerCase();
+            if (['revenue', 'income', 'refund', 'pending_receivable'].includes(type)) revenue += tx.amount;
+            else if (['expense', 'fee', 'tax', 'pending_payable'].includes(type)) opex += Math.abs(tx.amount);
         });
 
         const margin = revenue > 0 ? ((revenue - opex) / revenue) * 100 : 0;

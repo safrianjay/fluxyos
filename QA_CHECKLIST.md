@@ -172,7 +172,7 @@ Run this section whenever any data write, read, calculation, or modal logic is c
 | 1 | Add a **Transaction** → Firebase Console shows new doc in `users/{uid}/transactions` only |
 | 2 | Add a **Bill** → new doc in `users/{uid}/bills` only, NOT in transactions |
 | 3 | Add a **Subscription** → new doc in `users/{uid}/subscriptions` only, NOT in transactions |
-| 4 | Each saved doc must have: `amount`, `vendor_name`, `category`, `type`, `status`, `timestamp` fields |
+| 4 | Each saved doc must have: `amount`, `vendor_name`, `category`, `type`, `status`, `timestamp` fields; transaction `type` may be income, expense, transfer, refund, adjustment, fee, tax, pending receivable, or pending payable |
 | 5 | Subscription saved doc must have `category: "SaaS"` — verify in Firebase Console |
 | 6 | Bill saved doc must have `category: "Operations"` — verify in Firebase Console |
 

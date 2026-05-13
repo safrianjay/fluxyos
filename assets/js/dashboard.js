@@ -61,6 +61,10 @@ function updateKPI(id, value) {
     if (el) el.textContent = value;
 }
 
+function isPositiveTransaction(tx) {
+    return ['revenue', 'income', 'refund', 'pending_receivable'].includes(String(tx.type || '').toLowerCase());
+}
+
 function renderLedgerRows(txs) {
     const body = document.getElementById('ledger-body');
     if (!body) return;
@@ -79,13 +83,13 @@ function renderLedgerRows(txs) {
                 </div>
             </td>
             <td class="px-5 py-3.5">
-                <span class="${tx.type === 'revenue' ? 'bg-gray-100 text-gray-600' : 'bg-[#FFEDD5] text-[#C2410C]'} px-2 py-0.5 rounded text-[11px] font-bold">
+                <span class="${isPositiveTransaction(tx) ? 'bg-gray-100 text-gray-600' : 'bg-[#FFEDD5] text-[#C2410C]'} px-2 py-0.5 rounded text-[11px] font-bold">
                     ${tx.category}
                 </span>
             </td>
             <td class="px-5 py-3.5 text-gray-600 text-[12px] font-medium">${tx.entity || 'Main Entity'}</td>
-            <td class="px-5 py-3.5 text-right font-mono font-bold ${tx.type === 'revenue' ? 'text-green-600' : 'text-gray-900'}">
-                ${tx.type === 'revenue' ? '+' : ''}Rp ${Math.abs(tx.amount).toLocaleString()}
+            <td class="px-5 py-3.5 text-right font-mono font-bold ${isPositiveTransaction(tx) ? 'text-green-600' : 'text-gray-900'}">
+                ${isPositiveTransaction(tx) ? '+' : ''}Rp ${Math.abs(tx.amount).toLocaleString()}
             </td>
             <td class="px-5 py-3.5 text-right">
                 <span class="inline-flex items-center gap-1.5 ${tx.status === 'Missing Receipt' ? 'text-red-500 bg-red-50 px-2 py-1 rounded text-[10px]' : 'text-green-600 text-[11px]'} font-bold">

@@ -67,9 +67,9 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | `amount` | number | Raw integer (e.g. `1234567`). Never stored with dots. Always positive for revenue, positive for expense (type determines sign in display) |
 | `vendor_name` | string | Free text (e.g. `"AWS"`, `"Client Payment"`) |
 | `category` | string | `"Revenue"` \| `"Marketing"` \| `"Infrastructure"` \| `"Operations"` \| `"SaaS"` |
-| `type` | string | `"revenue"` \| `"expense"` — lowercase always |
+| `type` | string | Transaction type. Supported values: `"income"`, `"expense"`, `"transfer"`, `"refund"`, `"adjustment"`, `"fee"`, `"tax"`, `"pending_receivable"`, `"pending_payable"`. Legacy `"revenue"` is still accepted as income. |
 | `status` | string | `"Completed"` \| `"Missing Receipt"` |
-| `icon` | string | `"💰"` (revenue) \| `"💸"` (expense) |
+| `icon` | string | `"💰"` for positive-side transaction types, `"💸"` for spend-side transaction types |
 | `timestamp` | Firestore Timestamp | `serverTimestamp()` — always server-side, never client Date() |
 
 **Ordering:** `timestamp DESC` (newest first). Default limit: 50. Dashboard preview: 5.
@@ -117,8 +117,8 @@ Same fields as transactions plus:
 ### getDashboardStats Calculation
 
 ```
-revenue = sum of amount WHERE type === 'revenue'
-opex    = sum of Math.abs(amount) WHERE type === 'expense'
+revenue = sum of amount WHERE type is 'income', legacy 'revenue', 'refund', or 'pending_receivable'
+opex    = sum of Math.abs(amount) WHERE type is 'expense', 'fee', 'tax', or 'pending_payable'
 margin  = ((revenue - opex) / revenue) * 100
 ```
 
@@ -152,7 +152,7 @@ Accepted headers:
 |--------|----------|-------|
 | `Description` or `vendor_name` | ✅ | Saved as `vendor_name` |
 | `Category` | ✅ | Must be `Revenue`, `Marketing`, `Infrastructure`, `Operations`, or `SaaS` |
-| `Type` | ✅ | Must be lowercase `revenue` or `expense` |
+| `Type` | ✅ | May be `Income`, `Expense`, `Transfer`, `Refund`, `Adjustment`, `Fee`, `Tax`, `Pending receivable`, or `Pending payable`; legacy `revenue` is accepted |
 | `Amount` | ✅ | Positive raw number; `Rp`, commas, or dots are stripped before save |
 | `Status` | No | Defaults to `Completed`; may be `Completed` or `Missing Receipt` |
 | `Date` | No | Accepted for compatibility with ledger CSV export but ignored; Firestore uses server timestamp |
@@ -169,8 +169,8 @@ Example:
 
 ```csv
 Description,Category,Type,Amount,Status
-Client Payment,Revenue,revenue,1250000,Completed
-AWS,Infrastructure,expense,450000,Missing Receipt
+Client Payment,Revenue,Income,1250000,Completed
+AWS,Infrastructure,Expense,450000,Missing Receipt
 ```
 
 ---
