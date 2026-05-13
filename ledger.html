@@ -51,7 +51,10 @@
                         <p class="text-[14px] text-gray-500 mt-1">Full audit trail of all transactions across your network.</p>
                     </div>
                     <div class="flex items-center gap-3">
-                        <button class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Download PDF</button>
+                        <button id="download-csv-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60" disabled>
+                            <svg id="download-csv-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
+                            <span id="download-csv-label">Download CSV</span>
+                        </button>
                         <button onclick="window.showAddTransactionModal()" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                             Add Transaction
@@ -109,6 +112,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const ds = new DataService(app);
+        let currentLedgerTransactions = [];
 
         // SMART AUTH GUARD
         let checkTimeout = setTimeout(() => {
@@ -129,10 +133,13 @@
             const body = document.getElementById('ledger-table-body');
             const tableContainer = document.getElementById('ledger-table-container');
             const emptyContainer = document.getElementById('ledger-empty-state');
+            const downloadBtn = document.getElementById('download-csv-btn');
             
             if (!body) return;
             
             const transactions = await ds.getTransactions(user.uid, 100);
+            currentLedgerTransactions = transactions;
+            if (downloadBtn) downloadBtn.disabled = transactions.length === 0;
 
             if (transactions.length === 0) {
                 tableContainer.classList.add('hidden');
@@ -163,6 +170,85 @@
                 `).join('');
             }
         }
+
+        function formatCsvDate(timestamp) {
+            if (!timestamp?.toDate) return '';
+            return timestamp.toDate().toISOString();
+        }
+
+        function escapeCsvValue(value) {
+            const text = String(value ?? '');
+            return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+        }
+
+        function buildLedgerCsv(rows) {
+            const headers = ['Date', 'Description', 'Category', 'Type', 'Amount', 'Status'];
+            const records = rows.map(row => [
+                formatCsvDate(row.timestamp),
+                row.vendor_name,
+                row.category,
+                row.type,
+                row.amount,
+                row.status
+            ]);
+
+            return [headers, ...records]
+                .map(record => record.map(escapeCsvValue).join(','))
+                .join('\n');
+        }
+
+        function downloadTextFile(filename, text) {
+            const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function setDownloadButtonState(state) {
+            const button = document.getElementById('download-csv-btn');
+            const label = document.getElementById('download-csv-label');
+            const icon = document.getElementById('download-csv-icon');
+            if (!button || !label || !icon) return;
+
+            if (state === 'loading') {
+                button.disabled = true;
+                button.classList.add('ring-2', 'ring-orange-100');
+                icon.classList.add('animate-bounce');
+                label.textContent = 'Exporting...';
+                return;
+            }
+
+            if (state === 'success') {
+                icon.classList.remove('animate-bounce');
+                button.classList.remove('ring-2', 'ring-orange-100');
+                button.classList.add('border-green-200', 'text-green-700', 'bg-green-50');
+                label.textContent = 'Downloaded';
+                return;
+            }
+
+            icon.classList.remove('animate-bounce');
+            button.classList.remove('ring-2', 'ring-orange-100', 'border-green-200', 'text-green-700', 'bg-green-50');
+            label.textContent = 'Download CSV';
+            button.disabled = currentLedgerTransactions.length === 0;
+        }
+
+        document.getElementById('download-csv-btn')?.addEventListener('click', () => {
+            if (currentLedgerTransactions.length === 0) return;
+
+            setDownloadButtonState('loading');
+            window.setTimeout(() => {
+                const csv = buildLedgerCsv(currentLedgerTransactions);
+                const date = new Date().toISOString().slice(0, 10);
+                downloadTextFile(`fluxyos-ledger-${date}.csv`, csv);
+                setDownloadButtonState('success');
+                window.setTimeout(() => setDownloadButtonState('idle'), 1200);
+            }, 180);
+        });
     </script>
 </body>
 </html>

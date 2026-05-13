@@ -34,8 +34,8 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Empty state when no transactions | ✅ Shipped | |
 | Search transactions | 🔧 Stub | Input exists on ledger.html, no handler |
 | Filter transactions | 🔧 Stub | "Filter" button on dashboard, no handler |
-| Export ledger to PDF | 🔧 Stub | "Download PDF" button on ledger.html, no handler |
-| Export ledger to CSV | 🔧 Stub | "Export" button on dashboard, no handler |
+| Export ledger to CSV | ✅ Shipped | "Download CSV" on ledger.html exports loaded ledger rows |
+| Export dashboard ledger preview to CSV | 🔧 Stub | "Export" button on dashboard, no handler |
 | Edit transaction | 📋 Planned | No UI yet |
 | Delete transaction | 📋 Planned | No UI yet |
 | Date range filter | 🔧 Stub | "This Month" button on dashboard, no handler |

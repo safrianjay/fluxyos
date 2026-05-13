@@ -303,7 +303,6 @@ Netlify auto-deploys on main push. No manual deploy step needed.
 - "Manage" on subscriptions (button exists, no handler)
 - Real AI backend — `/api/v1/brain/chat` exists but returns mock data
 - CSV export for bills (button exists, no handler)
-- PDF export for ledger (button exists, no handler)
 - Date range filtering on dashboard (button exists, no handler)
 - Search on any table (input exists, no handler)
 

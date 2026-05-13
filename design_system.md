@@ -93,6 +93,7 @@ This document defines the visual and functional standards for FluxyOS. Follow th
 ## ✨ Animations & Micro-interactions
 - **Transitions**: Use `transition-all duration-200 ease-in-out` for hovers.
 - **Dashboard/App Sidebar Hover**: Use only subtle `#F8FAFC` hover backgrounds. Do not add collapse/expand interactions.
+- **Dashboard/App Export Buttons**: Export/download actions should show a brief disabled loading state, a clear success state, and a subtle `active:scale-95` press interaction. Use CSV for ledger/transaction exports unless a PDF report is explicitly requested.
 - **Shadows**: Elevate cards on hover using `hover:shadow-md`.
 
 ---
