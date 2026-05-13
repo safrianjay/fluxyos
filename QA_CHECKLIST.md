@@ -134,7 +134,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 11 | Bills table renders rows OR shows empty state |
 | 12 | Subscriptions table renders rows OR shows empty state |
 | 13 | Ledger CSV export downloads a `.csv` file with Date, Description, Category, Type, Amount, and Status columns; empty ledgers keep the export button disabled |
-| 14 | Ledger date filter uses shared `assets/js/date-range-picker.js`, appears beside Download CSV, defaults to the current month, opens on click, has responsive trigger width, supports single-day and range selection without Day/Month tabs, includes Cancel/Reset/Apply actions, disables future dates, and updates ledger cards, activity charts, table rows, pagination, and CSV export scope |
+| 14 | Ledger date filter uses shared `assets/js/date-range-picker.js`, appears beside Download CSV, defaults to the current month, opens on click, has responsive trigger width, supports single-day and range selection without Day/Month tabs, includes Reset/Cancel/Apply actions, disables future dates, and updates ledger cards, activity charts, table rows, pagination, and CSV export scope |
 | 15 | Ledger Status Breakdown and Type Breakdown panels show about 4 rows before scrolling, and the Ledger Activity card does not leave a large empty area under the volume chart |
 
 ### E. Add Transaction / Bill / Subscription (shared-dashboard.js, db-service.js)

@@ -110,8 +110,8 @@
                             <span data-drp-end class="rounded-lg border border-gray-200 bg-white px-3 py-2 min-w-[128px]">End</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <button data-drp-cancel type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all active:scale-95">Cancel</button>
                             <button data-drp-reset type="button" class="px-4 py-2 bg-transparent text-[13px] font-bold text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all active:scale-95">Reset</button>
+                            <button data-drp-cancel type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all active:scale-95">Cancel</button>
                             <button data-drp-apply type="button" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-[13px] font-bold hover:bg-gray-800 transition-all active:scale-95">Apply</button>
                         </div>
                     </div>
