@@ -2,6 +2,16 @@
  * Universe starfield canvas — reusable for any container.
  * Call initUniverseCanvas(canvasEl) after inserting the canvas into the DOM.
  */
+(function loadFluxyPageTransition() {
+    if (window.__fluxyPageTransitionScriptRequested) return;
+    window.__fluxyPageTransitionScriptRequested = true;
+
+    const script = document.createElement('script');
+    script.src = '/assets/js/page-transition.js';
+    script.defer = true;
+    document.head.appendChild(script);
+})();
+
 function initUniverseCanvas(canvas) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');

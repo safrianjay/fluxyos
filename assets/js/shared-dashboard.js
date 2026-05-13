@@ -1,6 +1,16 @@
 /**
  * Global Transaction Modal
  */
+(function loadFluxyPageTransition() {
+    if (window.__fluxyPageTransitionScriptRequested) return;
+    window.__fluxyPageTransitionScriptRequested = true;
+
+    const script = document.createElement('script');
+    script.src = '/assets/js/page-transition.js';
+    script.defer = true;
+    document.head.appendChild(script);
+})();
+
 window.showAddTransactionModal = function(options = {}) {
     const {
         title = "Add Transaction",
