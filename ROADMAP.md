@@ -29,6 +29,7 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Add transaction (modal) | ✅ Shipped | Amount, vendor, category, type |
+| Bulk add transactions from CSV | ✅ Shipped | Add Transaction modal imports CSV rows into transactions |
 | View ledger table (newest first) | ✅ Shipped | Up to 50 rows |
 | Dashboard ledger preview (5 rows) | ✅ Shipped | |
 | Empty state when no transactions | ✅ Shipped | |

@@ -149,6 +149,9 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 8 | On Firebase permission error: toast shows a friendly error message |
 | 9 | Closing modal via X or backdrop click removes the modal completely |
 | 10 | Re-opening modal after closing starts with a fresh, empty form |
+| 11 | Add Transaction modal shows CSV upload guidance with required headers and example structure |
+| 12 | Uploading a valid transaction CSV writes every row to `users/{uid}/transactions`, refreshes dashboard/ledger views, and shows a success state/toast |
+| 13 | Uploading an invalid CSV keeps the modal open, shows a row-specific validation error, and writes no partial rows |
 
 ### F. Database & Logic Verification (db-service.js, shared-dashboard.js, dashboard.js)
 

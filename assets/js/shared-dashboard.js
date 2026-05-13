@@ -19,6 +19,7 @@ window.showAddTransactionModal = function(options = {}) {
         defaultCategory = 'Operations',
         context = 'transaction' // 'transaction', 'bill', 'subscription'
     } = options;
+    const supportsBulkCsv = context === 'transaction';
 
     // Always destroy and recreate so context options (title, labels) are fresh
     const existing = document.getElementById('global-tx-modal');
@@ -27,14 +28,14 @@ window.showAddTransactionModal = function(options = {}) {
     const modalHTML = `
         <div id="global-tx-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
             <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onclick="window.closeAddTransactionModal()"></div>
-            <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-300">
+            <div class="bg-white w-full max-w-lg max-h-[92vh] rounded-2xl shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col">
                 <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                     <h3 class="text-lg font-bold text-gray-900">${title}</h3>
                     <button onclick="window.closeAddTransactionModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
-                <form id="global-tx-form" class="p-6 space-y-5">
+                <form id="global-tx-form" class="p-6 space-y-5 overflow-y-auto">
                     <div>
                         <label for="tx-amount" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Amount (Rp)</label>
                         <input type="text" id="tx-amount" name="amount" required placeholder="0" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E85D19] focus:border-[#E85D19] outline-none font-mono font-bold text-lg">
@@ -62,6 +63,28 @@ window.showAddTransactionModal = function(options = {}) {
                             </select>
                         </div>
                     </div>
+                    ${supportsBulkCsv ? `
+                    <div class="border-t border-gray-100 pt-5">
+                        <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 transition-all duration-200" id="tx-csv-dropzone">
+                            <div class="flex items-start gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-[#E85D19] flex-shrink-0">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-[13px] font-bold text-gray-900">Bulk add from CSV</p>
+                                    <p class="text-[12px] text-gray-500 mt-1 leading-relaxed">Use headers: <span class="font-mono">Description, Category, Type, Amount, Status</span>. Type must be <span class="font-mono">revenue</span> or <span class="font-mono">expense</span>; Status may be <span class="font-mono">Completed</span> or <span class="font-mono">Missing Receipt</span>.</p>
+                                    <p class="text-[11px] text-gray-400 mt-2 font-mono">Example: Client Payment,Revenue,revenue,1250000,Completed</p>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex flex-col sm:flex-row gap-2">
+                                <label for="tx-csv-file" class="flex-1 cursor-pointer px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors truncate" id="tx-csv-file-label">Choose CSV file</label>
+                                <input type="file" id="tx-csv-file" accept=".csv,text/csv" class="sr-only">
+                                <button type="button" id="tx-csv-upload-btn" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60" disabled>Upload CSV</button>
+                            </div>
+                            <div id="tx-csv-feedback" class="hidden mt-3 text-[12px] font-medium"></div>
+                        </div>
+                    </div>
+                    ` : ''}
                     <button type="submit" id="tx-submit-btn" class="w-full py-4 bg-[#E85D19] hover:bg-[#D44400] text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2">
                         <span>${submitLabel}</span>
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -82,6 +105,183 @@ window.showAddTransactionModal = function(options = {}) {
         e.target.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     };
 
+    async function getTransactionDataService() {
+        const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
+        const firebaseConfig = {
+            apiKey: "AIzaSyCaJqmpEMulLdMvRT7mYf2K-XDw46-dT7A",
+            authDomain: "fluxyos.firebaseapp.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+        const auth = getAuth(app);
+        const user = auth.currentUser;
+        if (!user) throw new Error("Session expired. Please log in again.");
+
+        const { default: DataService } = await import('/assets/js/db-service.js');
+        return { ds: new DataService(app), user };
+    }
+
+    function parseCsv(text) {
+        const rows = [];
+        let current = '';
+        let row = [];
+        let inQuotes = false;
+
+        for (let index = 0; index < text.length; index++) {
+            const char = text[index];
+            const next = text[index + 1];
+
+            if (char === '"' && inQuotes && next === '"') {
+                current += '"';
+                index++;
+            } else if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                row.push(current.trim());
+                current = '';
+            } else if ((char === '\n' || char === '\r') && !inQuotes) {
+                if (char === '\r' && next === '\n') index++;
+                row.push(current.trim());
+                if (row.some(value => value !== '')) rows.push(row);
+                row = [];
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+
+        row.push(current.trim());
+        if (row.some(value => value !== '')) rows.push(row);
+        return rows;
+    }
+
+    function normalizeHeader(header) {
+        return header.toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    function parseCsvAmount(value) {
+        const cleaned = String(value || '').replace(/rp/gi, '').replace(/\s/g, '');
+        const withoutGrouping = cleaned.includes(',') && cleaned.includes('.')
+            ? cleaned.replace(/\./g, '').replace(',', '.')
+            : cleaned.replace(/[.,](?=\d{3}(?:\D|$))/g, '');
+        return parseFloat(withoutGrouping.replace(/[^\d.-]/g, ''));
+    }
+
+    function parseBulkTransactions(csvText) {
+        const rows = parseCsv(csvText);
+        if (rows.length < 2) throw new Error("CSV needs one header row and at least one transaction row.");
+        if (rows.length > 501) throw new Error("CSV imports are limited to 500 transactions at a time.");
+
+        const headers = rows[0].map(normalizeHeader);
+        const findIndex = (names) => names.map(normalizeHeader).map(name => headers.indexOf(name)).find(index => index >= 0);
+        const indexes = {
+            vendor: findIndex(['vendor_name', 'vendor', 'description']),
+            category: findIndex(['category']),
+            type: findIndex(['type']),
+            amount: findIndex(['amount']),
+            status: findIndex(['status'])
+        };
+
+        if ([indexes.vendor, indexes.category, indexes.type, indexes.amount].some(index => index === undefined)) {
+            throw new Error("CSV must include Description, Category, Type, and Amount columns.");
+        }
+
+        const allowedCategories = ['Revenue', 'Marketing', 'Infrastructure', 'Operations', 'SaaS'];
+        const allowedTypes = ['revenue', 'expense'];
+        const allowedStatuses = ['Completed', 'Missing Receipt'];
+
+        return rows.slice(1).map((row, index) => {
+            const line = index + 2;
+            const amount = parseCsvAmount(row[indexes.amount]);
+            const category = row[indexes.category];
+            const type = String(row[indexes.type] || '').toLowerCase();
+            const status = row[indexes.status] || 'Completed';
+            const vendor = row[indexes.vendor];
+
+            if (!vendor) throw new Error(`Row ${line}: Description is required.`);
+            if (!Number.isFinite(amount) || amount <= 0) throw new Error(`Row ${line}: Amount must be a positive number.`);
+            if (!allowedCategories.includes(category)) throw new Error(`Row ${line}: Category must be Revenue, Marketing, Infrastructure, Operations, or SaaS.`);
+            if (!allowedTypes.includes(type)) throw new Error(`Row ${line}: Type must be revenue or expense.`);
+            if (!allowedStatuses.includes(status)) throw new Error(`Row ${line}: Status must be Completed or Missing Receipt.`);
+
+            return {
+                amount,
+                vendor_name: vendor,
+                category,
+                type,
+                status,
+                icon: type === 'revenue' ? '💰' : '💸'
+            };
+        });
+    }
+
+    function setCsvFeedback(message, type = 'info') {
+        const feedback = document.getElementById('tx-csv-feedback');
+        if (!feedback) return;
+        if (!message) {
+            feedback.classList.add('hidden');
+            feedback.textContent = '';
+            return;
+        }
+        feedback.className = `mt-3 text-[12px] font-medium ${type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-700' : 'text-gray-500'}`;
+        feedback.textContent = message;
+        feedback.classList.remove('hidden');
+    }
+
+    if (supportsBulkCsv) {
+        const fileInput = document.getElementById('tx-csv-file');
+        const fileLabel = document.getElementById('tx-csv-file-label');
+        const uploadButton = document.getElementById('tx-csv-upload-btn');
+        const dropzone = document.getElementById('tx-csv-dropzone');
+
+        fileInput.onchange = () => {
+            const file = fileInput.files?.[0];
+            uploadButton.disabled = !file;
+            fileLabel.textContent = file ? file.name : 'Choose CSV file';
+            setCsvFeedback(file ? 'Ready to upload. We will validate the rows before saving.' : '', 'info');
+        };
+
+        uploadButton.onclick = async () => {
+            const file = fileInput.files?.[0];
+            if (!file) return;
+
+            uploadButton.disabled = true;
+            uploadButton.textContent = 'Reading...';
+            dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#E85D19]');
+
+            try {
+                const csvText = await file.text();
+                const transactions = parseBulkTransactions(csvText);
+                uploadButton.textContent = `Uploading ${transactions.length}...`;
+                const { ds, user } = await getTransactionDataService();
+                await ds.addTransactions(user.uid, transactions);
+                setCsvFeedback(`${transactions.length} transactions imported successfully.`, 'success');
+                uploadButton.textContent = 'Uploaded';
+                fileInput.value = '';
+                fileLabel.textContent = 'Choose CSV file';
+                if (window.loadDashboard) await window.loadDashboard();
+                if (window.loadLedger) await window.loadLedger();
+                window.showToast(`${transactions.length} transactions imported from CSV.`, "success");
+                window.setTimeout(() => {
+                    uploadButton.textContent = 'Upload CSV';
+                    uploadButton.disabled = true;
+                    dropzone.classList.remove('ring-2', 'ring-orange-100', 'border-[#E85D19]');
+                }, 1200);
+            } catch (err) {
+                console.error("CSV import failed:", err);
+                setCsvFeedback(err.message, 'error');
+                uploadButton.textContent = 'Upload CSV';
+                uploadButton.disabled = false;
+                dropzone.classList.remove('ring-2', 'ring-orange-100', 'border-[#E85D19]');
+            }
+        };
+    }
+
     // Form Submission
     document.getElementById('global-tx-form').onsubmit = async (e) => {
         e.preventDefault();
@@ -101,29 +301,9 @@ window.showAddTransactionModal = function(options = {}) {
             };
 
             // Initialize Firebase if not already done
-            const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
-            const firebaseConfig = {
-                apiKey: "AIzaSyCaJqmpEMulLdMvRT7mYf2K-XDw46-dT7A",
-                authDomain: "fluxyos.firebaseapp.com",
-                projectId: "fluxyos",
-                storageBucket: "fluxyos.firebasestorage.app",
-                messagingSenderId: "1084252368929",
-                appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
-            };
-            
-            let app;
-            if (getApps().length === 0) app = initializeApp(firebaseConfig);
-            else app = getApps()[0];
-
-            const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-            const auth = getAuth(app);
-            const user = auth.currentUser;
+            const { ds, user } = await getTransactionDataService();
 
             if (user) {
-                // Absolute Path Fix: Prevents "assets/js/assets/js" doubling error
-                const { default: DataService } = await import('/assets/js/db-service.js');
-                const ds = new DataService(app); 
-
                 if (context === 'bill') {
                     await ds.addBill(user.uid, data);
                     window.closeAddTransactionModal();
@@ -148,6 +328,8 @@ window.showAddTransactionModal = function(options = {}) {
             console.error("FluxyOS Engine Error:", err);
             if (err.message.includes('permission-denied') || err.code === 'permission-denied') {
                 window.showToast("CRITICAL: Permission Denied. Check Firestore Rules.", "error");
+            } else if (err.message.includes('Session expired')) {
+                window.showToast("Session expired. Please log in again.", "error");
             } else {
                 window.showToast("FluxyOS Engine Error: " + err.message, "error");
             }

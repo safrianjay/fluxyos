@@ -1,4 +1,4 @@
-import { getFirestore, collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, limit, writeBatch, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 class DataService {
     constructor(app) {
@@ -21,6 +21,20 @@ class DataService {
             ...data,
             timestamp: serverTimestamp()
         });
+    }
+
+    async addTransactions(userId, rows) {
+        const batch = writeBatch(this.db);
+        const txCollection = collection(this.db, `users/${userId}/transactions`);
+
+        rows.forEach(row => {
+            batch.set(doc(txCollection), {
+                ...row,
+                timestamp: serverTimestamp()
+            });
+        });
+
+        await batch.commit();
     }
 
     // --- BILLS ---

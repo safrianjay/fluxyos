@@ -135,6 +135,34 @@ margin  = ((revenue - opex) / revenue) * 100
 | `'bill'` | `"Operations"` | `"Save Bill"` | `"Bill successfully added to your schedule!"` |
 | `'subscription'` | `"SaaS"` | `"Activate Subscription"` | `"Subscription successfully activated!"` |
 
+### Bulk Transaction CSV Import
+
+The Add Transaction modal supports bulk CSV upload only for the
+`'transaction'` context. Bills and subscriptions keep their single-record modal
+flow.
+
+Accepted headers:
+
+| Header | Required | Notes |
+|--------|----------|-------|
+| `Description` or `vendor_name` | ✅ | Saved as `vendor_name` |
+| `Category` | ✅ | Must be `Revenue`, `Marketing`, `Infrastructure`, `Operations`, or `SaaS` |
+| `Type` | ✅ | Must be lowercase `revenue` or `expense` |
+| `Amount` | ✅ | Positive raw number; `Rp`, commas, or dots are stripped before save |
+| `Status` | No | Defaults to `Completed`; may be `Completed` or `Missing Receipt` |
+| `Date` | No | Accepted for compatibility with ledger CSV export but ignored; Firestore uses server timestamp |
+
+Imports are limited to 500 rows per file and are written as a Firestore batch,
+so validation failure prevents partial imports.
+
+Example:
+
+```csv
+Description,Category,Type,Amount,Status
+Client Payment,Revenue,revenue,1250000,Completed
+AWS,Infrastructure,expense,450000,Missing Receipt
+```
+
 ---
 
 ## 6. Shared JS Components & Exact APIs
