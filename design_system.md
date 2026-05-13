@@ -70,6 +70,13 @@ This document defines the visual and functional standards for FluxyOS. Follow th
 - **Dashboard/App Sidebar Header**: `64px` tall to align with the main app topbar divider. Logo mark is `36px`, logo text is `18px`, vertically centered.
 - **Dashboard/App Sidebar Menu Type**: Menu text is `14px` max, icon size is `16px` max, Lucide-style stroke icons only. Do not enlarge sidebar nav text or icons.
 - **Dashboard/App Sidebar Density**: Menu rows are compact: `32px` min-height, `6px 8px` item padding, and `2px` vertical gap between entries.
+- **Dashboard/App Sidebar IA**: All dashboard/app pages use the centralized `sidebar-loader.js` grouped menu:
+  - `Command`: Overview, Fluxy AI.
+  - `Money Movement`: Transactions, Revenue Sync, Bills, Subscriptions.
+  - `Operations`: Vendor Spend, Receipt Capture, Budgets, Approvals.
+  - `Reporting`: Reports & Exports, Audit Log.
+  - `Workspace`: Integrations, Settings.
+- **Dashboard/App Future Features**: Future dashboard features may appear only as disabled `Soon` entries until a real authenticated app page exists. Do not link sidebar entries to marketing/landing pages.
 - **Main Padding**: `p-6` or `p-8` for desktop.
 - **Content Max-Width**: `1280px` for marketing/content containers; app surfaces may use `1400px` when tables or dense dashboards need more width.
 - **4px Spacing Scale**: Use `4, 8, 12, 16, 20, 24, 32, 40, 52, 60, 80, 96px`. Avoid custom spacing values unless necessary.

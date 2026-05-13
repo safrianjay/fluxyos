@@ -142,6 +142,9 @@ main > header {
     background: transparent !important;
     box-shadow: none !important;
     justify-content: flex-start !important;
+    font: inherit;
+    text-align: left;
+    width: 100%;
 }
 
 #sidebar.app-sidebar-light .nav-item:hover {
@@ -172,6 +175,46 @@ main > header {
 
 #sidebar.app-sidebar-light .dashboard-active .sidebar-icon {
     color: #EA580C !important;
+}
+
+#sidebar.app-sidebar-light .nav-item-action {
+    cursor: pointer;
+}
+
+#sidebar.app-sidebar-light .nav-item-action:focus-visible {
+    outline: 2px solid rgba(234, 88, 12, 0.28);
+    outline-offset: 2px;
+}
+
+#sidebar.app-sidebar-light .nav-item-disabled,
+#sidebar.app-sidebar-light .nav-item-disabled:hover,
+#sidebar.app-sidebar-light .nav-item-disabled:disabled {
+    color: #94A3B8 !important;
+    background: transparent !important;
+    cursor: not-allowed;
+    transform: none !important;
+    opacity: 1;
+}
+
+#sidebar.app-sidebar-light .nav-item-disabled .sidebar-icon {
+    color: #CBD5E1 !important;
+}
+
+#sidebar.app-sidebar-light .nav-item-disabled .sidebar-text {
+    color: #94A3B8 !important;
+}
+
+#sidebar.app-sidebar-light .sidebar-soon-badge {
+    margin-left: auto;
+    padding: 3px 6px;
+    border: 1px solid #E2E8F0;
+    border-radius: 999px;
+    background: #F8FAFC;
+    color: #94A3B8;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0;
 }
 
 #sidebar.app-sidebar-light #profile-area {
