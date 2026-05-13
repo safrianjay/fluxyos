@@ -165,6 +165,11 @@ automatically. The ledger table renders 10 transactions per page and supports
 ascending/descending sort on Date, Amount, Category, and Status with up/down
 icons.
 
+The Finance Ledger page defaults to a monthly data window using the month
+selector beside Download CSV. Ledger control cards, Ledger Activity charts,
+table rows, pagination, and CSV export must all use the selected month so large
+ledgers do not overload the page.
+
 Example:
 
 ```csv

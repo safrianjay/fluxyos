@@ -134,6 +134,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 11 | Bills table renders rows OR shows empty state |
 | 12 | Subscriptions table renders rows OR shows empty state |
 | 13 | Ledger CSV export downloads a `.csv` file with Date, Description, Category, Type, Amount, and Status columns; empty ledgers keep the export button disabled |
+| 14 | Ledger month filter appears beside Download CSV, defaults to the current month, and updates ledger cards, activity charts, table rows, pagination, and CSV export scope |
 
 ### E. Add Transaction / Bill / Subscription (shared-dashboard.js, db-service.js)
 

@@ -50,7 +50,12 @@
                         <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Financial Ledger</h1>
                         <p class="text-[14px] text-gray-500 mt-1">Full audit trail of all transactions across your network.</p>
                     </div>
-                    <div class="flex items-center gap-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <label class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 shadow-sm">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"></path></svg>
+                            <span class="sr-only">Ledger month</span>
+                            <input id="ledger-month-filter" type="month" class="bg-transparent text-[13px] font-bold text-gray-700 outline-none min-w-[130px]">
+                        </label>
                         <button id="download-csv-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60" disabled>
                             <svg id="download-csv-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
                             <span id="download-csv-label">Download CSV</span>
@@ -181,6 +186,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { collection, getDocs, limit, orderBy, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import DataService from './assets/js/db-service.js';
 
         const firebaseConfig = {
@@ -195,12 +201,37 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const ds = new DataService(app);
+        let allLedgerTransactions = [];
         let currentLedgerTransactions = [];
         const LEDGER_LOAD_LIMIT = 1000;
         const LEDGER_PAGE_SIZE = 10;
         let ledgerCurrentPage = 1;
         let ledgerSortKey = 'date';
         let ledgerSortDirection = 'desc';
+
+        function getMonthKey(date = new Date()) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        function getMonthDateRange(monthKey) {
+            const [year, month] = monthKey.split('-').map(Number);
+            const start = new Date(year, month - 1, 1);
+            const end = new Date(year, month, 1);
+            return { start, end };
+        }
+
+        async function getLedgerTransactionsForMonth(userId, monthKey) {
+            const { start, end } = getMonthDateRange(monthKey);
+            const q = query(
+                collection(ds.db, `users/${userId}/transactions`),
+                where('timestamp', '>=', Timestamp.fromDate(start)),
+                where('timestamp', '<', Timestamp.fromDate(end)),
+                orderBy('timestamp', 'desc'),
+                limit(LEDGER_LOAD_LIMIT)
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        }
 
         // SMART AUTH GUARD
         let checkTimeout = setTimeout(() => {
@@ -223,22 +254,23 @@
             const emptyContainer = document.getElementById('ledger-empty-state');
             const pagination = document.getElementById('ledger-pagination');
             const downloadBtn = document.getElementById('download-csv-btn');
+            const monthFilter = document.getElementById('ledger-month-filter');
             
             if (!body) return;
+            if (monthFilter && !monthFilter.value) monthFilter.value = getMonthKey();
             
-            const transactions = await ds.getTransactions(user.uid, LEDGER_LOAD_LIMIT);
-            currentLedgerTransactions = transactions;
-            renderLedgerSummaryCards(transactions);
-            renderLedgerActivity(transactions);
+            const transactions = await getLedgerTransactionsForMonth(user.uid, monthFilter?.value || getMonthKey());
+            allLedgerTransactions = transactions;
             if (downloadBtn) downloadBtn.disabled = transactions.length === 0;
+            applyLedgerMonthFilter();
 
-            if (transactions.length === 0) {
+            if (currentLedgerTransactions.length === 0) {
                 tableContainer.classList.add('hidden');
                 pagination?.classList.add('hidden');
                 emptyContainer.classList.remove('hidden');
                 window.renderEmptyState('ledger-empty-state', {
-                    title: "Your financial trail starts here.",
-                    description: "No transactions found in your live ledger. Log your first expense or revenue point to start tracking your business engine.",
+                    title: "No transactions for this month.",
+                    description: "Switch months or log a new expense, income, or finance event for the selected period.",
                     buttonText: "Log First Transaction",
                     onAction: () => window.showAddTransactionModal()
                 });
@@ -246,9 +278,18 @@
                 tableContainer.classList.remove('hidden');
                 pagination?.classList.remove('hidden');
                 emptyContainer.classList.add('hidden');
-                ledgerCurrentPage = 1;
-                renderLedgerTable();
             }
+        }
+
+        function applyLedgerMonthFilter() {
+            const downloadBtn = document.getElementById('download-csv-btn');
+
+            currentLedgerTransactions = [...allLedgerTransactions];
+            renderLedgerSummaryCards(currentLedgerTransactions);
+            renderLedgerActivity(currentLedgerTransactions);
+            if (downloadBtn) downloadBtn.disabled = currentLedgerTransactions.length === 0;
+            ledgerCurrentPage = 1;
+            renderLedgerTable();
         }
 
         function getTimestampMs(row) {
@@ -653,10 +694,16 @@
             window.setTimeout(() => {
                 const csv = buildLedgerCsv(currentLedgerTransactions);
                 const date = new Date().toISOString().slice(0, 10);
-                downloadTextFile(`fluxyos-ledger-${date}.csv`, csv);
+                const monthFilter = document.getElementById('ledger-month-filter');
+                const period = monthFilter?.value || date.slice(0, 7);
+                downloadTextFile(`fluxyos-ledger-${period}.csv`, csv);
                 setDownloadButtonState('success');
                 window.setTimeout(() => setDownloadButtonState('idle'), 1200);
             }, 180);
+        });
+
+        document.getElementById('ledger-month-filter')?.addEventListener('change', () => {
+            window.loadLedger();
         });
     </script>
 </body>
