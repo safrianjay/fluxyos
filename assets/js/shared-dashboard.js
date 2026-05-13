@@ -97,7 +97,7 @@ window.showAddTransactionModal = function(options = {}) {
                         </div>
                     </div>
                     ` : ''}
-                    <button type="submit" id="tx-submit-btn" class="w-full py-4 bg-[#E85D19] hover:bg-[#D44400] text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                    <button type="submit" id="tx-submit-btn" class="w-full py-4 bg-[#E85D19] hover:bg-[#D44400] text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none disabled:active:scale-100" disabled>
                         <span>${submitLabel}</span>
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     </button>
@@ -113,9 +113,11 @@ window.showAddTransactionModal = function(options = {}) {
 
     // Live Formatting for Amount
     const amountInput = document.getElementById('tx-amount');
+    const vendorInput = document.getElementById('tx-vendor');
     amountInput.oninput = (e) => {
         let value = e.target.value.replace(/\D/g, "");
         e.target.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        updateSingleSubmitState();
     };
 
     async function getTransactionDataService() {
@@ -253,12 +255,26 @@ window.showAddTransactionModal = function(options = {}) {
         btn.innerHTML = `<span>${label}</span><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>`;
     }
 
+    function isSingleEntryComplete() {
+        const rawAmount = amountInput.value.replace(/\./g, "");
+        return Number(rawAmount) > 0 && vendorInput.value.trim().length > 0;
+    }
+
+    function updateSingleSubmitState() {
+        if (activeEntryMode !== 'bulk') {
+            setSubmitButton(submitLabel, !isSingleEntryComplete());
+        }
+    }
+
+    vendorInput.oninput = updateSingleSubmitState;
+    updateSingleSubmitState();
+
     if (supportsBulkCsv) {
         const singleTab = document.getElementById('tx-tab-single');
         const bulkTab = document.getElementById('tx-tab-bulk');
         const singlePanel = document.getElementById('tx-single-panel');
         const bulkPanel = document.getElementById('tx-bulk-panel');
-        const singleFields = [amountInput, document.getElementById('tx-vendor'), document.getElementById('tx-category'), document.getElementById('tx-type')];
+        const singleFields = [amountInput, vendorInput, document.getElementById('tx-category'), document.getElementById('tx-type')];
         const fileInput = document.getElementById('tx-csv-file');
         const fileLabel = document.getElementById('tx-csv-file-label');
         const dropzone = document.getElementById('tx-csv-dropzone');
@@ -275,7 +291,7 @@ window.showAddTransactionModal = function(options = {}) {
             singleFields.forEach(field => {
                 field.disabled = isBulk;
             });
-            setSubmitButton(isBulk ? 'Upload CSV' : submitLabel, isBulk && !fileInput.files?.[0]);
+            setSubmitButton(isBulk ? 'Upload CSV' : submitLabel, isBulk ? !fileInput.files?.[0] : !isSingleEntryComplete());
             if (isBulk) {
                 setCsvFeedback(fileInput.files?.[0] ? 'Ready to upload. We will validate every row before saving.' : '', 'info');
             }
@@ -364,6 +380,11 @@ window.showAddTransactionModal = function(options = {}) {
                 return;
             }
 
+            if (!isSingleEntryComplete()) {
+                window.showToast("Add an amount and vendor/description first.", "error");
+                return;
+            }
+
             const rawAmount = document.getElementById('tx-amount').value.replace(/\./g, "");
             const data = {
                 amount: parseFloat(rawAmount),
@@ -415,7 +436,7 @@ window.showAddTransactionModal = function(options = {}) {
                 const hasFile = Boolean(document.getElementById('tx-csv-file')?.files?.[0]);
                 setSubmitButton('Upload CSV', !hasFile);
             } else {
-                setSubmitButton(submitLabel, false);
+                setSubmitButton(submitLabel, !isSingleEntryComplete());
             }
         }
     };

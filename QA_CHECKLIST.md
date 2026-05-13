@@ -143,7 +143,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 2 | Amount field formats live as Indonesian Rupiah (e.g., `1234567` → `1.234.567`) |
 | 3 | Default category is correct: Transactions → none, Bills → "Operations", Subscriptions → "SaaS" |
 | 4 | Submitting empty form shows required field validation (browser native) |
-| 5 | Submit button disables and shows "Deploying..." while saving |
+| 5 | Submit button starts disabled, enables only after required fields/file are present, then disables and shows "Deploying..." or "Reading..." while saving |
 | 6 | On success: modal closes, correct toast message appears for 4s, then disappears |
 | 7 | Data appears in the correct table after modal closes (no manual refresh needed) |
 | 8 | On Firebase permission error: toast shows a friendly error message |

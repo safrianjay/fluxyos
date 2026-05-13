@@ -95,6 +95,7 @@ This document defines the visual and functional standards for FluxyOS. Follow th
 - **Dashboard/App Sidebar Hover**: Use only subtle `#F8FAFC` hover backgrounds. Do not add collapse/expand interactions.
 - **Dashboard/App Export Buttons**: Export/download actions should show a brief disabled loading state, a clear success state, and a subtle `active:scale-95` press interaction. Use CSV for ledger/transaction exports unless a PDF report is explicitly requested.
 - **Dashboard/App CSV Uploads**: CSV upload controls should show selected filename, disabled/ready/uploading/success/error states, and inline structure guidance before the user uploads. If a modal supports single and bulk entry, separate them with tabs and reuse the modal's primary submit button for the active tab instead of adding a second upload button.
+- **Dashboard/App Form Buttons**: Primary submit buttons start disabled and become active only after the required fields for the current mode are present.
 - **Shadows**: Elevate cards on hover using `hover:shadow-md`.
 
 ---
