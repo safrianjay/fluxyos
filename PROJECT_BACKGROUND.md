@@ -171,7 +171,9 @@ Single-day and custom-range views are selected inside the calendar, not through
 separate Day/Month tabs. Ledger control cards, Ledger Activity charts, table
 rows, pagination, and CSV export must all use the selected period so large
 ledgers do not overload the page. Reuse this shared picker for future dashboard
-date filters instead of creating page-local calendar components.
+date filters instead of creating page-local calendar components. Its Reset
+action returns the picker to the configured default range, which is the current
+month for ledger-style views.
 
 Example:
 

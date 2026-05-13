@@ -58,8 +58,10 @@
         if (!host) return null;
 
         const maxDate = options.maxDate || getDayKey();
-        let rangeStart = options.start || getMonthStartKey();
-        let rangeEnd = options.end || getMonthEndKey();
+        const defaultStart = options.defaultStart || getMonthStartKey();
+        const defaultEnd = options.defaultEnd || getMonthEndKey();
+        let rangeStart = options.start || defaultStart;
+        let rangeEnd = options.end || defaultEnd;
         let draftStart = rangeStart;
         let draftEnd = rangeEnd;
         let calendarBaseMonth = getMonthStartKey(parseDayKey(rangeStart));
@@ -109,6 +111,7 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <button data-drp-cancel type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all active:scale-95">Cancel</button>
+                            <button data-drp-reset type="button" class="px-4 py-2 bg-transparent text-[13px] font-bold text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all active:scale-95">Reset</button>
                             <button data-drp-apply type="button" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-[13px] font-bold hover:bg-gray-800 transition-all active:scale-95">Apply</button>
                         </div>
                     </div>
@@ -242,6 +245,16 @@
             renderPanel();
         });
         get('[data-drp-cancel]').addEventListener('click', () => togglePanel(false));
+        get('[data-drp-reset]').addEventListener('click', () => {
+            rangeStart = defaultStart;
+            rangeEnd = defaultEnd;
+            draftStart = defaultStart;
+            draftEnd = defaultEnd;
+            calendarBaseMonth = getMonthStartKey(parseDayKey(defaultStart));
+            togglePanel(false);
+            updateLabel();
+            options.onChange?.({ start: rangeStart, end: rangeEnd });
+        });
         get('[data-drp-apply]').addEventListener('click', () => {
             rangeStart = draftStart;
             rangeEnd = draftEnd;
@@ -270,6 +283,12 @@
                 rangeStart = start;
                 rangeEnd = end;
                 updateLabel();
+            },
+            reset: () => {
+                rangeStart = defaultStart;
+                rangeEnd = defaultEnd;
+                updateLabel();
+                options.onChange?.({ start: rangeStart, end: rangeEnd });
             }
         };
     }
