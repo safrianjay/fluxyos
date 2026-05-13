@@ -44,15 +44,15 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Homepage | `fluxyos.html` | Landing | No | ✅ | No |
 | Budget Feature | `budgetlanding.html` | Landing | No | ✅ | No |
 | Pricing | `pricing.html` | Landing | No | ✅ | No |
-| Integrations Marketing | `integration.html` | Landing | No | ✅ | No |
 | Redirect | `index.html` | Redirect | No | ✅ | No |
 | Sign In | `login.html` | Auth | No | No | No |
 | Dashboard | `dashboard.html` | App | ✅ | **No** | ✅ |
 | Ledger | `ledger.html` | App | ✅ | **No** | ✅ |
 | Bills | `bill.html` | App | ✅ | **No** | ✅ |
 | Subscriptions | `subscription.html` | App | ✅ | **No** | ✅ |
+| Integrations | `integration.html` | App | ✅ | **No** | ✅ |
 
-**Rule:** Footer loads on all landing pages, never on app pages. This is enforced in `footer-loader.js` by checking `window.location.pathname` for `/dashboard`, `/bill`, `/subscription`.
+**Rule:** Footer loads on all landing pages, never on app pages. Any page that renders `#sidebar` is an app page and must not load the marketing footer.
 
 ---
 
@@ -180,7 +180,7 @@ Starts the starfield animation on any `<canvas>` element. Used on login page and
 
 ### `loadFooter()`
 **File:** `assets/js/footer-loader.js`
-Auto-runs on page load. Fetches `includes/footer.html`, appends to `<body>`, loads `assets/css/footer.css`, and calls `initUniverseCanvas()`. Skips if path contains `/dashboard`, `/bill`, or `/subscription`.
+Auto-runs on landing pages. Fetches `includes/footer.html`, appends to `<body>`, loads `assets/css/footer.css`, and calls `initUniverseCanvas()`. App pages with `#sidebar` must not load the marketing footer.
 
 ---
 
@@ -215,15 +215,28 @@ Auto-runs on page load. Fetches `includes/footer.html`, appends to `<body>`, loa
 
 Sidebar is injected into every app page at `#sidebar`. Active item is detected by `window.location.pathname`.
 
-| Nav Item | href | Active on |
-|----------|------|-----------|
-| Overview | `/dashboard` | `/dashboard` |
-| Ledger | `/ledger` | `/ledger` |
-| Bills | `/bill` | `/bill` |
-| Subscriptions | `/subscription` | `/subscription` |
-| Integrations | `/integration` | `/integration` |
+| Group | Item | Type | Route / Action | Status |
+|-------|------|------|----------------|--------|
+| Command | Overview | Link | `/dashboard` | ✅ Shipped |
+| Command | Fluxy AI | Button | `window.toggleFluxyAI()` | ✅ Shipped |
+| Money Movement | Transactions | Link | `/ledger` | ✅ Shipped |
+| Money Movement | Revenue Sync | Disabled button | `Soon` | 📋 Planned |
+| Money Movement | Bills | Link | `/bill` | ✅ Shipped |
+| Money Movement | Subscriptions | Link | `/subscription` | ✅ Shipped |
+| Operations | Vendor Spend | Disabled button | `Soon` | 📋 Planned |
+| Operations | Receipt Capture | Disabled button | `Soon` | 📋 Planned |
+| Operations | Budgets | Disabled button | `Soon` | 📋 Planned |
+| Operations | Approvals | Disabled button | `Soon` | 📋 Planned |
+| Reporting | Reports & Exports | Disabled button | `Soon` | 📋 Planned |
+| Reporting | Audit Log | Disabled button | `Soon` | 📋 Planned |
+| Workspace | Integrations | Link | `/integration` | ✅ Shipped |
+| Workspace | Settings | Disabled button | `Soon` | 📋 Planned |
 
-Active styles: `bg-[#1A1F26]`, `text-white`, `border border-gray-700/50`, icon color `#EA580C`.
+Future sidebar entries stay visible only as disabled `Soon` buttons until a real
+authenticated app page exists. Dashboard sidebar entries must never link to
+public marketing pages.
+
+Active styles: orange text/icon `#EA580C` on a transparent background.
 
 ---
 

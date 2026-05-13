@@ -239,7 +239,8 @@ Must include:
 
 ### Dashboard app page
 
-Examples: `dashboard.html`, `ledger.html`, `bill.html`, `subscription.html`.
+Examples: `dashboard.html`, `ledger.html`, `bill.html`, `subscription.html`,
+`integration.html`.
 
 Must include:
 
@@ -256,6 +257,28 @@ Must not:
 - Load the marketing footer
 - Read or write another user's data
 - Store formatted currency strings in Firestore
+
+### Dashboard sidebar entry lifecycle
+
+Sidebar entries can exist before their feature is built, but only as disabled
+`Soon` buttons. A `Soon` entry must not navigate, must expose
+`aria-disabled="true"`, and must not link to public marketing pages.
+
+When a sidebar entry becomes a real feature, add an authenticated app page,
+route active-state mapping in `sidebar-loader.js`, `DataService` methods if the
+feature reads or writes Firestore, docs in `PROJECT_BACKGROUND.md` and
+`ROADMAP.md`, and QA coverage in `QA_CHECKLIST.md`.
+
+Future sidebar ownership:
+
+- Revenue Sync and Integrations belong to the external connector domain.
+- Vendor Spend, Receipt Capture, Budgets, and Approvals belong to the
+  operational finance domain.
+- Reports & Exports and Audit Log belong to reporting and governance.
+- Settings belongs to workspace/admin.
+
+Do not define Firestore schemas or backend endpoints for future sidebar domains
+until the feature is being implemented.
 
 ### Marketing feature page
 
@@ -285,7 +308,7 @@ Rules:
 1. Copy the structure from the simplest existing app page.
 2. Keep `#sidebar`, auth guard, shared dashboard CSS, sidebar loader, and shared dashboard JS.
 3. Add a page-specific render function that receives or reads the authenticated user.
-4. Add the sidebar item in `sidebar-loader.js` and update active-route mapping.
+4. Convert the sidebar item from disabled `Soon` to a real link in `sidebar-loader.js` and update active-route mapping.
 5. Document the page in `PROJECT_BACKGROUND.md` and `ROADMAP.md`.
 6. Add QA coverage in `QA_CHECKLIST.md`.
 
@@ -332,6 +355,7 @@ Rules:
 - Do not store currency as `Rp` strings.
 - Do not add orange page backgrounds; orange is an accent and CTA color.
 - Do not put the footer on dashboard app pages.
+- Do not link dashboard sidebar entries to public marketing pages.
 - Do not remove Netlify API rewrites or canonical domain redirects.
 - Do not make public landing pages depend on authenticated state.
 - Do not add fake reviews or ratings to schema.

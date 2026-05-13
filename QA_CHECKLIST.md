@@ -52,9 +52,9 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 1 | **Homepage loads** | Open `fluxyos.html` — nav, hero, and footer all visible, no console errors |
 | 2 | **Login page loads** | Open `login.html` — left panel + form visible, universe canvas animating |
 | 3 | **Dashboard loads** | Sign in → `dashboard.html` — KPI cards show, ledger table renders or shows empty state |
-| 4 | **Sidebar navigation** | Click each link (Overview, Ledger, Bills, Subscriptions, Integrations) — correct page loads, active item highlighted |
+| 4 | **Sidebar navigation** | Click each working link (Overview, Transactions, Bills, Subscriptions, Integrations) — correct page loads, active item highlighted; disabled `Soon` entries do not navigate |
 | 5 | **Footer appears** | Scroll to bottom of `fluxyos.html`, `pricing.html`, `budgetlanding.html` — footer renders with starfield animation |
-| 6 | **Footer NOT on dashboard pages** | `dashboard.html`, `bill.html`, `subscription.html` — footer must NOT appear |
+| 6 | **Footer NOT on dashboard pages** | `dashboard.html`, `ledger.html`, `bill.html`, `subscription.html`, `integration.html` — footer must NOT appear |
 | 7 | **No broken console errors** | Open DevTools Console on every page you changed — zero red errors |
 | 8 | **Mobile nav works** | Resize browser to 375px on `fluxyos.html` — hamburger icon visible, click opens menu, Escape closes it |
 | 9 | **New nav entry points work** | For any new page/use case, verify the production entry point from BOTH desktop mega-menu and mobile menu. The visible label must be inside an `<a>` whose `href` is the real route, never `#`; click it and confirm the target page loads. |
@@ -92,8 +92,8 @@ These 8 checks catch the most common regressions. Run them first, every time.
 
 | # | Check |
 |---|-------|
-| 1 | Footer loads on `fluxyos.html`, `budgetlanding.html`, `pricing.html`, `index.html`, `integration.html`, `ledger.html` |
-| 2 | Footer does NOT load on `dashboard.html`, `bill.html`, `subscription.html` |
+| 1 | Footer loads on landing pages: `fluxyos.html`, `budgetlanding.html`, `pricing.html`, `index.html` |
+| 2 | Footer does NOT load on app pages: `dashboard.html`, `ledger.html`, `bill.html`, `subscription.html`, `integration.html` |
 | 3 | Universe canvas animation plays (starfield moving outward from center) |
 | 4 | No teal/green colors — only dark navy (#0B0F19) and purple tones |
 | 5 | Logo (orange F icon) visible and links to homepage |
@@ -117,20 +117,22 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 9 | On failed login → error message shown near form |
 | 10 | Google SSO domains are authorized in Firebase Console: every production/login host used for QA (e.g. `fluxyos.com`, `www.fluxyos.com`, and any preview domain tested) is listed under Authentication → Settings → Authorized domains |
 
-### D. Dashboard / App Page Changes (dashboard.html, bill.html, subscription.html, ledger.html)
+### D. Dashboard / App Page Changes (dashboard.html, ledger.html, bill.html, subscription.html, integration.html)
 
 | # | Check |
 |---|-------|
 | 1 | Auth guard active — opening page without login redirects to `/login` within 2s |
 | 2 | Sidebar renders with correct active item highlighted (orange accent) |
-| 3 | Sidebar collapse/expand toggles correctly (icon-only at 80px, full at 260px) |
-| 4 | User display name and avatar appear in sidebar bottom section |
-| 5 | Sign Out button logs out and redirects to `/login` |
-| 6 | Fluxy AI button in header opens/closes the chat drawer |
-| 7 | Dashboard KPI cards load: Revenue, OpEx, Margin (with progress bar), Needs Action |
-| 8 | Ledger table renders rows OR shows empty state (never blank/broken) |
-| 9 | Bills table renders rows OR shows empty state |
-| 10 | Subscriptions table renders rows OR shows empty state |
+| 3 | Sidebar groups render in order: Command, Money Movement, Operations, Reporting, Workspace |
+| 4 | Future sidebar entries render as disabled `Soon` buttons with `disabled` and `aria-disabled="true"` |
+| 5 | Disabled `Soon` entries do not navigate and do not point to public marketing pages |
+| 6 | User display name and avatar appear in sidebar bottom section |
+| 7 | Sign Out button logs out and redirects to `/login` |
+| 8 | Fluxy AI sidebar/header button opens/closes the chat drawer |
+| 9 | Dashboard KPI cards load: Revenue, OpEx, Margin (with progress bar), Needs Action |
+| 10 | Ledger table renders rows OR shows empty state (never blank/broken) |
+| 11 | Bills table renders rows OR shows empty state |
+| 12 | Subscriptions table renders rows OR shows empty state |
 
 ### E. Add Transaction / Bill / Subscription (shared-dashboard.js, db-service.js)
 

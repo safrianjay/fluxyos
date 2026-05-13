@@ -84,6 +84,27 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Request Connector | 🔧 Stub | Card exists, no form/modal handler |
 | Real data sync from any integration | 📋 Planned | All integrations are UI-only mock |
 
+### Dashboard Sidebar Future Domains
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Overview | ✅ Shipped | Dashboard command center at `/dashboard` |
+| Fluxy AI sidebar action | ✅ Shipped | Opens the AI drawer; not a route |
+| Transactions / Ledger | ✅ Shipped | Working app page at `/ledger` |
+| Bills | ✅ Shipped | Working app page at `/bill` |
+| Subscriptions | ✅ Shipped | Working app page at `/subscription` |
+| Integrations | ✅ Shipped | Working app page at `/integration` |
+| Revenue Sync | 📋 Planned | Visible as disabled `Soon`; no app page yet |
+| Vendor Spend | 📋 Planned | Visible as disabled `Soon`; no app page yet |
+| Receipt Capture | 📋 Planned | Visible as disabled `Soon`; no app page yet |
+| Budgets | 📋 Planned | Visible as disabled `Soon`; no app page yet |
+| Approvals | 📋 Planned | Visible as disabled `Soon`; no app page yet |
+| Reports & Exports | 📋 Planned | Visible as disabled `Soon`; no app page yet |
+| Audit Log | 📋 Planned | Visible as disabled `Soon`; no app page yet |
+| Settings | 📋 Planned | Visible as disabled `Soon`; no app page yet |
+
+Visible `Soon` entries communicate product direction only. They must stay
+disabled until a real authenticated app page and data contract exist.
+
 ---
 
 ## AI Features
@@ -105,7 +126,6 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Homepage (`fluxyos.html`) | ✅ Shipped | Full landing with animations, mega menu, tabs, CTA |
 | Budget landing page (`budgetlanding.html`) | ✅ Shipped | |
 | Pricing page (`pricing.html`) | ✅ Shipped | Annual/monthly toggle, 3 tiers |
-| Integrations marketing page (`integration.html`) | ✅ Shipped | |
 | Reusable footer with starfield animation | ✅ Shipped | |
 | "Start Free Trial" button | 🔧 Stub | Pricing page, no handler |
 | "Upgrade to Growth" button | 🔧 Stub | Pricing page, no handler |
