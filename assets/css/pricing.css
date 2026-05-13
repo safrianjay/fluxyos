@@ -9,13 +9,97 @@ body {
 .pricing-nav {
     position: -webkit-sticky !important;
     position: sticky !important;
-    top: 0 !important;
+    top: var(--promo-banner-height, 0px) !important;
     z-index: 50;
     background: rgba(11, 15, 25, 0.86);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
     margin-bottom: -80px;
+}
+
+.promo-banner {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    overflow: hidden;
+    isolation: isolate;
+    background: #fff;
+    border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+}
+
+.promo-banner::before {
+    content: "";
+    position: absolute;
+    inset: -120% -10%;
+    z-index: -2;
+    background:
+        radial-gradient(circle at 74% 48%, rgba(252, 211, 126, 0.7) 0%, rgba(247, 140, 45, 0.32) 12%, rgba(228, 77, 14, 0.16) 26%, transparent 42%),
+        radial-gradient(circle at 28% 44%, rgba(136, 31, 121, 0.24) 0%, rgba(71, 6, 91, 0.14) 32%, transparent 52%),
+        linear-gradient(135deg, rgba(13, 0, 16, 0.08) 0%, rgba(39, 1, 63, 0.08) 46%, rgba(184, 38, 20, 0.09) 100%);
+}
+
+.promo-banner::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.82) 48%, rgba(255, 255, 255, 0.6) 100%);
+}
+
+.promo-banner__inner {
+    max-width: 1280px;
+    min-height: 44px;
+    margin: 0 auto;
+    padding: 8px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    text-align: center;
+}
+
+.promo-banner__copy {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: #111827;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.promo-banner__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 2px 9px;
+    border: 1px solid rgba(234, 88, 12, 0.28);
+    border-radius: 999px;
+    color: #C2410C;
+    background: rgba(255, 255, 255, 0.72);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.promo-banner__link {
+    color: #C2410C;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.35;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.promo-banner__link:hover {
+    color: #9A3412;
 }
 
 /* Floating Animation for Badges */
@@ -41,6 +125,7 @@ body {
 
 .pricing-mobile-menu {
     height: calc(100vh - 64px);
+    top: calc(var(--promo-banner-height, 0px) + 64px) !important;
     overscroll-behavior: contain;
 }
 
@@ -51,6 +136,20 @@ body.mobile-menu-open {
 }
 
 @media (max-width: 640px) {
+    .promo-banner__inner {
+        min-height: 52px;
+        padding: 8px 16px;
+        gap: 10px;
+    }
+
+    .promo-banner__copy {
+        font-size: 12px;
+    }
+
+    .promo-banner__link {
+        font-size: 12px;
+    }
+
     .pricing-nav {
         margin-bottom: -64px;
     }

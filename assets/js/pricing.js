@@ -1,4 +1,31 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const nav = document.querySelector('.pricing-nav');
+    if (nav && !document.querySelector('.promo-banner')) {
+        const banner = document.createElement('div');
+        banner.className = 'promo-banner';
+        banner.setAttribute('role', 'region');
+        banner.setAttribute('aria-label', 'FluxyOS promotion');
+        banner.innerHTML = `
+            <div class="promo-banner__inner">
+                <p class="promo-banner__copy">
+                    <span class="promo-banner__eyebrow">Launch promo</span>
+                    <span>Save 20% on annual FluxyOS plans. Activate before the promo ends.</span>
+                </p>
+                <a class="promo-banner__link" href="/pricing">View plans</a>
+            </div>
+        `;
+
+        nav.insertAdjacentElement('beforebegin', banner);
+
+        const updatePromoHeight = () => {
+            document.documentElement.style.setProperty('--promo-banner-height', `${banner.offsetHeight}px`);
+        };
+
+        updatePromoHeight();
+        requestAnimationFrame(updatePromoHeight);
+        window.addEventListener('resize', updatePromoHeight);
+    }
+
     const toggleContainer = document.getElementById('toggle-container');
     const toggleBtn = document.getElementById('billing-toggle');
     const dot = document.getElementById('toggle-dot');

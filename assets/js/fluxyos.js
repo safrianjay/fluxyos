@@ -1,4 +1,36 @@
 function _fluxyosInit() {
+    const initPromoBanner = () => {
+        const nav = document.querySelector('nav[data-animate="nav"]');
+        if (!nav || document.querySelector('.promo-banner')) return;
+
+        const isIndonesian = document.documentElement.lang?.toLowerCase().startsWith('id');
+        const banner = document.createElement('div');
+        banner.className = 'promo-banner';
+        banner.setAttribute('role', 'region');
+        banner.setAttribute('aria-label', isIndonesian ? 'Promo FluxyOS' : 'FluxyOS promotion');
+        banner.innerHTML = `
+            <div class="promo-banner__inner">
+                <p class="promo-banner__copy">
+                    <span class="promo-banner__eyebrow">${isIndonesian ? 'Promo launch' : 'Launch promo'}</span>
+                    <span>${isIndonesian ? 'Hemat 20% untuk paket tahunan FluxyOS. Aktifkan sebelum promo berakhir.' : 'Save 20% on annual FluxyOS plans. Activate before the promo ends.'}</span>
+                </p>
+                <a class="promo-banner__link" href="${isIndonesian ? '/id/pricing' : '/pricing'}">${isIndonesian ? 'Lihat paket' : 'View plans'}</a>
+            </div>
+        `;
+
+        nav.insertAdjacentElement('beforebegin', banner);
+
+        const updatePromoHeight = () => {
+            document.documentElement.style.setProperty('--promo-banner-height', `${banner.offsetHeight}px`);
+        };
+
+        updatePromoHeight();
+        requestAnimationFrame(updatePromoHeight);
+        window.addEventListener('resize', updatePromoHeight);
+    };
+
+    initPromoBanner();
+
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const canAnimate = !reduceMotion && window.anime;
     const tabButtons = document.querySelectorAll('.tab-btn');
