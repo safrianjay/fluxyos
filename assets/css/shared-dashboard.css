@@ -151,17 +151,17 @@ main > header {
 }
 
 #sidebar.app-sidebar-light .sidebar-icon {
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
     color: #64748B;
     flex-shrink: 0;
 }
 
 #sidebar.app-sidebar-light .sidebar-text {
     color: inherit;
-    font-size: 15px !important;
+    font-size: 14px !important;
     line-height: 1.2;
-    font-weight: 600;
+    font-weight: 500;
     letter-spacing: 0;
 }
 

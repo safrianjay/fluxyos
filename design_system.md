@@ -24,12 +24,23 @@ This document defines the visual and functional standards for FluxyOS. Follow th
 
 - **Primary Font**: `Inter` (Sans-serif) - Used for all UI elements.
 - **Monospace Font**: `Fira Code` - Used for financial amounts and transaction IDs.
+- **Premium Direction**: Typography should feel clean, confident, spacious, and easy to scan. Prefer restraint and strong hierarchy over decorative effects.
+- **Large Heading Weight**: Display, H1, H2, and large editorial headings should use lighter weights (`300–400`) when the font supports it. Avoid making every heading heavy.
+- **Letter Spacing**: Body, small text, captions, buttons, and navigation use `letter-spacing: 0`. Negative letter spacing is allowed only on large headings.
 
 ### Font Sizes
-- **H1**: `3xl` (30px), Bold, `gray-900`.
+- **Display / Hero**: `56px` desktop, `48px` tablet, `36px` mobile; weight `300`, line-height `1.08–1.12`.
+- **H1**: `48px` desktop, `40px` tablet, `32px` mobile; weight `300`, line-height `1.1–1.15`.
+- **H2**: `36px` desktop, `32px` tablet, `28px` mobile; weight `300`, line-height `1.15–1.2`.
+- **H3**: `26px` desktop, `24px` tablet, `22px` mobile; weight `300–400`, line-height `1.2–1.25`.
+- **H4**: `18px` desktop/tablet, `16px` mobile; weight `400–500`, line-height `1.3`.
 - **KPI Amounts**: `3xl` (30px), Bold, `font-mono`.
-- **Body Text**: `13px` or `14px`, `gray-600`.
-- **Small Labels**: `11px` or `12px`, `gray-500`.
+- **Body Text**: `16px` desktop/tablet, `15px–16px` mobile, line-height `1.5–1.6`.
+- **Body Small / Metadata**: `14px`, line-height `1.45–1.55`.
+- **Captions / Labels**: `12px`, line-height `1.4`, only for short text.
+- **Buttons**: `16px`, weight `400–500`, line-height `1`.
+- **Navigation**: `14px` desktop/tablet, `16px` mobile menu, weight `400–500`, line-height `1`.
+- **Code / Technical Values**: `13px`, line-height `1.4`.
 
 ---
 
@@ -57,12 +68,15 @@ This document defines the visual and functional standards for FluxyOS. Follow th
 - **Dashboard/App Sidebar Width**: `220px` fixed. There is no collapsed sidebar state.
 - **Dashboard/App Sidebar Theme**: `bg-white`, `border-slate-200`, dark navy text `#1E2F4A`, active item text/icon `#EA580C` with no orange background.
 - **Dashboard/App Sidebar Header**: `64px` tall to align with the main app topbar divider. Logo mark is `36px`, logo text is `18px`, vertically centered.
-- **Dashboard/App Sidebar Icons**: Lucide-style stroke icons, `20px`, no mixed icon systems inside the sidebar.
+- **Dashboard/App Sidebar Menu Type**: Menu text is `14px` max, icon size is `16px` max, Lucide-style stroke icons only. Do not enlarge sidebar nav text or icons.
 - **Main Padding**: `p-6` or `p-8` for desktop.
-- **Content Max-Width**: `1400px`.
-- **Gap Standards**: 
-    - Between sections: `space-y-6`.
-    - Between elements: `gap-3` or `gap-4`.
+- **Content Max-Width**: `1280px` for marketing/content containers; app surfaces may use `1400px` when tables or dense dashboards need more width.
+- **4px Spacing Scale**: Use `4, 8, 12, 16, 20, 24, 32, 40, 52, 60, 80, 96px`. Avoid custom spacing values unless necessary.
+- **Section Spacing**: Desktop sections use `80px`; compact sections `60px`; hero/major sections `96px`.
+- **Responsive Section Spacing**: Tablet sections use `60px`, compact `48px`, hero `72px`. Mobile sections use `40px`, compact `32px`, hero `56px`.
+- **Container Padding**: Desktop `32px`, tablet `24px`, mobile `20px`, small mobile `16px`.
+- **Grid/Card Rhythm**: Grid gaps use `24–32px`; standard cards use `32px` padding desktop and `20–24px` mobile.
+- **Text Width**: Keep long-form text under `720px`; hero headings under `760px`; hero paragraphs around `620px`; centered paragraphs around `640px`.
 
 ---
 
