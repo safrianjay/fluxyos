@@ -90,6 +90,36 @@
                     </div>
                 </div>
 
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-100">
+                        <h2 class="text-[16px] font-bold text-gray-900">Ledger Activity</h2>
+                        <p class="text-[12px] text-gray-500 mt-1">Transaction activity, status mix, and type quality for audit review.</p>
+                    </div>
+                    <div class="grid grid-cols-1 xl:grid-cols-3 divide-y xl:divide-y-0 xl:divide-x divide-gray-100">
+                        <div class="p-5 xl:col-span-2">
+                            <div class="flex items-center justify-between gap-3 mb-4">
+                                <div>
+                                    <h3 class="text-[13px] font-bold text-gray-900">Transaction Volume Over Time</h3>
+                                    <p class="text-[12px] text-gray-500">Count of ledger records by transaction date</p>
+                                </div>
+                            </div>
+                            <div id="ledger-volume-chart" class="min-h-[160px]"></div>
+                        </div>
+                        <div class="p-5 space-y-5">
+                            <div>
+                                <h3 class="text-[13px] font-bold text-gray-900">Status Breakdown</h3>
+                                <p class="text-[12px] text-gray-500 mb-3">Distribution by current status</p>
+                                <div id="ledger-status-chart" class="space-y-3"></div>
+                            </div>
+                            <div class="pt-5 border-t border-gray-100">
+                                <h3 class="text-[13px] font-bold text-gray-900">Type Breakdown</h3>
+                                <p class="text-[12px] text-gray-500 mb-3">Distribution by transaction type</p>
+                                <div id="ledger-type-chart" class="space-y-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Ledger Table Card -->
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6">
                     <div id="ledger-empty-state" class="hidden"></div>
@@ -198,6 +228,7 @@
             const transactions = await ds.getTransactions(user.uid, 100);
             currentLedgerTransactions = transactions;
             renderLedgerSummaryCards(transactions);
+            renderLedgerActivity(transactions);
             if (downloadBtn) downloadBtn.disabled = transactions.length === 0;
 
             if (transactions.length === 0) {
@@ -311,6 +342,118 @@
             setSummaryText('ledger-missing-receipts-count', summary.missingReceipts.toLocaleString());
             setSummaryText('ledger-pending-approval-count', summary.pendingApproval.toLocaleString());
             setSummaryText('ledger-uncategorized-count', summary.uncategorized.toLocaleString());
+        }
+
+        function formatActivityDate(date) {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function getTransactionVolumeByDate(transactions) {
+            const counts = new Map();
+
+            transactions.forEach(transaction => {
+                if (!transaction.timestamp?.toDate) return;
+                const date = transaction.timestamp.toDate();
+                const key = date.toISOString().slice(0, 10);
+                counts.set(key, {
+                    label: formatActivityDate(date),
+                    count: (counts.get(key)?.count || 0) + 1
+                });
+            });
+
+            return Array.from(counts.entries())
+                .sort(([first], [second]) => first.localeCompare(second))
+                .map(([, value]) => value);
+        }
+
+        function getStatusBreakdown(transactions) {
+            return transactions.reduce((counts, transaction) => {
+                const status = String(transaction.status || '').trim();
+                if (!status) return counts;
+                counts.set(status, (counts.get(status) || 0) + 1);
+                return counts;
+            }, new Map());
+        }
+
+        function getTransactionTypeBreakdown(transactions) {
+            return transactions.reduce((counts, transaction) => {
+                const type = getTransactionType(transaction);
+                counts.set(type, (counts.get(type) || 0) + 1);
+                return counts;
+            }, new Map());
+        }
+
+        function renderEmptyChart(containerId, message) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = `
+                <div class="min-h-[120px] flex items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-[12px] font-medium text-gray-400">
+                    ${message}
+                </div>
+            `;
+        }
+
+        function renderVolumeChart(transactions) {
+            const container = document.getElementById('ledger-volume-chart');
+            if (!container) return;
+
+            const volume = getTransactionVolumeByDate(transactions).slice(-10);
+            if (volume.length === 0) {
+                renderEmptyChart('ledger-volume-chart', 'No transaction activity yet.');
+                return;
+            }
+
+            const maxCount = Math.max(...volume.map(item => item.count), 1);
+            container.innerHTML = `
+                <div class="h-36 flex items-end gap-2">
+                    ${volume.map(item => `
+                        <div class="flex-1 min-w-8 flex flex-col items-center gap-2">
+                            <div class="text-[11px] font-bold text-gray-600">${item.count}</div>
+                            <div class="w-full rounded-t-md bg-slate-300 border border-slate-300" style="height: ${Math.max((item.count / maxCount) * 92, 12)}px"></div>
+                            <div class="text-[10px] font-medium text-gray-400 whitespace-nowrap">${item.label}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function getStatusColor(status) {
+            const normalized = String(status || '').toLowerCase();
+            if (normalized === 'completed') return 'bg-green-500';
+            if (normalized.includes('missing')) return 'bg-red-500';
+            if (normalized.includes('pending') || normalized.includes('waiting')) return 'bg-amber-500';
+            if (normalized.includes('failed') || normalized.includes('void')) return 'bg-gray-500';
+            return 'bg-slate-400';
+        }
+
+        function renderBreakdownChart(containerId, breakdown, emptyMessage, colorResolver = () => 'bg-slate-400') {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const rows = Array.from(breakdown.entries()).sort((a, b) => b[1] - a[1]);
+            if (rows.length === 0) {
+                renderEmptyChart(containerId, emptyMessage);
+                return;
+            }
+
+            const maxCount = Math.max(...rows.map(([, count]) => count), 1);
+            container.innerHTML = rows.map(([label, count]) => `
+                <div>
+                    <div class="flex items-center justify-between gap-3 text-[12px]">
+                        <span class="font-bold text-gray-700 truncate">${label}</span>
+                        <span class="font-mono font-bold text-gray-500">${count}</span>
+                    </div>
+                    <div class="mt-1.5 h-2 rounded-full bg-gray-100 overflow-hidden">
+                        <div class="h-full rounded-full ${colorResolver(label)}" style="width: ${Math.max((count / maxCount) * 100, 8)}%"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderLedgerActivity(transactions) {
+            renderVolumeChart(transactions);
+            renderBreakdownChart('ledger-status-chart', getStatusBreakdown(transactions), 'Status breakdown not available.', getStatusColor);
+            renderBreakdownChart('ledger-type-chart', getTransactionTypeBreakdown(transactions), 'Type breakdown not available.', label => getTypeBadgeClass(label).split(' ')[0]);
         }
 
         function getSortedLedgerRows() {
