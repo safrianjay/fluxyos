@@ -70,7 +70,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | `type` | string | Transaction type. Supported values: `"income"`, `"expense"`, `"transfer"`, `"refund"`, `"adjustment"`, `"fee"`, `"tax"`, `"pending_receivable"`, `"pending_payable"`. Legacy `"revenue"` is still accepted as income. |
 | `status` | string | `"Completed"` \| `"Missing Receipt"` |
 | `icon` | string | `"💰"` for positive-side transaction types, `"💸"` for spend-side transaction types |
-| `timestamp` | Firestore Timestamp | `serverTimestamp()` — always server-side, never client Date() |
+| `timestamp` | Firestore Timestamp | Defaults to `serverTimestamp()`, but dashboard entry drawer and CSV import may set an explicit selected transaction date for today or a previous day |
 
 **Ordering:** `timestamp DESC` (newest first). Default limit: 50. Dashboard preview: 5.
 
@@ -155,15 +155,18 @@ Accepted headers:
 | `Type` | ✅ | May be `Income`, `Expense`, `Transfer`, `Refund`, `Adjustment`, `Fee`, `Tax`, `Pending receivable`, or `Pending payable`; legacy `revenue` is accepted |
 | `Amount` | ✅ | Positive raw number; `Rp`, commas, or dots are stripped before save |
 | `Status` | No | Defaults to `Completed`; may be `Completed` or `Missing Receipt` |
-| `Date` | No | Accepted for compatibility with ledger CSV export but ignored; Firestore uses server timestamp |
+| `Date` | No | Optional transaction date in `YYYY-MM-DD`; defaults to the drawer's CSV date field when omitted |
 
 Imports are limited to 500 rows per file and are written as a Firestore batch,
 so validation failure prevents partial imports.
 
-After a successful single or CSV transaction add, the modal closes
-automatically. The ledger table renders 10 transactions per page and supports
-ascending/descending sort on Date, Amount, Category, and Status with up/down
-icons.
+The entry drawer includes a transaction date field that defaults to today and
+allows today or previous days only. When the selected single-entry date or any
+CSV row/default date is not today, the drawer shows an info warning above the
+sticky submit button before saving. After a successful single or CSV
+transaction add, the drawer closes automatically. The ledger table renders 10
+transactions per page and supports ascending/descending sort on Date, Amount,
+Category, and Status with up/down icons.
 
 The Finance Ledger page defaults to the current month using the shared
 `FluxyDateRangePicker` in `assets/js/date-range-picker.js` beside Download CSV.
@@ -178,9 +181,9 @@ month for ledger-style views.
 Example:
 
 ```csv
-Description,Category,Type,Amount,Status
-Client Payment,Revenue,Income,1250000,Completed
-AWS,Infrastructure,Expense,450000,Missing Receipt
+Description,Category,Type,Amount,Status,Date
+Client Payment,Revenue,Income,1250000,Completed,2026-05-14
+AWS,Infrastructure,Expense,450000,Missing Receipt,2026-05-13
 ```
 
 ---

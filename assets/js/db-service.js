@@ -17,9 +17,10 @@ class DataService {
     }
 
     async addTransaction(userId, data) {
+        const { timestamp, ...rest } = data;
         return await addDoc(collection(this.db, `users/${userId}/transactions`), {
-            ...data,
-            timestamp: serverTimestamp()
+            ...rest,
+            timestamp: timestamp || serverTimestamp()
         });
     }
 
@@ -28,9 +29,10 @@ class DataService {
         const txCollection = collection(this.db, `users/${userId}/transactions`);
 
         rows.forEach(row => {
+            const { timestamp, ...rest } = row;
             batch.set(doc(txCollection), {
-                ...row,
-                timestamp: serverTimestamp()
+                ...rest,
+                timestamp: timestamp || serverTimestamp()
             });
         });
 
@@ -39,9 +41,10 @@ class DataService {
 
     // --- BILLS ---
     async addBill(userId, data) {
+        const { timestamp, ...rest } = data;
         return await addDoc(collection(this.db, `users/${userId}/bills`), {
-            ...data,
-            timestamp: serverTimestamp()
+            ...rest,
+            timestamp: timestamp || serverTimestamp()
         });
     }
 
@@ -53,9 +56,10 @@ class DataService {
 
     // --- SUBSCRIPTIONS ---
     async addSubscription(userId, data) {
+        const { timestamp, ...rest } = data;
         return await addDoc(collection(this.db, `users/${userId}/subscriptions`), {
-            ...data,
-            timestamp: serverTimestamp()
+            ...rest,
+            timestamp: timestamp || serverTimestamp()
         });
     }
 

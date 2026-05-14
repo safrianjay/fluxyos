@@ -20,6 +20,7 @@ window.showAddTransactionModal = function(options = {}) {
         context = 'transaction' // 'transaction', 'bill', 'subscription'
     } = options;
     const supportsBulkCsv = context === 'transaction';
+    const todayKey = getLocalDateKey();
 
     // Always destroy and recreate so context options (title, labels) are fresh
     const existing = document.getElementById('global-tx-modal');
@@ -44,7 +45,8 @@ window.showAddTransactionModal = function(options = {}) {
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
-                <form id="global-tx-form" class="flex-1 p-6 space-y-5 overflow-y-auto">
+                <form id="global-tx-form" class="flex flex-1 flex-col overflow-hidden">
+                    <div class="flex-1 space-y-5 overflow-y-auto p-6">
                     ${supportsBulkCsv ? `
                     <div class="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" role="tablist" aria-label="Transaction entry method">
                         <button type="button" id="tx-tab-single" class="tx-entry-tab rounded-lg px-3 py-2 text-[13px] font-bold transition-all bg-white text-gray-900 shadow-sm" aria-selected="true" aria-controls="tx-single-panel">Single transaction</button>
@@ -59,6 +61,11 @@ window.showAddTransactionModal = function(options = {}) {
                         <div>
                             <label for="tx-vendor" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Vendor / Description</label>
                             <input type="text" id="tx-vendor" name="vendor" required placeholder="e.g. AWS, Client Payment" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                        </div>
+                        <div>
+                            <label for="tx-date" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Transaction Date</label>
+                            <input type="date" id="tx-date" name="date" required max="${todayKey}" value="${todayKey}" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                            <p class="mt-2 text-[12px] text-gray-500">Defaults to today. Choose a previous day for backdated records.</p>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -89,6 +96,11 @@ window.showAddTransactionModal = function(options = {}) {
                     </div>
                     ${supportsBulkCsv ? `
                     <div id="tx-bulk-panel" class="hidden space-y-4">
+                        <div>
+                            <label for="tx-bulk-date" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Default CSV Date</label>
+                            <input type="date" id="tx-bulk-date" name="bulkDate" required max="${todayKey}" value="${todayKey}" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                            <p class="mt-2 text-[12px] text-gray-500">Rows without a Date column use this date. Row dates can be today or any previous day.</p>
+                        </div>
                         <div class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 transition-all duration-200" id="tx-csv-dropzone">
                             <label for="tx-csv-file" class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-7 text-center transition-all duration-200 hover:border-[#E85D19] hover:bg-gray-50">
                                 <span class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#E85D19]">
@@ -108,15 +120,20 @@ window.showAddTransactionModal = function(options = {}) {
                                 <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Type</span><span class="text-right">Income, Expense, Transfer, Refund, Adjustment, Fee, Tax, Pending receivable, or Pending payable</span></div>
                                 <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Amount</span><span class="text-right">Raw Rp number, e.g. 1250000</span></div>
                                 <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Status</span><span class="text-right">Optional: Completed or Missing Receipt</span></div>
+                                <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Date</span><span class="text-right">Optional: YYYY-MM-DD; defaults to the CSV date field above</span></div>
                             </div>
-                            <p class="mt-3 rounded-lg bg-gray-50 px-3 py-2 font-mono text-[11px] text-gray-500">Client Payment,Revenue,Income,1250000,Completed</p>
+                            <p class="mt-3 rounded-lg bg-gray-50 px-3 py-2 font-mono text-[11px] text-gray-500">Client Payment,Revenue,Income,1250000,Completed,${todayKey}</p>
                         </div>
                     </div>
                     ` : ''}
-                    <button type="submit" id="tx-submit-btn" class="w-full py-4 bg-[#E85D19] hover:bg-[#D44400] text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none disabled:active:scale-100" disabled>
-                        <span>${submitLabel}</span>
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    </button>
+                    </div>
+                    <div class="border-t border-gray-100 bg-white/95 p-4 shadow-[0_-12px_24px_rgba(15,23,42,0.06)] backdrop-blur">
+                        <div id="tx-date-warning" class="hidden mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] font-medium text-amber-800"></div>
+                        <button type="submit" id="tx-submit-btn" class="w-full py-4 bg-[#E85D19] hover:bg-[#D44400] text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none disabled:active:scale-100" disabled>
+                            <span>${submitLabel}</span>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -140,6 +157,7 @@ window.showAddTransactionModal = function(options = {}) {
     // Live Formatting for Amount
     const amountInput = document.getElementById('tx-amount');
     const vendorInput = document.getElementById('tx-vendor');
+    const dateInput = document.getElementById('tx-date');
     amountInput.oninput = (e) => {
         let value = e.target.value.replace(/\D/g, "");
         e.target.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -159,12 +177,65 @@ window.showAddTransactionModal = function(options = {}) {
 
         const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
         const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+        const { Timestamp } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
         const auth = getAuth(app);
         const user = auth.currentUser;
         if (!user) throw new Error("Session expired. Please log in again.");
 
         const { default: DataService } = await import('/assets/js/db-service.js');
-        return { ds: new DataService(app), user };
+        return { ds: new DataService(app), user, Timestamp };
+    }
+
+    function getLocalDateKey(date = new Date()) {
+        return [
+            date.getFullYear(),
+            String(date.getMonth() + 1).padStart(2, '0'),
+            String(date.getDate()).padStart(2, '0')
+        ].join('-');
+    }
+
+    function parseLocalDateKey(dateKey) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || ''))) return null;
+        const [year, month, day] = String(dateKey || '').split('-').map(Number);
+        if (!year || !month || !day) return null;
+        const date = new Date(year, month - 1, day, 12, 0, 0, 0);
+        if (Number.isNaN(date.getTime())) return null;
+        if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+        return date;
+    }
+
+    function isPastDateKey(dateKey) {
+        return Boolean(dateKey && dateKey !== todayKey);
+    }
+
+    function buildTransactionTimestamp(dateKey, Timestamp) {
+        const date = parseLocalDateKey(dateKey);
+        if (!date) throw new Error("Choose a valid transaction date.");
+        if (dateKey > todayKey) throw new Error("Transaction date cannot be in the future.");
+        return Timestamp.fromDate(date);
+    }
+
+    function setDateWarning(message = '') {
+        const warning = document.getElementById('tx-date-warning');
+        if (!warning) return;
+        warning.textContent = message;
+        warning.classList.toggle('hidden', !message);
+    }
+
+    function updateDateWarning() {
+        if (activeEntryMode === 'bulk') {
+            const bulkDate = document.getElementById('tx-bulk-date')?.value;
+            const hasPastCsvRows = document.getElementById('tx-csv-file')?.dataset.hasPastDates === 'true';
+            if (hasPastCsvRows) {
+                setDateWarning('Some CSV rows use previous dates. They will be saved on the dates provided in the file.');
+                return;
+            }
+            setDateWarning(isPastDateKey(bulkDate) ? 'This CSV upload will save rows without a Date column on a previous day.' : '');
+            return;
+        }
+
+        const dateKey = document.getElementById('tx-date')?.value;
+        setDateWarning(isPastDateKey(dateKey) ? 'This record will be saved to a previous day, not today.' : '');
     }
 
     function parseCsv(text) {
@@ -213,7 +284,7 @@ window.showAddTransactionModal = function(options = {}) {
         return parseFloat(withoutGrouping.replace(/[^\d.-]/g, ''));
     }
 
-    function parseBulkTransactions(csvText) {
+    function parseBulkTransactions(csvText, defaultDateKey, Timestamp) {
         const rows = parseCsv(csvText);
         if (rows.length < 2) throw new Error("CSV needs one header row and at least one transaction row.");
         if (rows.length > 501) throw new Error("CSV imports are limited to 500 transactions at a time.");
@@ -225,7 +296,8 @@ window.showAddTransactionModal = function(options = {}) {
             category: findIndex(['category']),
             type: findIndex(['type']),
             amount: findIndex(['amount']),
-            status: findIndex(['status'])
+            status: findIndex(['status']),
+            date: findIndex(['date', 'transaction_date', 'transactiondate'])
         };
 
         if ([indexes.vendor, indexes.category, indexes.type, indexes.amount].some(index => index === undefined)) {
@@ -243,12 +315,15 @@ window.showAddTransactionModal = function(options = {}) {
             const type = String(row[indexes.type] || '').toLowerCase().replace(/\s+/g, '_');
             const status = row[indexes.status] || 'Completed';
             const vendor = row[indexes.vendor];
+            const dateKey = indexes.date === undefined || !row[indexes.date] ? defaultDateKey : row[indexes.date];
 
             if (!vendor) throw new Error(`Row ${line}: Description is required.`);
             if (!Number.isFinite(amount) || amount <= 0) throw new Error(`Row ${line}: Amount must be a positive number.`);
             if (!allowedCategories.includes(category)) throw new Error(`Row ${line}: Category must be Revenue, Marketing, Infrastructure, Operations, or SaaS.`);
             if (!allowedTypes.includes(type)) throw new Error(`Row ${line}: Type must be Income, Expense, Transfer, Refund, Adjustment, Fee, Tax, Pending receivable, or Pending payable.`);
             if (!allowedStatuses.includes(status)) throw new Error(`Row ${line}: Status must be Completed or Missing Receipt.`);
+            if (!parseLocalDateKey(dateKey)) throw new Error(`Row ${line}: Date must use YYYY-MM-DD.`);
+            if (dateKey > todayKey) throw new Error(`Row ${line}: Date cannot be in the future.`);
 
             return {
                 amount,
@@ -256,8 +331,24 @@ window.showAddTransactionModal = function(options = {}) {
                 category,
                 type,
                 status,
-                icon: ['income', 'revenue', 'refund', 'pending_receivable'].includes(type) ? '💰' : '💸'
+                icon: ['income', 'revenue', 'refund', 'pending_receivable'].includes(type) ? '💰' : '💸',
+                timestamp: buildTransactionTimestamp(dateKey, Timestamp)
             };
+        });
+    }
+
+    function hasCsvPastDates(csvText, defaultDateKey) {
+        const rows = parseCsv(csvText);
+        if (rows.length < 2) return isPastDateKey(defaultDateKey);
+        const headers = rows[0].map(normalizeHeader);
+        const dateIndex = ['date', 'transaction_date', 'transactiondate']
+            .map(normalizeHeader)
+            .map(name => headers.indexOf(name))
+            .find(index => index >= 0);
+
+        return rows.slice(1).some(row => {
+            const dateKey = dateIndex === undefined || !row[dateIndex] ? defaultDateKey : row[dateIndex];
+            return isPastDateKey(dateKey);
         });
     }
 
@@ -283,16 +374,19 @@ window.showAddTransactionModal = function(options = {}) {
 
     function isSingleEntryComplete() {
         const rawAmount = amountInput.value.replace(/\./g, "");
-        return Number(rawAmount) > 0 && vendorInput.value.trim().length > 0;
+        return Number(rawAmount) > 0 && vendorInput.value.trim().length > 0 && Boolean(parseLocalDateKey(dateInput.value)) && dateInput.value <= todayKey;
     }
 
     function updateSingleSubmitState() {
         if (activeEntryMode !== 'bulk') {
             setSubmitButton(submitLabel, !isSingleEntryComplete());
+            updateDateWarning();
         }
     }
 
     vendorInput.oninput = updateSingleSubmitState;
+    dateInput.oninput = updateSingleSubmitState;
+    dateInput.onchange = updateSingleSubmitState;
     updateSingleSubmitState();
 
     if (supportsBulkCsv) {
@@ -300,7 +394,8 @@ window.showAddTransactionModal = function(options = {}) {
         const bulkTab = document.getElementById('tx-tab-bulk');
         const singlePanel = document.getElementById('tx-single-panel');
         const bulkPanel = document.getElementById('tx-bulk-panel');
-        const singleFields = [amountInput, vendorInput, document.getElementById('tx-category'), document.getElementById('tx-type')];
+        const bulkDateInput = document.getElementById('tx-bulk-date');
+        const singleFields = [amountInput, vendorInput, dateInput, document.getElementById('tx-category'), document.getElementById('tx-type')];
         const fileInput = document.getElementById('tx-csv-file');
         const fileLabel = document.getElementById('tx-csv-file-label');
         const dropzone = document.getElementById('tx-csv-dropzone');
@@ -321,12 +416,13 @@ window.showAddTransactionModal = function(options = {}) {
             if (isBulk) {
                 setCsvFeedback(fileInput.files?.[0] ? 'Ready to upload. We will validate every row before saving.' : '', 'info');
             }
+            updateDateWarning();
         };
 
         singleTab.onclick = () => setEntryMode('single');
         bulkTab.onclick = () => setEntryMode('bulk');
 
-        const updateSelectedCsvFile = () => {
+        const updateSelectedCsvFile = async () => {
             const file = fileInput.files?.[0];
             setSubmitButton('Upload CSV', !file);
             fileLabel.textContent = file ? file.name : 'Choose or drop a CSV file';
@@ -334,9 +430,25 @@ window.showAddTransactionModal = function(options = {}) {
             dropzone.classList.toggle('ring-2', Boolean(file));
             dropzone.classList.toggle('ring-orange-100', Boolean(file));
             setCsvFeedback(file ? 'Ready to upload. We will validate every row before saving.' : '', 'info');
+            fileInput.dataset.hasPastDates = 'false';
+            if (file) {
+                try {
+                    const csvText = await file.text();
+                    fileInput.dataset.hasPastDates = hasCsvPastDates(csvText, bulkDateInput.value) ? 'true' : 'false';
+                } catch (_) {
+                    fileInput.dataset.hasPastDates = 'false';
+                }
+            }
+            updateDateWarning();
         };
 
         fileInput.onchange = () => {
+            updateSelectedCsvFile();
+        };
+        bulkDateInput.oninput = () => {
+            updateSelectedCsvFile();
+        };
+        bulkDateInput.onchange = () => {
             updateSelectedCsvFile();
         };
 
@@ -387,9 +499,9 @@ window.showAddTransactionModal = function(options = {}) {
 
                 dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#E85D19]');
                 const csvText = await file.text();
-                const transactions = parseBulkTransactions(csvText);
+                const { ds, user, Timestamp } = await getTransactionDataService();
+                const transactions = parseBulkTransactions(csvText, document.getElementById('tx-bulk-date').value, Timestamp);
                 btn.innerText = `Uploading ${transactions.length}...`;
-                const { ds, user } = await getTransactionDataService();
                 await ds.addTransactions(user.uid, transactions);
                 setCsvFeedback(`${transactions.length} transactions imported successfully.`, 'success');
                 if (window.loadDashboard) await window.loadDashboard();
@@ -423,7 +535,8 @@ window.showAddTransactionModal = function(options = {}) {
             };
 
             // Initialize Firebase if not already done
-            const { ds, user } = await getTransactionDataService();
+            const { ds, user, Timestamp } = await getTransactionDataService();
+            data.timestamp = buildTransactionTimestamp(document.getElementById('tx-date').value, Timestamp);
 
             if (user) {
                 if (context === 'bill') {
