@@ -455,12 +455,15 @@
         }
 
         function getTypeBadgeClass(type) {
-            if (type === 'Income') return 'bg-green-50 text-green-700 border-green-100';
-            if (type === 'Expense') return 'bg-orange-50 text-[#C2410C] border-orange-100';
-            if (type === 'Pending receivable') return 'bg-blue-50 text-blue-700 border-blue-100';
-            if (type === 'Pending payable') return 'bg-amber-50 text-amber-700 border-amber-100';
-            if (type === 'Unknown') return 'bg-gray-100 text-gray-500 border-gray-200';
-            return 'bg-slate-100 text-slate-600 border-slate-200';
+            if (type === 'Income') return 'bg-green-100 text-green-800 border-green-200';
+            if (type === 'Expense') return 'bg-orange-100 text-orange-800 border-orange-200';
+            if (type === 'Pending receivable') return 'bg-blue-100 text-blue-800 border-blue-200';
+            if (type === 'Pending payable') return 'bg-amber-100 text-amber-800 border-amber-200';
+            if (type === 'Refund') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+            if (type === 'Fee' || type === 'Tax') return 'bg-rose-100 text-rose-800 border-rose-200';
+            if (type === 'Transfer' || type === 'Adjustment') return 'bg-violet-100 text-violet-800 border-violet-200';
+            if (type === 'Unknown') return 'bg-gray-100 text-gray-600 border-gray-200';
+            return 'bg-slate-100 text-slate-700 border-slate-200';
         }
 
         function formatTransactionAmount(transaction) {
@@ -729,7 +732,7 @@
                         ${formatTransactionAmount(row)}
                     </td>
                     <td class="px-6 py-4">
-                        <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${row.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">
+                        <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${row.status === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}">
                             ${row.status}
                         </span>
                     </td>
