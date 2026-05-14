@@ -197,8 +197,10 @@
                     </div>
                     <div class="mt-1 flex flex-col items-end gap-1">
                         <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Type</p>
+                        <div class="relative flex items-center">
                         <select id="tx-detail-type-select"
-                            class="rounded-md border px-2 py-1 text-[11px] font-bold uppercase cursor-pointer outline-none focus:ring-1 focus:ring-gray-900 transition-colors bg-gray-100 text-gray-500 border-gray-200 appearance-none text-center">
+                            class="rounded-md border pl-2 pr-6 py-1 text-[11px] font-bold uppercase cursor-pointer outline-none focus:ring-1 focus:ring-gray-900 transition-colors bg-gray-100 text-gray-500 border-gray-200 appearance-none text-center">
+
                             <option value="income">Income</option>
                             <option value="expense">Expense</option>
                             <option value="transfer">Transfer</option>
@@ -209,6 +211,8 @@
                             <option value="pending_receivable">Pending receivable</option>
                             <option value="pending_payable">Pending payable</option>
                         </select>
+                        <svg class="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a4 4 0 01-2.828 1.172H7v-2a4 4 0 011.172-2.828z"></path></svg>
+                        </div>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
