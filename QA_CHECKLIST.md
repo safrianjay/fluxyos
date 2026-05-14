@@ -153,7 +153,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 9 | Closing drawer via X, overlay click, or Escape removes the drawer completely and restores page scroll |
 | 10 | Re-opening drawer after closing starts with a fresh, empty form |
 | 11 | Add Transaction drawer separates single entry and CSV bulk upload with tabs; bulk mode uses the main submit button as `Upload CSV` with no second upload CTA |
-| 12 | Single and CSV transaction entry include a date field defaulted to today, block future dates, save selected previous dates to `timestamp`, and show an info warning above the sticky submit button when dates are not today |
+| 12 | Single and CSV transaction entry use shared `FluxyDateRangePicker` single-date pickers, default to today, block future dates, save selected previous dates to `timestamp`, and show an info warning above the sticky submit button when dates are not today |
 | 13 | Uploading a valid transaction CSV writes every row to `users/{uid}/transactions`, refreshes dashboard/ledger views, and shows a success state/toast |
 | 14 | Uploading an invalid CSV keeps the modal open, shows a row-specific validation error, and writes no partial rows |
 | 15 | Ledger table starts at 10 rows per page, pagination next/previous works, and Date, Amount, Category, and Status headers toggle ascending/descending sort with up/down icons |

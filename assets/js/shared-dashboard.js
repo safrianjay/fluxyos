@@ -11,6 +11,21 @@
     document.head.appendChild(script);
 })();
 
+function loadFluxyDateRangePicker() {
+    if (window.FluxyDateRangePicker) return Promise.resolve(window.FluxyDateRangePicker);
+    if (window.__fluxyDateRangePickerPromise) return window.__fluxyDateRangePickerPromise;
+
+    window.__fluxyDateRangePickerPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = '/assets/js/date-range-picker.js';
+        script.onload = () => resolve(window.FluxyDateRangePicker);
+        script.onerror = () => reject(new Error('Unable to load date picker.'));
+        document.head.appendChild(script);
+    });
+
+    return window.__fluxyDateRangePickerPromise;
+}
+
 window.showAddTransactionModal = function(options = {}) {
     const {
         title = "Add Transaction",
@@ -63,8 +78,8 @@ window.showAddTransactionModal = function(options = {}) {
                             <input type="text" id="tx-vendor" name="vendor" required placeholder="e.g. AWS, Client Payment" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
                         </div>
                         <div>
-                            <label for="tx-date" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Transaction Date</label>
-                            <input type="date" id="tx-date" name="date" required max="${todayKey}" value="${todayKey}" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                            <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Transaction Date</p>
+                            <div id="tx-date-picker"></div>
                             <p class="mt-2 text-[12px] text-gray-500">Defaults to today. Choose a previous day for backdated records.</p>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
@@ -97,8 +112,8 @@ window.showAddTransactionModal = function(options = {}) {
                     ${supportsBulkCsv ? `
                     <div id="tx-bulk-panel" class="hidden space-y-4">
                         <div>
-                            <label for="tx-bulk-date" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Default CSV Date</label>
-                            <input type="date" id="tx-bulk-date" name="bulkDate" required max="${todayKey}" value="${todayKey}" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                            <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Default CSV Date</p>
+                            <div id="tx-bulk-date-picker"></div>
                             <p class="mt-2 text-[12px] text-gray-500">Rows without a Date column use this date. Row dates can be today or any previous day.</p>
                         </div>
                         <div class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 transition-all duration-200" id="tx-csv-dropzone">
@@ -153,16 +168,55 @@ window.showAddTransactionModal = function(options = {}) {
     };
     document.addEventListener('keydown', window.__closeAddTransactionModalOnEscape);
     let activeEntryMode = 'single';
+    let selectedEntryDate = todayKey;
+    let selectedBulkDate = todayKey;
+    let updateSelectedCsvDateState = updateDateWarning;
 
     // Live Formatting for Amount
     const amountInput = document.getElementById('tx-amount');
     const vendorInput = document.getElementById('tx-vendor');
-    const dateInput = document.getElementById('tx-date');
+    mountEntryDatePickers();
     amountInput.oninput = (e) => {
         let value = e.target.value.replace(/\D/g, "");
         e.target.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
         updateSingleSubmitState();
     };
+
+    async function mountEntryDatePickers() {
+        try {
+            const picker = await loadFluxyDateRangePicker();
+            picker?.mount('#tx-date-picker', {
+                mode: 'single',
+                start: selectedEntryDate,
+                end: selectedEntryDate,
+                defaultStart: todayKey,
+                defaultEnd: todayKey,
+                maxDate: todayKey,
+                onChange: ({ start }) => {
+                    selectedEntryDate = start;
+                    updateSingleSubmitState();
+                }
+            });
+
+            if (supportsBulkCsv) {
+                picker?.mount('#tx-bulk-date-picker', {
+                    mode: 'single',
+                    start: selectedBulkDate,
+                    end: selectedBulkDate,
+                    defaultStart: todayKey,
+                    defaultEnd: todayKey,
+                    maxDate: todayKey,
+                    onChange: ({ start }) => {
+                        selectedBulkDate = start;
+                        updateSelectedCsvDateState();
+                    }
+                });
+            }
+        } catch (error) {
+            console.error(error);
+            window.showToast?.('Date picker failed to load. Please refresh and try again.', 'error');
+        }
+    }
 
     async function getTransactionDataService() {
         const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
@@ -224,18 +278,16 @@ window.showAddTransactionModal = function(options = {}) {
 
     function updateDateWarning() {
         if (activeEntryMode === 'bulk') {
-            const bulkDate = document.getElementById('tx-bulk-date')?.value;
             const hasPastCsvRows = document.getElementById('tx-csv-file')?.dataset.hasPastDates === 'true';
             if (hasPastCsvRows) {
                 setDateWarning('Some CSV rows use previous dates. They will be saved on the dates provided in the file.');
                 return;
             }
-            setDateWarning(isPastDateKey(bulkDate) ? 'This CSV upload will save rows without a Date column on a previous day.' : '');
+            setDateWarning(isPastDateKey(selectedBulkDate) ? 'This CSV upload will save rows without a Date column on a previous day.' : '');
             return;
         }
 
-        const dateKey = document.getElementById('tx-date')?.value;
-        setDateWarning(isPastDateKey(dateKey) ? 'This record will be saved to a previous day, not today.' : '');
+        setDateWarning(isPastDateKey(selectedEntryDate) ? 'This record will be saved to a previous day, not today.' : '');
     }
 
     function parseCsv(text) {
@@ -374,7 +426,7 @@ window.showAddTransactionModal = function(options = {}) {
 
     function isSingleEntryComplete() {
         const rawAmount = amountInput.value.replace(/\./g, "");
-        return Number(rawAmount) > 0 && vendorInput.value.trim().length > 0 && Boolean(parseLocalDateKey(dateInput.value)) && dateInput.value <= todayKey;
+        return Number(rawAmount) > 0 && vendorInput.value.trim().length > 0 && Boolean(parseLocalDateKey(selectedEntryDate)) && selectedEntryDate <= todayKey;
     }
 
     function updateSingleSubmitState() {
@@ -385,8 +437,6 @@ window.showAddTransactionModal = function(options = {}) {
     }
 
     vendorInput.oninput = updateSingleSubmitState;
-    dateInput.oninput = updateSingleSubmitState;
-    dateInput.onchange = updateSingleSubmitState;
     updateSingleSubmitState();
 
     if (supportsBulkCsv) {
@@ -394,8 +444,7 @@ window.showAddTransactionModal = function(options = {}) {
         const bulkTab = document.getElementById('tx-tab-bulk');
         const singlePanel = document.getElementById('tx-single-panel');
         const bulkPanel = document.getElementById('tx-bulk-panel');
-        const bulkDateInput = document.getElementById('tx-bulk-date');
-        const singleFields = [amountInput, vendorInput, dateInput, document.getElementById('tx-category'), document.getElementById('tx-type')];
+        const singleFields = [amountInput, vendorInput, document.getElementById('tx-category'), document.getElementById('tx-type')];
         const fileInput = document.getElementById('tx-csv-file');
         const fileLabel = document.getElementById('tx-csv-file-label');
         const dropzone = document.getElementById('tx-csv-dropzone');
@@ -434,21 +483,16 @@ window.showAddTransactionModal = function(options = {}) {
             if (file) {
                 try {
                     const csvText = await file.text();
-                    fileInput.dataset.hasPastDates = hasCsvPastDates(csvText, bulkDateInput.value) ? 'true' : 'false';
+                    fileInput.dataset.hasPastDates = hasCsvPastDates(csvText, selectedBulkDate) ? 'true' : 'false';
                 } catch (_) {
                     fileInput.dataset.hasPastDates = 'false';
                 }
             }
             updateDateWarning();
         };
+        updateSelectedCsvDateState = updateSelectedCsvFile;
 
         fileInput.onchange = () => {
-            updateSelectedCsvFile();
-        };
-        bulkDateInput.oninput = () => {
-            updateSelectedCsvFile();
-        };
-        bulkDateInput.onchange = () => {
             updateSelectedCsvFile();
         };
 
@@ -500,7 +544,7 @@ window.showAddTransactionModal = function(options = {}) {
                 dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#E85D19]');
                 const csvText = await file.text();
                 const { ds, user, Timestamp } = await getTransactionDataService();
-                const transactions = parseBulkTransactions(csvText, document.getElementById('tx-bulk-date').value, Timestamp);
+                const transactions = parseBulkTransactions(csvText, selectedBulkDate, Timestamp);
                 btn.innerText = `Uploading ${transactions.length}...`;
                 await ds.addTransactions(user.uid, transactions);
                 setCsvFeedback(`${transactions.length} transactions imported successfully.`, 'success');
@@ -536,7 +580,7 @@ window.showAddTransactionModal = function(options = {}) {
 
             // Initialize Firebase if not already done
             const { ds, user, Timestamp } = await getTransactionDataService();
-            data.timestamp = buildTransactionTimestamp(document.getElementById('tx-date').value, Timestamp);
+            data.timestamp = buildTransactionTimestamp(selectedEntryDate, Timestamp);
 
             if (user) {
                 if (context === 'bill') {

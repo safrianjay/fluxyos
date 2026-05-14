@@ -60,8 +60,9 @@
         const maxDate = options.maxDate || getDayKey();
         const defaultStart = options.defaultStart || getMonthStartKey();
         const defaultEnd = options.defaultEnd || getMonthEndKey();
+        const isSingleDate = options.mode === 'single' || options.singleDate === true;
         let rangeStart = options.start || defaultStart;
-        let rangeEnd = options.end || defaultEnd;
+        let rangeEnd = isSingleDate ? rangeStart : (options.end || defaultEnd);
         let draftStart = rangeStart;
         let draftEnd = rangeEnd;
         let calendarBaseMonth = getMonthStartKey(parseDayKey(rangeStart));
@@ -134,7 +135,10 @@
             const daySpan = Math.max(1, Math.round((parseDayKey(rangeEnd) - parseDayKey(rangeStart)) / DAY_MS) + 1);
             const isFullMonth = rangeStart === getMonthStartKey(parseDayKey(rangeStart))
                 && rangeEnd === getMonthEndKey(parseDayKey(rangeStart));
-            if (isFullMonth) {
+            if (isSingleDate) {
+                rangeStart = addDays(rangeStart, delta);
+                rangeEnd = rangeStart;
+            } else if (isFullMonth) {
                 const date = parseDayKey(rangeStart);
                 date.setMonth(date.getMonth() + delta);
                 rangeStart = getMonthStartKey(date);
@@ -189,6 +193,12 @@
         }
 
         function selectDraftDay(dayKey) {
+            if (isSingleDate) {
+                draftStart = dayKey;
+                draftEnd = dayKey;
+                renderPanel();
+                return;
+            }
             if (!draftStart || (draftStart && draftEnd && draftStart !== draftEnd)) {
                 draftStart = dayKey;
                 draftEnd = dayKey;
@@ -207,7 +217,7 @@
             trigger.setAttribute('aria-expanded', String(shouldShow));
             if (shouldShow) {
                 draftStart = rangeStart;
-                draftEnd = rangeEnd;
+                draftEnd = isSingleDate ? rangeStart : rangeEnd;
                 calendarBaseMonth = getMonthStartKey(parseDayKey(draftStart));
                 positionPanel();
                 renderPanel();
@@ -247,9 +257,9 @@
         get('[data-drp-cancel]').addEventListener('click', () => togglePanel(false));
         get('[data-drp-reset]').addEventListener('click', () => {
             rangeStart = defaultStart;
-            rangeEnd = defaultEnd;
+            rangeEnd = isSingleDate ? defaultStart : defaultEnd;
             draftStart = defaultStart;
-            draftEnd = defaultEnd;
+            draftEnd = isSingleDate ? defaultStart : defaultEnd;
             calendarBaseMonth = getMonthStartKey(parseDayKey(defaultStart));
             togglePanel(false);
             updateLabel();
@@ -257,7 +267,7 @@
         });
         get('[data-drp-apply]').addEventListener('click', () => {
             rangeStart = draftStart;
-            rangeEnd = draftEnd;
+            rangeEnd = isSingleDate ? draftStart : draftEnd;
             togglePanel(false);
             updateLabel();
             options.onChange?.({ start: rangeStart, end: rangeEnd });
@@ -281,12 +291,12 @@
             getRange: () => ({ start: rangeStart, end: rangeEnd }),
             setRange: (start, end = start) => {
                 rangeStart = start;
-                rangeEnd = end;
+                rangeEnd = isSingleDate ? start : end;
                 updateLabel();
             },
             reset: () => {
                 rangeStart = defaultStart;
-                rangeEnd = defaultEnd;
+                rangeEnd = isSingleDate ? defaultStart : defaultEnd;
                 updateLabel();
                 options.onChange?.({ start: rangeStart, end: rangeEnd });
             }

@@ -160,23 +160,25 @@ Accepted headers:
 Imports are limited to 500 rows per file and are written as a Firestore batch,
 so validation failure prevents partial imports.
 
-The entry drawer includes a transaction date field that defaults to today and
-allows today or previous days only. When the selected single-entry date or any
-CSV row/default date is not today, the drawer shows an info warning above the
-sticky submit button before saving. After a successful single or CSV
-transaction add, the drawer closes automatically. The ledger table renders 10
-transactions per page and supports ascending/descending sort on Date, Amount,
-Category, and Status with up/down icons.
+The entry drawer mounts the shared `FluxyDateRangePicker` in single-date mode
+for transaction dates. It defaults to today and allows today or previous days
+only. When the selected single-entry date or any CSV row/default date is not
+today, the drawer shows an info warning above the sticky submit button before
+saving. After a successful single or CSV transaction add, the drawer closes
+automatically. The ledger table renders 10 transactions per page and supports
+ascending/descending sort on Date, Amount, Category, and Status with up/down
+icons.
 
 The Finance Ledger page defaults to the current month using the shared
 `FluxyDateRangePicker` in `assets/js/date-range-picker.js` beside Download CSV.
 Single-day and custom-range views are selected inside the calendar, not through
 separate Day/Month tabs. Ledger control cards, Ledger Activity charts, table
 rows, pagination, and CSV export must all use the selected period so large
-ledgers do not overload the page. Reuse this shared picker for future dashboard
-date filters instead of creating page-local calendar components. Its Reset
-action returns the picker to the configured default range, which is the current
-month for ledger-style views.
+ledgers do not overload the page. Reuse this shared picker for every dashboard
+calendar/date picker, including single-date entry fields; never create
+page-local calendar components or native date inputs. Its Reset action returns
+the picker to the configured default range, which is the current month for
+ledger-style views and today for single-entry dates.
 
 Example:
 
