@@ -176,6 +176,57 @@
         </div>
     </main>
 
+    <!-- TRANSACTION DETAIL DRAWER -->
+    <div id="tx-detail-overlay" class="fixed inset-0 z-[90] hidden">
+        <div class="absolute inset-0 bg-black/55 opacity-0 transition-opacity duration-300 ease-out" onclick="window.closeTxDetailDrawer()"></div>
+        <div id="tx-detail-drawer" role="dialog" aria-modal="true" class="absolute right-0 top-0 h-full w-full max-w-[440px] translate-x-full flex flex-col bg-white shadow-2xl transition-transform duration-300 ease-out sm:max-w-[480px]">
+            <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 flex-shrink-0">
+                <div>
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Transaction Detail</p>
+                    <h3 id="tx-detail-vendor" class="mt-1 text-lg font-bold text-gray-900">—</h3>
+                </div>
+                <button onclick="window.closeTxDetailDrawer()" class="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Amount</p>
+                        <p id="tx-detail-amount" class="text-3xl font-bold font-mono text-gray-900">—</p>
+                    </div>
+                    <span id="tx-detail-type-badge" class="mt-1 inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-bold uppercase bg-gray-100 text-gray-500 border-gray-200">—</span>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Transaction Date</p>
+                        <p id="tx-detail-date" class="text-[14px] font-bold text-gray-900">—</p>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Category</p>
+                        <p id="tx-detail-category" class="text-[14px] font-bold text-gray-900">—</p>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Status</p>
+                        <p id="tx-detail-status" class="text-[14px] font-bold text-gray-900">—</p>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Uploaded</p>
+                        <p id="tx-detail-uploaded" class="text-[14px] font-bold text-gray-900">—</p>
+                    </div>
+                </div>
+                <div id="tx-detail-receipt-section"></div>
+            </div>
+            <div id="tx-detail-footer" class="hidden border-t border-gray-100 bg-white/95 p-4 shadow-[0_-12px_24px_rgba(15,23,42,0.06)] flex-shrink-0">
+                <button id="tx-detail-attach-btn" type="button" disabled
+                    class="w-full py-4 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                    <span id="tx-detail-attach-label">Attach Receipt</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
     <script src="assets/js/date-range-picker.js"></script>
@@ -642,8 +693,11 @@
                 return;
             }
 
+            window.__ledgerRowMap = {};
+            visibleRows.forEach(r => { window.__ledgerRowMap[r.id] = r; });
+
             body.innerHTML = visibleRows.map(row => `
-                <tr class="hover:bg-gray-50 transition-colors">
+                <tr class="hover:bg-gray-50 transition-colors cursor-pointer" onclick="window.__handleLedgerRowClick('${row.id}')">
                     <td class="px-6 py-4 text-gray-400 whitespace-nowrap text-[12px]">${row.created_at?.toDate ? row.created_at.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
                     <td class="px-6 py-4 text-gray-500">${row.timestamp?.toDate().toLocaleString() || 'Just now'}</td>
                     <td class="px-6 py-4">
@@ -782,6 +836,190 @@
                 window.setTimeout(() => setDownloadButtonState('idle'), 1200);
             }, 180);
         });
+
+        // --- TRANSACTION DETAIL DRAWER ---
+        window.__ledgerRowMap = {};
+
+        window.__handleLedgerRowClick = (txId) => {
+            const row = window.__ledgerRowMap[txId];
+            if (!row) return;
+            document.body.classList.add('overflow-hidden');
+            window.openTxDetailDrawer(row);
+        };
+
+        window.openTxDetailDrawer = (row) => {
+            const overlay = document.getElementById('tx-detail-overlay');
+            const drawer = document.getElementById('tx-detail-drawer');
+            if (!overlay || !drawer) return;
+
+            // Populate header
+            document.getElementById('tx-detail-vendor').textContent = row.vendor_name || '—';
+
+            // Amount
+            document.getElementById('tx-detail-amount').textContent = formatTransactionAmount(row);
+            document.getElementById('tx-detail-amount').className = `text-3xl font-bold font-mono ${getAmountClass(row)}`;
+
+            // Type badge
+            const typeBadge = document.getElementById('tx-detail-type-badge');
+            const txType = getTransactionType(row);
+            typeBadge.textContent = txType;
+            typeBadge.className = `mt-1 inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-bold uppercase ${getTypeBadgeClass(txType)}`;
+
+            // Metadata grid
+            document.getElementById('tx-detail-date').textContent = row.timestamp?.toDate
+                ? row.timestamp.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                : '—';
+            document.getElementById('tx-detail-category').textContent = row.category || '—';
+            const statusEl = document.getElementById('tx-detail-status');
+            statusEl.textContent = row.status || '—';
+            statusEl.className = `text-[14px] font-bold ${row.status === 'Completed' ? 'text-green-700' : row.status === 'Missing Receipt' ? 'text-orange-600' : 'text-gray-900'}`;
+            document.getElementById('tx-detail-uploaded').textContent = row.created_at?.toDate
+                ? row.created_at.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                : '—';
+
+            // Receipt section
+            const receiptSection = document.getElementById('tx-detail-receipt-section');
+            if (row.receipt_url) {
+                receiptSection.innerHTML = `
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
+                        <a href="${row.receipt_url}" target="_blank" rel="noopener noreferrer">
+                            <img src="${row.receipt_url}" alt="Receipt" class="w-full rounded-xl border border-gray-200 object-contain max-h-72 hover:opacity-90 transition-opacity">
+                        </a>
+                    </div>
+                `;
+                document.getElementById('tx-detail-footer').classList.add('hidden');
+            } else {
+                receiptSection.innerHTML = `
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
+                        <label id="tx-detail-receipt-label" for="tx-detail-receipt-file"
+                            class="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 transition-colors">
+                            <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                            <span id="tx-detail-receipt-filename" class="text-[13px] text-gray-500 truncate flex-1">Attach receipt image</span>
+                        </label>
+                        <input type="file" id="tx-detail-receipt-file" accept="image/*" class="sr-only">
+                        <div id="tx-detail-receipt-preview-wrapper" class="hidden mt-2">
+                            <img id="tx-detail-receipt-preview" src="" alt="Receipt preview" class="w-full rounded-xl border border-gray-200 object-contain max-h-48">
+                        </div>
+                        <p class="mt-1.5 text-[11px] text-gray-400">JPG, PNG or WebP · Max 10 MB · Compressed before upload</p>
+                    </div>
+                `;
+                document.getElementById('tx-detail-footer').classList.remove('hidden');
+                document.getElementById('tx-detail-attach-btn').disabled = true;
+                document.getElementById('tx-detail-attach-label').textContent = 'Attach Receipt';
+                _wireDetailAttachInput(row);
+            }
+
+            // Animate in
+            overlay.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                overlay.querySelector('.absolute.inset-0')?.classList.remove('opacity-0');
+                overlay.querySelector('.absolute.inset-0')?.classList.add('opacity-100');
+                drawer.classList.remove('translate-x-full');
+            });
+
+            // Escape key
+            window.__closeTxDetailOnEscape = (e) => { if (e.key === 'Escape') window.closeTxDetailDrawer(); };
+            document.addEventListener('keydown', window.__closeTxDetailOnEscape);
+        };
+
+        window.closeTxDetailDrawer = () => {
+            const overlay = document.getElementById('tx-detail-overlay');
+            const drawer = document.getElementById('tx-detail-drawer');
+            if (!overlay || overlay.dataset.closing === 'true') return;
+            overlay.dataset.closing = 'true';
+            overlay.querySelector('.absolute.inset-0')?.classList.remove('opacity-100');
+            overlay.querySelector('.absolute.inset-0')?.classList.add('opacity-0');
+            drawer.classList.add('translate-x-full');
+            document.body.classList.remove('overflow-hidden');
+            if (window.__closeTxDetailOnEscape) {
+                document.removeEventListener('keydown', window.__closeTxDetailOnEscape);
+                window.__closeTxDetailOnEscape = null;
+            }
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                overlay.dataset.closing = '';
+            }, 300);
+        };
+
+        function _wireDetailAttachInput(row) {
+            const fileInput = document.getElementById('tx-detail-receipt-file');
+            const filename = document.getElementById('tx-detail-receipt-filename');
+            const previewWrapper = document.getElementById('tx-detail-receipt-preview-wrapper');
+            const previewImg = document.getElementById('tx-detail-receipt-preview');
+            const attachBtn = document.getElementById('tx-detail-attach-btn');
+            const attachLabel = document.getElementById('tx-detail-attach-label');
+            if (!fileInput) return;
+
+            // Clone to remove stale listeners
+            const freshInput = fileInput.cloneNode(true);
+            fileInput.replaceWith(freshInput);
+
+            freshInput.onchange = () => {
+                const file = freshInput.files?.[0];
+                if (!file) return;
+                if (!file.type.startsWith('image/')) {
+                    window.showToast('Receipt must be an image file.', 'error'); freshInput.value = ''; return;
+                }
+                if (file.size > 10 * 1024 * 1024) {
+                    window.showToast('Receipt image must be under 10 MB.', 'error'); freshInput.value = ''; return;
+                }
+                filename.textContent = file.name;
+                const url = URL.createObjectURL(file);
+                previewImg.src = url;
+                previewWrapper.classList.remove('hidden');
+                attachBtn.disabled = false;
+            };
+
+            attachBtn.onclick = async () => {
+                const file = freshInput.files?.[0];
+                if (!file) return;
+                attachBtn.disabled = true;
+                try {
+                    attachLabel.textContent = 'Compressing...';
+                    let toUpload = file;
+                    try { toUpload = await window.__compressReceiptImage(file); } catch (_) {}
+                    attachLabel.textContent = 'Uploading...';
+                    const user = auth.currentUser;
+                    if (!user) throw new Error('Session expired.');
+                    const receiptUrl = await ds.uploadReceipt(user.uid, toUpload);
+                    await ds.updateTransactionReceipt(user.uid, row.id, receiptUrl);
+
+                    // Swap to image view
+                    const receiptSection = document.getElementById('tx-detail-receipt-section');
+                    receiptSection.innerHTML = `
+                        <div>
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
+                            <a href="${receiptUrl}" target="_blank" rel="noopener noreferrer">
+                                <img src="${receiptUrl}" alt="Receipt" class="w-full rounded-xl border border-gray-200 object-contain max-h-72 hover:opacity-90 transition-opacity">
+                            </a>
+                        </div>
+                    `;
+                    document.getElementById('tx-detail-footer').classList.add('hidden');
+                    document.getElementById('tx-detail-status').textContent = 'Completed';
+                    document.getElementById('tx-detail-status').className = 'text-[14px] font-bold text-green-700';
+
+                    // Update in-memory row and refresh table
+                    row.receipt_url = receiptUrl;
+                    row.status = 'Completed';
+                    if (window.__ledgerRowMap[row.id]) {
+                        window.__ledgerRowMap[row.id].receipt_url = receiptUrl;
+                        window.__ledgerRowMap[row.id].status = 'Completed';
+                    }
+                    const txInAll = allLedgerTransactions.find(t => t.id === row.id);
+                    if (txInAll) { txInAll.receipt_url = receiptUrl; txInAll.status = 'Completed'; }
+                    const txInCurrent = currentLedgerTransactions.find(t => t.id === row.id);
+                    if (txInCurrent) { txInCurrent.receipt_url = receiptUrl; txInCurrent.status = 'Completed'; }
+                    renderLedgerTable();
+                    window.showToast('Receipt attached successfully.', 'success');
+                } catch (err) {
+                    window.showToast('Failed to upload receipt: ' + err.message, 'error');
+                    attachBtn.disabled = false;
+                    attachLabel.textContent = 'Attach Receipt';
+                }
+            };
+        }
 
     </script>
 </body>

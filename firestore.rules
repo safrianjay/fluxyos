@@ -111,7 +111,9 @@ service cloud.firestore {
             'type',
             'status',
             'icon',
-            'timestamp'
+            'timestamp',
+            'created_at',
+            'receipt_url'
           ])
           && isValidBaseRecord(request.resource.data);
         allow update: if isOwner(userId)
@@ -122,7 +124,9 @@ service cloud.firestore {
             'type',
             'status',
             'icon',
-            'timestamp'
+            'timestamp',
+            'created_at',
+            'receipt_url'
           ])
           && isValidBaseRecordUpdate(request.resource.data, resource.data);
         allow delete: if false;

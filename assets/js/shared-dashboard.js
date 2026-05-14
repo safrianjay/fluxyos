@@ -26,6 +26,29 @@ function loadFluxyDateRangePicker() {
     return window.__fluxyDateRangePickerPromise;
 }
 
+async function compressReceiptImage(file) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            const MAX = 1200;
+            let { width, height } = img;
+            if (width > MAX || height > MAX) {
+                if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
+                else { width = Math.round(width * MAX / height); height = MAX; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width; canvas.height = height;
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+            canvas.toBlob(blob => blob ? resolve(new File([blob], file.name, { type: 'image/jpeg' })) : reject(new Error('Compression failed')), 'image/jpeg', 0.8);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+        img.src = url;
+    });
+}
+window.__compressReceiptImage = compressReceiptImage;
+
 window.showAddTransactionModal = function(options = {}) {
     const {
         title = "Add Transaction",
@@ -107,6 +130,21 @@ window.showAddTransactionModal = function(options = {}) {
                                     <option value="pending_payable" ${defaultType === 'pending_payable' ? 'selected' : ''}>Pending payable</option>
                                 </select>
                             </div>
+                        </div>
+                        <div id="tx-receipt-section">
+                            <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Receipt (optional)</label>
+                            <label id="tx-receipt-label" for="tx-receipt-file" class="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 transition-colors group">
+                                <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                                <span id="tx-receipt-filename" class="text-[13px] text-gray-500 truncate flex-1">Attach receipt image</span>
+                                <button type="button" id="tx-receipt-remove" class="hidden text-gray-400 hover:text-red-500 transition-colors" aria-label="Remove receipt">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            </label>
+                            <input type="file" id="tx-receipt-file" accept="image/*" class="sr-only">
+                            <div id="tx-receipt-preview-wrapper" class="hidden mt-2">
+                                <img id="tx-receipt-preview" src="" alt="Receipt preview" class="w-full rounded-xl border border-gray-200 object-contain max-h-48">
+                            </div>
+                            <p class="mt-1.5 text-[11px] text-gray-400">JPG, PNG or WebP · Max 10 MB · Compressed before upload</p>
                         </div>
                     </div>
                     ${supportsBulkCsv ? `
@@ -491,6 +529,43 @@ window.showAddTransactionModal = function(options = {}) {
     vendorInput.oninput = updateSingleSubmitState;
     updateSingleSubmitState();
 
+    // Receipt file input wiring
+    const receiptFileInput = document.getElementById('tx-receipt-file');
+    const receiptFilename = document.getElementById('tx-receipt-filename');
+    const receiptRemoveBtn = document.getElementById('tx-receipt-remove');
+    const receiptPreviewWrapper = document.getElementById('tx-receipt-preview-wrapper');
+    const receiptPreview = document.getElementById('tx-receipt-preview');
+
+    receiptFileInput.onchange = () => {
+        const file = receiptFileInput.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            window.showToast('Receipt must be an image file (JPG, PNG, WebP).', 'error');
+            receiptFileInput.value = '';
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            window.showToast('Receipt image must be under 10 MB.', 'error');
+            receiptFileInput.value = '';
+            return;
+        }
+        receiptFilename.textContent = file.name;
+        receiptRemoveBtn.classList.remove('hidden');
+        const previewUrl = URL.createObjectURL(file);
+        receiptPreview.src = previewUrl;
+        receiptPreviewWrapper.classList.remove('hidden');
+    };
+
+    receiptRemoveBtn.onclick = (e) => {
+        e.preventDefault();
+        receiptFileInput.value = '';
+        receiptFilename.textContent = 'Attach receipt image';
+        receiptRemoveBtn.classList.add('hidden');
+        if (receiptPreview.src) URL.revokeObjectURL(receiptPreview.src);
+        receiptPreview.src = '';
+        receiptPreviewWrapper.classList.add('hidden');
+    };
+
     if (supportsBulkCsv) {
         const singleTab = document.getElementById('tx-tab-single');
         const bulkTab = document.getElementById('tx-tab-bulk');
@@ -633,6 +708,19 @@ window.showAddTransactionModal = function(options = {}) {
             // Initialize Firebase if not already done
             const { ds, user, Timestamp } = await getTransactionDataService();
             data.timestamp = buildTransactionTimestamp(selectedEntryDate, Timestamp);
+
+            // Receipt upload (transaction context only)
+            if (context === 'transaction') {
+                const receiptFile = document.getElementById('tx-receipt-file')?.files?.[0];
+                if (receiptFile) {
+                    btn.innerText = 'Compressing...';
+                    let toUpload = receiptFile;
+                    try { toUpload = await compressReceiptImage(receiptFile); } catch (_) {}
+                    btn.innerText = 'Uploading receipt...';
+                    data.receipt_url = await ds.uploadReceipt(user.uid, toUpload);
+                    data.status = 'Completed';
+                }
+            }
 
             if (user) {
                 if (context === 'bill') {

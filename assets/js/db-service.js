@@ -1,8 +1,10 @@
-import { getFirestore, collection, query, getDocs, addDoc, serverTimestamp, orderBy, limit, writeBatch, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, query, getDocs, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 class DataService {
     constructor(app) {
+        this.app = app;
         this.db = getFirestore(app);
+        this._storage = null;
     }
 
     // --- TRANSACTIONS (LEDGER) ---
@@ -70,6 +72,23 @@ class DataService {
         const q = query(collection(this.db, `users/${userId}/subscriptions`), orderBy('timestamp', 'desc'));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    // --- RECEIPTS ---
+    async uploadReceipt(userId, file) {
+        const { getStorage, ref, uploadBytes, getDownloadURL } =
+            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
+        if (!this._storage) this._storage = getStorage(this.app);
+        const path = `users/${userId}/receipts/${Date.now()}-${file.name}`;
+        const snap = await uploadBytes(ref(this._storage, path), file, { contentType: file.type || 'image/jpeg' });
+        return getDownloadURL(snap.ref);
+    }
+
+    async updateTransactionReceipt(userId, txId, receiptUrl) {
+        await updateDoc(doc(this.db, `users/${userId}/transactions/${txId}`), {
+            receipt_url: receiptUrl,
+            status: 'Completed'
+        });
     }
 
     // --- AUDIT LOGS ---
