@@ -283,6 +283,7 @@ window.showAddTransactionModal = function(options = {}) {
 
                     picker?.mount('#tx-bulk-date-picker', {
                         mode: 'range',
+                        noYearLabel: true,
                         start: selectedBulkStart,
                         end:   selectedBulkEnd,
                         defaultStart: selectedBulkStart,

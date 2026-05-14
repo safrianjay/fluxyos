@@ -128,8 +128,15 @@
         const label = get('[data-drp-label]');
         const nextButton = get('[data-drp-next]');
 
+        const fmtDay = options.noYearLabel
+            ? k => parseDayKey(k).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            : null;
+        const formatLabel = options.noYearLabel
+            ? (s, e) => s === e ? fmtDay(s) : `${fmtDay(s)} – ${fmtDay(e)}`
+            : formatRangeLabel;
+
         function updateLabel() {
-            label.textContent = formatRangeLabel(rangeStart, rangeEnd);
+            label.textContent = formatLabel(rangeStart, rangeEnd);
             nextButton.disabled = rangeEnd >= maxDate;
         }
 
