@@ -23,19 +23,28 @@ window.showAddTransactionModal = function(options = {}) {
 
     // Always destroy and recreate so context options (title, labels) are fresh
     const existing = document.getElementById('global-tx-modal');
-    if (existing) existing.parentElement.remove();
+    if (existing) {
+        existing.parentElement.remove();
+        document.body.classList.remove('overflow-hidden');
+    }
+    if (window.__closeAddTransactionModalOnEscape) {
+        document.removeEventListener('keydown', window.__closeAddTransactionModalOnEscape);
+    }
 
     const modalHTML = `
-        <div id="global-tx-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-            <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onclick="window.closeAddTransactionModal()"></div>
-            <div class="bg-white w-full max-w-lg max-h-[92vh] rounded-2xl shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col">
+        <div id="global-tx-modal" class="fixed inset-0 z-[100] flex justify-end overflow-hidden">
+            <div id="global-tx-overlay" class="absolute inset-0 bg-black/55 opacity-0 transition-opacity duration-300 ease-out" onclick="window.closeAddTransactionModal()"></div>
+            <div id="global-tx-drawer" role="dialog" aria-modal="true" aria-labelledby="global-tx-title" class="relative z-10 flex h-full w-full max-w-[440px] translate-x-full flex-col overflow-hidden bg-white shadow-2xl transition-transform duration-300 ease-out sm:max-w-[480px]">
                 <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                    <h3 class="text-lg font-bold text-gray-900">${title}</h3>
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Finance entry</p>
+                        <h3 id="global-tx-title" class="mt-1 text-lg font-bold text-gray-900">${title}</h3>
+                    </div>
                     <button onclick="window.closeAddTransactionModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
-                <form id="global-tx-form" class="p-6 space-y-5 overflow-y-auto">
+                <form id="global-tx-form" class="flex-1 p-6 space-y-5 overflow-y-auto">
                     ${supportsBulkCsv ? `
                     <div class="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" role="tablist" aria-label="Transaction entry method">
                         <button type="button" id="tx-tab-single" class="tx-entry-tab rounded-lg px-3 py-2 text-[13px] font-bold transition-all bg-white text-gray-900 shadow-sm" aria-selected="true" aria-controls="tx-single-panel">Single transaction</button>
@@ -116,6 +125,16 @@ window.showAddTransactionModal = function(options = {}) {
     const wrapper = document.createElement('div');
     wrapper.innerHTML = modalHTML;
     document.body.appendChild(wrapper);
+    document.body.classList.add('overflow-hidden');
+    window.requestAnimationFrame(() => {
+        document.getElementById('global-tx-overlay')?.classList.remove('opacity-0');
+        document.getElementById('global-tx-overlay')?.classList.add('opacity-100');
+        document.getElementById('global-tx-drawer')?.classList.remove('translate-x-full');
+    });
+    window.__closeAddTransactionModalOnEscape = (event) => {
+        if (event.key === 'Escape') window.closeAddTransactionModal();
+    };
+    document.addEventListener('keydown', window.__closeAddTransactionModalOnEscape);
     let activeEntryMode = 'single';
 
     // Live Formatting for Amount
@@ -496,8 +515,22 @@ window.showToast = function(message, type = 'info') {
 window.closeAddTransactionModal = function() {
     const modal = document.getElementById('global-tx-modal');
     if (modal) {
+        if (modal.dataset.closing === 'true') return;
+        modal.dataset.closing = 'true';
+        const overlay = document.getElementById('global-tx-overlay');
+        const drawer = document.getElementById('global-tx-drawer');
+        overlay?.classList.remove('opacity-100');
+        overlay?.classList.add('opacity-0');
+        drawer?.classList.add('translate-x-full');
+        document.body.classList.remove('overflow-hidden');
+        if (window.__closeAddTransactionModalOnEscape) {
+            document.removeEventListener('keydown', window.__closeAddTransactionModalOnEscape);
+            window.__closeAddTransactionModalOnEscape = null;
+        }
         // Fully remove so next open creates fresh context
-        modal.parentElement.remove();
+        window.setTimeout(() => {
+            modal.parentElement?.remove();
+        }, 300);
     }
 };
 

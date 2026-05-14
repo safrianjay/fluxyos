@@ -142,7 +142,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 
 | # | Check |
 |---|-------|
-| 1 | Clicking "Add" button opens modal with correct title and submit label |
+| 1 | Clicking "Add" button opens the right-side entry drawer with black translucent overlay, correct title, and submit label |
 | 2 | Amount field formats live as Indonesian Rupiah (e.g., `1234567` → `1.234.567`) |
 | 3 | Default category is correct: Transactions → none, Bills → "Operations", Subscriptions → "SaaS" |
 | 4 | Submitting empty form shows required field validation (browser native) |
@@ -150,9 +150,9 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 6 | On success: modal closes, correct toast message appears for 4s, then disappears |
 | 7 | Data appears in the correct table after modal closes (no manual refresh needed) |
 | 8 | On Firebase permission error: toast shows a friendly error message |
-| 9 | Closing modal via X or backdrop click removes the modal completely |
-| 10 | Re-opening modal after closing starts with a fresh, empty form |
-| 11 | Add Transaction modal separates single entry and CSV bulk upload with tabs; bulk mode uses the main submit button as `Upload CSV` with no second upload CTA |
+| 9 | Closing drawer via X, overlay click, or Escape removes the drawer completely and restores page scroll |
+| 10 | Re-opening drawer after closing starts with a fresh, empty form |
+| 11 | Add Transaction drawer separates single entry and CSV bulk upload with tabs; bulk mode uses the main submit button as `Upload CSV` with no second upload CTA |
 | 12 | Uploading a valid transaction CSV writes every row to `users/{uid}/transactions`, refreshes dashboard/ledger views, and shows a success state/toast |
 | 13 | Uploading an invalid CSV keeps the modal open, shows a row-specific validation error, and writes no partial rows |
 | 14 | Ledger table starts at 10 rows per page, pagination next/previous works, and Date, Amount, Category, and Status headers toggle ascending/descending sort with up/down icons |

@@ -201,7 +201,9 @@ window.showAddTransactionModal({
 ```
 
 ### `window.closeAddTransactionModal()`
-Removes `#global-tx-modal` from the DOM entirely. Always safe to call.
+Closes the right-side entry drawer, fades the black overlay, restores page
+scroll, and removes `#global-tx-modal` from the DOM entirely. Always safe to
+call.
 
 ### `window.showToast(message, type)`
 ```javascript
