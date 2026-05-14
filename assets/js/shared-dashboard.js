@@ -128,16 +128,49 @@ window.showAddTransactionModal = function(options = {}) {
                             <div id="tx-csv-feedback" class="hidden mt-3 text-[12px] font-medium"></div>
                         </div>
                         <div class="rounded-xl border border-gray-200 bg-white p-4">
-                            <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">CSV structure</p>
-                            <div class="mt-3 grid gap-2 text-[12px] text-gray-600">
-                                <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Description</span><span class="text-right">Required vendor or memo</span></div>
-                                <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Category</span><span class="text-right">Revenue, Marketing, Infrastructure, Operations, SaaS</span></div>
-                                <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Type</span><span class="text-right">Income, Expense, Transfer, Refund, Adjustment, Fee, Tax, Pending receivable, or Pending payable</span></div>
-                                <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Amount</span><span class="text-right">Raw Rp number, e.g. 1250000</span></div>
-                                <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Status</span><span class="text-right">Optional: Completed or Missing Receipt</span></div>
-                                <div class="flex items-start justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><span class="font-mono text-gray-900">Date</span><span class="text-right">Optional: YYYY-MM-DD; defaults to the CSV date field above</span></div>
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">CSV Column Reference</p>
+                                <div class="flex items-center gap-3 text-[10px] font-bold text-gray-500">
+                                    <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>Required</span>
+                                    <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-gray-300"></span>Optional</span>
+                                </div>
                             </div>
-                            <p class="mt-3 rounded-lg bg-gray-50 px-3 py-2 font-mono text-[11px] text-gray-500">Client Payment,Revenue,Income,1250000,Completed,${todayKey}</p>
+                            <div class="grid gap-1.5 text-[12px]">
+                                <div class="flex items-start gap-2.5 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2">
+                                    <span class="mt-1 inline-block w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
+                                    <span class="font-mono font-bold text-gray-900 w-24 flex-shrink-0">Description</span>
+                                    <span class="text-gray-500">Vendor name or transaction memo</span>
+                                </div>
+                                <div class="flex items-start gap-2.5 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2">
+                                    <span class="mt-1 inline-block w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
+                                    <span class="font-mono font-bold text-gray-900 w-24 flex-shrink-0">Category</span>
+                                    <span class="text-gray-500">Revenue · Marketing · Infrastructure · Operations · SaaS</span>
+                                </div>
+                                <div class="flex items-start gap-2.5 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2">
+                                    <span class="mt-1 inline-block w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
+                                    <span class="font-mono font-bold text-gray-900 w-24 flex-shrink-0">Type</span>
+                                    <span class="text-gray-500">Income · Expense · Transfer · Refund · Adjustment · Fee · Tax · Pending receivable · Pending payable</span>
+                                </div>
+                                <div class="flex items-start gap-2.5 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2">
+                                    <span class="mt-1 inline-block w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
+                                    <span class="font-mono font-bold text-gray-900 w-24 flex-shrink-0">Amount</span>
+                                    <span class="text-gray-500">Raw Rp integer — e.g. <span class="font-mono font-bold text-gray-700">1250000</span></span>
+                                </div>
+                                <div class="flex items-start gap-2.5 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
+                                    <span class="mt-1 inline-block w-2 h-2 rounded-full bg-gray-300 flex-shrink-0"></span>
+                                    <span class="font-mono font-bold text-gray-900 w-24 flex-shrink-0">Status</span>
+                                    <span class="text-gray-500">Completed <span class="text-gray-400">(default)</span> · Missing Receipt</span>
+                                </div>
+                                <div class="flex items-start gap-2.5 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
+                                    <span class="mt-1 inline-block w-2 h-2 rounded-full bg-gray-300 flex-shrink-0"></span>
+                                    <span class="font-mono font-bold text-gray-900 w-24 flex-shrink-0">Date</span>
+                                    <span class="text-gray-500">DD-MM-YYYY — defaults to the date above if omitted</span>
+                                </div>
+                            </div>
+                            <div class="mt-3 rounded-lg bg-gray-900 px-3 py-2.5">
+                                <p class="font-mono text-[10px] text-gray-500 mb-1">Example row</p>
+                                <p class="font-mono text-[11px] text-emerald-400 break-all">Client Payment,Revenue,Income,1250000,Completed,${todayKey.split('-').reverse().join('-')}</p>
+                            </div>
                         </div>
                     </div>
                     ` : ''}
@@ -246,6 +279,15 @@ window.showAddTransactionModal = function(options = {}) {
             String(date.getMonth() + 1).padStart(2, '0'),
             String(date.getDate()).padStart(2, '0')
         ].join('-');
+    }
+
+    function parseCsvDateInput(raw) {
+        const s = String(raw || '').trim();
+        if (/^\d{2}-\d{2}-\d{4}$/.test(s)) {
+            const [day, month, year] = s.split('-').map(Number);
+            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+        return s;
     }
 
     function parseLocalDateKey(dateKey) {
@@ -367,14 +409,14 @@ window.showAddTransactionModal = function(options = {}) {
             const type = String(row[indexes.type] || '').toLowerCase().replace(/\s+/g, '_');
             const status = row[indexes.status] || 'Completed';
             const vendor = row[indexes.vendor];
-            const dateKey = indexes.date === undefined || !row[indexes.date] ? defaultDateKey : row[indexes.date];
+            const dateKey = indexes.date === undefined || !row[indexes.date] ? defaultDateKey : parseCsvDateInput(row[indexes.date]);
 
             if (!vendor) throw new Error(`Row ${line}: Description is required.`);
             if (!Number.isFinite(amount) || amount <= 0) throw new Error(`Row ${line}: Amount must be a positive number.`);
             if (!allowedCategories.includes(category)) throw new Error(`Row ${line}: Category must be Revenue, Marketing, Infrastructure, Operations, or SaaS.`);
             if (!allowedTypes.includes(type)) throw new Error(`Row ${line}: Type must be Income, Expense, Transfer, Refund, Adjustment, Fee, Tax, Pending receivable, or Pending payable.`);
             if (!allowedStatuses.includes(status)) throw new Error(`Row ${line}: Status must be Completed or Missing Receipt.`);
-            if (!parseLocalDateKey(dateKey)) throw new Error(`Row ${line}: Date must use YYYY-MM-DD.`);
+            if (!parseLocalDateKey(dateKey)) throw new Error(`Row ${line}: Date must use DD-MM-YYYY.`);
             if (dateKey > todayKey) throw new Error(`Row ${line}: Date cannot be in the future.`);
 
             return {
@@ -399,7 +441,7 @@ window.showAddTransactionModal = function(options = {}) {
             .find(index => index >= 0);
 
         return rows.slice(1).some(row => {
-            const dateKey = dateIndex === undefined || !row[dateIndex] ? defaultDateKey : row[dateIndex];
+            const dateKey = dateIndex === undefined || !row[dateIndex] ? defaultDateKey : parseCsvDateInput(row[dateIndex]);
             return isPastDateKey(dateKey);
         });
     }
