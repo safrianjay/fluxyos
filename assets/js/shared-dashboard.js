@@ -112,9 +112,20 @@ window.showAddTransactionModal = function(options = {}) {
                     ${supportsBulkCsv ? `
                     <div id="tx-bulk-panel" class="hidden space-y-4">
                         <div>
-                            <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Default CSV Date</p>
-                            <div id="tx-bulk-date-picker"></div>
-                            <p class="mt-2 text-[12px] text-gray-500">Rows without a Date column use this date. Row dates can be today or any previous day.</p>
+                            <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Upload Period</p>
+                            <div class="flex items-start gap-2">
+                                <div class="flex-shrink-0 flex items-center bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden h-10">
+                                    <button id="tx-bulk-month-prev" type="button" class="h-10 w-9 inline-flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-95" aria-label="Previous month">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m15 18-6-6 6-6"/></svg>
+                                    </button>
+                                    <span id="tx-bulk-month-label" class="px-2 text-[13px] font-bold text-gray-700 min-w-[108px] text-center select-none"></span>
+                                    <button id="tx-bulk-month-next" type="button" class="h-10 w-9 inline-flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-gray-500" aria-label="Next month">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m9 18 6-6-6-6"/></svg>
+                                    </button>
+                                </div>
+                                <div id="tx-bulk-date-picker" class="flex-1 min-w-0"></div>
+                            </div>
+                            <p class="mt-2 text-[12px] text-gray-500">Rows without a Date column default to the range end date. CSV dates must fall within this range.</p>
                         </div>
                         <div class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 transition-all duration-200" id="tx-csv-dropzone">
                             <label for="tx-csv-file" class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-7 text-center transition-all duration-200 hover:border-[#E85D19] hover:bg-gray-50">
@@ -133,6 +144,33 @@ window.showAddTransactionModal = function(options = {}) {
                                 <div class="flex items-center gap-3 text-[10px] font-bold text-gray-500">
                                     <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>Required</span>
                                     <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-gray-300"></span>Optional</span>
+                                </div>
+                            </div>
+                            <div class="mb-3 rounded-lg border border-gray-200 overflow-hidden">
+                                <p class="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-white border-b border-gray-100">Example CSV</p>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left">
+                                        <thead>
+                                            <tr class="bg-gray-50 border-b border-gray-200">
+                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Description</th>
+                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Category</th>
+                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Type</th>
+                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Amount</th>
+                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Status</th>
+                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="bg-white">
+                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-900 whitespace-nowrap">Client Payment</td>
+                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-900 whitespace-nowrap">Revenue</td>
+                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-900 whitespace-nowrap">Income</td>
+                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-900 whitespace-nowrap">1250000</td>
+                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-500 whitespace-nowrap">Completed</td>
+                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-500 whitespace-nowrap">${todayKey.split('-').reverse().join('-')}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                             <div class="grid gap-1.5 text-[12px]">
@@ -164,34 +202,7 @@ window.showAddTransactionModal = function(options = {}) {
                                 <div class="flex items-start gap-2.5 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
                                     <span class="mt-1 inline-block w-2 h-2 rounded-full bg-gray-300 flex-shrink-0"></span>
                                     <span class="font-mono font-bold text-gray-900 w-24 flex-shrink-0">Date</span>
-                                    <span class="text-gray-500">DD-MM-YYYY — defaults to the date above if omitted</span>
-                                </div>
-                            </div>
-                            <div class="mt-3 rounded-lg border border-gray-200 overflow-hidden">
-                                <p class="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-white border-b border-gray-100">Example CSV</p>
-                                <div class="overflow-x-auto">
-                                    <table class="w-full text-left">
-                                        <thead>
-                                            <tr class="bg-gray-50 border-b border-gray-200">
-                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Description</th>
-                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Category</th>
-                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Type</th>
-                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Amount</th>
-                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Status</th>
-                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Date</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr class="bg-white">
-                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-900 whitespace-nowrap">Client Payment</td>
-                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-900 whitespace-nowrap">Revenue</td>
-                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-900 whitespace-nowrap">Income</td>
-                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-900 whitespace-nowrap">1250000</td>
-                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-500 whitespace-nowrap">Completed</td>
-                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-500 whitespace-nowrap">${todayKey.split('-').reverse().join('-')}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                    <span class="text-gray-500">DD-MM-YYYY — omit to use the range end date</span>
                                 </div>
                             </div>
                         </div>
@@ -225,7 +236,11 @@ window.showAddTransactionModal = function(options = {}) {
     document.addEventListener('keydown', window.__closeAddTransactionModalOnEscape);
     let activeEntryMode = 'single';
     let selectedEntryDate = todayKey;
-    let selectedBulkDate = todayKey;
+    const _today = new Date();
+    const _monthStart = [_today.getFullYear(), String(_today.getMonth() + 1).padStart(2, '0'), '01'].join('-');
+    let selectedBulkMonth = _monthStart;
+    let selectedBulkStart = _monthStart;
+    let selectedBulkEnd   = todayKey;
     let updateSelectedCsvDateState = updateDateWarning;
 
     // Live Formatting for Amount
@@ -241,6 +256,8 @@ window.showAddTransactionModal = function(options = {}) {
     async function mountEntryDatePickers() {
         try {
             const picker = await loadFluxyDateRangePicker();
+            const { parseDayKey, getMonthStartKey, getMonthEndKey, addMonths } = picker;
+
             picker?.mount('#tx-date-picker', {
                 mode: 'single',
                 start: selectedEntryDate,
@@ -255,17 +272,50 @@ window.showAddTransactionModal = function(options = {}) {
             });
 
             if (supportsBulkCsv) {
-                picker?.mount('#tx-bulk-date-picker', {
-                    mode: 'single',
-                    start: selectedBulkDate,
-                    end: selectedBulkDate,
-                    defaultStart: todayKey,
-                    defaultEnd: todayKey,
-                    maxDate: todayKey,
-                    onChange: ({ start }) => {
-                        selectedBulkDate = start;
-                        updateSelectedCsvDateState();
-                    }
+                function mountBulkDatePicker() {
+                    const isCurrentMonth = selectedBulkMonth === getMonthStartKey();
+                    const monthEnd = isCurrentMonth ? todayKey : getMonthEndKey(parseDayKey(selectedBulkMonth));
+                    selectedBulkStart = selectedBulkMonth;
+                    selectedBulkEnd   = monthEnd;
+
+                    const container = document.getElementById('tx-bulk-date-picker');
+                    if (container) container.innerHTML = '';
+
+                    picker?.mount('#tx-bulk-date-picker', {
+                        mode: 'range',
+                        start: selectedBulkStart,
+                        end:   selectedBulkEnd,
+                        defaultStart: selectedBulkStart,
+                        defaultEnd:   selectedBulkEnd,
+                        maxDate: todayKey,
+                        onChange: ({ start, end }) => {
+                            selectedBulkStart = start;
+                            selectedBulkEnd   = end;
+                            updateSelectedCsvDateState?.();
+                            validateCsvDateConflict();
+                        }
+                    });
+
+                    const label = document.getElementById('tx-bulk-month-label');
+                    if (label) label.textContent = parseDayKey(selectedBulkMonth)
+                        .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+                    const nextBtn = document.getElementById('tx-bulk-month-next');
+                    if (nextBtn) nextBtn.disabled = isCurrentMonth;
+                }
+
+                mountBulkDatePicker();
+
+                document.getElementById('tx-bulk-month-prev')?.addEventListener('click', () => {
+                    selectedBulkMonth = addMonths(selectedBulkMonth, -1);
+                    mountBulkDatePicker();
+                    validateCsvDateConflict();
+                });
+                document.getElementById('tx-bulk-month-next')?.addEventListener('click', () => {
+                    if (selectedBulkMonth >= getMonthStartKey()) return;
+                    selectedBulkMonth = addMonths(selectedBulkMonth, 1);
+                    mountBulkDatePicker();
+                    validateCsvDateConflict();
                 });
             }
         } catch (error) {
@@ -302,6 +352,10 @@ window.showAddTransactionModal = function(options = {}) {
             String(date.getMonth() + 1).padStart(2, '0'),
             String(date.getDate()).padStart(2, '0')
         ].join('-');
+    }
+
+    function getLocalMonthStartKey(date = new Date()) {
+        return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), '01'].join('-');
     }
 
     function parseCsvDateInput(raw) {
@@ -352,7 +406,7 @@ window.showAddTransactionModal = function(options = {}) {
                 setDateWarning('Some CSV rows use previous dates. They will be saved on the dates provided in the file.');
                 return;
             }
-            setDateWarning(isPastDateKey(selectedBulkDate) ? 'This CSV upload will save rows without a Date column on a previous day.' : '');
+            setDateWarning(isPastDateKey(selectedBulkEnd) ? 'Rows without a Date column will be saved on the range end date, which is a previous day.' : '');
             return;
         }
 
@@ -473,17 +527,55 @@ window.showAddTransactionModal = function(options = {}) {
         });
     }
 
-    function setCsvFeedback(message, type = 'info') {
+    function setCsvFeedback(message, type = 'info', isConflictError = false) {
         const feedback = document.getElementById('tx-csv-feedback');
         if (!feedback) return;
         if (!message) {
             feedback.classList.add('hidden');
             feedback.textContent = '';
+            feedback.dataset.conflictError = 'false';
             return;
         }
         feedback.className = `mt-3 text-[12px] font-medium ${type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-700' : 'text-gray-500'}`;
         feedback.textContent = message;
+        feedback.dataset.conflictError = isConflictError ? 'true' : 'false';
         feedback.classList.remove('hidden');
+    }
+
+    function validateCsvDateConflict() {
+        const fileInput = document.getElementById('tx-csv-file');
+        const file = fileInput?.files?.[0];
+        if (!file) return;
+        file.text().then(csvText => {
+            try {
+                const rows = parseCsv(csvText);
+                if (rows.length < 2) return;
+                const headers = rows[0].map(normalizeHeader);
+                const dateIndex = ['date', 'transaction_date', 'transactiondate']
+                    .map(normalizeHeader).map(n => headers.indexOf(n)).find(i => i >= 0);
+                if (dateIndex === undefined) return;
+                const outOfRange = rows.slice(1).filter(row => {
+                    if (!row[dateIndex]) return false;
+                    const dk = parseCsvDateInput(row[dateIndex]);
+                    return dk < selectedBulkStart || dk > selectedBulkEnd;
+                });
+                if (outOfRange.length > 0) {
+                    const fmt = k => k.split('-').reverse().join('-');
+                    setCsvFeedback(
+                        `${outOfRange.length} row(s) have dates outside ${fmt(selectedBulkStart)} – ${fmt(selectedBulkEnd)}. Widen the date range to include all CSV dates.`,
+                        'error',
+                        true
+                    );
+                    setSubmitButton('Upload CSV', true);
+                } else {
+                    const feedback = document.getElementById('tx-csv-feedback');
+                    if (feedback?.dataset.conflictError === 'true') {
+                        setCsvFeedback('Ready to upload. We will validate every row before saving.', 'info');
+                        setSubmitButton('Upload CSV', false);
+                    }
+                }
+            } catch (_) { /* parseBulkTransactions will surface row errors on submit */ }
+        });
     }
 
     function setSubmitButton(label, disabled = false) {
@@ -552,12 +644,13 @@ window.showAddTransactionModal = function(options = {}) {
             if (file) {
                 try {
                     const csvText = await file.text();
-                    fileInput.dataset.hasPastDates = hasCsvPastDates(csvText, selectedBulkDate) ? 'true' : 'false';
+                    fileInput.dataset.hasPastDates = hasCsvPastDates(csvText, selectedBulkEnd) ? 'true' : 'false';
                 } catch (_) {
                     fileInput.dataset.hasPastDates = 'false';
                 }
             }
             updateDateWarning();
+            validateCsvDateConflict();
         };
         updateSelectedCsvDateState = updateSelectedCsvFile;
 
@@ -613,7 +706,7 @@ window.showAddTransactionModal = function(options = {}) {
                 dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#E85D19]');
                 const csvText = await file.text();
                 const { ds, user, Timestamp } = await getTransactionDataService();
-                const transactions = parseBulkTransactions(csvText, selectedBulkDate, Timestamp);
+                const transactions = parseBulkTransactions(csvText, selectedBulkEnd, Timestamp);
                 btn.innerText = `Uploading ${transactions.length}...`;
                 await ds.addTransactions(user.uid, transactions);
                 setCsvFeedback(`${transactions.length} transactions imported successfully.`, 'success');

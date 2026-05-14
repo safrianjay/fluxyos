@@ -321,6 +321,7 @@
         mount: mountDateRangePicker,
         getDayKey,
         addDays,
+        addMonths,
         parseDayKey,
         getMonthStartKey,
         getMonthEndKey
