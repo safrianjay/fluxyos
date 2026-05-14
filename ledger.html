@@ -570,7 +570,7 @@
             const container = document.getElementById('ledger-volume-chart');
             if (!container) return;
 
-            const volume = getTransactionVolumeByDate(transactions).slice(-10);
+            const volume = getTransactionVolumeByDate(transactions);
             if (volume.length === 0) {
                 renderEmptyChart('ledger-volume-chart', 'No transaction activity yet.');
                 return;
@@ -580,17 +580,19 @@
             const chartedCount = volume.reduce((sum, item) => sum + item.count, 0);
             container.innerHTML = `
                 <div class="h-full min-h-[318px] rounded-xl bg-slate-50 border border-slate-100 px-4 pt-4 pb-3 flex flex-col">
-                    <div class="flex-1 min-h-[242px] flex items-end gap-2">
-                        ${volume.map(item => `
-                        <div class="flex-1 min-w-8 flex flex-col items-center gap-1.5">
-                            <div class="text-[11px] font-bold text-slate-700">${item.count}</div>
-                            <div class="w-full rounded-t-md bg-blue-500 shadow-sm" style="height: ${Math.max((item.count / maxCount) * 190, 16)}px"></div>
-                            <div class="text-[10px] font-semibold text-slate-500 whitespace-nowrap">${item.label}</div>
+                    <div class="flex-1 overflow-x-auto min-h-[242px]">
+                        <div class="flex items-end gap-2 h-full" style="min-width: max(100%, ${volume.length * 52}px)">
+                            ${volume.map(item => `
+                            <div class="flex-shrink-0 w-11 flex flex-col items-center gap-1.5">
+                                <div class="text-[11px] font-bold text-slate-700">${item.count}</div>
+                                <div class="w-full rounded-t-md bg-blue-500 shadow-sm" style="height: ${Math.max((item.count / maxCount) * 190, 16)}px"></div>
+                                <div class="text-[10px] font-semibold text-slate-500 whitespace-nowrap">${item.label}</div>
+                            </div>
+                            `).join('')}
                         </div>
-                        `).join('')}
                     </div>
                     <div class="mt-2 flex items-center justify-between border-t border-slate-200 pt-2 text-[11px] font-medium text-slate-500">
-                        <span>Last ${volume.length} active date${volume.length === 1 ? '' : 's'}</span>
+                        <span>${volume.length} active date${volume.length === 1 ? '' : 's'}</span>
                         <span>${chartedCount.toLocaleString()} charted / ${transactions.length.toLocaleString()} loaded</span>
                     </div>
                 </div>
