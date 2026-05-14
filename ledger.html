@@ -902,7 +902,7 @@
                         <div id="tx-detail-receipt-preview-wrapper" class="hidden mt-2">
                             <img id="tx-detail-receipt-preview" src="" alt="Receipt preview" class="w-full rounded-xl border border-gray-200 object-contain max-h-48">
                         </div>
-                        <p class="mt-1.5 text-[11px] text-gray-400">JPG, PNG or WebP · Max 10 MB · Compressed before upload</p>
+                        <p class="mt-1.5 text-[11px] text-gray-400">JPG, PNG or WebP · Max 1 MB · Compress the image first if it's too large</p>
                     </div>
                 `;
                 document.getElementById('tx-detail-footer').classList.remove('hidden');
@@ -962,8 +962,8 @@
                 if (!file.type.startsWith('image/')) {
                     window.showToast('Receipt must be an image file.', 'error'); freshInput.value = ''; return;
                 }
-                if (file.size > 10 * 1024 * 1024) {
-                    window.showToast('Receipt image must be under 10 MB.', 'error'); freshInput.value = ''; return;
+                if (file.size > 1 * 1024 * 1024) {
+                    window.showToast('Receipt image must be under 1 MB. Compress it first and re-upload.', 'error'); freshInput.value = ''; return;
                 }
                 filename.textContent = file.name;
                 const url = URL.createObjectURL(file);

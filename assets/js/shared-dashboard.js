@@ -144,7 +144,7 @@ window.showAddTransactionModal = function(options = {}) {
                             <div id="tx-receipt-preview-wrapper" class="hidden mt-2">
                                 <img id="tx-receipt-preview" src="" alt="Receipt preview" class="w-full rounded-xl border border-gray-200 object-contain max-h-48">
                             </div>
-                            <p class="mt-1.5 text-[11px] text-gray-400">JPG, PNG or WebP · Max 10 MB · Compressed before upload</p>
+                            <p class="mt-1.5 text-[11px] text-gray-400">JPG, PNG or WebP · Max 1 MB · Compress the image first if it's too large</p>
                         </div>
                     </div>
                     ${supportsBulkCsv ? `
@@ -544,8 +544,8 @@ window.showAddTransactionModal = function(options = {}) {
             receiptFileInput.value = '';
             return;
         }
-        if (file.size > 10 * 1024 * 1024) {
-            window.showToast('Receipt image must be under 10 MB.', 'error');
+        if (file.size > 1 * 1024 * 1024) {
+            window.showToast('Receipt image must be under 1 MB. Compress it first and re-upload.', 'error');
             receiptFileInput.value = '';
             return;
         }
