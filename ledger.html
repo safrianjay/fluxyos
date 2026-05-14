@@ -883,12 +883,10 @@
             // Type select
             const typeSelect = document.getElementById('tx-detail-type-select');
             const normalizedType = String(row.type || '').toLowerCase().replace(/\s+/g, '_');
-            typeSelect.value = normalizedType;
             const _applyTypeSelectStyle = (val) => {
                 const displayType = getTransactionType({ type: val });
                 typeSelect.className = `rounded-md border px-2 py-1 text-[11px] font-bold uppercase cursor-pointer outline-none focus:ring-1 focus:ring-gray-900 transition-colors appearance-none text-center ${getTypeBadgeClass(displayType)}`;
             };
-            _applyTypeSelectStyle(normalizedType);
             typeSelect.onchange = async () => {
                 const newType = typeSelect.value;
                 _applyTypeSelectStyle(newType);
@@ -961,8 +959,10 @@
                 _wireDetailAttachInput(row);
             }
 
-            // Animate in
+            // Animate in — set type value after element is visible so browser renders the option text
             overlay.classList.remove('hidden');
+            typeSelect.value = normalizedType;
+            _applyTypeSelectStyle(normalizedType);
             requestAnimationFrame(() => {
                 overlay.querySelector('.absolute.inset-0')?.classList.remove('opacity-0');
                 overlay.querySelector('.absolute.inset-0')?.classList.add('opacity-100');
