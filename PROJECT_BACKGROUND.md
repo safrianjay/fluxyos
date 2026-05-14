@@ -162,12 +162,13 @@ so validation failure prevents partial imports.
 
 The entry drawer mounts the shared `FluxyDateRangePicker` in single-date mode
 for transaction dates. It defaults to today and allows today or previous days
-only. When the selected single-entry date or any CSV row/default date is not
-today, the drawer shows an info warning above the sticky submit button before
-saving. After a successful single or CSV transaction add, the drawer closes
-automatically. The ledger table renders 10 transactions per page and supports
-ascending/descending sort on Date, Amount, Category, and Status with up/down
-icons.
+only. Single-date mode shows one calendar month, omits the range footer and
+action buttons, and auto-selects/closes when a day is clicked. When the selected
+single-entry date or any CSV row/default date is not today, the drawer shows an
+info warning above the sticky submit button before saving. After a successful
+single or CSV transaction add, the drawer closes automatically. The ledger table
+renders 10 transactions per page and supports ascending/descending sort on Date,
+Amount, Category, and Status with up/down icons.
 
 The Finance Ledger page defaults to the current month using the shared
 `FluxyDateRangePicker` in `assets/js/date-range-picker.js` beside Download CSV.

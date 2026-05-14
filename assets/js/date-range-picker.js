@@ -70,19 +70,19 @@
         host.innerHTML = `
             <div class="relative">
                 <div class="flex items-center bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden" aria-label="Date range filter">
-                    <button data-drp-prev type="button" class="h-9 w-9 inline-flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-95" aria-label="Previous period">
+                    <button data-drp-prev type="button" class="${isSingleDate ? 'hidden' : 'h-9 w-9 inline-flex'} items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-95" aria-label="Previous period">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m15 18-6-6 6-6"></path></svg>
                     </button>
-                    <button data-drp-trigger type="button" class="h-9 w-auto min-w-[124px] border-x border-gray-100 bg-white px-3 text-left text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2" style="max-width:min(360px,calc(100vw - 9rem));" aria-expanded="false">
+                    <button data-drp-trigger type="button" class="${isSingleDate ? 'h-10 w-full min-w-[160px]' : 'h-9 w-auto min-w-[124px] border-x border-gray-100'} bg-white px-3 text-left text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2" style="max-width:min(360px,calc(100vw - 9rem));" aria-expanded="false">
                         <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"></path></svg>
                         <span data-drp-label class="truncate">This month</span>
                     </button>
-                    <button data-drp-next type="button" class="h-9 w-9 inline-flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-gray-500" aria-label="Next period">
+                    <button data-drp-next type="button" class="${isSingleDate ? 'hidden' : 'h-9 w-9 inline-flex'} items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-gray-500" aria-label="Next period">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m9 18 6-6-6-6"></path></svg>
                     </button>
                 </div>
                 <div data-drp-panel class="hidden fixed z-[9999] w-[720px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
-                    <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+                    <div class="${isSingleDate ? 'grid grid-cols-1' : 'grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100'}">
                         <div class="p-5">
                             <div class="flex items-center justify-between mb-5">
                                 <button data-drp-calendar-prev type="button" class="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all" aria-label="Previous calendar month">
@@ -93,7 +93,7 @@
                             </div>
                             <div data-drp-left class="grid grid-cols-7 gap-y-2 text-center text-[13px]"></div>
                         </div>
-                        <div class="p-5">
+                        <div class="${isSingleDate ? 'hidden' : 'p-5'}">
                             <div class="flex items-center justify-between mb-5">
                                 <span class="h-8 w-8"></span>
                                 <h3 data-drp-right-title class="text-[15px] font-bold text-gray-900">Month</h3>
@@ -104,7 +104,7 @@
                             <div data-drp-right class="grid grid-cols-7 gap-y-2 text-center text-[13px]"></div>
                         </div>
                     </div>
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-5 py-4">
+                    <div class="${isSingleDate ? 'hidden' : 'flex'} flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-5 py-4">
                         <div class="flex items-center gap-2 text-[13px] font-bold text-gray-700">
                             <span data-drp-start class="rounded-lg border border-gray-200 bg-white px-3 py-2 min-w-[128px]">Start</span>
                             <span class="text-gray-400">-</span>
@@ -196,7 +196,11 @@
             if (isSingleDate) {
                 draftStart = dayKey;
                 draftEnd = dayKey;
-                renderPanel();
+                rangeStart = dayKey;
+                rangeEnd = dayKey;
+                togglePanel(false);
+                updateLabel();
+                options.onChange?.({ start: rangeStart, end: rangeEnd });
                 return;
             }
             if (!draftStart || (draftStart && draftEnd && draftStart !== draftEnd)) {
@@ -226,7 +230,7 @@
 
         function positionPanel() {
             const rect = trigger.getBoundingClientRect();
-            const panelWidth = Math.min(720, window.innerWidth - 32);
+            const panelWidth = Math.min(isSingleDate ? 360 : 720, window.innerWidth - 32);
             const left = Math.max(16, Math.min(rect.right - panelWidth, window.innerWidth - panelWidth - 16));
             panel.style.width = `${panelWidth}px`;
             panel.style.left = `${left}px`;
