@@ -91,6 +91,13 @@ class DataService {
         });
     }
 
+    async updateTransactionType(userId, txId, newType, newIcon) {
+        await updateDoc(doc(this.db, `users/${userId}/transactions/${txId}`), {
+            type: newType,
+            icon: newIcon
+        });
+    }
+
     // --- AUDIT LOGS ---
     async addAuditLog(userId, data) {
         return await addDoc(collection(this.db, `users/${userId}/audit_logs`), {

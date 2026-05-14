@@ -32,7 +32,7 @@ service cloud.firestore {
           'Operations',
           'SaaS'
         ]
-        && data.type in ['revenue', 'expense']
+        && data.type in ['revenue', 'income', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending_payable']
         && data.status in ['Completed', 'Missing Receipt']
         && data.icon is string
         && data.icon.size() <= 16
@@ -61,7 +61,7 @@ service cloud.firestore {
           'Operations',
           'SaaS'
         ]
-        && data.type in ['revenue', 'expense']
+        && data.type in ['revenue', 'income', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending_payable']
         && data.status in ['Completed', 'Missing Receipt']
         && data.icon is string
         && data.icon.size() <= 16

@@ -193,9 +193,23 @@
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Amount</p>
-                        <p id="tx-detail-amount" class="text-3xl font-bold font-mono text-gray-900">—</p>
+                        <p id="tx-detail-amount" class="text-xl font-bold font-mono text-gray-900">—</p>
                     </div>
-                    <span id="tx-detail-type-badge" class="mt-1 inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-bold uppercase bg-gray-100 text-gray-500 border-gray-200">—</span>
+                    <div class="mt-1 flex flex-col items-end gap-1">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Type</p>
+                        <select id="tx-detail-type-select"
+                            class="rounded-md border px-2 py-1 text-[11px] font-bold uppercase cursor-pointer outline-none focus:ring-1 focus:ring-gray-900 transition-colors bg-gray-100 text-gray-500 border-gray-200 appearance-none text-center">
+                            <option value="income">Income</option>
+                            <option value="expense">Expense</option>
+                            <option value="transfer">Transfer</option>
+                            <option value="refund">Refund</option>
+                            <option value="adjustment">Adjustment</option>
+                            <option value="fee">Fee</option>
+                            <option value="tax">Tax</option>
+                            <option value="pending_receivable">Pending receivable</option>
+                            <option value="pending_payable">Pending payable</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -857,13 +871,42 @@
 
             // Amount
             document.getElementById('tx-detail-amount').textContent = formatTransactionAmount(row);
-            document.getElementById('tx-detail-amount').className = `text-3xl font-bold font-mono ${getAmountClass(row)}`;
+            document.getElementById('tx-detail-amount').className = `text-xl font-bold font-mono ${getAmountClass(row)}`;
 
-            // Type badge
-            const typeBadge = document.getElementById('tx-detail-type-badge');
-            const txType = getTransactionType(row);
-            typeBadge.textContent = txType;
-            typeBadge.className = `mt-1 inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-bold uppercase ${getTypeBadgeClass(txType)}`;
+            // Type select
+            const typeSelect = document.getElementById('tx-detail-type-select');
+            const normalizedType = String(row.type || '').toLowerCase().replace(/\s+/g, '_');
+            typeSelect.value = normalizedType;
+            const _applyTypeSelectStyle = (val) => {
+                const displayType = getTransactionType({ type: val });
+                typeSelect.className = `rounded-md border px-2 py-1 text-[11px] font-bold uppercase cursor-pointer outline-none focus:ring-1 focus:ring-gray-900 transition-colors appearance-none text-center ${getTypeBadgeClass(displayType)}`;
+            };
+            _applyTypeSelectStyle(normalizedType);
+            typeSelect.onchange = async () => {
+                const newType = typeSelect.value;
+                _applyTypeSelectStyle(newType);
+                const newIcon = ['income', 'revenue', 'refund', 'pending_receivable'].includes(newType) ? '💰' : '💸';
+                try {
+                    const user = auth.currentUser;
+                    if (!user) throw new Error('Session expired.');
+                    await ds.updateTransactionType(user.uid, row.id, newType, newIcon);
+                    row.type = newType; row.icon = newIcon;
+                    // Update amount display to reflect new type
+                    document.getElementById('tx-detail-amount').textContent = formatTransactionAmount(row);
+                    document.getElementById('tx-detail-amount').className = `text-xl font-bold font-mono ${getAmountClass(row)}`;
+                    // Sync in-memory lists
+                    [allLedgerTransactions, currentLedgerTransactions].forEach(list => {
+                        const t = list.find(t => t.id === row.id);
+                        if (t) { t.type = newType; t.icon = newIcon; }
+                    });
+                    renderLedgerTable();
+                    window.showToast('Transaction type updated.', 'success');
+                } catch (err) {
+                    window.showToast('Failed to update type: ' + err.message, 'error');
+                    typeSelect.value = normalizedType;
+                    _applyTypeSelectStyle(normalizedType);
+                }
+            };
 
             // Metadata grid
             document.getElementById('tx-detail-date').textContent = row.timestamp?.toDate
