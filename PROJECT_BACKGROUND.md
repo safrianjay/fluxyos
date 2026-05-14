@@ -3,6 +3,8 @@
 > Read this before implementing any new feature, page, or logic change.
 > This is the single source of truth for architecture, data schema, logic rules, and conventions.
 > For extension contracts and module ownership, also read `SYSTEM_DESIGN.md`.
+> For dashboard roles, permissions, audit logs, and sensitive action rules, read
+> `SECURITY_SYSTEM.md`.
 
 ---
 
@@ -95,6 +97,27 @@ Same fields as transactions plus:
 | `category` | string | Defaults to `"SaaS"` when created via modal |
 
 **Ordering:** `timestamp DESC`.
+
+### 4d. Audit Logs — `users/{userId}/audit_logs`
+
+Append-only records for sensitive dashboard actions. Add audit logs before
+shipping edit/delete, approvals, exports, integrations, or AI write actions.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `actor_uid` | string | Firebase Auth UID of the user who performed the action |
+| `actor_role` | string \| null | Future role at time of action; currently nullable |
+| `action` | string | Example: `"transaction.create"` or `"bill.approve"` |
+| `target_collection` | string | Collection affected, e.g. `"transactions"` |
+| `target_id` | string | Document ID affected; empty string allowed before target exists |
+| `before` | map \| null | Sensitive snapshot before change |
+| `after` | map \| null | Sensitive snapshot after change |
+| `reason` | string \| null | Required by future UI for delete/reject/override flows |
+| `source` | string | `"dashboard"` \| `"ai"` \| `"integration"` \| `"system"` |
+| `created_at` | Firestore Timestamp | `serverTimestamp()` — always server-side |
+
+**Ordering:** `created_at DESC`. Default limit: 100.
+**Mutation rule:** create/read only for the owning user; never update/delete.
 
 ---
 

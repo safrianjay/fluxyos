@@ -89,7 +89,9 @@
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m15 18-6-6 6-6"></path></svg>
                                 </button>
                                 <h3 data-drp-left-title class="text-[15px] font-bold text-gray-900">Month</h3>
-                                <span class="h-8 w-8"></span>
+                                <button data-drp-calendar-next-single type="button" class="${isSingleDate ? 'h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all disabled:cursor-not-allowed disabled:opacity-35' : 'h-8 w-8 hidden'}" aria-label="Next calendar month">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m9 18 6-6-6-6"></path></svg>
+                                </button>
                             </div>
                             <div data-drp-left class="grid grid-cols-7 gap-y-2 text-center text-[13px]"></div>
                         </div>
@@ -190,6 +192,8 @@
             get('[data-drp-start]').textContent = formatDayLabel(draftStart);
             get('[data-drp-end]').textContent = formatDayLabel(draftEnd);
             get('[data-drp-calendar-next]').disabled = addMonths(calendarBaseMonth, 1) >= getMonthStartKey();
+            const nextSingle = get('[data-drp-calendar-next-single]');
+            if (nextSingle) nextSingle.disabled = calendarBaseMonth >= getMonthStartKey();
         }
 
         function selectDraftDay(dayKey) {
@@ -255,6 +259,12 @@
         });
         get('[data-drp-calendar-next]').addEventListener('click', () => {
             if (addMonths(calendarBaseMonth, 1) >= getMonthStartKey()) return;
+            calendarBaseMonth = addMonths(calendarBaseMonth, 1);
+            renderPanel();
+        });
+        const calNextSingle = get('[data-drp-calendar-next-single]');
+        if (calNextSingle) calNextSingle.addEventListener('click', () => {
+            if (calendarBaseMonth >= getMonthStartKey()) return;
             calendarBaseMonth = addMonths(calendarBaseMonth, 1);
             renderPanel();
         });

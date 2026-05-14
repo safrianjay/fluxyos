@@ -211,11 +211,24 @@
         }
 
         // Logout
-        document.getElementById('logout-btn').onclick = async () => {
+        let logoutInFlight = false;
+        document.getElementById('logout-btn').onclick = async (event) => {
+            if (logoutInFlight) return;
+            logoutInFlight = true;
+            const logoutBtn = event.currentTarget;
+            logoutBtn.disabled = true;
+            logoutBtn.classList.add('cursor-not-allowed', 'opacity-70');
             const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
             const auth = getAuth();
-            await signOut(auth);
-            window.location.href = '/login';
+            try {
+                await signOut(auth);
+                window.location.href = '/login';
+            } catch (error) {
+                console.error('Sign out failed:', error);
+                logoutInFlight = false;
+                logoutBtn.disabled = false;
+                logoutBtn.classList.remove('cursor-not-allowed', 'opacity-70');
+            }
         };
 
         // Profile Sync

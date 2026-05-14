@@ -307,10 +307,36 @@
             // Elements
             const loginForm = document.getElementById('login-form');
             const googleBtn = document.getElementById('google-btn');
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const submitBtn = loginForm?.querySelector('button[type="submit"]');
+            let authInFlight = false;
+            let googleOriginalText = googleBtn?.innerHTML || '';
+            let submitOriginalText = submitBtn?.innerText || 'Sign In';
             const authMessage = document.createElement('p');
             authMessage.className = 'hidden mb-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-[12px] font-medium text-red-700';
             authMessage.setAttribute('role', 'alert');
             googleBtn?.insertAdjacentElement('afterend', authMessage);
+
+            const setAuthControlsLocked = (locked, activeControl = null) => {
+                authInFlight = locked;
+                [googleBtn, submitBtn, emailInput, passwordInput].forEach((control) => {
+                    if (!control) return;
+                    control.disabled = locked;
+                    control.setAttribute('aria-busy', locked ? 'true' : 'false');
+                    control.classList.toggle('cursor-not-allowed', locked);
+                    control.classList.toggle('opacity-70', locked);
+                });
+
+                if (locked) {
+                    if (activeControl === 'google' && googleBtn) googleBtn.innerHTML = 'Authenticating...';
+                    if (activeControl === 'email' && submitBtn) submitBtn.innerText = 'Signing in...';
+                    return;
+                }
+
+                if (googleBtn) googleBtn.innerHTML = googleOriginalText;
+                if (submitBtn) submitBtn.innerText = submitOriginalText;
+            };
 
             const showAuthMessage = (message) => {
                 authMessage.textContent = message;
@@ -346,7 +372,7 @@
             // Google Login (Popup Method - Better for Mobile/SSO)
             if (googleBtn) {
                 googleBtn.addEventListener('click', async () => {
-                    const originalText = googleBtn.innerHTML;
+                    if (authInFlight) return;
                     const popupFallbackErrors = new Set([
                         'auth/popup-blocked',
                         'auth/popup-closed-by-user',
@@ -355,10 +381,10 @@
                     ]);
 
                     clearAuthMessage();
-                    googleBtn.innerHTML = "Authenticating...";
-                    googleBtn.disabled = true;
+                    setAuthControlsLocked(true, 'google');
                     try {
                         await signInWithPopup(auth, googleProvider);
+                        return;
                     } catch (error) {
                         console.warn("Popup Auth Error:", error);
                         if (popupFallbackErrors.has(error.code)) {
@@ -375,8 +401,7 @@
                         }
                     }
 
-                    googleBtn.innerHTML = originalText;
-                    googleBtn.disabled = false;
+                    setAuthControlsLocked(false);
                 });
             }
 
@@ -384,14 +409,14 @@
             if (loginForm) {
                 loginForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
-                    const submitBtn = loginForm.querySelector('button[type="submit"]');
-                    submitBtn.innerText = "Signing in...";
+                    if (authInFlight) return;
+                    setAuthControlsLocked(true, 'email');
                     try {
                         clearAuthMessage();
-                        await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value);
+                        await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
                     } catch (error) {
                         showAuthMessage("Email sign-in failed. Please check your credentials and try again.");
-                        submitBtn.innerText = "Sign In";
+                        setAuthControlsLocked(false);
                     }
                 });
             }

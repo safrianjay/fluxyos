@@ -3,9 +3,9 @@
 Implementation architecture for extending FluxyOS without breaking existing
 dashboard logic, Firestore data, SEO, or Netlify routing.
 
-Read this with `PROJECT_BACKGROUND.md`, `COMPONENT_GUIDE.md`, and
-`QA_CHECKLIST.md` before adding any new page, collection, shared component, or
-dashboard feature.
+Read this with `PROJECT_BACKGROUND.md`, `SECURITY_SYSTEM.md`,
+`COMPONENT_GUIDE.md`, and `QA_CHECKLIST.md` before adding any new page,
+collection, shared component, or dashboard feature.
 
 ---
 
@@ -73,6 +73,7 @@ contracts. Extend them carefully and keep existing behavior backward-compatible.
 |---|---|---|---|
 | Marketing | Public pages, SEO, CTAs, footer | `fluxyos.html`, feature pages, `pricing.html`, `includes/footer.html` | No Firestore writes. Must keep SEO tags, canonical URLs, schema, sitemap, and footer behavior aligned. |
 | Auth | Login and session gates | `login.html`, inline auth guards in app pages | Dashboard pages must redirect unauthenticated users to `/login`. |
+| Security | Roles, permissions, audit logs, sensitive actions | `SECURITY_SYSTEM.md`, Firestore rules, future security helpers | Client UI and Firestore rules must enforce the same boundaries. Sensitive writes need audit logs. |
 | App shell | Sidebar, app layout, shared dashboard CSS | `sidebar-loader.js`, `shared-dashboard.css`, app HTML files | Every app page needs `#sidebar`, shared CSS, sidebar loader, and shared dashboard JS. |
 | Domain/data | Firestore access and calculations | `assets/js/db-service.js` | Dashboard features must use `DataService` for Firestore access. Do not scatter raw collection logic through pages. |
 | Shared UI | Modal, toast, empty state, shimmer, AI drawer toggle | `assets/js/shared-dashboard.js`, `assets/js/ai-chat.js` | Global `window.*` APIs must remain backward-compatible. |
@@ -96,12 +97,15 @@ Current responsibilities:
 - `addBill(userId, data)`
 - `getSubscriptions(userId)`
 - `addSubscription(userId, data)`
+- `getAuditLogs(userId, limitCount = 100)`
+- `addAuditLog(userId, data)`
 - `getDashboardStats(userId)`
 
 Rules:
 
 - Every collection path must be under `users/{userId}/`.
 - New documents that represent user activity should use `serverTimestamp()`.
+- Sensitive writes should create audit logs before the feature is considered complete.
 - Amounts must be raw numbers in Firestore, never formatted strings.
 - Query ordering should be newest first unless a feature explicitly requires a different order.
 - If a new collection exists, document its schema in `PROJECT_BACKGROUND.md` before using it.
@@ -352,6 +356,7 @@ Rules:
 - Do not rename DOM IDs listed in `PROJECT_BACKGROUND.md`.
 - Do not bypass `DataService` for dashboard Firestore work.
 - Do not change Firestore field names without a migration plan.
+- Do not add sensitive writes without the controls in `SECURITY_SYSTEM.md`.
 - Do not store currency as `Rp` strings.
 - Do not add orange page backgrounds; orange is an accent and CTA color.
 - Do not put the footer on dashboard app pages.
@@ -372,6 +377,7 @@ Rules:
 | New landing page | Landing Page/UI checklist, SEO strategy rules, sitemap validation |
 | Dashboard page | Dashboard/App checklist, auth guard, sidebar navigation |
 | Firestore read/write | Database & Logic section, data isolation checks where possible |
+| Security, roles, approvals, exports, AI writes, edit/delete | Database & Logic section, Dashboard/App checklist, security checks in `SECURITY_SYSTEM.md` |
 | Shared JS or CSS | Cross-Page Regression |
 | Modal change | Add Transaction/Bill/Subscription checklist and Database & Logic section |
 | Footer change | Footer checklist and Cross-Page Regression |

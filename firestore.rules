@@ -1,0 +1,217 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidBaseRecord(data) {
+      return data.keys().hasAll([
+          'amount',
+          'vendor_name',
+          'category',
+          'type',
+          'status',
+          'icon',
+          'timestamp'
+        ])
+        && data.amount is number
+        && data.amount > 0
+        && data.vendor_name is string
+        && data.vendor_name.size() > 0
+        && data.vendor_name.size() <= 160
+        && data.category in [
+          'Revenue',
+          'Marketing',
+          'Infrastructure',
+          'Operations',
+          'SaaS'
+        ]
+        && data.type in ['revenue', 'expense']
+        && data.status in ['Completed', 'Missing Receipt']
+        && data.icon is string
+        && data.icon.size() <= 16
+        && data.timestamp == request.time;
+    }
+
+    function isValidBaseRecordUpdate(data, existingData) {
+      return data.keys().hasAll([
+          'amount',
+          'vendor_name',
+          'category',
+          'type',
+          'status',
+          'icon',
+          'timestamp'
+        ])
+        && data.amount is number
+        && data.amount > 0
+        && data.vendor_name is string
+        && data.vendor_name.size() > 0
+        && data.vendor_name.size() <= 160
+        && data.category in [
+          'Revenue',
+          'Marketing',
+          'Infrastructure',
+          'Operations',
+          'SaaS'
+        ]
+        && data.type in ['revenue', 'expense']
+        && data.status in ['Completed', 'Missing Receipt']
+        && data.icon is string
+        && data.icon.size() <= 16
+        && data.timestamp == existingData.timestamp;
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll([
+          'actor_uid',
+          'action',
+          'target_collection',
+          'target_id',
+          'source',
+          'created_at'
+        ])
+        && data.actor_uid == request.auth.uid
+        && data.action is string
+        && data.action.size() > 0
+        && data.action.size() <= 80
+        && data.target_collection in [
+          'transactions',
+          'bills',
+          'subscriptions',
+          'vendors',
+          'budgets',
+          'integrations',
+          'exports',
+          'users'
+        ]
+        && data.target_id is string
+        && data.target_id.size() <= 160
+        && data.source in ['dashboard', 'ai', 'integration', 'system']
+        && data.created_at == request.time;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update, delete: if false;
+
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && request.resource.data.keys().hasOnly([
+            'amount',
+            'vendor_name',
+            'category',
+            'type',
+            'status',
+            'icon',
+            'timestamp'
+          ])
+          && isValidBaseRecord(request.resource.data);
+        allow update: if isOwner(userId)
+          && request.resource.data.keys().hasOnly([
+            'amount',
+            'vendor_name',
+            'category',
+            'type',
+            'status',
+            'icon',
+            'timestamp'
+          ])
+          && isValidBaseRecordUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+
+      match /bills/{billId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && request.resource.data.keys().hasOnly([
+            'amount',
+            'vendor_name',
+            'category',
+            'type',
+            'status',
+            'icon',
+            'timestamp',
+            'due_date'
+          ])
+          && isValidBaseRecord(request.resource.data);
+        allow update: if isOwner(userId)
+          && request.resource.data.keys().hasOnly([
+            'amount',
+            'vendor_name',
+            'category',
+            'type',
+            'status',
+            'icon',
+            'timestamp',
+            'due_date'
+          ])
+          && isValidBaseRecordUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+
+      match /subscriptions/{subscriptionId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && request.resource.data.keys().hasOnly([
+            'amount',
+            'vendor_name',
+            'category',
+            'type',
+            'status',
+            'icon',
+            'timestamp',
+            'renewal_date'
+          ])
+          && isValidBaseRecord(request.resource.data);
+        allow update: if isOwner(userId)
+          && request.resource.data.keys().hasOnly([
+            'amount',
+            'vendor_name',
+            'category',
+            'type',
+            'status',
+            'icon',
+            'timestamp',
+            'renewal_date'
+          ])
+          && isValidBaseRecordUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+
+      match /audit_logs/{auditLogId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && request.resource.data.keys().hasOnly([
+            'actor_uid',
+            'actor_role',
+            'action',
+            'target_collection',
+            'target_id',
+            'before',
+            'after',
+            'reason',
+            'source',
+            'created_at'
+          ])
+          && isValidAuditLog(request.resource.data);
+        allow update, delete: if false;
+      }
+
+      match /{document=**} {
+        allow read, write: if false;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

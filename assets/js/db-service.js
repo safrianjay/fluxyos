@@ -1,4 +1,4 @@
-import { getFirestore, collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, limit, writeBatch, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, query, getDocs, addDoc, serverTimestamp, orderBy, limit, writeBatch, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 class DataService {
     constructor(app) {
@@ -65,6 +65,32 @@ class DataService {
 
     async getSubscriptions(userId) {
         const q = query(collection(this.db, `users/${userId}/subscriptions`), orderBy('timestamp', 'desc'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    // --- AUDIT LOGS ---
+    async addAuditLog(userId, data) {
+        return await addDoc(collection(this.db, `users/${userId}/audit_logs`), {
+            actor_uid: userId,
+            actor_role: data.actor_role || null,
+            action: data.action,
+            target_collection: data.target_collection,
+            target_id: data.target_id || '',
+            before: data.before || null,
+            after: data.after || null,
+            reason: data.reason || null,
+            source: data.source || 'dashboard',
+            created_at: serverTimestamp()
+        });
+    }
+
+    async getAuditLogs(userId, limitCount = 100) {
+        const q = query(
+            collection(this.db, `users/${userId}/audit_logs`),
+            orderBy('created_at', 'desc'),
+            limit(limitCount)
+        );
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }

@@ -5,8 +5,8 @@
 FluxyOS is a multi-page financial operations platform (static HTML + vanilla JS + Firebase Firestore). Every time a change or new feature is requested, this checklist is run to verify the affected area works correctly and that no other parts of the app have broken. The goal is a fast, consistent QA pass that can be done in the browser after each implementation.
 
 For architecture contracts, page types, module ownership, and extension rules,
-read `SYSTEM_DESIGN.md` before planning a new dashboard page, landing page, or
-Firestore-backed feature.
+read `SYSTEM_DESIGN.md` and `SECURITY_SYSTEM.md` before planning a new dashboard
+page, landing page, or Firestore-backed feature.
 
 ---
 
@@ -116,6 +116,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 8 | On successful login → redirects to `/dashboard` |
 | 9 | On failed login → error message shown near form |
 | 10 | Google SSO domains are authorized in Firebase Console: every production/login host used for QA (e.g. `fluxyos.com`, `www.fluxyos.com`, and any preview domain tested) is listed under Authentication → Settings → Authorized domains |
+| 11 | Rapid-click guard: repeatedly click Sign In / Continue with Google during auth — only one auth request starts, controls disable, and failed auth re-enables controls |
 
 ### D. Dashboard / App Page Changes (dashboard.html, ledger.html, bill.html, subscription.html, integration.html)
 
@@ -215,6 +216,7 @@ Run this section whenever any data write, read, calculation, or modal logic is c
 | 2 | After logout and log back in as the same user — all previously added data is still there |
 | 3 | Session expiry during a form submit → error toast appears, data is NOT silently lost |
 | 4 | Firebase permission denied error → toast shows a friendly error message (not a raw Firebase error string) |
+| 5 | Firestore rules are versioned in `firestore.rules` and Firebase config points to that file via `firebase.json` |
 
 #### F7 — Toast & UI Feedback Accuracy
 | # | Check |
