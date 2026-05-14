@@ -20,19 +20,22 @@ class DataService {
         const { timestamp, ...rest } = data;
         return await addDoc(collection(this.db, `users/${userId}/transactions`), {
             ...rest,
-            timestamp: timestamp || serverTimestamp()
+            timestamp: timestamp || serverTimestamp(),
+            created_at: serverTimestamp()
         });
     }
 
     async addTransactions(userId, rows) {
         const batch = writeBatch(this.db);
         const txCollection = collection(this.db, `users/${userId}/transactions`);
+        const uploadedAt = serverTimestamp();
 
         rows.forEach(row => {
             const { timestamp, ...rest } = row;
             batch.set(doc(txCollection), {
                 ...rest,
-                timestamp: timestamp || serverTimestamp()
+                timestamp: timestamp || serverTimestamp(),
+                created_at: uploadedAt
             });
         });
 

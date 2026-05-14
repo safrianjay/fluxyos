@@ -129,6 +129,7 @@
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Uploaded</th>
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                         <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="date">
                                             Date <span class="ledger-sort-icon text-gray-400" aria-hidden="true"></span>
@@ -155,7 +156,7 @@
                             </thead>
                             <tbody id="ledger-table-body" class="divide-y divide-gray-100 text-[13px]">
                                 <tr>
-                                    <td colspan="6" class="px-6 py-12 text-center text-gray-400">
+                                    <td colspan="7" class="px-6 py-12 text-center text-gray-400">
                                         Fetching ledger data...
                                     </td>
                                 </tr>
@@ -627,7 +628,7 @@
             if (sortedRows.length === 0) {
                 body.innerHTML = `
                     <tr>
-                        <td colspan="6" class="px-6 py-12 text-center">
+                        <td colspan="7" class="px-6 py-12 text-center">
                             <p class="text-[13px] font-bold text-gray-700">No matching transactions</p>
                             <p class="mt-1 text-[12px] text-gray-400">Try another vendor, category, type, status, amount, or date.</p>
                         </td>
@@ -643,6 +644,7 @@
 
             body.innerHTML = visibleRows.map(row => `
                 <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-6 py-4 text-gray-400 whitespace-nowrap text-[12px]">${row.created_at?.toDate ? row.created_at.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
                     <td class="px-6 py-4 text-gray-500">${row.timestamp?.toDate().toLocaleString() || 'Just now'}</td>
                     <td class="px-6 py-4">
                         <span class="inline-flex items-center rounded-md border px-2 py-1 text-[10px] font-bold uppercase ${getTypeBadgeClass(getTransactionType(row))}">

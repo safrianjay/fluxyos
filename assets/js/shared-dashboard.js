@@ -111,11 +111,6 @@ window.showAddTransactionModal = function(options = {}) {
                     </div>
                     ${supportsBulkCsv ? `
                     <div id="tx-bulk-panel" class="hidden space-y-4">
-                        <div>
-                            <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Default CSV Date</p>
-                            <div id="tx-bulk-date-picker"></div>
-                            <p class="mt-2 text-[12px] text-gray-500">Rows without a Date column use this date. Row dates can be today or any previous day.</p>
-                        </div>
                         <div class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 transition-all duration-200" id="tx-csv-dropzone">
                             <label for="tx-csv-file" class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-7 text-center transition-all duration-200 hover:border-[#E85D19] hover:bg-gray-50">
                                 <span class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#E85D19]">
@@ -225,7 +220,6 @@ window.showAddTransactionModal = function(options = {}) {
     document.addEventListener('keydown', window.__closeAddTransactionModalOnEscape);
     let activeEntryMode = 'single';
     let selectedEntryDate = todayKey;
-    let selectedBulkDate = todayKey;
     let updateSelectedCsvDateState = updateDateWarning;
 
     // Live Formatting for Amount
@@ -255,20 +249,6 @@ window.showAddTransactionModal = function(options = {}) {
                 }
             });
 
-            if (supportsBulkCsv) {
-                picker?.mount('#tx-bulk-date-picker', {
-                    mode: 'single',
-                    start: selectedBulkDate,
-                    end: selectedBulkDate,
-                    defaultStart: todayKey,
-                    defaultEnd: todayKey,
-                    maxDate: todayKey,
-                    onChange: ({ start }) => {
-                        selectedBulkDate = start;
-                        updateSelectedCsvDateState();
-                    }
-                });
-            }
         } catch (error) {
             console.error(error);
             window.showToast?.('Date picker failed to load. Please refresh and try again.', 'error');
@@ -354,7 +334,7 @@ window.showAddTransactionModal = function(options = {}) {
                 setDateWarning('Some CSV rows use previous dates. They will be saved on the dates provided in the file.');
                 return;
             }
-            setDateWarning(isPastDateKey(selectedBulkDate) ? 'This CSV upload will save rows without a Date column on a previous day.' : '');
+            setDateWarning('');
             return;
         }
 
@@ -555,7 +535,7 @@ window.showAddTransactionModal = function(options = {}) {
             if (file) {
                 try {
                     const csvText = await file.text();
-                    fileInput.dataset.hasPastDates = hasCsvPastDates(csvText, selectedBulkDate) ? 'true' : 'false';
+                    fileInput.dataset.hasPastDates = hasCsvPastDates(csvText, todayKey) ? 'true' : 'false';
                 } catch (_) {
                     fileInput.dataset.hasPastDates = 'false';
                 }
@@ -616,7 +596,7 @@ window.showAddTransactionModal = function(options = {}) {
                 dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#E85D19]');
                 const csvText = await file.text();
                 const { ds, user, Timestamp } = await getTransactionDataService();
-                const transactions = parseBulkTransactions(csvText, selectedBulkDate, Timestamp);
+                const transactions = parseBulkTransactions(csvText, todayKey, Timestamp);
                 btn.innerText = `Uploading ${transactions.length}...`;
                 await ds.addTransactions(user.uid, transactions);
                 setCsvFeedback(`${transactions.length} transactions imported successfully.`, 'success');
