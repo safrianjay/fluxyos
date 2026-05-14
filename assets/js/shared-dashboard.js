@@ -167,9 +167,32 @@ window.showAddTransactionModal = function(options = {}) {
                                     <span class="text-gray-500">DD-MM-YYYY — defaults to the date above if omitted</span>
                                 </div>
                             </div>
-                            <div class="mt-3 rounded-lg bg-gray-900 px-3 py-2.5">
-                                <p class="font-mono text-[10px] text-gray-500 mb-1">Example row</p>
-                                <p class="font-mono text-[11px] text-emerald-400 break-all">Client Payment,Revenue,Income,1250000,Completed,${todayKey.split('-').reverse().join('-')}</p>
+                            <div class="mt-3 rounded-lg border border-gray-200 overflow-hidden">
+                                <p class="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-white border-b border-gray-100">Example CSV</p>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left">
+                                        <thead>
+                                            <tr class="bg-gray-50 border-b border-gray-200">
+                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Description</th>
+                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Category</th>
+                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Type</th>
+                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Amount</th>
+                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Status</th>
+                                                <th class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="bg-white">
+                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-900 whitespace-nowrap">Client Payment</td>
+                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-900 whitespace-nowrap">Revenue</td>
+                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-900 whitespace-nowrap">Income</td>
+                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-900 whitespace-nowrap">1250000</td>
+                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-500 whitespace-nowrap">Completed</td>
+                                                <td class="px-3 py-2 font-mono text-[12px] text-gray-500 whitespace-nowrap">${todayKey.split('-').reverse().join('-')}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
