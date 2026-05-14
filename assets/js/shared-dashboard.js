@@ -306,10 +306,14 @@ window.showAddTransactionModal = function(options = {}) {
 
     function parseCsvDateInput(raw) {
         const s = String(raw || '').trim();
+        // ISO 8601 timestamp: 2026-05-13T20:33:43.196Z (what the ledger CSV download produces)
+        if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return s.slice(0, 10);
+        // DD-MM-YYYY
         if (/^\d{2}-\d{2}-\d{4}$/.test(s)) {
             const [day, month, year] = s.split('-').map(Number);
             return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         }
+        // YYYY-MM-DD falls through to parseLocalDateKey
         return s;
     }
 
