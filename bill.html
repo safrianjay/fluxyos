@@ -13,7 +13,7 @@
 
     <!-- SIDEBAR -->
     <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
-        <!-- Sidebar content will be loaded by sidebar-loader.js -->
+        <!-- Sidebar content loaded by sidebar-loader.js -->
     </aside>
 
     <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
@@ -24,7 +24,7 @@
                 </button>
                 <div class="hidden sm:flex relative w-full max-w-lg">
                     <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    <input type="text" placeholder="Search bills, vendors, or amounts..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[13px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
+                    <input id="bill-search-input" type="text" placeholder="Search vendor, category, or status..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[13px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
                 </div>
             </div>
             <div class="flex items-center gap-4">
@@ -37,13 +37,15 @@
 
         <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
             <div class="max-w-7xl mx-auto space-y-6">
+
+                <!-- Page Title & Actions -->
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                         <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Bills & Payments</h1>
-                        <p class="text-[14px] text-gray-500 mt-1">Manage your upcoming obligations and subscription renewals.</p>
+                        <p class="text-[14px] text-gray-500 mt-1">Track upcoming bills, vendor invoices, and payable obligations before they become transactions.</p>
                     </div>
                     <div class="flex items-center gap-3">
-                        <button class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Export CSV</button>
+                        <button id="bill-export-btn" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Export CSV</button>
                         <button onclick="window.showAddTransactionModal({ title: 'Add New Bill', submitLabel: 'Save Bill', defaultCategory: 'Operations', context: 'bill' })" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                             Add New Bill
@@ -51,30 +53,149 @@
                     </div>
                 </div>
 
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6">
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+
+                    <!-- Total Bills -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Bills</p>
+                                <p id="card-total-bills" class="text-2xl font-bold text-gray-900 mt-1">—</p>
+                                <p class="text-[11px] text-gray-400 mt-1">Current obligations</p>
+                            </div>
+                            <div class="p-2 bg-blue-50 rounded-lg flex-shrink-0">
+                                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Due This Week -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Due This Week</p>
+                                <p id="card-due-week" class="text-lg font-bold text-gray-900 mt-1 truncate">—</p>
+                                <p id="card-due-week-sub" class="text-[11px] text-gray-400 mt-1">Upcoming payments</p>
+                            </div>
+                            <div class="p-2 bg-orange-50 rounded-lg flex-shrink-0">
+                                <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Overdue -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Overdue</p>
+                                <p id="card-overdue-count" class="text-2xl font-bold text-gray-900 mt-1">—</p>
+                                <p id="card-overdue-sub" class="text-[11px] text-gray-400 mt-1">Past due</p>
+                            </div>
+                            <div class="p-2 bg-red-50 rounded-lg flex-shrink-0">
+                                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.07 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scheduled Amount -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Scheduled</p>
+                                <p id="card-scheduled" class="text-lg font-bold text-gray-900 mt-1 truncate">—</p>
+                                <p class="text-[11px] text-gray-400 mt-1">Planned outflow</p>
+                            </div>
+                            <div class="p-2 bg-gray-100 rounded-lg flex-shrink-0">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Missing Due Date -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Missing Date</p>
+                                <p id="card-missing-date" class="text-2xl font-bold text-gray-900 mt-1">—</p>
+                                <p class="text-[11px] text-gray-400 mt-1">Need scheduling</p>
+                            </div>
+                            <div class="p-2 bg-amber-50 rounded-lg flex-shrink-0">
+                                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Upcoming Payment Timeline -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h2 class="text-[14px] font-bold text-gray-900">Upcoming Payment Timeline</h2>
+                        <p class="text-[12px] text-gray-400 mt-0.5">Bills grouped by payment urgency</p>
+                    </div>
+                    <div id="bill-timeline" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                        <div class="p-4 col-span-4 text-center text-[12px] text-gray-400">Loading timeline...</div>
+                    </div>
+                </div>
+
+                <!-- Bills Table -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <h2 class="text-[14px] font-bold text-gray-900">All Bills</h2>
+                        <p id="bill-table-count" class="text-[12px] text-gray-400"></p>
+                    </div>
                     <div id="bill-empty-state" class="hidden"></div>
                     <div id="bill-table-container" class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-50 border-b border-gray-200">
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Vendor</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Category</th>
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Due Date</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="bill-table-body" class="divide-y divide-gray-100 text-[13px]">
                                 <tr>
-                                    <td colspan="5" class="px-6 py-12 text-center text-gray-400">Loading your bills...</td>
+                                    <td colspan="6" class="px-6 py-12 text-center text-gray-400">Loading your bills...</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
+
             </div>
         </div>
     </main>
+
+    <!-- Bill Detail Drawer — Backdrop -->
+    <div id="bill-drawer-backdrop" class="fixed inset-0 bg-black/30 z-40 hidden"></div>
+
+    <!-- Bill Detail Drawer -->
+    <div id="bill-drawer" class="fixed top-0 right-0 h-full w-full max-w-[420px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div>
+                <h2 class="text-[15px] font-bold text-gray-900">Bill Details</h2>
+                <p class="text-[12px] text-gray-400 mt-0.5">Review before payment</p>
+            </div>
+            <button id="bill-drawer-close-btn" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div id="bill-drawer-content" class="flex-1 overflow-y-auto px-6 py-5">
+            <!-- Injected by JS -->
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
+            <button id="bill-drawer-close-footer" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Close</button>
+            <button disabled class="flex-1 px-4 py-2.5 bg-gray-50 text-gray-400 rounded-lg text-[13px] font-medium cursor-not-allowed flex items-center justify-center gap-2">
+                Mark as Paid
+                <span class="text-[10px] font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
+            </button>
+        </div>
+    </div>
 
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
@@ -97,47 +218,351 @@
         const auth = getAuth(app);
         const ds = new DataService(app);
 
+        let allBills = [];
+
+        // ── Helpers ──────────────────────────────────────────────────────────
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function formatCurrencyIDR(amount) {
+            const val = typeof amount === 'number' ? amount : 0;
+            return 'Rp ' + Math.abs(val).toLocaleString('id-ID');
+        }
+
+        function getBillDueDate(bill) {
+            if (!bill.due_date) return null;
+            try { return bill.due_date.toDate(); } catch { return null; }
+        }
+
+        function getToday() {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            return d;
+        }
+
+        function getBillDisplayStatus(bill) {
+            const dueDate = getBillDueDate(bill);
+            if (!dueDate) return 'Missing Due Date';
+            const today = getToday();
+            const due = new Date(dueDate);
+            due.setHours(0, 0, 0, 0);
+            const diff = Math.floor((due - today) / 86400000);
+            if (diff < 0) return 'Overdue';
+            if (diff === 0) return 'Due Today';
+            if (diff <= 7) return 'Due Soon';
+            return 'Scheduled';
+        }
+
+        function getBillsSummary(bills) {
+            const today = getToday();
+            let dueThisWeekCount = 0, dueThisWeekAmount = 0;
+            let overdueCount = 0, overdueAmount = 0;
+            let scheduledAmount = 0;
+            let missingDueDateCount = 0;
+
+            for (const bill of bills) {
+                const amount = typeof bill.amount === 'number' ? bill.amount : 0;
+                const dueDate = getBillDueDate(bill);
+                if (!dueDate) { missingDueDateCount++; continue; }
+                const due = new Date(dueDate);
+                due.setHours(0, 0, 0, 0);
+                const diff = Math.floor((due - today) / 86400000);
+                if (diff < 0) {
+                    overdueCount++;
+                    overdueAmount += amount;
+                } else {
+                    scheduledAmount += amount;
+                    if (diff <= 7) { dueThisWeekCount++; dueThisWeekAmount += amount; }
+                }
+            }
+
+            return { totalBills: bills.length, dueThisWeekCount, dueThisWeekAmount, overdueCount, overdueAmount, scheduledAmount, missingDueDateCount };
+        }
+
+        function groupBillsByDueBucket(bills) {
+            const today = getToday();
+            const buckets = { overdue: [], today: [], thisWeek: [], later: [] };
+            for (const bill of bills) {
+                const dueDate = getBillDueDate(bill);
+                if (!dueDate) continue;
+                const due = new Date(dueDate);
+                due.setHours(0, 0, 0, 0);
+                const diff = Math.floor((due - today) / 86400000);
+                if (diff < 0) buckets.overdue.push(bill);
+                else if (diff === 0) buckets.today.push(bill);
+                else if (diff <= 7) buckets.thisWeek.push(bill);
+                else buckets.later.push(bill);
+            }
+            return buckets;
+        }
+
+        function formatDueDateDisplay(bill) {
+            const dueDate = getBillDueDate(bill);
+            if (!dueDate) return '<span class="text-amber-600 font-medium">Needs scheduling</span>';
+            return escapeHtml(dueDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }));
+        }
+
+        function getStatusBadge(status) {
+            const map = {
+                'Overdue':          'bg-red-100 text-red-700',
+                'Due Today':        'bg-amber-100 text-amber-700',
+                'Due Soon':         'bg-orange-100 text-orange-700',
+                'Scheduled':        'bg-blue-50 text-blue-600',
+                'Missing Due Date': 'bg-gray-100 text-gray-500',
+                'Paid':             'bg-green-100 text-green-700',
+                'Upcoming':         'bg-orange-100 text-orange-700',
+            };
+            const cls = map[status] || 'bg-gray-100 text-gray-500';
+            return `<span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${cls}">${escapeHtml(status)}</span>`;
+        }
+
+        // ── Render: Summary Cards ─────────────────────────────────────────────
+
+        function renderSummaryCards(summary) {
+            document.getElementById('card-total-bills').textContent = summary.totalBills;
+
+            document.getElementById('card-due-week').textContent = formatCurrencyIDR(summary.dueThisWeekAmount);
+            document.getElementById('card-due-week-sub').textContent =
+                summary.dueThisWeekCount === 0 ? 'No bills due this week'
+                : `${summary.dueThisWeekCount} bill${summary.dueThisWeekCount !== 1 ? 's' : ''} upcoming`;
+
+            const overdueEl = document.getElementById('card-overdue-count');
+            overdueEl.textContent = summary.overdueCount;
+            overdueEl.className = `text-2xl font-bold mt-1 ${summary.overdueCount > 0 ? 'text-red-600' : 'text-gray-900'}`;
+            document.getElementById('card-overdue-sub').textContent =
+                summary.overdueCount > 0 ? formatCurrencyIDR(summary.overdueAmount) + ' past due' : 'No overdue bills';
+
+            document.getElementById('card-scheduled').textContent = formatCurrencyIDR(summary.scheduledAmount);
+
+            const missingEl = document.getElementById('card-missing-date');
+            missingEl.textContent = summary.missingDueDateCount;
+            missingEl.className = `text-2xl font-bold mt-1 ${summary.missingDueDateCount > 0 ? 'text-amber-600' : 'text-gray-900'}`;
+        }
+
+        // ── Render: Timeline ──────────────────────────────────────────────────
+
+        function renderTimeline(bills) {
+            const buckets = groupBillsByDueBucket(bills);
+            const container = document.getElementById('bill-timeline');
+
+            const bucketConfig = [
+                { key: 'overdue',   label: 'Overdue',      headerCls: 'text-red-600',    badgeCls: 'bg-red-50 text-red-600' },
+                { key: 'today',     label: 'Due Today',    headerCls: 'text-amber-600',  badgeCls: 'bg-amber-50 text-amber-700' },
+                { key: 'thisWeek',  label: 'Due This Week',headerCls: 'text-orange-600', badgeCls: 'bg-orange-50 text-orange-600' },
+                { key: 'later',     label: 'Later',        headerCls: 'text-gray-600',   badgeCls: 'bg-gray-100 text-gray-500' },
+            ];
+
+            container.innerHTML = bucketConfig.map(({ key, label, headerCls, badgeCls }) => {
+                const items = buckets[key];
+                const itemsHtml = items.length === 0
+                    ? `<p class="text-[11px] text-gray-400 py-3 text-center">No bills</p>`
+                    : items.map(bill => `
+                        <div class="flex items-start justify-between gap-2 py-2.5 border-b border-gray-50 last:border-0 cursor-pointer hover:bg-gray-50 -mx-1 px-1 rounded transition-colors" data-action="review" data-bill-id="${escapeHtml(bill.id)}">
+                            <div class="min-w-0">
+                                <p class="text-[12px] font-semibold text-gray-900 truncate">${escapeHtml(bill.vendor_name || 'Unknown')}</p>
+                                <p class="text-[11px] text-gray-400 mt-0.5">${getBillDueDate(bill)?.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) || '—'}</p>
+                            </div>
+                            <p class="text-[12px] font-bold font-mono text-gray-700 flex-shrink-0 mt-0.5">${formatCurrencyIDR(bill.amount)}</p>
+                        </div>
+                    `).join('');
+
+                return `
+                    <div class="p-4">
+                        <div class="flex items-center gap-2 mb-3">
+                            <h3 class="text-[11px] font-bold ${headerCls} uppercase tracking-wider">${label}</h3>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeCls}">${items.length}</span>
+                        </div>
+                        <div>${itemsHtml}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ── Render: Bills Table ───────────────────────────────────────────────
+
+        function renderBillsTable(bills) {
+            const body = document.getElementById('bill-table-body');
+            const tableContainer = document.getElementById('bill-table-container');
+            const emptyContainer = document.getElementById('bill-empty-state');
+            const countEl = document.getElementById('bill-table-count');
+
+            if (allBills.length === 0) {
+                tableContainer.classList.add('hidden');
+                emptyContainer.classList.remove('hidden');
+                window.renderEmptyState('bill-empty-state', {
+                    title: "No upcoming bills.",
+                    description: "Add your first bill to start tracking upcoming payments, vendor invoices, and payable obligations.",
+                    buttonText: "Add First Bill",
+                    onAction: () => window.showAddTransactionModal({ title: 'Add New Bill', submitLabel: 'Save Bill', defaultCategory: 'Operations', context: 'bill' })
+                });
+                if (countEl) countEl.textContent = '';
+                return;
+            }
+
+            tableContainer.classList.remove('hidden');
+            emptyContainer.classList.add('hidden');
+
+            if (countEl) {
+                countEl.textContent = bills.length === allBills.length
+                    ? `${bills.length} bill${bills.length !== 1 ? 's' : ''}`
+                    : `${bills.length} of ${allBills.length} bills`;
+            }
+
+            if (bills.length === 0) {
+                body.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-[13px] text-gray-400">No bills match your search.</td></tr>`;
+                return;
+            }
+
+            body.innerHTML = bills.map(bill => {
+                const status = getBillDisplayStatus(bill);
+                return `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 font-semibold text-gray-900">${escapeHtml(bill.vendor_name || 'Unknown')}</td>
+                        <td class="px-6 py-4 text-gray-500">${escapeHtml(bill.category || 'Operations')}</td>
+                        <td class="px-6 py-4 text-[13px]">${formatDueDateDisplay(bill)}</td>
+                        <td class="px-6 py-4 font-mono font-bold text-gray-900">${formatCurrencyIDR(bill.amount)}</td>
+                        <td class="px-6 py-4">${getStatusBadge(status)}</td>
+                        <td class="px-6 py-4">
+                            <button class="text-[12px] font-bold text-[#EA580C] hover:underline" data-action="review" data-bill-id="${escapeHtml(bill.id)}">Review</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ── Search ────────────────────────────────────────────────────────────
+
+        function filterBills(query) {
+            const q = query.trim().toLowerCase();
+            if (!q) { renderBillsTable(allBills); return; }
+            const filtered = allBills.filter(bill => {
+                const vendor = (bill.vendor_name || '').toLowerCase();
+                const category = (bill.category || '').toLowerCase();
+                const status = getBillDisplayStatus(bill).toLowerCase();
+                const amount = String(bill.amount || '');
+                return vendor.includes(q) || category.includes(q) || status.includes(q) || amount.includes(q);
+            });
+            renderBillsTable(filtered);
+        }
+
+        // ── Bill Detail Drawer ────────────────────────────────────────────────
+
+        function openBillDrawer(bill) {
+            const dueDate = getBillDueDate(bill);
+            const status = getBillDisplayStatus(bill);
+            const dueDateDisplay = dueDate
+                ? dueDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                : null;
+            const createdAt = bill.timestamp
+                ? bill.timestamp.toDate().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                : null;
+
+            document.getElementById('bill-drawer-content').innerHTML = `
+                <div class="space-y-5">
+                    <div>${getStatusBadge(status)}</div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Vendor</p>
+                            <p class="text-[13px] font-bold text-gray-900">${escapeHtml(bill.vendor_name || 'Unknown')}</p>
+                        </div>
+                        <div>
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Category</p>
+                            <p class="text-[13px] text-gray-700">${escapeHtml(bill.category || 'Operations')}</p>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-100 pt-4">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Amount</p>
+                        <p class="text-[28px] font-bold font-mono text-gray-900">${formatCurrencyIDR(bill.amount)}</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Due Date</p>
+                            <p class="text-[13px] ${!dueDate ? 'text-amber-600 font-medium' : 'text-gray-700'}">${escapeHtml(dueDateDisplay || 'Not scheduled')}</p>
+                        </div>
+                        ${createdAt ? `<div>
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Created</p>
+                            <p class="text-[13px] text-gray-500">${escapeHtml(createdAt)}</p>
+                        </div>` : ''}
+                    </div>
+
+                    <div class="border-t border-gray-100 pt-4">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Payment Readiness</p>
+                        <div class="bg-gray-50 rounded-lg p-3 text-[12px] text-gray-500 leading-relaxed">
+                            This bill has not been marked as paid. Once payment is confirmed, record it as an expense transaction in the Ledger.
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-100 pt-4 space-y-2">
+                        <button disabled class="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 border border-gray-200 text-gray-400 rounded-lg text-[12px] cursor-not-allowed">
+                            <span>Attach Invoice</span>
+                            <span class="text-[10px] font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Coming soon</span>
+                        </button>
+                        <button disabled class="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 border border-gray-200 text-gray-400 rounded-lg text-[12px] cursor-not-allowed">
+                            <span>Convert to Transaction</span>
+                            <span class="text-[10px] font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Coming soon</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('bill-drawer-backdrop').classList.remove('hidden');
+            requestAnimationFrame(() => {
+                document.getElementById('bill-drawer').classList.remove('translate-x-full');
+            });
+        }
+
+        function closeBillDrawer() {
+            document.getElementById('bill-drawer').classList.add('translate-x-full');
+            document.getElementById('bill-drawer-backdrop').classList.add('hidden');
+        }
+
+        // ── Event Delegation ──────────────────────────────────────────────────
+
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action="review"]');
+            if (btn) {
+                const bill = allBills.find(b => b.id === btn.dataset.billId);
+                if (bill) openBillDrawer(bill);
+            }
+        });
+
+        document.getElementById('bill-drawer-backdrop').addEventListener('click', closeBillDrawer);
+        document.getElementById('bill-drawer-close-btn').addEventListener('click', closeBillDrawer);
+        document.getElementById('bill-drawer-close-footer').addEventListener('click', closeBillDrawer);
+
+        document.getElementById('bill-search-input').addEventListener('input', (e) => filterBills(e.target.value));
+
+        document.getElementById('bill-export-btn').addEventListener('click', () => {
+            window.showToast('Bills export is coming soon.', 'info');
+        });
+
+        // ── Auth & Load ───────────────────────────────────────────────────────
+
         onAuthStateChanged(auth, (user) => {
             if (user) window.loadBills();
             else window.location.replace('/login');
         });
 
-        window.loadBills = async function() {
+        window.loadBills = async function () {
             const user = auth.currentUser;
             if (!user) return;
 
-            const body = document.getElementById('bill-table-body');
-            const tableContainer = document.getElementById('bill-table-container');
-            const emptyContainer = document.getElementById('bill-empty-state');
-            
-            const bills = await ds.getBills(user.uid);
+            allBills = await ds.getBills(user.uid);
 
-            if (bills.length === 0) {
-                tableContainer.classList.add('hidden');
-                emptyContainer.classList.remove('hidden');
-                window.renderEmptyState('bill-empty-state', {
-                    title: "No upcoming bills.",
-                    description: "Your engine is clear of obligations. Add a recurring bill or one-time payment to track your upcoming burn rate.",
-                    buttonText: "Add First Bill",
-                    onAction: () => window.showAddTransactionModal({ title: 'Add New Bill', submitLabel: 'Save Bill', defaultCategory: 'Operations', context: 'bill' })
-                });
-            } else {
-                tableContainer.classList.remove('hidden');
-                emptyContainer.classList.add('hidden');
-                body.innerHTML = bills.map(bill => `
-                    <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4 font-bold text-gray-900">${bill.vendor_name}</td>
-                        <td class="px-6 py-4 font-mono font-bold">Rp ${bill.amount.toLocaleString()}</td>
-                        <td class="px-6 py-4 text-gray-500">${bill.due_date?.toDate().toLocaleDateString() || 'Next week'}</td>
-                        <td class="px-6 py-4">
-                            <span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-orange-100 text-orange-700">Upcoming</span>
-                        </td>
-                        <td class="px-6 py-4">
-                            <button class="text-[12px] font-bold text-[#EA580C] hover:underline">Pay Now</button>
-                        </td>
-                    </tr>
-                `).join('');
-            }
+            const summary = getBillsSummary(allBills);
+            renderSummaryCards(summary);
+            renderTimeline(allBills);
+            renderBillsTable(allBills);
         };
     </script>
 </body>
