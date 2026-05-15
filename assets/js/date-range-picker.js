@@ -191,9 +191,10 @@
             renderMonth(get('[data-drp-right]'), get('[data-drp-right-title]'), addMonths(calendarBaseMonth, 1));
             get('[data-drp-start]').textContent = formatDayLabel(draftStart);
             get('[data-drp-end]').textContent = formatDayLabel(draftEnd);
-            get('[data-drp-calendar-next]').disabled = addMonths(calendarBaseMonth, 1) >= getMonthStartKey();
+            const maxMonthStart = getMonthStartKey(parseDayKey(maxDate));
+            get('[data-drp-calendar-next]').disabled = addMonths(calendarBaseMonth, 1) >= maxMonthStart;
             const nextSingle = get('[data-drp-calendar-next-single]');
-            if (nextSingle) nextSingle.disabled = calendarBaseMonth >= getMonthStartKey();
+            if (nextSingle) nextSingle.disabled = calendarBaseMonth >= maxMonthStart;
         }
 
         function selectDraftDay(dayKey) {

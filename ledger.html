@@ -268,12 +268,21 @@
         let currentLedgerTransactions = [];
         const LEDGER_LOAD_LIMIT = 1000;
         const LEDGER_PAGE_SIZE = 10;
-        let ledgerCurrentPage = 1;
         let ledgerSortKey = 'date';
         let ledgerSortDirection = 'desc';
         let ledgerSearchTerm = '';
         let ledgerRangeStart = getMonthStartKey();
         let ledgerRangeEnd = getMonthEndKey();
+
+        const ledgerPaginator = window.createTablePaginator({
+            pageSize:     LEDGER_PAGE_SIZE,
+            label:        'transactions',
+            paginationId: 'ledger-pagination',
+            summaryId:    'ledger-page-summary',
+            indicatorId:  'ledger-page-indicator',
+            prevBtnId:    'ledger-prev-page',
+            nextBtnId:    'ledger-next-page',
+        });
         window.FluxyDateRangePicker?.mount('#ledger-date-range-picker', {
             start: ledgerRangeStart,
             end: ledgerRangeEnd,
@@ -387,7 +396,6 @@
             renderLedgerSummaryCards(currentLedgerTransactions);
             renderLedgerActivity(currentLedgerTransactions);
             if (downloadBtn) downloadBtn.disabled = currentLedgerTransactions.length === 0;
-            ledgerCurrentPage = 1;
             renderLedgerTable();
         }
 
@@ -691,21 +699,11 @@
             });
         }
 
-        function renderLedgerTable() {
+        function renderLedgerSlice(visibleRows) {
             const body = document.getElementById('ledger-table-body');
-            const summary = document.getElementById('ledger-page-summary');
-            const indicator = document.getElementById('ledger-page-indicator');
-            const prevButton = document.getElementById('ledger-prev-page');
-            const nextButton = document.getElementById('ledger-next-page');
             if (!body) return;
 
-            const sortedRows = getSortedLedgerRows();
-            const totalPages = Math.max(1, Math.ceil(sortedRows.length / LEDGER_PAGE_SIZE));
-            ledgerCurrentPage = Math.min(Math.max(ledgerCurrentPage, 1), totalPages);
-            const startIndex = (ledgerCurrentPage - 1) * LEDGER_PAGE_SIZE;
-            const visibleRows = sortedRows.slice(startIndex, startIndex + LEDGER_PAGE_SIZE);
-
-            if (sortedRows.length === 0) {
+            if (visibleRows.length === 0) {
                 body.innerHTML = `
                     <tr>
                         <td colspan="7" class="px-6 py-12 text-center">
@@ -714,10 +712,6 @@
                         </td>
                     </tr>
                 `;
-                if (summary) summary.textContent = allLedgerTransactions.length === 0 ? 'Showing 0 transactions' : `Showing 0 of ${allLedgerTransactions.length} transactions`;
-                if (indicator) indicator.textContent = '1 / 1';
-                if (prevButton) prevButton.disabled = true;
-                if (nextButton) nextButton.disabled = true;
                 updateSortIndicators();
                 return;
             }
@@ -747,14 +741,11 @@
                 </tr>
             `).join('');
 
-            if (summary) {
-                const endIndex = Math.min(startIndex + visibleRows.length, sortedRows.length);
-                summary.textContent = `Showing ${startIndex + 1}-${endIndex} of ${sortedRows.length} transactions`;
-            }
-            if (indicator) indicator.textContent = `${ledgerCurrentPage} / ${totalPages}`;
-            if (prevButton) prevButton.disabled = ledgerCurrentPage === 1;
-            if (nextButton) nextButton.disabled = ledgerCurrentPage === totalPages;
             updateSortIndicators();
+        }
+
+        function renderLedgerTable() {
+            ledgerPaginator.setRows(getSortedLedgerRows(), renderLedgerSlice);
         }
 
         document.getElementById('ledger-search-input')?.addEventListener('input', (event) => {
@@ -771,20 +762,11 @@
                     ledgerSortKey = nextKey;
                     ledgerSortDirection = nextKey === 'date' ? 'desc' : 'asc';
                 }
-                ledgerCurrentPage = 1;
                 renderLedgerTable();
             });
         });
 
-        document.getElementById('ledger-prev-page')?.addEventListener('click', () => {
-            ledgerCurrentPage -= 1;
-            renderLedgerTable();
-        });
-
-        document.getElementById('ledger-next-page')?.addEventListener('click', () => {
-            ledgerCurrentPage += 1;
-            renderLedgerTable();
-        });
+        // Prev/Next wired by ledgerPaginator (window.createTablePaginator)
 
         function formatCsvDate(timestamp) {
             if (!timestamp?.toDate) return '';

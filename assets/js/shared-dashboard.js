@@ -322,7 +322,7 @@ window.showAddTransactionModal = function(options = {}) {
                 end: selectedEntryDate,
                 defaultStart: todayKey,
                 defaultEnd: todayKey,
-                ...(context !== 'bill' && { maxDate: todayKey }),
+                maxDate: context === 'bill' ? '2099-12-31' : todayKey,
                 onChange: ({ start }) => {
                     selectedEntryDate = start;
                     updateSingleSubmitState();
@@ -976,6 +976,68 @@ window.toggleFluxyAI = (state) => {
 /**
  * Shimmer Loading System
  */
+/**
+ * Centralized Table Paginator
+ *
+ * Usage:
+ *   const paginator = window.createTablePaginator({
+ *     pageSize: 10,
+ *     label: 'bills',
+ *     paginationId: 'bill-pagination',
+ *     summaryId:    'bill-page-summary',
+ *     indicatorId:  'bill-page-indicator',
+ *     prevBtnId:    'bill-prev-page',
+ *     nextBtnId:    'bill-next-page',
+ *   });
+ *
+ *   paginator.setRows(rows, (visibleRows) => { /* render tbody *\/ });
+ */
+window.createTablePaginator = function({ pageSize = 20, label = 'records', paginationId, summaryId, indicatorId, prevBtnId, nextBtnId }) {
+    let currentPage = 1;
+    let rows = [];
+    let renderFn = null;
+
+    function _refresh() {
+        const total = rows.length;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        currentPage = Math.min(Math.max(currentPage, 1), totalPages);
+        const start = (currentPage - 1) * pageSize;
+        const end = Math.min(start + pageSize, total);
+        const visible = rows.slice(start, end);
+
+        const paginationEl = document.getElementById(paginationId);
+        const summaryEl    = document.getElementById(summaryId);
+        const indicatorEl  = document.getElementById(indicatorId);
+        const prevBtn      = document.getElementById(prevBtnId);
+        const nextBtn      = document.getElementById(nextBtnId);
+
+        if (paginationEl) paginationEl.classList.toggle('hidden', total === 0);
+        if (summaryEl) {
+            summaryEl.textContent = total === 0
+                ? `Showing 0 ${label}`
+                : `Showing ${start + 1}–${end} of ${total} ${label}`;
+        }
+        if (indicatorEl) indicatorEl.textContent = `${currentPage} / ${totalPages}`;
+        if (prevBtn) prevBtn.disabled = currentPage === 1;
+        if (nextBtn) nextBtn.disabled = currentPage === totalPages;
+
+        if (renderFn) renderFn(visible);
+    }
+
+    document.getElementById(prevBtnId)?.addEventListener('click', () => { currentPage--; _refresh(); });
+    document.getElementById(nextBtnId)?.addEventListener('click', () => { currentPage++; _refresh(); });
+
+    return {
+        setRows(newRows, fn) {
+            rows = newRows || [];
+            currentPage = 1;
+            if (fn) renderFn = fn;
+            _refresh();
+        },
+        refresh() { _refresh(); }
+    };
+};
+
 window.renderShimmer = function(containerId, rowCount = 5) {
     const container = document.getElementById(containerId);
     if (!container) return;
