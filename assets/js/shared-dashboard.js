@@ -114,7 +114,9 @@ window.showAddTransactionModal = function(options = {}) {
                                     <option value="Infrastructure" ${defaultCategory === 'Infrastructure' ? 'selected' : ''}>Infrastructure</option>
                                     <option value="Operations" ${defaultCategory === 'Operations' ? 'selected' : ''}>Operations</option>
                                     <option value="SaaS" ${defaultCategory === 'SaaS' ? 'selected' : ''}>SaaS</option>
+                                    <option value="Others">Others</option>
                                 </select>
+                                <input id="tx-category-custom" type="text" maxlength="20" placeholder="Type category (max 20 chars)" class="hidden mt-2 w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]" />
                             </div>
                             <div>
                                 <label for="tx-type" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Type</label>
@@ -578,6 +580,16 @@ window.showAddTransactionModal = function(options = {}) {
     vendorInput.oninput = updateSingleSubmitState;
     updateSingleSubmitState();
 
+    // "Others" category custom input
+    const categorySelect = document.getElementById('tx-category');
+    const categoryCustomInput = document.getElementById('tx-category-custom');
+    categorySelect.addEventListener('change', () => {
+        const isOthers = categorySelect.value === 'Others';
+        categoryCustomInput.classList.toggle('hidden', !isOthers);
+        if (isOthers) categoryCustomInput.focus();
+        else categoryCustomInput.value = '';
+    });
+
     // Receipt file input wiring (transaction/subscription only — bills use invoice in the review drawer)
     const receiptFileInput = document.getElementById('tx-receipt-file');
     if (receiptFileInput) {
@@ -781,7 +793,14 @@ window.showAddTransactionModal = function(options = {}) {
             const data = {
                 amount: parseFloat(rawAmount),
                 vendor_name: document.getElementById('tx-vendor').value,
-                category: document.getElementById('tx-category').value,
+                category: (() => {
+                    const sel = document.getElementById('tx-category').value;
+                    if (sel === 'Others') {
+                        const custom = document.getElementById('tx-category-custom').value.trim();
+                        return custom.length > 0 ? custom : 'Others';
+                    }
+                    return sel;
+                })(),
                 type: txType,
                 status: context === 'bill' ? 'Upcoming' : (document.getElementById('tx-status')?.value || 'Completed'),
                 icon: ['income', 'refund', 'pending_receivable'].includes(txType) ? '💰' : '💸'
