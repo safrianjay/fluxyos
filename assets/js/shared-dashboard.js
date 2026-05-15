@@ -101,9 +101,9 @@ window.showAddTransactionModal = function(options = {}) {
                             <input type="text" id="tx-vendor" name="vendor" required placeholder="e.g. AWS, Client Payment" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
                         </div>
                         <div>
-                            <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Transaction Date</p>
+                            <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">${context === 'bill' ? 'Due Date' : 'Transaction Date'}</p>
                             <div id="tx-date-picker"></div>
-                            <p class="mt-2 text-[12px] text-gray-500">Defaults to today. Choose a previous day for backdated records.</p>
+                            <p class="mt-2 text-[12px] text-gray-500">${context === 'bill' ? 'Set when this bill is due for payment. Future dates are allowed.' : 'Defaults to today. Choose a previous day for backdated records.'}</p>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -119,6 +119,10 @@ window.showAddTransactionModal = function(options = {}) {
                             <div>
                                 <label for="tx-type" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Type</label>
                                 <select id="tx-type" name="type" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                                    ${context === 'bill' ? `
+                                    <option value="expense" selected>Expense</option>
+                                    <option value="pending_payable">Pending payable</option>
+                                    ` : `
                                     <option value="income" ${defaultType === 'income' || defaultType === 'revenue' ? 'selected' : ''}>Income</option>
                                     <option value="expense" ${defaultType === 'expense' ? 'selected' : ''}>Expense</option>
                                     <option value="transfer" ${defaultType === 'transfer' ? 'selected' : ''}>Transfer</option>
@@ -128,10 +132,11 @@ window.showAddTransactionModal = function(options = {}) {
                                     <option value="tax" ${defaultType === 'tax' ? 'selected' : ''}>Tax</option>
                                     <option value="pending_receivable" ${defaultType === 'pending_receivable' ? 'selected' : ''}>Pending receivable</option>
                                     <option value="pending_payable" ${defaultType === 'pending_payable' ? 'selected' : ''}>Pending payable</option>
+                                    `}
                                 </select>
                             </div>
                         </div>
-                        <div>
+                        ${context !== 'bill' ? `<div>
                             <label for="tx-status" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Status</label>
                             <select id="tx-status" name="status" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
                                 <option value="Completed">Completed</option>
@@ -140,8 +145,8 @@ window.showAddTransactionModal = function(options = {}) {
                                 <option value="Missing Receipt">Missing Receipt</option>
                                 <option value="Cancelled">Cancelled</option>
                             </select>
-                        </div>
-                        <div id="tx-receipt-section">
+                        </div>` : ''}
+                        ${context !== 'bill' ? `<div id="tx-receipt-section">
                             <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Receipt (optional)</label>
                             <label id="tx-receipt-label" for="tx-receipt-file" class="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 transition-colors group">
                                 <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
@@ -155,7 +160,7 @@ window.showAddTransactionModal = function(options = {}) {
                                 <img id="tx-receipt-preview" src="" alt="Receipt preview" class="w-full rounded-xl border border-gray-200 object-contain max-h-48">
                             </div>
                             <p class="mt-1.5 text-[11px] text-gray-400">JPG, PNG or WebP · Max 1 MB · Compress the image first if it's too large</p>
-                        </div>
+                        </div>` : ''}
                     </div>
                     ${supportsBulkCsv ? `
                     <div id="tx-bulk-panel" class="hidden space-y-4">
@@ -315,7 +320,7 @@ window.showAddTransactionModal = function(options = {}) {
                 end: selectedEntryDate,
                 defaultStart: todayKey,
                 defaultEnd: todayKey,
-                maxDate: todayKey,
+                ...(context !== 'bill' && { maxDate: todayKey }),
                 onChange: ({ start }) => {
                     selectedEntryDate = start;
                     updateSingleSubmitState();
@@ -393,6 +398,12 @@ window.showAddTransactionModal = function(options = {}) {
         return Timestamp.fromDate(date);
     }
 
+    function buildBillDueDateTimestamp(dateKey, Timestamp) {
+        const date = parseLocalDateKey(dateKey);
+        if (!date) throw new Error("Choose a valid due date.");
+        return Timestamp.fromDate(date);
+    }
+
     function setDateWarning(message = '') {
         const warning = document.getElementById('tx-date-warning');
         if (!warning) return;
@@ -411,6 +422,7 @@ window.showAddTransactionModal = function(options = {}) {
             return;
         }
 
+        if (context === 'bill') { setDateWarning(''); return; }
         setDateWarning(isPastDateKey(selectedEntryDate) ? 'This record will be saved to a previous day, not today.' : '');
     }
 
@@ -551,7 +563,9 @@ window.showAddTransactionModal = function(options = {}) {
 
     function isSingleEntryComplete() {
         const rawAmount = amountInput.value.replace(/\./g, "");
-        return Number(rawAmount) > 0 && vendorInput.value.trim().length > 0 && Boolean(parseLocalDateKey(selectedEntryDate)) && selectedEntryDate <= todayKey;
+        const hasDate = Boolean(parseLocalDateKey(selectedEntryDate));
+        const dateOk = context === 'bill' ? hasDate : (hasDate && selectedEntryDate <= todayKey);
+        return Number(rawAmount) > 0 && vendorInput.value.trim().length > 0 && dateOk;
     }
 
     function updateSingleSubmitState() {
@@ -564,42 +578,44 @@ window.showAddTransactionModal = function(options = {}) {
     vendorInput.oninput = updateSingleSubmitState;
     updateSingleSubmitState();
 
-    // Receipt file input wiring
+    // Receipt file input wiring (transaction/subscription only — bills use invoice in the review drawer)
     const receiptFileInput = document.getElementById('tx-receipt-file');
-    const receiptFilename = document.getElementById('tx-receipt-filename');
-    const receiptRemoveBtn = document.getElementById('tx-receipt-remove');
-    const receiptPreviewWrapper = document.getElementById('tx-receipt-preview-wrapper');
-    const receiptPreview = document.getElementById('tx-receipt-preview');
+    if (receiptFileInput) {
+        const receiptFilename = document.getElementById('tx-receipt-filename');
+        const receiptRemoveBtn = document.getElementById('tx-receipt-remove');
+        const receiptPreviewWrapper = document.getElementById('tx-receipt-preview-wrapper');
+        const receiptPreview = document.getElementById('tx-receipt-preview');
 
-    receiptFileInput.onchange = () => {
-        const file = receiptFileInput.files?.[0];
-        if (!file) return;
-        if (!file.type.startsWith('image/')) {
-            window.showToast('Receipt must be an image file (JPG, PNG, WebP).', 'error');
-            receiptFileInput.value = '';
-            return;
-        }
-        if (file.size > 1 * 1024 * 1024) {
-            window.showToast('Receipt image must be under 1 MB. Compress it first and re-upload.', 'error');
-            receiptFileInput.value = '';
-            return;
-        }
-        receiptFilename.textContent = file.name;
-        receiptRemoveBtn.classList.remove('hidden');
-        const previewUrl = URL.createObjectURL(file);
-        receiptPreview.src = previewUrl;
-        receiptPreviewWrapper.classList.remove('hidden');
-    };
+        receiptFileInput.onchange = () => {
+            const file = receiptFileInput.files?.[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                window.showToast('Receipt must be an image file (JPG, PNG, WebP).', 'error');
+                receiptFileInput.value = '';
+                return;
+            }
+            if (file.size > 1 * 1024 * 1024) {
+                window.showToast('Receipt image must be under 1 MB. Compress it first and re-upload.', 'error');
+                receiptFileInput.value = '';
+                return;
+            }
+            receiptFilename.textContent = file.name;
+            receiptRemoveBtn.classList.remove('hidden');
+            const previewUrl = URL.createObjectURL(file);
+            receiptPreview.src = previewUrl;
+            receiptPreviewWrapper.classList.remove('hidden');
+        };
 
-    receiptRemoveBtn.onclick = (e) => {
-        e.preventDefault();
-        receiptFileInput.value = '';
-        receiptFilename.textContent = 'Attach receipt image';
-        receiptRemoveBtn.classList.add('hidden');
-        if (receiptPreview.src) URL.revokeObjectURL(receiptPreview.src);
-        receiptPreview.src = '';
-        receiptPreviewWrapper.classList.add('hidden');
-    };
+        receiptRemoveBtn.onclick = (e) => {
+            e.preventDefault();
+            receiptFileInput.value = '';
+            receiptFilename.textContent = 'Attach receipt image';
+            receiptRemoveBtn.classList.add('hidden');
+            if (receiptPreview.src) URL.revokeObjectURL(receiptPreview.src);
+            receiptPreview.src = '';
+            receiptPreviewWrapper.classList.add('hidden');
+        };
+    }
 
     if (supportsBulkCsv) {
         const singleTab = document.getElementById('tx-tab-single');
@@ -761,18 +777,23 @@ window.showAddTransactionModal = function(options = {}) {
             }
 
             const rawAmount = document.getElementById('tx-amount').value.replace(/\./g, "");
+            const txType = document.getElementById('tx-type').value;
             const data = {
                 amount: parseFloat(rawAmount),
                 vendor_name: document.getElementById('tx-vendor').value,
                 category: document.getElementById('tx-category').value,
-                type: document.getElementById('tx-type').value,
-                status: document.getElementById('tx-status')?.value || 'Completed',
-                icon: ['income', 'refund', 'pending_receivable'].includes(document.getElementById('tx-type').value) ? '💰' : '💸'
+                type: txType,
+                status: context === 'bill' ? 'Upcoming' : (document.getElementById('tx-status')?.value || 'Completed'),
+                icon: ['income', 'refund', 'pending_receivable'].includes(txType) ? '💰' : '💸'
             };
 
             // Initialize Firebase if not already done
             const { ds, user, Timestamp } = await getTransactionDataService();
-            data.timestamp = buildTransactionTimestamp(selectedEntryDate, Timestamp);
+            if (context === 'bill') {
+                data.due_date = buildBillDueDateTimestamp(selectedEntryDate, Timestamp);
+            } else {
+                data.timestamp = buildTransactionTimestamp(selectedEntryDate, Timestamp);
+            }
 
             // Receipt upload (transaction context only)
             if (context === 'transaction') {
