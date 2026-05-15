@@ -131,6 +131,13 @@ window.showAddTransactionModal = function(options = {}) {
                                 </select>
                             </div>
                         </div>
+                        <div>
+                            <label for="tx-status" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Status</label>
+                            <select id="tx-status" name="status" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                                <option value="Completed">Completed</option>
+                                <option value="Missing Receipt">Missing Receipt</option>
+                            </select>
+                        </div>
                         <div id="tx-receipt-section">
                             <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Receipt (optional)</label>
                             <label id="tx-receipt-label" for="tx-receipt-file" class="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 transition-colors group">
@@ -159,6 +166,27 @@ window.showAddTransactionModal = function(options = {}) {
                             </label>
                             <input type="file" id="tx-csv-file" accept=".csv,text/csv" class="sr-only">
                             <div id="tx-csv-feedback" class="hidden mt-3 text-[12px] font-medium"></div>
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-[13px] font-bold text-gray-900">Override row status</p>
+                                    <p class="text-[11px] text-gray-500">Apply one status to every uploaded row</p>
+                                </div>
+                                <button type="button" id="tx-bulk-status-toggle"
+                                    class="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full border-2 border-transparent bg-gray-200 transition-colors focus:outline-none"
+                                    role="switch" aria-checked="false">
+                                    <span class="inline-block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform"></span>
+                                </button>
+                            </div>
+                            <div id="tx-bulk-status-panel" class="hidden space-y-2">
+                                <select id="tx-bulk-status-select"
+                                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]">
+                                    <option value="Completed">Completed</option>
+                                    <option value="Missing Receipt">Missing Receipt</option>
+                                </select>
+                                <p id="tx-bulk-status-note" class="hidden rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[12px] text-blue-800"></p>
+                            </div>
                         </div>
                         <div class="rounded-xl border border-gray-200 bg-white p-4">
                             <div class="flex items-center justify-between mb-3">
@@ -259,6 +287,7 @@ window.showAddTransactionModal = function(options = {}) {
     let activeEntryMode = 'single';
     let selectedEntryDate = todayKey;
     let updateSelectedCsvDateState = updateDateWarning;
+    let bulkStatusOverride = null;
 
     // Live Formatting for Amount
     const amountInput = document.getElementById('tx-amount');
@@ -425,7 +454,7 @@ window.showAddTransactionModal = function(options = {}) {
         return parseFloat(withoutGrouping.replace(/[^\d.-]/g, ''));
     }
 
-    function parseBulkTransactions(csvText, defaultDateKey, Timestamp) {
+    function parseBulkTransactions(csvText, defaultDateKey, Timestamp, overrideStatus = null) {
         const rows = parseCsv(csvText);
         if (rows.length < 2) throw new Error("CSV needs one header row and at least one transaction row.");
         if (rows.length > 501) throw new Error("CSV imports are limited to 500 transactions at a time.");
@@ -454,7 +483,7 @@ window.showAddTransactionModal = function(options = {}) {
             const amount = parseCsvAmount(row[indexes.amount]);
             const category = row[indexes.category];
             const type = String(row[indexes.type] || '').toLowerCase().replace(/\s+/g, '_');
-            const status = row[indexes.status] || 'Completed';
+            const status = overrideStatus || row[indexes.status] || 'Completed';
             const vendor = row[indexes.vendor];
             const dateKey = indexes.date === undefined || !row[indexes.date] ? defaultDateKey : parseCsvDateInput(row[indexes.date]);
 
@@ -623,6 +652,36 @@ window.showAddTransactionModal = function(options = {}) {
             updateSelectedCsvFile();
         };
 
+        // Status override toggle
+        const bulkToggleBtn = document.getElementById('tx-bulk-status-toggle');
+        const bulkStatusPanel = document.getElementById('tx-bulk-status-panel');
+        const bulkStatusSelect = document.getElementById('tx-bulk-status-select');
+        const bulkStatusNote = document.getElementById('tx-bulk-status-note');
+
+        const updateBulkStatusNote = () => {
+            if (!bulkStatusOverride) return;
+            bulkStatusNote.textContent = `Every uploaded row will be saved with status "${bulkStatusOverride}", overriding any Status column in the CSV.`;
+            bulkStatusNote.classList.remove('hidden');
+        };
+
+        bulkToggleBtn.onclick = () => {
+            const nowOn = bulkToggleBtn.getAttribute('aria-checked') !== 'true';
+            bulkToggleBtn.setAttribute('aria-checked', String(nowOn));
+            bulkToggleBtn.classList.toggle('bg-gray-200', !nowOn);
+            bulkToggleBtn.classList.toggle('bg-[#E85D19]', nowOn);
+            bulkToggleBtn.querySelector('span').classList.toggle('translate-x-0.5', !nowOn);
+            bulkToggleBtn.querySelector('span').classList.toggle('translate-x-5', nowOn);
+            bulkStatusPanel.classList.toggle('hidden', !nowOn);
+            bulkStatusOverride = nowOn ? bulkStatusSelect.value : null;
+            if (nowOn) updateBulkStatusNote();
+            else bulkStatusNote.classList.add('hidden');
+        };
+
+        bulkStatusSelect.onchange = () => {
+            bulkStatusOverride = bulkStatusSelect.value;
+            updateBulkStatusNote();
+        };
+
         dropzone.ondragover = (event) => {
             event.preventDefault();
             dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#E85D19]');
@@ -671,7 +730,7 @@ window.showAddTransactionModal = function(options = {}) {
                 dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#E85D19]');
                 const csvText = await file.text();
                 const { ds, user, Timestamp } = await getTransactionDataService();
-                const transactions = parseBulkTransactions(csvText, todayKey, Timestamp);
+                const transactions = parseBulkTransactions(csvText, todayKey, Timestamp, bulkStatusOverride);
                 btn.innerText = `Uploading ${transactions.length}...`;
                 await ds.addTransactions(user.uid, transactions);
                 setCsvFeedback(`${transactions.length} transactions imported successfully.`, 'success');
@@ -701,7 +760,7 @@ window.showAddTransactionModal = function(options = {}) {
                 vendor_name: document.getElementById('tx-vendor').value,
                 category: document.getElementById('tx-category').value,
                 type: document.getElementById('tx-type').value,
-                status: 'Completed',
+                status: document.getElementById('tx-status')?.value || 'Completed',
                 icon: ['income', 'refund', 'pending_receivable'].includes(document.getElementById('tx-type').value) ? '💰' : '💸'
             };
 
