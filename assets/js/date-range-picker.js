@@ -259,13 +259,15 @@
             renderPanel();
         });
         get('[data-drp-calendar-next]').addEventListener('click', () => {
-            if (addMonths(calendarBaseMonth, 1) >= getMonthStartKey()) return;
+            const maxMonthStart = getMonthStartKey(parseDayKey(maxDate));
+            if (addMonths(calendarBaseMonth, 1) >= maxMonthStart) return;
             calendarBaseMonth = addMonths(calendarBaseMonth, 1);
             renderPanel();
         });
         const calNextSingle = get('[data-drp-calendar-next-single]');
         if (calNextSingle) calNextSingle.addEventListener('click', () => {
-            if (calendarBaseMonth >= getMonthStartKey()) return;
+            const maxMonthStart = getMonthStartKey(parseDayKey(maxDate));
+            if (calendarBaseMonth >= maxMonthStart) return;
             calendarBaseMonth = addMonths(calendarBaseMonth, 1);
             renderPanel();
         });
