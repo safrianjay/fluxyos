@@ -135,7 +135,10 @@ window.showAddTransactionModal = function(options = {}) {
                             <label for="tx-status" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Status</label>
                             <select id="tx-status" name="status" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
                                 <option value="Completed">Completed</option>
+                                <option value="Reconciled">Reconciled</option>
+                                <option value="Pending">Pending</option>
                                 <option value="Missing Receipt">Missing Receipt</option>
+                                <option value="Cancelled">Cancelled</option>
                             </select>
                         </div>
                         <div id="tx-receipt-section">
@@ -183,7 +186,10 @@ window.showAddTransactionModal = function(options = {}) {
                                 <select id="tx-bulk-status-select"
                                     class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]">
                                     <option value="Completed">Completed</option>
+                                    <option value="Reconciled">Reconciled</option>
+                                    <option value="Pending">Pending</option>
                                     <option value="Missing Receipt">Missing Receipt</option>
+                                    <option value="Cancelled">Cancelled</option>
                                 </select>
                                 <p id="tx-bulk-status-note" class="hidden rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[12px] text-blue-800"></p>
                             </div>
@@ -247,7 +253,7 @@ window.showAddTransactionModal = function(options = {}) {
                                 <div class="flex items-start gap-2.5 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
                                     <span class="mt-1 inline-block w-2 h-2 rounded-full bg-gray-300 flex-shrink-0"></span>
                                     <span class="font-mono font-bold text-gray-900 w-24 flex-shrink-0">Status</span>
-                                    <span class="text-gray-500">Completed <span class="text-gray-400">(default)</span> · Missing Receipt</span>
+                                    <span class="text-gray-500">Completed <span class="text-gray-400">(default)</span> · Reconciled · Pending · Missing Receipt · Cancelled</span>
                                 </div>
                                 <div class="flex items-start gap-2.5 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
                                     <span class="mt-1 inline-block w-2 h-2 rounded-full bg-gray-300 flex-shrink-0"></span>
@@ -476,7 +482,7 @@ window.showAddTransactionModal = function(options = {}) {
 
         const allowedCategories = ['Revenue', 'Marketing', 'Infrastructure', 'Operations', 'SaaS'];
         const allowedTypes = ['income', 'revenue', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending receivable', 'pending_payable', 'pending payable'];
-        const allowedStatuses = ['Completed', 'Missing Receipt'];
+        const allowedStatuses = ['Completed', 'Missing Receipt', 'Pending', 'Reconciled', 'Cancelled'];
 
         return rows.slice(1).map((row, index) => {
             const line = index + 2;
@@ -491,7 +497,7 @@ window.showAddTransactionModal = function(options = {}) {
             if (!Number.isFinite(amount) || amount <= 0) throw new Error(`Row ${line}: Amount must be a positive number.`);
             if (!allowedCategories.includes(category)) throw new Error(`Row ${line}: Category must be Revenue, Marketing, Infrastructure, Operations, or SaaS.`);
             if (!allowedTypes.includes(type)) throw new Error(`Row ${line}: Type must be Income, Expense, Transfer, Refund, Adjustment, Fee, Tax, Pending receivable, or Pending payable.`);
-            if (!allowedStatuses.includes(status)) throw new Error(`Row ${line}: Status must be Completed or Missing Receipt.`);
+            if (!allowedStatuses.includes(status)) throw new Error(`Row ${line}: Status must be one of: Completed, Reconciled, Pending, Missing Receipt, Cancelled.`);
             if (!parseLocalDateKey(dateKey)) throw new Error(`Row ${line}: Date must use DD-MM-YYYY.`);
             if (dateKey > todayKey) throw new Error(`Row ${line}: Date cannot be in the future.`);
 

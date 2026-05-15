@@ -22,12 +22,16 @@ The full QA checklist lives at:
 
 ---
 
-## Project Background (Read Before Every Task)
+## Pre-Implementation: Read Both Files Before Every Feature (MANDATORY)
 
-Full architecture, database schema, field names, function signatures, and conventions are in:
-**`PROJECT_BACKGROUND.md`** — read this before implementing any new feature, page, or logic.
+Before implementing any feature, page, section, component, UI enhancement, business logic change, chart, table change, modal, AI behavior, or workflow — read both of these files first:
 
-Key things it covers that prevent mistakes:
+1. **`PROJECT_BACKGROUND.md`** — architecture, database schema, field names, function signatures, and conventions
+2. **`product_ux_feature_intake_framework.md`** — product logic, feature classification, scope, and UX requirements
+
+If the feature request cannot answer the framework's core questions (user problem, business value, job to be done, scope), it is not ready to build.
+
+Key things PROJECT_BACKGROUND.md covers that prevent mistakes:
 - Exact Firestore field names (`vendor_name` not `vendor`, `type` is lowercase `"revenue"`/`"expense"`)
 - Amount must be stored as raw integer — never formatted string
 - Exact function signatures for `showAddTransactionModal`, `showToast`, `renderEmptyState`

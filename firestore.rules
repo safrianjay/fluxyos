@@ -33,7 +33,7 @@ service cloud.firestore {
           'SaaS'
         ]
         && data.type in ['revenue', 'income', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending_payable']
-        && data.status in ['Completed', 'Missing Receipt']
+        && data.status in ['Completed', 'Missing Receipt', 'Pending', 'Reconciled', 'Cancelled']
         && data.icon is string
         && data.icon.size() <= 16
         && data.timestamp == request.time;
@@ -62,7 +62,7 @@ service cloud.firestore {
           'SaaS'
         ]
         && data.type in ['revenue', 'income', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending_payable']
-        && data.status in ['Completed', 'Missing Receipt']
+        && data.status in ['Completed', 'Missing Receipt', 'Pending', 'Reconciled', 'Cancelled']
         && data.icon is string
         && data.icon.size() <= 16
         && data.timestamp == existingData.timestamp;

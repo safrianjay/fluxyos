@@ -599,12 +599,22 @@
             `;
         }
 
+        function getStatusBadgeClass(status) {
+            if (status === 'Completed') return 'bg-green-100 text-green-800';
+            if (status === 'Reconciled') return 'bg-blue-100 text-blue-800';
+            if (status === 'Pending') return 'bg-amber-100 text-amber-800';
+            if (status === 'Missing Receipt') return 'bg-orange-100 text-orange-800';
+            if (status === 'Cancelled') return 'bg-gray-100 text-gray-600';
+            return 'bg-slate-100 text-slate-700';
+        }
+
         function getStatusColor(status) {
             const normalized = String(status || '').toLowerCase();
             if (normalized === 'completed') return 'bg-green-500';
-            if (normalized.includes('missing')) return 'bg-red-500';
-            if (normalized.includes('pending') || normalized.includes('waiting')) return 'bg-amber-500';
-            if (normalized.includes('failed') || normalized.includes('void')) return 'bg-gray-500';
+            if (normalized === 'reconciled') return 'bg-blue-500';
+            if (normalized === 'pending') return 'bg-amber-500';
+            if (normalized.includes('missing')) return 'bg-orange-500';
+            if (normalized === 'cancelled') return 'bg-gray-400';
             return 'bg-slate-400';
         }
 
@@ -730,7 +740,7 @@
                         ${formatTransactionAmount(row)}
                     </td>
                     <td class="px-6 py-4">
-                        <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${row.status === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}">
+                        <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${getStatusBadgeClass(row.status)}">
                             ${row.status}
                         </span>
                     </td>
@@ -913,7 +923,8 @@
             document.getElementById('tx-detail-category').textContent = row.category || '—';
             const statusEl = document.getElementById('tx-detail-status');
             statusEl.textContent = row.status || '—';
-            statusEl.className = `text-[14px] font-bold ${row.status === 'Completed' ? 'text-green-700' : row.status === 'Missing Receipt' ? 'text-orange-600' : 'text-gray-900'}`;
+            const statusColorMap = { 'Completed': 'text-green-700', 'Reconciled': 'text-blue-700', 'Pending': 'text-amber-700', 'Missing Receipt': 'text-orange-600', 'Cancelled': 'text-gray-500' };
+            statusEl.className = `text-[14px] font-bold ${statusColorMap[row.status] || 'text-gray-900'}`;
             document.getElementById('tx-detail-uploaded').textContent = row.created_at?.toDate
                 ? row.created_at.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
                 : '—';
