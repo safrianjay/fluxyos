@@ -235,12 +235,13 @@
         import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js").then(async appMod => {
             const { getApps, initializeApp } = appMod;
             const firebaseConfig = {
-                apiKey: "AIzaSyCaJqmpEMulLdMvRT7mYf2K-XDw46-dT7A",
+                apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
                 authDomain: "fluxyos.firebaseapp.com",
                 projectId: "fluxyos",
                 storageBucket: "fluxyos.firebasestorage.app",
                 messagingSenderId: "1084252368929",
-                appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+                appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
+                measurementId: "G-ZN7J6DRD2L"
             };
             
             let app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
