@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Cross-agent QA gate (Claude Code, Codex, Cursor, Windsurf, Antigravity, humans).
+# Blocks pushes to main/master unless QA_PASS=1 is set in the environment.
+#
+# stdin format: <local_ref> <local_sha> <remote_ref> <remote_sha>  (one line per ref)
+#
+# Bypass for a true emergency: git push --no-verify
+
+BLOCK=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/master)
+      BLOCK=1
+      ;;
+  esac
+done
+
+if [ "$BLOCK" = "1" ] && [ "$QA_PASS" != "1" ]; then
+  cat >&2 <<'EOF'
+🛑 QA GATE — Production push blocked
+
+This push targets main/master. Before proceeding, verify:
+
+  [ ] Every new file reference (CSS, JS, image) actually EXISTS locally
+      → `ls` any path you just linked to
+  [ ] Smoke-tested affected pages in a real browser
+  [ ] Browser console clean — no CSP, CORS, 404, or Firebase errors
+  [ ] Read docs/QA_CHECKLIST.md sections matching your change type
+  [ ] Read docs/PROJECT_BACKGROUND.md if Firestore / data logic was touched
+
+When (and only when) those checks pass, re-run with QA_PASS=1 prepended:
+
+  QA_PASS=1 git push origin main
+
+True emergency bypass (NOT recommended):
+  git push --no-verify
+EOF
+  exit 1
+fi
+
+exit 0

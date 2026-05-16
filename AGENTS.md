@@ -1,31 +1,52 @@
-# FluxyOS — Codex Working Rules
+# FluxyOS — AI Agent Working Rules
 
-## QA Enforcement (MANDATORY) — see QA_CHECKLIST.md
+This file is read by Codex, Aider, and any tool that follows the AGENTS.md
+convention. Claude Code reads `CLAUDE.md` (same rules). The full workflow
+diagram lives in `docs/WORKFLOW.md`.
 
-Every change — UI, new page, new feature, bug fix, or logic update — must follow this workflow before being marked complete:
+## QA Enforcement — Git-Gated (Cross-Agent)
 
+A `pre-push` git hook at `.githooks/pre-push` BLOCKS any push to `main`/`master`
+unless the environment contains `QA_PASS=1`. This fires regardless of which
+agent or human typed `git push` — it runs at the git layer.
+
+### Pushing to main
+
+```bash
+QA_PASS=1 git push origin main
 ```
-Plan → Build → QA → Fix (if needed) → Push
+
+Without the prefix the push exits 1 and the gate's checklist is printed.
+
+### What `QA_PASS=1` claims
+
+Setting the variable is an explicit assertion that you did all of these:
+
+1. Every new file reference (CSS, JS, image) was `ls`'d locally — it EXISTS
+2. The affected page was opened in a real browser
+3. Browser console had no CSP, CORS, 404, or Firebase errors
+4. `docs/QA_CHECKLIST.md` sections matching the change type were read
+5. `docs/PROJECT_BACKGROUND.md` was read for any Firestore / data change
+
+Lying defeats the gate's purpose. There is no way for the hook to verify.
+
+### Activating the hook on a fresh clone
+
+`npm install` runs `git config core.hooksPath .githooks` via postinstall.
+If you skip npm install, run it manually:
+
+```bash
+git config core.hooksPath .githooks
 ```
 
-The full QA checklist lives at:
-`/Users/slumdogmacbookair/.Codex/plans/fix-the-error-on-nifty-crescent.md`
-
-### Minimum checks after every change:
-1. Run **Smoke Tests** (Section 1 of QA plan) — always, no exceptions
-2. Run the **Change Type** checklist that matches what was modified
-3. Run **Section F (Database & Logic)** if any data write, read, or calculation was touched
-4. Run **Cross-Page Regression** (Section 3) if shared files were modified
-5. Pass the **Final Gate** (Section 4) before pushing to main
-
-**A task is not done until QA passes. Do not push to main with failing checks.**
+True-emergency bypass (do not use casually): `git push --no-verify`.
 
 ---
 
 ## Project Background (Read Before Every Task)
 
 Full architecture, database schema, field names, function signatures, and conventions are in:
-**`PROJECT_BACKGROUND.md`** — read this before implementing any new feature, page, or logic.
+**`docs/PROJECT_BACKGROUND.md`** — read this before implementing any new feature, page, or logic.
 
 Key things it covers that prevent mistakes:
 - Exact Firestore field names (`vendor_name` not `vendor`, `type` is lowercase `"revenue"`/`"expense"`)
@@ -47,7 +68,7 @@ Key things it covers that prevent mistakes:
 
 ## SEO & AI Overview Optimization
 
-Full SEO strategy lives in **`SEO_STRATEGY.md`** — read before adding new
+Full SEO strategy lives in **`docs/SEO_STRATEGY.md`** — read before adding new
 landing pages or changing meta/title/heading content.
 
 Quick rules:
@@ -61,13 +82,13 @@ Quick rules:
 
 ## Localization (Bahasa Indonesia)
 
-Full localization strategy lives in **`LOCALIZATION_PLAN.md`** — read before
+Full localization strategy lives in **`docs/LOCALIZATION_PLAN.md`** — read before
 making any user-facing copy change.
 
 Quick rules:
 - Indonesian translations live at `/id/*.html` (mirror of root structure).
 - Tone is **casual professional** for SMB owners — pronoun "Anda", short sentences,
-  active verbs, no bureaucratic language. See LOCALIZATION_PLAN.md §2 for the
+  active verbs, no bureaucratic language. See docs/LOCALIZATION_PLAN.md §2 for the
   glossary and sample translations.
 - **Brand & product names stay English** everywhere (FluxyOS, Fluxy AI, Revenue
   Sync, Vendor Spend, Receipt Capture, Dynamic Budgeting, AI Agents, plus all
@@ -75,7 +96,7 @@ Quick rules:
 - **Pair edits.** Any change to user-facing copy in an EN page must include the
   matching update to its `/id/` counterpart in the same commit. Don't ship
   English-only copy changes.
-- New product term not in the glossary? Add it to LOCALIZATION_PLAN.md §2
+- New product term not in the glossary? Add it to docs/LOCALIZATION_PLAN.md §2
   before translating, so future copy stays consistent.
 
 ## Key Conventions

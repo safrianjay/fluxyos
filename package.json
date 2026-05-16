@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "postinstall": "git config core.hooksPath .githooks 2>/dev/null || true"
+  },
   "dependencies": {
     "firebase": "^12.13.0"
   }
