@@ -22,6 +22,7 @@ service cloud.firestore {
         ])
         && data.amount is number
         && data.amount > 0
+        && data.amount <= 999999999999
         && data.vendor_name is string
         && data.vendor_name.size() > 0
         && data.vendor_name.size() <= 160
@@ -30,7 +31,8 @@ service cloud.firestore {
           'Marketing',
           'Infrastructure',
           'Operations',
-          'SaaS'
+          'SaaS',
+          'Others'
         ]
         && data.type in ['revenue', 'income', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending_payable']
         && data.status in ['Completed', 'Missing Receipt', 'Pending', 'Reconciled', 'Cancelled']
@@ -51,6 +53,7 @@ service cloud.firestore {
         ])
         && data.amount is number
         && data.amount > 0
+        && data.amount <= 999999999999
         && data.vendor_name is string
         && data.vendor_name.size() > 0
         && data.vendor_name.size() <= 160
@@ -59,7 +62,8 @@ service cloud.firestore {
           'Marketing',
           'Infrastructure',
           'Operations',
-          'SaaS'
+          'SaaS',
+          'Others'
         ]
         && data.type in ['revenue', 'income', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending_payable']
         && data.status in ['Completed', 'Missing Receipt', 'Pending', 'Reconciled', 'Cancelled']
@@ -115,7 +119,9 @@ service cloud.firestore {
             'created_at',
             'receipt_url'
           ])
-          && isValidBaseRecord(request.resource.data);
+          && isValidBaseRecord(request.resource.data)
+          && (!('created_at' in request.resource.data) || request.resource.data.created_at == request.time)
+          && (!('receipt_url' in request.resource.data) || request.resource.data.receipt_url is string);
         allow update: if isOwner(userId)
           && request.resource.data.keys().hasOnly([
             'amount',
@@ -145,7 +151,8 @@ service cloud.firestore {
             'timestamp',
             'due_date'
           ])
-          && isValidBaseRecord(request.resource.data);
+          && isValidBaseRecord(request.resource.data)
+          && (!('due_date' in request.resource.data) || request.resource.data.due_date is string);
         allow update: if isOwner(userId)
           && request.resource.data.keys().hasOnly([
             'amount',
@@ -174,7 +181,8 @@ service cloud.firestore {
             'timestamp',
             'renewal_date'
           ])
-          && isValidBaseRecord(request.resource.data);
+          && isValidBaseRecord(request.resource.data)
+          && (!('renewal_date' in request.resource.data) || request.resource.data.renewal_date is string);
         allow update: if isOwner(userId)
           && request.resource.data.keys().hasOnly([
             'amount',

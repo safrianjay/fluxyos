@@ -1,20 +1,71 @@
-exports.handler = async (event, context) => {
+const ALLOWED_ORIGINS = [
+    'https://fluxyos.com',
+    'https://www.fluxyos.com',
+    'http://localhost:8000',
+    'http://127.0.0.1:5500',
+];
+
+const MAX_MESSAGE_LENGTH = 500;
+
+function getCorsHeaders(requestOrigin) {
+    const origin = ALLOWED_ORIGINS.includes(requestOrigin) ? requestOrigin : ALLOWED_ORIGINS[0];
+    return {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Content-Type': 'application/json',
+        'Vary': 'Origin',
+    };
+}
+
+async function verifyFirebaseToken(token) {
+    const apiKey = process.env.FIREBASE_API_KEY;
+    if (!apiKey) return null;
+    try {
+        const res = await fetch(
+            `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idToken: token }),
+            }
+        );
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.users?.[0] ?? null;
+    } catch {
+        return null;
+    }
+}
+
+function extractToken(event) {
+    const auth = event.headers?.authorization || event.headers?.Authorization || '';
+    if (auth.startsWith('Bearer ')) return auth.slice(7);
+    return null;
+}
+
+exports.handler = async (event) => {
     const path = event.path.replace('/.netlify/functions/api', '').replace('/api/v1', '');
     const method = event.httpMethod;
-
-    const headers = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Content-Type': 'application/json'
-    };
+    const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
+    const headers = getCorsHeaders(requestOrigin);
 
     if (method === 'OPTIONS') {
         return { statusCode: 204, headers };
     }
 
+    // Verify Firebase ID token on all non-OPTIONS requests
+    const token = extractToken(event);
+    if (!token) {
+        return { statusCode: 401, headers, body: JSON.stringify({ message: 'Missing authorization token' }) };
+    }
+    const user = await verifyFirebaseToken(token);
+    if (!user) {
+        return { statusCode: 401, headers, body: JSON.stringify({ message: 'Invalid or expired token' }) };
+    }
+
     // --- ENDPOINTS ---
 
-    // 1. Dashboard Summary
     if (path === '/dashboard/summary' && method === 'GET') {
         return {
             statusCode: 200,
@@ -30,7 +81,6 @@ exports.handler = async (event, context) => {
         };
     }
 
-    // 2. Ledger
     if (path === '/ledger' && method === 'GET') {
         return {
             statusCode: 200,
@@ -44,7 +94,6 @@ exports.handler = async (event, context) => {
         };
     }
 
-    // 3. Bills
     if (path === '/bills' && method === 'GET') {
         return {
             statusCode: 200,
@@ -57,11 +106,23 @@ exports.handler = async (event, context) => {
         };
     }
 
-    // 4. Brain Chat
     if (path === '/chat' && method === 'POST') {
-        const { message } = JSON.parse(event.body);
+        let message;
+        try {
+            const body = JSON.parse(event.body || '{}');
+            message = typeof body.message === 'string' ? body.message.trim() : '';
+        } catch {
+            return { statusCode: 400, headers, body: JSON.stringify({ message: 'Invalid JSON body' }) };
+        }
+
+        if (!message) {
+            return { statusCode: 400, headers, body: JSON.stringify({ message: 'message is required' }) };
+        }
+        if (message.length > MAX_MESSAGE_LENGTH) {
+            return { statusCode: 400, headers, body: JSON.stringify({ message: `message must be ${MAX_MESSAGE_LENGTH} characters or fewer` }) };
+        }
+
         let reply = "I'm FluxyOS Brain. I can help you analyze your financial data.";
-        
         const msg = message.toLowerCase();
         if (msg.includes('spend') || msg.includes('opex')) {
             reply = "You spent Rp 682M this month. Your biggest expense was WeWork Office Rent (Rp 45M).";
@@ -70,7 +131,7 @@ exports.handler = async (event, context) => {
         } else if (msg.includes('bill')) {
             reply = "You have 3 upcoming bills. The next one is Office Rent due on May 10th.";
         }
-        
+
         return {
             statusCode: 200,
             headers,

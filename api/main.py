@@ -1,31 +1,64 @@
 from typing import List
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import datetime
 import os
+import json
+import urllib.request
+from jose import jwt, JWTError
 
-# Import local schemas
-# Note: Ensure schemas.py exists in the same directory or adjust path
 try:
     from schemas import DashboardSummary, TransactionResponse, ChatRequest, ChatResponse
 except ImportError:
-    # Fallback if schemas aren't found during direct execution
     from .schemas import DashboardSummary, TransactionResponse, ChatRequest, ChatResponse
 
 app = FastAPI(title="FluxyOS API", version="2.4.1")
 
-# SECURITY: CORS Configuration
+# CORS: read allowed origins from env — never use wildcard with credentials
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000,http://127.0.0.1:5500")
+ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
+# Firebase token verification
+FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "")
+_bearer = HTTPBearer()
+
+def _fetch_google_public_keys() -> dict:
+    url = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
+    with urllib.request.urlopen(url, timeout=5) as resp:
+        return json.loads(resp.read())
+
+def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depends(_bearer)):
+    token = credentials.credentials
+    try:
+        header = jwt.get_unverified_header(token)
+        certs = _fetch_google_public_keys()
+        public_key = certs.get(header.get("kid"))
+        if not public_key:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        payload = jwt.decode(
+            token,
+            public_key,
+            algorithms=["RS256"],
+            audience=FIREBASE_PROJECT_ID,
+            issuer=f"https://securetoken.google.com/{FIREBASE_PROJECT_ID}",
+        )
+        return payload
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+
 @app.get("/api/v1/dashboard/summary", response_model=DashboardSummary)
-async def get_dashboard_summary():
+async def get_dashboard_summary(_user=Depends(verify_firebase_token)):
     return {
         "revenue": "Rp 2.845M",
         "revenue_change": "14.2%",
@@ -36,7 +69,7 @@ async def get_dashboard_summary():
     }
 
 @app.get("/api/v1/dashboard/ledger", response_model=List[TransactionResponse])
-async def get_ledger():
+async def get_ledger(_user=Depends(verify_firebase_token)):
     return [
         {
             "id": 1,
@@ -61,19 +94,19 @@ async def get_ledger():
     ]
 
 @app.post("/api/v1/brain/chat", response_model=ChatResponse)
-async def brain_chat(request: ChatRequest):
+async def brain_chat(request: ChatRequest, _user=Depends(verify_firebase_token)):
     return {
         "response": "I'm FluxyOS Brain. I can help you analyze your transactions.",
         "suggested_action": "View Insights"
     }
 
-# MOUNT STATIC FILES
-# This allows you to visit http://localhost:8000/dashboard.html
-# and bypass the "ERR_ACCESS_DENIED" local file security error.
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-app.mount("/", StaticFiles(directory=parent_dir, html=True), name="static")
+# Dev-only static file serving. In production, Netlify serves these directly.
+# Never enable this in production — it would expose .env and config files.
+if os.getenv("ENVIRONMENT", "production") == "development":
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(current_dir)
+    app.mount("/", StaticFiles(directory=parent_dir, html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

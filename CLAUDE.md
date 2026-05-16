@@ -26,12 +26,12 @@ The full QA checklist lives at:
 
 Before implementing any feature, page, section, component, UI enhancement, business logic change, chart, table change, modal, AI behavior, or workflow — read both of these files first:
 
-1. **`PROJECT_BACKGROUND.md`** — architecture, database schema, field names, function signatures, and conventions
-2. **`product_ux_feature_intake_framework.md`** — product logic, feature classification, scope, and UX requirements
+1. **`docs/PROJECT_BACKGROUND.md`** — architecture, database schema, field names, function signatures, and conventions
+2. **`docs/product_ux_feature_intake_framework.md`** — product logic, feature classification, scope, and UX requirements
 
 If the feature request cannot answer the framework's core questions (user problem, business value, job to be done, scope), it is not ready to build.
 
-Key things PROJECT_BACKGROUND.md covers that prevent mistakes:
+Key things docs/PROJECT_BACKGROUND.md covers that prevent mistakes:
 - Exact Firestore field names (`vendor_name` not `vendor`, `type` is lowercase `"revenue"`/`"expense"`)
 - Amount must be stored as raw integer — never formatted string
 - Exact function signatures for `showAddTransactionModal`, `showToast`, `renderEmptyState`
@@ -51,7 +51,7 @@ Key things PROJECT_BACKGROUND.md covers that prevent mistakes:
 
 ## SEO & AI Overview Optimization
 
-Full SEO strategy lives in **`SEO_STRATEGY.md`** — read before adding new
+Full SEO strategy lives in **`docs/SEO_STRATEGY.md`** — read before adding new
 landing pages or changing meta/title/heading content.
 
 Quick rules:
@@ -65,13 +65,13 @@ Quick rules:
 
 ## Localization (Bahasa Indonesia)
 
-Full localization strategy lives in **`LOCALIZATION_PLAN.md`** — read before
+Full localization strategy lives in **`docs/LOCALIZATION_PLAN.md`** — read before
 making any user-facing copy change.
 
 Quick rules:
 - Indonesian translations live at `/id/*.html` (mirror of root structure).
 - Tone is **casual professional** for SMB owners — pronoun "Anda", short sentences,
-  active verbs, no bureaucratic language. See LOCALIZATION_PLAN.md §2 for the
+  active verbs, no bureaucratic language. See docs/LOCALIZATION_PLAN.md §2 for the
   glossary and sample translations.
 - **Brand & product names stay English** everywhere (FluxyOS, Fluxy AI, Revenue
   Sync, Vendor Spend, Receipt Capture, Dynamic Budgeting, AI Agents, plus all
@@ -79,7 +79,7 @@ Quick rules:
 - **Pair edits.** Any change to user-facing copy in an EN page must include the
   matching update to its `/id/` counterpart in the same commit. Don't ship
   English-only copy changes.
-- New product term not in the glossary? Add it to LOCALIZATION_PLAN.md §2
+- New product term not in the glossary? Add it to docs/LOCALIZATION_PLAN.md §2
   before translating, so future copy stays consistent.
 
 ## Key Conventions
