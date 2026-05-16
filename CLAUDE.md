@@ -1,24 +1,29 @@
 # FluxyOS — Claude Working Rules
 
-## QA Enforcement (MANDATORY) — see QA_CHECKLIST.md
+## QA Enforcement — Hook-Gated
 
-Every change — UI, new page, new feature, bug fix, or logic update — must follow this workflow before being marked complete:
+A PreToolUse hook at `.claude/hooks/qa-gate.sh` enforces the workflow at the
+harness level:
 
-```
-Plan → Build → QA → Fix (if needed) → Push
-```
+- **Pushes to `main`/`master` are BLOCKED** unless the command contains
+  `QA_PASS=1`. To bypass the gate, prove QA was done and re-run as
+  `QA_PASS=1 git ... push origin main`.
+- Edits to `firestore.rules`, `storage.rules`, the dashboard HTML pages, and
+  `netlify.toml` print a soft reminder pointing to the docs that matter for
+  that change type.
 
-The full QA checklist lives at:
-`/Users/slumdogmacbookair/.claude/plans/fix-the-error-on-nifty-crescent.md`
+This means text-only rules ("MANDATORY") below are now backed by a real gate.
+If you ignore the workflow, the push will fail.
 
-### Minimum checks after every change:
-1. Run **Smoke Tests** (Section 1 of QA plan) — always, no exceptions
-2. Run the **Change Type** checklist that matches what was modified
-3. Run **Section F (Database & Logic)** if any data write, read, or calculation was touched
-4. Run **Cross-Page Regression** (Section 3) if shared files were modified
-5. Pass the **Final Gate** (Section 4) before pushing to main
+### Before adding `QA_PASS=1`, verify:
 
-**A task is not done until QA passes. Do not push to main with failing checks.**
+1. Every new file reference (CSS, JS, image) actually EXISTS — `ls` it.
+2. Smoke-tested the affected page in a real browser.
+3. Browser console is clean (no CSP, CORS, 404, or Firebase errors).
+4. Read `docs/QA_CHECKLIST.md` sections matching the change type.
+5. Read `docs/PROJECT_BACKGROUND.md` if data layer or Firestore was touched.
+
+**A task is not done until QA passes. The hook will not let you forget.**
 
 ---
 

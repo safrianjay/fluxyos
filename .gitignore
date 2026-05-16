@@ -27,3 +27,6 @@ Thumbs.db
 
 # Local Netlify folder
 .netlify
+
+# Claude Code — personal/local overrides only; commit settings.json and hooks
+.claude/settings.local.json
