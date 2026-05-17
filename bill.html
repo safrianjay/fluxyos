@@ -44,8 +44,12 @@
                         <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Bills & Payments</h1>
                         <p class="text-[14px] text-gray-500 mt-1">Track upcoming bills, vendor invoices, and payable obligations before they become transactions.</p>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <button id="bill-export-btn" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Export CSV</button>
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div id="bill-date-range-picker"></div>
+                        <button id="download-csv-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60" disabled>
+                            <svg id="download-csv-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
+                            <span id="download-csv-label">Download CSV</span>
+                        </button>
                         <button onclick="window.showAddTransactionModal({ title: 'Add New Bill', submitLabel: 'Save Bill', defaultCategory: 'Operations', context: 'bill' })" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                             Add New Bill
@@ -172,10 +176,12 @@
 
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/date-range-picker.js"></script>
 
     <script type="module">
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { collection, getDocs, limit, orderBy, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import DataService from './assets/js/db-service.js';
 
         const firebaseConfig = {
@@ -192,9 +198,62 @@
         const ds = new DataService(app);
 
         const BILL_PAGE_SIZE = 10;
+        const BILL_LOAD_LIMIT = 1000;
         let allBills = [];
         let filteredBills = [];
         let billPaginator = null;
+
+        // ── Date Range State & Helpers ───────────────────────────────────────
+
+        function getDayKey(date = new Date()) {
+            return [
+                date.getFullYear(),
+                String(date.getMonth() + 1).padStart(2, '0'),
+                String(date.getDate()).padStart(2, '0')
+            ].join('-');
+        }
+        function getMonthStartKey(date = new Date()) {
+            return getDayKey(new Date(date.getFullYear(), date.getMonth(), 1));
+        }
+        function getMonthEndKey(date = new Date()) {
+            return getDayKey(new Date(date.getFullYear(), date.getMonth() + 1, 0));
+        }
+        function parseDayKey(dayKey) {
+            const [year, month, day] = dayKey.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+        function addDays(dayKey, delta) {
+            const date = parseDayKey(dayKey);
+            date.setDate(date.getDate() + delta);
+            return getDayKey(date);
+        }
+
+        let billRangeStart = getMonthStartKey();
+        let billRangeEnd = getMonthEndKey();
+
+        window.FluxyDateRangePicker?.mount('#bill-date-range-picker', {
+            start: billRangeStart,
+            end: billRangeEnd,
+            onChange: ({ start, end }) => {
+                billRangeStart = start;
+                billRangeEnd = end;
+                window.loadBills();
+            }
+        });
+
+        async function getBillsForRange(userId) {
+            const start = parseDayKey(billRangeStart);
+            const end = parseDayKey(addDays(billRangeEnd, 1));
+            const q = query(
+                collection(ds.db, `users/${userId}/bills`),
+                where('timestamp', '>=', Timestamp.fromDate(start)),
+                where('timestamp', '<', Timestamp.fromDate(end)),
+                orderBy('timestamp', 'desc'),
+                limit(BILL_LOAD_LIMIT)
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        }
 
         // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -526,8 +585,86 @@
 
         document.getElementById('bill-search-input').addEventListener('input', (e) => filterBills(e.target.value));
 
-        document.getElementById('bill-export-btn').addEventListener('click', () => {
-            window.showToast('Bills export is coming soon.', 'info');
+        // ── CSV Export ────────────────────────────────────────────────────────
+
+        function formatCsvDate(timestamp) {
+            if (!timestamp?.toDate) return '';
+            return timestamp.toDate().toISOString();
+        }
+
+        function escapeCsvValue(value) {
+            const text = String(value ?? '');
+            return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+        }
+
+        function buildBillsCsv(rows) {
+            const headers = ['Date', 'Vendor', 'Category', 'Amount', 'Status', 'Due Date'];
+            const records = rows.map(row => [
+                formatCsvDate(row.timestamp),
+                row.vendor_name,
+                row.category,
+                row.amount,
+                getBillDisplayStatus(row),
+                formatCsvDate(row.due_date)
+            ]);
+
+            return [headers, ...records]
+                .map(record => record.map(escapeCsvValue).join(','))
+                .join('\n');
+        }
+
+        function downloadTextFile(filename, text) {
+            const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function setDownloadButtonState(state) {
+            const button = document.getElementById('download-csv-btn');
+            const label = document.getElementById('download-csv-label');
+            const icon = document.getElementById('download-csv-icon');
+            if (!button || !label || !icon) return;
+
+            if (state === 'loading') {
+                button.disabled = true;
+                button.classList.add('ring-2', 'ring-orange-100');
+                icon.classList.add('animate-bounce');
+                label.textContent = 'Exporting...';
+                return;
+            }
+
+            if (state === 'success') {
+                icon.classList.remove('animate-bounce');
+                button.classList.remove('ring-2', 'ring-orange-100');
+                button.classList.add('border-green-200', 'text-green-700', 'bg-green-50');
+                label.textContent = 'Downloaded';
+                return;
+            }
+
+            icon.classList.remove('animate-bounce');
+            button.classList.remove('ring-2', 'ring-orange-100', 'border-green-200', 'text-green-700', 'bg-green-50');
+            label.textContent = 'Download CSV';
+            button.disabled = allBills.length === 0;
+        }
+
+        document.getElementById('download-csv-btn')?.addEventListener('click', () => {
+            if (allBills.length === 0) return;
+
+            setDownloadButtonState('loading');
+            window.setTimeout(() => {
+                const csv = buildBillsCsv(allBills);
+                const date = new Date().toISOString().slice(0, 10);
+                const period = billRangeStart === billRangeEnd ? billRangeStart : `${billRangeStart}-to-${billRangeEnd}`;
+                downloadTextFile(`fluxyos-bills-${period || date}.csv`, csv);
+                setDownloadButtonState('success');
+                window.setTimeout(() => setDownloadButtonState('idle'), 1200);
+            }, 180);
         });
 
         // ── Init Paginator ────────────────────────────────────────────────────
@@ -553,7 +690,9 @@
             const user = auth.currentUser;
             if (!user) return;
 
-            allBills = await ds.getBills(user.uid);
+            const downloadBtn = document.getElementById('download-csv-btn');
+            allBills = await getBillsForRange(user.uid);
+            if (downloadBtn) downloadBtn.disabled = allBills.length === 0;
 
             const summary = getBillsSummary(allBills);
             renderSummaryCards(summary);
