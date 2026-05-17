@@ -281,3 +281,53 @@ After adding or changing a marketing nav item:
 | Creating a new modal from scratch for data entry | Use `window.showAddTransactionModal()` with a custom context instead |
 | Using `document.addEventListener('DOMContentLoaded', fn)` | Use `readyState` guard pattern (see `fluxyos.js`) |
 | Pushing before QA passes | Run `QA_CHECKLIST.md` Smoke Tests first — always |
+
+---
+
+## Recipe 7: Add Amplitude-Style Hover to a Bar Chart
+
+Every new bar/column chart MUST use the shared `window.attachChartHover` helper. See [DESIGN_SYSTEM.md §4 Charts](DESIGN_SYSTEM.md) for the contract.
+
+### Step 1 — Render bars with data attributes
+
+Mark every bar element with `data-chart-bar` and any data the tooltip needs as `data-*` attributes.
+
+```js
+container.innerHTML = items.map(item => `
+    <div data-chart-bar data-label="${item.label}" data-value="${item.value}" class="...">
+        <div class="bg-[#EA580C] ..." style="height: ${pct}%"></div>
+    </div>
+`).join('');
+```
+
+### Step 2 — Attach the shared helper after every render
+
+```js
+window.attachChartHover(container, {
+    bars: '[data-chart-bar]',
+    orientation: 'vertical',           // 'vertical' | 'horizontal' (no crosshair when horizontal)
+    buildTooltip: (barEl) => `
+        <div class="chart-tooltip-header">${barEl.dataset.label}</div>
+        <div class="chart-tooltip-row">
+            <span class="chart-tooltip-swatch" style="background:#EA580C"></span>
+            <span class="chart-tooltip-label">Revenue</span>
+            <span class="chart-tooltip-value">${formatCurrencyIDR(barEl.dataset.value)}</span>
+        </div>
+    `
+});
+```
+
+The helper is idempotent — safe to call after every re-render.
+
+### Step 3 — Do NOT
+
+- Do not use the native `title` attribute on bars.
+- Do not use Tailwind `group-hover` tooltip spans inside bars.
+- Do not write page-local mousemove or positioning code.
+- Do not invent new tooltip colors or shapes — use the shared `.chart-tooltip*` classes from `shared-dashboard.css`.
+
+### Step 4 — QA
+
+Hover several bars, including the leftmost and rightmost. The tooltip flips so it never clips the chart container. The crosshair follows. The active bar brightens. Moving off the chart hides everything.
+
+Reference implementations: Revenue Sync Volume in `revenue-sync.html`, Ledger Volume in `ledger.html`.

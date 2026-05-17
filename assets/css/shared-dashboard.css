@@ -304,3 +304,76 @@ main > header {
     0%, 100% { opacity: 1; }
     50% { opacity: .5; }
 }
+
+/* ── Charts (Amplitude-style hover) ───────────────────────────────────
+   Used by every bar/column chart via window.attachChartHover().
+   See docs/DESIGN_SYSTEM.md §4 Charts for the contract. */
+
+.chart-tooltip {
+    position: absolute;
+    z-index: 30;
+    pointer-events: none;
+    background: #0B0F19;
+    color: #F8FAFC;
+    padding: 8px 12px;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(2px);
+    transition: opacity 150ms ease, transform 150ms ease;
+    font-variant-numeric: tabular-nums;
+}
+.chart-tooltip.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+.chart-tooltip-header {
+    font-size: 10px;
+    font-weight: 700;
+    color: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+}
+.chart-tooltip-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+.chart-tooltip-row + .chart-tooltip-row {
+    margin-top: 2px;
+}
+.chart-tooltip-swatch {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+.chart-tooltip-label {
+    color: #CBD5E1;
+}
+.chart-tooltip-value {
+    font-weight: 700;
+    color: #F8FAFC;
+    margin-left: auto;
+}
+
+.chart-crosshair {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgba(15, 23, 42, 0.12);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 120ms ease;
+}
+.chart-crosshair.is-visible { opacity: 1; }
+
+.chart-bar-active {
+    filter: brightness(1.08);
+}

@@ -592,7 +592,7 @@
                     <div class="flex-1 overflow-x-auto min-h-[242px]">
                         <div class="flex items-end gap-2 h-full" style="min-width: max(100%, ${volume.length * 52}px)">
                             ${volume.map(item => `
-                            <div class="flex-shrink-0 w-11 flex flex-col items-center gap-1.5">
+                            <div data-chart-bar data-label="${item.label}" data-count="${item.count}" class="flex-shrink-0 w-11 flex flex-col items-center gap-1.5">
                                 <div class="text-[11px] font-bold text-slate-700">${item.count}</div>
                                 <div class="w-full rounded-t-md bg-blue-500 shadow-sm" style="height: ${Math.max((item.count / maxCount) * 190, 16)}px"></div>
                                 <div class="text-[10px] font-semibold text-slate-500 whitespace-nowrap">${item.label}</div>
@@ -606,6 +606,23 @@
                     </div>
                 </div>
             `;
+
+            window.attachChartHover?.(container, {
+                bars: '[data-chart-bar]',
+                orientation: 'vertical',
+                buildTooltip: (barEl) => {
+                    const label = barEl.dataset.label || '';
+                    const count = Number(barEl.dataset.count) || 0;
+                    return `
+                        <div class="chart-tooltip-header">${label.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c])}</div>
+                        <div class="chart-tooltip-row">
+                            <span class="chart-tooltip-swatch" style="background:#3B82F6"></span>
+                            <span class="chart-tooltip-label">Transactions</span>
+                            <span class="chart-tooltip-value">${count.toLocaleString()}</span>
+                        </div>
+                    `;
+                }
+            });
         }
 
         function getStatusBadgeClass(status) {

@@ -527,11 +527,8 @@
                 const heightPct = Math.max(2, (b.total / max) * 100);
                 const cls = b.total > 0 ? 'bg-[#EA580C]' : 'bg-gray-100';
                 return `
-                    <div class="group relative h-full flex items-end" style="width: calc(${widthPct}% - ${barGap}px);">
+                    <div data-chart-bar data-key="${escapeHtml(b.key)}" data-total="${b.total}" class="relative h-full flex items-end" style="width: calc(${widthPct}% - ${barGap}px);">
                         <div class="${cls} rounded-t w-full" style="height: ${heightPct}%;"></div>
-                        <span class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap bg-gray-900 text-white text-[11px] font-medium px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                            ${escapeHtml(b.key)} · ${escapeHtml(formatCurrencyIDR(b.total))}
-                        </span>
                     </div>
                 `;
             }).join('');
@@ -543,6 +540,23 @@
                     <span>${escapeHtml(revenueRangeEnd)}</span>
                 </div>
             `;
+
+            window.attachChartHover?.(container, {
+                bars: '[data-chart-bar]',
+                orientation: 'vertical',
+                buildTooltip: (barEl) => {
+                    const key = barEl.dataset.key || '';
+                    const total = Number(barEl.dataset.total) || 0;
+                    return `
+                        <div class="chart-tooltip-header">${escapeHtml(key)}</div>
+                        <div class="chart-tooltip-row">
+                            <span class="chart-tooltip-swatch" style="background:#EA580C"></span>
+                            <span class="chart-tooltip-label">Revenue</span>
+                            <span class="chart-tooltip-value">${escapeHtml(formatCurrencyIDR(total))}</span>
+                        </div>
+                    `;
+                }
+            });
         }
 
         function renderBreakdownChart(rows) {

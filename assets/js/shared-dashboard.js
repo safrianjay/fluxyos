@@ -1055,3 +1055,134 @@ window.renderShimmer = function(containerId, rowCount = 5) {
 
     container.innerHTML = rows;
 };
+
+// ─── Chart Hover (Amplitude-style) ────────────────────────────────
+// Wires crosshair + active-bar emphasis + a dark-navy tooltip card to any bar
+// chart container. Required for every bar/column chart in the app — see
+// docs/DESIGN_SYSTEM.md §4 Charts and docs/COMPONENT_GUIDE.md Recipe 7.
+//
+// Usage:
+//   window.attachChartHover(chartEl, {
+//       bars: '[data-chart-bar]',
+//       orientation: 'vertical',         // 'vertical' | 'horizontal'
+//       buildTooltip: (barEl, index) => '<html>'
+//   });
+//
+// Idempotent — safe to call after every innerHTML re-render. Returns
+// { destroy() } so callers can tear it down.
+window.attachChartHover = function attachChartHover(container, options) {
+    if (!container || !options) return { destroy() {} };
+    const { bars: barSelector, buildTooltip, orientation = 'vertical' } = options;
+
+    const bars = typeof barSelector === 'string'
+        ? Array.from(container.querySelectorAll(barSelector))
+        : Array.from(barSelector || []);
+    if (bars.length === 0 || typeof buildTooltip !== 'function') {
+        return { destroy() {} };
+    }
+
+    if (getComputedStyle(container).position === 'static') {
+        container.style.position = 'relative';
+    }
+
+    let tooltip = container.querySelector(':scope > .chart-tooltip');
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.className = 'chart-tooltip';
+        container.appendChild(tooltip);
+    }
+
+    let crosshair = container.querySelector(':scope > .chart-crosshair');
+    if (orientation === 'vertical') {
+        if (!crosshair) {
+            crosshair = document.createElement('div');
+            crosshair.className = 'chart-crosshair';
+            container.appendChild(crosshair);
+        }
+    } else if (crosshair) {
+        crosshair.remove();
+        crosshair = null;
+    }
+
+    let activeIndex = -1;
+
+    function positionTooltip() {
+        if (activeIndex < 0) return;
+        const containerRect = container.getBoundingClientRect();
+        const barRect = bars[activeIndex].getBoundingClientRect();
+        const barCenterX = barRect.left + barRect.width / 2 - containerRect.left;
+
+        if (crosshair) crosshair.style.left = `${barCenterX}px`;
+
+        const tipRect = tooltip.getBoundingClientRect();
+        let left = barCenterX - tipRect.width / 2;
+        let top = barRect.top - containerRect.top - tipRect.height - 8;
+
+        const padding = 4;
+        if (left < padding) left = padding;
+        if (left + tipRect.width > containerRect.width - padding) {
+            left = Math.max(padding, containerRect.width - tipRect.width - padding);
+        }
+        if (top < padding) {
+            top = barRect.bottom - containerRect.top + 8;
+        }
+
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+    }
+
+    function setActive(index) {
+        if (index === activeIndex) { positionTooltip(); return; }
+        if (activeIndex >= 0) bars[activeIndex]?.classList.remove('chart-bar-active');
+        activeIndex = index;
+
+        if (index < 0) {
+            tooltip.classList.remove('is-visible');
+            if (crosshair) crosshair.classList.remove('is-visible');
+            return;
+        }
+
+        bars[index].classList.add('chart-bar-active');
+        tooltip.innerHTML = buildTooltip(bars[index], index);
+        tooltip.classList.add('is-visible');
+        if (crosshair) crosshair.classList.add('is-visible');
+        positionTooltip();
+    }
+
+    function findBarIndex(clientX, clientY) {
+        let best = -1;
+        let bestDist = Infinity;
+        for (let i = 0; i < bars.length; i++) {
+            const rect = bars[i].getBoundingClientRect();
+            const axis = orientation === 'horizontal'
+                ? Math.abs((rect.top + rect.height / 2) - clientY)
+                : Math.abs((rect.left + rect.width / 2) - clientX);
+            if (axis < bestDist) { bestDist = axis; best = i; }
+        }
+        return best;
+    }
+
+    function onMove(event) {
+        const rect = container.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right ||
+            event.clientY < rect.top || event.clientY > rect.bottom) {
+            setActive(-1);
+            return;
+        }
+        setActive(findBarIndex(event.clientX, event.clientY));
+    }
+
+    function onLeave() { setActive(-1); }
+
+    container.addEventListener('mousemove', onMove);
+    container.addEventListener('mouseleave', onLeave);
+
+    return {
+        destroy() {
+            container.removeEventListener('mousemove', onMove);
+            container.removeEventListener('mouseleave', onLeave);
+            tooltip?.remove();
+            crosshair?.remove();
+        }
+    };
+};

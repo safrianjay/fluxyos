@@ -254,6 +254,21 @@ window.renderEmptyState('ledger-empty-state', {
 ### `window.renderShimmer(containerId, rowCount = 5)`
 Shows skeleton loading rows inside a container while data loads.
 
+### `window.attachChartHover(container, options)`
+**File:** `assets/js/shared-dashboard.js`
+
+Wires Amplitude-style hover (crosshair + active-bar brightness + dark-navy tooltip card with edge flipping) to any bar chart inside `container`.
+
+```javascript
+window.attachChartHover(chartEl, {
+    bars: '[data-chart-bar]',          // selector or NodeList of bar elements
+    orientation: 'vertical',           // 'vertical' | 'horizontal'
+    buildTooltip: (barEl, index) => '<html string>'
+});
+```
+
+Idempotent — safe to call after every `innerHTML` re-render. Returns `{ destroy() }` for teardown. Used by Revenue Sync Volume and Ledger Volume charts. **Required** for any new bar chart per [DESIGN_SYSTEM.md §4 Charts](DESIGN_SYSTEM.md), step-by-step build in [COMPONENT_GUIDE.md Recipe 7](COMPONENT_GUIDE.md).
+
 ### `initUniverseCanvas(canvasElement)`
 **File:** `assets/js/universe-canvas.js`
 Starts the starfield animation on any `<canvas>` element. Used on login page and footer. Colors: dark navy `#0B0F19` base, purple glow only — no cyan or teal.

@@ -62,6 +62,22 @@ This document defines the visual and functional standards for FluxyOS. Follow th
 - **Row Hover**: `hover:bg-gray-50/50`.
 - **Border**: `border-b border-gray-50`.
 
+### 4. Charts (Amplitude-Style Hover)
+
+Every bar/column chart in the app uses the shared `window.attachChartHover(container, options)` helper from `assets/js/shared-dashboard.js` for hover behavior. Do **not** use the native `title` attribute, page-local `group-hover` Tailwind tooltips, or any custom hover code on chart bars.
+
+Hover contract:
+
+- **Crosshair**: a vertical 1px guide follows the cursor on vertical charts (`orientation: 'vertical'`).
+- **Active bar**: the bar nearest the cursor X gets a `chart-bar-active` brightness lift.
+- **Tooltip card**: dark navy (`#0B0F19`), white text, uppercase 10px header (date or label), one row per series with a color swatch + label + tabular-nums value. Styled via `.chart-tooltip*` classes in `shared-dashboard.css`.
+- **Edge handling**: the tooltip horizontally clamps to the container and flips below the bar when there isn't room above.
+- **Re-render safe**: the helper is idempotent — call it after every `innerHTML` write of the chart container.
+
+Mobile/touch: hover is desktop-only. Charts that would hide their data values on small screens must show the value somewhere else (caption, table below, or stacked label like the Ledger Volume chart).
+
+Reference implementations: Revenue Sync Volume (`revenue-sync.html` `renderVolumeChart`) and Ledger Volume (`ledger.html` `renderVolumeChart`). See [docs/COMPONENT_GUIDE.md](COMPONENT_GUIDE.md) Recipe 7 for the build steps and [docs/PROJECT_BACKGROUND.md §6](PROJECT_BACKGROUND.md) for the helper API.
+
 ---
 
 ## 📐 Layout & Spacing
