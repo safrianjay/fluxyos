@@ -436,14 +436,14 @@
             body.innerHTML = visible.map(bill => {
                 const status = getBillDisplayStatus(bill);
                 return `
-                    <tr class="hover:bg-gray-50 transition-colors">
+                    <tr class="hover:bg-gray-50 transition-colors cursor-pointer" data-action="review" data-bill-id="${escapeHtml(bill.id)}">
                         <td class="px-6 py-4 font-semibold text-gray-900">${escapeHtml(bill.vendor_name || 'Unknown')}</td>
                         <td class="px-6 py-4 text-gray-500">${escapeHtml(bill.category || 'Operations')}</td>
                         <td class="px-6 py-4 text-[13px]">${formatDueDateDisplay(bill)}</td>
                         <td class="px-6 py-4 font-mono font-bold text-gray-900">${formatCurrencyIDR(bill.amount)}</td>
                         <td class="px-6 py-4">${getStatusBadge(status)}</td>
                         <td class="px-6 py-4">
-                            <button class="text-[12px] font-bold text-[#EA580C] hover:underline" data-action="review" data-bill-id="${escapeHtml(bill.id)}">Review</button>
+                            <button class="text-[12px] font-bold text-[#EA580C] hover:underline">Review</button>
                         </td>
                     </tr>
                 `;
