@@ -67,7 +67,7 @@
                     <!-- Total Revenue -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
                         <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Revenue</p>
-                        <p id="card-revenue-total" class="text-lg font-bold text-gray-900 mt-1 truncate">—</p>
+                        <p id="card-revenue-total" class="text-2xl font-bold text-gray-900 mt-1 truncate">—</p>
                         <p id="card-revenue-total-sub" class="text-[11px] text-gray-400 mt-1">In selected period</p>
                     </div>
 
@@ -142,23 +142,26 @@
 
                 </div>
 
-                <!-- Needs Review Queue -->
-                <div id="needs-review-section" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hidden">
-                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                        <div>
-                            <h2 class="text-[14px] font-bold text-gray-900">Needs Review</h2>
-                            <p class="text-[12px] text-gray-400 mt-0.5">Duplicate suspects, missing receipts, and refunds in this period</p>
-                        </div>
-                        <span id="needs-review-count" class="text-[12px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded">0</span>
-                    </div>
-                    <div id="needs-review-list" class="divide-y divide-gray-100"></div>
-                </div>
-
                 <!-- Revenue Transactions Table -->
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                        <h2 class="text-[14px] font-bold text-gray-900">Revenue Transactions</h2>
-                        <p id="revenue-table-count" class="text-[12px] text-gray-400"></p>
+                    <div class="px-6 pt-4 border-b border-gray-100">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-[14px] font-bold text-gray-900">Revenue Transactions</h2>
+                                <p class="text-[12px] text-gray-400 mt-0.5">Source of truth for revenue rows. Switch tabs to focus on items needing attention.</p>
+                            </div>
+                            <p id="revenue-table-count" class="text-[12px] text-gray-400 flex-shrink-0"></p>
+                        </div>
+                        <div class="flex items-center gap-1 mt-3 -mb-px overflow-x-auto" role="tablist">
+                            <button type="button" id="tab-all" role="tab" aria-selected="true" class="revenue-tab px-3 py-2 text-[12px] font-bold border-b-2 border-[#EA580C] text-gray-900 whitespace-nowrap flex items-center gap-1.5">
+                                All Revenue
+                                <span id="tab-all-count" class="text-[10px] font-bold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">0</span>
+                            </button>
+                            <button type="button" id="tab-review" role="tab" aria-selected="false" class="revenue-tab px-3 py-2 text-[12px] font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-900 whitespace-nowrap flex items-center gap-1.5">
+                                Needs Review
+                                <span id="tab-review-count" class="text-[10px] font-bold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">0</span>
+                            </button>
+                        </div>
                     </div>
                     <div id="revenue-empty-state" class="hidden"></div>
                     <div id="revenue-table-container" class="overflow-x-auto">
@@ -523,8 +526,14 @@
             const bars = buckets.map(b => {
                 const heightPct = Math.max(2, (b.total / max) * 100);
                 const cls = b.total > 0 ? 'bg-[#EA580C]' : 'bg-gray-100';
-                const label = `${b.key}: ${formatCurrencyIDR(b.total)}`;
-                return `<div class="${cls} rounded-t" style="width: calc(${widthPct}% - ${barGap}px); height: ${heightPct}%;" title="${escapeHtml(label)}"></div>`;
+                return `
+                    <div class="group relative h-full flex items-end" style="width: calc(${widthPct}% - ${barGap}px);">
+                        <div class="${cls} rounded-t w-full" style="height: ${heightPct}%;"></div>
+                        <span class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap bg-gray-900 text-white text-[11px] font-medium px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            ${escapeHtml(b.key)} · ${escapeHtml(formatCurrencyIDR(b.total))}
+                        </span>
+                    </div>
+                `;
             }).join('');
             container.innerHTML = `
                 <div class="flex items-end gap-[${barGap}px] h-[150px]">${bars}</div>
@@ -565,39 +574,53 @@
             }).join('');
         }
 
-        // ── Needs Review Queue ────────────────────────────────────────────────
+        // ── Tabs (All Revenue / Needs Review) ────────────────────────────────
 
-        function renderNeedsReview(rows, dupes) {
-            const section = document.getElementById('needs-review-section');
-            const list = document.getElementById('needs-review-list');
-            const countEl = document.getElementById('needs-review-count');
+        let activeTab = 'all'; // 'all' | 'review'
 
-            const flagged = rows
-                .map(row => ({ row, flags: getRowFlags(row, dupes) }))
-                .filter(item => item.flags.length > 0)
-                .slice(0, 8);
+        function getNeedsReviewRows(rows) {
+            return rows.filter(row => (flagsById.get(row.id) || []).length > 0);
+        }
 
-            if (flagged.length === 0) {
-                section.classList.add('hidden');
-                return;
+        function refreshTabCounts() {
+            const allCount = allRevenue.length;
+            const reviewCount = getNeedsReviewRows(allRevenue).length;
+
+            document.getElementById('tab-all-count').textContent = allCount;
+
+            const reviewBadge = document.getElementById('tab-review-count');
+            reviewBadge.textContent = reviewCount;
+            if (reviewCount > 0) {
+                reviewBadge.classList.remove('bg-gray-100', 'text-gray-500');
+                reviewBadge.classList.add('bg-amber-100', 'text-amber-700');
+            } else {
+                reviewBadge.classList.add('bg-gray-100', 'text-gray-500');
+                reviewBadge.classList.remove('bg-amber-100', 'text-amber-700');
             }
-            section.classList.remove('hidden');
-            countEl.textContent = flagged.length;
+        }
 
-            list.innerHTML = flagged.map(({ row, flags }) => {
-                const dateStr = getRowDate(row)?.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) || '—';
-                const flagsHtml = flags.map(f => `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-700">${escapeHtml(f)}</span>`).join(' ');
-                return `
-                    <div class="px-6 py-3 flex items-center gap-4 cursor-pointer hover:bg-gray-50 transition-colors" data-action="review" data-revenue-id="${escapeHtml(row.id)}">
-                        <div class="min-w-0 flex-1">
-                            <p class="text-[13px] font-semibold text-gray-900 truncate" title="${escapeHtml(getChannelName(row))}">${escapeHtml(getChannelName(row))}</p>
-                            <p class="text-[11px] text-gray-400 mt-0.5">${escapeHtml(dateStr)} · ${escapeHtml(row.category || '—')}</p>
-                        </div>
-                        <div class="flex items-center gap-1.5 flex-shrink-0">${flagsHtml}</div>
-                        <p class="text-[13px] font-bold font-mono text-gray-900 flex-shrink-0">${formatCurrencyIDR(row.amount)}</p>
-                    </div>
-                `;
-            }).join('');
+        function setActiveTab(next) {
+            if (next !== 'all' && next !== 'review') return;
+            activeTab = next;
+
+            const allTab = document.getElementById('tab-all');
+            const reviewTab = document.getElementById('tab-review');
+
+            allTab.classList.toggle('border-[#EA580C]', next === 'all');
+            allTab.classList.toggle('text-gray-900', next === 'all');
+            allTab.classList.toggle('border-transparent', next !== 'all');
+            allTab.classList.toggle('text-gray-500', next !== 'all');
+            allTab.setAttribute('aria-selected', next === 'all' ? 'true' : 'false');
+
+            reviewTab.classList.toggle('border-[#EA580C]', next === 'review');
+            reviewTab.classList.toggle('text-gray-900', next === 'review');
+            reviewTab.classList.toggle('border-transparent', next !== 'review');
+            reviewTab.classList.toggle('text-gray-500', next !== 'review');
+            reviewTab.setAttribute('aria-selected', next === 'review' ? 'true' : 'false');
+
+            // Re-apply search filter against the newly active dataset.
+            const searchValue = document.getElementById('revenue-search-input').value;
+            filterRevenue(searchValue);
         }
 
         // ── Revenue Table ─────────────────────────────────────────────────────
@@ -607,7 +630,11 @@
             if (!body) return;
 
             if (visible.length === 0) {
-                body.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-[13px] text-gray-400">No revenue rows match your search.</td></tr>`;
+                const searchValue = document.getElementById('revenue-search-input')?.value?.trim();
+                const emptyMsg = searchValue
+                    ? 'No revenue rows match your search.'
+                    : (activeTab === 'review' ? 'No flagged rows in this period.' : 'No revenue rows match this view.');
+                body.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-[13px] text-gray-400">${escapeHtml(emptyMsg)}</td></tr>`;
                 return;
             }
 
@@ -666,9 +693,10 @@
         // ── Search ────────────────────────────────────────────────────────────
 
         function filterRevenue(searchQuery) {
+            const base = activeTab === 'review' ? getNeedsReviewRows(allRevenue) : allRevenue;
             const q = searchQuery.trim().toLowerCase();
-            if (!q) { renderRevenueTable(allRevenue); return; }
-            const filtered = allRevenue.filter(row => {
+            if (!q) { renderRevenueTable(base); return; }
+            const filtered = base.filter(row => {
                 const channel = getChannelName(row).toLowerCase();
                 const category = (row.category || '').toLowerCase();
                 const status = getRowStatus(row).toLowerCase();
@@ -760,6 +788,9 @@
         document.getElementById('revenue-drawer-close-footer').addEventListener('click', closeDrawer);
 
         document.getElementById('revenue-search-input').addEventListener('input', (e) => filterRevenue(e.target.value));
+
+        document.getElementById('tab-all').addEventListener('click', () => setActiveTab('all'));
+        document.getElementById('tab-review').addEventListener('click', () => setActiveTab('review'));
 
         // ── CSV Export ────────────────────────────────────────────────────────
 
@@ -882,8 +913,8 @@
             renderChannelsStrip(allRevenue);
             renderVolumeChart(allRevenue);
             renderBreakdownChart(allRevenue);
-            renderNeedsReview(allRevenue, dupes);
-            renderRevenueTable(allRevenue);
+            refreshTabCounts();
+            filterRevenue(document.getElementById('revenue-search-input').value);
         };
     </script>
 </body>
