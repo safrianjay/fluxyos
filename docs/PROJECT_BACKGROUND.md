@@ -50,6 +50,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Sign In | `login.html` | Auth | No | No | No |
 | Dashboard | `dashboard.html` | App | ✅ | **No** | ✅ |
 | Ledger | `ledger.html` | App | ✅ | **No** | ✅ |
+| Revenue Sync | `revenue-sync.html` | App | ✅ | **No** | ✅ |
 | Bills | `bill.html` | App | ✅ | **No** | ✅ |
 | Subscriptions | `subscription.html` | App | ✅ | **No** | ✅ |
 | Integrations | `integration.html` | App | ✅ | **No** | ✅ |
@@ -299,7 +300,7 @@ Sidebar is injected into every app page at `#sidebar`. Active item is detected b
 | Command | Overview | Link | `/dashboard` | ✅ Shipped |
 | Command | Fluxy AI | Button | `window.toggleFluxyAI()` | ✅ Shipped |
 | Money Movement | Transactions | Link | `/ledger` | ✅ Shipped |
-| Money Movement | Revenue Sync | Disabled button | `Soon` | 📋 Planned |
+| Money Movement | Revenue Sync | Link | `/revenue-sync` | ✅ Shipped |
 | Money Movement | Bills | Link | `/bill` | ✅ Shipped |
 | Money Movement | Subscriptions | Link | `/subscription` | ✅ Shipped |
 | Operations | Vendor Spend | Disabled button | `Soon` | 📋 Planned |

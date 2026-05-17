@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Revenue Sync</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
+            <div class="flex items-center gap-4 flex-1">
+                <button class="md:hidden text-gray-500 hover:text-gray-900">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <div class="hidden sm:flex relative w-full max-w-lg">
+                    <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <input id="revenue-search-input" type="text" placeholder="Search channel, description, or amount..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[13px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Fluxy AI
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            <div class="max-w-7xl mx-auto space-y-6">
+
+                <!-- Page Title & Actions -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Revenue Sync</h1>
+                        <p class="text-[14px] text-gray-500 mt-1">Connect sales channels and reconcile every revenue transaction in your ledger.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div id="revenue-date-range-picker"></div>
+                        <button id="download-csv-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60" disabled>
+                            <svg id="download-csv-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
+                            <span id="download-csv-label">Download CSV</span>
+                        </button>
+                        <a href="/integration" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l-4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                            Connect Channel
+                        </a>
+                        <button onclick="window.showAddTransactionModal({ title: 'Add Revenue', submitLabel: 'Add Revenue', defaultType: 'income', defaultCategory: 'Revenue', context: 'transaction' })" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                            Add Revenue
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+
+                    <!-- Total Revenue -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Revenue</p>
+                        <p id="card-revenue-total" class="text-lg font-bold text-gray-900 mt-1 truncate">—</p>
+                        <p id="card-revenue-total-sub" class="text-[11px] text-gray-400 mt-1">In selected period</p>
+                    </div>
+
+                    <!-- Channels Connected -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Channels</p>
+                        <p id="card-channels-connected" class="text-2xl font-bold text-gray-900 mt-1">—</p>
+                        <p class="text-[11px] text-gray-400 mt-1">Detected this period</p>
+                    </div>
+
+                    <!-- Synced Today -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Synced Today</p>
+                        <p id="card-synced-today" class="text-2xl font-bold text-gray-900 mt-1">—</p>
+                        <p id="card-synced-today-sub" class="text-[11px] text-gray-400 mt-1">Revenue rows today</p>
+                    </div>
+
+                    <!-- Needs Review -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Needs Review</p>
+                        <p id="card-needs-review" class="text-2xl font-bold text-gray-900 mt-1">—</p>
+                        <p id="card-needs-review-sub" class="text-[11px] text-gray-400 mt-1">Duplicates &amp; missing receipts</p>
+                    </div>
+
+                    <!-- Reconciliation Health -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Health</p>
+                        <p id="card-reconciliation-health" class="text-2xl font-bold text-gray-900 mt-1">—</p>
+                        <p class="text-[11px] text-gray-400 mt-1">Clean rows ratio</p>
+                    </div>
+
+                </div>
+
+                <!-- Connected Channels -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h2 class="text-[14px] font-bold text-gray-900">Connected Channels</h2>
+                            <p class="text-[12px] text-gray-400 mt-0.5">Revenue grouped by source for this period</p>
+                        </div>
+                        <a href="/integration" class="text-[12px] font-bold text-[#EA580C] hover:underline">Manage in Integrations →</a>
+                    </div>
+                    <div id="channels-strip" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                        <div class="p-4 col-span-4 text-center text-[12px] text-gray-400">Loading channels...</div>
+                    </div>
+                </div>
+
+                <!-- Revenue Activity -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+                    <!-- Volume Over Time -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100">
+                            <h2 class="text-[14px] font-bold text-gray-900">Revenue Volume</h2>
+                            <p class="text-[12px] text-gray-400 mt-0.5">Daily revenue inflow in the selected period</p>
+                        </div>
+                        <div id="revenue-activity-volume" class="p-4 h-[200px] flex items-end justify-center text-[12px] text-gray-400">
+                            Loading chart...
+                        </div>
+                    </div>
+
+                    <!-- Channel Breakdown -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100">
+                            <h2 class="text-[14px] font-bold text-gray-900">Channel Breakdown</h2>
+                            <p class="text-[12px] text-gray-400 mt-0.5">Share of period revenue by source</p>
+                        </div>
+                        <div id="revenue-activity-breakdown" class="p-4 h-[200px] flex items-center justify-center text-[12px] text-gray-400">
+                            Loading chart...
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Needs Review Queue -->
+                <div id="needs-review-section" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h2 class="text-[14px] font-bold text-gray-900">Needs Review</h2>
+                            <p class="text-[12px] text-gray-400 mt-0.5">Duplicate suspects, missing receipts, and refunds in this period</p>
+                        </div>
+                        <span id="needs-review-count" class="text-[12px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded">0</span>
+                    </div>
+                    <div id="needs-review-list" class="divide-y divide-gray-100"></div>
+                </div>
+
+                <!-- Revenue Transactions Table -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <h2 class="text-[14px] font-bold text-gray-900">Revenue Transactions</h2>
+                        <p id="revenue-table-count" class="text-[12px] text-gray-400"></p>
+                    </div>
+                    <div id="revenue-empty-state" class="hidden"></div>
+                    <div id="revenue-table-container" class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Channel</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Category</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Flag</th>
+                                </tr>
+                            </thead>
+                            <tbody id="revenue-table-body" class="divide-y divide-gray-100 text-[13px]">
+                                <tr>
+                                    <td colspan="6" class="px-6 py-12 text-center text-gray-400">Loading your revenue...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="revenue-pagination" class="hidden border-t border-gray-100 bg-gray-50/50 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <p id="revenue-page-summary" class="text-[12px] font-medium text-gray-500">Showing 0 rows</p>
+                        <div class="flex items-center gap-2">
+                            <button id="revenue-prev-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+                            <span id="revenue-page-indicator" class="min-w-16 text-center text-[12px] font-bold text-gray-600">1 / 1</span>
+                            <button id="revenue-next-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Revenue Detail Drawer — Backdrop -->
+    <div id="revenue-drawer-backdrop" class="fixed inset-0 bg-black/30 z-40 hidden"></div>
+
+    <!-- Revenue Detail Drawer -->
+    <div id="revenue-drawer" class="fixed top-0 right-0 h-full w-full max-w-[420px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div>
+                <h2 class="text-[15px] font-bold text-gray-900">Revenue Details</h2>
+                <p class="text-[12px] text-gray-400 mt-0.5">Review the source and status</p>
+            </div>
+            <button id="revenue-drawer-close-btn" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div id="revenue-drawer-content" class="flex-1 overflow-y-auto px-6 py-5">
+            <!-- Injected by JS -->
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
+            <button id="revenue-drawer-close-footer" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Close</button>
+            <button disabled class="flex-1 px-4 py-2.5 bg-gray-50 text-gray-400 rounded-lg text-[13px] font-medium cursor-not-allowed flex items-center justify-center gap-2">
+                Mark Reconciled
+                <span class="text-[10px] font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/date-range-picker.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { collection, getDocs, limit, orderBy, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import DataService from './assets/js/db-service.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.firebaseapp.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        const REVENUE_PAGE_SIZE = 10;
+        const REVENUE_LOAD_LIMIT = 1000;
+        // Revenue-side transaction types per docs/PROJECT_BACKGROUND.md §4a.
+        const REVENUE_TYPES = new Set(['income', 'revenue', 'refund', 'pending_receivable']);
+
+        let allRevenue = [];
+        let filteredRevenue = [];
+        let revenuePaginator = null;
+        let flagsById = new Map();
+
+        // ── Date Range State & Helpers ───────────────────────────────────────
+
+        function getDayKey(date = new Date()) {
+            return [
+                date.getFullYear(),
+                String(date.getMonth() + 1).padStart(2, '0'),
+                String(date.getDate()).padStart(2, '0')
+            ].join('-');
+        }
+        function getMonthStartKey(date = new Date()) {
+            return getDayKey(new Date(date.getFullYear(), date.getMonth(), 1));
+        }
+        function getMonthEndKey(date = new Date()) {
+            return getDayKey(new Date(date.getFullYear(), date.getMonth() + 1, 0));
+        }
+        function parseDayKey(dayKey) {
+            const [year, month, day] = dayKey.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+        function addDays(dayKey, delta) {
+            const date = parseDayKey(dayKey);
+            date.setDate(date.getDate() + delta);
+            return getDayKey(date);
+        }
+
+        let revenueRangeStart = getMonthStartKey();
+        let revenueRangeEnd = getMonthEndKey();
+
+        window.FluxyDateRangePicker?.mount('#revenue-date-range-picker', {
+            start: revenueRangeStart,
+            end: revenueRangeEnd,
+            onChange: ({ start, end }) => {
+                revenueRangeStart = start;
+                revenueRangeEnd = end;
+                window.loadRevenue();
+            }
+        });
+
+        async function getRevenueForRange(userId) {
+            const start = parseDayKey(revenueRangeStart);
+            const end = parseDayKey(addDays(revenueRangeEnd, 1));
+            const q = query(
+                collection(ds.db, `users/${userId}/transactions`),
+                where('timestamp', '>=', Timestamp.fromDate(start)),
+                where('timestamp', '<', Timestamp.fromDate(end)),
+                orderBy('timestamp', 'desc'),
+                limit(REVENUE_LOAD_LIMIT)
+            );
+            const snapshot = await getDocs(q);
+            const rows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // Type filter applied client-side to avoid composite-index requirement.
+            return rows.filter(row => REVENUE_TYPES.has((row.type || '').toLowerCase()));
+        }
+
+        // ── Helpers ──────────────────────────────────────────────────────────
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function formatCurrencyIDR(amount) {
+            const val = typeof amount === 'number' ? amount : 0;
+            return 'Rp ' + Math.abs(val).toLocaleString('id-ID');
+        }
+
+        function getRowDate(row) {
+            if (!row.timestamp?.toDate) return null;
+            try { return row.timestamp.toDate(); } catch { return null; }
+        }
+
+        function getToday() {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            return d;
+        }
+
+        function getChannelName(row) {
+            const name = (row.vendor_name || '').trim();
+            return name || 'Unknown channel';
+        }
+
+        function getRowAmount(row) {
+            return typeof row.amount === 'number' ? row.amount : 0;
+        }
+
+        function getRowStatus(row) {
+            return row.status || 'Completed';
+        }
+
+        // Duplicate heuristic: same channel + amount + calendar day → flag both.
+        function computeDuplicateFlags(rows) {
+            const buckets = new Map();
+            for (const row of rows) {
+                const date = getRowDate(row);
+                if (!date) continue;
+                const key = `${getChannelName(row).toLowerCase()}|${getRowAmount(row)}|${getDayKey(date)}`;
+                if (!buckets.has(key)) buckets.set(key, []);
+                buckets.get(key).push(row.id);
+            }
+            const dupes = new Set();
+            for (const ids of buckets.values()) {
+                if (ids.length > 1) ids.forEach(id => dupes.add(id));
+            }
+            return dupes;
+        }
+
+        function getRowFlags(row, dupes) {
+            const flags = [];
+            if (dupes.has(row.id)) flags.push('Duplicate');
+            if (getRowStatus(row) === 'Missing Receipt') flags.push('Missing Receipt');
+            if ((row.type || '').toLowerCase() === 'refund') flags.push('Refund');
+            if (!row.vendor_name || !row.vendor_name.trim()) flags.push('No channel');
+            return flags;
+        }
+
+        // ── Summary & KPIs ───────────────────────────────────────────────────
+
+        function getRevenueSummary(rows, dupes) {
+            const today = getToday();
+            const channels = new Set();
+            let total = 0;
+            let syncedToday = 0;
+            let needsReview = 0;
+
+            for (const row of rows) {
+                channels.add(getChannelName(row));
+                total += getRowAmount(row);
+
+                const date = getRowDate(row);
+                if (date && date >= today) syncedToday++;
+
+                const flags = getRowFlags(row, dupes);
+                if (flags.length > 0) needsReview++;
+            }
+
+            const health = rows.length === 0 ? null : Math.round(((rows.length - needsReview) / rows.length) * 100);
+
+            return {
+                totalAmount: total,
+                channelCount: channels.size,
+                syncedToday,
+                needsReview,
+                health,
+                totalRows: rows.length
+            };
+        }
+
+        function renderSummaryCards(summary) {
+            document.getElementById('card-revenue-total').textContent = formatCurrencyIDR(summary.totalAmount);
+            document.getElementById('card-revenue-total-sub').textContent =
+                `${summary.totalRows} row${summary.totalRows !== 1 ? 's' : ''}`;
+
+            document.getElementById('card-channels-connected').textContent = summary.channelCount;
+
+            const syncedEl = document.getElementById('card-synced-today');
+            syncedEl.textContent = summary.syncedToday;
+            syncedEl.className = `text-2xl font-bold mt-1 ${summary.syncedToday > 0 ? 'text-emerald-600' : 'text-gray-900'}`;
+            document.getElementById('card-synced-today-sub').textContent =
+                summary.syncedToday > 0 ? 'Live today' : 'Nothing today yet';
+
+            const needsEl = document.getElementById('card-needs-review');
+            needsEl.textContent = summary.needsReview;
+            needsEl.className = `text-2xl font-bold mt-1 ${summary.needsReview > 0 ? 'text-amber-600' : 'text-gray-900'}`;
+            document.getElementById('card-needs-review-sub').textContent =
+                summary.needsReview > 0 ? 'Items below the chart' : 'Looks clean';
+
+            const healthEl = document.getElementById('card-reconciliation-health');
+            if (summary.health === null) {
+                healthEl.textContent = '—';
+                healthEl.className = 'text-2xl font-bold mt-1 text-gray-900';
+            } else {
+                healthEl.textContent = `${summary.health}%`;
+                healthEl.className = `text-2xl font-bold mt-1 ${summary.health >= 90 ? 'text-emerald-600' : summary.health >= 70 ? 'text-amber-600' : 'text-red-600'}`;
+            }
+        }
+
+        // ── Channels Strip ────────────────────────────────────────────────────
+
+        function groupByChannel(rows) {
+            const map = new Map();
+            for (const row of rows) {
+                const name = getChannelName(row);
+                if (!map.has(name)) {
+                    map.set(name, { name, total: 0, count: 0, latest: null });
+                }
+                const bucket = map.get(name);
+                bucket.total += getRowAmount(row);
+                bucket.count++;
+                const date = getRowDate(row);
+                if (date && (!bucket.latest || date > bucket.latest)) bucket.latest = date;
+            }
+            return [...map.values()].sort((a, b) => b.total - a.total);
+        }
+
+        function renderChannelsStrip(rows) {
+            const container = document.getElementById('channels-strip');
+            if (rows.length === 0) {
+                container.innerHTML = `
+                    <div class="p-6 col-span-4 text-center">
+                        <p class="text-[13px] text-gray-500 mb-3">No revenue rows in this period.</p>
+                        <a href="/integration" class="inline-block px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[12px] font-bold hover:bg-[#D94E0B] transition-colors">Connect a Channel</a>
+                    </div>
+                `;
+                return;
+            }
+
+            const channels = groupByChannel(rows).slice(0, 8);
+            container.innerHTML = channels.map(ch => {
+                const latestText = ch.latest
+                    ? ch.latest.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+                    : '—';
+                const isUnknown = ch.name === 'Unknown channel';
+                return `
+                    <div class="p-4 min-w-0">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-1.5 h-1.5 rounded-full ${isUnknown ? 'bg-amber-500' : 'bg-emerald-500'} flex-shrink-0"></span>
+                            <h3 class="text-[12px] font-bold text-gray-900 truncate" title="${escapeHtml(ch.name)}">${escapeHtml(ch.name)}</h3>
+                        </div>
+                        <p class="text-[16px] font-bold font-mono text-gray-900 truncate">${formatCurrencyIDR(ch.total)}</p>
+                        <p class="text-[11px] text-gray-400 mt-1">${ch.count} row${ch.count !== 1 ? 's' : ''} · last ${escapeHtml(latestText)}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ── Charts (lightweight SVG) ─────────────────────────────────────────
+
+        function bucketByDay(rows) {
+            const start = parseDayKey(revenueRangeStart);
+            const end = parseDayKey(revenueRangeEnd);
+            const days = Math.max(1, Math.floor((end - start) / 86400000) + 1);
+            const buckets = [];
+            for (let i = 0; i < days; i++) {
+                const d = new Date(start);
+                d.setDate(d.getDate() + i);
+                buckets.push({ key: getDayKey(d), total: 0 });
+            }
+            const index = new Map(buckets.map((b, i) => [b.key, i]));
+            for (const row of rows) {
+                const date = getRowDate(row);
+                if (!date) continue;
+                const key = getDayKey(date);
+                if (index.has(key)) buckets[index.get(key)].total += getRowAmount(row);
+            }
+            return buckets;
+        }
+
+        function renderVolumeChart(rows) {
+            const container = document.getElementById('revenue-activity-volume');
+            container.innerHTML = '';
+            if (rows.length === 0) {
+                container.className = 'p-4 h-[200px] flex items-end justify-center text-[12px] text-gray-400';
+                container.textContent = 'No revenue rows in this period.';
+                return;
+            }
+
+            const buckets = bucketByDay(rows);
+            const max = Math.max(...buckets.map(b => b.total), 1);
+
+            container.className = 'p-4 h-[200px]';
+            const barGap = 2;
+            const widthPct = 100 / buckets.length;
+            const bars = buckets.map(b => {
+                const heightPct = Math.max(2, (b.total / max) * 100);
+                const cls = b.total > 0 ? 'bg-[#EA580C]' : 'bg-gray-100';
+                const label = `${b.key}: ${formatCurrencyIDR(b.total)}`;
+                return `<div class="${cls} rounded-t" style="width: calc(${widthPct}% - ${barGap}px); height: ${heightPct}%;" title="${escapeHtml(label)}"></div>`;
+            }).join('');
+            container.innerHTML = `
+                <div class="flex items-end gap-[${barGap}px] h-[150px]">${bars}</div>
+                <div class="flex items-center justify-between mt-3 text-[10px] text-gray-400">
+                    <span>${escapeHtml(revenueRangeStart)}</span>
+                    <span>Max ${formatCurrencyIDR(max)}</span>
+                    <span>${escapeHtml(revenueRangeEnd)}</span>
+                </div>
+            `;
+        }
+
+        function renderBreakdownChart(rows) {
+            const container = document.getElementById('revenue-activity-breakdown');
+            container.innerHTML = '';
+            if (rows.length === 0) {
+                container.className = 'p-4 h-[200px] flex items-center justify-center text-[12px] text-gray-400';
+                container.textContent = 'No revenue rows in this period.';
+                return;
+            }
+
+            const channels = groupByChannel(rows).slice(0, 6);
+            const total = channels.reduce((sum, c) => sum + c.total, 0) || 1;
+
+            container.className = 'p-4 h-[200px] overflow-y-auto';
+            container.innerHTML = channels.map(ch => {
+                const pct = Math.round((ch.total / total) * 100);
+                return `
+                    <div class="mb-2.5 last:mb-0">
+                        <div class="flex items-center justify-between text-[12px] mb-1">
+                            <span class="font-semibold text-gray-700 truncate mr-2" title="${escapeHtml(ch.name)}">${escapeHtml(ch.name)}</span>
+                            <span class="font-mono text-gray-500 flex-shrink-0">${formatCurrencyIDR(ch.total)} · ${pct}%</span>
+                        </div>
+                        <div class="h-2 bg-gray-100 rounded overflow-hidden">
+                            <div class="h-full bg-[#EA580C]" style="width: ${pct}%;"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ── Needs Review Queue ────────────────────────────────────────────────
+
+        function renderNeedsReview(rows, dupes) {
+            const section = document.getElementById('needs-review-section');
+            const list = document.getElementById('needs-review-list');
+            const countEl = document.getElementById('needs-review-count');
+
+            const flagged = rows
+                .map(row => ({ row, flags: getRowFlags(row, dupes) }))
+                .filter(item => item.flags.length > 0)
+                .slice(0, 8);
+
+            if (flagged.length === 0) {
+                section.classList.add('hidden');
+                return;
+            }
+            section.classList.remove('hidden');
+            countEl.textContent = flagged.length;
+
+            list.innerHTML = flagged.map(({ row, flags }) => {
+                const dateStr = getRowDate(row)?.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) || '—';
+                const flagsHtml = flags.map(f => `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-700">${escapeHtml(f)}</span>`).join(' ');
+                return `
+                    <div class="px-6 py-3 flex items-center gap-4 cursor-pointer hover:bg-gray-50 transition-colors" data-action="review" data-revenue-id="${escapeHtml(row.id)}">
+                        <div class="min-w-0 flex-1">
+                            <p class="text-[13px] font-semibold text-gray-900 truncate" title="${escapeHtml(getChannelName(row))}">${escapeHtml(getChannelName(row))}</p>
+                            <p class="text-[11px] text-gray-400 mt-0.5">${escapeHtml(dateStr)} · ${escapeHtml(row.category || '—')}</p>
+                        </div>
+                        <div class="flex items-center gap-1.5 flex-shrink-0">${flagsHtml}</div>
+                        <p class="text-[13px] font-bold font-mono text-gray-900 flex-shrink-0">${formatCurrencyIDR(row.amount)}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ── Revenue Table ─────────────────────────────────────────────────────
+
+        function renderRevenueSlice(visible) {
+            const body = document.getElementById('revenue-table-body');
+            if (!body) return;
+
+            if (visible.length === 0) {
+                body.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-[13px] text-gray-400">No revenue rows match your search.</td></tr>`;
+                return;
+            }
+
+            body.innerHTML = visible.map(row => {
+                const dateStr = getRowDate(row)?.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) || '—';
+                const status = getRowStatus(row);
+                const statusCls = status === 'Missing Receipt' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-50 text-emerald-700';
+                const flags = flagsById.get(row.id) || [];
+                const flagsHtml = flags.length
+                    ? flags.map(f => `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">${escapeHtml(f)}</span>`).join(' ')
+                    : '<span class="text-[11px] text-gray-300">—</span>';
+                return `
+                    <tr class="hover:bg-gray-50 transition-colors cursor-pointer" data-action="review" data-revenue-id="${escapeHtml(row.id)}">
+                        <td class="px-6 py-4 text-gray-500">${escapeHtml(dateStr)}</td>
+                        <td class="px-6 py-4 font-semibold text-gray-900">${escapeHtml(getChannelName(row))}</td>
+                        <td class="px-6 py-4 text-gray-500">${escapeHtml(row.category || '—')}</td>
+                        <td class="px-6 py-4 font-mono font-bold text-gray-900">${formatCurrencyIDR(row.amount)}</td>
+                        <td class="px-6 py-4"><span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${statusCls}">${escapeHtml(status)}</span></td>
+                        <td class="px-6 py-4">${flagsHtml}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderRevenueTable(rows) {
+            const tableContainer = document.getElementById('revenue-table-container');
+            const emptyContainer = document.getElementById('revenue-empty-state');
+            const countEl = document.getElementById('revenue-table-count');
+
+            if (allRevenue.length === 0) {
+                tableContainer.classList.add('hidden');
+                emptyContainer.classList.remove('hidden');
+                window.renderEmptyState('revenue-empty-state', {
+                    title: "No revenue in this period.",
+                    description: "Connect a sales channel to auto-sync revenue, or add a manual revenue entry to get started.",
+                    buttonText: "Add Manual Revenue",
+                    onAction: () => window.showAddTransactionModal({ title: 'Add Revenue', submitLabel: 'Add Revenue', defaultType: 'income', defaultCategory: 'Revenue', context: 'transaction' })
+                });
+                if (countEl) countEl.textContent = '';
+                document.getElementById('revenue-pagination').classList.add('hidden');
+                return;
+            }
+
+            tableContainer.classList.remove('hidden');
+            emptyContainer.classList.add('hidden');
+
+            if (countEl) {
+                countEl.textContent = rows.length === allRevenue.length
+                    ? `${rows.length} row${rows.length !== 1 ? 's' : ''}`
+                    : `${rows.length} of ${allRevenue.length} rows`;
+            }
+
+            revenuePaginator.setRows(rows, renderRevenueSlice);
+        }
+
+        // ── Search ────────────────────────────────────────────────────────────
+
+        function filterRevenue(searchQuery) {
+            const q = searchQuery.trim().toLowerCase();
+            if (!q) { renderRevenueTable(allRevenue); return; }
+            const filtered = allRevenue.filter(row => {
+                const channel = getChannelName(row).toLowerCase();
+                const category = (row.category || '').toLowerCase();
+                const status = getRowStatus(row).toLowerCase();
+                const amount = String(getRowAmount(row));
+                return channel.includes(q) || category.includes(q) || status.includes(q) || amount.includes(q);
+            });
+            renderRevenueTable(filtered);
+        }
+
+        // ── Detail Drawer ─────────────────────────────────────────────────────
+
+        function openDrawer(row) {
+            const date = getRowDate(row);
+            const dateStr = date
+                ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                : 'Unknown date';
+            const status = getRowStatus(row);
+            const statusCls = status === 'Missing Receipt' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-50 text-emerald-700';
+            const flags = flagsById.get(row.id) || [];
+            const flagsHtml = flags.length
+                ? `<div class="flex flex-wrap gap-1.5">${flags.map(f => `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-700">${escapeHtml(f)}</span>`).join('')}</div>`
+                : '<p class="text-[12px] text-gray-400">No flags — looks clean.</p>';
+
+            document.getElementById('revenue-drawer-content').innerHTML = `
+                <div class="space-y-5">
+                    <div><span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${statusCls}">${escapeHtml(status)}</span></div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Channel</p>
+                            <p class="text-[13px] font-bold text-gray-900">${escapeHtml(getChannelName(row))}</p>
+                        </div>
+                        <div>
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Category</p>
+                            <p class="text-[13px] text-gray-700">${escapeHtml(row.category || '—')}</p>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-100 pt-4">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Amount</p>
+                        <p class="text-[28px] font-bold font-mono text-gray-900">${formatCurrencyIDR(row.amount)}</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Date</p>
+                            <p class="text-[13px] text-gray-700">${escapeHtml(dateStr)}</p>
+                        </div>
+                        <div>
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Type</p>
+                            <p class="text-[13px] text-gray-700">${escapeHtml(row.type || 'income')}</p>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-100 pt-4">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reconciliation Flags</p>
+                        ${flagsHtml}
+                    </div>
+
+                    <div class="border-t border-gray-100 pt-4">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Source</p>
+                        <div class="bg-gray-50 rounded-lg p-3 text-[12px] text-gray-500 leading-relaxed">
+                            Channel is derived from the vendor name. Once an integration is connected, real connector metadata will replace this inference.
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('revenue-drawer-backdrop').classList.remove('hidden');
+            requestAnimationFrame(() => {
+                document.getElementById('revenue-drawer').classList.remove('translate-x-full');
+            });
+        }
+
+        function closeDrawer() {
+            document.getElementById('revenue-drawer').classList.add('translate-x-full');
+            document.getElementById('revenue-drawer-backdrop').classList.add('hidden');
+        }
+
+        document.addEventListener('click', (e) => {
+            const target = e.target.closest('[data-action="review"]');
+            if (!target) return;
+            const row = allRevenue.find(r => r.id === target.dataset.revenueId);
+            if (row) openDrawer(row);
+        });
+
+        document.getElementById('revenue-drawer-backdrop').addEventListener('click', closeDrawer);
+        document.getElementById('revenue-drawer-close-btn').addEventListener('click', closeDrawer);
+        document.getElementById('revenue-drawer-close-footer').addEventListener('click', closeDrawer);
+
+        document.getElementById('revenue-search-input').addEventListener('input', (e) => filterRevenue(e.target.value));
+
+        // ── CSV Export ────────────────────────────────────────────────────────
+
+        function formatCsvDate(timestamp) {
+            if (!timestamp?.toDate) return '';
+            return timestamp.toDate().toISOString();
+        }
+
+        function escapeCsvValue(value) {
+            const text = String(value ?? '');
+            return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+        }
+
+        function buildRevenueCsv(rows) {
+            const headers = ['Date', 'Channel', 'Category', 'Type', 'Amount', 'Status', 'Flags'];
+            const records = rows.map(row => [
+                formatCsvDate(row.timestamp),
+                getChannelName(row),
+                row.category || '',
+                row.type || '',
+                getRowAmount(row),
+                getRowStatus(row),
+                (flagsById.get(row.id) || []).join('; ')
+            ]);
+            return [headers, ...records]
+                .map(record => record.map(escapeCsvValue).join(','))
+                .join('\n');
+        }
+
+        function downloadTextFile(filename, text) {
+            const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function setDownloadButtonState(state) {
+            const button = document.getElementById('download-csv-btn');
+            const label = document.getElementById('download-csv-label');
+            const icon = document.getElementById('download-csv-icon');
+            if (!button || !label || !icon) return;
+
+            if (state === 'loading') {
+                button.disabled = true;
+                button.classList.add('ring-2', 'ring-orange-100');
+                icon.classList.add('animate-bounce');
+                label.textContent = 'Exporting...';
+                return;
+            }
+            if (state === 'success') {
+                icon.classList.remove('animate-bounce');
+                button.classList.remove('ring-2', 'ring-orange-100');
+                button.classList.add('border-green-200', 'text-green-700', 'bg-green-50');
+                label.textContent = 'Downloaded';
+                return;
+            }
+            icon.classList.remove('animate-bounce');
+            button.classList.remove('ring-2', 'ring-orange-100', 'border-green-200', 'text-green-700', 'bg-green-50');
+            label.textContent = 'Download CSV';
+            button.disabled = allRevenue.length === 0;
+        }
+
+        document.getElementById('download-csv-btn')?.addEventListener('click', () => {
+            if (allRevenue.length === 0) return;
+            setDownloadButtonState('loading');
+            window.setTimeout(() => {
+                const csv = buildRevenueCsv(allRevenue);
+                const period = revenueRangeStart === revenueRangeEnd ? revenueRangeStart : `${revenueRangeStart}-to-${revenueRangeEnd}`;
+                downloadTextFile(`fluxyos-revenue-${period}.csv`, csv);
+                setDownloadButtonState('success');
+                window.setTimeout(() => setDownloadButtonState('idle'), 1200);
+            }, 180);
+        });
+
+        // ── Init Paginator ────────────────────────────────────────────────────
+
+        revenuePaginator = window.createTablePaginator({
+            pageSize:     REVENUE_PAGE_SIZE,
+            label:        'rows',
+            paginationId: 'revenue-pagination',
+            summaryId:    'revenue-page-summary',
+            indicatorId:  'revenue-page-indicator',
+            prevBtnId:    'revenue-prev-page',
+            nextBtnId:    'revenue-next-page',
+        });
+
+        // ── Auth & Load ───────────────────────────────────────────────────────
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) window.loadRevenue();
+            else window.location.replace('/login');
+        });
+
+        window.loadRevenue = async function () {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            const downloadBtn = document.getElementById('download-csv-btn');
+
+            try {
+                allRevenue = await getRevenueForRange(user.uid);
+            } catch (err) {
+                console.error('Failed to load revenue:', err);
+                window.showToast?.('Could not load revenue. Try again in a moment.', 'error');
+                allRevenue = [];
+            }
+
+            const dupes = computeDuplicateFlags(allRevenue);
+            flagsById = new Map(allRevenue.map(row => [row.id, getRowFlags(row, dupes)]));
+
+            if (downloadBtn) downloadBtn.disabled = allRevenue.length === 0;
+
+            const summary = getRevenueSummary(allRevenue, dupes);
+            renderSummaryCards(summary);
+            renderChannelsStrip(allRevenue);
+            renderVolumeChart(allRevenue);
+            renderBreakdownChart(allRevenue);
+            renderNeedsReview(allRevenue, dupes);
+            renderRevenueTable(allRevenue);
+        };
+    </script>
+</body>
+</html>

@@ -94,7 +94,7 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Bills | ✅ Shipped | Working app page at `/bill` |
 | Subscriptions | ✅ Shipped | Working app page at `/subscription` |
 | Integrations | ✅ Shipped | Working app page at `/integration` |
-| Revenue Sync | 📋 Planned | Visible as disabled `Soon`; no app page yet |
+| Revenue Sync | ✅ Shipped | Working app page at `/revenue-sync` (channels, reconciliation, revenue-only table) |
 | Vendor Spend | 📋 Planned | Visible as disabled `Soon`; no app page yet |
 | Receipt Capture | 📋 Planned | Visible as disabled `Soon`; no app page yet |
 | Budgets | 📋 Planned | Visible as disabled `Soon`; no app page yet |
