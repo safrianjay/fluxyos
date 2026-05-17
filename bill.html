@@ -339,23 +339,25 @@
                 const items = buckets[key];
                 const itemsHtml = items.length === 0
                     ? `<p class="text-[11px] text-gray-400 py-3 text-center">No bills</p>`
-                    : items.map(bill => `
+                    : items.map(bill => {
+                        const vendorName = bill.vendor_name || 'Unknown';
+                        return `
                         <div class="flex items-start justify-between gap-2 py-2.5 border-b border-gray-50 last:border-0 cursor-pointer hover:bg-gray-50 -mx-1 px-1 rounded transition-colors" data-action="review" data-bill-id="${escapeHtml(bill.id)}">
-                            <div class="min-w-0">
-                                <p class="text-[12px] font-semibold text-gray-900 truncate">${escapeHtml(bill.vendor_name || 'Unknown')}</p>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[12px] font-semibold text-gray-900 truncate" title="${escapeHtml(vendorName)}">${escapeHtml(vendorName)}</p>
                                 <p class="text-[11px] text-gray-400 mt-0.5">${getBillDueDate(bill)?.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) || '—'}</p>
                             </div>
                             <p class="text-[12px] font-bold font-mono text-gray-700 flex-shrink-0 mt-0.5">${formatCurrencyIDR(bill.amount)}</p>
                         </div>
-                    `).join('');
+                    `;}).join('');
 
                 return `
-                    <div class="p-4">
+                    <div class="p-4 min-w-0">
                         <div class="flex items-center gap-2 mb-3">
                             <h3 class="text-[11px] font-bold ${headerCls} uppercase tracking-wider">${label}</h3>
                             <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeCls}">${items.length}</span>
                         </div>
-                        <div class="overflow-y-auto max-h-[156px]">${itemsHtml}</div>
+                        <div class="overflow-y-auto overflow-x-hidden max-h-[156px]">${itemsHtml}</div>
                     </div>
                 `;
             }).join('');
