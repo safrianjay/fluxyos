@@ -38,7 +38,7 @@
         </div>
 
         <!-- Entity Switcher (Global HQ) -->
-        <div class="entity-switcher-wrap relative px-3 py-3 border-b border-slate-200 bg-white" id="entity-switcher-wrap">
+        <div class="entity-switcher-wrap relative px-3 py-3 bg-white" id="entity-switcher-wrap">
             <button type="button" id="entity-switcher-btn"
                 class="entity-switcher w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors text-left"
                 aria-haspopup="listbox" aria-expanded="false">
@@ -65,6 +65,9 @@
                 </button>
             </div>
         </div>
+
+        <!-- Divider sized to match the entity switcher (mx-3 mirrors the wrap's px-3) -->
+        <div class="mx-3 border-b border-slate-200" id="entity-switcher-divider"></div>
 
         <!-- Navigation Menu -->
         <div class="flex-1 overflow-y-auto py-6 px-3 flex flex-col items-center sm:items-stretch" id="nav-container">
