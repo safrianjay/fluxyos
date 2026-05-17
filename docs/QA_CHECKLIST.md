@@ -138,6 +138,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 14 | Ledger date filter uses shared `assets/js/date-range-picker.js`, appears beside Download CSV, defaults to the current month, opens on click, has responsive trigger width, supports single-day and range selection without Day/Month tabs, includes Reset/Cancel/Apply actions, disables future dates, and updates ledger cards, activity charts, table rows, pagination, and CSV export scope |
 | 15 | Ledger Status Breakdown and Type Breakdown panels show about 4 rows before scrolling, and the Ledger Activity card does not leave a large empty area under the volume chart |
 | 16 | Ledger search filters the selected date-period rows by vendor/description, category, type, status, amount, or visible date; no-match searches show an inline empty row instead of breaking pagination |
+| 17 | **Chart hover regression** — on every page with a bar chart (`ledger.html`, `revenue-sync.html`, any future chart), hover the **tallest visible bar** and confirm the tooltip never overlaps the chart's axis labels, date footer, or count captions below the bars. Per [DESIGN_SYSTEM.md §4 Charts](../docs/DESIGN_SYSTEM.md), the shared `attachChartHover` helper clamps to the chart container top — do not reintroduce flip-below behavior at any call site. |
 
 ### E. Add Transaction / Bill / Subscription (shared-dashboard.js, db-service.js)
 

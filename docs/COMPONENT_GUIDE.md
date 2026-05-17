@@ -325,6 +325,7 @@ The helper is idempotent — safe to call after every re-render.
 - Do not use Tailwind `group-hover` tooltip spans inside bars.
 - Do not write page-local mousemove or positioning code.
 - Do not invent new tooltip colors or shapes — use the shared `.chart-tooltip*` classes from `shared-dashboard.css`.
+- Do not work around the helper's clamp-to-top behavior with custom flip-below logic. The tooltip never flips below a bar because axes/captions/footers live there. If the tooltip overlaps a tall bar's top, give the chart more headroom (taller container or shorter bars row) instead of fighting the helper.
 
 ### Step 4 — QA
 

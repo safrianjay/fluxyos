@@ -1123,9 +1123,11 @@ window.attachChartHover = function attachChartHover(container, options) {
         if (left + tipRect.width > containerRect.width - padding) {
             left = Math.max(padding, containerRect.width - tipRect.width - padding);
         }
-        if (top < padding) {
-            top = barRect.bottom - containerRect.top + 8;
-        }
+        // Never flip below the bar: chart axes / date captions / count labels
+        // live there, so flipping would overlap them. If there is no room above,
+        // clamp the tooltip to the container top — it may overlap the bar's top
+        // portion for very tall bars, which is acceptable.
+        if (top < padding) top = padding;
 
         tooltip.style.left = `${left}px`;
         tooltip.style.top = `${top}px`;

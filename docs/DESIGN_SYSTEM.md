@@ -71,7 +71,7 @@ Hover contract:
 - **Crosshair**: a vertical 1px guide follows the cursor on vertical charts (`orientation: 'vertical'`).
 - **Active bar**: the bar nearest the cursor X gets a `chart-bar-active` brightness lift.
 - **Tooltip card**: dark navy (`#0B0F19`), white text, uppercase 10px header (date or label), one row per series with a color swatch + label + tabular-nums value. Styled via `.chart-tooltip*` classes in `shared-dashboard.css`.
-- **Edge handling**: the tooltip horizontally clamps to the container and flips below the bar when there isn't room above.
+- **Edge handling**: the tooltip horizontally clamps to the container. It **never flips below a bar** — axes, date captions, and count labels live below bars in nearly every chart design, and flipping would overlap them. When there isn't room above, the helper clamps to the container top (overlapping the bar's top portion slightly, which is acceptable).
 - **Re-render safe**: the helper is idempotent — call it after every `innerHTML` write of the chart container.
 
 Mobile/touch: hover is desktop-only. Charts that would hide their data values on small screens must show the value somewhere else (caption, table below, or stacked label like the Ledger Volume chart).
