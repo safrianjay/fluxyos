@@ -37,6 +37,35 @@
             </div>
         </div>
 
+        <!-- Entity Switcher (Global HQ) -->
+        <div class="entity-switcher-wrap relative px-3 py-3 border-b border-slate-200 bg-white" id="entity-switcher-wrap">
+            <button type="button" id="entity-switcher-btn"
+                class="entity-switcher w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors text-left"
+                aria-haspopup="listbox" aria-expanded="false">
+                <span class="entity-status-dot w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></span>
+                <span class="flex-1 min-w-0">
+                    <span class="entity-name block text-[12px] font-semibold text-[#1E2F4A] truncate leading-tight">Global HQ</span>
+                    <span class="entity-sub block text-[10px] text-slate-500 truncate leading-tight mt-0.5">Consolidated</span>
+                </span>
+                <svg class="entity-chevron w-3 h-3 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+            <div id="entity-switcher-menu" class="entity-menu hidden absolute left-3 right-3 top-[calc(100%-4px)] z-30 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden" role="listbox">
+                <button type="button" class="entity-menu-item w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-50" role="option" aria-selected="true">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></span>
+                    <span class="flex-1 min-w-0">
+                        <span class="block text-[12px] font-semibold text-[#1E2F4A] truncate leading-tight">Global HQ</span>
+                        <span class="block text-[10px] text-slate-500 truncate leading-tight">Consolidated</span>
+                    </span>
+                    <svg class="w-3 h-3 text-[#EA580C] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                </button>
+                <button type="button" class="entity-menu-add w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] text-slate-400 border-t border-slate-100 cursor-not-allowed" disabled>
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Add entity
+                    <span class="ml-auto text-[9px] font-semibold uppercase tracking-wide text-slate-400">Soon</span>
+                </button>
+            </div>
+        </div>
+
         <!-- Navigation Menu -->
         <div class="flex-1 overflow-y-auto py-6 px-3 flex flex-col items-center sm:items-stretch" id="nav-container">
             <p class="section-label px-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 sidebar-hide">Command</p>
@@ -180,7 +209,26 @@
 
         sidebar.innerHTML = sidebarHTML;
         applyAppSidebarTheme(sidebar);
-        
+
+        // Entity Switcher dropdown
+        const entityBtn = document.getElementById('entity-switcher-btn');
+        const entityMenu = document.getElementById('entity-switcher-menu');
+        if (entityBtn && entityMenu) {
+            const closeMenu = () => {
+                entityMenu.classList.add('hidden');
+                entityBtn.setAttribute('aria-expanded', 'false');
+            };
+            entityBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isHidden = entityMenu.classList.toggle('hidden');
+                entityBtn.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
+            });
+            document.addEventListener('click', (e) => {
+                if (!entityMenu.contains(e.target) && !entityBtn.contains(e.target)) closeMenu();
+            });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+        }
+
         // Highlight Active
         const path = window.location.pathname;
         const pageIdMap = {

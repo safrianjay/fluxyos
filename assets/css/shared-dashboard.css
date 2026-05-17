@@ -217,6 +217,23 @@ main > header {
     letter-spacing: 0;
 }
 
+#sidebar.app-sidebar-light .entity-switcher-wrap {
+    padding: 10px 12px;
+}
+#sidebar.app-sidebar-light .entity-switcher {
+    transition: background-color 120ms ease, border-color 120ms ease;
+}
+#sidebar.app-sidebar-light .entity-switcher:focus-visible {
+    outline: 2px solid rgba(234, 88, 12, 0.28);
+    outline-offset: 2px;
+}
+#sidebar.app-sidebar-light .entity-menu {
+    margin-top: 4px;
+}
+#sidebar.app-sidebar-light .entity-menu-item[aria-selected="true"] {
+    background: #FFF7ED;
+}
+
 #sidebar.app-sidebar-light #profile-area {
     height: auto;
     min-height: 0;
