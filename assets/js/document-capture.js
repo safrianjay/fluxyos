@@ -278,16 +278,22 @@
         const content = $('scan-drawer-content');
         const footer = $('scan-drawer-footer');
         content.innerHTML = `
-            <div class="flex flex-col items-center justify-center py-12">
-                <div class="relative w-28 h-28 flex items-center justify-center">
-                    <div class="absolute inset-0 rounded-full ai-gradient-border opacity-70 blur-lg"></div>
-                    <div class="absolute -inset-2 rounded-full bg-gradient-to-br from-[#EA580C]/30 via-[#F97316]/20 to-[#FB923C]/30 blur-2xl animate-pulse"></div>
-                    <div class="relative w-16 h-16 rounded-2xl bg-white shadow-lg ring-1 ring-orange-100 flex items-center justify-center animate-pulse">
-                        <img src="assets/images/favicon.svg" alt="" class="w-10 h-10" aria-hidden="true" onerror="this.style.display='none'">
+            <div class="relative overflow-hidden rounded-2xl bg-white border border-gray-100">
+                <div class="absolute inset-0 scan-loader-bg opacity-25"></div>
+                <div class="absolute inset-0 bg-gradient-to-b from-white/60 via-transparent to-white/60"></div>
+                <div class="relative flex flex-col items-center justify-center py-14 px-6">
+                    <div class="relative w-36 h-36 flex items-center justify-center">
+                        <div class="absolute inset-0 rounded-full scan-loader-bg opacity-60 blur-2xl"></div>
+                        <div class="absolute inset-3 rounded-full scan-loader-bg opacity-50 blur-md"></div>
+                        <div class="relative scan-loader-pulse">
+                            <div class="w-20 h-20 rounded-2xl bg-white shadow-xl ring-1 ring-orange-100 flex items-center justify-center">
+                                <img src="assets/images/favicon.svg" alt="" class="w-12 h-12 scan-loader-spin" aria-hidden="true" onerror="this.style.display='none'">
+                            </div>
+                        </div>
                     </div>
+                    <p class="text-[13px] font-semibold text-gray-900 mt-6">Reading your document with AI…</p>
+                    <p class="text-[12px] text-gray-500 mt-1">This usually takes a few seconds.</p>
                 </div>
-                <p class="text-[13px] font-semibold text-gray-900 mt-6">Reading your document with AI…</p>
-                <p class="text-[12px] text-gray-500 mt-1">This usually takes a few seconds.</p>
             </div>
         `;
         footer.innerHTML = `

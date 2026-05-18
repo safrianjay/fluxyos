@@ -71,6 +71,43 @@ main > header {
     100% { background-position: 0% 50%; }
 }
 
+/* Document Scan loading state — uses landing-page CTA gradient palette */
+.scan-loader-bg {
+    background: linear-gradient(135deg, #EA580C 0%, #F97316 25%, #FB923C 50%, #FED7AA 70%, #F97316 100%);
+    background-size: 300% 300%;
+    animation: scanBgPan 6s ease-in-out infinite;
+}
+
+@keyframes scanBgPan {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.scan-loader-pulse {
+    animation: scanLogoPulse 2.4s ease-in-out infinite;
+    will-change: transform;
+}
+
+@keyframes scanLogoPulse {
+    0%, 100% { transform: scale(0.86); }
+    50%      { transform: scale(1.16); }
+}
+
+.scan-loader-spin {
+    animation: scanLogoSpin 7s linear infinite;
+    will-change: transform;
+}
+
+@keyframes scanLogoSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scan-loader-bg, .scan-loader-pulse, .scan-loader-spin { animation: none; }
+}
+
 /* App Sidebar Design System */
 #sidebar.app-sidebar-light {
     width: 220px !important;
