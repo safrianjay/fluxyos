@@ -255,8 +255,13 @@
         let filteredRevenue = [];
         let revenuePaginator = null;
         let flagsById = new Map();
+        const linkedRevenueSearch = new URLSearchParams(window.location.search).get('search') || '';
         const linkedRevenueRecordId = new URLSearchParams(window.location.search).get('record');
         let linkedRevenueRecordHandled = false;
+        if (linkedRevenueSearch) {
+            const input = document.getElementById('revenue-search-input');
+            if (input) input.value = linkedRevenueSearch;
+        }
 
         // ── Date Range State & Helpers ───────────────────────────────────────
 
@@ -717,8 +722,9 @@
                 const channel = getChannelName(row).toLowerCase();
                 const category = (row.category || '').toLowerCase();
                 const status = getRowStatus(row).toLowerCase();
+                const type = (row.type || '').toLowerCase();
                 const amount = String(getRowAmount(row));
-                return channel.includes(q) || category.includes(q) || status.includes(q) || amount.includes(q);
+                return channel.includes(q) || category.includes(q) || status.includes(q) || type.includes(q) || amount.includes(q);
             });
             renderRevenueTable(filtered);
         }

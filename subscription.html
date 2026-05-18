@@ -24,7 +24,7 @@
                 </button>
                 <div class="hidden sm:flex relative w-full max-w-lg">
                     <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    <input type="text" placeholder="Search subscriptions, SaaS tools..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[13px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
+                    <input id="subscription-search-input" type="text" placeholder="Search subscriptions, SaaS tools..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[13px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
                 </div>
             </div>
             <div class="flex items-center gap-4">
@@ -95,12 +95,39 @@
         const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
         const auth = getAuth(app);
         const ds = new DataService(app);
+        const linkedSubscriptionSearch = new URLSearchParams(window.location.search).get('search') || '';
         const linkedSubscriptionRecordId = new URLSearchParams(window.location.search).get('record');
+        let allSubscriptions = [];
+        if (linkedSubscriptionSearch) {
+            const input = document.getElementById('subscription-search-input');
+            if (input) input.value = linkedSubscriptionSearch;
+        }
 
         onAuthStateChanged(auth, (user) => {
             if (user) window.loadSubscriptions();
             else window.location.replace('/login');
         });
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function filterSubscriptions(query) {
+            const q = String(query || '').trim().toLowerCase();
+            if (!q) return allSubscriptions;
+            return allSubscriptions.filter(sub => {
+                const name = String(sub.name || sub.vendor_name || '').toLowerCase();
+                const status = String(sub.status || 'active').toLowerCase();
+                const category = String(sub.category || 'SaaS').toLowerCase();
+                const amount = String(sub.amount || '');
+                return name.includes(q) || status.includes(q) || category.includes(q) || amount.includes(q);
+            });
+        }
 
         function highlightLinkedSubscriptionRow() {
             if (!linkedSubscriptionRecordId) return;
@@ -118,17 +145,14 @@
             }, 2200);
         }
 
-        window.loadSubscriptions = async function() {
-            const user = auth.currentUser;
-            if (!user) return;
-
+        function renderSubscriptions() {
             const body = document.getElementById('sub-table-body');
             const tableContainer = document.getElementById('sub-table-container');
             const emptyContainer = document.getElementById('sub-empty-state');
-            
-            const subs = await ds.getSubscriptions(user.uid);
+            if (!body || !tableContainer || !emptyContainer) return;
 
-            if (subs.length === 0) {
+            const subs = filterSubscriptions(document.getElementById('subscription-search-input')?.value || '');
+            if (allSubscriptions.length === 0) {
                 tableContainer.classList.add('hidden');
                 emptyContainer.classList.remove('hidden');
                 window.renderEmptyState('sub-empty-state', {
@@ -137,30 +161,45 @@
                     buttonText: "Add First Subscription",
                     onAction: () => window.showAddTransactionModal({ title: 'Add Subscription', submitLabel: 'Activate Subscription', defaultCategory: 'SaaS', context: 'subscription' })
                 });
-            } else {
-                tableContainer.classList.remove('hidden');
-                emptyContainer.classList.add('hidden');
-                body.innerHTML = subs.map(sub => `
-                    <tr class="hover:bg-gray-50 transition-colors" data-subscription-id="${sub.id}">
-                        <td class="px-6 py-4 flex items-center gap-3">
-                            <div class="w-8 h-8 rounded bg-blue-50 flex items-center justify-center text-[14px]">
-                                ${sub.icon || '🛠️'}
-                            </div>
-                            <span class="font-bold text-gray-900">${sub.name}</span>
-                        </td>
-                        <td class="px-6 py-4 font-mono font-bold">Rp ${sub.amount.toLocaleString()}</td>
-                        <td class="px-6 py-4 text-gray-500">${sub.renewal_date?.toDate().toLocaleDateString() || 'Next month'}</td>
-                        <td class="px-6 py-4">
-                            <span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-blue-100 text-blue-700">Active</span>
-                        </td>
-                        <td class="px-6 py-4">
-                            <button class="text-[12px] font-bold text-gray-400 hover:text-red-500 transition-colors">Manage</button>
-                        </td>
-                    </tr>
-                `).join('');
-                highlightLinkedSubscriptionRow();
+                return;
             }
+
+            tableContainer.classList.remove('hidden');
+            emptyContainer.classList.add('hidden');
+            if (subs.length === 0) {
+                body.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-gray-400">No subscriptions match your search.</td></tr>`;
+                return;
+            }
+            body.innerHTML = subs.map(sub => `
+                <tr class="hover:bg-gray-50 transition-colors" data-subscription-id="${escapeHtml(sub.id)}">
+                    <td class="px-6 py-4 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded bg-blue-50 flex items-center justify-center text-[14px]">
+                            ${escapeHtml(sub.icon || 'S')}
+                        </div>
+                        <span class="font-bold text-gray-900">${escapeHtml(sub.name || sub.vendor_name || 'Subscription')}</span>
+                    </td>
+                    <td class="px-6 py-4 font-mono font-bold">Rp ${Number(sub.amount || 0).toLocaleString('id-ID')}</td>
+                    <td class="px-6 py-4 text-gray-500">${sub.renewal_date?.toDate().toLocaleDateString() || 'Next month'}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 rounded text-[10px] font-bold uppercase bg-blue-100 text-blue-700">Active</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <button class="text-[12px] font-bold text-gray-400 hover:text-red-500 transition-colors">Manage</button>
+                    </td>
+                </tr>
+            `).join('');
+            highlightLinkedSubscriptionRow();
+        }
+
+        window.loadSubscriptions = async function() {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            allSubscriptions = await ds.getSubscriptions(user.uid);
+            renderSubscriptions();
         };
+
+        document.getElementById('subscription-search-input')?.addEventListener('input', renderSubscriptions);
     </script>
 </body>
 </html>

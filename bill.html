@@ -232,8 +232,13 @@
         let allBills = [];
         let filteredBills = [];
         let billPaginator = null;
+        const linkedBillSearch = new URLSearchParams(window.location.search).get('search') || '';
         const linkedBillRecordId = new URLSearchParams(window.location.search).get('record');
         let linkedBillRecordHandled = false;
+        if (linkedBillSearch) {
+            const input = document.getElementById('bill-search-input');
+            if (input) input.value = linkedBillSearch;
+        }
 
         // ── Date Range State & Helpers ───────────────────────────────────────
 
@@ -522,8 +527,9 @@
                 const vendor = (bill.vendor_name || '').toLowerCase();
                 const category = (bill.category || '').toLowerCase();
                 const status = getBillDisplayStatus(bill).toLowerCase();
+                const rawStatus = (bill.status || '').toLowerCase();
                 const amount = String(bill.amount || '');
-                return vendor.includes(q) || category.includes(q) || status.includes(q) || amount.includes(q);
+                return vendor.includes(q) || category.includes(q) || status.includes(q) || rawStatus.includes(q) || amount.includes(q);
             });
             renderBillsTable(filtered);
         }
@@ -758,7 +764,7 @@
             const summary = getBillsSummary(allBills);
             renderSummaryCards(summary);
             renderTimeline(allBills);
-            renderBillsTable(allBills);
+            filterBills(document.getElementById('bill-search-input').value);
             openLinkedBillRecord();
         };
     </script>

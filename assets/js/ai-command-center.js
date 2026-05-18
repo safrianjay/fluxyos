@@ -953,10 +953,10 @@
             ? `<span class="rounded-full border ${lowConfidence ? 'border-amber-200 text-amber-700 bg-amber-50' : 'border-gray-200 text-gray-500 bg-white'} px-2.5 py-1 text-[11px] font-medium">${Math.round(confidence * 100)}% confidence</span>`
             : '';
         const keyNumbers = Array.isArray(answer.key_numbers) && answer.key_numbers.length
-            ? `<section class="mt-5"><p class="text-[12px] font-semibold text-gray-500">Key numbers</p><div class="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">${answer.key_numbers.map(renderKeyNumber).join('')}</div></section>`
+            ? `<section class="mt-5"><p class="text-[12px] font-semibold text-gray-500">Key numbers</p><div class="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">${answer.key_numbers.map(item => renderKeyNumber(item, answer)).join('')}</div></section>`
             : '';
         const insights = Array.isArray(answer.insights) && answer.insights.length
-            ? `<section class="mt-5"><p class="text-[12px] font-semibold text-gray-500">What this means</p><div class="mt-2 space-y-3">${answer.insights.map(renderInsight).join('')}</div></section>`
+            ? `<section class="mt-5"><p class="text-[12px] font-semibold text-gray-500">What this means</p><div class="mt-2 space-y-3">${answer.insights.map(item => renderInsight(item, answer)).join('')}</div></section>`
             : '';
         const actions = Array.isArray(answer.recommended_actions) && answer.recommended_actions.length
             ? `<section class="mt-5"><p class="text-[12px] font-semibold text-gray-500">Recommended next actions</p><div class="mt-2 grid gap-3">${answer.recommended_actions.slice(0, 3).map(renderAction).join('')}</div></section>`
@@ -965,7 +965,7 @@
             ? `<section class="mt-5 rounded-xl border ${lowConfidence ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-gray-50'} px-4 py-3"><p class="text-[12px] font-semibold ${lowConfidence ? 'text-amber-900' : 'text-gray-700'}">Risk or limitation</p><div class="mt-2 space-y-1">${answer.limitations.map(item => `<p class="text-[12px] leading-relaxed ${lowConfidence ? 'text-amber-800' : 'text-gray-500'}">${escapeHtml(item)}</p>`).join('')}</div></section>`
             : '';
         const records = Array.isArray(relatedRecords) && relatedRecords.length
-            ? `<div class="mt-5 rounded-xl border border-gray-200 overflow-hidden"><div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-[12px] font-bold text-gray-700">Related records</div>${relatedRecords.slice(0, 5).map(renderRelatedRecord).join('')}</div>`
+            ? `<div class="mt-5 rounded-xl border border-gray-200 overflow-hidden"><div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-[12px] font-bold text-gray-700">Related records</div>${relatedRecords.slice(0, 5).map(record => renderRelatedRecord(record, { answer })).join('')}</div>`
             : '';
         const renderedId = renderAssistantMessage(messageId, `
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -987,7 +987,7 @@
         renderSessionPromptChips(answer);
     }
 
-    function renderKeyNumber(item) {
+    function renderKeyNumber(item, answer) {
         const statusClass = {
             good: 'border-green-200 bg-green-50',
             warning: 'border-amber-200 bg-amber-50',
@@ -1000,22 +1000,30 @@
             critical: 'bg-red-500',
             neutral: 'bg-gray-300',
         }[item.status] || 'bg-gray-300';
+        const href = buildKeyNumberDrilldownHref(item, answer);
+        const tag = href ? 'a' : 'div';
+        const attrs = href
+            ? `href="${escapeHtml(href)}" aria-label="Open ${escapeHtml(item.label)} drilldown" class="group block rounded-xl border ${statusClass} px-4 py-3 transition-colors hover:bg-gray-50"`
+            : `class="rounded-xl border ${statusClass} px-4 py-3"`;
         return `
-            <div class="rounded-xl border ${statusClass} px-4 py-3">
+            <${tag} ${attrs}>
                 <p class="flex items-center gap-2 text-[11px] font-medium text-gray-500"><span class="h-1.5 w-1.5 rounded-full ${statusDot}"></span>${escapeHtml(item.label)}</p>
-                <p class="mt-1 text-[18px] font-extrabold text-gray-950 break-words">${escapeHtml(item.formatted_value)}</p>
-            </div>
+                <p class="mt-1 flex items-center gap-2 text-[18px] font-extrabold text-gray-950 break-words">
+                    <span>${escapeHtml(item.formatted_value)}</span>
+                    ${href ? '<svg class="h-3.5 w-3.5 flex-shrink-0 text-gray-300 group-hover:text-[#EA580C]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>' : ''}
+                </p>
+            </${tag}>
         `;
     }
 
-    function renderInsight(item) {
+    function renderInsight(item, answer) {
         const severityClass = {
             critical: 'border-red-200 bg-red-50',
             warning: 'border-amber-200 bg-amber-50',
             info: 'border-gray-200 bg-white',
         }[item.severity] || 'border-gray-200 bg-white';
         const evidence = Array.isArray(item.evidence) && item.evidence.length
-            ? `<div class="mt-3 rounded-lg border border-gray-200 overflow-hidden">${item.evidence.slice(0, 3).map(renderRelatedRecord).join('')}</div>`
+            ? `<div class="mt-3 rounded-lg border border-gray-200 overflow-hidden">${item.evidence.slice(0, 3).map(record => renderRelatedRecord(record, { answer, insight: item })).join('')}</div>`
             : '';
         return `
             <div class="rounded-xl border ${severityClass} px-4 py-3">
@@ -1064,11 +1072,11 @@
         });
     }
 
-    function renderRelatedRecord(record) {
+    function renderRelatedRecord(record, context = {}) {
         const name = record.vendor_name || record.label || 'Record';
         const amount = record.formatted_amount || record.formatted_value || '';
-        const href = buildRelatedRecordHref(record);
-        const sourceLabel = toLabel(record.source || inferRelatedRecordSource(record) || 'record');
+        const href = buildRelatedRecordHref(record, context);
+        const sourceLabel = toLabel(record.source || inferRelatedRecordSource(record, context) || 'record');
         const content = `
             <span class="min-w-0">
                 <span class="block truncate text-[12px] font-semibold text-gray-700">${escapeHtml(name)}</span>
@@ -1095,19 +1103,44 @@
         `;
     }
 
-    function buildRelatedRecordHref(record) {
+    function buildRelatedRecordHref(record, context = {}) {
         const id = record?.id;
-        if (!id) return '';
-        const source = inferRelatedRecordSource(record);
-        const encodedId = encodeURIComponent(id);
-        if (source === 'bills') return `/bill?record=${encodedId}`;
-        if (source === 'subscriptions') return `/subscription?record=${encodedId}`;
-        if (source === 'revenue_sync') return `/revenue-sync?record=${encodedId}`;
-        if (source === 'ledger') return `/ledger?record=${encodedId}`;
+        const source = inferRelatedRecordSource(record, context);
+        if (id) {
+            const encodedId = encodeURIComponent(id);
+            if (source === 'bills') return `/bill?record=${encodedId}`;
+            if (source === 'subscriptions') return `/subscription?record=${encodedId}`;
+            if (source === 'revenue_sync') return `/revenue-sync?record=${encodedId}`;
+            if (source === 'ledger') return `/ledger?record=${encodedId}`;
+        }
+        const search = record?.label || record?.vendor_name || record?.category || record?.status;
+        if (!search) return '';
+        return buildSearchHref(source, search);
+    }
+
+    function buildKeyNumberDrilldownHref(item, answer = {}) {
+        const label = String(item?.label || '').toLowerCase();
+        const intent = String(answer?.intent || '').toLowerCase();
+        if (label.includes('revenue') || label.includes('live revenue')) return buildSearchHref('revenue_sync', 'income');
+        if (label.includes('opex') || label.includes('expense')) return buildSearchHref('ledger', 'expense');
+        if (label.includes('missing receipt')) return buildSearchHref('ledger', 'Missing Receipt');
+        if (label.includes('uncategorized')) return buildSearchHref('ledger', 'Uncategorized');
+        if (label.includes('quality issue')) return buildSearchHref('ledger', 'Missing Receipt');
+        if (label.includes('unpaid') || label.includes('cash pressure') || intent === 'bills_analysis') return buildSearchHref('bills', 'unpaid');
+        if (label.includes('subscription')) return buildSearchHref('subscriptions', 'Active');
         return '';
     }
 
-    function inferRelatedRecordSource(record) {
+    function buildSearchHref(source, query) {
+        const encodedQuery = encodeURIComponent(query);
+        if (source === 'bills') return `/bill?search=${encodedQuery}`;
+        if (source === 'subscriptions') return `/subscription?search=${encodedQuery}`;
+        if (source === 'revenue_sync') return `/revenue-sync?search=${encodedQuery}`;
+        if (source === 'ledger') return `/ledger?search=${encodedQuery}`;
+        return '';
+    }
+
+    function inferRelatedRecordSource(record, context = {}) {
         const rawSource = String(record?.source || record?.collection || '').toLowerCase();
         if (['bill', 'bills', 'invoice'].includes(rawSource)) return 'bills';
         if (['subscription', 'subscriptions'].includes(rawSource)) return 'subscriptions';
@@ -1117,6 +1150,12 @@
         const type = String(record?.type || '').toLowerCase();
         if (record?.due_date) return 'bills';
         if (record?.renewal_date) return 'subscriptions';
+        const intent = String(context.answer?.intent || '').toLowerCase();
+        const insightTitle = String(context.insight?.title || '').toLowerCase();
+        if (intent === 'bills_analysis' || insightTitle.includes('bill')) return 'bills';
+        if (intent === 'subscription_analysis' || insightTitle.includes('subscription') || insightTitle.includes('renewal')) return 'subscriptions';
+        if (intent === 'revenue_analysis' || insightTitle.includes('revenue')) return 'revenue_sync';
+        if (insightTitle.includes('expense') || insightTitle.includes('vendor') || insightTitle.includes('ledger') || insightTitle.includes('receipt')) return 'ledger';
         if (['income', 'revenue', 'refund', 'pending_receivable'].includes(type)) return 'revenue_sync';
         if (['expense', 'opex', 'operating_expense'].includes(type)) return 'ledger';
         return 'ledger';

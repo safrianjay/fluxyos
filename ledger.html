@@ -305,11 +305,16 @@
         const LEDGER_PAGE_SIZE = 10;
         let ledgerSortKey = 'date';
         let ledgerSortDirection = 'desc';
-        let ledgerSearchTerm = '';
+        const linkedLedgerSearch = new URLSearchParams(window.location.search).get('search') || '';
+        let ledgerSearchTerm = linkedLedgerSearch;
         let ledgerRangeStart = getMonthStartKey();
         let ledgerRangeEnd = getMonthEndKey();
         const linkedLedgerRecordId = new URLSearchParams(window.location.search).get('record');
         let linkedLedgerRecordHandled = false;
+        if (linkedLedgerSearch) {
+            const input = document.getElementById('ledger-search-input');
+            if (input) input.value = linkedLedgerSearch;
+        }
 
         const ledgerPaginator = window.createTablePaginator({
             pageSize:     LEDGER_PAGE_SIZE,
