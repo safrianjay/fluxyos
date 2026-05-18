@@ -35,12 +35,6 @@
             'Is there a revenue anomaly?'
         ]
     };
-    const THINKING_STEPS = [
-        'Reading your ledger',
-        'Checking bills',
-        'Reviewing subscriptions',
-        'Preparing finance summary'
-    ];
     const MIN_THINKING_MS = 700;
 
     const chatHTML = `
@@ -232,23 +226,14 @@
         msg.className = 'message ai loading-message';
         msg.innerHTML = `
             <div class="thinking-heading">
-                <span>FluxyOS is thinking</span>
+                <span>FluxyOS thinking</span>
                 <span class="thinking-dots" aria-hidden="true"><span></span><span></span><span></span></span>
             </div>
-            <p class="thinking-status">${escapeHTML(THINKING_STEPS[0])}</p>
         `;
         messages.appendChild(msg);
         scrollToBottom(messages);
-        const status = msg.querySelector('.thinking-status');
-        let step = 0;
-        const interval = window.setInterval(() => {
-            step = (step + 1) % THINKING_STEPS.length;
-            if (status) status.textContent = THINKING_STEPS[step];
-            scrollToBottom(messages);
-        }, 900);
         return {
             remove() {
-                window.clearInterval(interval);
                 msg.remove();
             }
         };
@@ -280,13 +265,13 @@
             ? `<div class="answer-grid">${answer.key_numbers.map(renderKeyNumber).join('')}</div>`
             : '';
         const insights = Array.isArray(answer.insights) && answer.insights.length
-            ? `<div class="answer-section"><h4>What this means</h4>${answer.insights.map(renderInsight).join('')}</div>`
+            ? `<div class="answer-section"><h4>Signals</h4>${answer.insights.map(renderInsight).join('')}</div>`
             : '';
         const actions = Array.isArray(answer.recommended_actions) && answer.recommended_actions.length
-            ? `<div class="answer-section"><h4>Recommended next actions</h4>${answer.recommended_actions.map(renderAction).join('')}</div>`
+            ? `<div class="answer-section"><h4>Next steps</h4>${answer.recommended_actions.map(renderAction).join('')}</div>`
             : '';
         const limitations = Array.isArray(answer.limitations) && answer.limitations.length
-            ? `<div class="answer-limitations">${answer.limitations.map(item => `<p>${escapeHTML(item)}</p>`).join('')}</div>`
+            ? `<div class="answer-limitations"><span>Notes</span>${answer.limitations.map(item => `<p>${escapeHTML(item)}</p>`).join('')}</div>`
             : '';
         const followUps = Array.isArray(answer.follow_up_questions) && answer.follow_up_questions.length
             ? `<div class="answer-section"><h4>Follow-up</h4>${answer.follow_up_questions.map(q => `<p class="follow-up">${escapeHTML(q)}</p>`).join('')}</div>`
@@ -335,7 +320,7 @@
     function renderKeyNumber(item) {
         return `
             <div class="key-number key-${escapeAttribute(item.status || 'neutral')}">
-                <span>${escapeHTML(item.label)}</span>
+                <span><i aria-hidden="true"></i>${escapeHTML(item.label)}</span>
                 <strong>${escapeHTML(item.formatted_value)}</strong>
             </div>
         `;
@@ -364,7 +349,7 @@
     function renderAction(item) {
         return `
             <div class="recommended-action priority-${escapeAttribute(item.priority || 'medium')}">
-                <p class="insight-title">${escapeHTML(item.title)}</p>
+                <p class="insight-title"><span class="priority-dot" aria-hidden="true"></span>${escapeHTML(item.title)}</p>
                 <p>${escapeHTML(item.description)}</p>
             </div>
         `;

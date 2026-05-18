@@ -14,6 +14,7 @@ const EXPECTED_REVENUE_TYPES = [...REVENUE_TYPES, 'pending_receivable'];
 const OPEX_TYPES = ['expense', 'fee', 'tax'];
 const OBLIGATION_OPEX_TYPES = [...OPEX_TYPES, 'pending_payable'];
 const PAID_STATUSES = ['completed', 'paid', 'reconciled', 'cancelled'];
+const AI_PROVIDER_TIMEOUT_MS = 5500;
 const SUPPORTED_INTENTS = [
     'finance_health',
     'revenue_analysis',
@@ -730,38 +731,46 @@ Unsupported questions must use this direct answer exactly: "${REFUSAL_MESSAGE}"
 Use Indonesian Rupiah formatting. Mention data limitations clearly. Keep recommendations operational, not legal, tax, accounting, medical, or investment advice.
 Return only structured JSON matching the schema.`;
 
-    const res = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-            model,
-            input: [
-                { role: 'system', content: [{ type: 'input_text', text: systemPrompt }] },
-                {
-                    role: 'user',
-                    content: [{
-                        type: 'input_text',
-                        text: JSON.stringify({
-                            message,
-                            page_context: pageContext,
-                            intent,
-                            period,
-                            computed_tool_results: safeTools,
-                            deterministic_baseline: deterministicAnswer,
-                        }),
-                    }],
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), AI_PROVIDER_TIMEOUT_MS);
+    let res;
+    try {
+        res = await fetch('https://api.openai.com/v1/responses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+            signal: controller.signal,
+            body: JSON.stringify({
+                model,
+                input: [
+                    { role: 'system', content: [{ type: 'input_text', text: systemPrompt }] },
+                    {
+                        role: 'user',
+                        content: [{
+                            type: 'input_text',
+                            text: JSON.stringify({
+                                message,
+                                page_context: pageContext,
+                                intent,
+                                period,
+                                computed_tool_results: safeTools,
+                                deterministic_baseline: deterministicAnswer,
+                            }),
+                        }],
+                    },
+                ],
+                text: {
+                    format: {
+                        type: 'json_schema',
+                        name: 'fluxy_finance_answer',
+                        schema: financeAnswerSchema(),
+                        strict: true,
+                    },
                 },
-            ],
-            text: {
-                format: {
-                    type: 'json_schema',
-                    name: 'fluxy_finance_answer',
-                    schema: financeAnswerSchema(),
-                    strict: true,
-                },
-            },
-        }),
-    });
+            }),
+        });
+    } finally {
+        clearTimeout(timeout);
+    }
     if (!res.ok) throw new Error(`OpenAI finance analyst failed: ${res.status}`);
     const payload = await res.json();
     const text = extractResponseText(payload);
