@@ -122,8 +122,15 @@
             </div>
         `;
 
-        const get = selector => host.querySelector(selector);
-        const panel = get('[data-drp-panel]');
+        // Resolve the panel via host first, then relocate it to <body> so it escapes any
+        // transformed ancestor (e.g. a slide-in drawer using transform: translateX). Inside
+        // a transformed ancestor, position: fixed is computed relative to that ancestor,
+        // which breaks the popover positioning. After this move, get() searches both the
+        // trigger row (still in host) and the relocated panel, so the rest of the wiring
+        // code works unchanged.
+        const panel = host.querySelector('[data-drp-panel]');
+        if (panel && panel.parentNode !== document.body) document.body.appendChild(panel);
+        const get = selector => host.querySelector(selector) || (panel && panel.querySelector(selector));
         const trigger = get('[data-drp-trigger]');
         const label = get('[data-drp-label]');
         const nextButton = get('[data-drp-next]');
@@ -316,6 +323,10 @@
                 rangeEnd = isSingleDate ? defaultStart : defaultEnd;
                 updateLabel();
                 options.onChange?.({ start: rangeStart, end: rangeEnd });
+            },
+            destroy: () => {
+                panel?.classList.add('hidden');
+                if (panel?.parentNode) panel.parentNode.removeChild(panel);
             }
         };
     }

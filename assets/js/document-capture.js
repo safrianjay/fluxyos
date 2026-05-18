@@ -136,6 +136,8 @@
     }
 
     function destroyPickers() {
+        if (state.pickers.primary?.destroy) state.pickers.primary.destroy();
+        if (state.pickers.invoice?.destroy) state.pickers.invoice.destroy();
         state.pickers = { primary: null, invoice: null };
     }
 
