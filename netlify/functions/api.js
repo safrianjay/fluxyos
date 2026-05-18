@@ -245,12 +245,37 @@ function normalizeFinanceSnapshotRecords(snapshot, key, limitCount) {
     }));
 }
 
+function normalizeSnapshotReadMeta(snapshot, key) {
+    const read = snapshot?.meta?.reads?.[key] || {};
+    const success = read.success === true;
+    const error = typeof read.error === 'string' && read.error ? read.error : null;
+    return { success, error };
+}
+
 function normalizeFinanceSnapshot(snapshot) {
-    return {
+    const normalized = {
         transactions: normalizeFinanceSnapshotRecords(snapshot, 'transactions', 1000),
         bills: normalizeFinanceSnapshotRecords(snapshot, 'bills', 500),
         subscriptions: normalizeFinanceSnapshotRecords(snapshot, 'subscriptions', 500),
+        meta: {
+            source: typeof snapshot?.meta?.source === 'string' ? snapshot.meta.source : null,
+            generated_at: typeof snapshot?.meta?.generated_at === 'string' ? snapshot.meta.generated_at : null,
+            reads: {
+                transactions: normalizeSnapshotReadMeta(snapshot, 'transactions'),
+                bills: normalizeSnapshotReadMeta(snapshot, 'bills'),
+                subscriptions: normalizeSnapshotReadMeta(snapshot, 'subscriptions'),
+            },
+        },
     };
+    normalized.meta.counts = {
+        transactions: normalized.transactions.length,
+        bills: normalized.bills.length,
+        subscriptions: normalized.subscriptions.length,
+    };
+    if (!normalized.meta.reads.transactions.success && normalized.transactions.length) normalized.meta.reads.transactions.success = true;
+    if (!normalized.meta.reads.bills.success && normalized.bills.length) normalized.meta.reads.bills.success = true;
+    if (!normalized.meta.reads.subscriptions.success && normalized.subscriptions.length) normalized.meta.reads.subscriptions.success = true;
+    return normalized;
 }
 
 async function fetchUserCollection(uid, token, collectionName, pageSize = 1000) {
@@ -552,11 +577,11 @@ function buildDataUnavailableAnswer(intent, period, missingCollections) {
     const answer = baseAnswer(intent, 'clarification', period);
     const labels = missingCollections.map(collection => collection.replace(/_/g, ' ')).join(', ');
     answer.confidence = 0;
-    answer.direct_answer = `I could not read the required ${labels} data, so I cannot calculate this safely yet. I will not show zero values because that would make unavailable data look like real finance results.`;
+    answer.direct_answer = `I could not access the required ${labels} data from either the backend read or the authenticated page snapshot, so I cannot calculate this safely yet. I will not show zero values because unavailable data is not the same as zero.`;
     answer.recommended_actions = [
         action('Retry the analysis', 'Refresh the page and ask again after the finance tables finish loading.', 'medium'),
     ];
-    answer.limitations = missingCollections.map(collection => `Could not read ${collection}; no zero-value calculation was produced.`);
+    answer.limitations = missingCollections.map(collection => `Could not access ${collection} from backend Firestore or the client snapshot; no zero-value calculation was produced.`);
     answer.follow_up_questions = ['Try again', 'Check a different finance area'];
     return answer;
 }
@@ -883,21 +908,24 @@ async function buildBrainChatResponse({ request, uid, token }) {
     ]);
     const snapshot = normalizeFinanceSnapshot(request.finance_snapshot);
     const usedSnapshot = [];
-    const transactions = transactionResult.error && snapshot.transactions.length ? snapshot.transactions : transactionResult.records;
-    const bills = billResult.error && snapshot.bills.length ? snapshot.bills : billResult.records;
-    const subscriptions = subscriptionResult.error && snapshot.subscriptions.length ? snapshot.subscriptions : subscriptionResult.records;
-    if (transactionResult.error && snapshot.transactions.length) usedSnapshot.push('transactions');
-    if (billResult.error && snapshot.bills.length) usedSnapshot.push('bills');
-    if (subscriptionResult.error && snapshot.subscriptions.length) usedSnapshot.push('subscriptions');
+    const transactionsSnapshotOk = snapshot.meta.reads.transactions.success;
+    const billsSnapshotOk = snapshot.meta.reads.bills.success;
+    const subscriptionsSnapshotOk = snapshot.meta.reads.subscriptions.success;
+    const transactions = transactionResult.error && transactionsSnapshotOk ? snapshot.transactions : transactionResult.records;
+    const bills = billResult.error && billsSnapshotOk ? snapshot.bills : billResult.records;
+    const subscriptions = subscriptionResult.error && subscriptionsSnapshotOk ? snapshot.subscriptions : subscriptionResult.records;
+    if (transactionResult.error && transactionsSnapshotOk) usedSnapshot.push(`transactions (${snapshot.transactions.length})`);
+    if (billResult.error && billsSnapshotOk) usedSnapshot.push(`bills (${snapshot.bills.length})`);
+    if (subscriptionResult.error && subscriptionsSnapshotOk) usedSnapshot.push(`subscriptions (${snapshot.subscriptions.length})`);
     const readLimitations = [
-        transactionResult.error && !snapshot.transactions.length ? transactionResult.error : null,
-        billResult.error && !snapshot.bills.length ? billResult.error : null,
-        subscriptionResult.error && !snapshot.subscriptions.length ? subscriptionResult.error : null,
+        transactionResult.error && !transactionsSnapshotOk ? transactionResult.error : null,
+        billResult.error && !billsSnapshotOk ? billResult.error : null,
+        subscriptionResult.error && !subscriptionsSnapshotOk ? subscriptionResult.error : null,
     ].filter(Boolean);
     const unavailableCollections = [
-        transactionResult.error && !snapshot.transactions.length ? 'transactions' : null,
-        billResult.error && !snapshot.bills.length ? 'bills' : null,
-        subscriptionResult.error && !snapshot.subscriptions.length ? 'subscriptions' : null,
+        transactionResult.error && !transactionsSnapshotOk ? 'transactions' : null,
+        billResult.error && !billsSnapshotOk ? 'bills' : null,
+        subscriptionResult.error && !subscriptionsSnapshotOk ? 'subscriptions' : null,
     ].filter(Boolean);
     const missingRequiredCollections = requiredCollectionsForIntent(intent)
         .filter(collectionName => unavailableCollections.includes(collectionName));

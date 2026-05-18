@@ -43,6 +43,13 @@ The snapshot is built from the same `DataService` reads used by the app pages:
 - `ds.getBills(uid)`
 - `ds.getSubscriptions(uid)`
 
+It also includes metadata for each collection:
+
+- `success`: whether the browser-side Firestore read completed
+- `error`: a safe error label such as `permission_denied`, `network_unavailable`,
+  `unauthenticated`, `missing_data_service`, or `read_failed`
+- `counts`: the number of sanitized records included per collection
+
 Only safe structured fields are sent:
 
 - `id`
@@ -66,8 +73,8 @@ The backend still tries direct Firestore reads first.
 For each collection:
 
 1. If the backend read succeeds, use backend data.
-2. If the backend read fails and the authenticated page snapshot contains that
-   collection, use the snapshot.
+2. If the backend read fails and the authenticated page snapshot read succeeded
+   for that collection, use the snapshot, even when the snapshot count is `0`.
 3. If both backend read and snapshot are unavailable for a collection required
    by the user's question, return a data-unavailable answer with no key-number
    cards and no calculated zero values.

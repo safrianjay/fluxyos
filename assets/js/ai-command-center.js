@@ -521,24 +521,81 @@
     }
 
     async function buildFinanceSnapshot() {
-        const ds = state.context?.ds;
+        const ds = getDataService();
         const uid = state.user?.uid;
-        if (!ds || !uid) return null;
-        const [transactions, bills, subscriptions] = await Promise.allSettled([
-            ds.getTransactions(uid, 1000),
-            ds.getBills(uid),
-            ds.getSubscriptions(uid),
+        const generatedAt = new Date().toISOString();
+        if (!ds || !uid) {
+            const error = !uid ? 'missing_user' : 'missing_data_service';
+            return buildEmptyFinanceSnapshot(generatedAt, error);
+        }
+        const [transactions, bills, subscriptions] = await Promise.all([
+            readSnapshotCollection('transactions', () => ds.getTransactions(uid, 1000)),
+            readSnapshotCollection('bills', () => ds.getBills(uid)),
+            readSnapshotCollection('subscriptions', () => ds.getSubscriptions(uid)),
         ]);
         return {
-            transactions: normalizeSnapshotRecords(transactions),
-            bills: normalizeSnapshotRecords(bills),
-            subscriptions: normalizeSnapshotRecords(subscriptions),
+            transactions: transactions.records,
+            bills: bills.records,
+            subscriptions: subscriptions.records,
+            meta: {
+                source: 'ai_command_center_browser_snapshot',
+                generated_at: generatedAt,
+                counts: {
+                    transactions: transactions.records.length,
+                    bills: bills.records.length,
+                    subscriptions: subscriptions.records.length,
+                },
+                reads: {
+                    transactions: transactions.read,
+                    bills: bills.read,
+                    subscriptions: subscriptions.read,
+                },
+            },
         };
     }
 
-    function normalizeSnapshotRecords(result) {
-        if (result.status !== 'fulfilled' || !Array.isArray(result.value)) return [];
-        return result.value.slice(0, 1000).map(record => ({
+    async function readSnapshotCollection(key, loader) {
+        try {
+            const value = await loader();
+            const records = normalizeSnapshotRecords(Array.isArray(value) ? value : []);
+            return {
+                records,
+                read: { success: true, error: null },
+            };
+        } catch (err) {
+            return {
+                records: [],
+                read: { success: false, error: sanitizeSnapshotError(err) },
+            };
+        }
+    }
+
+    function buildEmptyFinanceSnapshot(generatedAt, error) {
+        const read = { success: false, error };
+        return {
+            transactions: [],
+            bills: [],
+            subscriptions: [],
+            meta: {
+                source: 'ai_command_center_browser_snapshot',
+                generated_at: generatedAt,
+                counts: { transactions: 0, bills: 0, subscriptions: 0 },
+                reads: { transactions: read, bills: read, subscriptions: read },
+            },
+        };
+    }
+
+    function sanitizeSnapshotError(err) {
+        const code = String(err?.code || '').toLowerCase();
+        const message = String(err?.message || '').toLowerCase();
+        if (code.includes('permission') || message.includes('permission')) return 'permission_denied';
+        if (code.includes('unauth') || message.includes('auth')) return 'unauthenticated';
+        if (code.includes('unavailable') || message.includes('network')) return 'network_unavailable';
+        return 'read_failed';
+    }
+
+    function normalizeSnapshotRecords(records) {
+        return records.slice(0, 1000).map(record => ({
             id: String(record.id || ''),
             vendor_name: String(record.vendor_name || record.name || record.label || 'Unnamed record'),
             name: record.name ? String(record.name) : undefined,

@@ -337,12 +337,42 @@ def _normalize_snapshot_records(snapshot: Dict[str, Any] | None, key: str, limit
         })
     return records
 
-def _normalize_finance_snapshot(snapshot: Dict[str, Any] | None) -> Dict[str, List[Dict[str, Any]]]:
-    return {
+def _normalize_snapshot_read_meta(snapshot: Dict[str, Any] | None, key: str) -> Dict[str, Any]:
+    if not isinstance(snapshot, dict):
+        return {"success": False, "error": None}
+    meta = snapshot.get("meta") if isinstance(snapshot.get("meta"), dict) else {}
+    reads = meta.get("reads") if isinstance(meta.get("reads"), dict) else {}
+    read = reads.get(key) if isinstance(reads.get(key), dict) else {}
+    error = read.get("error") if isinstance(read.get("error"), str) and read.get("error") else None
+    return {"success": read.get("success") is True, "error": error}
+
+def _normalize_finance_snapshot(snapshot: Dict[str, Any] | None) -> Dict[str, Any]:
+    normalized = {
         "transactions": _normalize_snapshot_records(snapshot, "transactions", 1000),
         "bills": _normalize_snapshot_records(snapshot, "bills", 500),
         "subscriptions": _normalize_snapshot_records(snapshot, "subscriptions", 500),
+        "meta": {
+            "source": snapshot.get("meta", {}).get("source") if isinstance(snapshot, dict) and isinstance(snapshot.get("meta"), dict) else None,
+            "generated_at": snapshot.get("meta", {}).get("generated_at") if isinstance(snapshot, dict) and isinstance(snapshot.get("meta"), dict) else None,
+            "reads": {
+                "transactions": _normalize_snapshot_read_meta(snapshot, "transactions"),
+                "bills": _normalize_snapshot_read_meta(snapshot, "bills"),
+                "subscriptions": _normalize_snapshot_read_meta(snapshot, "subscriptions"),
+            },
+        },
     }
+    normalized["meta"]["counts"] = {
+        "transactions": len(normalized["transactions"]),
+        "bills": len(normalized["bills"]),
+        "subscriptions": len(normalized["subscriptions"]),
+    }
+    if not normalized["meta"]["reads"]["transactions"]["success"] and normalized["transactions"]:
+        normalized["meta"]["reads"]["transactions"]["success"] = True
+    if not normalized["meta"]["reads"]["bills"]["success"] and normalized["bills"]:
+        normalized["meta"]["reads"]["bills"]["success"] = True
+    if not normalized["meta"]["reads"]["subscriptions"]["success"] and normalized["subscriptions"]:
+        normalized["meta"]["reads"]["subscriptions"]["success"] = True
+    return normalized
 
 def _parse_record_date(value) -> datetime.date | None:
     if not value:
@@ -384,7 +414,7 @@ def _build_data_unavailable_answer(intent: str, period: Dict[str, str], missing_
         "answer_type": "clarification",
         "confidence": 0,
         "period": {"label": period["label"], "start_date": period["start_date"], "end_date": period["end_date"]},
-        "direct_answer": f"I could not read the required {labels} data, so I cannot calculate this safely yet. I will not show zero values because that would make unavailable data look like real finance results.",
+        "direct_answer": f"I could not access the required {labels} data from either the backend read or the authenticated page snapshot, so I cannot calculate this safely yet. I will not show zero values because unavailable data is not the same as zero.",
         "key_numbers": [],
         "insights": [],
         "recommended_actions": [{
@@ -392,7 +422,7 @@ def _build_data_unavailable_answer(intent: str, period: Dict[str, str], missing_
             "description": "Refresh the page and ask again after the finance tables finish loading.",
             "priority": "medium",
         }],
-        "limitations": [f"Could not read {collection}; no zero-value calculation was produced." for collection in missing_collections],
+        "limitations": [f"Could not access {collection} from backend Firestore or the client snapshot; no zero-value calculation was produced." for collection in missing_collections],
         "follow_up_questions": ["Try again", "Check a different finance area"],
     }
 
@@ -556,20 +586,23 @@ async def brain_chat(request: ChatRequest, _user=Depends(verify_firebase_token))
     subscriptions, subscriptions_error = _fetch_collection_safe(uid, token, "subscriptions", 500)
     snapshot = _normalize_finance_snapshot(request.finance_snapshot)
     used_snapshot = []
-    if transactions_error and snapshot["transactions"]:
+    transactions_snapshot_ok = snapshot["meta"]["reads"]["transactions"]["success"]
+    bills_snapshot_ok = snapshot["meta"]["reads"]["bills"]["success"]
+    subscriptions_snapshot_ok = snapshot["meta"]["reads"]["subscriptions"]["success"]
+    if transactions_error and transactions_snapshot_ok:
         transactions = snapshot["transactions"]
-        used_snapshot.append("transactions")
-    if bills_error and snapshot["bills"]:
+        used_snapshot.append(f"transactions ({len(snapshot['transactions'])})")
+    if bills_error and bills_snapshot_ok:
         bills = snapshot["bills"]
-        used_snapshot.append("bills")
-    if subscriptions_error and snapshot["subscriptions"]:
+        used_snapshot.append(f"bills ({len(snapshot['bills'])})")
+    if subscriptions_error and subscriptions_snapshot_ok:
         subscriptions = snapshot["subscriptions"]
-        used_snapshot.append("subscriptions")
+        used_snapshot.append(f"subscriptions ({len(snapshot['subscriptions'])})")
     unavailable_collections = [
         collection for collection, error, snapshot_records in [
-            ("transactions", transactions_error, snapshot["transactions"]),
-            ("bills", bills_error, snapshot["bills"]),
-            ("subscriptions", subscriptions_error, snapshot["subscriptions"]),
+            ("transactions", transactions_error, transactions_snapshot_ok),
+            ("bills", bills_error, bills_snapshot_ok),
+            ("subscriptions", subscriptions_error, subscriptions_snapshot_ok),
         ] if error and not snapshot_records
     ]
     missing_required_collections = [
@@ -583,9 +616,9 @@ async def brain_chat(request: ChatRequest, _user=Depends(verify_firebase_token))
     answer = _build_answer(intent, message, period, transactions, bills, subscriptions, request.page_context or "global")
     read_limitations = [
         item for item, snapshot_records in [
-            (transactions_error, snapshot["transactions"]),
-            (bills_error, snapshot["bills"]),
-            (subscriptions_error, snapshot["subscriptions"]),
+            (transactions_error, transactions_snapshot_ok),
+            (bills_error, bills_snapshot_ok),
+            (subscriptions_error, subscriptions_snapshot_ok),
         ] if item and not snapshot_records
     ]
     if read_limitations:
