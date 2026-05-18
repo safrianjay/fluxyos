@@ -235,6 +235,18 @@ async function fetchUserCollection(uid, token, collectionName, pageSize = 1000) 
     return (data.documents || []).map(decodeFirestoreDocument);
 }
 
+async function fetchUserCollectionSafe(uid, token, collectionName, pageSize = 1000) {
+    try {
+        return { records: await fetchUserCollection(uid, token, collectionName, pageSize), error: null };
+    } catch (err) {
+        console.error(`[brain/chat] ${collectionName} read failed:`, err?.message || err);
+        return {
+            records: [],
+            error: `Could not read ${collectionName}; this answer may be incomplete.`,
+        };
+    }
+}
+
 function parseRecordDate(value) {
     if (!value) return null;
     if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
@@ -809,29 +821,15 @@ async function buildBrainChatResponse({ request, uid, token }) {
         return { status: 200, body: { success: true, intent, scope: FINANCE_SCOPE, answer, related_records: [], error: null } };
     }
 
-    let transactions = [];
-    let bills = [];
-    let subscriptions = [];
-    try {
-        [transactions, bills, subscriptions] = await Promise.all([
-            fetchUserCollection(uid, token, 'transactions', 1000),
-            fetchUserCollection(uid, token, 'bills', 500),
-            fetchUserCollection(uid, token, 'subscriptions', 500),
-        ]);
-    } catch (err) {
-        console.error('[brain/chat] finance data read failed:', err?.message || err);
-        return {
-            status: 200,
-            body: {
-                success: false,
-                intent,
-                scope: FINANCE_SCOPE,
-                answer: null,
-                related_records: [],
-                error: { code: 'tool_error', message: 'I could not read your finance data right now. Please try again.' },
-            },
-        };
-    }
+    const [transactionResult, billResult, subscriptionResult] = await Promise.all([
+        fetchUserCollectionSafe(uid, token, 'transactions', 1000),
+        fetchUserCollectionSafe(uid, token, 'bills', 500),
+        fetchUserCollectionSafe(uid, token, 'subscriptions', 500),
+    ]);
+    const transactions = transactionResult.records;
+    const bills = billResult.records;
+    const subscriptions = subscriptionResult.records;
+    const readLimitations = [transactionResult.error, billResult.error, subscriptionResult.error].filter(Boolean);
 
     const today = toDateKey(todayJakarta());
     const windowDays = detectWindowDays(message);
@@ -872,6 +870,9 @@ async function buildBrainChatResponse({ request, uid, token }) {
         }
     } else {
         answer.limitations = [...(answer.limitations || []), 'Live AI provider is not configured, so this answer uses deterministic FluxyOS finance calculations.'];
+    }
+    if (readLimitations.length) {
+        answer.limitations = [...(answer.limitations || []), ...readLimitations];
     }
 
     const relatedRecords = [

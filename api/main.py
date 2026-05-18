@@ -30,7 +30,7 @@ app.add_middleware(
 )
 
 # Firebase token verification
-FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "")
+FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "fluxyos")
 _bearer = HTTPBearer()
 
 def _fetch_google_public_keys() -> dict:
@@ -299,6 +299,12 @@ def _fetch_collection(uid: str, token: str, collection_name: str, page_size: int
         raise
     return [_decode_firestore_doc(doc) for doc in data.get("documents", [])]
 
+def _fetch_collection_safe(uid: str, token: str, collection_name: str, page_size: int = 1000) -> tuple[List[Dict[str, Any]], str | None]:
+    try:
+        return _fetch_collection(uid, token, collection_name, page_size), None
+    except Exception:
+        return [], f"Could not read {collection_name}; this answer may be incomplete."
+
 def _parse_record_date(value) -> datetime.date | None:
     if not value:
         return None
@@ -475,21 +481,14 @@ async def brain_chat(request: ChatRequest, _user=Depends(verify_firebase_token))
 
     uid = _user.get("user_id") or _user.get("sub")
     token = _user.get("_id_token")
-    try:
-        transactions = _fetch_collection(uid, token, "transactions", 1000)
-        bills = _fetch_collection(uid, token, "bills", 500)
-        subscriptions = _fetch_collection(uid, token, "subscriptions", 500)
-    except Exception:
-        return {
-            "success": False,
-            "intent": intent,
-            "scope": FINANCE_SCOPE,
-            "answer": None,
-            "related_records": [],
-            "error": {"code": "tool_error", "message": "I could not read your finance data right now. Please try again."}
-        }
+    transactions, transactions_error = _fetch_collection_safe(uid, token, "transactions", 1000)
+    bills, bills_error = _fetch_collection_safe(uid, token, "bills", 500)
+    subscriptions, subscriptions_error = _fetch_collection_safe(uid, token, "subscriptions", 500)
 
     answer = _build_answer(intent, message, period, transactions, bills, subscriptions, request.page_context or "global")
+    read_limitations = [item for item in [transactions_error, bills_error, subscriptions_error] if item]
+    if read_limitations:
+        answer["limitations"] = [*(answer.get("limitations") or []), *read_limitations]
     related_records = [record for item in answer.get("insights", []) for record in item.get("evidence", [])][:10]
     return {"success": True, "intent": intent, "scope": FINANCE_SCOPE, "answer": answer, "related_records": related_records, "error": None}
 
