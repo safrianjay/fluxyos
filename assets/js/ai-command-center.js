@@ -767,6 +767,7 @@
     function appendAssistantLoading() {
         const thread = ensureChatThread();
         if (!thread) return null;
+        clearSessionPromptChips();
         const id = nextMessageId('assistant');
         thread.insertAdjacentHTML('beforeend', `
             <article id="${id}" class="flex justify-start">
@@ -813,16 +814,14 @@
         return id;
     }
 
-    function renderSessionPromptChips() {
+    function renderSessionPromptChips(context) {
         if (!els.sessionPromptChips) return;
-        const chips = [
-            ['Analyze my business health', 'How healthy is my business this month?'],
-            ['Summarize this month', 'Summarize this month.'],
-            ['Show upcoming bills', 'Show upcoming bills.'],
-            ['Find missing receipts', 'Find missing receipts.'],
-            ['Review subscription costs', 'Review subscription costs.'],
-            ['What should I fix first?', 'What should I fix first?'],
-        ];
+        const chips = getSessionPromptChips(context);
+        if (!chips.length) {
+            clearSessionPromptChips();
+            return;
+        }
+        els.sessionPromptChips.classList.remove('hidden');
         els.sessionPromptChips.innerHTML = chips.map(([label, prompt]) => `
             <button type="button" data-ai-session-prompt="${escapeAttr(prompt)}" class="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-medium text-gray-600 shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-[#EA580C]">
                 ${escapeHtml(label)}
@@ -831,6 +830,84 @@
         els.sessionPromptChips.querySelectorAll('[data-ai-session-prompt]').forEach(button => {
             button.addEventListener('click', () => submitText(button.dataset.aiSessionPrompt || ''));
         });
+        if (state.chatStarted) scrollToLatest(true);
+    }
+
+    function clearSessionPromptChips() {
+        if (!els.sessionPromptChips) return;
+        els.sessionPromptChips.innerHTML = '';
+        els.sessionPromptChips.classList.add('hidden');
+    }
+
+    function getSessionPromptChips(context) {
+        const followUps = Array.isArray(context?.follow_up_questions)
+            ? context.follow_up_questions.filter(Boolean).slice(0, 4)
+            : [];
+        if (followUps.length) {
+            return followUps.map(question => [question, question]);
+        }
+        const intent = String(context?.intent || '').toLowerCase();
+        const byIntent = {
+            finance_health: [
+                ['What should I fix first?', 'What should I fix first?'],
+                ['Why is OpEx high?', 'Why is OpEx high?'],
+                ['Show upcoming bills', 'Show upcoming bills.'],
+            ],
+            ledger_cleanup: [
+                ['Find missing receipts', 'Find missing receipts.'],
+                ['Can I trust my ledger?', 'Can I trust my ledger?'],
+                ['Show largest expenses', 'Show my largest expenses.'],
+            ],
+            bills_risk: [
+                ['Show upcoming bills', 'Show upcoming bills.'],
+                ['Which bills are risky?', 'Which bills are risky?'],
+                ['Check cash pressure', 'Can I cover upcoming bills?'],
+            ],
+            revenue_sync: [
+                ['Revenue this month', 'What was my revenue this month?'],
+                ['Strongest revenue source', 'Which revenue source is strongest?'],
+                ['Revenue changes', 'What revenue changed this month?'],
+            ],
+            bills: [
+                ['Show upcoming bills', 'Show upcoming bills.'],
+                ['Check cash pressure', 'Can I cover upcoming bills?'],
+                ['Find risky bills', 'Which bills are risky?'],
+            ],
+            ledger: [
+                ['Find missing receipts', 'Find missing receipts.'],
+                ['Review ledger quality', 'Can I trust my ledger?'],
+                ['Show largest expenses', 'Show my largest expenses.'],
+            ],
+            subscriptions: [
+                ['Review subscription costs', 'Review subscription costs.'],
+                ['Upcoming renewals', 'Which subscriptions renew soon?'],
+                ['Recurring costs', 'Which recurring costs should I review?'],
+            ],
+        };
+        return byIntent[intent] || [
+            ['Analyze my business health', 'How healthy is my business this month?'],
+            ['Summarize this month', 'Summarize this month.'],
+            ['Show upcoming bills', 'Show upcoming bills.'],
+            ['Find missing receipts', 'Find missing receipts.'],
+        ];
+    }
+
+    function documentFollowUps(result) {
+        const action = result?.recommended_action;
+        const destination = result?.recommended_destination;
+        if (action === 'review_and_save_to_bills' || destination === 'bills') {
+            return ['Show upcoming bills.', 'Which bills are risky?', 'Can I cover upcoming bills?'];
+        }
+        if (action === 'review_as_expense' || action === 'review_transaction' || destination === 'ledger') {
+            return ['Find missing receipts.', 'Can I trust my ledger?', 'Show my largest expenses.'];
+        }
+        if (action === 'review_as_subscription' || destination === 'subscriptions') {
+            return ['Review subscription costs.', 'Which subscriptions renew soon?', 'Which recurring costs should I review?'];
+        }
+        if (destination === 'revenue_sync') {
+            return ['What was my revenue this month?', 'Which revenue source is strongest?', 'What revenue changed this month?'];
+        }
+        return ['Analyze my business health.', 'Summarize this month.', 'What should I fix first?'];
     }
 
     function nextMessageId(prefix) {
@@ -847,10 +924,14 @@
     function scrollToLatest(force) {
         if (!force) return;
         const scroller = getActiveScroller();
-        const target = state.chatStarted ? els.chatThread?.lastElementChild : els.composerSection;
-        if (!scroller || !target) return;
+        if (!scroller) return;
         requestAnimationFrame(() => {
-            target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'end' });
+            const behavior = prefersReducedMotion() ? 'auto' : 'smooth';
+            if (scroller === document.documentElement || scroller === document.body) {
+                window.scrollTo({ top: document.documentElement.scrollHeight, behavior });
+                return;
+            }
+            scroller.scrollTo({ top: scroller.scrollHeight, behavior });
         });
     }
 
@@ -886,12 +967,6 @@
         const records = Array.isArray(relatedRecords) && relatedRecords.length
             ? `<div class="mt-5 rounded-xl border border-gray-200 overflow-hidden"><div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-[12px] font-bold text-gray-700">Related records</div>${relatedRecords.slice(0, 5).map(renderRelatedRecord).join('')}</div>`
             : '';
-        const followUps = Array.isArray(answer.follow_up_questions) && answer.follow_up_questions.length
-            ? `<section class="mt-5"><p class="text-[12px] font-semibold text-gray-500">Good follow-ups</p><div class="mt-2 flex flex-wrap gap-2">${answer.follow_up_questions.slice(0, 3).map(question => `
-                <button type="button" data-ai-follow-up="${escapeAttr(question)}" class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-[12px] font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-[#EA580C]">${escapeHtml(question)}</button>
-            `).join('')}</div></section>`
-            : '';
-
         const renderedId = renderAssistantMessage(messageId, `
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div class="flex flex-wrap items-center gap-2">
@@ -907,9 +982,9 @@
                 ${limitations}
                 ${actions}
                 ${records}
-                ${followUps}
         `, answerType === 'refusal' || answerType === 'clarification' ? 'warning' : 'neutral');
         wireFollowUpActions(renderedId);
+        renderSessionPromptChips(answer);
     }
 
     function renderKeyNumber(item) {
@@ -1044,6 +1119,10 @@
                 ${action}
         `);
         wireDocumentActions(result, actionId, file);
+        renderSessionPromptChips({
+            intent: result.recommended_destination || result.detected_type || 'document_detection',
+            follow_up_questions: documentFollowUps(result),
+        });
     }
 
     function renderDocumentAction(result, messageId, file) {
