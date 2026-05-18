@@ -102,12 +102,14 @@
 
     function cacheElements() {
         els.name = document.getElementById('ai-user-name');
+        els.appHeader = document.getElementById('ai-app-header');
+        els.homeTopbar = document.getElementById('ai-home-topbar');
+        els.sessionTopbar = document.getElementById('ai-session-topbar');
         els.workspace = document.getElementById('ai-workspace');
         els.greeting = document.getElementById('ai-greeting-section');
         els.promptSection = document.getElementById('ai-prompt-section');
         els.promptGrid = document.getElementById('ai-prompt-grid');
         els.refreshPrompts = document.getElementById('ai-refresh-prompts');
-        els.sessionHeader = document.getElementById('ai-session-header');
         els.sessionTitle = document.getElementById('ai-session-title');
         els.backHome = document.getElementById('ai-back-home');
         els.newChat = document.getElementById('ai-new-chat');
@@ -213,7 +215,12 @@
         els.workspace?.classList.remove('ai-chat-active');
         els.workspace?.classList.add('justify-center');
         els.workspace?.classList.remove('justify-start');
-        els.sessionHeader?.classList.add('hidden');
+        els.appHeader?.classList.remove('ai-session-mode');
+        els.homeTopbar?.classList.remove('hidden');
+        els.sessionTopbar?.classList.add('hidden');
+        els.sessionTopbar?.classList.remove('flex');
+        els.newChat?.classList.add('hidden');
+        els.newChat?.classList.remove('inline-flex');
         els.responseArea?.classList.add('hidden');
         if (els.responseArea) els.responseArea.innerHTML = '';
         els.chatThread = null;
@@ -334,7 +341,12 @@
         els.workspace?.classList.add('ai-chat-active');
         els.workspace?.classList.remove('justify-center');
         els.workspace?.classList.add('justify-start');
-        els.sessionHeader?.classList.remove('hidden');
+        els.appHeader?.classList.add('ai-session-mode');
+        els.homeTopbar?.classList.add('hidden');
+        els.sessionTopbar?.classList.remove('hidden');
+        els.sessionTopbar?.classList.add('flex');
+        els.newChat?.classList.remove('hidden');
+        els.newChat?.classList.add('inline-flex');
         els.responseArea?.classList.remove('hidden');
         els.historySection?.classList.add('hidden');
         if (els.sessionTitle) els.sessionTitle.textContent = title || 'AI chat';
@@ -419,10 +431,10 @@
 
     function promptIcon(index) {
         const icons = [
-            '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>',
-            '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0z"/></svg>',
-            '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M15 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6z"/><path d="M14 2v4a2 2 0 0 0 2 2h3"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>',
-            '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>',
+            '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18"/><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m7 14 3-3 3 2 5-6"/></svg>',
+            '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6A2 2 0 0 0 22 18L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 9v4"/><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 17h.01"/></svg>',
+            '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M8 2v4"/><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2" stroke-width="2"/><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 10h18"/><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 16h6"/></svg>',
+            '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 19V5"/><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M8 17V9"/><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 17V7"/><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 17v-5"/><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M20 17V4"/></svg>',
         ];
         return icons[index % icons.length];
     }
@@ -752,12 +764,33 @@
         const thread = ensureChatThread();
         if (!thread) return null;
         const id = nextMessageId('assistant');
+        const label = message || 'Analyzing your finance records...';
+        const isDocumentFlow = /document|type|destination|checking/i.test(label);
+        const subtext = isDocumentFlow
+            ? 'Checking file hints, routing destination, and review requirements.'
+            : 'Reading records, checking limitations, and preparing next actions.';
+        const steps = isDocumentFlow
+            ? ['Checking supported file type', 'Detecting destination', 'Preparing review guidance']
+            : ['Classifying finance intent', 'Checking period data', 'Building analyst answer'];
         thread.insertAdjacentHTML('beforeend', `
             <article id="${id}" class="flex justify-start">
                 <div class="max-w-full sm:max-w-[88%] rounded-2xl rounded-bl-md border border-gray-200 bg-white px-5 py-4 shadow-sm">
-                    <div class="inline-flex items-center gap-2 text-[13px] font-bold text-gray-500">
-                        <span>${escapeHtml(message || 'FluxyOS thinking...')}</span>
-                        <span class="inline-flex gap-1" aria-hidden="true"><span class="h-1.5 w-1.5 rounded-full bg-gray-900 animate-pulse"></span><span class="h-1.5 w-1.5 rounded-full bg-gray-900 animate-pulse"></span><span class="h-1.5 w-1.5 rounded-full bg-gray-900 animate-pulse"></span></span>
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[#EA580C]">
+                            <svg class="h-4 w-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 19V5m4 12V9m4 8V7m4 10v-5m4 5V4"></path></svg>
+                        </span>
+                        <div>
+                            <p class="text-[13px] font-semibold text-gray-900">${escapeHtml(label)}</p>
+                            <p class="mt-0.5 text-[12px] text-gray-500">${escapeHtml(subtext)}</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 grid gap-2">
+                        ${steps.map((item, index) => `
+                            <div class="flex items-center gap-2 text-[12px] font-medium text-gray-500">
+                                <span class="h-1.5 w-1.5 rounded-full ${index === 0 ? 'bg-[#EA580C]' : 'bg-gray-300'} animate-pulse"></span>
+                                <span>${item}</span>
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
             </article>
@@ -771,9 +804,11 @@
         const id = messageId || nextMessageId('assistant');
         const existing = document.getElementById(id);
         const autoScroll = shouldAutoScroll();
-        const toneClass = tone === 'error'
-            ? 'border-red-200 bg-red-50'
-            : 'border-gray-200 bg-white';
+        const toneClass = {
+            error: 'border-red-200 bg-red-50',
+            warning: 'border-amber-200 bg-amber-50',
+            neutral: 'border-gray-200 bg-white',
+        }[tone] || 'border-gray-200 bg-white';
         const markup = `
             <article id="${id}" class="flex justify-start">
                 <div class="max-w-full sm:max-w-[88%] rounded-2xl rounded-bl-md border ${toneClass} px-5 py-4 shadow-sm">
@@ -820,58 +855,88 @@
             renderErrorResult('Fluxy AI did not return a usable finance answer.', messageId);
             return;
         }
+        const answerType = answer.answer_type || 'analysis';
+        const confidence = Number(answer.confidence);
+        const hasConfidence = Number.isFinite(confidence);
+        const lowConfidence = hasConfidence && confidence < 0.7;
+        const stateBadge = renderAnalystStateBadge(answerType, lowConfidence);
+        const confidenceBadge = hasConfidence
+            ? `<span class="rounded-full border ${lowConfidence ? 'border-amber-200 text-amber-700 bg-amber-50' : 'border-gray-200 text-gray-500 bg-white'} px-2.5 py-1 text-[11px] font-medium">${Math.round(confidence * 100)}% confidence</span>`
+            : '';
         const keyNumbers = Array.isArray(answer.key_numbers) && answer.key_numbers.length
-            ? `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-5">${answer.key_numbers.map(renderKeyNumber).join('')}</div>`
+            ? `<section class="mt-5"><p class="text-[12px] font-semibold text-gray-500">Key numbers</p><div class="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">${answer.key_numbers.map(renderKeyNumber).join('')}</div></section>`
             : '';
         const insights = Array.isArray(answer.insights) && answer.insights.length
-            ? `<div class="mt-5 space-y-3">${answer.insights.map(renderInsight).join('')}</div>`
+            ? `<section class="mt-5"><p class="text-[12px] font-semibold text-gray-500">What this means</p><div class="mt-2 space-y-3">${answer.insights.map(renderInsight).join('')}</div></section>`
             : '';
         const actions = Array.isArray(answer.recommended_actions) && answer.recommended_actions.length
-            ? `<div class="mt-5 grid gap-3">${answer.recommended_actions.map(renderAction).join('')}</div>`
+            ? `<section class="mt-5"><p class="text-[12px] font-semibold text-gray-500">Recommended next actions</p><div class="mt-2 grid gap-3">${answer.recommended_actions.slice(0, 3).map(renderAction).join('')}</div></section>`
             : '';
         const limitations = Array.isArray(answer.limitations) && answer.limitations.length
-            ? `<div class="mt-5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"><p class="text-[12px] font-bold text-gray-700">Limitations</p><div class="mt-2 space-y-1">${answer.limitations.map(item => `<p class="text-[12px] text-gray-500">${escapeHtml(item)}</p>`).join('')}</div></div>`
+            ? `<section class="mt-5 rounded-xl border ${lowConfidence ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-gray-50'} px-4 py-3"><p class="text-[12px] font-semibold ${lowConfidence ? 'text-amber-900' : 'text-gray-700'}">Risk or limitation</p><div class="mt-2 space-y-1">${answer.limitations.map(item => `<p class="text-[12px] leading-relaxed ${lowConfidence ? 'text-amber-800' : 'text-gray-500'}">${escapeHtml(item)}</p>`).join('')}</div></section>`
             : '';
         const records = Array.isArray(relatedRecords) && relatedRecords.length
             ? `<div class="mt-5 rounded-xl border border-gray-200 overflow-hidden"><div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-[12px] font-bold text-gray-700">Related records</div>${relatedRecords.slice(0, 5).map(renderRelatedRecord).join('')}</div>`
             : '';
+        const followUps = Array.isArray(answer.follow_up_questions) && answer.follow_up_questions.length
+            ? `<section class="mt-5"><p class="text-[12px] font-semibold text-gray-500">Good follow-ups</p><div class="mt-2 flex flex-wrap gap-2">${answer.follow_up_questions.slice(0, 3).map(question => `
+                <button type="button" data-ai-follow-up="${escapeAttr(question)}" class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-[12px] font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-[#EA580C]">${escapeHtml(question)}</button>
+            `).join('')}</div></section>`
+            : '';
 
-        renderAssistantMessage(messageId, `
-                <div class="flex flex-wrap items-center gap-2">
-                    <span class="rounded-full border border-gray-200 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-gray-500">${escapeHtml(answer.period?.label || 'Selected period')}</span>
-                    <span class="rounded-full border border-gray-200 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-gray-500">${escapeHtml(answer.intent || 'finance_analysis')}</span>
+        const renderedId = renderAssistantMessage(messageId, `
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="flex flex-wrap items-center gap-2">
+                        ${stateBadge}
+                        <span class="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-500">${escapeHtml(answer.period?.label || 'Selected period')}</span>
+                        <span class="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-500">${escapeHtml(toLabel(answer.intent || 'finance_analysis'))}</span>
+                        ${confidenceBadge}
+                    </div>
                 </div>
-                <p class="mt-4 text-[17px] font-bold leading-relaxed text-gray-950">${escapeHtml(answer.direct_answer || '')}</p>
+                <p class="mt-4 text-[17px] font-semibold leading-relaxed text-gray-950">${escapeHtml(answer.direct_answer || '')}</p>
                 ${keyNumbers}
                 ${insights}
-                ${actions}
                 ${limitations}
+                ${actions}
                 ${records}
-        `);
+                ${followUps}
+        `, answerType === 'refusal' || answerType === 'clarification' ? 'warning' : 'neutral');
+        wireFollowUpActions(renderedId);
     }
 
     function renderKeyNumber(item) {
         const statusClass = {
-            good: 'border-green-200',
-            warning: 'border-amber-200',
-            critical: 'border-red-200',
-            neutral: 'border-gray-200',
+            good: 'border-green-200 bg-green-50',
+            warning: 'border-amber-200 bg-amber-50',
+            critical: 'border-red-200 bg-red-50',
+            neutral: 'border-gray-200 bg-white',
         }[item.status] || 'border-gray-200';
+        const statusDot = {
+            good: 'bg-green-500',
+            warning: 'bg-amber-500',
+            critical: 'bg-red-500',
+            neutral: 'bg-gray-300',
+        }[item.status] || 'bg-gray-300';
         return `
-            <div class="rounded-xl border ${statusClass} bg-white px-4 py-3">
-                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">${escapeHtml(item.label)}</p>
+            <div class="rounded-xl border ${statusClass} px-4 py-3">
+                <p class="flex items-center gap-2 text-[11px] font-medium text-gray-500"><span class="h-1.5 w-1.5 rounded-full ${statusDot}"></span>${escapeHtml(item.label)}</p>
                 <p class="mt-1 text-[18px] font-extrabold text-gray-950 break-words">${escapeHtml(item.formatted_value)}</p>
             </div>
         `;
     }
 
     function renderInsight(item) {
+        const severityClass = {
+            critical: 'border-red-200 bg-red-50',
+            warning: 'border-amber-200 bg-amber-50',
+            info: 'border-gray-200 bg-white',
+        }[item.severity] || 'border-gray-200 bg-white';
         const evidence = Array.isArray(item.evidence) && item.evidence.length
             ? `<div class="mt-3 rounded-lg border border-gray-200 overflow-hidden">${item.evidence.slice(0, 3).map(renderRelatedRecord).join('')}</div>`
             : '';
         return `
-            <div class="rounded-xl border border-gray-200 px-4 py-3">
-                <p class="text-[14px] font-bold text-gray-900">${escapeHtml(item.title)}</p>
+            <div class="rounded-xl border ${severityClass} px-4 py-3">
+                <p class="text-[14px] font-semibold text-gray-900">${escapeHtml(item.title)}</p>
                 <p class="mt-1 text-[13px] leading-relaxed text-gray-500">${escapeHtml(item.description)}</p>
                 ${evidence}
             </div>
@@ -879,12 +944,41 @@
     }
 
     function renderAction(item) {
+        const priorityClass = {
+            high: 'border-red-200 text-red-700 bg-red-50',
+            medium: 'border-amber-200 text-amber-700 bg-amber-50',
+            low: 'border-gray-200 text-gray-500 bg-gray-50',
+        }[item.priority] || 'border-gray-200 text-gray-500 bg-gray-50';
         return `
             <div class="rounded-xl border border-gray-200 px-4 py-3">
-                <p class="text-[14px] font-bold text-gray-900">${escapeHtml(item.title)}</p>
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <p class="text-[14px] font-semibold text-gray-900">${escapeHtml(item.title)}</p>
+                    <span class="inline-flex w-fit rounded-full border px-2 py-0.5 text-[10px] font-semibold ${priorityClass}">${escapeHtml(toLabel(item.priority || 'next'))}</span>
+                </div>
                 <p class="mt-1 text-[13px] leading-relaxed text-gray-500">${escapeHtml(item.description)}</p>
             </div>
         `;
+    }
+
+    function renderAnalystStateBadge(answerType, lowConfidence) {
+        if (lowConfidence) {
+            return '<span class="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">Low confidence</span>';
+        }
+        const config = {
+            analysis: ['Analyst answer', 'border-green-200 bg-green-50 text-green-700'],
+            lookup: ['Data lookup', 'border-blue-200 bg-blue-50 text-blue-700'],
+            refusal: ['Finance scope only', 'border-amber-200 bg-amber-50 text-amber-700'],
+            clarification: ['Needs clarification', 'border-amber-200 bg-amber-50 text-amber-700'],
+        }[answerType] || ['Analyst answer', 'border-gray-200 bg-white text-gray-500'];
+        return `<span class="rounded-full border px-2.5 py-1 text-[11px] font-semibold ${config[1]}">${config[0]}</span>`;
+    }
+
+    function wireFollowUpActions(messageId) {
+        if (!messageId) return;
+        const root = document.getElementById(messageId);
+        root?.querySelectorAll('[data-ai-follow-up]').forEach(button => {
+            button.addEventListener('click', () => submitText(button.dataset.aiFollowUp || button.textContent || ''));
+        });
     }
 
     function renderRelatedRecord(record) {
@@ -1123,7 +1217,7 @@
     function autoGrowComposer() {
         if (!els.input) return;
         els.input.style.height = 'auto';
-        const max = state.mode === 'session' ? 152 : 220;
+        const max = state.mode === 'session' ? 132 : 220;
         const next = Math.min(els.input.scrollHeight, max);
         els.input.style.height = `${next}px`;
         els.input.style.overflowY = els.input.scrollHeight > max ? 'auto' : 'hidden';
