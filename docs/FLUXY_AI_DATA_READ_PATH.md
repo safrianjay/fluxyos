@@ -68,8 +68,11 @@ For each collection:
 1. If the backend read succeeds, use backend data.
 2. If the backend read fails and the authenticated page snapshot contains that
    collection, use the snapshot.
-3. If both backend read and snapshot are unavailable, use an empty array only
-   with an explicit limitation.
+3. If both backend read and snapshot are unavailable for a collection required
+   by the user's question, return a data-unavailable answer with no key-number
+   cards and no calculated zero values.
+4. If a non-required collection is unavailable, continue with the available data
+   and add an explicit limitation.
 
 The response must not silently present zero as a real result when data could not
 be read.

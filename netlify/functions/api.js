@@ -539,6 +539,28 @@ function baseAnswer(intent, answerType, period, language = 'en') {
     };
 }
 
+function requiredCollectionsForIntent(intent) {
+    if (['revenue_analysis', 'expense_analysis', 'margin_analysis', 'ledger_cleanup'].includes(intent)) return ['transactions'];
+    if (intent === 'bills_analysis') return ['bills'];
+    if (intent === 'subscription_analysis') return ['subscriptions'];
+    if (['finance_health', 'action_recommendation'].includes(intent)) return ['transactions', 'bills', 'subscriptions'];
+    if (intent === 'data_lookup') return ['transactions', 'bills', 'subscriptions'];
+    return [];
+}
+
+function buildDataUnavailableAnswer(intent, period, missingCollections) {
+    const answer = baseAnswer(intent, 'clarification', period);
+    const labels = missingCollections.map(collection => collection.replace(/_/g, ' ')).join(', ');
+    answer.confidence = 0;
+    answer.direct_answer = `I could not read the required ${labels} data, so I cannot calculate this safely yet. I will not show zero values because that would make unavailable data look like real finance results.`;
+    answer.recommended_actions = [
+        action('Retry the analysis', 'Refresh the page and ask again after the finance tables finish loading.', 'medium'),
+    ];
+    answer.limitations = missingCollections.map(collection => `Could not read ${collection}; no zero-value calculation was produced.`);
+    answer.follow_up_questions = ['Try again', 'Check a different finance area'];
+    return answer;
+}
+
 function buildDeterministicAnswer({ intent, message, pageContext, period, tools }) {
     const language = isIndonesian(message) ? 'id' : 'en';
     const answer = baseAnswer(intent, 'analysis', period, language);
@@ -872,6 +894,20 @@ async function buildBrainChatResponse({ request, uid, token }) {
         billResult.error && !snapshot.bills.length ? billResult.error : null,
         subscriptionResult.error && !snapshot.subscriptions.length ? subscriptionResult.error : null,
     ].filter(Boolean);
+    const unavailableCollections = [
+        transactionResult.error && !snapshot.transactions.length ? 'transactions' : null,
+        billResult.error && !snapshot.bills.length ? 'bills' : null,
+        subscriptionResult.error && !snapshot.subscriptions.length ? 'subscriptions' : null,
+    ].filter(Boolean);
+    const missingRequiredCollections = requiredCollectionsForIntent(intent)
+        .filter(collectionName => unavailableCollections.includes(collectionName));
+    if (missingRequiredCollections.length) {
+        const answer = buildDataUnavailableAnswer(intent, period, missingRequiredCollections);
+        return {
+            status: 200,
+            body: { success: true, intent, scope: FINANCE_SCOPE, answer, related_records: [], error: null },
+        };
+    }
 
     const today = toDateKey(todayJakarta());
     const windowDays = detectWindowDays(message);

@@ -365,6 +365,37 @@ def _in_period(record: Dict[str, Any], period: Dict[str, str], field: str = "tim
 def _key_number(label: str, value: float, status_value: str = "neutral", formatted: str | None = None) -> Dict[str, Any]:
     return {"label": label, "value": value, "formatted_value": formatted or _format_idr(value), "status": status_value}
 
+def _required_collections_for_intent(intent: str) -> List[str]:
+    if intent in {"revenue_analysis", "expense_analysis", "margin_analysis", "ledger_cleanup"}:
+        return ["transactions"]
+    if intent == "bills_analysis":
+        return ["bills"]
+    if intent == "subscription_analysis":
+        return ["subscriptions"]
+    if intent in {"finance_health", "action_recommendation", "data_lookup"}:
+        return ["transactions", "bills", "subscriptions"]
+    return []
+
+def _build_data_unavailable_answer(intent: str, period: Dict[str, str], missing_collections: List[str]) -> Dict[str, Any]:
+    labels = ", ".join(item.replace("_", " ") for item in missing_collections)
+    return {
+        "intent": intent,
+        "scope": FINANCE_SCOPE,
+        "answer_type": "clarification",
+        "confidence": 0,
+        "period": {"label": period["label"], "start_date": period["start_date"], "end_date": period["end_date"]},
+        "direct_answer": f"I could not read the required {labels} data, so I cannot calculate this safely yet. I will not show zero values because that would make unavailable data look like real finance results.",
+        "key_numbers": [],
+        "insights": [],
+        "recommended_actions": [{
+            "title": "Retry the analysis",
+            "description": "Refresh the page and ask again after the finance tables finish loading.",
+            "priority": "medium",
+        }],
+        "limitations": [f"Could not read {collection}; no zero-value calculation was produced." for collection in missing_collections],
+        "follow_up_questions": ["Try again", "Check a different finance area"],
+    }
+
 def _compact(record: Dict[str, Any], date_field: str = "timestamp") -> Dict[str, Any]:
     amount = float(record.get("amount") or 0)
     raw_source = str(record.get("source") or record.get("collection") or "").lower()
@@ -534,6 +565,20 @@ async def brain_chat(request: ChatRequest, _user=Depends(verify_firebase_token))
     if subscriptions_error and snapshot["subscriptions"]:
         subscriptions = snapshot["subscriptions"]
         used_snapshot.append("subscriptions")
+    unavailable_collections = [
+        collection for collection, error, snapshot_records in [
+            ("transactions", transactions_error, snapshot["transactions"]),
+            ("bills", bills_error, snapshot["bills"]),
+            ("subscriptions", subscriptions_error, snapshot["subscriptions"]),
+        ] if error and not snapshot_records
+    ]
+    missing_required_collections = [
+        collection for collection in _required_collections_for_intent(intent)
+        if collection in unavailable_collections
+    ]
+    if missing_required_collections:
+        answer = _build_data_unavailable_answer(intent, period, missing_required_collections)
+        return {"success": True, "intent": intent, "scope": FINANCE_SCOPE, "answer": answer, "related_records": [], "error": None}
 
     answer = _build_answer(intent, message, period, transactions, bills, subscriptions, request.page_context or "global")
     read_limitations = [
