@@ -70,6 +70,8 @@
         previewUrl: null,
         busy: false,
         context: window.__fluxyAICommandContext || null,
+        chatStarted: false,
+        messageId: 0,
     };
 
     const els = {};
@@ -93,9 +95,13 @@
 
     function cacheElements() {
         els.name = document.getElementById('ai-user-name');
+        els.workspace = document.getElementById('ai-workspace');
+        els.promptSection = document.getElementById('ai-prompt-section');
         els.promptGrid = document.getElementById('ai-prompt-grid');
         els.refreshPrompts = document.getElementById('ai-refresh-prompts');
         els.responseArea = document.getElementById('ai-response-area');
+        els.chatThread = null;
+        els.composerSection = document.getElementById('ai-composer-section');
         els.form = document.getElementById('ai-command-form');
         els.input = document.getElementById('ai-command-input');
         els.charCount = document.getElementById('ai-char-count');
@@ -107,6 +113,7 @@
         els.filePreview = document.getElementById('ai-file-preview');
         els.error = document.getElementById('ai-composer-error');
         els.dropZone = document.getElementById('ai-drop-zone');
+        els.scrollContainer = document.querySelector('main > div.flex-1.overflow-y-auto');
     }
 
     function wireEvents() {
@@ -201,8 +208,13 @@
         const prompt = String(text || '').trim();
         if (!prompt || state.busy) return;
         clearError();
+        const shouldScroll = shouldAutoScroll();
+        appendUserMessage({ text: prompt });
+        const loadingId = appendAssistantLoading('Analyzing your finance records...');
+        if (els.input) els.input.value = '';
+        updateCharCount();
+        scrollToLatest(shouldScroll);
         setBusy(true, 'thinking');
-        renderPendingQuestion(prompt);
         try {
             const token = await getAuthToken();
             const response = await fetch('/api/v1/brain/chat', {
@@ -219,14 +231,12 @@
             });
             const body = await response.json().catch(() => ({}));
             if (!response.ok || body.success === false) {
-                renderErrorResult(body?.error?.message || 'Fluxy AI could not read your finance data right now.');
+                renderErrorResult(body?.error?.message || 'Fluxy AI could not read your finance data right now.', loadingId);
                 return;
             }
-            renderFinanceAnswer(body.answer, body.related_records || []);
-            if (els.input) els.input.value = '';
-            updateCharCount();
+            renderFinanceAnswer(body.answer, body.related_records || [], loadingId);
         } catch (err) {
-            renderErrorResult(err?.message || 'Fluxy AI could not connect. Please try again.');
+            renderErrorResult(err?.message || 'Fluxy AI could not connect. Please try again.', loadingId);
         } finally {
             setBusy(false);
         }
@@ -234,9 +244,16 @@
 
     async function detectSelectedFile(userIntent) {
         if (!state.file || state.busy) return;
+        const file = state.file;
         clearError();
+        const shouldScroll = shouldAutoScroll();
+        appendUserMessage({ text: userIntent || 'Please review this finance document.', file });
+        const loadingId = appendAssistantLoading('Checking the document type and destination...');
+        if (els.input) els.input.value = '';
+        updateCharCount();
+        clearFile();
+        scrollToLatest(shouldScroll);
         setBusy(true, 'detecting');
-        renderDetecting(state.file);
         try {
             const token = await getAuthToken();
             const response = await fetch('/api/v1/ai/detect-document', {
@@ -246,9 +263,9 @@
                     'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    file_name: state.file.name,
-                    mime_type: state.file.type || guessMimeFromName(state.file.name),
-                    size_bytes: state.file.size,
+                    file_name: file.name,
+                    mime_type: file.type || guessMimeFromName(file.name),
+                    size_bytes: file.size,
                     page_context: 'ai_command_center',
                     user_intent: userIntent || null,
                     locale: 'id-ID',
@@ -257,12 +274,12 @@
             });
             const body = await response.json().catch(() => ({}));
             if (!response.ok || body.success === false) {
-                renderDocumentError(body?.message || body?.error?.message || 'Fluxy AI could not detect this document.');
+                renderDocumentError(body?.message || body?.error?.message || 'Fluxy AI could not detect this document.', loadingId);
                 return;
             }
-            renderDocumentDetection(body);
+            renderDocumentDetection(body, loadingId, file);
         } catch (err) {
-            renderDocumentError(err?.message || 'Could not detect this document right now.');
+            renderDocumentError(err?.message || 'Could not detect this document right now.', loadingId);
         } finally {
             setBusy(false);
         }
@@ -331,26 +348,109 @@
         }
     }
 
-    function renderPendingQuestion(prompt) {
-        showResponse(`
-            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                <div class="px-5 py-4 border-b border-gray-100">
-                    <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Your question</p>
-                    <p class="mt-1 text-[15px] font-bold text-gray-900">${escapeHtml(prompt)}</p>
+    function ensureChatThread() {
+        if (!els.responseArea) return null;
+        if (!els.chatThread) {
+            els.responseArea.classList.remove('hidden');
+            els.responseArea.innerHTML = '<div id="ai-chat-thread" class="space-y-5"></div>';
+            els.chatThread = document.getElementById('ai-chat-thread');
+        }
+        if (!state.chatStarted) {
+            state.chatStarted = true;
+            els.workspace?.classList.remove('justify-center');
+            els.workspace?.classList.add('justify-start');
+            els.promptSection?.classList.add('opacity-80');
+            els.composerSection?.classList.add('sticky', 'bottom-0', 'z-20');
+        }
+        return els.chatThread;
+    }
+
+    function appendUserMessage({ text, file }) {
+        const thread = ensureChatThread();
+        if (!thread) return null;
+        const id = nextMessageId('user');
+        const fileMeta = file ? `
+            <div class="mt-3 rounded-xl border border-gray-200 bg-white/70 px-3 py-2 text-left">
+                <p class="truncate text-[12px] font-bold text-gray-900">${escapeHtml(file.name)}</p>
+                <p class="mt-0.5 text-[11px] text-gray-500">${escapeHtml(file.type || guessMimeFromName(file.name))} - ${formatBytes(file.size)}</p>
+            </div>
+        ` : '';
+        thread.insertAdjacentHTML('beforeend', `
+            <article id="${id}" class="flex justify-end">
+                <div class="max-w-[82%] sm:max-w-[70%] rounded-2xl rounded-br-md bg-[#0B0F19] px-4 py-3 text-white shadow-sm">
+                    <p class="whitespace-pre-wrap text-[14px] leading-relaxed">${escapeHtml(text)}</p>
+                    ${fileMeta}
                 </div>
-                <div class="px-5 py-5">
+            </article>
+        `);
+        return id;
+    }
+
+    function appendAssistantLoading(message) {
+        const thread = ensureChatThread();
+        if (!thread) return null;
+        const id = nextMessageId('assistant');
+        thread.insertAdjacentHTML('beforeend', `
+            <article id="${id}" class="flex justify-start">
+                <div class="max-w-full sm:max-w-[88%] rounded-2xl rounded-bl-md border border-gray-200 bg-white px-5 py-4 shadow-sm">
                     <div class="inline-flex items-center gap-2 text-[13px] font-bold text-gray-500">
-                        <span>FluxyOS thinking</span>
+                        <span>${escapeHtml(message || 'FluxyOS thinking...')}</span>
                         <span class="inline-flex gap-1" aria-hidden="true"><span class="h-1.5 w-1.5 rounded-full bg-gray-900 animate-pulse"></span><span class="h-1.5 w-1.5 rounded-full bg-gray-900 animate-pulse"></span><span class="h-1.5 w-1.5 rounded-full bg-gray-900 animate-pulse"></span></span>
                     </div>
                 </div>
-            </div>
+            </article>
         `);
+        return id;
     }
 
-    function renderFinanceAnswer(answer, relatedRecords) {
+    function renderAssistantMessage(messageId, html, tone) {
+        const thread = ensureChatThread();
+        if (!thread) return;
+        const id = messageId || nextMessageId('assistant');
+        const existing = document.getElementById(id);
+        const autoScroll = shouldAutoScroll();
+        const toneClass = tone === 'error'
+            ? 'border-red-200 bg-red-50'
+            : 'border-gray-200 bg-white';
+        const markup = `
+            <article id="${id}" class="flex justify-start">
+                <div class="max-w-full sm:max-w-[88%] rounded-2xl rounded-bl-md border ${toneClass} px-5 py-4 shadow-sm">
+                    ${html}
+                </div>
+            </article>
+        `;
+        if (existing) {
+            existing.outerHTML = markup;
+        } else {
+            thread.insertAdjacentHTML('beforeend', markup);
+        }
+        scrollToLatest(autoScroll);
+    }
+
+    function nextMessageId(prefix) {
+        state.messageId += 1;
+        return `ai-${prefix}-message-${state.messageId}`;
+    }
+
+    function shouldAutoScroll() {
+        const scroller = els.scrollContainer;
+        if (!scroller || !state.chatStarted) return true;
+        return scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 280;
+    }
+
+    function scrollToLatest(force) {
+        if (!force) return;
+        const scroller = els.scrollContainer;
+        const target = els.composerSection || els.chatThread?.lastElementChild;
+        if (!scroller || !target) return;
+        requestAnimationFrame(() => {
+            target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'end' });
+        });
+    }
+
+    function renderFinanceAnswer(answer, relatedRecords, messageId) {
         if (!answer) {
-            renderErrorResult('Fluxy AI did not return a usable finance answer.');
+            renderErrorResult('Fluxy AI did not return a usable finance answer.', messageId);
             return;
         }
         const keyNumbers = Array.isArray(answer.key_numbers) && answer.key_numbers.length
@@ -369,8 +469,7 @@
             ? `<div class="mt-5 rounded-xl border border-gray-200 overflow-hidden"><div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-[12px] font-bold text-gray-700">Related records</div>${relatedRecords.slice(0, 5).map(renderRelatedRecord).join('')}</div>`
             : '';
 
-        showResponse(`
-            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm p-5">
+        renderAssistantMessage(messageId, `
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="rounded-full border border-gray-200 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-gray-500">${escapeHtml(answer.period?.label || 'Selected period')}</span>
                     <span class="rounded-full border border-gray-200 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-gray-500">${escapeHtml(answer.intent || 'finance_analysis')}</span>
@@ -381,7 +480,6 @@
                 ${actions}
                 ${limitations}
                 ${records}
-            </div>
         `);
     }
 
@@ -433,17 +531,7 @@
         `;
     }
 
-    function renderDetecting(file) {
-        showResponse(`
-            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm p-5">
-                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Document detection</p>
-                <p class="mt-2 text-[16px] font-bold text-gray-900">Checking ${escapeHtml(file.name)}</p>
-                <p class="mt-1 text-[13px] text-gray-500">Fluxy AI is identifying the document type and where it belongs in FluxyOS.</p>
-            </div>
-        `);
-    }
-
-    function renderDocumentDetection(result) {
+    function renderDocumentDetection(result, messageId, file) {
         const confidence = Math.round((Number(result.confidence) || 0) * 100);
         const lowConfidence = confidence < 70;
         const preview = result.extracted_preview && Object.keys(result.extracted_preview).length
@@ -457,10 +545,9 @@
         const warnings = Array.isArray(result.warnings) && result.warnings.length
             ? `<div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">${result.warnings.map(item => `<p class="text-[12px] font-medium text-amber-800">${escapeHtml(item)}</p>`).join('')}</div>`
             : '';
-        const action = renderDocumentAction(result);
+        const action = renderDocumentAction(result, messageId);
 
-        showResponse(`
-            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm p-5">
+        renderAssistantMessage(messageId, `
                 <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div>
                         <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Detected document</p>
@@ -485,12 +572,11 @@
                 ${preview}
                 ${warnings}
                 ${action}
-            </div>
         `);
-        wireDocumentActions(result);
+        wireDocumentActions(result, messageId, file);
     }
 
-    function renderDocumentAction(result) {
+    function renderDocumentAction(result, messageId) {
         const action = result.recommended_action;
         if (action === 'refuse') return '';
         const label = {
@@ -503,27 +589,30 @@
         }[action] || 'Review';
         return `
             <div class="mt-5 flex flex-col sm:flex-row gap-3">
-                <button type="button" id="ai-primary-document-action" class="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0B0F19] px-4 py-3 text-[13px] font-bold text-white hover:bg-gray-800 transition-colors">
+                <button type="button" data-ai-primary-document-action="${escapeAttr(messageId || '')}" class="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0B0F19] px-4 py-3 text-[13px] font-bold text-white hover:bg-gray-800 transition-colors">
                     ${escapeHtml(label)}
                 </button>
-                <button type="button" id="ai-clear-document" class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">
-                    Remove file
+                <button type="button" data-ai-clear-document="${escapeAttr(messageId || '')}" class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">
+                    Dismiss
                 </button>
             </div>
         `;
     }
 
-    function wireDocumentActions(result) {
-        document.getElementById('ai-clear-document')?.addEventListener('click', clearFile);
-        document.getElementById('ai-primary-document-action')?.addEventListener('click', () => {
+    function wireDocumentActions(result, messageId, file) {
+        const root = messageId ? document.getElementById(messageId) : document;
+        root?.querySelector(`[data-ai-clear-document="${cssEscape(messageId || '')}"]`)?.addEventListener('click', () => {
+            root.remove();
+        });
+        root?.querySelector(`[data-ai-primary-document-action="${cssEscape(messageId || '')}"]`)?.addEventListener('click', () => {
             const action = result.recommended_action;
             const type = result.detected_type;
             if (['review_and_save_to_bills'].includes(action) || ['bill', 'invoice'].includes(type)) {
-                openExistingReview('bill');
+                openExistingReview('bill', file);
                 return;
             }
             if (['review_as_expense', 'review_transaction'].includes(action) || ['receipt', 'bank_statement', 'payment_screenshot'].includes(type)) {
-                openExistingReview('transaction');
+                openExistingReview('transaction', file);
                 return;
             }
             if (action === 'review_csv_import') {
@@ -540,10 +629,10 @@
         });
     }
 
-    function openExistingReview(mode) {
-        if (!state.file) return;
+    function openExistingReview(mode, file) {
+        if (!file) return;
         if (typeof window.openScanDrawerWithFile === 'function') {
-            window.openScanDrawerWithFile(mode, state.file);
+            window.openScanDrawerWithFile(mode, file);
             return;
         }
         if (mode === 'bill' && typeof window.openScanBillDrawer === 'function') {
@@ -555,29 +644,18 @@
         }
     }
 
-    function renderErrorResult(message) {
-        showResponse(`
-            <div class="rounded-2xl border border-red-200 bg-red-50 p-5">
-                <p class="text-[15px] font-bold text-red-900">Fluxy AI could not finish that.</p>
-                <p class="mt-1 text-[13px] text-red-700">${escapeHtml(message)}</p>
-            </div>
-        `);
+    function renderErrorResult(message, messageId) {
+        renderAssistantMessage(messageId, `
+            <p class="text-[15px] font-bold text-red-900">Fluxy AI could not finish that.</p>
+            <p class="mt-1 text-[13px] text-red-700">${escapeHtml(message)}</p>
+        `, 'error');
     }
 
-    function renderDocumentError(message) {
-        showResponse(`
-            <div class="rounded-2xl border border-red-200 bg-red-50 p-5">
-                <p class="text-[15px] font-bold text-red-900">Document check failed</p>
-                <p class="mt-1 text-[13px] text-red-700">${escapeHtml(message)}</p>
-            </div>
-        `);
-    }
-
-    function showResponse(html) {
-        if (!els.responseArea) return;
-        els.responseArea.classList.remove('hidden');
-        els.responseArea.innerHTML = html;
-        els.responseArea.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'nearest' });
+    function renderDocumentError(message, messageId) {
+        renderAssistantMessage(messageId, `
+            <p class="text-[15px] font-bold text-red-900">Document check failed</p>
+            <p class="mt-1 text-[13px] text-red-700">${escapeHtml(message)}</p>
+        `, 'error');
     }
 
     function setBusy(busy, mode) {
@@ -679,6 +757,11 @@
 
     function escapeAttr(value) {
         return escapeHtml(value).replace(/`/g, '&#96;');
+    }
+
+    function cssEscape(value) {
+        if (window.CSS?.escape) return window.CSS.escape(String(value || ''));
+        return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '\\$&');
     }
 
     if (document.readyState === 'loading') {
