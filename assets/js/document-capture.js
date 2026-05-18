@@ -434,7 +434,13 @@
         const data = state.extraction || {};
         const cfg = modeCfg();
         const today = window.FluxyDateRangePicker?.getDayKey?.() || null;
-        state.dates.primary = (data.due_date && /^\d{4}-\d{2}-\d{2}$/.test(data.due_date)) ? data.due_date : null;
+        // bill mode → primary picker is "Due Date", source it from extraction's due_date.
+        // transaction mode → primary picker is "Transaction Date", source it from
+        // invoice_date (when the receipt was issued / money was spent). Using due_date
+        // for a transaction yielded a future timestamp that landed outside the ledger's
+        // current month filter, so the row never appeared after save.
+        const primarySource = (state.mode === 'bill') ? data.due_date : data.invoice_date;
+        state.dates.primary = (primarySource && /^\d{4}-\d{2}-\d{2}$/.test(primarySource)) ? primarySource : null;
         state.dates.invoice = (data.invoice_date && /^\d{4}-\d{2}-\d{2}$/.test(data.invoice_date)) ? data.invoice_date : null;
 
         const primaryEl = $('scan-drawer-content')?.querySelector('[data-picker="primary"]');
@@ -758,7 +764,16 @@
 
         try {
             await ctx.ds[cfg.saveMethod](user.uid, payload);
-            window.showToast?.(cfg.toastSuccess, 'success');
+            const savedDayKey = (state.mode === 'transaction' && primaryDate)
+                ? primaryDate.toISOString().slice(0, 10)
+                : null;
+            const range = (typeof ctx.getRange === 'function') ? ctx.getRange() : null;
+            const outsideRange = !!(savedDayKey && range && (savedDayKey < range.start || savedDayKey > range.end));
+            if (outsideRange) {
+                window.showToast?.(`Transaction saved on ${savedDayKey}. Switch the date range to view it.`, 'info');
+            } else {
+                window.showToast?.(cfg.toastSuccess, 'success');
+            }
             closeDrawer();
             const refresh = window[cfg.refreshFn];
             if (typeof refresh === 'function') refresh();

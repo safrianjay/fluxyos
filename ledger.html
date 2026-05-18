@@ -293,7 +293,10 @@
         const auth = getAuth(app);
         const ds = new DataService(app);
 
-        window.__fluxyTxContext = { app, auth, ds };
+        window.__fluxyTxContext = {
+            app, auth, ds,
+            getRange: () => ({ start: ledgerRangeStart, end: ledgerRangeEnd }),
+        };
         window.dispatchEvent(new CustomEvent('fluxy-tx-context-ready'));
 
         let allLedgerTransactions = [];
