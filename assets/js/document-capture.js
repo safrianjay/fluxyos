@@ -281,12 +281,23 @@
             <div class="relative overflow-hidden rounded-2xl bg-white border border-gray-100">
                 <div class="absolute -inset-12 scan-loader-bg-purple opacity-25 blur-2xl"></div>
                 <div class="absolute inset-0" style="background: radial-gradient(ellipse at center, rgba(255,255,255,0) 30%, rgba(255,255,255,0.92) 78%);"></div>
+
+                <span class="scan-star scan-star-lg" style="top:14%; left:12%; animation-delay: 0s;"></span>
+                <span class="scan-star" style="top:22%; right:14%; animation-delay: 0.7s;"></span>
+                <span class="scan-star scan-star-sm" style="top:8%; left:46%; animation-delay: 1.1s;"></span>
+                <span class="scan-star scan-star-sm" style="top:46%; left:6%; animation-delay: 1.6s;"></span>
+                <span class="scan-star" style="bottom:24%; right:10%; animation-delay: 0.4s;"></span>
+                <span class="scan-star scan-star-sm" style="bottom:14%; left:24%; animation-delay: 1.3s;"></span>
+                <span class="scan-star scan-star-lg" style="bottom:10%; right:30%; animation-delay: 0.2s;"></span>
+                <span class="scan-star scan-star-sm" style="top:52%; right:7%; animation-delay: 0.9s;"></span>
+                <span class="scan-star scan-star-sm" style="bottom:6%; left:50%; animation-delay: 1.8s;"></span>
+
                 <div class="relative flex flex-col items-center justify-center py-14 px-6">
                     <div class="relative w-36 h-36 flex items-center justify-center">
-                        <div class="absolute inset-0 rounded-full scan-loader-bg opacity-70 blur-2xl"></div>
-                        <div class="absolute inset-3 rounded-full scan-loader-bg opacity-55 blur-md"></div>
+                        <div class="absolute inset-0 rounded-full scan-loader-halo-purple opacity-70 blur-2xl"></div>
+                        <div class="absolute inset-3 rounded-full scan-loader-halo-purple opacity-55 blur-md"></div>
                         <div class="relative scan-loader-pulse">
-                            <div class="w-20 h-20 rounded-2xl bg-white shadow-xl ring-1 ring-orange-100 flex items-center justify-center">
+                            <div class="w-20 h-20 rounded-2xl bg-white shadow-xl ring-1 ring-violet-100 flex items-center justify-center">
                                 <img src="assets/images/favicon.svg" alt="" class="w-12 h-12 scan-loader-spin" aria-hidden="true" onerror="this.style.display='none'">
                             </div>
                         </div>
