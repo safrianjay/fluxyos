@@ -203,6 +203,21 @@
     fill: #9CA3AF;
 }
 
+.cashflow-line-hover-zones {
+    position: absolute;
+    inset: 28px 12px 8px 92px;
+    z-index: 2;
+    pointer-events: auto;
+}
+
+.cashflow-line-hover-zone {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 48px;
+    transform: translateX(-50%);
+}
+
 .cashflow-labels {
     display: flex;
     justify-content: space-between;
@@ -308,6 +323,10 @@
 
     .cashflow-bar {
         min-width: 6px;
+    }
+
+    .cashflow-line-hover-zones {
+        inset: 28px 4px 8px 76px;
     }
 }
 

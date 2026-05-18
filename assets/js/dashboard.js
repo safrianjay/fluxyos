@@ -17,6 +17,8 @@ const auth = getAuth(app);
 const ds = new DataService(app);
 let cashflowChartType = 'bar';
 let cashflowBuckets = [];
+let dashboardRangeStart = getMonthStartKey();
+let dashboardRangeEnd = getMonthEndKey();
 
 window.loadDashboard = async () => {
     const user = auth.currentUser;
@@ -36,7 +38,7 @@ window.loadDashboard = async () => {
             document.getElementById('kpi-margin-bar').style.width = `${stats.margin}%`;
     }
 
-    cashflowBuckets = buildCashflowBuckets(chartTransactions);
+    cashflowBuckets = buildCashflowBuckets(chartTransactions, dashboardRangeStart, dashboardRangeEnd);
     renderCashflowChart();
     attachCashflowChartToggle();
 
@@ -89,34 +91,114 @@ function getTxDate(tx) {
     return null;
 }
 
-function buildCashflowBuckets(txs) {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    const lastDay = new Date(year, month + 1, 0).getDate();
+function getDayKey(date = new Date()) {
+    return [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0')
+    ].join('-');
+}
+
+function parseDayKey(dayKey) {
+    const [year, month, day] = dayKey.split('-').map(Number);
+    return new Date(year, month - 1, day);
+}
+
+function addDays(dayKey, delta) {
+    const date = parseDayKey(dayKey);
+    date.setDate(date.getDate() + delta);
+    return getDayKey(date);
+}
+
+function getMonthStartKey(date = new Date()) {
+    return getDayKey(new Date(date.getFullYear(), date.getMonth(), 1));
+}
+
+function getMonthEndKey(date = new Date()) {
+    return getDayKey(new Date(date.getFullYear(), date.getMonth() + 1, 0));
+}
+
+function getRangeDays(startKey, endKey) {
+    return Math.max(1, Math.round((parseDayKey(endKey) - parseDayKey(startKey)) / 86400000) + 1);
+}
+
+function formatBucketLabel(startKey, endKey, bucketType) {
+    const start = parseDayKey(startKey);
+    const end = parseDayKey(endKey);
+    if (bucketType === 'month') {
+        return start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    }
+    if (startKey === endKey) {
+        return start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+        return `${start.toLocaleDateString('en-US', { month: 'short' })} ${start.getDate()}-${end.getDate()}`;
+    }
+    return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}-${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+}
+
+function buildCashflowBuckets(txs, startKey, endKey) {
+    const rangeDays = getRangeDays(startKey, endKey);
+    const bucketType = rangeDays <= 14 ? 'day' : (rangeDays > 93 ? 'month' : 'week');
+    const bucketStep = bucketType === 'day' ? 1 : 7;
     const buckets = [];
 
-    for (let startDay = 1; startDay <= lastDay; startDay += 7) {
-        const endDay = Math.min(startDay + 6, lastDay);
-        buckets.push({
-            label: `${startDay}-${endDay}`,
-            revenue: 0,
-            spend: 0
-        });
+    if (bucketType === 'month') {
+        let cursor = getMonthStartKey(parseDayKey(startKey));
+        while (cursor <= endKey) {
+            const monthEnd = getMonthEndKey(parseDayKey(cursor));
+            const bucketStart = cursor < startKey ? startKey : cursor;
+            const bucketEnd = monthEnd > endKey ? endKey : monthEnd;
+            buckets.push({
+                start: bucketStart,
+                end: bucketEnd,
+                label: formatBucketLabel(bucketStart, bucketEnd, bucketType),
+                revenue: 0,
+                spend: 0
+            });
+            const next = parseDayKey(cursor);
+            next.setMonth(next.getMonth() + 1);
+            cursor = getMonthStartKey(next);
+        }
+    } else {
+        let cursor = startKey;
+        while (cursor <= endKey) {
+            const bucketEnd = addDays(cursor, bucketStep - 1) > endKey ? endKey : addDays(cursor, bucketStep - 1);
+            buckets.push({
+                start: cursor,
+                end: bucketEnd,
+                label: formatBucketLabel(cursor, bucketEnd, bucketType),
+                revenue: 0,
+                spend: 0
+            });
+            cursor = addDays(bucketEnd, 1);
+        }
     }
 
     txs.forEach(tx => {
         const date = getTxDate(tx);
-        if (!date || date.getFullYear() !== year || date.getMonth() !== month) return;
+        if (!date) return;
 
-        const index = Math.floor((date.getDate() - 1) / 7);
-        const bucket = buckets[index];
+        const dayKey = getDayKey(date);
+        if (dayKey < startKey || dayKey > endKey) return;
+
+        const bucket = buckets.find(item => dayKey >= item.start && dayKey <= item.end);
         if (!bucket) return;
 
         const amount = Math.abs(Number(tx.amount) || 0);
         if (isPositiveTransaction(tx)) bucket.revenue += amount;
         else if (isSpendTransaction(tx)) bucket.spend += amount;
     });
+
+    if (buckets.length === 0) {
+        buckets.push({
+            start: startKey,
+            end: endKey,
+            label: formatBucketLabel(startKey, endKey, 'day'),
+            revenue: 0,
+            spend: 0
+        });
+    }
 
     return buckets;
 }
@@ -216,7 +298,7 @@ function renderCashflowLineChart(chart) {
     const toPolyline = points => points.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
 
     chart.innerHTML = `
-        <div class="cashflow-line-stage">
+        <div class="cashflow-line-stage" data-cashflow-line-stage>
             <div class="cashflow-axis">
                 <div><span>${formatCompactIDR(maxValue)}</span></div>
                 <div><span>${formatCompactIDR(maxValue / 2)}</span></div>
@@ -228,11 +310,42 @@ function renderCashflowLineChart(chart) {
                 ${revenuePoints.map((point, index) => `<circle class="cashflow-point cashflow-point-revenue" cx="${point.x}" cy="${point.y}" r="4"><title>${cashflowBuckets[index].label} Revenue ${formatIDR(revenueValues[index])}</title></circle>`).join('')}
                 ${spendPoints.map((point, index) => `<circle class="cashflow-point cashflow-point-spend" cx="${point.x}" cy="${point.y}" r="4"><title>${cashflowBuckets[index].label} Spend ${formatIDR(spendValues[index])}</title></circle>`).join('')}
             </svg>
+            <div class="cashflow-line-hover-zones">
+                ${cashflowBuckets.map((item, index) => `
+                    <div class="cashflow-line-hover-zone"
+                        data-chart-bar
+                        data-label="${item.label}"
+                        data-revenue="${item.revenue}"
+                        data-spend="${item.spend}"
+                        style="left:${(index / Math.max(cashflowBuckets.length - 1, 1)) * 100}%">
+                    </div>
+                `).join('')}
+            </div>
         </div>
         <div class="cashflow-labels">
             ${cashflowBuckets.map(item => `<span>${item.label}</span>`).join('')}
         </div>
     `;
+
+    if (window.attachChartHover) {
+        window.attachChartHover(chart.querySelector('[data-cashflow-line-stage]'), {
+            bars: '[data-chart-bar]',
+            orientation: 'vertical',
+            buildTooltip: (barEl) => `
+                <div class="chart-tooltip-header">${barEl.dataset.label}</div>
+                <div class="chart-tooltip-row">
+                    <span class="chart-tooltip-swatch" style="background:#22C55E"></span>
+                    <span class="chart-tooltip-label">Revenue</span>
+                    <span class="chart-tooltip-value">${formatIDR(Number(barEl.dataset.revenue || 0))}</span>
+                </div>
+                <div class="chart-tooltip-row">
+                    <span class="chart-tooltip-swatch" style="background:#9CA3AF"></span>
+                    <span class="chart-tooltip-label">Spend</span>
+                    <span class="chart-tooltip-value">${formatIDR(Number(barEl.dataset.spend || 0))}</span>
+                </div>
+            `
+        });
+    }
 }
 
 function attachCashflowChartToggle() {
@@ -246,6 +359,16 @@ function attachCashflowChartToggle() {
         };
     });
 }
+
+window.FluxyDateRangePicker?.mount('#dashboard-date-range-picker', {
+    start: dashboardRangeStart,
+    end: dashboardRangeEnd,
+    onChange: ({ start, end }) => {
+        dashboardRangeStart = start;
+        dashboardRangeEnd = end;
+        window.loadDashboard();
+    }
+});
 
 function renderLedgerRows(txs) {
     const body = document.getElementById('ledger-body');
