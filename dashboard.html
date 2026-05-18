@@ -59,55 +59,53 @@
 
         <!-- Scrollable Dashboard Content -->
         <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-            <div class="max-w-7xl mx-auto space-y-6">
+            <div class="max-w-[1400px] mx-auto space-y-6">
 
-                <!-- 1. KPI Cards Row -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- 1. Overview Analytics Summary -->
+                <section class="overview-summary-shell">
+                    <div class="overview-kpi-grid">
 
-                    <!-- Live Revenue -->
-                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Live Revenue</p>
-                        <p id="kpi-revenue" class="text-lg font-bold text-gray-900 mt-1 leading-8 tabular-nums">Rp 0</p>
-                        <p class="text-[11px] text-gray-400 mt-1">
-                            <span class="text-emerald-600 font-bold">↑ <span id="kpi-revenue-change">14.2%</span></span>
-                            vs last month
-                        </p>
-                    </div>
-
-                    <!-- OpEx & Ad Spend -->
-                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">OpEx &amp; Ad Spend</p>
-                        <p id="kpi-opex" class="text-lg font-bold text-gray-900 mt-1 leading-8 tabular-nums">Rp 0</p>
-                        <p class="text-[11px] text-gray-400 mt-1">Mapped to 14 budgets</p>
-                    </div>
-
-                    <!-- Gross Margin -->
-                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Gross Margin</p>
-                        <p id="kpi-margin" class="text-2xl font-bold text-gray-900 mt-1">76.0%</p>
-                        <div class="w-full bg-gray-100 rounded-full h-1.5 mt-3">
-                            <div id="kpi-margin-bar" class="bg-blue-500 h-1.5 rounded-full" style="width: 76.0%"></div>
+                        <!-- Live Revenue -->
+                        <div class="overview-kpi-card">
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Live Revenue</p>
+                            <p id="kpi-revenue" class="overview-kpi-value text-gray-900 tabular-nums">Rp 0</p>
+                            <p class="text-[11px] text-gray-400 mt-1">
+                                <span class="text-emerald-600 font-bold">↑ <span id="kpi-revenue-change">14.2%</span></span>
+                                vs last month
+                            </p>
                         </div>
+
+                        <!-- OpEx & Ad Spend -->
+                        <div class="overview-kpi-card">
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">OpEx &amp; Ad Spend</p>
+                            <p id="kpi-opex" class="overview-kpi-value text-gray-900 tabular-nums">Rp 0</p>
+                            <p class="text-[11px] text-gray-400 mt-1">Mapped to 14 budgets</p>
+                        </div>
+
+                        <!-- Gross Margin -->
+                        <div class="overview-kpi-card">
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Gross Margin</p>
+                            <p id="kpi-margin" class="text-2xl font-bold text-gray-900 mt-1">76.0%</p>
+                            <div class="w-full bg-gray-100 rounded-full h-1.5 mt-3">
+                                <div id="kpi-margin-bar" class="bg-blue-500 h-1.5 rounded-full" style="width: 76.0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Needs Action -->
+                        <div class="overview-kpi-card">
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Needs Action</p>
+                            <p id="kpi-action-count" class="text-2xl font-bold text-red-600 mt-1">5 Items</p>
+                            <p class="text-[11px] text-gray-400 mt-1">
+                                <span id="kpi-action-details">3 Missing Receipts &bull; 2 Approvals</span>
+                                <a href="#" class="text-[#EA580C] font-bold ml-1 hover:underline">Resolve now →</a>
+                            </p>
+                        </div>
+
                     </div>
 
-                    <!-- Needs Action -->
-                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Needs Action</p>
-                        <p id="kpi-action-count" class="text-2xl font-bold text-red-600 mt-1">5 Items</p>
-                        <p class="text-[11px] text-gray-400 mt-1">
-                            <span id="kpi-action-details">3 Missing Receipts &bull; 2 Approvals</span>
-                            <a href="#" class="text-[#EA580C] font-bold ml-1 hover:underline">Resolve now →</a>
-                        </p>
-                    </div>
-
-                </div>
-
-                <!-- 2. Middle Section: Charts & FluxyOS Brain -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    
-                    <!-- Left: Cashflow Graph -->
-                    <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-5 sm:p-6 flex flex-col">
-                        <div class="flex justify-between items-center mb-6">
+                    <!-- Wide Summary Chart -->
+                    <div class="overview-chart-panel">
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
                             <div>
                                 <h3 class="text-[16px] font-bold text-gray-900">Cash Flow Projection</h3>
                                 <p class="text-[12px] text-gray-500">Revenue sync vs. operational burn rate</p>
@@ -119,7 +117,7 @@
                         </div>
 
                         <!-- Bar Chart Area (CSS Mockup) -->
-                        <div class="flex-1 relative min-h-[220px] flex items-end justify-between gap-2 sm:gap-4 pt-6 border-b border-gray-100 pb-2">
+                        <div class="flex-1 relative min-h-[260px] flex items-end justify-between gap-2 sm:gap-4 pt-6 border-b border-gray-100 pb-2">
                             <!-- Y-Axis labels -->
                             <div class="absolute left-0 top-0 bottom-0 w-full flex flex-col justify-between text-[10px] font-mono text-gray-400 pointer-events-none z-0">
                                 <div class="w-full border-b border-gray-100 border-dashed pb-0.5 relative"><span class="absolute -top-2 bg-white pr-2">1.0B</span></div>
@@ -166,9 +164,55 @@
                             <span class="w-[12%] text-center">W5</span>
                         </div>
                     </div>
+                </section>
+
+                <!-- 2. Operational Grid -->
+                <section class="overview-lower-grid">
+
+                    <!-- Left: Live Ledger -->
+                    <div class="overview-ledger-panel bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+                        <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <h3 class="text-[16px] font-bold text-gray-900">Live Ledger</h3>
+                                <p class="text-[12px] text-gray-500">Auto-synced bank and gateway feeds</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="text-[12px] font-medium text-gray-600 bg-white border border-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors shadow-sm flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                                    Filter
+                                </button>
+                                <button class="text-[12px] font-medium text-white bg-gray-900 px-3 py-1.5 rounded-md hover:bg-gray-800 transition-colors shadow-sm flex items-center gap-1.5">
+                                    Export <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Ledger Wrapper (For Empty States) -->
+                        <div id="ledger-empty-state" class="hidden"></div>
+
+                        <div id="ledger-table-container" class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-50/50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                                        <th class="px-5 py-3 font-medium">Transaction</th>
+                                        <th class="px-5 py-3 font-medium">Budget/Category</th>
+                                        <th class="px-5 py-3 font-medium">Entity</th>
+                                        <th class="px-5 py-3 font-medium text-right">Amount</th>
+                                        <th class="px-5 py-3 font-medium text-right">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-[13px]" id="ledger-body">
+                                    <!-- Dynamic rows will be inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="ledger-footer" class="p-3 border-t border-gray-100 bg-gray-50/30 text-center">
+                            <a href="/ledger" class="text-[12px] font-bold text-gray-500 hover:text-gray-800 transition-colors">View all transactions &rarr;</a>
+                        </div>
+                    </div>
 
                     <!-- Right: FluxyOS Brain (Formerly Copilot) -->
-                    <div class="lg:col-span-1 ai-gradient-border bg-white shadow-sm flex flex-col p-5">
+                    <div class="overview-brain-panel ai-gradient-border bg-white shadow-sm flex flex-col p-5">
                         <div class="flex items-center gap-2.5 mb-5">
                             <!-- Unified Landing Page Logo for Brain -->
                             <div class="w-8 h-8 text-[#EA580C] shadow-sm flex-shrink-0">
@@ -227,54 +271,12 @@
                             </button>
                         </div>
                     </div>
-                </div>
-
-                <!-- 3. Lower Section: Live Ledger -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
-                    <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                            <h3 class="text-[16px] font-bold text-gray-900">Live Ledger</h3>
-                            <p class="text-[12px] text-gray-500">Auto-synced bank and gateway feeds</p>
-                        </div>
-                        <div class="flex gap-2">
-                            <button class="text-[12px] font-medium text-gray-600 bg-white border border-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors shadow-sm flex items-center gap-1.5">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-                                Filter
-                            </button>
-                            <button class="text-[12px] font-medium text-white bg-gray-900 px-3 py-1.5 rounded-md hover:bg-gray-800 transition-colors shadow-sm flex items-center gap-1.5">
-                                Export <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Ledger Wrapper (For Empty States) -->
-                    <div id="ledger-empty-state" class="hidden"></div>
-                    
-                    <div id="ledger-table-container" class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-gray-50/50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                                    <th class="px-5 py-3 font-medium">Transaction</th>
-                                    <th class="px-5 py-3 font-medium">Budget/Category</th>
-                                    <th class="px-5 py-3 font-medium">Entity</th>
-                                    <th class="px-5 py-3 font-medium text-right">Amount</th>
-                                    <th class="px-5 py-3 font-medium text-right">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="text-[13px]" id="ledger-body">
-                                <!-- Dynamic rows will be inserted here -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <div id="ledger-footer" class="p-3 border-t border-gray-100 bg-gray-50/30 text-center">
-                        <a href="/ledger" class="text-[12px] font-bold text-gray-500 hover:text-gray-800 transition-colors">View all transactions &rarr;</a>
-                    </div>
-                </div>
+                </section>
 
             </div>
             
             <!-- Footer -->
-            <div class="max-w-7xl mx-auto mt-8 mb-4 flex justify-between items-center text-[11px] font-medium text-gray-400">
+            <div class="max-w-[1400px] mx-auto mt-8 mb-4 flex justify-between items-center text-[11px] font-medium text-gray-400">
                 <p>FluxyOS Core System v2.4.1</p>
                 <div class="flex items-center gap-1.5">
                     <div class="w-1.5 h-1.5 rounded-full bg-green-500"></div> All systems operational

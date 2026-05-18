@@ -1,3 +1,121 @@
+/* Overview dashboard layout */
+.overview-summary-shell {
+    overflow: hidden;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.overview-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-bottom: 1px solid #E5E7EB;
+}
+
+.overview-kpi-card {
+    min-height: 132px;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: #FFFFFF;
+}
+
+.overview-kpi-card + .overview-kpi-card {
+    border-left: 1px solid #E5E7EB;
+}
+
+.overview-kpi-value {
+    margin-top: 4px;
+    font-size: 24px;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.overview-chart-panel {
+    min-height: 380px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    background:
+        linear-gradient(180deg, rgba(249, 250, 251, 0.62) 0%, rgba(255, 255, 255, 0) 34%),
+        #FFFFFF;
+}
+
+.overview-lower-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 0.85fr);
+    gap: 24px;
+    align-items: stretch;
+}
+
+.overview-ledger-panel,
+.overview-brain-panel {
+    min-height: 460px;
+}
+
+.overview-brain-panel {
+    position: relative;
+    border-radius: 12px;
+}
+
+@media (max-width: 1180px) {
+    .overview-kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .overview-kpi-card:nth-child(odd) {
+        border-left: 0;
+    }
+
+    .overview-kpi-card:nth-child(n + 3) {
+        border-top: 1px solid #E5E7EB;
+    }
+
+    .overview-lower-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .overview-ledger-panel,
+    .overview-brain-panel {
+        min-height: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .dashboard-page #sidebar {
+        display: none !important;
+    }
+
+    .overview-summary-shell {
+        border-radius: 12px;
+    }
+
+    .overview-kpi-grid {
+        display: block;
+    }
+
+    .overview-kpi-card {
+        min-height: 112px;
+        padding: 18px 20px;
+        border-left: 0 !important;
+    }
+
+    .overview-kpi-card + .overview-kpi-card {
+        border-top: 1px solid #E5E7EB;
+    }
+
+    .overview-kpi-value {
+        font-size: 22px;
+    }
+
+    .overview-chart-panel {
+        min-height: 340px;
+        padding: 20px;
+    }
+}
+
 /* Subtle AI Gradient Animation */
 .ai-gradient-border {
     position: relative;
