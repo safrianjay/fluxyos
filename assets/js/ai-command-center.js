@@ -186,10 +186,10 @@
 
     function promptIcon(index) {
         const icons = [
-            '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 17l6-6 4 4 8-8"></path></svg>',
-            '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0z"></path></svg>',
-            '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6M9 16h6M7 3h7l5 5v13H7z"></path></svg>',
-            '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>',
+            '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>',
+            '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0z"/></svg>',
+            '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M15 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6z"/><path d="M14 2v4a2 2 0 0 0 2 2h3"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>',
+            '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>',
         ];
         return icons[index % icons.length];
     }
@@ -357,10 +357,10 @@
         }
         if (!state.chatStarted) {
             state.chatStarted = true;
+            els.workspace?.classList.add('ai-chat-active');
             els.workspace?.classList.remove('justify-center');
             els.workspace?.classList.add('justify-start');
-            els.promptSection?.classList.add('opacity-80');
-            els.composerSection?.classList.add('sticky', 'bottom-0', 'z-20');
+            if (els.input) els.input.rows = 3;
         }
         return els.chatThread;
     }
@@ -433,19 +433,27 @@
     }
 
     function shouldAutoScroll() {
-        const scroller = els.scrollContainer;
+        const scroller = getActiveScroller();
         if (!scroller || !state.chatStarted) return true;
         return scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 280;
     }
 
     function scrollToLatest(force) {
         if (!force) return;
-        const scroller = els.scrollContainer;
-        const target = els.composerSection || els.chatThread?.lastElementChild;
+        const scroller = getActiveScroller();
+        const target = state.chatStarted ? els.chatThread?.lastElementChild : els.composerSection;
         if (!scroller || !target) return;
         requestAnimationFrame(() => {
+            if (state.chatStarted && scroller === els.responseArea) {
+                scroller.scrollTo({ top: scroller.scrollHeight, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+                return;
+            }
             target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'end' });
         });
+    }
+
+    function getActiveScroller() {
+        return state.chatStarted ? els.responseArea : els.scrollContainer;
     }
 
     function renderFinanceAnswer(answer, relatedRecords, messageId) {
