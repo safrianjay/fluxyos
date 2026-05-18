@@ -284,10 +284,10 @@ function compactRecord(record, dateField = 'timestamp') {
     };
 }
 
-function getFinanceSummary(transactions, period) {
+function summarizeTransactions(transactions, period, revenueTypes, opexTypes) {
     const inPeriod = transactions.filter(tx => isWithinPeriod(tx, period));
-    const revenueRecords = inPeriod.filter(tx => REVENUE_TYPES.includes(normalizeText(tx.type)));
-    const opexRecords = inPeriod.filter(tx => OPEX_TYPES.includes(normalizeText(tx.type)));
+    const revenueRecords = inPeriod.filter(tx => revenueTypes.includes(normalizeText(tx.type)));
+    const opexRecords = inPeriod.filter(tx => opexTypes.includes(normalizeText(tx.type)));
     const revenue = revenueRecords.reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
     const opex = opexRecords.reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
     const grossMargin = revenue > 0 ? ((revenue - opex) / revenue) * 100 : 0;
@@ -300,7 +300,24 @@ function getFinanceSummary(transactions, period) {
         missing_receipts_count: missingReceipts.length,
         transaction_count: inPeriod.length,
         period,
-        limitations: revenue === 0 ? ['Gross margin is limited because no confirmed revenue records were found in this period.'] : [],
+        revenue_record_count: revenueRecords.length,
+        opex_record_count: opexRecords.length,
+    };
+}
+
+function getFinanceSummary(transactions, period) {
+    const confirmed = summarizeTransactions(transactions, period, REVENUE_TYPES, OPEX_TYPES);
+    const dashboardOverview = summarizeTransactions(transactions, period, EXPECTED_REVENUE_TYPES, OBLIGATION_OPEX_TYPES);
+    return {
+        ...confirmed,
+        metric_basis: 'confirmed',
+        confirmed,
+        dashboard_overview: {
+            ...dashboardOverview,
+            metric_basis: 'dashboard_overview',
+            limitations: ['Live Revenue includes pending receivables; OpEx includes pending payables.'],
+        },
+        limitations: confirmed.revenue === 0 ? ['Gross margin is limited because no confirmed revenue records were found in this period.'] : [],
     };
 }
 
@@ -311,6 +328,7 @@ function getRevenueAnalysis(transactions, period, includeExpected = false) {
     const totalRevenue = revenueRecords.reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
     const limitations = [];
     if (!includeExpected) limitations.push('Pending receivables are excluded unless you ask about expected revenue.');
+    if (includeExpected) limitations.push('Live Revenue includes pending receivables.');
     return {
         total_revenue: totalRevenue,
         top_revenue_records: sortByAmountDesc(revenueRecords).slice(0, 5).map(compactRecord),
@@ -462,7 +480,9 @@ function baseAnswer(intent, answerType, period, language = 'en') {
 function buildDeterministicAnswer({ intent, message, pageContext, period, tools }) {
     const language = isIndonesian(message) ? 'id' : 'en';
     const answer = baseAnswer(intent, 'analysis', period, language);
-    const summary = tools.financeSummary;
+    const summary = (pageContext === 'dashboard' && ['finance_health', 'action_recommendation'].includes(intent))
+        ? tools.financeSummary.dashboard_overview
+        : tools.financeSummary;
     const revenue = tools.revenueAnalysis;
     const expense = tools.expenseAnalysis;
     const bills = tools.billsAnalysis;
@@ -589,11 +609,12 @@ function buildDeterministicAnswer({ intent, message, pageContext, period, tools 
     }
 
     const marginStatus = summary.revenue === 0 ? 'warning' : summary.gross_margin < 20 ? 'critical' : summary.gross_margin < 40 ? 'warning' : 'good';
+    const revenueLabel = summary.metric_basis === 'dashboard_overview' ? 'Live Revenue' : 'Revenue';
     answer.direct_answer = summary.transaction_count
-        ? `Here is what I am seeing for ${period.label.toLowerCase()}: revenue is ${formatIDR(summary.revenue)}, OpEx is ${formatIDR(summary.opex)}, and gross margin is ${summary.revenue > 0 ? formatPercent(summary.gross_margin) : 'unavailable'}.`
+        ? `Here is what I am seeing for ${period.label.toLowerCase()}: ${revenueLabel.toLowerCase()} is ${formatIDR(summary.revenue)}, OpEx is ${formatIDR(summary.opex)}, and gross margin is ${summary.revenue > 0 ? formatPercent(summary.gross_margin) : 'unavailable'}.`
         : `There is not enough ledger data for ${period.label.toLowerCase()} to judge business health yet.`;
     answer.key_numbers = [
-        keyNumber('Revenue', summary.revenue, summary.revenue > 0 ? 'good' : 'warning'),
+        keyNumber(revenueLabel, summary.revenue, summary.revenue > 0 ? 'good' : 'warning'),
         keyNumber('OpEx', summary.opex, summary.opex > summary.revenue && summary.revenue > 0 ? 'critical' : 'neutral'),
         keyNumber('Gross margin', summary.gross_margin, marginStatus, formatPercent),
         keyNumber('Missing receipts', summary.missing_receipts_count, summary.missing_receipts_count ? 'warning' : 'good', value => String(value)),
@@ -790,7 +811,12 @@ async function buildBrainChatResponse({ request, uid, token }) {
     const today = toDateKey(todayJakarta());
     const windowDays = detectWindowDays(message);
     const financeSummary = getFinanceSummary(transactions, period);
-    const revenueAnalysis = getRevenueAnalysis(transactions, period, normalizeText(message).includes('expected'));
+    const messageText = normalizeText(message);
+    const revenueAnalysis = getRevenueAnalysis(
+        transactions,
+        period,
+        messageText.includes('expected') || messageText.includes('live revenue') || messageText.includes('pending receivable')
+    );
     const expenseAnalysis = getExpenseAnalysis(transactions, period);
     const billsAnalysis = getBillsAnalysis(bills, today, windowDays);
     const subscriptionAnalysis = getSubscriptionAnalysis(subscriptions, today, windowDays);
@@ -810,7 +836,8 @@ async function buildBrainChatResponse({ request, uid, token }) {
 
     const deterministicAnswer = buildDeterministicAnswer({ intent, message, pageContext, period, tools });
     let answer = deterministicAnswer;
-    if (process.env.OPENAI_API_KEY) {
+    const forceDeterministic = pageContext === 'dashboard' && ['finance_health', 'action_recommendation'].includes(intent);
+    if (process.env.OPENAI_API_KEY && !forceDeterministic) {
         try {
             const modelAnswer = await callOpenAIFinanceAnalyst({ message, pageContext, period, intent, deterministicAnswer, tools });
             if (modelAnswer && modelAnswer.scope === FINANCE_SCOPE && modelAnswer.intent === intent) answer = modelAnswer;

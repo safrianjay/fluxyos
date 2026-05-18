@@ -125,12 +125,15 @@ class DataService {
     }
 
     // --- SUMMARY STATS ---
-    async getDashboardStats(userId) {
+    async getDashboardStats(userId, period = null) {
         const txs = await this.getTransactions(userId, 1000);
+        const filteredTxs = period?.start && period?.end
+            ? txs.filter(tx => this._isTransactionInPeriod(tx, period.start, period.end))
+            : txs;
         let revenue = 0;
         let opex = 0;
 
-        txs.forEach(tx => {
+        filteredTxs.forEach(tx => {
             const type = String(tx.type || '').toLowerCase();
             if (['revenue', 'income', 'refund', 'pending_receivable'].includes(type)) revenue += tx.amount;
             else if (['expense', 'fee', 'tax', 'pending_payable'].includes(type)) opex += Math.abs(tx.amount);
@@ -143,8 +146,34 @@ class DataService {
             opex: opex,
             margin: margin,
             revenue_change: "0%", // Placeholder for growth calculation
-            action_items_count: txs.filter(t => t.status === 'Missing Receipt').length
+            action_items_count: filteredTxs.filter(t => t.status === 'Missing Receipt').length
         };
+    }
+
+    _isTransactionInPeriod(tx, startKey, endKey) {
+        const date = this._getTransactionDate(tx);
+        if (!date) return false;
+        const start = this._parseDayKey(startKey);
+        const end = this._parseDayKey(endKey);
+        if (!start || !end) return false;
+        end.setHours(23, 59, 59, 999);
+        return date >= start && date <= end;
+    }
+
+    _getTransactionDate(tx) {
+        if (tx.timestamp && typeof tx.timestamp.toDate === 'function') return tx.timestamp.toDate();
+        if (tx.timestamp instanceof Date) return tx.timestamp;
+        if (typeof tx.timestamp === 'string' || typeof tx.timestamp === 'number') {
+            const parsed = new Date(tx.timestamp);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+        return null;
+    }
+
+    _parseDayKey(dayKey) {
+        if (typeof dayKey !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return null;
+        const [year, month, day] = dayKey.split('-').map(Number);
+        return new Date(year, month - 1, day);
     }
 }
 

@@ -35,6 +35,13 @@
             'Is there a revenue anomaly?'
         ]
     };
+    const THINKING_STEPS = [
+        'Reading your ledger',
+        'Checking bills',
+        'Reviewing subscriptions',
+        'Preparing finance summary'
+    ];
+    const MIN_THINKING_MS = 700;
 
     const chatHTML = `
         <div id="ai-chat-container" style="display: none;">
@@ -116,6 +123,7 @@
             addUserMessage(messages, text);
             input.value = '';
 
+            const thinkingStartedAt = Date.now();
             const loading = addLoadingMessage(messages);
             setFormDisabled(form, true);
 
@@ -134,6 +142,7 @@
                     }),
                 });
                 const data = await response.json().catch(() => ({}));
+                await waitForMinimumThinkingTime(thinkingStartedAt);
                 loading.remove();
                 if (!response.ok || data.success === false) {
                     addErrorMessage(messages, data?.error?.message || data?.message || 'Fluxy AI could not read your finance data right now.');
@@ -141,6 +150,7 @@
                 }
                 addAnswerMessage(messages, data.answer);
             } catch (err) {
+                await waitForMinimumThinkingTime(thinkingStartedAt);
                 loading.remove();
                 addErrorMessage(messages, err?.message || 'Error connecting to Fluxy AI. Please try again later.');
             } finally {
@@ -171,6 +181,13 @@
     }
 
     function getCurrentPeriod() {
+        if (getPageContext() === 'dashboard' && window.FluxyDashboardRange?.start && window.FluxyDashboardRange?.end) {
+            return {
+                type: 'custom',
+                start_date: window.FluxyDashboardRange.start,
+                end_date: window.FluxyDashboardRange.end,
+            };
+        }
         const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
         const start = new Date(now.getFullYear(), now.getMonth(), 1);
         const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -214,13 +231,27 @@
         const msg = document.createElement('div');
         msg.className = 'message ai loading-message';
         msg.innerHTML = `
-            <div class="loading-line w-3/4"></div>
-            <div class="loading-line w-full"></div>
-            <div class="loading-line w-1/2"></div>
+            <div class="thinking-heading">
+                <span>FluxyOS is thinking</span>
+                <span class="thinking-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+            </div>
+            <p class="thinking-status">${escapeHTML(THINKING_STEPS[0])}</p>
         `;
         messages.appendChild(msg);
         scrollToBottom(messages);
-        return msg;
+        const status = msg.querySelector('.thinking-status');
+        let step = 0;
+        const interval = window.setInterval(() => {
+            step = (step + 1) % THINKING_STEPS.length;
+            if (status) status.textContent = THINKING_STEPS[step];
+            scrollToBottom(messages);
+        }, 900);
+        return {
+            remove() {
+                window.clearInterval(interval);
+                msg.remove();
+            }
+        };
     }
 
     function addErrorMessage(messages, text) {
@@ -234,12 +265,14 @@
     function addAnswerMessage(messages, answer) {
         const msg = document.createElement('div');
         msg.className = `message ai answer-card answer-${answer?.answer_type || 'analysis'}`;
-        msg.innerHTML = renderAnswer(answer);
+        const shouldReveal = !prefersReducedMotion();
+        msg.innerHTML = renderAnswer(answer, shouldReveal);
         messages.appendChild(msg);
+        if (shouldReveal) revealAnswerSteps(msg, messages);
         scrollToBottom(messages);
     }
 
-    function renderAnswer(answer) {
+    function renderAnswer(answer, shouldReveal = false) {
         if (!answer) {
             return `<p class="message-title">No answer available</p><p>Fluxy AI did not receive a usable finance answer.</p>`;
         }
@@ -260,17 +293,43 @@
             : '';
 
         return `
+            ${revealWrap(`
             <div class="answer-meta">
                 <span>${escapeHTML(answer.period?.label || 'Selected period')}</span>
                 <span>${escapeHTML(answer.intent || 'finance_analysis')}</span>
             </div>
             <p class="direct-answer">${escapeHTML(answer.direct_answer || '')}</p>
-            ${keyNumbers}
-            ${insights}
-            ${actions}
-            ${limitations}
-            ${followUps}
+            `, 0, shouldReveal)}
+            ${revealWrap(keyNumbers, 1, shouldReveal)}
+            ${revealWrap(insights, 2, shouldReveal)}
+            ${revealWrap(actions, 3, shouldReveal)}
+            ${revealWrap(limitations, 4, shouldReveal)}
+            ${revealWrap(followUps, 5, shouldReveal)}
         `;
+    }
+
+    function revealWrap(html, index, shouldReveal) {
+        if (!html) return '';
+        if (!shouldReveal) return html;
+        return `<div class="answer-reveal-step" data-reveal-step="${index}" style="transition-delay: ${index * 120}ms">${html}</div>`;
+    }
+
+    function revealAnswerSteps(message, messages) {
+        const steps = message.querySelectorAll('.answer-reveal-step');
+        requestAnimationFrame(() => {
+            steps.forEach(step => step.classList.add('is-visible'));
+            window.setTimeout(() => scrollToBottom(messages), Math.max(220, steps.length * 120));
+        });
+    }
+
+    function waitForMinimumThinkingTime(startedAt) {
+        const elapsed = Date.now() - startedAt;
+        const wait = Math.max(0, MIN_THINKING_MS - elapsed);
+        return new Promise(resolve => window.setTimeout(resolve, wait));
+    }
+
+    function prefersReducedMotion() {
+        return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
     }
 
     function renderKeyNumber(item) {

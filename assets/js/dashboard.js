@@ -19,13 +19,14 @@ let cashflowChartType = 'bar';
 let cashflowBuckets = [];
 let dashboardRangeStart = getMonthStartKey();
 let dashboardRangeEnd = getMonthEndKey();
+window.FluxyDashboardRange = { start: dashboardRangeStart, end: dashboardRangeEnd };
 
 window.loadDashboard = async () => {
     const user = auth.currentUser;
     if (!user) return;
 
     const [stats, transactions, chartTransactions] = await Promise.all([
-        ds.getDashboardStats(user.uid),
+        ds.getDashboardStats(user.uid, { start: dashboardRangeStart, end: dashboardRangeEnd }),
         ds.getTransactions(user.uid, 5),
         ds.getTransactions(user.uid, 1000)
     ]);
@@ -366,6 +367,7 @@ window.FluxyDateRangePicker?.mount('#dashboard-date-range-picker', {
     onChange: ({ start, end }) => {
         dashboardRangeStart = start;
         dashboardRangeEnd = end;
+        window.FluxyDashboardRange = { start, end };
         window.loadDashboard();
     }
 });

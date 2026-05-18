@@ -62,7 +62,9 @@ def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depends(_b
 FINANCE_SCOPE = "project_finance"
 REFUSAL_MESSAGE = "I can help with FluxyOS finance data, business performance, bills, subscriptions, revenue, expenses, and operational financial risks. I can't answer unrelated questions here."
 REVENUE_TYPES = {"income", "revenue", "refund"}
+EXPECTED_REVENUE_TYPES = {"income", "revenue", "refund", "pending_receivable"}
 OPEX_TYPES = {"expense", "fee", "tax"}
+OBLIGATION_OPEX_TYPES = {"expense", "fee", "tax", "pending_payable"}
 PAID_STATUSES = {"completed", "paid", "reconciled", "cancelled"}
 
 def _today_jakarta() -> datetime.date:
@@ -190,7 +192,7 @@ def _compact(record: Dict[str, Any], date_field: str = "timestamp") -> Dict[str,
         "date": record.get(date_field) or record.get("timestamp"),
     }
 
-def _build_answer(intent: str, message: str, period: Dict[str, str], transactions: List[Dict[str, Any]], bills: List[Dict[str, Any]], subscriptions: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _build_answer(intent: str, message: str, period: Dict[str, str], transactions: List[Dict[str, Any]], bills: List[Dict[str, Any]], subscriptions: List[Dict[str, Any]], page_context: str = "global") -> Dict[str, Any]:
     base = {
         "intent": intent,
         "scope": FINANCE_SCOPE,
@@ -216,8 +218,13 @@ def _build_answer(intent: str, message: str, period: Dict[str, str], transaction
         return base
 
     period_txs = [tx for tx in transactions if _in_period(tx, period)]
-    revenue_records = [tx for tx in period_txs if str(tx.get("type", "")).lower() in REVENUE_TYPES]
-    expense_records = [tx for tx in period_txs if str(tx.get("type", "")).lower() in OPEX_TYPES]
+    confirmed_revenue_records = [tx for tx in period_txs if str(tx.get("type", "")).lower() in REVENUE_TYPES]
+    confirmed_expense_records = [tx for tx in period_txs if str(tx.get("type", "")).lower() in OPEX_TYPES]
+    dashboard_revenue_records = [tx for tx in period_txs if str(tx.get("type", "")).lower() in EXPECTED_REVENUE_TYPES]
+    dashboard_expense_records = [tx for tx in period_txs if str(tx.get("type", "")).lower() in OBLIGATION_OPEX_TYPES]
+    use_dashboard_basis = page_context == "dashboard" and intent in {"finance_health", "action_recommendation"}
+    revenue_records = dashboard_revenue_records if use_dashboard_basis else confirmed_revenue_records
+    expense_records = dashboard_expense_records if use_dashboard_basis else confirmed_expense_records
     revenue = sum(abs(float(tx.get("amount") or 0)) for tx in revenue_records)
     opex = sum(abs(float(tx.get("amount") or 0)) for tx in expense_records)
     margin = ((revenue - opex) / revenue * 100) if revenue > 0 else 0
@@ -249,13 +256,16 @@ def _build_answer(intent: str, message: str, period: Dict[str, str], transaction
 
     unpaid_bills = [b for b in bills if str(b.get("status", "")).lower() not in PAID_STATUSES]
     subs_total = sum(abs(float(s.get("amount") or 0)) for s in subscriptions if str(s.get("status", "")).lower() != "cancelled")
-    base["direct_answer"] = f"Here is what I am seeing for {period['label'].lower()}: revenue is {_format_idr(revenue)}, OpEx is {_format_idr(opex)}, and gross margin is {margin:.1f}%." if period_txs else f"There is not enough ledger data for {period['label'].lower()} to judge business health yet."
-    base["key_numbers"] = [_key_number("Revenue", revenue, "good" if revenue else "warning"), _key_number("OpEx", opex), _key_number("Gross margin", margin, "warning" if margin < 40 else "good", f"{margin:.1f}%"), _key_number("Missing receipts", len(missing), "warning" if missing else "good", str(len(missing)))]
+    revenue_label = "Live Revenue" if use_dashboard_basis else "Revenue"
+    base["direct_answer"] = f"Here is what I am seeing for {period['label'].lower()}: {revenue_label.lower()} is {_format_idr(revenue)}, OpEx is {_format_idr(opex)}, and gross margin is {margin:.1f}%." if period_txs else f"There is not enough ledger data for {period['label'].lower()} to judge business health yet."
+    base["key_numbers"] = [_key_number(revenue_label, revenue, "good" if revenue else "warning"), _key_number("OpEx", opex), _key_number("Gross margin", margin, "warning" if margin < 40 else "good", f"{margin:.1f}%"), _key_number("Missing receipts", len(missing), "warning" if missing else "good", str(len(missing)))]
     base["insights"] = [
         {"title": "Bills pressure", "description": f"{len(unpaid_bills)} unpaid bill(s) are recorded.", "severity": "warning" if unpaid_bills else "info", "evidence": [_compact(b, "due_date") for b in unpaid_bills[:5]]},
         {"title": "Subscription spend", "description": f"Recorded subscription spend is {_format_idr(subs_total)}.", "severity": "info", "evidence": [_compact(s, "renewal_date") for s in subscriptions[:5]]},
     ]
     base["recommended_actions"] = [{"title": "Check the largest cost driver", "description": "Review top expenses and missing receipts before using this for reporting decisions.", "priority": "medium"}]
+    if use_dashboard_basis:
+        base["limitations"].append("Live Revenue includes pending receivables; OpEx includes pending payables.")
     base["limitations"].append("This is an operational finance signal from your FluxyOS data, not formal accounting or tax advice.")
     return base
 
@@ -307,7 +317,7 @@ async def brain_chat(request: ChatRequest, _user=Depends(verify_firebase_token))
     period = _period_dict(request.period)
     intent = _classify_intent(message, request.page_context or "global")
     if intent in {"unsupported", "ambiguous"}:
-        answer = _build_answer(intent, message, period, [], [], [])
+        answer = _build_answer(intent, message, period, [], [], [], request.page_context or "global")
         return {"success": True, "intent": intent, "scope": FINANCE_SCOPE, "answer": answer, "related_records": [], "error": None}
 
     uid = _user.get("user_id") or _user.get("sub")
@@ -326,7 +336,7 @@ async def brain_chat(request: ChatRequest, _user=Depends(verify_firebase_token))
             "error": {"code": "tool_error", "message": "I could not read your finance data right now. Please try again."}
         }
 
-    answer = _build_answer(intent, message, period, transactions, bills, subscriptions)
+    answer = _build_answer(intent, message, period, transactions, bills, subscriptions, request.page_context or "global")
     related_records = [record for item in answer.get("insights", []) for record in item.get("evidence", [])][:10]
     return {"success": True, "intent": intent, "scope": FINANCE_SCOPE, "answer": answer, "related_records": related_records, "error": None}
 
