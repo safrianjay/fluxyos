@@ -5,18 +5,58 @@
     const ALLOWED_EXT_LABEL = 'JPG, PNG, WebP, or PDF';
     const MAX_FILE_BYTES = 5 * 1024 * 1024;
     const ALLOWED_CATEGORIES = ['Revenue', 'Marketing', 'Infrastructure', 'Operations', 'SaaS'];
+    const TRANSACTION_TYPES = ['expense', 'income', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_payable', 'pending_receivable'];
+    const TRANSACTION_STATUSES = ['Completed', 'Pending', 'Reconciled', 'Missing Receipt', 'Cancelled'];
     const EXTRACT_ENDPOINT = '/api/v1/bills/extract';
 
+    const MODES = {
+        bill: {
+            title: 'Scan Bill',
+            subtitle: 'Upload a bill, invoice, receipt, or payment request. FluxyOS will extract the key details for review.',
+            primaryDateLabel: 'Due Date',
+            contextKey: '__fluxyBillsContext',
+            saveMethod: 'addBill',
+            refreshFn: 'loadBills',
+            defaultType: 'pending_payable',
+            defaultStatus: 'Missing Receipt',
+            source: 'bill_scan',
+            createdVia: 'ai_bill_capture',
+            toastSuccess: 'Bill scanned and added to your schedule.',
+            showTypeStatus: false,
+            futureDates: true,
+        },
+        transaction: {
+            title: 'Scan Transaction',
+            subtitle: 'Upload a receipt, invoice, or payment confirmation. FluxyOS will extract the key details for review.',
+            primaryDateLabel: 'Transaction Date',
+            contextKey: '__fluxyTxContext',
+            saveMethod: 'addTransaction',
+            refreshFn: 'loadLedger',
+            defaultType: 'expense',
+            defaultStatus: 'Completed',
+            source: 'transaction_scan',
+            createdVia: 'ai_transaction_capture',
+            toastSuccess: 'Transaction scanned and added to your ledger.',
+            showTypeStatus: true,
+            futureDates: false,
+        },
+    };
+
     const state = {
+        mode: 'bill',
         step: 'upload',
         file: null,
         previewUrl: null,
         extraction: null,
         extractionSource: null,
         saving: false,
+        pickers: { primary: null, invoice: null },
+        dates: { primary: null, invoice: null },
+        errorMessage: null,
     };
 
     function $(id) { return document.getElementById(id); }
+    function modeCfg() { return MODES[state.mode] || MODES.bill; }
 
     function escapeHtml(str) {
         if (str == null) return '';
@@ -32,11 +72,6 @@
         if (bytes < 1024) return `${bytes} B`;
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
         return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
-    }
-
-    function formatIDRDisplay(amount) {
-        const n = typeof amount === 'number' && !Number.isNaN(amount) ? amount : 0;
-        return 'Rp ' + Math.abs(n).toLocaleString('id-ID');
     }
 
     function normalizeRupiahAmount(raw) {
@@ -100,9 +135,14 @@
         }
     }
 
+    function destroyPickers() {
+        state.pickers = { primary: null, invoice: null };
+    }
+
     function setStep(nextStep) {
+        destroyPickers();
         state.step = nextStep;
-        const content = $('bill-scan-drawer-content');
+        const content = $('scan-drawer-content');
         if (content) content.setAttribute('data-step', nextStep);
         renderDrawer();
     }
@@ -117,24 +157,37 @@
         state.extractionSource = null;
     }
 
-    function openDrawer() {
+    function setHeader() {
+        const cfg = modeCfg();
+        const titleEl = $('scan-drawer-title');
+        const subEl = $('scan-drawer-subtitle');
+        if (titleEl) titleEl.textContent = cfg.title;
+        if (subEl) subEl.textContent = cfg.subtitle;
+    }
+
+    function openDrawer(mode) {
+        state.mode = (mode === 'transaction') ? 'transaction' : 'bill';
+        setHeader();
         const isOnline = navigator.onLine !== false;
+        state.dates = { primary: null, invoice: null };
         setStep(isOnline ? 'upload' : 'offline');
-        $('bill-scan-drawer-backdrop').classList.remove('hidden');
+        $('scan-drawer-backdrop')?.classList.remove('hidden');
         requestAnimationFrame(() => {
-            $('bill-scan-drawer').classList.remove('translate-x-full');
+            $('scan-drawer')?.classList.remove('translate-x-full');
         });
     }
 
     function closeDrawer() {
-        $('bill-scan-drawer').classList.add('translate-x-full');
-        $('bill-scan-drawer-backdrop').classList.add('hidden');
+        $('scan-drawer')?.classList.add('translate-x-full');
+        $('scan-drawer-backdrop')?.classList.add('hidden');
         clearFile();
+        destroyPickers();
+        state.dates = { primary: null, invoice: null };
         state.saving = false;
         setTimeout(() => {
-            const content = $('bill-scan-drawer-content');
+            const content = $('scan-drawer-content');
             if (content) content.innerHTML = '';
-            const footer = $('bill-scan-drawer-footer');
+            const footer = $('scan-drawer-footer');
             if (footer) footer.innerHTML = '';
         }, 300);
     }
@@ -153,30 +206,31 @@
     }
 
     function renderUploadStep() {
-        const content = $('bill-scan-drawer-content');
-        const footer = $('bill-scan-drawer-footer');
+        const content = $('scan-drawer-content');
+        const footer = $('scan-drawer-footer');
         const file = state.file;
+        const manualLabel = state.mode === 'transaction' ? 'Use Add Transaction' : 'Use Add New Bill';
 
         if (!file) {
             content.innerHTML = `
                 <div class="space-y-4">
-                    <label id="bill-scan-dropzone" for="bill-scan-file-input"
+                    <label id="scan-dropzone" for="scan-file-input"
                            class="block border-2 border-dashed border-gray-300 hover:border-[#EA580C] rounded-xl px-6 py-10 text-center cursor-pointer transition-colors bg-gray-50/50">
                         <div class="flex justify-center mb-3">
                             <div class="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center">
                                 <svg class="w-6 h-6 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M12 12V4m0 0-4 4m4-4 4 4"></path></svg>
                             </div>
                         </div>
-                        <p class="text-[13px] font-semibold text-gray-900">Drag and drop your bill here</p>
+                        <p class="text-[13px] font-semibold text-gray-900">Drag and drop your document here</p>
                         <p class="text-[12px] text-gray-500 mt-1">or click to browse</p>
                         <p class="text-[11px] text-gray-400 mt-3">${ALLOWED_EXT_LABEL} · max ${formatBytes(MAX_FILE_BYTES)}</p>
                     </label>
-                    <input id="bill-scan-file-input" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" class="hidden">
-                    <p class="text-[11px] text-gray-400 text-center">Prefer to enter manually? <button id="bill-scan-manual-link" type="button" class="text-[#EA580C] font-semibold hover:underline">Use Add New Bill</button></p>
+                    <input id="scan-file-input" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" class="hidden">
+                    <p class="text-[11px] text-gray-400 text-center">Prefer to enter manually? <button id="scan-manual-link" type="button" class="text-[#EA580C] font-semibold hover:underline">${escapeHtml(manualLabel)}</button></p>
                 </div>
             `;
             footer.innerHTML = `
-                <button id="bill-scan-cancel-btn" type="button" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                <button id="scan-cancel-btn" type="button" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Cancel</button>
             `;
             wireUploadHandlers();
             return;
@@ -194,7 +248,7 @@
                    </div>
                </div>`
             : `<div class="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
-                   <img src="${state.previewUrl}" alt="Bill preview" class="w-full max-h-72 object-contain bg-white">
+                   <img src="${state.previewUrl}" alt="Document preview" class="w-full max-h-72 object-contain bg-white">
                    <div class="px-4 py-3 border-t border-gray-200 flex items-center justify-between gap-3">
                        <p class="text-[12px] text-gray-700 font-medium truncate">${escapeHtml(file.name)}</p>
                        <p class="text-[11px] text-gray-400 flex-shrink-0">${formatBytes(file.size)}</p>
@@ -204,39 +258,34 @@
         content.innerHTML = `
             <div class="space-y-4">
                 ${previewHtml}
-                <button id="bill-scan-replace-btn" type="button" class="text-[12px] font-semibold text-gray-600 hover:text-gray-900">Replace file</button>
-                <input id="bill-scan-file-input" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" class="hidden">
+                <button id="scan-replace-btn" type="button" class="text-[12px] font-semibold text-gray-600 hover:text-gray-900">Replace file</button>
+                <input id="scan-file-input" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" class="hidden">
             </div>
         `;
         footer.innerHTML = `
-            <button id="bill-scan-cancel-btn" type="button" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Cancel</button>
-            <button id="bill-scan-start-btn" type="button" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center justify-center gap-2 active:scale-95">
+            <button id="scan-cancel-btn" type="button" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+            <button id="scan-start-btn" type="button" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center justify-center gap-2 active:scale-95">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                Scan Bill
+                ${escapeHtml(modeCfg().title)}
             </button>
         `;
         wireUploadHandlers();
     }
 
     function renderScanningStep() {
-        const content = $('bill-scan-drawer-content');
-        const footer = $('bill-scan-drawer-footer');
+        const content = $('scan-drawer-content');
+        const footer = $('scan-drawer-footer');
         content.innerHTML = `
-            <div class="space-y-4">
-                <div class="bg-gray-50 border border-gray-200 rounded-xl px-6 py-8 text-center">
-                    <div class="flex justify-center mb-4">
-                        <div class="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center">
-                            <svg class="w-6 h-6 text-[#EA580C] animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636-.707.707M21 12h-1M4 12H3m3.343-5.657-.707-.707m12.728 0-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z"></path></svg>
-                        </div>
+            <div class="flex flex-col items-center justify-center py-12">
+                <div class="relative w-28 h-28 flex items-center justify-center">
+                    <div class="absolute inset-0 rounded-full ai-gradient-border opacity-70 blur-lg"></div>
+                    <div class="absolute -inset-2 rounded-full bg-gradient-to-br from-[#EA580C]/30 via-[#F97316]/20 to-[#FB923C]/30 blur-2xl animate-pulse"></div>
+                    <div class="relative w-16 h-16 rounded-2xl bg-white shadow-lg ring-1 ring-orange-100 flex items-center justify-center animate-pulse">
+                        <img src="assets/images/favicon.svg" alt="" class="w-10 h-10" aria-hidden="true" onerror="this.style.display='none'">
                     </div>
-                    <p class="text-[13px] font-semibold text-gray-900">Reading document and extracting bill details...</p>
-                    <p class="text-[12px] text-gray-500 mt-1">This usually takes a few seconds.</p>
                 </div>
-                <div class="space-y-2">
-                    ${Array(4).fill().map(() => `
-                        <div class="h-9 bg-gray-100 rounded-lg animate-pulse"></div>
-                    `).join('')}
-                </div>
+                <p class="text-[13px] font-semibold text-gray-900 mt-6">Reading your document with AI…</p>
+                <p class="text-[12px] text-gray-500 mt-1">This usually takes a few seconds.</p>
             </div>
         `;
         footer.innerHTML = `
@@ -254,8 +303,9 @@
     }
 
     function renderReviewStep() {
-        const content = $('bill-scan-drawer-content');
-        const footer = $('bill-scan-drawer-footer');
+        const content = $('scan-drawer-content');
+        const footer = $('scan-drawer-footer');
+        const cfg = modeCfg();
         const data = state.extraction || {};
         const conf = data.confidence || {};
         const warnings = Array.isArray(data.warnings) ? data.warnings : [];
@@ -269,7 +319,7 @@
         const mockBanner = isMock ? `
             <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-[12px] text-amber-800">
                 <p class="font-semibold">Sample extraction</p>
-                <p class="mt-0.5">Bill scanning provider is not configured. The fields below are placeholder values — please replace them before saving.</p>
+                <p class="mt-0.5">Live AI extraction is unavailable right now. The fields below are placeholder values — please replace them before saving.</p>
             </div>
         ` : '';
 
@@ -279,8 +329,31 @@
             </div>
         ` : '';
 
+        const typeStatusBlock = cfg.showTypeStatus ? `
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Type</label>
+                    <select name="type" required
+                            class="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                        ${TRANSACTION_TYPES.map(t => `<option value="${t}"${t === cfg.defaultType ? ' selected' : ''}>${t}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Status</label>
+                    <select name="status" required
+                            class="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                        ${TRANSACTION_STATUSES.map(s => `<option value="${s}"${s === cfg.defaultStatus ? ' selected' : ''}>${s}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+        ` : '';
+
+        const footerNote = state.mode === 'bill'
+            ? 'This bill will be saved as a <span class="font-mono">pending_payable</span>. No ledger transaction will be created.'
+            : 'This will be saved as a ledger transaction. You can refine its category and status later.';
+
         content.innerHTML = `
-            <form id="bill-scan-review-form" class="space-y-4">
+            <form id="scan-review-form" class="space-y-4">
                 ${mockBanner}
                 ${warningsBlock}
 
@@ -304,16 +377,16 @@
                     </select>
                 </div>
 
+                ${typeStatusBlock}
+
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Due Date ${confidenceMark(conf.due_date)}</label>
-                        <input type="date" name="due_date" value="${escapeHtml(data.due_date || '')}"
-                               class="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">${escapeHtml(cfg.primaryDateLabel)} ${confidenceMark(conf.due_date)}</label>
+                        <div data-picker="primary"></div>
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Invoice Date</label>
-                        <input type="date" name="invoice_date" value="${escapeHtml(data.invoice_date || '')}"
-                               class="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                        <div data-picker="invoice"></div>
                     </div>
                 </div>
 
@@ -325,21 +398,58 @@
 
                 <div class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-[11px] text-gray-500 leading-relaxed">
                     <p><span class="font-semibold text-gray-700">AI suggests. You confirm. FluxyOS saves.</span></p>
-                    <p class="mt-0.5">This bill will be saved as a <span class="font-mono">pending_payable</span>. No ledger transaction will be created.</p>
+                    <p class="mt-0.5">${footerNote}</p>
                 </div>
             </form>
         `;
         footer.innerHTML = `
-            <button id="bill-scan-rescan-btn" type="button" class="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-50 transition-colors">Rescan</button>
-            <button id="bill-scan-save-btn" type="button" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">Save Bill</button>
+            <button id="scan-rescan-btn" type="button" class="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-50 transition-colors">Rescan</button>
+            <button id="scan-save-btn" type="button" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">${state.mode === 'transaction' ? 'Save Transaction' : 'Save Bill'}</button>
         `;
+        mountReviewDatePickers();
         wireReviewHandlers();
         updateSaveEnabled();
     }
 
+    function mountReviewDatePickers() {
+        const data = state.extraction || {};
+        const cfg = modeCfg();
+        const today = window.FluxyDateRangePicker?.getDayKey?.() || null;
+        state.dates.primary = (data.due_date && /^\d{4}-\d{2}-\d{2}$/.test(data.due_date)) ? data.due_date : null;
+        state.dates.invoice = (data.invoice_date && /^\d{4}-\d{2}-\d{2}$/.test(data.invoice_date)) ? data.invoice_date : null;
+
+        const primaryEl = $('scan-drawer-content')?.querySelector('[data-picker="primary"]');
+        const invoiceEl = $('scan-drawer-content')?.querySelector('[data-picker="invoice"]');
+        if (!window.FluxyDateRangePicker?.mount) return;
+
+        if (primaryEl) {
+            state.pickers.primary = window.FluxyDateRangePicker.mount(primaryEl, {
+                mode: 'single',
+                start: state.dates.primary || today,
+                defaultStart: state.dates.primary || today,
+                maxDate: cfg.futureDates ? '2099-12-31' : (today || undefined),
+                onChange: ({ start }) => {
+                    state.dates.primary = start;
+                    updateSaveEnabled();
+                },
+            });
+        }
+        if (invoiceEl) {
+            state.pickers.invoice = window.FluxyDateRangePicker.mount(invoiceEl, {
+                mode: 'single',
+                start: state.dates.invoice || today,
+                defaultStart: state.dates.invoice || today,
+                maxDate: today || undefined,
+                onChange: ({ start }) => {
+                    state.dates.invoice = start;
+                },
+            });
+        }
+    }
+
     function renderErrorStep(message) {
-        const content = $('bill-scan-drawer-content');
-        const footer = $('bill-scan-drawer-footer');
+        const content = $('scan-drawer-content');
+        const footer = $('scan-drawer-footer');
         content.innerHTML = `
             <div class="bg-red-50 border border-red-200 rounded-xl px-5 py-6 text-center">
                 <div class="flex justify-center mb-3">
@@ -352,19 +462,19 @@
             </div>
         `;
         footer.innerHTML = `
-            <button id="bill-scan-manual-link" type="button" class="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-50 transition-colors">Add manually</button>
-            <button id="bill-scan-retry-btn" type="button" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors active:scale-95">Try again</button>
+            <button id="scan-manual-link" type="button" class="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-50 transition-colors">Add manually</button>
+            <button id="scan-retry-btn" type="button" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors active:scale-95">Try again</button>
         `;
-        $('bill-scan-retry-btn')?.addEventListener('click', () => {
+        $('scan-retry-btn')?.addEventListener('click', () => {
             state.errorMessage = null;
-            setStep(state.file ? 'upload' : 'upload');
+            setStep('upload');
         });
-        $('bill-scan-manual-link')?.addEventListener('click', openManualEntry);
+        $('scan-manual-link')?.addEventListener('click', openManualEntry);
     }
 
     function renderOfflineStep() {
-        const content = $('bill-scan-drawer-content');
-        const footer = $('bill-scan-drawer-footer');
+        const content = $('scan-drawer-content');
+        const footer = $('scan-drawer-footer');
         content.innerHTML = `
             <div class="bg-gray-50 border border-gray-200 rounded-xl px-5 py-6 text-center">
                 <div class="flex justify-center mb-3">
@@ -373,26 +483,26 @@
                     </div>
                 </div>
                 <p class="text-[13px] font-semibold text-gray-900">You're offline</p>
-                <p class="text-[12px] text-gray-600 mt-1">Scanning needs an internet connection. You can still add this bill manually.</p>
+                <p class="text-[12px] text-gray-600 mt-1">Scanning needs an internet connection. You can still add this manually.</p>
             </div>
         `;
         footer.innerHTML = `
-            <button id="bill-scan-cancel-btn" type="button" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Close</button>
-            <button id="bill-scan-manual-link" type="button" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors active:scale-95">Add manually</button>
+            <button id="scan-cancel-btn" type="button" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Close</button>
+            <button id="scan-manual-link" type="button" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors active:scale-95">Add manually</button>
         `;
-        $('bill-scan-cancel-btn')?.addEventListener('click', closeDrawer);
-        $('bill-scan-manual-link')?.addEventListener('click', openManualEntry);
+        $('scan-cancel-btn')?.addEventListener('click', closeDrawer);
+        $('scan-manual-link')?.addEventListener('click', openManualEntry);
     }
 
     // ── Event handlers ───────────────────────────────────────────────────
 
     function wireUploadHandlers() {
-        const dropzone = $('bill-scan-dropzone');
-        const fileInput = $('bill-scan-file-input');
-        const cancelBtn = $('bill-scan-cancel-btn');
-        const startBtn = $('bill-scan-start-btn');
-        const replaceBtn = $('bill-scan-replace-btn');
-        const manualLink = $('bill-scan-manual-link');
+        const dropzone = $('scan-dropzone');
+        const fileInput = $('scan-file-input');
+        const cancelBtn = $('scan-cancel-btn');
+        const startBtn = $('scan-start-btn');
+        const replaceBtn = $('scan-replace-btn');
+        const manualLink = $('scan-manual-link');
 
         fileInput?.addEventListener('change', (e) => {
             const f = e.target.files?.[0];
@@ -422,11 +532,11 @@
     }
 
     function wireReviewHandlers() {
-        const form = $('bill-scan-review-form');
+        const form = $('scan-review-form');
         form?.addEventListener('input', updateSaveEnabled);
         form?.addEventListener('change', updateSaveEnabled);
-        $('bill-scan-save-btn')?.addEventListener('click', saveScannedBill);
-        $('bill-scan-rescan-btn')?.addEventListener('click', () => {
+        $('scan-save-btn')?.addEventListener('click', saveScannedDocument);
+        $('scan-rescan-btn')?.addEventListener('click', () => {
             state.extraction = null;
             state.extractionSource = null;
             setStep('upload');
@@ -434,8 +544,8 @@
     }
 
     function updateSaveEnabled() {
-        const form = $('bill-scan-review-form');
-        const saveBtn = $('bill-scan-save-btn');
+        const form = $('scan-review-form');
+        const saveBtn = $('scan-save-btn');
         if (!form || !saveBtn) return;
         const fd = new FormData(form);
         const vendor = String(fd.get('vendor_name') || '').trim();
@@ -444,13 +554,16 @@
     }
 
     function openManualEntry() {
-        if (typeof window.showAddTransactionModal === 'function') {
-            closeDrawer();
+        if (typeof window.showAddTransactionModal !== 'function') return;
+        closeDrawer();
+        if (state.mode === 'transaction') {
+            window.showAddTransactionModal();
+        } else {
             window.showAddTransactionModal({
                 title: 'Add New Bill',
                 submitLabel: 'Save Bill',
                 defaultCategory: 'Operations',
-                context: 'bill'
+                context: 'bill',
             });
         }
     }
@@ -489,7 +602,7 @@
             state.extractionSource = result.extraction_source || 'openai';
             setStep('review');
         } catch (err) {
-            console.error('[bill-capture] scan failed:', err?.message || err);
+            console.error('[document-capture] scan failed:', err?.message || err);
             state.errorMessage = friendlyError(err);
             setStep('error');
         }
@@ -498,7 +611,7 @@
     function friendlyError(err) {
         const msg = String(err?.message || '');
         if (msg.includes('UNREADABLE_DOCUMENT')) {
-            return "We couldn't read this bill clearly. Try a sharper image or enter the details manually.";
+            return "We couldn't read this document clearly. Try a sharper image or enter the details manually.";
         }
         if (msg.includes('FILE_TOO_LARGE')) {
             return 'File is too large. Please upload a smaller image or PDF.';
@@ -509,11 +622,15 @@
         if (msg.includes('401') || msg.includes('UNAUTHENTICATED')) {
             return 'Your session expired. Please refresh and sign in again.';
         }
-        return 'Could not scan this bill right now. Please try again or enter the details manually.';
+        return 'Could not scan this document right now. Please try again or enter the details manually.';
+    }
+
+    function getContext() {
+        return window[modeCfg().contextKey];
     }
 
     async function callExtractEndpoint(payload) {
-        const ctx = window.__fluxyBillsContext;
+        const ctx = getContext();
         const currentUser = ctx?.auth?.currentUser;
         if (!currentUser) throw new Error('UNAUTHENTICATED');
         const token = await currentUser.getIdToken();
@@ -551,15 +668,16 @@
         };
     }
 
-    async function saveScannedBill() {
+    async function saveScannedDocument() {
         if (state.saving) return;
-        const ctx = window.__fluxyBillsContext;
+        const cfg = modeCfg();
+        const ctx = getContext();
         const user = ctx?.auth?.currentUser;
-        if (!user || !ctx?.ds) {
-            window.showToast?.('You need to be signed in to save this bill.', 'error');
+        if (!user || !ctx?.ds || typeof ctx.ds[cfg.saveMethod] !== 'function') {
+            window.showToast?.('You need to be signed in to save this.', 'error');
             return;
         }
-        const form = $('bill-scan-review-form');
+        const form = $('scan-review-form');
         if (!form) return;
         const fd = new FormData(form);
 
@@ -571,8 +689,13 @@
             return;
         }
 
-        const dueDate = parseDateInput(fd.get('due_date'));
-        const invoiceDate = parseDateInput(fd.get('invoice_date'));
+        const formType = fd.get('type');
+        const type = (cfg.showTypeStatus && TRANSACTION_TYPES.includes(formType)) ? formType : cfg.defaultType;
+        const formStatus = fd.get('status');
+        const status = (cfg.showTypeStatus && TRANSACTION_STATUSES.includes(formStatus)) ? formStatus : cfg.defaultStatus;
+
+        const primaryDate = parseDateInput(state.dates.primary);
+        const invoiceDate = parseDateInput(state.dates.invoice);
         const invoiceNumber = String(fd.get('invoice_number') || '').trim();
         const extraction = state.extraction || {};
         const file = state.file;
@@ -581,12 +704,11 @@
             vendor_name,
             category,
             amount,
-            type: 'pending_payable',
-            status: 'Missing Receipt',
+            type,
+            status,
             icon: '💸',
-            source: 'bill_scan',
-            created_via: 'ai_bill_capture',
-            payment_status: 'unpaid',
+            source: cfg.source,
+            created_via: cfg.createdVia,
             extraction_status: 'reviewed',
             extraction_source: state.extractionSource || 'openai',
             extraction_confidence: extraction.confidence?.overall ?? null,
@@ -598,49 +720,63 @@
             source_file_mime_type: file?.type || null,
             source_file_size_bytes: file?.size || null,
         };
-        if (dueDate) payload.due_date = dueDate;
-        if (invoiceDate) payload.invoice_date = invoiceDate;
+
+        if (state.mode === 'bill') {
+            if (primaryDate) payload.due_date = primaryDate;
+            if (invoiceDate) payload.invoice_date = invoiceDate;
+            payload.payment_status = 'unpaid';
+        } else {
+            if (primaryDate) payload.timestamp = primaryDate;
+            if (invoiceDate) payload.invoice_date = invoiceDate;
+        }
 
         state.saving = true;
-        const saveBtn = $('bill-scan-save-btn');
+        const saveBtn = $('scan-save-btn');
         if (saveBtn) {
             saveBtn.disabled = true;
             saveBtn.textContent = 'Saving…';
         }
 
         try {
-            await ctx.ds.addBill(user.uid, payload);
-            window.showToast?.('Bill scanned and added to your schedule.', 'success');
+            await ctx.ds[cfg.saveMethod](user.uid, payload);
+            window.showToast?.(cfg.toastSuccess, 'success');
             closeDrawer();
-            if (typeof window.loadBills === 'function') window.loadBills();
+            const refresh = window[cfg.refreshFn];
+            if (typeof refresh === 'function') refresh();
         } catch (err) {
-            console.error('[bill-capture] save failed:', err?.message || err);
-            window.showToast?.('Could not save bill. Please try again.', 'error');
+            console.error('[document-capture] save failed:', err?.message || err);
+            window.showToast?.('Could not save. Please try again.', 'error');
             state.saving = false;
             if (saveBtn) {
                 saveBtn.disabled = false;
-                saveBtn.textContent = 'Save Bill';
+                saveBtn.textContent = state.mode === 'transaction' ? 'Save Transaction' : 'Save Bill';
             }
             updateSaveEnabled();
         }
     }
 
-    // ── Public + boot ────────────────────────────────────────────────────
+    // ── Boot ─────────────────────────────────────────────────────────────
 
     function init() {
-        $('scan-bill-btn')?.addEventListener('click', openDrawer);
-        $('bill-scan-drawer-close-btn')?.addEventListener('click', closeDrawer);
-        $('bill-scan-drawer-backdrop')?.addEventListener('click', closeDrawer);
+        document.querySelectorAll('[data-scan-mode]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                openDrawer(btn.getAttribute('data-scan-mode'));
+            });
+        });
+        $('scan-drawer-close-btn')?.addEventListener('click', closeDrawer);
+        $('scan-drawer-backdrop')?.addEventListener('click', closeDrawer);
         window.addEventListener('online', () => {
-            if (state.step === 'offline') setStep(state.file ? 'upload' : 'upload');
+            if (state.step === 'offline') setStep('upload');
         });
         window.addEventListener('offline', () => {
             if (state.step === 'upload' || state.step === 'review') setStep('offline');
         });
     }
 
-    window.openScanBillDrawer = openDrawer;
-    window.closeScanBillDrawer = closeDrawer;
+    window.openScanDrawer = openDrawer;
+    window.openScanBillDrawer = () => openDrawer('bill');
+    window.openScanTransactionDrawer = () => openDrawer('transaction');
+    window.closeScanDrawer = closeDrawer;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);

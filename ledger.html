@@ -52,11 +52,15 @@
                     </div>
                     <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                         <div id="ledger-date-range-picker"></div>
-                        <button id="download-csv-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60" disabled>
+                        <button id="download-csv-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap" disabled>
                             <svg id="download-csv-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
                             <span id="download-csv-label">Download CSV</span>
                         </button>
-                        <button onclick="window.showAddTransactionModal()" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95">
+                        <button id="scan-tx-btn" type="button" data-scan-mode="transaction" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
+                            <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2m4-5h10"></path></svg>
+                            Scan Transaction
+                        </button>
+                        <button onclick="window.showAddTransactionModal()" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                             Add Transaction
                         </button>
@@ -241,9 +245,32 @@
         </div>
     </div>
 
+    <!-- Document Scan Drawer — Backdrop -->
+    <div id="scan-drawer-backdrop" class="fixed inset-0 bg-black/30 z-40 hidden"></div>
+
+    <!-- Document Scan Drawer -->
+    <div id="scan-drawer" class="fixed top-0 right-0 h-full w-full max-w-[480px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div>
+                <h2 id="scan-drawer-title" class="text-[15px] font-bold text-gray-900">Scan Transaction</h2>
+                <p id="scan-drawer-subtitle" class="text-[12px] text-gray-400 mt-0.5">Upload a receipt, invoice, or payment confirmation. FluxyOS will extract the key details for review.</p>
+            </div>
+            <button id="scan-drawer-close-btn" type="button" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div id="scan-drawer-content" class="flex-1 overflow-y-auto px-6 py-5" data-step="upload">
+            <!-- Injected by document-capture.js -->
+        </div>
+        <div id="scan-drawer-footer" class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
+            <!-- Injected by document-capture.js based on step -->
+        </div>
+    </div>
+
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
     <script src="assets/js/date-range-picker.js"></script>
+    <script src="assets/js/document-capture.js"></script>
 
     <!-- AUTH GUARD & DATA -->
     <script type="module">
@@ -265,6 +292,10 @@
         const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
         const auth = getAuth(app);
         const ds = new DataService(app);
+
+        window.__fluxyTxContext = { app, auth, ds };
+        window.dispatchEvent(new CustomEvent('fluxy-tx-context-ready'));
+
         let allLedgerTransactions = [];
         let currentLedgerTransactions = [];
         const LEDGER_LOAD_LIMIT = 1000;
