@@ -98,6 +98,7 @@
         const linkedSubscriptionSearch = new URLSearchParams(window.location.search).get('search') || '';
         const linkedSubscriptionRecordId = new URLSearchParams(window.location.search).get('record');
         let allSubscriptions = [];
+        let linkedSubscriptionSearchHandled = false;
         if (linkedSubscriptionSearch) {
             const input = document.getElementById('subscription-search-input');
             if (input) input.value = linkedSubscriptionSearch;
@@ -136,13 +137,21 @@
                 window.showToast?.('That subscription is not in the current list.', 'info');
                 return;
             }
-            rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            rowEl.style.boxShadow = 'inset 3px 0 0 #EA580C';
-            rowEl.classList.add('bg-gray-50');
+            window.highlightFluxyLinkedTarget?.(rowEl, {
+                focus: document.getElementById('subscription-search-input'),
+            });
+        }
+
+        function highlightLinkedSubscriptionSearchRows() {
+            if (!linkedSubscriptionSearch || linkedSubscriptionSearchHandled || linkedSubscriptionRecordId) return;
+            const rows = Array.from(document.querySelectorAll('#sub-table-body [data-subscription-id]'));
+            if (!rows.length) return;
+            linkedSubscriptionSearchHandled = true;
             window.setTimeout(() => {
-                rowEl.style.boxShadow = '';
-                rowEl.classList.remove('bg-gray-50');
-            }, 2200);
+                window.highlightFluxyLinkedTarget?.(rows, {
+                    focus: document.getElementById('subscription-search-input'),
+                });
+            }, 120);
         }
 
         function renderSubscriptions() {
@@ -189,6 +198,7 @@
                 </tr>
             `).join('');
             highlightLinkedSubscriptionRow();
+            highlightLinkedSubscriptionSearchRows();
         }
 
         window.loadSubscriptions = async function() {

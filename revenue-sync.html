@@ -258,6 +258,7 @@
         const linkedRevenueSearch = new URLSearchParams(window.location.search).get('search') || '';
         const linkedRevenueRecordId = new URLSearchParams(window.location.search).get('record');
         let linkedRevenueRecordHandled = false;
+        let linkedRevenueSearchHandled = false;
         if (linkedRevenueSearch) {
             const input = document.getElementById('revenue-search-input');
             if (input) input.value = linkedRevenueSearch;
@@ -679,6 +680,7 @@
                 `;
             }).join('');
             highlightLinkedRevenueRow();
+            highlightLinkedRevenueSearchRows();
         }
 
         function renderRevenueTable(rows) {
@@ -803,13 +805,21 @@
             if (!linkedRevenueRecordId) return;
             const rowEl = document.querySelector(`[data-revenue-id="${CSS.escape(linkedRevenueRecordId)}"]`);
             if (!rowEl) return;
-            rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            rowEl.style.boxShadow = 'inset 3px 0 0 #EA580C';
-            rowEl.classList.add('bg-gray-50');
+            window.highlightFluxyLinkedTarget?.(rowEl, {
+                focus: document.getElementById('revenue-search-input'),
+            });
+        }
+
+        function highlightLinkedRevenueSearchRows() {
+            if (!linkedRevenueSearch || linkedRevenueSearchHandled || linkedRevenueRecordId) return;
+            const rows = Array.from(document.querySelectorAll('#revenue-table-body [data-revenue-id]'));
+            if (!rows.length) return;
+            linkedRevenueSearchHandled = true;
             window.setTimeout(() => {
-                rowEl.style.boxShadow = '';
-                rowEl.classList.remove('bg-gray-50');
-            }, 2200);
+                window.highlightFluxyLinkedTarget?.(rows, {
+                    focus: document.getElementById('revenue-search-input'),
+                });
+            }, 120);
         }
 
         function openLinkedRevenueRecord() {

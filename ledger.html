@@ -311,6 +311,7 @@
         let ledgerRangeEnd = getMonthEndKey();
         const linkedLedgerRecordId = new URLSearchParams(window.location.search).get('record');
         let linkedLedgerRecordHandled = false;
+        let linkedLedgerSearchHandled = false;
         if (linkedLedgerSearch) {
             const input = document.getElementById('ledger-search-input');
             if (input) input.value = linkedLedgerSearch;
@@ -802,18 +803,27 @@
             `).join('');
 
             updateSortIndicators();
+            highlightLinkedLedgerSearchRows();
         }
 
         function highlightLedgerRow(txId) {
             const rowEl = document.querySelector(`[data-ledger-id="${CSS.escape(txId)}"]`);
             if (!rowEl) return;
-            rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            rowEl.style.boxShadow = 'inset 3px 0 0 #EA580C';
-            rowEl.classList.add('bg-gray-50');
+            window.highlightFluxyLinkedTarget?.(rowEl, {
+                focus: document.getElementById('ledger-search-input'),
+            });
+        }
+
+        function highlightLinkedLedgerSearchRows() {
+            if (!linkedLedgerSearch || linkedLedgerSearchHandled || linkedLedgerRecordId) return;
+            const rows = Array.from(document.querySelectorAll('#ledger-table-body [data-ledger-id]'));
+            if (!rows.length) return;
+            linkedLedgerSearchHandled = true;
             window.setTimeout(() => {
-                rowEl.style.boxShadow = '';
-                rowEl.classList.remove('bg-gray-50');
-            }, 2200);
+                window.highlightFluxyLinkedTarget?.(rows, {
+                    focus: document.getElementById('ledger-search-input'),
+                });
+            }, 120);
         }
 
         function openLinkedLedgerRecord() {

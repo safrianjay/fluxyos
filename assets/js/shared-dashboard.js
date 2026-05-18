@@ -49,6 +49,60 @@ async function compressReceiptImage(file) {
 }
 window.__compressReceiptImage = compressReceiptImage;
 
+(function installFluxyLinkedTargetHighlight() {
+    if (window.highlightFluxyLinkedTarget) return;
+
+    if (!document.getElementById('fluxy-linked-target-highlight-style')) {
+        const style = document.createElement('style');
+        style.id = 'fluxy-linked-target-highlight-style';
+        style.textContent = `
+            @keyframes fluxy-linked-target-glimpse {
+                0% { box-shadow: inset 3px 0 0 #EA580C, 0 0 0 0 rgba(234, 88, 12, 0.28); }
+                42% { box-shadow: inset 3px 0 0 #EA580C, 0 0 0 6px rgba(234, 88, 12, 0.14); }
+                100% { box-shadow: inset 3px 0 0 #EA580C, 0 0 0 0 rgba(234, 88, 12, 0); }
+            }
+
+            .fluxy-linked-target-glimpse {
+                animation: fluxy-linked-target-glimpse 1.15s ease-out 2;
+                background-color: #F9FAFB !important;
+                position: relative;
+                z-index: 1;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    window.highlightFluxyLinkedTarget = function(target, options = {}) {
+        const elements = typeof target === 'string'
+            ? Array.from(document.querySelectorAll(target))
+            : target instanceof Element
+                ? [target]
+                : Array.from(target || []).filter(item => item instanceof Element);
+
+        if (!elements.length) return false;
+        const { scroll = true, focus = null } = options;
+        if (scroll) {
+            elements[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        if (focus instanceof HTMLElement) {
+            try {
+                focus.focus({ preventScroll: true });
+            } catch {
+                focus.focus();
+            }
+        }
+        elements.slice(0, 12).forEach(element => {
+            element.classList.remove('fluxy-linked-target-glimpse');
+            void element.offsetWidth;
+            element.classList.add('fluxy-linked-target-glimpse');
+            window.setTimeout(() => {
+                element.classList.remove('fluxy-linked-target-glimpse');
+            }, 2800);
+        });
+        return true;
+    };
+})();
+
 window.showAddTransactionModal = function(options = {}) {
     const {
         title = "Add Transaction",

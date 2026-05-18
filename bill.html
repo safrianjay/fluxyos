@@ -235,6 +235,7 @@
         const linkedBillSearch = new URLSearchParams(window.location.search).get('search') || '';
         const linkedBillRecordId = new URLSearchParams(window.location.search).get('record');
         let linkedBillRecordHandled = false;
+        let linkedBillSearchHandled = false;
         if (linkedBillSearch) {
             const input = document.getElementById('bill-search-input');
             if (input) input.value = linkedBillSearch;
@@ -486,6 +487,7 @@
                 `;
             }).join('');
             highlightLinkedBillRow();
+            highlightLinkedBillSearchRows();
         }
 
         function renderBillsTable(bills) {
@@ -610,15 +612,24 @@
 
         function highlightLinkedBillRow() {
             if (!linkedBillRecordId) return;
-            const rowEl = document.querySelector(`[data-bill-id="${CSS.escape(linkedBillRecordId)}"]`);
+            const rowEl = document.querySelector(`#bill-table-body [data-bill-id="${CSS.escape(linkedBillRecordId)}"]`)
+                || document.querySelector(`[data-bill-id="${CSS.escape(linkedBillRecordId)}"]`);
             if (!rowEl) return;
-            rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            rowEl.style.boxShadow = 'inset 3px 0 0 #EA580C';
-            rowEl.classList.add('bg-gray-50');
+            window.highlightFluxyLinkedTarget?.(rowEl, {
+                focus: document.getElementById('bill-search-input'),
+            });
+        }
+
+        function highlightLinkedBillSearchRows() {
+            if (!linkedBillSearch || linkedBillSearchHandled || linkedBillRecordId) return;
+            const rows = Array.from(document.querySelectorAll('#bill-table-body [data-bill-id]'));
+            if (!rows.length) return;
+            linkedBillSearchHandled = true;
             window.setTimeout(() => {
-                rowEl.style.boxShadow = '';
-                rowEl.classList.remove('bg-gray-50');
-            }, 2200);
+                window.highlightFluxyLinkedTarget?.(rows, {
+                    focus: document.getElementById('bill-search-input'),
+                });
+            }, 120);
         }
 
         function openLinkedBillRecord() {
