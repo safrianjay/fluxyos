@@ -278,21 +278,21 @@
         const content = $('scan-drawer-content');
         const footer = $('scan-drawer-footer');
         content.innerHTML = `
-            <div class="relative overflow-hidden rounded-2xl border border-purple-900/40 shadow-inner">
-                <div class="absolute inset-0 scan-loader-bg-purple"></div>
-                <div class="absolute inset-0" style="background: radial-gradient(ellipse at center, rgba(234,88,12,0.25), transparent 65%);"></div>
+            <div class="relative overflow-hidden rounded-2xl bg-white border border-gray-100">
+                <div class="absolute -inset-12 scan-loader-bg-purple opacity-25 blur-2xl"></div>
+                <div class="absolute inset-0" style="background: radial-gradient(ellipse at center, rgba(255,255,255,0) 30%, rgba(255,255,255,0.92) 78%);"></div>
                 <div class="relative flex flex-col items-center justify-center py-14 px-6">
                     <div class="relative w-36 h-36 flex items-center justify-center">
                         <div class="absolute inset-0 rounded-full scan-loader-bg opacity-70 blur-2xl"></div>
                         <div class="absolute inset-3 rounded-full scan-loader-bg opacity-55 blur-md"></div>
                         <div class="relative scan-loader-pulse">
-                            <div class="w-20 h-20 rounded-2xl bg-white shadow-2xl ring-1 ring-orange-100 flex items-center justify-center">
+                            <div class="w-20 h-20 rounded-2xl bg-white shadow-xl ring-1 ring-orange-100 flex items-center justify-center">
                                 <img src="assets/images/favicon.svg" alt="" class="w-12 h-12 scan-loader-spin" aria-hidden="true" onerror="this.style.display='none'">
                             </div>
                         </div>
                     </div>
-                    <p class="text-[13px] font-semibold text-white mt-6 drop-shadow">Reading your document with AI…</p>
-                    <p class="text-[12px] text-orange-100/80 mt-1">This usually takes a few seconds.</p>
+                    <p class="text-[13px] font-semibold text-gray-900 mt-6">Reading your document with AI…</p>
+                    <p class="text-[12px] text-gray-500 mt-1">This usually takes a few seconds.</p>
                 </div>
             </div>
         `;
