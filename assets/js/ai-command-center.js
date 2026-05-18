@@ -115,6 +115,7 @@
         els.newChat = document.getElementById('ai-new-chat');
         els.responseArea = document.getElementById('ai-response-area');
         els.chatThread = null;
+        els.sessionPromptChips = null;
         els.composerSection = document.getElementById('ai-composer-section');
         els.form = document.getElementById('ai-command-form');
         els.input = document.getElementById('ai-command-input');
@@ -224,6 +225,7 @@
         els.responseArea?.classList.add('hidden');
         if (els.responseArea) els.responseArea.innerHTML = '';
         els.chatThread = null;
+        els.sessionPromptChips = null;
         els.historySection?.classList.remove('hidden');
         if (els.input) {
             els.input.rows = 5;
@@ -351,8 +353,10 @@
         els.historySection?.classList.add('hidden');
         if (els.sessionTitle) els.sessionTitle.textContent = title || 'AI chat';
         if (!els.chatThread) {
-            els.responseArea.innerHTML = '<div id="ai-chat-thread" class="space-y-5"></div>';
+            els.responseArea.innerHTML = '<div id="ai-chat-thread" class="space-y-5"></div><div id="ai-session-prompt-chips" class="mt-5 flex flex-wrap gap-2"></div>';
             els.chatThread = document.getElementById('ai-chat-thread');
+            els.sessionPromptChips = document.getElementById('ai-session-prompt-chips');
+            renderSessionPromptChips();
         }
         if (els.input) els.input.rows = 2;
         autoGrowComposer();
@@ -457,18 +461,17 @@
         let loadingId = null;
         try {
             await ensureActiveChat(prompt);
-            const shouldScroll = shouldAutoScroll();
             appendUserMessage({ text: prompt });
             await saveChatMessage({
                 role: 'user',
                 content: prompt,
                 attachments: [],
             });
-            loadingId = appendAssistantLoading('Analyzing your finance records...');
+            loadingId = appendAssistantLoading();
             if (els.input) els.input.value = '';
             updateCharCount();
             autoGrowComposer();
-            scrollToLatest(shouldScroll);
+            scrollToLatest(true);
             const token = await getAuthToken();
             const response = await fetch('/api/v1/brain/chat', {
                 method: 'POST',
@@ -524,19 +527,18 @@
         try {
             const prompt = userIntent || 'Please review this finance document.';
             await ensureActiveChat(prompt);
-            const shouldScroll = shouldAutoScroll();
             appendUserMessage({ text: prompt, file });
             await saveChatMessage({
                 role: 'user',
                 content: prompt,
                 attachments: [serializeAttachment(file)],
             });
-            loadingId = appendAssistantLoading('Checking the document type and destination...');
+            loadingId = appendAssistantLoading();
             if (els.input) els.input.value = '';
             updateCharCount();
             autoGrowComposer();
             clearFile();
-            scrollToLatest(shouldScroll);
+            scrollToLatest(true);
             const token = await getAuthToken();
             const response = await fetch('/api/v1/ai/detect-document', {
                 method: 'POST',
@@ -725,8 +727,10 @@
         if (!els.responseArea) return null;
         if (!els.chatThread || options.reset) {
             els.responseArea.classList.remove('hidden');
-            els.responseArea.innerHTML = '<div id="ai-chat-thread" class="space-y-5"></div>';
+            els.responseArea.innerHTML = '<div id="ai-chat-thread" class="space-y-5"></div><div id="ai-session-prompt-chips" class="mt-5 flex flex-wrap gap-2"></div>';
             els.chatThread = document.getElementById('ai-chat-thread');
+            els.sessionPromptChips = document.getElementById('ai-session-prompt-chips');
+            renderSessionPromptChips();
         }
         if (!state.chatStarted) {
             state.chatStarted = true;
@@ -760,41 +764,25 @@
         return id;
     }
 
-    function appendAssistantLoading(message) {
+    function appendAssistantLoading() {
         const thread = ensureChatThread();
         if (!thread) return null;
         const id = nextMessageId('assistant');
-        const label = message || 'Analyzing your finance records...';
-        const isDocumentFlow = /document|type|destination|checking/i.test(label);
-        const subtext = isDocumentFlow
-            ? 'Checking file hints, routing destination, and review requirements.'
-            : 'Reading records, checking limitations, and preparing next actions.';
-        const steps = isDocumentFlow
-            ? ['Checking supported file type', 'Detecting destination', 'Preparing review guidance']
-            : ['Classifying finance intent', 'Checking period data', 'Building analyst answer'];
         thread.insertAdjacentHTML('beforeend', `
             <article id="${id}" class="flex justify-start">
                 <div class="max-w-full sm:max-w-[88%] rounded-2xl rounded-bl-md border border-gray-200 bg-white px-5 py-4 shadow-sm">
-                    <div class="flex items-center gap-3">
-                        <span class="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[#EA580C]">
-                            <svg class="h-4 w-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 19V5m4 12V9m4 8V7m4 10v-5m4 5V4"></path></svg>
+                    <div class="inline-flex items-center gap-2 text-[13px] font-semibold text-gray-700">
+                        <span>FluxyOS thinking</span>
+                        <span class="inline-flex items-center gap-1" aria-hidden="true">
+                            <span class="h-1.5 w-1.5 rounded-full bg-[#EA580C] animate-bounce"></span>
+                            <span class="h-1.5 w-1.5 rounded-full bg-[#EA580C] animate-bounce [animation-delay:120ms]"></span>
+                            <span class="h-1.5 w-1.5 rounded-full bg-[#EA580C] animate-bounce [animation-delay:240ms]"></span>
                         </span>
-                        <div>
-                            <p class="text-[13px] font-semibold text-gray-900">${escapeHtml(label)}</p>
-                            <p class="mt-0.5 text-[12px] text-gray-500">${escapeHtml(subtext)}</p>
-                        </div>
-                    </div>
-                    <div class="mt-4 grid gap-2">
-                        ${steps.map((item, index) => `
-                            <div class="flex items-center gap-2 text-[12px] font-medium text-gray-500">
-                                <span class="h-1.5 w-1.5 rounded-full ${index === 0 ? 'bg-[#EA580C]' : 'bg-gray-300'} animate-pulse"></span>
-                                <span>${item}</span>
-                            </div>
-                        `).join('')}
                     </div>
                 </div>
             </article>
         `);
+        scrollToLatest(true);
         return id;
     }
 
@@ -803,7 +791,7 @@
         if (!thread) return null;
         const id = messageId || nextMessageId('assistant');
         const existing = document.getElementById(id);
-        const autoScroll = shouldAutoScroll();
+        const autoScroll = true;
         const toneClass = {
             error: 'border-red-200 bg-red-50',
             warning: 'border-amber-200 bg-amber-50',
@@ -823,6 +811,26 @@
         }
         scrollToLatest(autoScroll);
         return id;
+    }
+
+    function renderSessionPromptChips() {
+        if (!els.sessionPromptChips) return;
+        const chips = [
+            ['Analyze my business health', 'How healthy is my business this month?'],
+            ['Summarize this month', 'Summarize this month.'],
+            ['Show upcoming bills', 'Show upcoming bills.'],
+            ['Find missing receipts', 'Find missing receipts.'],
+            ['Review subscription costs', 'Review subscription costs.'],
+            ['What should I fix first?', 'What should I fix first?'],
+        ];
+        els.sessionPromptChips.innerHTML = chips.map(([label, prompt]) => `
+            <button type="button" data-ai-session-prompt="${escapeAttr(prompt)}" class="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-medium text-gray-600 shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-[#EA580C]">
+                ${escapeHtml(label)}
+            </button>
+        `).join('');
+        els.sessionPromptChips.querySelectorAll('[data-ai-session-prompt]').forEach(button => {
+            button.addEventListener('click', () => submitText(button.dataset.aiSessionPrompt || ''));
+        });
     }
 
     function nextMessageId(prefix) {
