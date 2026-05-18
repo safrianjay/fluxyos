@@ -409,7 +409,11 @@
 
 .loading-message {
     width: auto;
-    padding: 8px 11px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    align-self: flex-start;
 }
 
 .thinking-heading {
