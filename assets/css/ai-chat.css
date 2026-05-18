@@ -414,6 +414,7 @@
     background: transparent;
     box-shadow: none;
     align-self: flex-start;
+    max-width: 92%;
 }
 
 .thinking-heading {

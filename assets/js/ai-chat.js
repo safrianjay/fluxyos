@@ -223,7 +223,7 @@
 
     function addLoadingMessage(messages) {
         const msg = document.createElement('div');
-        msg.className = 'message ai loading-message';
+        msg.className = 'loading-message';
         msg.innerHTML = `
             <div class="thinking-heading">
                 <span>FluxyOS thinking</span>
