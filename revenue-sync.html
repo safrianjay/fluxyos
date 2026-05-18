@@ -255,6 +255,8 @@
         let filteredRevenue = [];
         let revenuePaginator = null;
         let flagsById = new Map();
+        const linkedRevenueRecordId = new URLSearchParams(window.location.search).get('record');
+        let linkedRevenueRecordHandled = false;
 
         // ── Date Range State & Helpers ───────────────────────────────────────
 
@@ -671,6 +673,7 @@
                     </tr>
                 `;
             }).join('');
+            highlightLinkedRevenueRow();
         }
 
         function renderRevenueTable(rows) {
@@ -788,6 +791,34 @@
         function closeDrawer() {
             document.getElementById('revenue-drawer').classList.add('translate-x-full');
             document.getElementById('revenue-drawer-backdrop').classList.add('hidden');
+        }
+
+        function highlightLinkedRevenueRow() {
+            if (!linkedRevenueRecordId) return;
+            const rowEl = document.querySelector(`[data-revenue-id="${CSS.escape(linkedRevenueRecordId)}"]`);
+            if (!rowEl) return;
+            rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            rowEl.style.boxShadow = 'inset 3px 0 0 #EA580C';
+            rowEl.classList.add('bg-gray-50');
+            window.setTimeout(() => {
+                rowEl.style.boxShadow = '';
+                rowEl.classList.remove('bg-gray-50');
+            }, 2200);
+        }
+
+        function openLinkedRevenueRecord() {
+            if (!linkedRevenueRecordId || linkedRevenueRecordHandled) return;
+            const row = allRevenue.find(item => item.id === linkedRevenueRecordId);
+            if (!row) {
+                window.showToast?.('That revenue row is not in the currently loaded revenue range.', 'info');
+                linkedRevenueRecordHandled = true;
+                return;
+            }
+            linkedRevenueRecordHandled = true;
+            window.setTimeout(() => {
+                highlightLinkedRevenueRow();
+                openDrawer(row);
+            }, 120);
         }
 
         document.addEventListener('click', (e) => {
@@ -929,6 +960,7 @@
             renderBreakdownChart(allRevenue);
             refreshTabCounts();
             filterRevenue(document.getElementById('revenue-search-input').value);
+            openLinkedRevenueRecord();
         };
     </script>
 </body>

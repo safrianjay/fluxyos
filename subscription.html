@@ -95,11 +95,28 @@
         const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
         const auth = getAuth(app);
         const ds = new DataService(app);
+        const linkedSubscriptionRecordId = new URLSearchParams(window.location.search).get('record');
 
         onAuthStateChanged(auth, (user) => {
             if (user) window.loadSubscriptions();
             else window.location.replace('/login');
         });
+
+        function highlightLinkedSubscriptionRow() {
+            if (!linkedSubscriptionRecordId) return;
+            const rowEl = document.querySelector(`[data-subscription-id="${CSS.escape(linkedSubscriptionRecordId)}"]`);
+            if (!rowEl) {
+                window.showToast?.('That subscription is not in the current list.', 'info');
+                return;
+            }
+            rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            rowEl.style.boxShadow = 'inset 3px 0 0 #EA580C';
+            rowEl.classList.add('bg-gray-50');
+            window.setTimeout(() => {
+                rowEl.style.boxShadow = '';
+                rowEl.classList.remove('bg-gray-50');
+            }, 2200);
+        }
 
         window.loadSubscriptions = async function() {
             const user = auth.currentUser;
@@ -124,7 +141,7 @@
                 tableContainer.classList.remove('hidden');
                 emptyContainer.classList.add('hidden');
                 body.innerHTML = subs.map(sub => `
-                    <tr class="hover:bg-gray-50 transition-colors">
+                    <tr class="hover:bg-gray-50 transition-colors" data-subscription-id="${sub.id}">
                         <td class="px-6 py-4 flex items-center gap-3">
                             <div class="w-8 h-8 rounded bg-blue-50 flex items-center justify-center text-[14px]">
                                 ${sub.icon || '🛠️'}
@@ -141,6 +158,7 @@
                         </td>
                     </tr>
                 `).join('');
+                highlightLinkedSubscriptionRow();
             }
         };
     </script>

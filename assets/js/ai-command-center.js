@@ -1067,12 +1067,59 @@
     function renderRelatedRecord(record) {
         const name = record.vendor_name || record.label || 'Record';
         const amount = record.formatted_amount || record.formatted_value || '';
+        const href = buildRelatedRecordHref(record);
+        const sourceLabel = toLabel(record.source || inferRelatedRecordSource(record) || 'record');
+        const content = `
+            <span class="min-w-0">
+                <span class="block truncate text-[12px] font-semibold text-gray-700">${escapeHtml(name)}</span>
+                <span class="mt-0.5 block text-[10px] font-bold uppercase tracking-wide text-gray-400">${escapeHtml(sourceLabel)}</span>
+            </span>
+            <span class="flex flex-shrink-0 items-center gap-2">
+                <strong class="text-[12px] font-mono text-gray-900">${escapeHtml(amount)}</strong>
+                <svg class="h-3.5 w-3.5 text-gray-300 group-hover:text-[#EA580C]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </span>
+        `;
+        if (href) {
+            return `
+                <a href="${escapeHtml(href)}" class="group flex items-center justify-between gap-3 border-b border-gray-100 bg-white px-4 py-2.5 transition-colors last:border-b-0 hover:bg-gray-50" aria-label="Open ${escapeHtml(name)}">
+                    ${content}
+                </a>
+            `;
+        }
         return `
             <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-gray-100 last:border-b-0 bg-white">
-                <span class="min-w-0 truncate text-[12px] font-semibold text-gray-700">${escapeHtml(name)}</span>
-                <strong class="flex-shrink-0 text-[12px] font-mono text-gray-900">${escapeHtml(amount)}</strong>
+                ${content}
             </div>
         `;
+    }
+
+    function buildRelatedRecordHref(record) {
+        const id = record?.id;
+        if (!id) return '';
+        const source = inferRelatedRecordSource(record);
+        const encodedId = encodeURIComponent(id);
+        if (source === 'bills') return `/bill?record=${encodedId}`;
+        if (source === 'subscriptions') return `/subscription?record=${encodedId}`;
+        if (source === 'revenue_sync') return `/revenue-sync?record=${encodedId}`;
+        if (source === 'ledger') return `/ledger?record=${encodedId}`;
+        return '';
+    }
+
+    function inferRelatedRecordSource(record) {
+        const rawSource = String(record?.source || record?.collection || '').toLowerCase();
+        if (['bill', 'bills', 'invoice'].includes(rawSource)) return 'bills';
+        if (['subscription', 'subscriptions'].includes(rawSource)) return 'subscriptions';
+        if (['revenue', 'revenue_sync', 'revenue-sync'].includes(rawSource)) return 'revenue_sync';
+        if (['ledger', 'transaction', 'transactions'].includes(rawSource)) return 'ledger';
+
+        const type = String(record?.type || '').toLowerCase();
+        if (record?.due_date) return 'bills';
+        if (record?.renewal_date) return 'subscriptions';
+        if (['income', 'revenue', 'refund', 'pending_receivable'].includes(type)) return 'revenue_sync';
+        if (['expense', 'opex', 'operating_expense'].includes(type)) return 'ledger';
+        return 'ledger';
     }
 
     function renderDocumentDetection(result, messageId, file) {

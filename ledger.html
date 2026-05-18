@@ -308,6 +308,8 @@
         let ledgerSearchTerm = '';
         let ledgerRangeStart = getMonthStartKey();
         let ledgerRangeEnd = getMonthEndKey();
+        const linkedLedgerRecordId = new URLSearchParams(window.location.search).get('record');
+        let linkedLedgerRecordHandled = false;
 
         const ledgerPaginator = window.createTablePaginator({
             pageSize:     LEDGER_PAGE_SIZE,
@@ -421,6 +423,7 @@
                 tableContainer.classList.remove('hidden');
                 pagination?.classList.remove('hidden');
                 emptyContainer.classList.add('hidden');
+                openLinkedLedgerRecord();
             }
         }
 
@@ -772,7 +775,7 @@
             visibleRows.forEach(r => { window.__ledgerRowMap[r.id] = r; });
 
             body.innerHTML = visibleRows.map(row => `
-                <tr class="hover:bg-gray-50 transition-colors cursor-pointer" onclick="window.__handleLedgerRowClick('${row.id}')">
+                <tr class="hover:bg-gray-50 transition-colors cursor-pointer" data-ledger-id="${row.id}" onclick="window.__handleLedgerRowClick('${row.id}')">
                     <td class="px-6 py-4 text-gray-400 whitespace-nowrap text-[12px]">${row.created_at?.toDate ? row.created_at.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
                     <td class="px-6 py-4 text-gray-500">${row.timestamp?.toDate().toLocaleString() || 'Just now'}</td>
                     <td class="px-6 py-4">
@@ -794,6 +797,33 @@
             `).join('');
 
             updateSortIndicators();
+        }
+
+        function highlightLedgerRow(txId) {
+            const rowEl = document.querySelector(`[data-ledger-id="${CSS.escape(txId)}"]`);
+            if (!rowEl) return;
+            rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            rowEl.style.boxShadow = 'inset 3px 0 0 #EA580C';
+            rowEl.classList.add('bg-gray-50');
+            window.setTimeout(() => {
+                rowEl.style.boxShadow = '';
+                rowEl.classList.remove('bg-gray-50');
+            }, 2200);
+        }
+
+        function openLinkedLedgerRecord() {
+            if (!linkedLedgerRecordId || linkedLedgerRecordHandled) return;
+            const row = allLedgerTransactions.find(transaction => transaction.id === linkedLedgerRecordId);
+            if (!row) {
+                window.showToast?.('That transaction is not in the currently loaded ledger range.', 'info');
+                linkedLedgerRecordHandled = true;
+                return;
+            }
+            linkedLedgerRecordHandled = true;
+            window.setTimeout(() => {
+                highlightLedgerRow(linkedLedgerRecordId);
+                window.openTxDetailDrawer(row);
+            }, 120);
         }
 
         function renderLedgerTable() {

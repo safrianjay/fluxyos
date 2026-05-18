@@ -261,6 +261,19 @@ function sortByAmountDesc(records) {
     return [...records].sort((a, b) => Math.abs(Number(b.amount) || 0) - Math.abs(Number(a.amount) || 0));
 }
 
+function inferRecordSource(record, dateField = 'timestamp') {
+    const source = String(record.source || record.collection || '').toLowerCase();
+    if (['bill', 'bills', 'invoice'].includes(source)) return 'bills';
+    if (['subscription', 'subscriptions'].includes(source)) return 'subscriptions';
+    if (['revenue', 'revenue_sync', 'revenue-sync'].includes(source)) return 'revenue_sync';
+    if (['ledger', 'transaction', 'transactions'].includes(source)) return 'ledger';
+    if (dateField === 'due_date' || record.due_date) return 'bills';
+    if (dateField === 'renewal_date' || record.renewal_date) return 'subscriptions';
+    const type = String(record.type || '').toLowerCase();
+    if (['income', 'revenue', 'refund', 'pending_receivable'].includes(type)) return 'revenue_sync';
+    return 'ledger';
+}
+
 function groupTotals(records, keyFn) {
     const totals = new Map();
     records.forEach(record => {
@@ -275,12 +288,15 @@ function groupTotals(records, keyFn) {
 function compactRecord(record, dateField = 'timestamp') {
     return {
         id: record.id,
+        source: inferRecordSource(record, dateField),
         vendor_name: record.vendor_name || 'Unnamed record',
         category: record.category || 'Uncategorized',
         type: record.type || 'unknown',
         status: record.status || 'Unknown',
         amount: Number(record.amount) || 0,
         formatted_amount: formatIDR(record.amount),
+        due_date: record.due_date || null,
+        renewal_date: record.renewal_date || null,
         date: record[dateField] || record.timestamp || null,
     };
 }

@@ -322,14 +322,26 @@ def _key_number(label: str, value: float, status_value: str = "neutral", formatt
 
 def _compact(record: Dict[str, Any], date_field: str = "timestamp") -> Dict[str, Any]:
     amount = float(record.get("amount") or 0)
+    raw_source = str(record.get("source") or record.get("collection") or "").lower()
+    if raw_source in {"bill", "bills", "invoice"} or date_field == "due_date" or record.get("due_date"):
+        source = "bills"
+    elif raw_source in {"subscription", "subscriptions"} or date_field == "renewal_date" or record.get("renewal_date"):
+        source = "subscriptions"
+    elif raw_source in {"revenue", "revenue_sync", "revenue-sync"} or str(record.get("type") or "").lower() in {"income", "revenue", "refund", "pending_receivable"}:
+        source = "revenue_sync"
+    else:
+        source = "ledger"
     return {
         "id": record.get("id"),
+        "source": source,
         "vendor_name": record.get("vendor_name") or "Unnamed record",
         "category": record.get("category") or "Uncategorized",
         "type": record.get("type") or "unknown",
         "status": record.get("status") or "Unknown",
         "amount": amount,
         "formatted_amount": _format_idr(amount),
+        "due_date": record.get("due_date"),
+        "renewal_date": record.get("renewal_date"),
         "date": record.get(date_field) or record.get("timestamp"),
     }
 

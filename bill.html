@@ -232,6 +232,8 @@
         let allBills = [];
         let filteredBills = [];
         let billPaginator = null;
+        const linkedBillRecordId = new URLSearchParams(window.location.search).get('record');
+        let linkedBillRecordHandled = false;
 
         // ── Date Range State & Helpers ───────────────────────────────────────
 
@@ -478,6 +480,7 @@
                     </tr>
                 `;
             }).join('');
+            highlightLinkedBillRow();
         }
 
         function renderBillsTable(bills) {
@@ -597,6 +600,34 @@
         function closeBillDrawer() {
             document.getElementById('bill-drawer').classList.add('translate-x-full');
             document.getElementById('bill-drawer-backdrop').classList.add('hidden');
+        }
+
+        function highlightLinkedBillRow() {
+            if (!linkedBillRecordId) return;
+            const rowEl = document.querySelector(`[data-bill-id="${CSS.escape(linkedBillRecordId)}"]`);
+            if (!rowEl) return;
+            rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            rowEl.style.boxShadow = 'inset 3px 0 0 #EA580C';
+            rowEl.classList.add('bg-gray-50');
+            window.setTimeout(() => {
+                rowEl.style.boxShadow = '';
+                rowEl.classList.remove('bg-gray-50');
+            }, 2200);
+        }
+
+        function openLinkedBillRecord() {
+            if (!linkedBillRecordId || linkedBillRecordHandled) return;
+            const bill = allBills.find(item => item.id === linkedBillRecordId);
+            if (!bill) {
+                window.showToast?.('That bill is not in the currently loaded bill range.', 'info');
+                linkedBillRecordHandled = true;
+                return;
+            }
+            linkedBillRecordHandled = true;
+            window.setTimeout(() => {
+                highlightLinkedBillRow();
+                openBillDrawer(bill);
+            }, 120);
         }
 
         // ── Event Delegation ──────────────────────────────────────────────────
@@ -728,6 +759,7 @@
             renderSummaryCards(summary);
             renderTimeline(allBills);
             renderBillsTable(allBills);
+            openLinkedBillRecord();
         };
     </script>
 </body>
