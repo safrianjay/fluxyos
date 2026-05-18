@@ -15,21 +15,30 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 const ds = new DataService(app);
+let cashflowChartType = 'bar';
+let cashflowBuckets = [];
 
 window.loadDashboard = async () => {
     const user = auth.currentUser;
     if (!user) return;
 
-    const stats = await ds.getDashboardStats(user.uid);
-    const transactions = await ds.getTransactions(user.uid, 5);
+    const [stats, transactions, chartTransactions] = await Promise.all([
+        ds.getDashboardStats(user.uid),
+        ds.getTransactions(user.uid, 5),
+        ds.getTransactions(user.uid, 1000)
+    ]);
 
     // Update KPIs
-    updateKPI('kpi-revenue', `Rp ${stats.revenue.toLocaleString()}`);
-    updateKPI('kpi-opex', `Rp ${stats.opex.toLocaleString()}`);
+    updateKPI('kpi-revenue', formatIDR(stats.revenue));
+    updateKPI('kpi-opex', formatIDR(stats.opex));
     updateKPI('kpi-margin', `${stats.margin.toFixed(1)}%`);
     if (document.getElementById('kpi-margin-bar')) {
-        document.getElementById('kpi-margin-bar').style.width = `${stats.margin}%`;
+            document.getElementById('kpi-margin-bar').style.width = `${stats.margin}%`;
     }
+
+    cashflowBuckets = buildCashflowBuckets(chartTransactions);
+    renderCashflowChart();
+    attachCashflowChartToggle();
 
     // Update Ledger Table or Show Empty State
     const tableContainer = document.getElementById('ledger-table-container');
@@ -66,6 +75,178 @@ function isPositiveTransaction(tx) {
     return ['revenue', 'income', 'refund', 'pending_receivable'].includes(String(tx.type || '').toLowerCase());
 }
 
+function isSpendTransaction(tx) {
+    return ['expense', 'fee', 'tax', 'pending_payable'].includes(String(tx.type || '').toLowerCase());
+}
+
+function getTxDate(tx) {
+    if (tx.timestamp && typeof tx.timestamp.toDate === 'function') return tx.timestamp.toDate();
+    if (tx.timestamp instanceof Date) return tx.timestamp;
+    if (typeof tx.timestamp === 'string' || typeof tx.timestamp === 'number') {
+        const parsed = new Date(tx.timestamp);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+    return null;
+}
+
+function buildCashflowBuckets(txs) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const buckets = [];
+
+    for (let startDay = 1; startDay <= lastDay; startDay += 7) {
+        const endDay = Math.min(startDay + 6, lastDay);
+        buckets.push({
+            label: `${startDay}-${endDay}`,
+            revenue: 0,
+            spend: 0
+        });
+    }
+
+    txs.forEach(tx => {
+        const date = getTxDate(tx);
+        if (!date || date.getFullYear() !== year || date.getMonth() !== month) return;
+
+        const index = Math.floor((date.getDate() - 1) / 7);
+        const bucket = buckets[index];
+        if (!bucket) return;
+
+        const amount = Math.abs(Number(tx.amount) || 0);
+        if (isPositiveTransaction(tx)) bucket.revenue += amount;
+        else if (isSpendTransaction(tx)) bucket.spend += amount;
+    });
+
+    return buckets;
+}
+
+function formatIDR(value) {
+    return `Rp ${Math.round(Math.abs(value || 0)).toLocaleString('id-ID')}`;
+}
+
+function formatCompactIDR(value) {
+    return formatIDR(value);
+}
+
+function renderCashflowChart() {
+    const chart = document.getElementById('cashflow-chart');
+    if (!chart) return;
+
+    if (cashflowChartType === 'line') renderCashflowLineChart(chart);
+    else renderCashflowBarChart(chart);
+}
+
+function renderCashflowBarChart(chart) {
+    const maxValue = Math.max(...cashflowBuckets.map(item => Math.max(item.revenue, item.spend)), 1);
+
+    chart.innerHTML = `
+        <div class="cashflow-chart-stage" data-cashflow-bar-stage>
+            <div class="cashflow-axis">
+                <div><span>${formatCompactIDR(maxValue)}</span></div>
+                <div><span>${formatCompactIDR(maxValue / 2)}</span></div>
+                <div><span>Rp 0</span></div>
+            </div>
+            <div class="cashflow-bars">
+                ${cashflowBuckets.map(item => {
+                    const revenueHeight = Math.max((item.revenue / maxValue) * 100, item.revenue > 0 ? 4 : 0);
+                    const spendHeight = Math.max((item.spend / maxValue) * 100, item.spend > 0 ? 4 : 0);
+                    return `
+                        <div class="cashflow-bar-group"
+                            data-chart-bar
+                            data-label="${item.label}"
+                            data-revenue="${item.revenue}"
+                            data-spend="${item.spend}">
+                            <div class="cashflow-bar cashflow-bar-revenue" style="height: ${revenueHeight}%"></div>
+                            <div class="cashflow-bar cashflow-bar-spend" style="height: ${spendHeight}%"></div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+        <div class="cashflow-labels">
+            ${cashflowBuckets.map(item => `<span>${item.label}</span>`).join('')}
+        </div>
+    `;
+
+    if (window.attachChartHover) {
+        window.attachChartHover(chart.querySelector('[data-cashflow-bar-stage]'), {
+            bars: '[data-chart-bar]',
+            orientation: 'vertical',
+            buildTooltip: (barEl) => `
+                <div class="chart-tooltip-header">${barEl.dataset.label}</div>
+                <div class="chart-tooltip-row">
+                    <span class="chart-tooltip-swatch" style="background:#4ADE80"></span>
+                    <span class="chart-tooltip-label">Revenue</span>
+                    <span class="chart-tooltip-value">${formatIDR(Number(barEl.dataset.revenue || 0))}</span>
+                </div>
+                <div class="chart-tooltip-row">
+                    <span class="chart-tooltip-swatch" style="background:#D1D5DB"></span>
+                    <span class="chart-tooltip-label">Spend</span>
+                    <span class="chart-tooltip-value">${formatIDR(Number(barEl.dataset.spend || 0))}</span>
+                </div>
+            `
+        });
+    }
+}
+
+function buildLinePoints(values, maxValue, width, height, paddingX, paddingY) {
+    if (values.length === 1) {
+        const y = height - paddingY - ((values[0] / maxValue) * (height - paddingY * 2));
+        return [{ x: width / 2, y }];
+    }
+
+    return values.map((value, index) => {
+        const x = paddingX + (index / (values.length - 1)) * (width - paddingX * 2);
+        const y = height - paddingY - ((value / maxValue) * (height - paddingY * 2));
+        return { x, y };
+    });
+}
+
+function renderCashflowLineChart(chart) {
+    const width = 900;
+    const height = 280;
+    const paddingX = 86;
+    const paddingY = 28;
+    const revenueValues = cashflowBuckets.map(item => item.revenue);
+    const spendValues = cashflowBuckets.map(item => item.spend);
+    const maxValue = Math.max(...revenueValues, ...spendValues, 1);
+    const revenuePoints = buildLinePoints(revenueValues, maxValue, width, height, paddingX, paddingY);
+    const spendPoints = buildLinePoints(spendValues, maxValue, width, height, paddingX, paddingY);
+    const toPolyline = points => points.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
+
+    chart.innerHTML = `
+        <div class="cashflow-line-stage">
+            <div class="cashflow-axis">
+                <div><span>${formatCompactIDR(maxValue)}</span></div>
+                <div><span>${formatCompactIDR(maxValue / 2)}</span></div>
+                <div><span>Rp 0</span></div>
+            </div>
+            <svg class="cashflow-line-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Cash flow line chart">
+                <polyline class="cashflow-line cashflow-line-revenue" points="${toPolyline(revenuePoints)}"></polyline>
+                <polyline class="cashflow-line cashflow-line-spend" points="${toPolyline(spendPoints)}"></polyline>
+                ${revenuePoints.map((point, index) => `<circle class="cashflow-point cashflow-point-revenue" cx="${point.x}" cy="${point.y}" r="4"><title>${cashflowBuckets[index].label} Revenue ${formatIDR(revenueValues[index])}</title></circle>`).join('')}
+                ${spendPoints.map((point, index) => `<circle class="cashflow-point cashflow-point-spend" cx="${point.x}" cy="${point.y}" r="4"><title>${cashflowBuckets[index].label} Spend ${formatIDR(spendValues[index])}</title></circle>`).join('')}
+            </svg>
+        </div>
+        <div class="cashflow-labels">
+            ${cashflowBuckets.map(item => `<span>${item.label}</span>`).join('')}
+        </div>
+    `;
+}
+
+function attachCashflowChartToggle() {
+    document.querySelectorAll('[data-cashflow-chart-type]').forEach(button => {
+        button.onclick = () => {
+            cashflowChartType = button.dataset.cashflowChartType || 'bar';
+            document.querySelectorAll('[data-cashflow-chart-type]').forEach(toggle => {
+                toggle.classList.toggle('is-active', toggle === button);
+            });
+            renderCashflowChart();
+        };
+    });
+}
+
 function renderLedgerRows(txs) {
     const body = document.getElementById('ledger-body');
     if (!body) return;
@@ -90,7 +271,7 @@ function renderLedgerRows(txs) {
             </td>
             <td class="px-5 py-3.5 text-gray-600 text-[12px] font-medium">${tx.entity || 'Main Entity'}</td>
             <td class="px-5 py-3.5 text-right font-mono font-bold ${isPositiveTransaction(tx) ? 'text-green-600' : 'text-gray-900'}">
-                ${isPositiveTransaction(tx) ? '+' : ''}Rp ${Math.abs(tx.amount).toLocaleString()}
+                ${isPositiveTransaction(tx) ? '+' : ''}${formatIDR(tx.amount)}
             </td>
             <td class="px-5 py-3.5 text-right">
                 <span class="inline-flex items-center gap-1.5 ${tx.status === 'Missing Receipt' ? 'text-red-500 bg-red-50 px-2 py-1 rounded text-[10px]' : 'text-green-600 text-[11px]'} font-bold">

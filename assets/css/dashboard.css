@@ -43,6 +43,185 @@
         #FFFFFF;
 }
 
+.cashflow-chart-toggle {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px;
+    border: 1px solid #E5E7EB;
+    border-radius: 999px;
+    background: #F9FAFB;
+}
+
+.cashflow-chart-toggle-btn {
+    min-width: 48px;
+    border: 0;
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: transparent;
+    color: #64748B;
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.cashflow-chart-toggle-btn.is-active {
+    background: #FFFFFF;
+    color: #111827;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.cashflow-chart {
+    display: flex;
+    min-height: 292px;
+    flex: 1;
+    flex-direction: column;
+}
+
+.cashflow-chart-loading {
+    display: flex;
+    min-height: 260px;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed #E5E7EB;
+    border-radius: 12px;
+    color: #94A3B8;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.cashflow-chart-stage,
+.cashflow-line-stage {
+    position: relative;
+    min-height: 260px;
+    flex: 1;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+.cashflow-axis {
+    position: absolute;
+    inset: 0 0 0 0;
+    z-index: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    color: #9CA3AF;
+    font-family: "Fira Code", monospace;
+    font-size: 10px;
+    pointer-events: none;
+}
+
+.cashflow-axis > div {
+    position: relative;
+    border-bottom: 1px dashed #F3F4F6;
+}
+
+.cashflow-axis > div:last-child {
+    border-bottom-style: solid;
+}
+
+.cashflow-axis span {
+    position: absolute;
+    top: -8px;
+    left: 0;
+    padding-right: 8px;
+    background: #FFFFFF;
+}
+
+.cashflow-bars {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    height: 260px;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 28px 12px 8px 92px;
+}
+
+.cashflow-bar-group {
+    display: flex;
+    width: 100%;
+    max-width: 92px;
+    min-width: 32px;
+    height: 100%;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 5px;
+}
+
+.cashflow-bar {
+    width: 26%;
+    min-width: 8px;
+    border-radius: 6px 6px 0 0;
+    transition: height 180ms ease, opacity 150ms ease;
+}
+
+.cashflow-bar-revenue {
+    background: #4ADE80;
+    box-shadow: 0 0 14px rgba(34, 197, 94, 0.16);
+}
+
+.cashflow-bar-spend {
+    background: #D1D5DB;
+}
+
+.cashflow-line-svg {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 260px;
+    overflow: visible;
+}
+
+.cashflow-line {
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.cashflow-line-revenue {
+    stroke: #22C55E;
+}
+
+.cashflow-line-spend {
+    stroke: #9CA3AF;
+}
+
+.cashflow-point {
+    stroke: #FFFFFF;
+    stroke-width: 2;
+}
+
+.cashflow-point-revenue {
+    fill: #22C55E;
+}
+
+.cashflow-point-spend {
+    fill: #9CA3AF;
+}
+
+.cashflow-labels {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px 0 92px;
+    color: #9CA3AF;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.cashflow-labels span {
+    width: 100%;
+    max-width: 92px;
+    min-width: 32px;
+    text-align: center;
+}
+
 .overview-lower-grid {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(320px, 0.85fr);
@@ -113,6 +292,22 @@
     .overview-chart-panel {
         min-height: 340px;
         padding: 20px;
+    }
+
+    .cashflow-bars,
+    .cashflow-labels {
+        gap: 8px;
+        padding-left: 76px;
+        padding-right: 4px;
+    }
+
+    .cashflow-bar-group,
+    .cashflow-labels span {
+        min-width: 28px;
+    }
+
+    .cashflow-bar {
+        min-width: 6px;
     }
 }
 
