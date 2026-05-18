@@ -7,6 +7,10 @@ Read this with `PROJECT_BACKGROUND.md`, `SECURITY_SYSTEM.md`,
 `COMPONENT_GUIDE.md`, and `QA_CHECKLIST.md` before adding any new page,
 collection, shared component, or dashboard feature.
 
+For the standalone Fluxy AI finance-data read path and the browser snapshot
+fallback used when backend Firestore reads fail, read
+`FLUXY_AI_DATA_READ_PATH.md`.
+
 ---
 
 ## 1. Product Purpose

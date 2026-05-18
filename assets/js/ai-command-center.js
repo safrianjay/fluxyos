@@ -473,6 +473,7 @@
             autoGrowComposer();
             scrollToLatest(true);
             const token = await getAuthToken();
+            const financeSnapshot = await buildFinanceSnapshot();
             const response = await fetch('/api/v1/brain/chat', {
                 method: 'POST',
                 headers: {
@@ -483,6 +484,7 @@
                     message: prompt,
                     page_context: 'ai_command_center',
                     period: getCurrentPeriod(),
+                    finance_snapshot: financeSnapshot,
                 }),
             });
             const body = await response.json().catch(() => ({}));
@@ -516,6 +518,53 @@
         } finally {
             setBusy(false);
         }
+    }
+
+    async function buildFinanceSnapshot() {
+        const ds = state.context?.ds;
+        const uid = state.user?.uid;
+        if (!ds || !uid) return null;
+        const [transactions, bills, subscriptions] = await Promise.allSettled([
+            ds.getTransactions(uid, 1000),
+            ds.getBills(uid),
+            ds.getSubscriptions(uid),
+        ]);
+        return {
+            transactions: normalizeSnapshotRecords(transactions),
+            bills: normalizeSnapshotRecords(bills),
+            subscriptions: normalizeSnapshotRecords(subscriptions),
+        };
+    }
+
+    function normalizeSnapshotRecords(result) {
+        if (result.status !== 'fulfilled' || !Array.isArray(result.value)) return [];
+        return result.value.slice(0, 1000).map(record => ({
+            id: String(record.id || ''),
+            vendor_name: String(record.vendor_name || record.name || record.label || 'Unnamed record'),
+            name: record.name ? String(record.name) : undefined,
+            category: String(record.category || 'Uncategorized'),
+            type: String(record.type || 'unknown'),
+            status: String(record.status || 'Unknown'),
+            amount: Number(record.amount) || 0,
+            timestamp: serializeSnapshotDate(record.timestamp),
+            due_date: serializeSnapshotDate(record.due_date),
+            renewal_date: serializeSnapshotDate(record.renewal_date),
+        }));
+    }
+
+    function serializeSnapshotDate(value) {
+        if (!value) return null;
+        if (typeof value === 'string') return value;
+        if (value instanceof Date) return value.toISOString();
+        if (typeof value.toDate === 'function') {
+            try {
+                return value.toDate().toISOString();
+            } catch {
+                return null;
+            }
+        }
+        if (Number.isFinite(value.seconds)) return new Date(value.seconds * 1000).toISOString();
+        return null;
     }
 
     async function detectSelectedFile(userIntent) {

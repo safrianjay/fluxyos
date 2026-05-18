@@ -305,6 +305,45 @@ def _fetch_collection_safe(uid: str, token: str, collection_name: str, page_size
     except Exception:
         return [], f"Could not read {collection_name}; this answer may be incomplete."
 
+def _normalize_snapshot_date(value: Any) -> str | None:
+    if not value:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        seconds = value.get("seconds") or value.get("_seconds")
+        if isinstance(seconds, (int, float)):
+            return datetime.datetime.fromtimestamp(seconds, datetime.timezone.utc).isoformat()
+    return None
+
+def _normalize_snapshot_records(snapshot: Dict[str, Any] | None, key: str, limit_count: int) -> List[Dict[str, Any]]:
+    if not isinstance(snapshot, dict) or not isinstance(snapshot.get(key), list):
+        return []
+    records = []
+    for record in snapshot[key][:limit_count]:
+        if not isinstance(record, dict):
+            continue
+        records.append({
+            "id": str(record.get("id") or ""),
+            "vendor_name": str(record.get("vendor_name") or record.get("name") or record.get("label") or "Unnamed record"),
+            "name": str(record.get("name")) if record.get("name") else None,
+            "category": str(record.get("category") or "Uncategorized"),
+            "type": str(record.get("type") or "unknown"),
+            "status": str(record.get("status") or "Unknown"),
+            "amount": float(record.get("amount") or 0),
+            "timestamp": _normalize_snapshot_date(record.get("timestamp")),
+            "due_date": _normalize_snapshot_date(record.get("due_date")),
+            "renewal_date": _normalize_snapshot_date(record.get("renewal_date")),
+        })
+    return records
+
+def _normalize_finance_snapshot(snapshot: Dict[str, Any] | None) -> Dict[str, List[Dict[str, Any]]]:
+    return {
+        "transactions": _normalize_snapshot_records(snapshot, "transactions", 1000),
+        "bills": _normalize_snapshot_records(snapshot, "bills", 500),
+        "subscriptions": _normalize_snapshot_records(snapshot, "subscriptions", 500),
+    }
+
 def _parse_record_date(value) -> datetime.date | None:
     if not value:
         return None
@@ -484,11 +523,33 @@ async def brain_chat(request: ChatRequest, _user=Depends(verify_firebase_token))
     transactions, transactions_error = _fetch_collection_safe(uid, token, "transactions", 1000)
     bills, bills_error = _fetch_collection_safe(uid, token, "bills", 500)
     subscriptions, subscriptions_error = _fetch_collection_safe(uid, token, "subscriptions", 500)
+    snapshot = _normalize_finance_snapshot(request.finance_snapshot)
+    used_snapshot = []
+    if transactions_error and snapshot["transactions"]:
+        transactions = snapshot["transactions"]
+        used_snapshot.append("transactions")
+    if bills_error and snapshot["bills"]:
+        bills = snapshot["bills"]
+        used_snapshot.append("bills")
+    if subscriptions_error and snapshot["subscriptions"]:
+        subscriptions = snapshot["subscriptions"]
+        used_snapshot.append("subscriptions")
 
     answer = _build_answer(intent, message, period, transactions, bills, subscriptions, request.page_context or "global")
-    read_limitations = [item for item in [transactions_error, bills_error, subscriptions_error] if item]
+    read_limitations = [
+        item for item, snapshot_records in [
+            (transactions_error, snapshot["transactions"]),
+            (bills_error, snapshot["bills"]),
+            (subscriptions_error, snapshot["subscriptions"]),
+        ] if item and not snapshot_records
+    ]
     if read_limitations:
         answer["limitations"] = [*(answer.get("limitations") or []), *read_limitations]
+    if used_snapshot:
+        answer["limitations"] = [
+            *(answer.get("limitations") or []),
+            f"Used the authenticated page data snapshot for {', '.join(used_snapshot)} because direct backend Firestore read was unavailable.",
+        ]
     related_records = [record for item in answer.get("insights", []) for record in item.get("evidence", [])][:10]
     return {"success": True, "intent": intent, "scope": FINANCE_SCOPE, "answer": answer, "related_records": related_records, "error": None}
 

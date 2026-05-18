@@ -220,6 +220,39 @@ function decodeFirestoreDocument(document) {
     return decoded;
 }
 
+function normalizeSnapshotDate(value) {
+    if (!value) return null;
+    if (typeof value === 'string') return value;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
+    if (Number.isFinite(value.seconds)) return new Date(value.seconds * 1000).toISOString();
+    if (Number.isFinite(value._seconds)) return new Date(value._seconds * 1000).toISOString();
+    return null;
+}
+
+function normalizeFinanceSnapshotRecords(snapshot, key, limitCount) {
+    const records = Array.isArray(snapshot?.[key]) ? snapshot[key] : [];
+    return records.slice(0, limitCount).map(record => ({
+        id: String(record?.id || ''),
+        vendor_name: String(record?.vendor_name || record?.name || record?.label || 'Unnamed record'),
+        name: record?.name ? String(record.name) : undefined,
+        category: String(record?.category || 'Uncategorized'),
+        type: String(record?.type || 'unknown'),
+        status: String(record?.status || 'Unknown'),
+        amount: Number(record?.amount) || 0,
+        timestamp: normalizeSnapshotDate(record?.timestamp),
+        due_date: normalizeSnapshotDate(record?.due_date),
+        renewal_date: normalizeSnapshotDate(record?.renewal_date),
+    }));
+}
+
+function normalizeFinanceSnapshot(snapshot) {
+    return {
+        transactions: normalizeFinanceSnapshotRecords(snapshot, 'transactions', 1000),
+        bills: normalizeFinanceSnapshotRecords(snapshot, 'bills', 500),
+        subscriptions: normalizeFinanceSnapshotRecords(snapshot, 'subscriptions', 500),
+    };
+}
+
 async function fetchUserCollection(uid, token, collectionName, pageSize = 1000) {
     if (!FIRESTORE_PROJECT_ID) throw new Error('FIREBASE_PROJECT_ID is not configured');
     const encodedUid = encodeURIComponent(uid);
@@ -826,10 +859,19 @@ async function buildBrainChatResponse({ request, uid, token }) {
         fetchUserCollectionSafe(uid, token, 'bills', 500),
         fetchUserCollectionSafe(uid, token, 'subscriptions', 500),
     ]);
-    const transactions = transactionResult.records;
-    const bills = billResult.records;
-    const subscriptions = subscriptionResult.records;
-    const readLimitations = [transactionResult.error, billResult.error, subscriptionResult.error].filter(Boolean);
+    const snapshot = normalizeFinanceSnapshot(request.finance_snapshot);
+    const usedSnapshot = [];
+    const transactions = transactionResult.error && snapshot.transactions.length ? snapshot.transactions : transactionResult.records;
+    const bills = billResult.error && snapshot.bills.length ? snapshot.bills : billResult.records;
+    const subscriptions = subscriptionResult.error && snapshot.subscriptions.length ? snapshot.subscriptions : subscriptionResult.records;
+    if (transactionResult.error && snapshot.transactions.length) usedSnapshot.push('transactions');
+    if (billResult.error && snapshot.bills.length) usedSnapshot.push('bills');
+    if (subscriptionResult.error && snapshot.subscriptions.length) usedSnapshot.push('subscriptions');
+    const readLimitations = [
+        transactionResult.error && !snapshot.transactions.length ? transactionResult.error : null,
+        billResult.error && !snapshot.bills.length ? billResult.error : null,
+        subscriptionResult.error && !snapshot.subscriptions.length ? subscriptionResult.error : null,
+    ].filter(Boolean);
 
     const today = toDateKey(todayJakarta());
     const windowDays = detectWindowDays(message);
@@ -873,6 +915,12 @@ async function buildBrainChatResponse({ request, uid, token }) {
     }
     if (readLimitations.length) {
         answer.limitations = [...(answer.limitations || []), ...readLimitations];
+    }
+    if (usedSnapshot.length) {
+        answer.limitations = [
+            ...(answer.limitations || []),
+            `Used the authenticated page data snapshot for ${usedSnapshot.join(', ')} because direct backend Firestore read was unavailable.`,
+        ];
     }
 
     const relatedRecords = [
