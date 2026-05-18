@@ -70,6 +70,12 @@
         previewUrl: null,
         busy: false,
         context: window.__fluxyAICommandContext || null,
+        mode: 'home',
+        bootedFor: null,
+        currentChatId: null,
+        currentChat: null,
+        messageCount: 0,
+        pendingDeleteChatId: null,
         chatStarted: false,
         messageId: 0,
     };
@@ -86,6 +92,7 @@
             setUser(user) {
                 state.user = user || null;
                 renderUserName();
+                if (state.user) bootRoute();
             },
         };
         if (window.__fluxyAICommandContext?.auth?.currentUser) {
@@ -96,9 +103,14 @@
     function cacheElements() {
         els.name = document.getElementById('ai-user-name');
         els.workspace = document.getElementById('ai-workspace');
+        els.greeting = document.getElementById('ai-greeting-section');
         els.promptSection = document.getElementById('ai-prompt-section');
         els.promptGrid = document.getElementById('ai-prompt-grid');
         els.refreshPrompts = document.getElementById('ai-refresh-prompts');
+        els.sessionHeader = document.getElementById('ai-session-header');
+        els.sessionTitle = document.getElementById('ai-session-title');
+        els.backHome = document.getElementById('ai-back-home');
+        els.newChat = document.getElementById('ai-new-chat');
         els.responseArea = document.getElementById('ai-response-area');
         els.chatThread = null;
         els.composerSection = document.getElementById('ai-composer-section');
@@ -114,6 +126,11 @@
         els.error = document.getElementById('ai-composer-error');
         els.dropZone = document.getElementById('ai-drop-zone');
         els.scrollContainer = document.querySelector('main > div.flex-1.overflow-y-auto');
+        els.historySection = document.getElementById('ai-history-section');
+        els.historyList = document.getElementById('ai-history-list');
+        els.deleteModal = document.getElementById('ai-delete-modal');
+        els.deleteCancel = document.getElementById('ai-delete-cancel');
+        els.deleteConfirm = document.getElementById('ai-delete-confirm');
     }
 
     function wireEvents() {
@@ -122,6 +139,7 @@
             renderPrompts();
         });
         els.input?.addEventListener('input', updateCharCount);
+        els.input?.addEventListener('input', autoGrowComposer);
         els.input?.addEventListener('keydown', (event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
@@ -129,6 +147,13 @@
             }
         });
         els.form?.addEventListener('submit', submitComposer);
+        els.backHome?.addEventListener('click', () => renderHome({ updateRoute: true }));
+        els.newChat?.addEventListener('click', () => renderHome({ updateRoute: true }));
+        els.deleteCancel?.addEventListener('click', closeDeleteModal);
+        els.deleteModal?.addEventListener('click', (event) => {
+            if (event.target === els.deleteModal) closeDeleteModal();
+        });
+        els.deleteConfirm?.addEventListener('click', confirmDeleteChat);
         els.attachBtn?.addEventListener('click', () => els.fileInput?.click());
         els.imageBtn?.addEventListener('click', () => els.imageInput?.click());
         els.fileInput?.addEventListener('change', event => selectFile(event.target.files?.[0]));
@@ -154,6 +179,7 @@
                 window.FluxyAICommandCenter?.setUser(state.context.auth.currentUser);
             }
         });
+        window.addEventListener('popstate', () => bootRoute({ force: true }));
     }
 
     function renderUserName() {
@@ -161,6 +187,213 @@
         const user = state.user;
         const name = user?.displayName || user?.email?.split('@')[0] || 'there';
         els.name.textContent = name;
+    }
+
+    async function bootRoute(options = {}) {
+        if (!state.user) return;
+        const chatId = getRouteChatId();
+        const routeKey = `${state.user.uid}:${chatId || 'home'}`;
+        if (!options.force && state.bootedFor === routeKey) return;
+        state.bootedFor = routeKey;
+        if (chatId) {
+            await loadChatSession(chatId);
+        } else {
+            await renderHome();
+        }
+    }
+
+    async function renderHome(options = {}) {
+        state.mode = 'home';
+        state.currentChatId = null;
+        state.currentChat = null;
+        state.messageCount = 0;
+        state.chatStarted = false;
+        state.messageId = 0;
+        state.bootedFor = state.user ? `${state.user.uid}:home` : null;
+        els.workspace?.classList.remove('ai-chat-active');
+        els.workspace?.classList.add('justify-center');
+        els.workspace?.classList.remove('justify-start');
+        els.sessionHeader?.classList.add('hidden');
+        els.responseArea?.classList.add('hidden');
+        if (els.responseArea) els.responseArea.innerHTML = '';
+        els.chatThread = null;
+        els.historySection?.classList.remove('hidden');
+        if (els.input) {
+            els.input.rows = 5;
+            els.input.style.height = '';
+        }
+        if (options.updateRoute) {
+            history.pushState({}, '', getAIHomePath());
+        }
+        await loadRecentChats();
+    }
+
+    async function loadRecentChats() {
+        if (!els.historyList || !state.user) return;
+        const ds = getDataService();
+        if (!ds?.getRecentAIChats) {
+            renderHistoryEmpty('Recent AI chats are unavailable in this build.');
+            return;
+        }
+        els.historyList.innerHTML = renderHistorySkeleton();
+        try {
+            const chats = await ds.getRecentAIChats(state.user.uid, 5);
+            if (!chats.length) {
+                renderHistoryEmpty('No recent AI chats yet. Start with a finance prompt above.');
+                return;
+            }
+            els.historyList.innerHTML = chats.map(renderHistoryItem).join('');
+            els.historyList.querySelectorAll('[data-ai-open-chat]').forEach(button => {
+                button.addEventListener('click', () => openChatFromHistory(button.dataset.aiOpenChat));
+            });
+            els.historyList.querySelectorAll('[data-ai-delete-chat]').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    openDeleteModal(button.dataset.aiDeleteChat);
+                });
+            });
+        } catch (err) {
+            renderHistoryEmpty('Could not load recent AI chats right now.');
+        }
+    }
+
+    function renderHistorySkeleton() {
+        return `
+            <div class="rounded-2xl border border-gray-200 bg-white px-4 py-4 text-[13px] font-medium text-gray-500">
+                Loading recent AI chats...
+            </div>
+        `;
+    }
+
+    function renderHistoryEmpty(message) {
+        if (!els.historyList) return;
+        els.historyList.innerHTML = `
+            <div class="rounded-2xl border border-dashed border-gray-200 bg-white px-4 py-5 text-[13px] font-medium text-gray-500">
+                ${escapeHtml(message)}
+            </div>
+        `;
+    }
+
+    function renderHistoryItem(chat) {
+        const updated = formatRelativeTime(chat.updated_at || chat.last_activity_at || chat.created_at);
+        const preview = chat.last_message_preview || chat.summary || 'Open this AI chat.';
+        return `
+            <div class="group rounded-2xl border border-gray-200 bg-white px-4 py-4 shadow-sm transition-all hover:border-gray-300 hover:shadow-md">
+                <div class="flex items-start gap-3">
+                    <button type="button" data-ai-open-chat="${escapeAttr(chat.id)}" class="min-w-0 flex-1 text-left">
+                        <span class="flex items-center gap-2">
+                            <span class="truncate text-[14px] font-extrabold text-gray-950">${escapeHtml(chat.title || 'AI chat')}</span>
+                            <span class="hidden sm:inline-flex rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">${escapeHtml(chat.intent || 'finance')}</span>
+                        </span>
+                        <span class="mt-1 block truncate text-[13px] text-gray-500">${escapeHtml(preview)}</span>
+                        <span class="mt-2 block text-[11px] font-bold text-gray-400">${escapeHtml(updated)}</span>
+                    </button>
+                    <button type="button" data-ai-delete-chat="${escapeAttr(chat.id)}" class="rounded-lg p-2 text-gray-400 opacity-100 transition-colors hover:bg-gray-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100" aria-label="Delete chat">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14"></path></svg>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    async function openChatFromHistory(chatId) {
+        if (!chatId) return;
+        history.pushState({}, '', `${getAIHomePath()}?chat=${encodeURIComponent(chatId)}`);
+        await loadChatSession(chatId);
+    }
+
+    async function loadChatSession(chatId) {
+        const ds = getDataService();
+        if (!state.user || !ds?.getAIChat || !ds?.getAIChatMessages) return;
+        setSessionShell({ title: 'Loading AI chat...', chatId });
+        try {
+            const chat = await ds.getAIChat(state.user.uid, chatId);
+            if (!chat || chat.status === 'deleted') {
+                renderUnavailableChat('This chat is no longer available.');
+                return;
+            }
+            if (isExpired(chat.expires_at)) {
+                renderUnavailableChat('This chat is no longer available because it has expired.');
+                return;
+            }
+            state.currentChat = chat;
+            state.currentChatId = chat.id;
+            state.messageCount = Number(chat.message_count || 0);
+            setSessionShell({ title: chat.title || 'AI chat', chatId: chat.id });
+            const messages = await ds.getAIChatMessages(state.user.uid, chat.id);
+            renderStoredMessages(messages);
+        } catch (err) {
+            renderUnavailableChat('Could not load this AI chat right now.');
+        }
+    }
+
+    function setSessionShell({ title, chatId }) {
+        state.mode = 'session';
+        state.currentChatId = chatId || state.currentChatId;
+        state.chatStarted = true;
+        els.workspace?.classList.add('ai-chat-active');
+        els.workspace?.classList.remove('justify-center');
+        els.workspace?.classList.add('justify-start');
+        els.sessionHeader?.classList.remove('hidden');
+        els.responseArea?.classList.remove('hidden');
+        els.historySection?.classList.add('hidden');
+        if (els.sessionTitle) els.sessionTitle.textContent = title || 'AI chat';
+        if (!els.chatThread) {
+            els.responseArea.innerHTML = '<div id="ai-chat-thread" class="space-y-5"></div>';
+            els.chatThread = document.getElementById('ai-chat-thread');
+        }
+        if (els.input) els.input.rows = 2;
+        autoGrowComposer();
+    }
+
+    function renderStoredMessages(messages) {
+        const thread = ensureChatThread({ reset: true });
+        if (!thread) return;
+        state.messageId = 0;
+        if (!messages.length) {
+            thread.innerHTML = `
+                <article class="flex justify-start">
+                    <div class="max-w-full sm:max-w-[88%] rounded-2xl rounded-bl-md border border-gray-200 bg-white px-5 py-4 shadow-sm">
+                        <p class="text-[14px] font-bold text-gray-900">No messages in this chat yet.</p>
+                    </div>
+                </article>
+            `;
+            return;
+        }
+        messages.forEach(message => renderStoredMessage(message));
+        scrollToLatest(true);
+    }
+
+    function renderStoredMessage(message) {
+        if (message.role === 'user') {
+            appendUserMessage({ text: message.content || '', attachments: message.attachments || [], persist: false });
+            return;
+        }
+        const structured = message.structured_answer;
+        if (structured?.kind === 'document_detection') {
+            renderDocumentDetection(structured.result || {}, null, null);
+            return;
+        }
+        if (structured?.kind === 'finance_answer') {
+            renderFinanceAnswer(structured.answer, structured.related_records || [], null);
+            return;
+        }
+        renderAssistantMessage(null, `<p class="text-[14px] leading-relaxed text-gray-700">${escapeHtml(message.content || 'Fluxy AI response')}</p>`);
+    }
+
+    function renderUnavailableChat(message) {
+        setSessionShell({ title: 'AI chat unavailable' });
+        const thread = ensureChatThread({ reset: true });
+        if (!thread) return;
+        thread.innerHTML = `
+            <article class="flex justify-start">
+                <div class="max-w-full sm:max-w-[88%] rounded-2xl rounded-bl-md border border-amber-200 bg-amber-50 px-5 py-4 shadow-sm">
+                    <p class="text-[15px] font-bold text-amber-900">${escapeHtml(message)}</p>
+                    <button type="button" data-ai-back-empty class="mt-4 inline-flex items-center justify-center rounded-xl bg-[#0B0F19] px-4 py-2.5 text-[13px] font-bold text-white">Back to AI Home</button>
+                </div>
+            </article>
+        `;
+        thread.querySelector('[data-ai-back-empty]')?.addEventListener('click', () => renderHome({ updateRoute: true }));
     }
 
     function renderPrompts() {
@@ -208,14 +441,22 @@
         const prompt = String(text || '').trim();
         if (!prompt || state.busy) return;
         clearError();
-        const shouldScroll = shouldAutoScroll();
-        appendUserMessage({ text: prompt });
-        const loadingId = appendAssistantLoading('Analyzing your finance records...');
-        if (els.input) els.input.value = '';
-        updateCharCount();
-        scrollToLatest(shouldScroll);
         setBusy(true, 'thinking');
+        let loadingId = null;
         try {
+            await ensureActiveChat(prompt);
+            const shouldScroll = shouldAutoScroll();
+            appendUserMessage({ text: prompt });
+            await saveChatMessage({
+                role: 'user',
+                content: prompt,
+                attachments: [],
+            });
+            loadingId = appendAssistantLoading('Analyzing your finance records...');
+            if (els.input) els.input.value = '';
+            updateCharCount();
+            autoGrowComposer();
+            scrollToLatest(shouldScroll);
             const token = await getAuthToken();
             const response = await fetch('/api/v1/brain/chat', {
                 method: 'POST',
@@ -232,11 +473,31 @@
             const body = await response.json().catch(() => ({}));
             if (!response.ok || body.success === false) {
                 renderErrorResult(body?.error?.message || 'Fluxy AI could not read your finance data right now.', loadingId);
+                await saveAssistantMessage({
+                    content: body?.error?.message || 'Fluxy AI could not read your finance data right now.',
+                    structured_answer: null,
+                    intent: 'error',
+                });
                 return;
             }
             renderFinanceAnswer(body.answer, body.related_records || [], loadingId);
+            await saveAssistantMessage({
+                content: body.answer?.direct_answer || 'Fluxy AI returned a finance analysis.',
+                structured_answer: {
+                    kind: 'finance_answer',
+                    answer: body.answer || null,
+                    related_records: body.related_records || [],
+                },
+                intent: body.answer?.intent || 'finance_analysis',
+                title: deriveTitle(prompt, body.answer?.intent),
+                summary: body.answer?.direct_answer || '',
+            });
         } catch (err) {
-            renderErrorResult(err?.message || 'Fluxy AI could not connect. Please try again.', loadingId);
+            if (loadingId) {
+                renderErrorResult(err?.message || 'Fluxy AI could not connect. Please try again.', loadingId);
+            } else {
+                setError(err?.message || 'Fluxy AI could not connect. Please try again.');
+            }
         } finally {
             setBusy(false);
         }
@@ -246,15 +507,24 @@
         if (!state.file || state.busy) return;
         const file = state.file;
         clearError();
-        const shouldScroll = shouldAutoScroll();
-        appendUserMessage({ text: userIntent || 'Please review this finance document.', file });
-        const loadingId = appendAssistantLoading('Checking the document type and destination...');
-        if (els.input) els.input.value = '';
-        updateCharCount();
-        clearFile();
-        scrollToLatest(shouldScroll);
         setBusy(true, 'detecting');
+        let loadingId = null;
         try {
+            const prompt = userIntent || 'Please review this finance document.';
+            await ensureActiveChat(prompt);
+            const shouldScroll = shouldAutoScroll();
+            appendUserMessage({ text: prompt, file });
+            await saveChatMessage({
+                role: 'user',
+                content: prompt,
+                attachments: [serializeAttachment(file)],
+            });
+            loadingId = appendAssistantLoading('Checking the document type and destination...');
+            if (els.input) els.input.value = '';
+            updateCharCount();
+            autoGrowComposer();
+            clearFile();
+            scrollToLatest(shouldScroll);
             const token = await getAuthToken();
             const response = await fetch('/api/v1/ai/detect-document', {
                 method: 'POST',
@@ -275,14 +545,105 @@
             const body = await response.json().catch(() => ({}));
             if (!response.ok || body.success === false) {
                 renderDocumentError(body?.message || body?.error?.message || 'Fluxy AI could not detect this document.', loadingId);
+                await saveAssistantMessage({
+                    content: body?.message || body?.error?.message || 'Fluxy AI could not detect this document.',
+                    structured_answer: null,
+                    intent: 'document_error',
+                });
                 return;
             }
             renderDocumentDetection(body, loadingId, file);
+            await saveAssistantMessage({
+                content: body.message || 'Fluxy AI detected a document.',
+                structured_answer: {
+                    kind: 'document_detection',
+                    result: body,
+                },
+                intent: body.detected_type || 'document_detection',
+                title: deriveTitle(prompt, body.detected_type),
+                summary: body.message || '',
+            });
         } catch (err) {
-            renderDocumentError(err?.message || 'Could not detect this document right now.', loadingId);
+            if (loadingId) {
+                renderDocumentError(err?.message || 'Could not detect this document right now.', loadingId);
+            } else {
+                setError(err?.message || 'Could not detect this document right now.');
+            }
         } finally {
             setBusy(false);
         }
+    }
+
+    async function ensureActiveChat(prompt) {
+        if (state.currentChatId && state.mode === 'session') return state.currentChatId;
+        const ds = getDataService();
+        if (!state.user || !ds?.createAIChat) throw new Error('AI chat history is not ready yet.');
+        const title = deriveTitle(prompt);
+        const ref = await ds.createAIChat(state.user.uid, {
+            title,
+            summary: '',
+            last_message_preview: prompt,
+            intent: inferIntent(prompt),
+            message_count: 0,
+        });
+        const chat = await ds.getAIChat(state.user.uid, ref.id);
+        state.currentChatId = ref.id;
+        state.currentChat = chat || { id: ref.id, title };
+        state.messageCount = 0;
+        history.pushState({}, '', `${getAIHomePath()}?chat=${encodeURIComponent(ref.id)}`);
+        state.bootedFor = `${state.user.uid}:${ref.id}`;
+        setSessionShell({ title, chatId: ref.id });
+        ensureChatThread({ reset: true });
+        return ref.id;
+    }
+
+    async function saveChatMessage(data) {
+        const ds = getDataService();
+        if (!state.user || !state.currentChatId || !ds?.addAIChatMessage) return;
+        await ds.addAIChatMessage(state.user.uid, state.currentChatId, data);
+        state.messageCount += 1;
+        const patch = {
+            title: state.currentChat?.title || deriveTitle(data.content),
+            summary: state.currentChat?.summary || '',
+            last_message_preview: truncateText(data.content, 180),
+            intent: state.currentChat?.intent || inferIntent(data.content),
+            message_count: state.messageCount,
+        };
+        await ds.updateAIChatMeta(state.user.uid, state.currentChatId, patch);
+        state.currentChat = { ...(state.currentChat || {}), ...patch, id: state.currentChatId };
+        if (els.sessionTitle) els.sessionTitle.textContent = patch.title;
+    }
+
+    async function saveAssistantMessage({ content, structured_answer, intent, title, summary }) {
+        const ds = getDataService();
+        if (!state.user || !state.currentChatId || !ds?.addAIChatMessage) return;
+        await ds.addAIChatMessage(state.user.uid, state.currentChatId, {
+            role: 'assistant',
+            content: content || '',
+            structured_answer: structured_answer || null,
+            attachments: [],
+        });
+        state.messageCount += 1;
+        const nextTitle = title || state.currentChat?.title || deriveTitle(content);
+        const patch = {
+            title: nextTitle,
+            summary: truncateText(summary || content || '', 260),
+            last_message_preview: truncateText(content || '', 180),
+            intent: intent || state.currentChat?.intent || 'finance_analysis',
+            message_count: state.messageCount,
+        };
+        await ds.updateAIChatMeta(state.user.uid, state.currentChatId, patch);
+        state.currentChat = { ...(state.currentChat || {}), ...patch, id: state.currentChatId };
+        if (els.sessionTitle) els.sessionTitle.textContent = patch.title;
+    }
+
+    function serializeAttachment(file) {
+        if (!file) return null;
+        return {
+            file_name: file.name,
+            mime_type: file.type || guessMimeFromName(file.name),
+            size_bytes: file.size,
+        };
     }
 
     function selectFile(file) {
@@ -348,9 +709,9 @@
         }
     }
 
-    function ensureChatThread() {
+    function ensureChatThread(options = {}) {
         if (!els.responseArea) return null;
-        if (!els.chatThread) {
+        if (!els.chatThread || options.reset) {
             els.responseArea.classList.remove('hidden');
             els.responseArea.innerHTML = '<div id="ai-chat-thread" class="space-y-5"></div>';
             els.chatThread = document.getElementById('ai-chat-thread');
@@ -365,14 +726,15 @@
         return els.chatThread;
     }
 
-    function appendUserMessage({ text, file }) {
+    function appendUserMessage({ text, file, attachments }) {
         const thread = ensureChatThread();
         if (!thread) return null;
         const id = nextMessageId('user');
-        const fileMeta = file ? `
+        const firstAttachment = file ? serializeAttachment(file) : Array.isArray(attachments) ? attachments[0] : null;
+        const fileMeta = firstAttachment ? `
             <div class="mt-3 rounded-xl border border-gray-200 bg-white/70 px-3 py-2 text-left">
-                <p class="truncate text-[12px] font-bold text-gray-900">${escapeHtml(file.name)}</p>
-                <p class="mt-0.5 text-[11px] text-gray-500">${escapeHtml(file.type || guessMimeFromName(file.name))} - ${formatBytes(file.size)}</p>
+                <p class="truncate text-[12px] font-bold text-gray-900">${escapeHtml(firstAttachment.file_name || 'Attachment')}</p>
+                <p class="mt-0.5 text-[11px] text-gray-500">${escapeHtml(firstAttachment.mime_type || 'file')} - ${formatBytes(Number(firstAttachment.size_bytes || 0))}</p>
             </div>
         ` : '';
         thread.insertAdjacentHTML('beforeend', `
@@ -405,7 +767,7 @@
 
     function renderAssistantMessage(messageId, html, tone) {
         const thread = ensureChatThread();
-        if (!thread) return;
+        if (!thread) return null;
         const id = messageId || nextMessageId('assistant');
         const existing = document.getElementById(id);
         const autoScroll = shouldAutoScroll();
@@ -425,6 +787,7 @@
             thread.insertAdjacentHTML('beforeend', markup);
         }
         scrollToLatest(autoScroll);
+        return id;
     }
 
     function nextMessageId(prefix) {
@@ -444,16 +807,12 @@
         const target = state.chatStarted ? els.chatThread?.lastElementChild : els.composerSection;
         if (!scroller || !target) return;
         requestAnimationFrame(() => {
-            if (state.chatStarted && scroller === els.responseArea) {
-                scroller.scrollTo({ top: scroller.scrollHeight, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-                return;
-            }
             target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'end' });
         });
     }
 
     function getActiveScroller() {
-        return state.chatStarted ? els.responseArea : els.scrollContainer;
+        return els.scrollContainer || document.documentElement;
     }
 
     function renderFinanceAnswer(answer, relatedRecords, messageId) {
@@ -540,6 +899,7 @@
     }
 
     function renderDocumentDetection(result, messageId, file) {
+        const actionId = messageId || nextMessageId('assistant');
         const confidence = Math.round((Number(result.confidence) || 0) * 100);
         const lowConfidence = confidence < 70;
         const preview = result.extracted_preview && Object.keys(result.extracted_preview).length
@@ -553,9 +913,9 @@
         const warnings = Array.isArray(result.warnings) && result.warnings.length
             ? `<div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">${result.warnings.map(item => `<p class="text-[12px] font-medium text-amber-800">${escapeHtml(item)}</p>`).join('')}</div>`
             : '';
-        const action = renderDocumentAction(result, messageId);
+        const action = renderDocumentAction(result, actionId, file);
 
-        renderAssistantMessage(messageId, `
+        renderAssistantMessage(actionId, `
                 <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div>
                         <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Detected document</p>
@@ -581,12 +941,19 @@
                 ${warnings}
                 ${action}
         `);
-        wireDocumentActions(result, messageId, file);
+        wireDocumentActions(result, actionId, file);
     }
 
-    function renderDocumentAction(result, messageId) {
+    function renderDocumentAction(result, messageId, file) {
         const action = result.recommended_action;
         if (action === 'refuse') return '';
+        if (!file && ['review_and_save_to_bills', 'review_as_expense', 'review_transaction'].includes(action)) {
+            return `
+                <div class="mt-5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                    <p class="text-[12px] font-medium text-gray-500">Upload the file again to open the review workflow. FluxyOS does not store raw document contents in chat history.</p>
+                </div>
+            `;
+        }
         const label = {
             review_and_save_to_bills: 'Review and Save to Bills',
             review_as_expense: 'Review as Expense',
@@ -666,6 +1033,40 @@
         `, 'error');
     }
 
+    function openDeleteModal(chatId) {
+        if (!chatId || !els.deleteModal) return;
+        state.pendingDeleteChatId = chatId;
+        els.deleteModal.classList.remove('hidden');
+        els.deleteModal.classList.add('flex');
+    }
+
+    function closeDeleteModal() {
+        state.pendingDeleteChatId = null;
+        els.deleteModal?.classList.add('hidden');
+        els.deleteModal?.classList.remove('flex');
+    }
+
+    async function confirmDeleteChat() {
+        const chatId = state.pendingDeleteChatId;
+        const ds = getDataService();
+        if (!chatId || !state.user || !ds?.softDeleteAIChat) return;
+        if (els.deleteConfirm) els.deleteConfirm.disabled = true;
+        try {
+            await ds.softDeleteAIChat(state.user.uid, chatId);
+            closeDeleteModal();
+            window.showToast?.('AI chat deleted.', 'success');
+            if (state.currentChatId === chatId) {
+                await renderHome({ updateRoute: true });
+            } else {
+                await loadRecentChats();
+            }
+        } catch (err) {
+            window.showToast?.('Could not delete this chat.', 'error');
+        } finally {
+            if (els.deleteConfirm) els.deleteConfirm.disabled = false;
+        }
+    }
+
     function setBusy(busy, mode) {
         state.busy = busy;
         if (els.send) els.send.disabled = busy;
@@ -677,6 +1078,55 @@
         } else if (els.send) {
             els.send.setAttribute('aria-label', 'Send to Fluxy AI');
         }
+    }
+
+    function getDataService() {
+        return state.context?.ds || window.__fluxyAICommandContext?.ds || null;
+    }
+
+    function getRouteChatId() {
+        const params = new URLSearchParams(window.location.search);
+        const queryId = params.get('chat');
+        if (queryId) return queryId;
+        const hash = window.location.hash || '';
+        const match = hash.match(/chat=([^&]+)/);
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+
+    function getAIHomePath() {
+        return window.location.pathname || '/ai';
+    }
+
+    function deriveTitle(text, intent) {
+        const clean = String(text || '').replace(/\s+/g, ' ').trim();
+        const lower = clean.toLowerCase();
+        if (intent === 'bill' || intent === 'invoice') return 'Document review';
+        if (lower.includes('health')) return 'Business health this month';
+        if (lower.includes('upcoming bill') || lower.includes('bill')) return 'Upcoming bill risk';
+        if (lower.includes('receipt')) return 'Missing receipts';
+        if (lower.includes('opex') || lower.includes('expense')) return 'OpEx review';
+        if (lower.includes('subscription')) return 'Subscription costs';
+        if (lower.includes('revenue')) return 'Revenue review';
+        return truncateText(clean || 'AI chat', 64);
+    }
+
+    function inferIntent(text) {
+        const lower = String(text || '').toLowerCase();
+        if (lower.includes('receipt')) return 'ledger_cleanup';
+        if (lower.includes('bill')) return 'bills_risk';
+        if (lower.includes('subscription')) return 'subscriptions';
+        if (lower.includes('revenue')) return 'revenue_sync';
+        if (lower.includes('health') || lower.includes('margin') || lower.includes('opex')) return 'finance_health';
+        return 'finance_analysis';
+    }
+
+    function autoGrowComposer() {
+        if (!els.input) return;
+        els.input.style.height = 'auto';
+        const max = state.mode === 'session' ? 152 : 220;
+        const next = Math.min(els.input.scrollHeight, max);
+        els.input.style.height = `${next}px`;
+        els.input.style.overflowY = els.input.scrollHeight > max ? 'auto' : 'hidden';
     }
 
     async function getAuthToken() {
@@ -747,6 +1197,38 @@
     function formatPreviewValue(value) {
         if (typeof value === 'number' && Number.isFinite(value)) return `Rp ${Math.abs(value).toLocaleString('id-ID')}`;
         return value;
+    }
+
+    function truncateText(value, max) {
+        const text = String(value || '').replace(/\s+/g, ' ').trim();
+        if (text.length <= max) return text;
+        return `${text.slice(0, Math.max(0, max - 1)).trim()}...`;
+    }
+
+    function timestampToDate(value) {
+        if (!value) return null;
+        if (typeof value.toDate === 'function') return value.toDate();
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    function isExpired(value) {
+        const date = timestampToDate(value);
+        return !!date && date.getTime() <= Date.now();
+    }
+
+    function formatRelativeTime(value) {
+        const date = timestampToDate(value);
+        if (!date) return 'Recently updated';
+        const diffMs = Date.now() - date.getTime();
+        const minutes = Math.max(0, Math.floor(diffMs / 60000));
+        if (minutes < 1) return 'Just now';
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        if (days < 14) return `${days}d ago`;
+        return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
     }
 
     function prefersReducedMotion() {

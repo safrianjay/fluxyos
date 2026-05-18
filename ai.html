@@ -24,60 +24,29 @@
         }
 
         #ai-workspace.ai-chat-active {
-            height: calc(100vh - 8rem);
-            min-height: 0;
+            min-height: auto;
             justify-content: flex-start;
         }
 
-        #ai-workspace.ai-chat-active #ai-prompt-section {
-            opacity: 0.72;
-        }
-
-        #ai-workspace.ai-chat-active #ai-greeting-section {
+        #ai-workspace.ai-chat-active #ai-greeting-section,
+        #ai-workspace.ai-chat-active #ai-prompt-section,
+        #ai-workspace.ai-chat-active #ai-history-section {
             display: none;
         }
 
-        #ai-workspace.ai-chat-active #ai-prompt-grid {
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-        }
-
-        #ai-workspace.ai-chat-active #ai-prompt-grid button {
-            min-height: 76px;
-            padding: 12px;
-        }
-
         #ai-workspace.ai-chat-active #ai-response-area {
-            flex: 1 1 auto;
-            min-height: 240px;
-            overflow-y: auto;
-            padding-right: 2px;
-        }
-
-        #ai-workspace.ai-chat-active #ai-composer-section {
-            flex: 0 0 auto;
+            overflow: visible;
         }
 
         #ai-workspace.ai-chat-active #ai-command-input {
-            min-height: 72px;
-            max-height: 144px;
+            min-height: 64px;
+            max-height: 152px;
         }
 
         @media (max-width: 639px) {
-            #ai-workspace.ai-chat-active {
-                height: calc(100vh - 6rem);
-            }
-
             #ai-workspace.ai-chat-active #ai-command-input {
-                min-height: 64px;
-                max-height: 112px;
-            }
-
-            #ai-workspace.ai-chat-active #ai-prompt-section {
-                display: none;
-            }
-
-            #ai-workspace.ai-chat-active #ai-response-area {
-                min-height: 0;
+                min-height: 60px;
+                max-height: 132px;
             }
         }
     </style>
@@ -122,6 +91,22 @@
                     </button>
                 </section>
 
+                <section id="ai-session-header" class="hidden rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="min-w-0">
+                            <button id="ai-back-home" type="button" class="inline-flex items-center gap-2 text-[13px] font-bold text-gray-500 hover:text-[#EA580C] transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 18l-6-6 6-6"></path></svg>
+                                Back to AI Home
+                            </button>
+                            <h2 id="ai-session-title" class="mt-1 truncate text-[18px] font-extrabold text-gray-950">New AI chat</h2>
+                        </div>
+                        <button id="ai-new-chat" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">
+                            <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m7-7H5"></path></svg>
+                            New Chat
+                        </button>
+                    </div>
+                </section>
+
                 <section id="ai-response-area" class="hidden" aria-live="polite"></section>
 
                 <section id="ai-composer-section" class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden" aria-label="Fluxy AI composer">
@@ -155,9 +140,30 @@
                         </div>
                     </form>
                 </section>
+
+                <section id="ai-history-section" class="space-y-3">
+                    <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <h2 class="text-[16px] font-extrabold text-gray-950">Recent AI chats</h2>
+                            <p class="text-[13px] text-gray-500">Chats with no new activity are automatically removed after 14 days.</p>
+                        </div>
+                    </div>
+                    <div id="ai-history-list" class="grid gap-3"></div>
+                </section>
             </div>
         </div>
     </main>
+
+    <div id="ai-delete-modal" class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/30 px-4">
+        <div role="dialog" aria-modal="true" aria-labelledby="ai-delete-title" class="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl">
+            <h2 id="ai-delete-title" class="text-[18px] font-extrabold text-gray-950">Delete this chat?</h2>
+            <p class="mt-2 text-[14px] leading-relaxed text-gray-500">This will remove the conversation from your AI history. This action can’t be undone.</p>
+            <div class="mt-5 flex items-center justify-end gap-3">
+                <button id="ai-delete-cancel" type="button" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                <button id="ai-delete-confirm" type="button" class="rounded-xl bg-[#0B0F19] px-4 py-2.5 text-[13px] font-bold text-white hover:bg-gray-800 transition-colors">Delete chat</button>
+            </div>
+        </div>
+    </div>
 
     <div id="scan-drawer-backdrop" class="fixed inset-0 bg-black/30 z-40 hidden"></div>
     <div id="scan-drawer" class="fixed top-0 right-0 h-full w-full max-w-[480px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">

@@ -1,4 +1,4 @@
-import { getFirestore, collection, query, getDocs, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, query, getDocs, getDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, doc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 class DataService {
     constructor(app) {
@@ -124,6 +124,90 @@ class DataService {
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
 
+    // --- FLUXY AI CHAT HISTORY ---
+    getAIChatExpiryDate() {
+        // TODO: Configure Firestore TTL or scheduled cleanup for ai_chats.expires_at.
+        return Timestamp.fromDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000));
+    }
+
+    async createAIChat(userId, data = {}) {
+        const expiresAt = data.expires_at || this.getAIChatExpiryDate();
+        return await addDoc(collection(this.db, `users/${userId}/ai_chats`), {
+            title: data.title || 'New AI chat',
+            summary: data.summary || '',
+            last_message_preview: data.last_message_preview || '',
+            intent: data.intent || 'finance_analysis',
+            source: 'ai_command_center',
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp(),
+            last_activity_at: serverTimestamp(),
+            expires_at: expiresAt,
+            message_count: Number(data.message_count || 0),
+            status: 'active'
+        });
+    }
+
+    async getRecentAIChats(userId, limitCount = 5) {
+        const q = query(
+            collection(this.db, `users/${userId}/ai_chats`),
+            orderBy('updated_at', 'desc'),
+            limit(Math.max(limitCount * 4, 20))
+        );
+        const snapshot = await getDocs(q);
+        const now = Date.now();
+        return snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(chat => chat.status === 'active' && !this._isExpired(chat.expires_at, now))
+            .slice(0, limitCount);
+    }
+
+    async getAIChat(userId, chatId) {
+        const snap = await getDoc(doc(this.db, `users/${userId}/ai_chats/${chatId}`));
+        if (!snap.exists()) return null;
+        return { id: snap.id, ...snap.data() };
+    }
+
+    async getAIChatMessages(userId, chatId) {
+        const q = query(
+            collection(this.db, `users/${userId}/ai_chats/${chatId}/messages`),
+            orderBy('created_at', 'asc'),
+            limit(200)
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    async addAIChatMessage(userId, chatId, data) {
+        const expiresAt = data.expires_at || this.getAIChatExpiryDate();
+        return await addDoc(collection(this.db, `users/${userId}/ai_chats/${chatId}/messages`), {
+            role: data.role,
+            content: data.content || '',
+            structured_answer: data.structured_answer || null,
+            attachments: Array.isArray(data.attachments) ? data.attachments : [],
+            created_at: serverTimestamp(),
+            expires_at: expiresAt
+        });
+    }
+
+    async updateAIChatMeta(userId, chatId, data = {}) {
+        const payload = {
+            ...data,
+            updated_at: serverTimestamp(),
+            last_activity_at: serverTimestamp(),
+            expires_at: data.expires_at || this.getAIChatExpiryDate()
+        };
+        delete payload.id;
+        await updateDoc(doc(this.db, `users/${userId}/ai_chats/${chatId}`), payload);
+    }
+
+    async softDeleteAIChat(userId, chatId) {
+        await updateDoc(doc(this.db, `users/${userId}/ai_chats/${chatId}`), {
+            status: 'deleted',
+            deleted_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        });
+    }
+
     // --- SUMMARY STATS ---
     async getDashboardStats(userId, period = null) {
         const txs = await this.getTransactions(userId, 1000);
@@ -174,6 +258,13 @@ class DataService {
         if (typeof dayKey !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return null;
         const [year, month, day] = dayKey.split('-').map(Number);
         return new Date(year, month - 1, day);
+    }
+
+    _isExpired(value, now = Date.now()) {
+        if (!value) return false;
+        if (value && typeof value.toDate === 'function') return value.toDate().getTime() <= now;
+        const parsed = new Date(value);
+        return !Number.isNaN(parsed.getTime()) && parsed.getTime() <= now;
     }
 }
 

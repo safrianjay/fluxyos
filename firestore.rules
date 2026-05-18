@@ -101,6 +101,96 @@ service cloud.firestore {
         && data.created_at == request.time;
     }
 
+    function isValidAIChat(data) {
+      return data.keys().hasAll([
+          'title',
+          'summary',
+          'last_message_preview',
+          'intent',
+          'source',
+          'created_at',
+          'updated_at',
+          'last_activity_at',
+          'expires_at',
+          'message_count',
+          'status'
+        ])
+        && data.keys().hasOnly([
+          'title',
+          'summary',
+          'last_message_preview',
+          'intent',
+          'source',
+          'created_at',
+          'updated_at',
+          'last_activity_at',
+          'expires_at',
+          'message_count',
+          'status',
+          'deleted_at'
+        ])
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 120
+        && data.summary is string
+        && data.summary.size() <= 500
+        && data.last_message_preview is string
+        && data.last_message_preview.size() <= 500
+        && data.intent is string
+        && data.intent.size() > 0
+        && data.intent.size() <= 80
+        && data.source == 'ai_command_center'
+        && data.created_at is timestamp
+        && data.updated_at is timestamp
+        && data.last_activity_at is timestamp
+        && data.expires_at is timestamp
+        && data.message_count is number
+        && data.message_count >= 0
+        && data.message_count <= 500
+        && data.status in ['active', 'deleted']
+        && (!('deleted_at' in data) || data.deleted_at is timestamp);
+    }
+
+    function isValidAIChatCreate(data) {
+      return isValidAIChat(data)
+        && data.created_at == request.time
+        && data.updated_at == request.time
+        && data.last_activity_at == request.time
+        && data.status == 'active'
+        && !('deleted_at' in data);
+    }
+
+    function isValidAIChatUpdate(data, existingData) {
+      return isValidAIChat(data)
+        && data.created_at == existingData.created_at
+        && data.updated_at == request.time
+        && data.last_activity_at is timestamp;
+    }
+
+    function isValidAIChatMessage(data) {
+      return data.keys().hasAll([
+          'role',
+          'content',
+          'created_at',
+          'expires_at'
+        ])
+        && data.keys().hasOnly([
+          'role',
+          'content',
+          'structured_answer',
+          'attachments',
+          'created_at',
+          'expires_at'
+        ])
+        && data.role in ['user', 'assistant', 'system']
+        && data.content is string
+        && data.content.size() <= 10000
+        && (!('structured_answer' in data) || data.structured_answer == null || data.structured_answer is map)
+        && (!('attachments' in data) || data.attachments is list)
+        && data.created_at == request.time
+        && data.expires_at is timestamp;
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create, update, delete: if false;
@@ -215,6 +305,22 @@ service cloud.firestore {
           ])
           && isValidAuditLog(request.resource.data);
         allow update, delete: if false;
+      }
+
+      match /ai_chats/{chatId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidAIChatCreate(request.resource.data);
+        allow update: if isOwner(userId)
+          && isValidAIChatUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+
+        match /messages/{messageId} {
+          allow read: if isOwner(userId);
+          allow create: if isOwner(userId)
+            && isValidAIChatMessage(request.resource.data);
+          allow update, delete: if false;
+        }
       }
 
       match /{document=**} {
