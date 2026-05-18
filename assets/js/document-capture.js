@@ -3,7 +3,7 @@
 
     const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     const ALLOWED_EXT_LABEL = 'JPG, PNG, WebP, or PDF';
-    const MAX_FILE_BYTES = 5 * 1024 * 1024;
+    const MAX_FILE_BYTES = 10 * 1024 * 1024;
     const ALLOWED_CATEGORIES = ['Revenue', 'Marketing', 'Infrastructure', 'Operations', 'SaaS'];
     const TRANSACTION_TYPES = ['expense', 'income', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_payable', 'pending_receivable'];
     const TRANSACTION_STATUSES = ['Completed', 'Pending', 'Reconciled', 'Missing Receipt', 'Cancelled'];
@@ -607,6 +607,22 @@
         setStep('upload');
     }
 
+    function openDrawerWithFile(mode, file) {
+        openDrawer(mode);
+        if (!file) return;
+        const err = validateBillFile(file);
+        if (err) {
+            window.showToast?.(err, 'error');
+            return;
+        }
+        clearFile();
+        state.file = file;
+        if (file.type.startsWith('image/')) {
+            state.previewUrl = URL.createObjectURL(file);
+        }
+        setStep('upload');
+    }
+
     async function startScan() {
         if (!state.file) return;
         if (navigator.onLine === false) {
@@ -808,6 +824,7 @@
     }
 
     window.openScanDrawer = openDrawer;
+    window.openScanDrawerWithFile = openDrawerWithFile;
     window.openScanBillDrawer = () => openDrawer('bill');
     window.openScanTransactionDrawer = () => openDrawer('transaction');
     window.closeScanDrawer = closeDrawer;

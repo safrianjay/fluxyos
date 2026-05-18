@@ -931,6 +931,10 @@ exports.handler = async (event) => {
         return extractBill(event, headers);
     }
 
+    if (path === '/ai/detect-document' && method === 'POST') {
+        return detectDocument(event, headers);
+    }
+
     if ((path === '/brain/chat' || path === '/chat') && method === 'POST') {
         const parsed = parseJsonBody(event);
         if (parsed.error) return jsonResponse(headers, 400, { success: false, error: { code: 'invalid_json', message: parsed.error } });
@@ -953,8 +957,9 @@ exports.handler = async (event) => {
 // ── Bill Extraction ───────────────────────────────────────────────────────
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_CATEGORIES = ['Revenue', 'Marketing', 'Infrastructure', 'Operations', 'SaaS'];
+const DETECT_ALLOWED_MIME_TYPES = [...ALLOWED_MIME_TYPES, 'text/csv', 'application/vnd.ms-excel'];
 
 function errorResponse(headers, status, code, message) {
     return {
@@ -962,6 +967,194 @@ function errorResponse(headers, status, code, message) {
         headers,
         body: JSON.stringify({ ok: false, error: { code, message } }),
     };
+}
+
+function fileExtension(fileName) {
+    const parts = String(fileName || '').split('.');
+    return parts.length > 1 ? parts.pop().toLowerCase() : '';
+}
+
+function guessMimeFromFileName(fileName) {
+    const ext = fileExtension(fileName);
+    const map = {
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png',
+        webp: 'image/webp',
+        pdf: 'application/pdf',
+        csv: 'text/csv',
+    };
+    return map[ext] || 'application/octet-stream';
+}
+
+function cleanFileStem(fileName) {
+    return String(fileName || 'Uploaded document')
+        .replace(/\.[^.]+$/, '')
+        .replace(/[-_]+/g, ' ')
+        .trim()
+        .slice(0, 80) || 'Uploaded document';
+}
+
+function detectionPayload({ detectedType, confidence, destination, action, message, fileName, warnings = [], preview = {} }) {
+    const extractedPreview = { ...preview };
+    if (fileName && !extractedPreview.file_name) extractedPreview.file_name = fileName;
+    return {
+        success: true,
+        detected_type: detectedType,
+        confidence,
+        recommended_destination: destination,
+        recommended_action: action,
+        message,
+        extracted_preview: extractedPreview,
+        warnings,
+    };
+}
+
+function buildDeterministicDocumentDetection({ fileName, mimeType, sizeBytes }) {
+    const normalizedMime = mimeType || guessMimeFromFileName(fileName);
+    const ext = fileExtension(fileName);
+    const text = `${fileName || ''} ${normalizedMime}`.toLowerCase();
+
+    if (Number(sizeBytes) > MAX_FILE_BYTES) {
+        return detectionPayload({
+            detectedType: 'unsupported_file',
+            confidence: 1,
+            destination: 'none',
+            action: 'refuse',
+            message: 'This file is larger than the 10MB limit. Please upload a smaller financial document.',
+            fileName,
+            warnings: ['File too large.'],
+        });
+    }
+    if (!DETECT_ALLOWED_MIME_TYPES.includes(normalizedMime) && !['jpg', 'jpeg', 'png', 'webp', 'pdf', 'csv'].includes(ext)) {
+        return detectionPayload({
+            detectedType: 'unsupported_file',
+            confidence: 1,
+            destination: 'none',
+            action: 'refuse',
+            message: 'Unsupported file type. Please upload a JPG, PNG, WEBP, PDF, or CSV financial document.',
+            fileName,
+            warnings: ['Unsupported file type.'],
+        });
+    }
+    if (ext === 'csv' || ['text/csv', 'application/vnd.ms-excel'].includes(normalizedMime)) {
+        return detectionPayload({
+            detectedType: 'csv_transactions',
+            confidence: 0.88,
+            destination: 'ledger',
+            action: 'review_csv_import',
+            message: 'Looks like this is a CSV file. If it contains transaction rows, review it through the Ledger CSV import flow.',
+            fileName,
+            preview: { document_name: cleanFileStem(fileName) },
+        });
+    }
+    if (/(subscription|renewal|recurring|saas|workspace|canva|figma|notion)/.test(text)) {
+        return detectionPayload({
+            detectedType: 'subscription_invoice',
+            confidence: 0.78,
+            destination: 'subscriptions',
+            action: 'review_as_subscription',
+            message: 'Looks like this is a subscription invoice. I can help route it to subscription review; saving still needs confirmation.',
+            fileName,
+            warnings: ['Subscription-specific extraction is not fully automated yet. Review before saving.'],
+            preview: { vendor_name: cleanFileStem(fileName) },
+        });
+    }
+    if (/(invoice|bill|tagihan|faktur|pln|telkom|vendor)/.test(text)) {
+        return detectionPayload({
+            detectedType: text.includes('invoice') || text.includes('faktur') ? 'invoice' : 'bill',
+            confidence: 0.82,
+            destination: 'bills',
+            action: 'review_and_save_to_bills',
+            message: 'Looks like this is a bill. I can extract the vendor, amount, due date, invoice number, and category, then prepare it for review before saving it to Bills.',
+            fileName,
+            warnings: ['Bill extraction will open the existing review-before-save flow.'],
+            preview: { vendor_name: cleanFileStem(fileName) },
+        });
+    }
+    if (/(receipt|struk|nota|kuitansi)/.test(text)) {
+        return detectionPayload({
+            detectedType: 'receipt',
+            confidence: 0.78,
+            destination: 'ledger',
+            action: 'review_as_expense',
+            message: 'Looks like this is a receipt. I can extract key details and prepare it for Ledger review.',
+            fileName,
+            warnings: ['No transaction will be created until you review and confirm.'],
+            preview: { vendor_name: cleanFileStem(fileName) },
+        });
+    }
+    if (/(bank statement|rekening koran|statement)/.test(text)) {
+        return detectionPayload({
+            detectedType: 'bank_statement',
+            confidence: 0.76,
+            destination: 'ledger',
+            action: 'review_transaction',
+            message: 'Looks like this is a bank statement. I can prepare it for Ledger review without creating a transaction automatically.',
+            fileName,
+            warnings: ['Bank statement import is not fully automated yet. Review the source before saving anything.'],
+            preview: { document_name: cleanFileStem(fileName) },
+        });
+    }
+    if (/(payment|transfer|bank|bca|mandiri|bni|bri|settlement)/.test(text)) {
+        return detectionPayload({
+            detectedType: 'payment_screenshot',
+            confidence: 0.75,
+            destination: 'ledger',
+            action: 'review_transaction',
+            message: 'Looks like this is a payment or bank document. I can prepare it for transaction review in the Ledger.',
+            fileName,
+            warnings: ['No transaction will be created until you review and confirm.'],
+            preview: { document_name: cleanFileStem(fileName) },
+        });
+    }
+    if (/(revenue|order|sales|shopify|tokopedia|shopee|stripe|midtrans)/.test(text)) {
+        return detectionPayload({
+            detectedType: 'revenue_report',
+            confidence: 0.74,
+            destination: 'revenue_sync',
+            action: 'ask_user',
+            message: 'Looks like this may be a revenue or order report. Revenue Sync integrations are not connected here yet, so review the source before importing anything.',
+            fileName,
+            warnings: ['Revenue Sync data may be limited if no integration is connected.'],
+            preview: { document_name: cleanFileStem(fileName) },
+        });
+    }
+    if (normalizedMime.startsWith('image/')) {
+        return detectionPayload({
+            detectedType: 'non_financial_image',
+            confidence: 0.72,
+            destination: 'none',
+            action: 'refuse',
+            message: 'This does not look like a finance-related document. I can help with bills, receipts, transactions, subscriptions, revenue reports, and financial records inside FluxyOS.',
+            fileName,
+        });
+    }
+    return detectionPayload({
+        detectedType: 'unknown_financial_document',
+        confidence: 0.52,
+        destination: 'ai_review',
+        action: 'ask_user',
+        message: "I found a supported document file, but I'm not fully sure where it belongs. Choose where you want to review it before saving anything.",
+        fileName,
+        warnings: ['Low-confidence document routing. Please review before taking action.'],
+        preview: { document_name: cleanFileStem(fileName) },
+    });
+}
+
+async function detectDocument(event, headers) {
+    let body;
+    try {
+        body = JSON.parse(event.body || '{}');
+    } catch {
+        return jsonResponse(headers, 400, { success: false, error: { code: 'invalid_json', message: 'Request body must be valid JSON.' } });
+    }
+    const result = buildDeterministicDocumentDetection({
+        fileName: body.file_name,
+        mimeType: body.mime_type || guessMimeFromFileName(body.file_name),
+        sizeBytes: body.size_bytes,
+    });
+    return jsonResponse(headers, 200, result);
 }
 
 async function extractBill(event, headers) {
@@ -985,8 +1178,6 @@ async function extractBill(event, headers) {
     if (file_base64.length > MAX_FILE_BYTES * 1.5) {
         return errorResponse(headers, 413, 'FILE_TOO_LARGE', 'Encoded payload exceeds limit.');
     }
-
-    console.log(`[bills/extract] file=${file_name} mime=${mime_type} size=${size_bytes}`);
 
     if (!process.env.OPENAI_API_KEY) {
         return {

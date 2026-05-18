@@ -66,6 +66,9 @@ EXPECTED_REVENUE_TYPES = {"income", "revenue", "refund", "pending_receivable"}
 OPEX_TYPES = {"expense", "fee", "tax"}
 OBLIGATION_OPEX_TYPES = {"expense", "fee", "tax", "pending_payable"}
 PAID_STATUSES = {"completed", "paid", "reconciled", "cancelled"}
+DOCUMENT_ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "application/pdf", "text/csv", "application/vnd.ms-excel"}
+DOCUMENT_MAX_FILE_BYTES = 10 * 1024 * 1024
+ALLOWED_CATEGORIES = {"Revenue", "Marketing", "Infrastructure", "Operations", "SaaS"}
 
 def _today_jakarta() -> datetime.date:
     return (datetime.datetime.utcnow() + datetime.timedelta(hours=7)).date()
@@ -118,7 +121,145 @@ def _classify_intent(message: str, page_context: str = "global") -> str:
         "bills": "bills_analysis",
         "subscriptions": "subscription_analysis",
         "revenue_sync": "revenue_analysis",
+        "ai_command_center": "finance_health",
     }.get(page_context, "finance_health")
+
+def _file_ext(file_name: str | None) -> str:
+    return (file_name or "").rsplit(".", 1)[-1].lower() if "." in (file_name or "") else ""
+
+def _guess_mime(file_name: str | None) -> str:
+    ext = _file_ext(file_name)
+    return {
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+        "webp": "image/webp",
+        "pdf": "application/pdf",
+        "csv": "text/csv",
+    }.get(ext, "application/octet-stream")
+
+def _clean_stem(file_name: str | None) -> str:
+    stem = (file_name or "Uploaded document").rsplit(".", 1)[0]
+    return stem.replace("-", " ").replace("_", " ").strip()[:80] or "Uploaded document"
+
+def _document_detection_payload(detected_type: str, confidence: float, destination: str, action: str, message: str, file_name: str | None = None, warnings: List[str] | None = None, preview: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    extracted_preview = preview or {}
+    if file_name and "file_name" not in extracted_preview:
+        extracted_preview["file_name"] = file_name
+    return {
+        "success": True,
+        "detected_type": detected_type,
+        "confidence": confidence,
+        "recommended_destination": destination,
+        "recommended_action": action,
+        "message": message,
+        "extracted_preview": extracted_preview,
+        "warnings": warnings or [],
+    }
+
+def _detect_document_type(file_name: str | None, mime_type: str | None, size_bytes: int | None) -> Dict[str, Any]:
+    normalized_mime = mime_type or _guess_mime(file_name)
+    ext = _file_ext(file_name)
+    text = f"{file_name or ''} {normalized_mime}".lower()
+
+    if size_bytes and size_bytes > DOCUMENT_MAX_FILE_BYTES:
+        return _document_detection_payload(
+            "unsupported_file", 1, "none", "refuse",
+            "This file is larger than the 10MB limit. Please upload a smaller financial document.",
+            file_name,
+            ["File too large."],
+        )
+    if normalized_mime not in DOCUMENT_ALLOWED_MIME and ext not in {"jpg", "jpeg", "png", "webp", "pdf", "csv"}:
+        return _document_detection_payload(
+            "unsupported_file", 1, "none", "refuse",
+            "Unsupported file type. Please upload a JPG, PNG, WEBP, PDF, or CSV financial document.",
+            file_name,
+            ["Unsupported file type."],
+        )
+    if ext == "csv" or normalized_mime in {"text/csv", "application/vnd.ms-excel"}:
+        return _document_detection_payload(
+            "csv_transactions", 0.88, "ledger", "review_csv_import",
+            "Looks like this is a CSV file. If it contains transaction rows, review it through the Ledger CSV import flow.",
+            file_name,
+            preview={"document_name": _clean_stem(file_name)},
+        )
+    if any(term in text for term in ["subscription", "renewal", "recurring", "saas", "workspace", "canva", "figma", "notion"]):
+        return _document_detection_payload(
+            "subscription_invoice", 0.78, "subscriptions", "review_as_subscription",
+            "Looks like this is a subscription invoice. I can help route it to subscription review; saving still needs confirmation.",
+            file_name,
+            ["Subscription-specific extraction is not fully automated yet. Review before saving."],
+            {"vendor_name": _clean_stem(file_name)},
+        )
+    if any(term in text for term in ["invoice", "bill", "tagihan", "faktur", "pln", "telkom", "vendor"]):
+        return _document_detection_payload(
+            "invoice" if "invoice" in text or "faktur" in text else "bill",
+            0.82, "bills", "review_and_save_to_bills",
+            "Looks like this is a bill. I can extract the vendor, amount, due date, invoice number, and category, then prepare it for review before saving it to Bills.",
+            file_name,
+            ["Bill extraction will open the existing review-before-save flow."],
+            {"vendor_name": _clean_stem(file_name)},
+        )
+    if any(term in text for term in ["receipt", "struk", "nota", "kuitansi"]):
+        return _document_detection_payload(
+            "receipt", 0.78, "ledger", "review_as_expense",
+            "Looks like this is a receipt. I can extract key details and prepare it for Ledger review.",
+            file_name,
+            ["No transaction will be created until you review and confirm."],
+            {"vendor_name": _clean_stem(file_name)},
+        )
+    if any(term in text for term in ["bank statement", "rekening koran", "statement"]):
+        return _document_detection_payload(
+            "bank_statement", 0.76, "ledger", "review_transaction",
+            "Looks like this is a bank statement. I can prepare it for Ledger review without creating a transaction automatically.",
+            file_name,
+            ["Bank statement import is not fully automated yet. Review the source before saving anything."],
+            {"document_name": _clean_stem(file_name)},
+        )
+    if any(term in text for term in ["payment", "transfer", "bank", "bca", "mandiri", "bni", "bri", "settlement"]):
+        return _document_detection_payload(
+            "payment_screenshot", 0.75, "ledger", "review_transaction",
+            "Looks like this is a payment or bank document. I can prepare it for transaction review in the Ledger.",
+            file_name,
+            ["No transaction will be created until you review and confirm."],
+            {"document_name": _clean_stem(file_name)},
+        )
+    if any(term in text for term in ["revenue", "order", "sales", "shopify", "tokopedia", "shopee", "stripe", "midtrans"]):
+        return _document_detection_payload(
+            "revenue_report", 0.74, "revenue_sync", "ask_user",
+            "Looks like this may be a revenue or order report. Revenue Sync integrations are not connected here yet, so review the source before importing anything.",
+            file_name,
+            ["Revenue Sync data may be limited if no integration is connected."],
+            {"document_name": _clean_stem(file_name)},
+        )
+    if normalized_mime.startswith("image/"):
+        return _document_detection_payload(
+            "non_financial_image", 0.72, "none", "refuse",
+            "This does not look like a finance-related document. I can help with bills, receipts, transactions, subscriptions, revenue reports, and financial records inside FluxyOS.",
+            file_name,
+        )
+    return _document_detection_payload(
+        "unknown_financial_document", 0.52, "ai_review", "ask_user",
+        "I found a supported document file, but I am not fully sure where it belongs. Choose where you want to review it before saving anything.",
+        file_name,
+        ["Low-confidence document routing. Please review before taking action."],
+        {"document_name": _clean_stem(file_name)},
+    )
+
+def _mock_bill_extraction(file_name: str | None) -> Dict[str, Any]:
+    return {
+        "document_type": "invoice",
+        "vendor_name": _clean_stem(file_name),
+        "amount": 1250000,
+        "currency": "IDR",
+        "due_date": None,
+        "invoice_date": None,
+        "invoice_number": None,
+        "category": "Operations",
+        "confidence": {"overall": 0.5, "vendor_name": 0.5, "amount": 0.6, "due_date": 0.3, "category": 0.4},
+        "warnings": ["Bill scanning provider not configured - showing sample data."],
+        "raw_text_preview": None,
+    }
 
 def _decode_firestore_value(value: Dict[str, Any]) -> Any:
     if "stringValue" in value:
@@ -339,6 +480,40 @@ async def brain_chat(request: ChatRequest, _user=Depends(verify_firebase_token))
     answer = _build_answer(intent, message, period, transactions, bills, subscriptions, request.page_context or "global")
     related_records = [record for item in answer.get("insights", []) for record in item.get("evidence", [])][:10]
     return {"success": True, "intent": intent, "scope": FINANCE_SCOPE, "answer": answer, "related_records": related_records, "error": None}
+
+@app.post("/api/v1/ai/detect-document")
+async def detect_document(payload: Dict[str, Any], _user=Depends(verify_firebase_token)):
+    file_name = payload.get("file_name")
+    mime_type = payload.get("mime_type") or _guess_mime(file_name)
+    size_bytes = payload.get("size_bytes")
+    if size_bytes is not None:
+        try:
+            size_bytes = int(size_bytes)
+        except (TypeError, ValueError):
+            size_bytes = None
+    return _detect_document_type(file_name, mime_type, size_bytes)
+
+@app.post("/api/v1/bills/extract")
+async def extract_bill(payload: Dict[str, Any], _user=Depends(verify_firebase_token)):
+    file_base64 = payload.get("file_base64")
+    file_name = payload.get("file_name")
+    mime_type = payload.get("mime_type") or _guess_mime(file_name)
+    size_bytes = payload.get("size_bytes")
+    if not isinstance(file_base64, str) or not file_base64:
+        return {"ok": False, "error": {"code": "MISSING_FILE", "message": "file_base64 is required."}}
+    if mime_type not in {"image/jpeg", "image/png", "image/webp", "application/pdf"}:
+        return {"ok": False, "error": {"code": "UNSUPPORTED_MIME", "message": "Unsupported file type."}}
+    try:
+        numeric_size = int(size_bytes) if size_bytes is not None else 0
+    except (TypeError, ValueError):
+        numeric_size = 0
+    if numeric_size > DOCUMENT_MAX_FILE_BYTES or len(file_base64) > DOCUMENT_MAX_FILE_BYTES * 1.5:
+        return {"ok": False, "error": {"code": "FILE_TOO_LARGE", "message": "File is too large."}}
+    return {
+        "ok": True,
+        "extraction_source": "mock",
+        "data": _mock_bill_extraction(file_name),
+    }
 
 # Dev-only static file serving. In production, Netlify serves these directly.
 # Never enable this in production — it would expose .env and config files.

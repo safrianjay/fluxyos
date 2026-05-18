@@ -78,10 +78,10 @@
                 <span class="sidebar-text text-[13px] sidebar-hide">Overview</span>
             </a>
 
-            <button type="button" id="nav-fluxy-ai" class="nav-item nav-item-action flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium w-full justify-center lg:justify-start">
+            <a href="/ai" id="nav-fluxy-ai" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium w-full justify-center lg:justify-start">
                 <svg class="w-6 h-6 lg:w-5 lg:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                 <span class="sidebar-text text-[13px] sidebar-hide">Fluxy AI</span>
-            </button>
+            </a>
 
             <p class="section-label px-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-6 mb-2 sidebar-hide">Money Movement</p>
 
@@ -235,6 +235,7 @@
         const path = window.location.pathname;
         const pageIdMap = {
             'dashboard': 'nav-overview',
+            'ai': 'nav-fluxy-ai',
             'ledger': 'nav-ledger',
             'revenue-sync': 'nav-revenue-sync',
             'bill': 'nav-bills',
@@ -250,15 +251,6 @@
                 const icon = el.querySelector('svg');
                 if (icon) icon.classList.add('text-[#EA580C]');
             }
-        }
-
-        const fluxyAiButton = document.getElementById('nav-fluxy-ai');
-        if (fluxyAiButton) {
-            fluxyAiButton.onclick = () => {
-                if (typeof window.toggleFluxyAI === 'function') {
-                    window.toggleFluxyAI();
-                }
-            };
         }
 
         // Logout

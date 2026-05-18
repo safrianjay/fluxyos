@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Fluxy AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <aside id="sidebar" class="hidden w-[220px] bg-white text-[#1E2F4A] flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm">
+            <div class="flex items-center gap-4">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <div>
+                    <p class="text-[18px] font-bold text-gray-900 tracking-tight">Fluxy AI</p>
+                    <p class="hidden sm:block text-[12px] text-gray-500">Finance command center</p>
+                </div>
+            </div>
+            <div class="hidden sm:flex items-center gap-2 text-[12px] font-medium text-gray-500">
+                <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                Read-only assistant
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            <div class="max-w-5xl mx-auto min-h-full flex flex-col justify-center gap-6 py-6 lg:py-10">
+                <section class="space-y-3">
+                    <div>
+                        <h1 class="text-[34px] sm:text-[44px] leading-[1.05] font-semibold tracking-tight text-gray-950 max-w-3xl">
+                            Hi there, <span id="ai-user-name" class="text-[#EA580C]">there</span>
+                        </h1>
+                        <p class="mt-1 text-[28px] sm:text-[36px] leading-tight font-semibold tracking-tight text-gray-950 max-w-4xl">What would you like to understand about your finance?</p>
+                    </div>
+                    <p class="text-[15px] leading-relaxed text-gray-500 max-w-xl">Use a finance prompt below, or ask your own question about business health, bills, subscriptions, revenue, OpEx, and ledger quality.</p>
+                </section>
+
+                <section aria-labelledby="prompt-heading" class="space-y-4">
+                    <h2 id="prompt-heading" class="sr-only">Suggested prompts</h2>
+                    <div id="ai-prompt-grid" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
+                    <button id="ai-refresh-prompts" type="button" class="inline-flex items-center gap-2 text-[14px] font-medium text-gray-500 hover:text-[#EA580C] transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M20 9a8 8 0 0 0-13.66-4.66L4 6.68M4 15a8 8 0 0 0 13.66 4.66L20 17.32"></path></svg>
+                        Refresh prompts
+                    </button>
+                </section>
+
+                <section id="ai-response-area" class="hidden" aria-live="polite"></section>
+
+                <section class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden" aria-label="Fluxy AI composer">
+                    <form id="ai-command-form" class="flex flex-col">
+                        <label for="ai-command-input" class="sr-only">Ask Fluxy AI</label>
+                        <textarea id="ai-command-input" maxlength="1000" rows="5" placeholder="Ask about revenue, OpEx, bills, subscriptions, receipts, or ledger quality..." class="w-full resize-none border-0 px-5 pt-5 pb-3 text-[16px] leading-relaxed text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"></textarea>
+                        <div id="ai-file-preview" class="hidden mx-5 mb-4"></div>
+                        <div id="ai-drop-zone" class="hidden mx-5 mb-4 rounded-xl border border-dashed border-gray-300 px-4 py-4 text-center text-[13px] font-medium text-gray-500">
+                            Drop your finance document here
+                        </div>
+                        <div id="ai-composer-error" class="hidden mx-5 mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] font-medium text-red-700"></div>
+                        <div class="border-t border-gray-100 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <input id="ai-file-input" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.csv,image/jpeg,image/png,image/webp,application/pdf,text/csv" class="hidden">
+                                <input id="ai-image-input" type="file" accept="image/jpeg,image/png,image/webp" class="hidden">
+                                <button id="ai-attach-btn" type="button" class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-bold text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">
+                                    <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m7-7H5"></path></svg>
+                                    Add attachment
+                                </button>
+                                <button id="ai-image-btn" type="button" class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-bold text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">
+                                    <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m3 16 5-5 4 4 3-3 6 6M5 5h14v14H5z"></path></svg>
+                                    Use image
+                                </button>
+                            </div>
+                            <div class="flex items-center justify-between sm:justify-end gap-3">
+                                <span id="ai-char-count" class="text-[13px] font-medium text-gray-500">0/1000</span>
+                                <button id="ai-send-btn" type="submit" class="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#0B0F19] text-white shadow-sm transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0" aria-label="Send to Fluxy AI">
+                                    <svg class="w-5 h-5 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <div id="scan-drawer-backdrop" class="fixed inset-0 bg-black/30 z-40 hidden"></div>
+    <div id="scan-drawer" class="fixed top-0 right-0 h-full w-full max-w-[480px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div>
+                <h2 id="scan-drawer-title" class="text-[15px] font-bold text-gray-900">Review Document</h2>
+                <p id="scan-drawer-subtitle" class="text-[12px] text-gray-400 mt-0.5">FluxyOS will extract the key details for review before anything is saved.</p>
+            </div>
+            <button id="scan-drawer-close-btn" type="button" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0" aria-label="Close scanner">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div id="scan-drawer-content" class="flex-1 overflow-y-auto px-6 py-5" data-step="upload"></div>
+        <div id="scan-drawer-footer" class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0"></div>
+    </div>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/date-range-picker.js"></script>
+    <script src="assets/js/document-capture.js"></script>
+    <script src="assets/js/ai-command-center.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.firebaseapp.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
+            measurementId: "G-ZN7J6DRD2L"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        window.__fluxyBillsContext = { app, auth, ds };
+        window.__fluxyTxContext = { app, auth, ds };
+        window.__fluxyAICommandContext = { app, auth, ds };
+        window.dispatchEvent(new CustomEvent('fluxy-ai-context-ready', { detail: { app, auth, ds } }));
+
+        let authTimeout = setTimeout(() => {
+            window.location.replace('/login');
+        }, 2000);
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                clearTimeout(authTimeout);
+                window.FluxyAICommandCenter?.setUser(user);
+            } else {
+                window.FluxyAICommandCenter?.setUser(null);
+            }
+        });
+    </script>
+</body>
+</html>

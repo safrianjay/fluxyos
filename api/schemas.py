@@ -32,7 +32,7 @@ class ChatPeriod(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    page_context: Optional[Literal["dashboard", "ledger", "bills", "subscriptions", "revenue_sync", "global"]] = "global"
+    page_context: Optional[Literal["dashboard", "ledger", "bills", "subscriptions", "revenue_sync", "ai_command_center", "global"]] = "global"
     period: Optional[ChatPeriod] = None
 
 class ChatAnswerPeriod(BaseModel):
