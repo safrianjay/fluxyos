@@ -189,15 +189,7 @@
     .onboarding-content { padding: 24px 20px; }
 }
 
-.onboarding-content-head {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 16px;
-    margin-bottom: 32px;
-    min-height: 28px;
-}
-.onboarding-content-head-spacer { flex: 1; }
+/* (content-head removed — Save and finish later now lives in the action bar) */
 
 .onboarding-step-pill {
     display: inline-flex;
@@ -405,7 +397,11 @@
     padding-top: 32px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.onboarding-actions .onboarding-link {
+    margin-right: 4px;
 }
 .onboarding-actions-spacer { flex: 1; }
 .onboarding-btn {
