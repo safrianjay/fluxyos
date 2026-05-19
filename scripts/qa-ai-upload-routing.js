@@ -35,7 +35,19 @@ const cases = [
         expected: 'receipt',
     },
     {
-        name: 'Invoice number is bill-specific evidence',
+        name: 'POS tax invoice wording still routes to Ledger when it is a paid receipt',
+        input: {
+            document_type: 'invoice',
+            vendor_name: 'Starbucks',
+            amount: 58000,
+            invoice_number: 'BILL-7788',
+            due_date: null,
+            raw_text_preview: 'Starbucks Coffee Tax Invoice Bill No 7788 Cashier 02 Total Paid Rp 58.000',
+        },
+        expected: 'receipt',
+    },
+    {
+        name: 'Invoice number without receipt signals is bill evidence',
         input: {
             document_type: 'invoice',
             vendor_name: 'Cloud Vendor',

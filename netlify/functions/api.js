@@ -1497,21 +1497,29 @@ function validateMappedFields(destination, mapped) {
 function billEvidenceFromExtraction(extracted) {
     const documentType = String(extracted?.document_type || '').toLowerCase();
     const text = `${extracted?.raw_text_preview || ''}`.toLowerCase();
-    return Boolean(
-        extracted?.invoice_number ||
+    const hasPaymentDueSignal = Boolean(
         extracted?.due_date ||
-        ['bill', 'invoice', 'payment_request'].includes(documentType) && /(invoice|bill|amount due|due date|pay before|jatuh tempo|tagihan|faktur)/.test(text)
+        /(amount due|payment due|due date|pay before|pay by|jatuh tempo|batas pembayaran|tagihan jatuh tempo)/.test(text)
+    );
+    const hasReceiptSignal = receiptEvidenceFromExtraction(extracted);
+    if (hasPaymentDueSignal) return true;
+    if (hasReceiptSignal) return false;
+    return Boolean(
+        extracted?.invoice_number &&
+        ['bill', 'invoice', 'payment_request'].includes(documentType)
     );
 }
 
 function receiptEvidenceFromExtraction(extracted) {
     const documentType = String(extracted?.document_type || '').toLowerCase();
-    return documentType === 'receipt' || Boolean(extracted?.vendor_name && extracted?.amount && !extracted?.invoice_number && !extracted?.due_date);
+    const text = `${extracted?.raw_text_preview || ''}`.toLowerCase();
+    const hasReceiptText = /(receipt|struk|nota|kuitansi|paid|cashier|kasir|change|total paid|payment received|tax invoice|bill no|order no|transaction)/.test(text);
+    return documentType === 'receipt' || Boolean(extracted?.vendor_name && extracted?.amount && !extracted?.due_date && (hasReceiptText || !extracted?.invoice_number));
 }
 
 function classifyAmbiguousExtraction(extracted) {
-    if (billEvidenceFromExtraction(extracted)) return 'bill';
     if (receiptEvidenceFromExtraction(extracted)) return 'receipt';
+    if (billEvidenceFromExtraction(extracted)) return 'bill';
     return 'unknown';
 }
 
@@ -1547,10 +1555,10 @@ async function inputFromFile(event, headers) {
             try {
                 extracted = sanitizeExtraction(await callOpenAIVision({ file_base64, mime_type: normalizedMime, file_name }));
                 providerState = 'openai';
-                const ambiguousClassification = detection.detected_type === 'unknown_financial_document'
+                const providerClassification = ['bill', 'invoice', 'unknown_financial_document'].includes(detection.detected_type)
                     ? classifyAmbiguousExtraction(extracted)
                     : null;
-                if (ambiguousClassification === 'bill') {
+                if (providerClassification === 'bill') {
                     detection = detectionPayload({
                         detectedType: 'invoice',
                         confidence: Math.max(Number(extracted.confidence?.overall || 0), 0.76),
@@ -1561,7 +1569,7 @@ async function inputFromFile(event, headers) {
                         warnings: ['Review the extracted fields before saving. No ledger transaction will be created.'],
                         preview: { vendor_name: extracted.vendor_name || cleanFileStem(file_name) },
                     });
-                } else if (ambiguousClassification === 'receipt') {
+                } else if (providerClassification === 'receipt') {
                     extracted.transaction_date = extracted.invoice_date || null;
                     detection = detectionPayload({
                         detectedType: 'receipt',
