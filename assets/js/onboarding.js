@@ -163,11 +163,27 @@ function renderRail() {
 }
 
 // ---------- Step display ----------
-function showStep() {
+function showStep(direction = 'forward') {
     document.querySelectorAll('.onboarding-step').forEach((el) => { el.hidden = true; });
     const step = STEPS[state.stepIndex];
     const stepEl = document.querySelector(`.onboarding-step[data-step="${step.key}"]`);
-    if (stepEl) stepEl.hidden = false;
+    if (stepEl) {
+        stepEl.hidden = false;
+        // Contained slide + fade animation inside the right card.
+        // Forward = next step rises from below; backward = previous step
+        // settles in from above. Respect reduced-motion preference.
+        const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!reduced && stepEl.animate) {
+            const fromY = direction === 'backward' ? -28 : 28;
+            stepEl.animate(
+                [
+                    { opacity: 0, transform: `translateY(${fromY}px)` },
+                    { opacity: 1, transform: 'translateY(0)' }
+                ],
+                { duration: 380, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }
+            );
+        }
+    }
 
     document.getElementById('btn-back').hidden = state.stepIndex === 0;
     const isReview = state.stepIndex === STEPS.length - 1;
@@ -269,15 +285,13 @@ async function onContinue() {
         eligible_for_onboarding_gate: true
     }).catch(() => {});
 
-    showStep();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showStep('forward');
 }
 
 function onBack() {
     if (state.stepIndex === 0) return;
     state.stepIndex -= 1;
-    showStep();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showStep('backward');
 }
 
 async function onSaveLater() {
