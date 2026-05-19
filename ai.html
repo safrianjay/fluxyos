@@ -58,6 +58,22 @@
             line-height: 1.16;
         }
 
+        #ai-session-title[contenteditable="true"] {
+            min-width: min(48vw, 420px);
+            max-width: min(62vw, 640px);
+            border-radius: 8px;
+            outline: none;
+        }
+
+        #ai-session-title[contenteditable="true"]:hover {
+            background: #F9FAFB;
+        }
+
+        #ai-session-title[contenteditable="true"]:focus {
+            background: #FFFFFF;
+            box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.18);
+        }
+
         .ai-history-divider {
             display: flex;
             align-items: center;
@@ -168,7 +184,12 @@
                     </button>
                     <div class="min-w-0">
                         <p class="text-[12px] font-medium leading-none text-gray-500">Fluxy AI</p>
-                        <h1 id="ai-session-title" class="mt-1 truncate text-[16px] font-semibold leading-none text-gray-950">New AI chat</h1>
+                        <div class="mt-1 flex min-w-0 items-center gap-2">
+                            <h1 id="ai-session-title" contenteditable="true" spellcheck="false" role="textbox" aria-label="Edit AI chat title" class="truncate px-1 -mx-1 text-[16px] font-semibold leading-tight text-gray-950">New AI chat</h1>
+                            <button id="ai-session-title-save" type="button" class="hidden flex-shrink-0 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-bold text-gray-600 shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-[#EA580C]">
+                                Save
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

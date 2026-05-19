@@ -83,6 +83,9 @@
         greetingIndex: 0,
         historyChats: [],
         historyExpanded: false,
+        titleBeforeEdit: '',
+        titleDirty: false,
+        titleSaving: false,
     };
 
     const els = {};
@@ -116,6 +119,7 @@
         els.promptGrid = document.getElementById('ai-prompt-grid');
         els.refreshPrompts = document.getElementById('ai-refresh-prompts');
         els.sessionTitle = document.getElementById('ai-session-title');
+        els.sessionTitleSave = document.getElementById('ai-session-title-save');
         els.backHome = document.getElementById('ai-back-home');
         els.newChat = document.getElementById('ai-new-chat');
         els.responseArea = document.getElementById('ai-response-area');
@@ -159,6 +163,27 @@
         els.form?.addEventListener('submit', submitComposer);
         els.backHome?.addEventListener('click', () => renderHome({ updateRoute: true }));
         els.newChat?.addEventListener('click', () => renderHome({ updateRoute: true }));
+        els.sessionTitle?.addEventListener('focus', () => {
+            state.titleBeforeEdit = getSessionTitleText();
+        });
+        els.sessionTitle?.addEventListener('input', markSessionTitleDirty);
+        els.sessionTitle?.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                saveSessionTitle();
+            }
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setSessionTitleText(state.titleBeforeEdit || state.currentChat?.title || 'AI chat', { force: true });
+                els.sessionTitle?.blur();
+            }
+        });
+        els.sessionTitle?.addEventListener('paste', (event) => {
+            event.preventDefault();
+            const text = event.clipboardData?.getData('text/plain') || '';
+            document.execCommand('insertText', false, text.replace(/\s+/g, ' ').slice(0, 90));
+        });
+        els.sessionTitleSave?.addEventListener('click', saveSessionTitle);
         els.historySeeMore?.addEventListener('click', () => {
             state.historyExpanded = true;
             renderRecentChats(state.historyChats);
@@ -415,7 +440,7 @@
         els.newChat?.classList.add('inline-flex');
         els.responseArea?.classList.remove('hidden');
         els.historySection?.classList.add('hidden');
-        if (els.sessionTitle) els.sessionTitle.textContent = title || 'AI chat';
+        setSessionTitleText(title || 'AI chat', { force: true });
         if (!els.chatThread) {
             els.responseArea.innerHTML = '<div id="ai-chat-thread" class="space-y-5"></div><div id="ai-session-prompt-chips" class="mt-5 flex flex-wrap gap-2"></div>';
             els.chatThread = document.getElementById('ai-chat-thread');
@@ -799,7 +824,7 @@
         };
         await ds.updateAIChatMeta(state.user.uid, state.currentChatId, patch);
         state.currentChat = { ...(state.currentChat || {}), ...patch, id: state.currentChatId };
-        if (els.sessionTitle) els.sessionTitle.textContent = patch.title;
+        setSessionTitleText(patch.title);
     }
 
     async function saveAssistantMessage({ content, structured_answer, intent, title, summary }) {
@@ -822,7 +847,75 @@
         };
         await ds.updateAIChatMeta(state.user.uid, state.currentChatId, patch);
         state.currentChat = { ...(state.currentChat || {}), ...patch, id: state.currentChatId };
-        if (els.sessionTitle) els.sessionTitle.textContent = patch.title;
+        setSessionTitleText(patch.title);
+    }
+
+    function getSessionTitleText() {
+        return sanitizeSessionTitle(els.sessionTitle?.textContent || '');
+    }
+
+    function sanitizeSessionTitle(value) {
+        return String(value || '').replace(/\s+/g, ' ').trim().slice(0, 90);
+    }
+
+    function setSessionTitleText(title, options = {}) {
+        if (!els.sessionTitle) return;
+        if (state.titleDirty && !options.force) return;
+        const safeTitle = sanitizeSessionTitle(title) || 'AI chat';
+        els.sessionTitle.textContent = safeTitle;
+        els.sessionTitle.dataset.savedTitle = safeTitle;
+        state.titleBeforeEdit = safeTitle;
+        state.titleDirty = false;
+        updateTitleSaveState();
+    }
+
+    function markSessionTitleDirty() {
+        const current = getSessionTitleText();
+        const saved = sanitizeSessionTitle(els.sessionTitle?.dataset.savedTitle || state.currentChat?.title || 'AI chat');
+        state.titleDirty = Boolean(current && current !== saved);
+        updateTitleSaveState();
+    }
+
+    function updateTitleSaveState() {
+        if (!els.sessionTitleSave) return;
+        const show = state.titleDirty || state.titleSaving;
+        els.sessionTitleSave.classList.toggle('hidden', !show);
+        els.sessionTitleSave.disabled = state.titleSaving;
+        els.sessionTitleSave.textContent = state.titleSaving ? 'Saving...' : 'Save';
+    }
+
+    async function saveSessionTitle() {
+        if (state.titleSaving) return;
+        const title = getSessionTitleText();
+        if (!title) {
+            setSessionTitleText(state.currentChat?.title || state.titleBeforeEdit || 'AI chat', { force: true });
+            return;
+        }
+        const saved = sanitizeSessionTitle(els.sessionTitle?.dataset.savedTitle || state.currentChat?.title || 'AI chat');
+        if (title === saved) {
+            state.titleDirty = false;
+            updateTitleSaveState();
+            els.sessionTitle?.blur();
+            return;
+        }
+        const ds = getDataService();
+        if (!state.user || !state.currentChatId || !ds?.updateAIChatMeta) return;
+        state.titleSaving = true;
+        updateTitleSaveState();
+        try {
+            await ds.updateAIChatMeta(state.user.uid, state.currentChatId, { title });
+            state.currentChat = { ...(state.currentChat || {}), title, id: state.currentChatId };
+            setSessionTitleText(title, { force: true });
+            els.sessionTitle?.blur();
+            window.showToast?.('AI chat title saved.', 'success');
+        } catch (err) {
+            window.showToast?.('Could not save this chat title.', 'error');
+            state.titleDirty = true;
+            updateTitleSaveState();
+        } finally {
+            state.titleSaving = false;
+            updateTitleSaveState();
+        }
     }
 
     function serializeAttachment(file) {
@@ -983,6 +1076,7 @@
         const toneClass = {
             error: 'border-red-200 bg-red-50',
             warning: 'border-amber-200 bg-amber-50',
+            clarification: 'border-gray-200 bg-white ring-1 ring-amber-100',
             neutral: 'border-gray-200 bg-white',
         }[tone] || 'border-gray-200 bg-white';
         const markup = `
@@ -1140,6 +1234,7 @@
         const confidence = Number(answer.confidence);
         const hasConfidence = Number.isFinite(confidence);
         const lowConfidence = hasConfidence && confidence < 0.7;
+        const isClarification = answerType === 'clarification';
         const stateBadge = renderAnalystStateBadge(answerType, lowConfidence);
         const confidenceBadge = hasConfidence
             ? `<span class="rounded-full border ${lowConfidence ? 'border-amber-200 text-amber-700 bg-amber-50' : 'border-gray-200 text-gray-500 bg-white'} px-2.5 py-1 text-[11px] font-medium">${Math.round(confidence * 100)}% confidence</span>`
@@ -1168,13 +1263,13 @@
                         ${confidenceBadge}
                     </div>
                 </div>
-                <p class="mt-4 text-[17px] font-semibold leading-relaxed text-gray-950">${escapeHtml(answer.direct_answer || '')}</p>
+                <p class="mt-4 ${isClarification ? 'text-[15px] sm:text-[16px] font-medium leading-7 text-gray-900' : 'text-[17px] font-semibold leading-relaxed text-gray-950'}">${escapeHtml(answer.direct_answer || '')}</p>
                 ${keyNumbers}
                 ${insights}
                 ${limitations}
                 ${actions}
                 ${records}
-        `, answerType === 'refusal' || answerType === 'clarification' ? 'warning' : 'neutral');
+        `, answerType === 'clarification' ? 'clarification' : answerType === 'refusal' ? 'warning' : 'neutral');
         wireFollowUpActions(renderedId);
         renderSessionPromptChips(answer);
     }
@@ -1251,7 +1346,7 @@
             analysis: ['Analyst answer', 'border-green-200 bg-green-50 text-green-700'],
             lookup: ['Data lookup', 'border-blue-200 bg-blue-50 text-blue-700'],
             refusal: ['Finance scope only', 'border-amber-200 bg-amber-50 text-amber-700'],
-            clarification: ['Needs clarification', 'border-amber-200 bg-amber-50 text-amber-700'],
+            clarification: ['Needs clarification', 'border-amber-200 bg-white text-amber-700'],
         }[answerType] || ['Analyst answer', 'border-gray-200 bg-white text-gray-500'];
         return `<span class="rounded-full border px-2.5 py-1 text-[11px] font-semibold ${config[1]}">${config[0]}</span>`;
     }
