@@ -13,7 +13,11 @@ import {
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-export const ONBOARDING_RELEASE_CUTOFF = new Date("2026-05-20T00:00:00.000Z");
+// Set 24h before the actual deploy so brand-new signups whose UTC creation
+// timestamp lands just before midnight UTC of the deploy day are still caught
+// by the gate (Firebase records `creationTime` in UTC, so a Jakarta-time
+// "today" can be the previous UTC day).
+export const ONBOARDING_RELEASE_CUTOFF = new Date("2026-05-19T00:00:00.000Z");
 
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -67,6 +71,22 @@ export async function markLegacyExempt(userId) {
     }
 }
 
+async function clearStaleLegacyExempt(userId) {
+    // The user is now post-cutoff but was previously stamped with a stale
+    // legacy_exemption marker (e.g., cutoff was moved back after a too-tight
+    // initial value was deployed). Clear it so they go through onboarding.
+    try {
+        await setDoc(doc(getDb(), `users/${userId}/onboarding/progress`), {
+            onboarding_exempt: false,
+            eligible_for_onboarding_gate: true,
+            source: "onboarding_v2",
+            updated_at: serverTimestamp()
+        }, { merge: true });
+    } catch (err) {
+        // fail silent
+    }
+}
+
 export async function shouldGateUser(authUser) {
     if (!authUser?.uid) return false;
     if (!isNewUserAfterCutoff(authUser)) {
@@ -75,7 +95,13 @@ export async function shouldGateUser(authUser) {
     }
     const progress = await getOnboardingProgress(authUser.uid);
     if (progress?.onboarding_completed === true) return false;
-    if (progress?.onboarding_exempt === true) return false;
+    if (progress?.onboarding_exempt === true && progress?.source === 'legacy_exemption') {
+        // Self-heal: the cutoff now classifies this user as new, so any prior
+        // legacy_exemption stamp is stale. Clear it and gate the user.
+        clearStaleLegacyExempt(authUser.uid); // fire and forget
+    } else if (progress?.onboarding_exempt === true) {
+        return false;
+    }
     return true;
 }
 

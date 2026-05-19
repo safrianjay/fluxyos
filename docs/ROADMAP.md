@@ -29,7 +29,7 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | 4-step setup flow on `/onboarding` | ✅ Shipped | Business setup → Account owner → Finance setup → Review |
-| New-user detection via `ONBOARDING_RELEASE_CUTOFF = 2026-05-20T00:00:00.000Z` | ✅ Shipped | Users created before cutoff are exempt |
+| New-user detection via `ONBOARDING_RELEASE_CUTOFF = 2026-05-19T00:00:00.000Z` | ✅ Shipped | Users created before cutoff are exempt. Self-heals stale `legacy_exemption` markers if the cutoff is moved back. |
 | Dashboard gate on app pages for incomplete new users | ✅ Shipped | Contextual copy per page; no impact on legacy users |
 | Optional identity / business document upload | 🔧 Stub | UI present, no Firebase Storage upload yet; status always `not_uploaded` |
 | Sample-data mode after onboarding | 📋 Planned | "Explore sample data" routes to dashboard without seeding records |

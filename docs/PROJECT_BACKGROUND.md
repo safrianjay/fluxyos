@@ -157,7 +157,7 @@ summary); they do not write to Firestore.
 ### 4f. Onboarding — `users/{userId}/onboarding/{onboardingDoc}`
 
 User-scoped first-run setup. Applied **only to users created on/after
-`ONBOARDING_RELEASE_CUTOFF` (2026-05-20T00:00:00.000Z)**. Pre-cutoff users get a
+`ONBOARDING_RELEASE_CUTOFF` (2026-05-19T00:00:00.000Z)**. Pre-cutoff users get a
 silent `onboarding_exempt: true` marker on first login and are never gated or
 redirected.
 
