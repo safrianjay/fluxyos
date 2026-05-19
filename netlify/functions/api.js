@@ -15,17 +15,73 @@ const OPEX_TYPES = ['expense', 'fee', 'tax'];
 const OBLIGATION_OPEX_TYPES = [...OPEX_TYPES, 'pending_payable'];
 const PAID_STATUSES = ['completed', 'paid', 'reconciled', 'cancelled'];
 const AI_PROVIDER_TIMEOUT_MS = 5500;
-const SUPPORTED_INTENTS = [
-    'finance_health',
+const CATEGORY_NAMES = ['Marketing', 'Infrastructure', 'Operations', 'SaaS'];
+const MONTH_NAMES = {
+    january: 0, jan: 0,
+    february: 1, feb: 1,
+    march: 2, mar: 2,
+    april: 3, apr: 3,
+    may: 4,
+    june: 5, jun: 5,
+    july: 6, jul: 6,
+    august: 7, aug: 7,
+    september: 8, sep: 8, sept: 8,
+    october: 9, oct: 9,
+    november: 10, nov: 10,
+    december: 11, dec: 11,
+};
+const PLANNER_INTENTS = [
+    'business_health',
+    'period_performance',
     'revenue_analysis',
     'expense_analysis',
     'margin_analysis',
+    'vendor_analysis',
+    'category_analysis',
+    'bills_analysis',
+    'subscription_analysis',
+    'ledger_quality',
+    'cash_pressure',
+    'comparison',
+    'recommendation',
+    'lookup',
+    'unsupported',
+    'ambiguous',
+];
+const ALLOWED_FINANCE_TOOLS = [
+    'get_period_performance',
+    'get_finance_summary',
+    'get_revenue_analysis',
+    'get_expense_analysis',
+    'get_margin_analysis',
+    'get_bills_analysis',
+    'get_subscription_analysis',
+    'get_ledger_quality',
+    'get_vendor_analysis',
+    'get_category_analysis',
+    'get_cash_pressure',
+    'compare_periods',
+    'search_finance_records',
+];
+const SUPPORTED_INTENTS = [
+    'finance_health',
+    'business_health',
+    'period_performance',
+    'revenue_analysis',
+    'expense_analysis',
+    'margin_analysis',
+    'vendor_analysis',
+    'category_analysis',
     'bills_analysis',
     'subscription_analysis',
     'ledger_cleanup',
+    'ledger_quality',
     'cash_pressure',
     'data_lookup',
+    'lookup',
     'action_recommendation',
+    'recommendation',
+    'comparison',
     'unsupported',
     'ambiguous',
 ];
@@ -571,6 +627,668 @@ function searchFinanceRecords(queryText, transactions, bills, subscriptions, per
     return { records: sortByAmountDesc(records).slice(0, limit).map(compactRecord), limitations: [] };
 }
 
+function startOfWeek(date) {
+    const result = new Date(date);
+    const day = result.getDay() || 7;
+    result.setDate(result.getDate() - day + 1);
+    return result;
+}
+
+function endOfWeek(date) {
+    return addDays(startOfWeek(date), 6);
+}
+
+function buildPeriod(type, label, start, end) {
+    return { type, label, start_date: toDateKey(start), end_date: toDateKey(end) };
+}
+
+function monthLabel(monthIndex, year) {
+    return `${Object.keys(MONTH_NAMES).find(key => MONTH_NAMES[key] === monthIndex && key.length > 3) || 'Month'} ${year}`.replace(/^([a-z])/, m => m.toUpperCase());
+}
+
+function monthPeriod(year, monthIndex) {
+    const start = new Date(year, monthIndex, 1);
+    const end = new Date(year, monthIndex + 1, 0);
+    return buildPeriod('month', monthLabel(monthIndex, year), start, end);
+}
+
+function quarterPeriod(year, quarter) {
+    const startMonth = (quarter - 1) * 3;
+    const start = new Date(year, startMonth, 1);
+    const end = new Date(year, startMonth + 3, 0);
+    return buildPeriod('quarter', `Q${quarter} ${year}`, start, end);
+}
+
+function yearPeriod(year, label = `${year}`) {
+    return buildPeriod('year', label, new Date(year, 0, 1), new Date(year, 11, 31));
+}
+
+function previousEquivalentPeriod(period) {
+    const start = parseDateKey(period.start_date);
+    const end = parseDateKey(period.end_date);
+    if (!start || !end) return null;
+    if (period.type === 'default' || period.type === 'this_month') return monthPeriod(start.getFullYear(), start.getMonth() - 1);
+    if (period.type === 'month') return monthPeriod(start.getFullYear(), start.getMonth() - 1);
+    if (period.type === 'quarter') {
+        const currentQuarter = Math.floor(start.getMonth() / 3) + 1;
+        const previousQuarter = currentQuarter === 1 ? 4 : currentQuarter - 1;
+        const year = currentQuarter === 1 ? start.getFullYear() - 1 : start.getFullYear();
+        return quarterPeriod(year, previousQuarter);
+    }
+    if (period.type === 'year') return yearPeriod(start.getFullYear() - 1, `${start.getFullYear() - 1}`);
+    const days = Math.max(1, Math.round((end - start) / 86400000) + 1);
+    const previousEnd = addDays(start, -1);
+    const previousStart = addDays(previousEnd, -(days - 1));
+    return buildPeriod('previous_equivalent', 'Previous equivalent period', previousStart, previousEnd);
+}
+
+function parsePeriodFromMessage(message, currentDate = todayJakarta()) {
+    const msg = normalizeText(message);
+    const currentYear = currentDate.getFullYear();
+    const monthPattern = Object.keys(MONTH_NAMES).join('|');
+    if (/\bthan\s+last\s+month\b/.test(msg)) {
+        const current = getDefaultPeriod();
+        const currentStart = parseDateKey(current.start_date);
+        return {
+            period: { ...current, type: 'default' },
+            comparison_period: monthPeriod(currentStart.getFullYear(), currentStart.getMonth() - 1),
+        };
+    }
+    const monthYearRegex = new RegExp(`\\b(${monthPattern})\\s+(20\\d{2})\\b`, 'gi');
+    const monthMatches = [...String(message || '').matchAll(monthYearRegex)]
+        .map(match => ({ month: MONTH_NAMES[match[1].toLowerCase()], year: Number(match[2]), text: match[0] }));
+    if (monthMatches.length >= 2 && (msg.includes('compare') || msg.includes(' vs ') || msg.includes(' versus ') || msg.includes(' and '))) {
+        return {
+            period: monthPeriod(monthMatches[0].year, monthMatches[0].month),
+            comparison_period: monthPeriod(monthMatches[1].year, monthMatches[1].month),
+        };
+    }
+    const qMatch = msg.match(/\bq([1-4])\s+(20\d{2})\b/);
+    if (qMatch) return { period: quarterPeriod(Number(qMatch[2]), Number(qMatch[1])), comparison_period: null };
+    const fromTo = msg.match(new RegExp(`\\bfrom\\s+(${monthPattern})\\s+to\\s+(${monthPattern})\\s+(20\\d{2})\\b`));
+    if (fromTo) {
+        const startMonth = MONTH_NAMES[fromTo[1]];
+        const endMonth = MONTH_NAMES[fromTo[2]];
+        return {
+            period: buildPeriod('custom', `${monthLabel(startMonth, Number(fromTo[3]))} to ${monthLabel(endMonth, Number(fromTo[3]))}`, new Date(Number(fromTo[3]), startMonth, 1), new Date(Number(fromTo[3]), endMonth + 1, 0)),
+            comparison_period: null,
+        };
+    }
+    if (monthMatches.length) return { period: monthPeriod(monthMatches[0].year, monthMatches[0].month), comparison_period: null };
+    const monthOnlyRegex = new RegExp(`\\b(${monthPattern})\\b`, 'i');
+    const monthOnly = msg.match(monthOnlyRegex);
+    if (monthOnly && !['may'].includes(monthOnly[1])) return { period: monthPeriod(currentYear, MONTH_NAMES[monthOnly[1]]), comparison_period: null };
+    if (msg.includes('last 7 days')) return { period: buildPeriod('rolling', 'Last 7 days', addDays(currentDate, -6), currentDate), comparison_period: null };
+    if (msg.includes('last 30 days')) return { period: buildPeriod('rolling', 'Last 30 days', addDays(currentDate, -29), currentDate), comparison_period: null };
+    if (msg.includes('this week')) return { period: buildPeriod('rolling', 'This week', startOfWeek(currentDate), endOfWeek(currentDate)), comparison_period: null };
+    if (msg.includes('next week')) return { period: buildPeriod('rolling', 'Next week', addDays(startOfWeek(currentDate), 7), addDays(endOfWeek(currentDate), 7)), comparison_period: null };
+    if (msg.includes('last week')) return { period: buildPeriod('rolling', 'Last week', addDays(startOfWeek(currentDate), -7), addDays(endOfWeek(currentDate), -7)), comparison_period: null };
+    if (msg.includes('this year')) return { period: yearPeriod(currentYear, 'This year'), comparison_period: null };
+    if (msg.includes('last year')) return { period: yearPeriod(currentYear - 1, 'Last year'), comparison_period: null };
+    const normalized = normalizePeriod(null, message);
+    const explicitPrevious = inferPeriodTypeFromMessage(message) === 'last_month';
+    return { period: { ...normalized, type: explicitPrevious ? 'month' : 'default' }, comparison_period: null };
+}
+
+function extractAmountThreshold(message) {
+    const msg = normalizeText(message).replace(/rp\s*/g, 'rp ');
+    const match = msg.match(/\b(?:above|over|more than|greater than|di atas|lebih dari)\s+rp?\s*([\d.,]+)/i);
+    if (!match) return null;
+    const amount = Number(String(match[1]).replace(/[^\d]/g, ''));
+    return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+function extractEntitiesAndFilters(message) {
+    const raw = String(message || '');
+    const msg = normalizeText(raw);
+    const filters = {
+        vendor_name: null,
+        category: null,
+        transaction_type: null,
+        status: null,
+        amount_min: extractAmountThreshold(message),
+        amount_max: null,
+        due_window_days: detectWindowDays(message),
+    };
+    const entities = [];
+    const category = CATEGORY_NAMES.find(item => msg.includes(item.toLowerCase()));
+    if (category || msg.includes('saas')) {
+        filters.category = category || 'SaaS';
+        entities.push({ type: 'category', value: filters.category });
+    }
+    if (msg.includes('missing receipt')) {
+        filters.status = 'Missing Receipt';
+        entities.push({ type: 'status', value: 'Missing Receipt' });
+    } else if (msg.includes('unpaid')) {
+        filters.status = 'unpaid';
+        entities.push({ type: 'bill_status', value: 'unpaid' });
+    } else if (msg.includes('overdue')) {
+        filters.status = 'overdue';
+        entities.push({ type: 'bill_status', value: 'overdue' });
+    }
+    if (msg.includes('expense') || msg.includes('spend') || msg.includes('opex') || msg.includes('cost')) filters.transaction_type = 'expense';
+    if (msg.includes('revenue') || msg.includes('income') || msg.includes('sales')) filters.transaction_type = 'income';
+    if (filters.amount_min) entities.push({ type: 'amount_threshold', value: String(filters.amount_min) });
+    const vendorMatch = raw.match(/\b(?:spend|spent|pay|paid|transactions?|records?|bills?)\s+(?:on|to|from|for)\s+([A-Za-z0-9&.\- ]{2,48})/i);
+    if (vendorMatch) {
+        let vendor = vendorMatch[1].replace(/\b(in|this|last|previous|prior|month|week|year|january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|october|oct|november|nov|december|dec|q[1-4])\b.*$/i, '').trim();
+        vendor = vendor.replace(/[?.!,]+$/g, '').trim();
+        const genericVendorWords = ['subscription', 'subscriptions', 'saas', 'bill', 'bills', 'transaction', 'transactions', 'record', 'records', 'expense', 'expenses', 'opex', 'cost', 'revenue', 'income', 'sales'];
+        if (vendor && !genericVendorWords.includes(vendor.toLowerCase()) && !CATEGORY_NAMES.some(item => item.toLowerCase() === vendor.toLowerCase())) {
+            filters.vendor_name = vendor;
+            entities.push({ type: 'vendor', value: vendor });
+        }
+    }
+    return { entities, filters };
+}
+
+function scopeGuard(message) {
+    const msg = normalizeText(message);
+    const financeHints = [
+        'finance', 'business', 'revenue', 'income', 'sales', 'expense', 'spend', 'spent',
+        'opex', 'cost', 'bill', 'payable', 'subscription', 'saas', 'ledger',
+        'transaction', 'receipt', 'margin', 'profit', 'cash', 'vendor', 'category',
+        'performance', 'records', 'data', 'fluxyos',
+    ];
+    const unsupportedPatterns = [
+        'president', 'politic', 'election', 'medical', 'doctor', 'diagnosis', 'dating',
+        'relationship', 'crypto market', 'bitcoin', 'stock pick', 'stock to buy',
+        'investment advice', 'legal advice', 'tax filing', 'weather', 'sports',
+        'dating profile', 'medical advice',
+    ];
+    if (unsupportedPatterns.some(pattern => msg.includes(pattern))) {
+        return { supported: false, reason: 'outside_fluxyos_finance_scope' };
+    }
+    if (msg.startsWith('who is') && !financeHints.some(hint => msg.includes(hint))) {
+        return { supported: false, reason: 'outside_fluxyos_finance_scope' };
+    }
+    return { supported: true, reason: null };
+}
+
+function toolsForIntent(intent) {
+    const map = {
+        business_health: ['get_finance_summary', 'get_bills_analysis', 'get_ledger_quality', 'get_subscription_analysis'],
+        period_performance: ['get_period_performance', 'get_expense_analysis', 'get_bills_analysis', 'get_ledger_quality'],
+        revenue_analysis: ['get_revenue_analysis', 'get_finance_summary'],
+        expense_analysis: ['get_expense_analysis', 'get_finance_summary'],
+        margin_analysis: ['get_margin_analysis', 'get_finance_summary'],
+        vendor_analysis: ['get_vendor_analysis', 'search_finance_records'],
+        category_analysis: ['get_category_analysis', 'get_expense_analysis'],
+        bills_analysis: ['get_bills_analysis'],
+        subscription_analysis: ['get_subscription_analysis'],
+        ledger_quality: ['get_ledger_quality'],
+        cash_pressure: ['get_cash_pressure', 'get_bills_analysis', 'get_finance_summary'],
+        comparison: ['compare_periods'],
+        recommendation: ['get_finance_summary', 'get_expense_analysis', 'get_bills_analysis', 'get_ledger_quality', 'get_subscription_analysis'],
+        lookup: ['search_finance_records'],
+    };
+    return map[intent] || [];
+}
+
+function collectionsForTools(tools) {
+    const needed = new Set();
+    tools.forEach(tool => {
+        if (['get_period_performance', 'get_finance_summary', 'get_revenue_analysis', 'get_expense_analysis', 'get_margin_analysis', 'get_ledger_quality', 'get_vendor_analysis', 'get_category_analysis', 'get_cash_pressure', 'compare_periods', 'search_finance_records'].includes(tool)) needed.add('transactions');
+        if (['get_period_performance', 'get_finance_summary', 'get_bills_analysis', 'get_vendor_analysis', 'get_cash_pressure', 'compare_periods', 'search_finance_records'].includes(tool)) needed.add('bills');
+        if (['get_finance_summary', 'get_subscription_analysis', 'get_vendor_analysis', 'compare_periods', 'search_finance_records'].includes(tool)) needed.add('subscriptions');
+    });
+    return [...needed];
+}
+
+function planFinanceQuestion(message, currentDate, pageContext = 'global') {
+    const guard = scopeGuard(message);
+    const { period, comparison_period: explicitComparison } = parsePeriodFromMessage(message, currentDate);
+    const { entities, filters } = extractEntitiesAndFilters(message);
+    if (!guard.supported) {
+        return buildQuestionPlan({ is_supported: false, unsupported_reason: guard.reason, intent: 'unsupported', question_type: 'refusal', period, entities, filters });
+    }
+    const msg = normalizeText(message);
+    let intent = 'business_health';
+    let questionType = 'analysis';
+    const wantsComparison = /\b(compare|vs|versus|better than|worse than|changed|change|down|up|increase|increased|decrease|decreased|improve|improved)\b/.test(msg);
+    const isLookupPhrase = /\b(show|find|list)\b/.test(msg);
+    if (!msg || (/\b(hello|hi|hey|test)\b/.test(msg) && msg.length < 16)) {
+        intent = 'ambiguous';
+        questionType = 'clarification';
+    } else if (wantsComparison && explicitComparison) {
+        intent = 'comparison';
+        questionType = 'comparison';
+    } else if (wantsComparison && period.type !== 'default') {
+        intent = 'comparison';
+        questionType = 'comparison';
+    } else if (msg.includes('receipt') || msg.includes('cleanup') || msg.includes('clean up') || msg.includes('trust my ledger') || msg.includes('missing receipt') || msg.includes('reconcile') || msg.includes('incomplete')) {
+        intent = 'ledger_quality';
+        questionType = 'cleanup';
+    } else if (msg.includes('cash pressure') || msg.includes('cash runway') || msg.includes('enough cash') || msg.includes('cash risk') || msg.includes('cover upcoming') || msg.includes('can i cover') || msg.includes('cover my bills')) {
+        intent = 'cash_pressure';
+    } else if (msg.includes('bill') || msg.includes('payable') || msg.includes('due soon') || msg.includes('overdue') || msg.includes('pay this week')) {
+        intent = 'bills_analysis';
+    } else if (msg.includes('subscription') || msg.includes('renewal') || msg.includes('recurring')) {
+        intent = 'subscription_analysis';
+    } else if (filters.vendor_name) {
+        intent = 'vendor_analysis';
+    } else if (isLookupPhrase && (filters.amount_min || filters.status || msg.includes('transaction') || msg.includes('record'))) {
+        intent = 'lookup';
+        questionType = 'lookup';
+    } else if (msg.includes('margin') || msg.includes('profitable') || msg.includes('profitability')) {
+        intent = 'margin_analysis';
+    } else if (msg.includes('revenue') || msg.includes('income') || msg.includes('receivable') || msg.includes('sales')) {
+        intent = wantsComparison ? 'comparison' : 'revenue_analysis';
+    } else if (msg.includes('category') || msg.includes('categories')) {
+        intent = wantsComparison ? 'comparison' : 'expense_analysis';
+    } else if (filters.category) {
+        intent = 'category_analysis';
+    } else if (msg.includes('expense') || msg.includes('spend') || msg.includes('opex') || msg.includes('cost') || msg.includes('vendor')) {
+        intent = wantsComparison ? 'comparison' : 'expense_analysis';
+    } else if (msg.includes('what should i') || msg.includes('fix first') || msg.includes('needs attention') || msg.includes('biggest issue') || msg.includes('fastest finance') || msg.includes('losing money') || msg.includes('worry')) {
+        intent = 'recommendation';
+        questionType = 'recommendation';
+    } else if (isLookupPhrase) {
+        intent = 'lookup';
+        questionType = 'lookup';
+    } else if (period.type !== 'default' && (msg.includes('performance') || msg.includes('summarize') || msg.includes('summary') || msg.includes('how was') || msg.includes('how did'))) {
+        intent = 'period_performance';
+    } else if (pageContext === 'ledger') {
+        intent = 'ledger_quality';
+    } else if (pageContext === 'bills') {
+        intent = 'bills_analysis';
+    } else if (pageContext === 'subscriptions') {
+        intent = 'subscription_analysis';
+    } else if (pageContext === 'revenue_sync') {
+        intent = 'revenue_analysis';
+    }
+    let comparisonPeriod = explicitComparison;
+    if (!comparisonPeriod && (intent === 'comparison' || wantsComparison)) comparisonPeriod = previousEquivalentPeriod(period);
+    if (intent === 'comparison') questionType = 'comparison';
+    const tools = toolsForIntent(intent).filter(tool => ALLOWED_FINANCE_TOOLS.includes(tool));
+    return buildQuestionPlan({
+        is_supported: true,
+        intent,
+        question_type: questionType,
+        period,
+        comparison_period: comparisonPeriod,
+        entities,
+        filters,
+        tools_to_call: tools,
+        collections_needed: collectionsForTools(tools),
+    });
+}
+
+function buildQuestionPlan(overrides = {}) {
+    const tools = Array.isArray(overrides.tools_to_call) ? overrides.tools_to_call.filter(tool => ALLOWED_FINANCE_TOOLS.includes(tool)) : [];
+    return {
+        is_supported: overrides.is_supported !== false,
+        unsupported_reason: overrides.unsupported_reason || null,
+        intent: PLANNER_INTENTS.includes(overrides.intent) ? overrides.intent : 'ambiguous',
+        sub_intents: Array.isArray(overrides.sub_intents) ? overrides.sub_intents.slice(0, 4) : [],
+        question_type: overrides.question_type || 'analysis',
+        period: overrides.period || getDefaultPeriod(),
+        comparison_period: overrides.comparison_period || { type: 'none', label: '', start_date: '', end_date: '' },
+        entities: Array.isArray(overrides.entities) ? overrides.entities.slice(0, 6) : [],
+        filters: {
+            vendor_name: overrides.filters?.vendor_name || null,
+            category: overrides.filters?.category || null,
+            transaction_type: overrides.filters?.transaction_type || null,
+            status: overrides.filters?.status || null,
+            amount_min: Number.isFinite(overrides.filters?.amount_min) ? overrides.filters.amount_min : null,
+            amount_max: Number.isFinite(overrides.filters?.amount_max) ? overrides.filters.amount_max : null,
+            due_window_days: Number.isFinite(overrides.filters?.due_window_days) ? overrides.filters.due_window_days : null,
+        },
+        metrics_needed: Array.isArray(overrides.metrics_needed) ? overrides.metrics_needed.slice(0, 8) : [],
+        collections_needed: Array.isArray(overrides.collections_needed) ? overrides.collections_needed : collectionsForTools(tools),
+        tools_to_call: tools,
+        clarification_needed: Boolean(overrides.clarification_needed),
+        clarification_question: overrides.clarification_question || null,
+    };
+}
+
+function financePlanSchema() {
+    return {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+            is_supported: { type: 'boolean' },
+            unsupported_reason: { type: ['string', 'null'] },
+            intent: { type: 'string', enum: PLANNER_INTENTS },
+            sub_intents: { type: 'array', items: { type: 'string' } },
+            question_type: { type: 'string', enum: ['analysis', 'lookup', 'comparison', 'recommendation', 'cleanup', 'refusal', 'clarification'] },
+            period: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                    type: { type: 'string', enum: ['month', 'quarter', 'year', 'rolling', 'custom', 'default', 'none'] },
+                    label: { type: 'string' },
+                    start_date: { type: 'string' },
+                    end_date: { type: 'string' },
+                },
+                required: ['type', 'label', 'start_date', 'end_date'],
+            },
+            comparison_period: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                    type: { type: 'string', enum: ['month', 'quarter', 'year', 'rolling', 'custom', 'previous_equivalent', 'none'] },
+                    label: { type: 'string' },
+                    start_date: { type: 'string' },
+                    end_date: { type: 'string' },
+                },
+                required: ['type', 'label', 'start_date', 'end_date'],
+            },
+            entities: {
+                type: 'array',
+                items: {
+                    type: 'object',
+                    additionalProperties: false,
+                    properties: {
+                        type: { type: 'string', enum: ['vendor', 'category', 'status', 'amount_threshold', 'page', 'collection', 'bill_status', 'transaction_type'] },
+                        value: { type: 'string' },
+                    },
+                    required: ['type', 'value'],
+                },
+            },
+            filters: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                    vendor_name: { type: ['string', 'null'] },
+                    category: { type: ['string', 'null'] },
+                    transaction_type: { type: ['string', 'null'] },
+                    status: { type: ['string', 'null'] },
+                    amount_min: { type: ['number', 'null'] },
+                    amount_max: { type: ['number', 'null'] },
+                    due_window_days: { type: ['number', 'null'] },
+                },
+                required: ['vendor_name', 'category', 'transaction_type', 'status', 'amount_min', 'amount_max', 'due_window_days'],
+            },
+            metrics_needed: { type: 'array', items: { type: 'string' } },
+            collections_needed: { type: 'array', items: { type: 'string', enum: ['transactions', 'bills', 'subscriptions'] } },
+            tools_to_call: { type: 'array', items: { type: 'string', enum: ALLOWED_FINANCE_TOOLS } },
+            clarification_needed: { type: 'boolean' },
+            clarification_question: { type: ['string', 'null'] },
+        },
+        required: ['is_supported', 'unsupported_reason', 'intent', 'sub_intents', 'question_type', 'period', 'comparison_period', 'entities', 'filters', 'metrics_needed', 'collections_needed', 'tools_to_call', 'clarification_needed', 'clarification_question'],
+    };
+}
+
+function validatePlannerOutput(candidate, fallbackPlan) {
+    if (!candidate || typeof candidate !== 'object') return null;
+    if (!PLANNER_INTENTS.includes(candidate.intent)) return null;
+    if (fallbackPlan?.is_supported && candidate.intent === 'unsupported') return fallbackPlan;
+    const plan = buildQuestionPlan(candidate);
+    const fallbackHasExplicitPeriod = fallbackPlan?.period?.type && fallbackPlan.period.type !== 'default';
+    if (fallbackHasExplicitPeriod && (!plan.period?.type || plan.period.type === 'default')) {
+        plan.period = fallbackPlan.period;
+    }
+    if ((!plan.comparison_period || plan.comparison_period.type === 'none') && fallbackPlan?.comparison_period?.start_date) {
+        plan.comparison_period = fallbackPlan.comparison_period;
+    }
+    if (!plan.filters.vendor_name && fallbackPlan?.filters?.vendor_name) plan.filters.vendor_name = fallbackPlan.filters.vendor_name;
+    if (!plan.filters.category && fallbackPlan?.filters?.category) plan.filters.category = fallbackPlan.filters.category;
+    if (!plan.tools_to_call.length) {
+        plan.tools_to_call = toolsForIntent(plan.intent);
+        plan.collections_needed = collectionsForTools(plan.tools_to_call);
+    }
+    return plan;
+}
+
+async function callOpenAIQuestionPlanner({ message, pageContext, currentDate, deterministicPlan }) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) return null;
+    const model = process.env.OPENAI_FINANCE_MODEL || 'gpt-4o-mini';
+    const systemPrompt = `You are FluxyOS' backend finance question planner.
+Return only structured JSON. Classify only FluxyOS finance questions as supported.
+Select tools only from the allowed tool catalog. Do not create new tool names.
+Do not answer the user. Do not invent data. Extract period, comparison period, vendor/category/status/amount filters, and collections needed.`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), AI_PROVIDER_TIMEOUT_MS);
+    let res;
+    try {
+        res = await fetch('https://api.openai.com/v1/responses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+            signal: controller.signal,
+            body: JSON.stringify({
+                model,
+                input: [
+                    { role: 'system', content: [{ type: 'input_text', text: systemPrompt }] },
+                    {
+                        role: 'user',
+                        content: [{
+                            type: 'input_text',
+                            text: JSON.stringify({
+                                message,
+                                page_context: pageContext,
+                                current_date: toDateKey(currentDate),
+                                deterministic_baseline: deterministicPlan,
+                                allowed_tools: ALLOWED_FINANCE_TOOLS,
+                                allowed_intents: PLANNER_INTENTS,
+                            }),
+                        }],
+                    },
+                ],
+                text: {
+                    format: {
+                        type: 'json_schema',
+                        name: 'fluxy_finance_question_plan',
+                        schema: financePlanSchema(),
+                        strict: true,
+                    },
+                },
+            }),
+        });
+    } finally {
+        clearTimeout(timeout);
+    }
+    if (!res.ok) throw new Error(`OpenAI finance planner failed: ${res.status}`);
+    const payload = await res.json();
+    const text = extractResponseText(payload);
+    return text ? JSON.parse(text) : null;
+}
+
+function recordMatchesFilters(record, filters = {}) {
+    if (filters.vendor_name && !normalizeText(record.vendor_name).includes(normalizeText(filters.vendor_name))) return false;
+    if (filters.category && normalizeText(record.category) !== normalizeText(filters.category)) return false;
+    if (filters.transaction_type) {
+        const type = normalizeText(record.type);
+        if (filters.transaction_type === 'income' && !EXPECTED_REVENUE_TYPES.includes(type)) return false;
+        if (filters.transaction_type === 'expense' && !OBLIGATION_OPEX_TYPES.includes(type)) return false;
+    }
+    if (Number.isFinite(filters.amount_min) && Math.abs(Number(record.amount) || 0) < filters.amount_min) return false;
+    if (Number.isFinite(filters.amount_max) && Math.abs(Number(record.amount) || 0) > filters.amount_max) return false;
+    if (filters.status && filters.status !== 'unpaid' && filters.status !== 'overdue' && normalizeText(record.status) !== normalizeText(filters.status)) return false;
+    return true;
+}
+
+function filterTransactionsForPlan(transactions, period, filters = {}) {
+    return transactions.filter(tx => isWithinPeriod(tx, period) && recordMatchesFilters(tx, filters));
+}
+
+function filterBillsForPlan(bills, period, filters = {}) {
+    return bills.filter(bill => {
+        const dueDate = parseRecordDate(bill.due_date);
+        const withinPeriod = dueDate ? isWithinPeriod(bill, period, 'due_date') : true;
+        if (!withinPeriod) return false;
+        if (!recordMatchesFilters(bill, { ...filters, transaction_type: null })) return false;
+        if (filters.status === 'unpaid' && PAID_STATUSES.includes(normalizeText(bill.status))) return false;
+        if (filters.status === 'overdue') {
+            const today = todayJakarta();
+            if (!dueDate || dueDate >= today) return false;
+        }
+        return true;
+    });
+}
+
+function filterSubscriptionsForPlan(subscriptions, period, filters = {}) {
+    return subscriptions.filter(sub => {
+        if (filters.vendor_name && !normalizeText(sub.vendor_name).includes(normalizeText(filters.vendor_name))) return false;
+        if (filters.category && normalizeText(filters.category) !== 'saas' && normalizeText(sub.category) !== normalizeText(filters.category)) return false;
+        return true;
+    });
+}
+
+function getPeriodPerformance(transactions, bills, subscriptions, period, filters = {}) {
+    const scopedTransactions = filterTransactionsForPlan(transactions, period, filters);
+    const scopedBills = filterBillsForPlan(bills, period, filters);
+    const scopedSubscriptions = filterSubscriptionsForPlan(subscriptions, period, filters);
+    const summary = getFinanceSummary(scopedTransactions, period);
+    return {
+        ...summary,
+        bills_count: scopedBills.length,
+        subscriptions_count: scopedSubscriptions.length,
+        record_counts: {
+            transactions: scopedTransactions.length,
+            bills: scopedBills.length,
+            subscriptions: scopedSubscriptions.length,
+        },
+        related_records: sortByAmountDesc(scopedTransactions).slice(0, 5).map(compactRecord),
+    };
+}
+
+function getVendorAnalysis(vendorName, transactions, bills, subscriptions, period, filters = {}) {
+    const vendorFilter = { ...filters, vendor_name: vendorName };
+    const scopedTransactions = filterTransactionsForPlan(transactions, period, vendorFilter);
+    const scopedBills = filterBillsForPlan(bills, period, vendorFilter);
+    const scopedSubscriptions = filterSubscriptionsForPlan(subscriptions, period, vendorFilter);
+    const expenseRecords = scopedTransactions.filter(tx => OBLIGATION_OPEX_TYPES.includes(normalizeText(tx.type)));
+    const revenueRecords = scopedTransactions.filter(tx => EXPECTED_REVENUE_TYPES.includes(normalizeText(tx.type)));
+    const totalExpense = expenseRecords.reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
+    const totalRevenue = revenueRecords.reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
+    const totalBills = scopedBills.reduce((sum, bill) => sum + Math.abs(Number(bill.amount) || 0), 0);
+    const totalSubscriptions = scopedSubscriptions.reduce((sum, sub) => sum + Math.abs(Number(sub.amount) || 0), 0);
+    return {
+        vendor_name: vendorName,
+        total_expense: totalExpense,
+        total_revenue: totalRevenue,
+        total_bills: totalBills,
+        total_subscriptions: totalSubscriptions,
+        transaction_count: scopedTransactions.length,
+        bill_count: scopedBills.length,
+        subscription_count: scopedSubscriptions.length,
+        related_records: [
+            ...sortByAmountDesc(scopedTransactions).slice(0, 5).map(compactRecord),
+            ...sortByAmountDesc(scopedBills).slice(0, 3).map(record => compactRecord(record, 'due_date')),
+            ...sortByAmountDesc(scopedSubscriptions).slice(0, 3).map(record => compactRecord(record, 'renewal_date')),
+        ].slice(0, 8),
+        limitations: [],
+    };
+}
+
+function getCategoryAnalysis(category, transactions, period, filters = {}) {
+    const scopedTransactions = filterTransactionsForPlan(transactions, period, { ...filters, category });
+    const expenseRecords = scopedTransactions.filter(tx => OPEX_TYPES.includes(normalizeText(tx.type)));
+    const revenueRecords = scopedTransactions.filter(tx => REVENUE_TYPES.includes(normalizeText(tx.type)));
+    return {
+        category,
+        total_expense: expenseRecords.reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0),
+        total_revenue: revenueRecords.reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0),
+        transaction_count: scopedTransactions.length,
+        top_vendors: groupTotals(expenseRecords, tx => tx.vendor_name).slice(0, 5),
+        related_records: sortByAmountDesc(scopedTransactions).slice(0, 8).map(compactRecord),
+        limitations: [],
+    };
+}
+
+function comparePeriods(transactions, bills, subscriptions, period, comparisonPeriod, filters = {}) {
+    const current = getPeriodPerformance(transactions, bills, subscriptions, period, filters);
+    const previous = getPeriodPerformance(transactions, bills, subscriptions, comparisonPeriod, filters);
+    const revenueDelta = current.revenue - previous.revenue;
+    const opexDelta = current.opex - previous.opex;
+    return {
+        current_period: current,
+        comparison_period: previous,
+        deltas: {
+            revenue: revenueDelta,
+            revenue_percentage: previous.revenue > 0 ? (revenueDelta / previous.revenue) * 100 : null,
+            opex: opexDelta,
+            opex_percentage: previous.opex > 0 ? (opexDelta / previous.opex) * 100 : null,
+            gross_margin: current.gross_margin - previous.gross_margin,
+        },
+        limitations: previous.transaction_count === 0 ? ['Comparison period has no ledger records, so change percentages may be unavailable.'] : [],
+    };
+}
+
+function searchFinanceRecordsWithFilters(queryText, transactions, bills, subscriptions, period, filters = {}, limit = 10) {
+    const periodTransactions = period?.type === 'none'
+        ? transactions
+        : transactions.filter(tx => isWithinPeriod(tx, period));
+    const all = [
+        ...periodTransactions.map(record => ({ ...record, source: 'ledger' })),
+        ...bills.map(record => ({ ...record, source: 'bills' })),
+        ...subscriptions.map(record => ({ ...record, source: 'subscriptions' })),
+    ];
+    const terms = normalizeText(queryText).split(/\s+/).filter(term => term.length > 2 && !['show', 'find', 'list', 'what', 'which'].includes(term));
+    const records = all.filter(record => {
+        if (!recordMatchesFilters(record, filters)) return false;
+        if (filters.status === 'unpaid' && record.source === 'bills' && PAID_STATUSES.includes(normalizeText(record.status))) return false;
+        const haystack = [record.vendor_name, record.category, record.type, record.status, record.source].map(normalizeText).join(' ');
+        return terms.length ? terms.some(term => haystack.includes(term)) : true;
+    });
+    return { records: sortByAmountDesc(records).slice(0, limit).map(record => compactRecord(record, record.source === 'bills' ? 'due_date' : record.source === 'subscriptions' ? 'renewal_date' : 'timestamp')), limitations: [] };
+}
+
+function executeFinancePlan(plan, transactions, bills, subscriptions, message) {
+    const today = toDateKey(todayJakarta());
+    const windowDays = Number.isFinite(plan.filters.due_window_days) ? plan.filters.due_window_days : detectWindowDays(message);
+    const filteredTransactions = transactions.filter(record => recordMatchesFilters(record, plan.filters));
+    const filteredBills = bills.filter(record => recordMatchesFilters(record, { ...plan.filters, transaction_type: null }));
+    const filteredSubscriptions = subscriptions.filter(record => filterSubscriptionsForPlan([record], plan.period, plan.filters).length);
+    const billsAnalysis = getBillsAnalysis(filteredBills, today, windowDays);
+    const tools = {
+        periodPerformance: getPeriodPerformance(transactions, bills, subscriptions, plan.period, plan.filters),
+        financeSummary: getFinanceSummary(filteredTransactions, plan.period),
+        revenueAnalysis: getRevenueAnalysis(filteredTransactions, plan.period, normalizeText(message).includes('expected') || normalizeText(message).includes('pending receivable')),
+        expenseAnalysis: getExpenseAnalysis(filteredTransactions, plan.period),
+        marginAnalysis: getMarginAnalysis(filteredTransactions, plan.period),
+        billsAnalysis,
+        subscriptionAnalysis: getSubscriptionAnalysis(filteredSubscriptions, today, windowDays),
+        ledgerQuality: getLedgerQuality(filteredTransactions, plan.period),
+        cashPressure: getCashPressure(filteredTransactions, billsAnalysis, today, windowDays),
+        vendorAnalysis: plan.filters.vendor_name ? getVendorAnalysis(plan.filters.vendor_name, transactions, bills, subscriptions, plan.period, plan.filters) : null,
+        categoryAnalysis: plan.filters.category ? getCategoryAnalysis(plan.filters.category, transactions, plan.period, plan.filters) : null,
+        comparison: plan.comparison_period?.start_date ? comparePeriods(transactions, bills, subscriptions, plan.period, plan.comparison_period, plan.filters) : null,
+        searchResults: searchFinanceRecordsWithFilters(message, transactions, bills, subscriptions, plan.period, plan.filters, 10),
+    };
+    return tools;
+}
+
+function calculateDataCoverage(plan, tools) {
+    const counts = {
+        transactions: tools.periodPerformance?.record_counts?.transactions || 0,
+        bills: tools.periodPerformance?.record_counts?.bills || 0,
+        subscriptions: tools.periodPerformance?.record_counts?.subscriptions || 0,
+    };
+    let hasData = counts.transactions + counts.bills + counts.subscriptions > 0;
+    if (['revenue_analysis', 'expense_analysis', 'margin_analysis', 'period_performance', 'category_analysis'].includes(plan.intent)) hasData = counts.transactions > 0;
+    if (plan.intent === 'vendor_analysis') hasData = Boolean(tools.vendorAnalysis && (tools.vendorAnalysis.transaction_count + tools.vendorAnalysis.bill_count + tools.vendorAnalysis.subscription_count > 0));
+    if (plan.intent === 'bills_analysis') hasData = (tools.billsAnalysis?.total_unpaid_bills || 0) > 0 || counts.bills > 0;
+    if (plan.intent === 'subscription_analysis') hasData = (tools.subscriptionAnalysis?.subscription_count || 0) > 0;
+    if (plan.intent === 'ledger_quality') hasData = counts.transactions > 0;
+    if (plan.intent === 'lookup') hasData = (tools.searchResults?.records?.length || 0) > 0;
+    if (plan.intent === 'comparison') {
+        const current = tools.comparison?.current_period?.record_counts?.transactions || 0;
+        const previous = tools.comparison?.comparison_period?.record_counts?.transactions || 0;
+        hasData = current > 0 || previous > 0;
+    }
+    return {
+        has_data: hasData,
+        record_counts: counts,
+        warnings: hasData ? [] : ['No matching finance records were found for the selected scope.'],
+    };
+}
+
+function buildNoDataAnswer(plan) {
+    return {
+        ...baseAnswer(plan.intent, 'no_data', plan.period),
+        confidence: 1,
+        direct_answer: "I don't see finance records for the selected scope yet, so I can't calculate this accurately. Once revenue, expenses, bills, or subscriptions exist for that scope, I can summarize it.",
+        key_numbers: [],
+        insights: [],
+        recommended_actions: [action('Add or review finance records', 'Check the relevant FluxyOS table, then ask again once records exist for this period or filter.', 'medium')],
+        limitations: ['No matching records were found for the selected period, entity, or filter.'],
+        follow_up_questions: ['Summarize this month', 'Show missing receipts', 'Show upcoming bills'],
+    };
+}
+
 function keyNumber(label, value, status = 'neutral', formatter = formatIDR) {
     return { label, value, formatted_value: formatter(value), status };
 }
@@ -601,17 +1319,17 @@ function baseAnswer(intent, answerType, period, language = 'en') {
 }
 
 function requiredCollectionsForIntent(intent) {
-    if (['revenue_analysis', 'expense_analysis', 'margin_analysis', 'ledger_cleanup'].includes(intent)) return ['transactions'];
+    if (['revenue_analysis', 'expense_analysis', 'margin_analysis', 'ledger_cleanup', 'ledger_quality', 'period_performance', 'vendor_analysis', 'category_analysis', 'comparison'].includes(intent)) return ['transactions'];
     if (intent === 'bills_analysis') return ['bills'];
     if (intent === 'cash_pressure') return ['transactions', 'bills'];
     if (intent === 'subscription_analysis') return ['subscriptions'];
-    if (['finance_health', 'action_recommendation'].includes(intent)) return ['transactions', 'bills'];
-    if (intent === 'data_lookup') return ['transactions', 'bills', 'subscriptions'];
+    if (['finance_health', 'business_health', 'action_recommendation', 'recommendation'].includes(intent)) return ['transactions', 'bills'];
+    if (['data_lookup', 'lookup'].includes(intent)) return ['transactions', 'bills', 'subscriptions'];
     return [];
 }
 
 function buildDataUnavailableAnswer(intent, period, missingCollections) {
-    const answer = baseAnswer(intent, 'clarification', period);
+    const answer = baseAnswer(intent, 'no_data', period);
     const labels = missingCollections.map(collection => collection.replace(/_/g, ' ')).join(', ');
     answer.confidence = 0;
     answer.direct_answer = `I could not access the required ${labels} data from either the backend read or the authenticated page snapshot, so I cannot calculate this safely yet. I will not show zero values because unavailable data is not the same as zero.`;
@@ -800,6 +1518,107 @@ function buildDeterministicAnswer({ intent, message, pageContext, period, tools 
     return answer;
 }
 
+function legacyIntentFromPlan(intent) {
+    return {
+        business_health: 'finance_health',
+        period_performance: 'finance_health',
+        ledger_quality: 'ledger_cleanup',
+        lookup: 'data_lookup',
+        recommendation: 'action_recommendation',
+    }[intent] || intent;
+}
+
+function buildPlannedDeterministicAnswer({ plan, message, pageContext, tools }) {
+    if (plan.intent === 'unsupported' || !plan.is_supported) {
+        return buildDeterministicAnswer({ intent: 'unsupported', message, pageContext, period: plan.period, tools: {} });
+    }
+    if (plan.intent === 'ambiguous') {
+        return buildDeterministicAnswer({ intent: 'ambiguous', message, pageContext, period: plan.period, tools: {} });
+    }
+    if (plan.intent === 'comparison' && tools.comparison) {
+        const answer = baseAnswer('comparison', 'comparison', plan.period);
+        const comparison = tools.comparison;
+        const current = comparison.current_period;
+        const previous = comparison.comparison_period;
+        const revenueDirection = comparison.deltas.revenue > 0 ? 'up' : comparison.deltas.revenue < 0 ? 'down' : 'flat';
+        const opexDirection = comparison.deltas.opex > 0 ? 'up' : comparison.deltas.opex < 0 ? 'down' : 'flat';
+        answer.direct_answer = `Compared with ${plan.comparison_period.label || 'the comparison period'}, revenue is ${revenueDirection} by ${formatIDR(comparison.deltas.revenue)} and OpEx is ${opexDirection} by ${formatIDR(comparison.deltas.opex)}.`;
+        answer.key_numbers = [
+            keyNumber('Current revenue', current.revenue, current.revenue >= previous.revenue ? 'good' : 'warning'),
+            keyNumber('Previous revenue', previous.revenue, 'neutral'),
+            keyNumber('Current OpEx', current.opex, current.opex > previous.opex ? 'warning' : 'good'),
+            keyNumber('Margin change', comparison.deltas.gross_margin, comparison.deltas.gross_margin >= 0 ? 'good' : 'warning', formatPercent),
+        ];
+        answer.insights = [
+            insight('Revenue movement', `Revenue changed from ${formatIDR(previous.revenue)} to ${formatIDR(current.revenue)}.`, comparison.deltas.revenue >= 0 ? 'info' : 'warning', current.related_records || []),
+            insight('OpEx movement', `OpEx changed from ${formatIDR(previous.opex)} to ${formatIDR(current.opex)}.`, comparison.deltas.opex > 0 ? 'warning' : 'info'),
+        ];
+        answer.recommended_actions = [action('Review the biggest movement', 'Open the related revenue or expense records behind the largest change before deciding what to fix.', 'medium')];
+        answer.limitations = comparison.limitations || [];
+        answer.follow_up_questions = ['What changed in expenses?', 'Which records drove this?', 'What should I fix first?'];
+        return answer;
+    }
+    if (plan.intent === 'vendor_analysis' && tools.vendorAnalysis) {
+        const vendor = tools.vendorAnalysis;
+        const answer = baseAnswer('vendor_analysis', 'analysis', plan.period);
+        const totalActivity = vendor.total_expense + vendor.total_revenue + vendor.total_bills + vendor.total_subscriptions;
+        answer.direct_answer = totalActivity
+            ? `${vendor.vendor_name} has ${formatIDR(totalActivity)} in matched FluxyOS activity for ${plan.period.label.toLowerCase()}.`
+            : `I could not find matched records for ${vendor.vendor_name} in ${plan.period.label.toLowerCase()}.`;
+        answer.key_numbers = [
+            keyNumber('Expense', vendor.total_expense, vendor.total_expense ? 'neutral' : 'warning'),
+            keyNumber('Revenue', vendor.total_revenue, vendor.total_revenue ? 'good' : 'neutral'),
+            keyNumber('Bills', vendor.total_bills, vendor.total_bills ? 'warning' : 'neutral'),
+            keyNumber('Subscriptions', vendor.total_subscriptions, vendor.total_subscriptions ? 'neutral' : 'neutral'),
+        ];
+        answer.insights = vendor.related_records.length
+            ? [insight('Matched vendor records', `I found ${vendor.transaction_count + vendor.bill_count + vendor.subscription_count} record(s) related to ${vendor.vendor_name}.`, 'info', vendor.related_records)]
+            : [];
+        answer.recommended_actions = [action('Review matching records', 'Open the related records to confirm the vendor name, category, and transaction type are accurate.', 'medium')];
+        answer.limitations = vendor.limitations;
+        answer.follow_up_questions = ['Show related records', 'Compare with last month', 'What is the biggest expense?'];
+        return answer;
+    }
+    if (plan.intent === 'category_analysis' && tools.categoryAnalysis) {
+        const category = tools.categoryAnalysis;
+        const answer = baseAnswer('category_analysis', 'analysis', plan.period);
+        answer.direct_answer = `${category.category} has ${formatIDR(category.total_expense)} in expenses and ${formatIDR(category.total_revenue)} in revenue for ${plan.period.label.toLowerCase()}.`;
+        answer.key_numbers = [
+            keyNumber(`${category.category} expense`, category.total_expense, category.total_expense ? 'neutral' : 'warning'),
+            keyNumber(`${category.category} revenue`, category.total_revenue, category.total_revenue ? 'good' : 'neutral'),
+            keyNumber('Matched records', category.transaction_count, 'neutral', value => String(value)),
+        ];
+        if (category.top_vendors.length) answer.insights.push(insight('Top vendors in category', `${category.top_vendors[0].label} is the largest vendor in this category.`, 'info', category.top_vendors.slice(0, 3)));
+        if (category.related_records.length) answer.insights.push(insight('Related category records', 'These are the largest matched category records.', 'info', category.related_records));
+        answer.recommended_actions = [action('Review category drivers', 'Start with the largest vendor and the largest individual records in this category.', 'medium')];
+        answer.limitations = category.limitations;
+        answer.follow_up_questions = ['Compare this category with last month', 'Show largest expenses', 'What should I cut first?'];
+        return answer;
+    }
+    if (plan.intent === 'period_performance') {
+        const perf = tools.periodPerformance;
+        const answer = baseAnswer('period_performance', 'analysis', plan.period);
+        const marginStatus = perf.revenue === 0 ? 'warning' : perf.gross_margin < 20 ? 'critical' : perf.gross_margin < 40 ? 'warning' : 'good';
+        answer.direct_answer = `For ${plan.period.label}, revenue is ${formatIDR(perf.revenue)}, OpEx is ${formatIDR(perf.opex)}, and gross margin is ${perf.revenue > 0 ? formatPercent(perf.gross_margin) : 'unavailable'}.`;
+        answer.key_numbers = [
+            keyNumber('Revenue', perf.revenue, perf.revenue > 0 ? 'good' : 'warning'),
+            keyNumber('OpEx', perf.opex, perf.opex > perf.revenue && perf.revenue > 0 ? 'critical' : 'neutral'),
+            keyNumber('Gross margin', perf.gross_margin, marginStatus, formatPercent),
+            keyNumber('Transactions', perf.transaction_count, 'neutral', value => String(value)),
+        ];
+        if (perf.related_records.length) answer.insights.push(insight('Largest period records', 'These records have the largest impact in the selected period.', 'info', perf.related_records));
+        answer.recommended_actions = [action('Review period drivers', 'Check the largest revenue and OpEx records before making decisions from this period.', 'medium')];
+        answer.limitations = perf.limitations || [];
+        answer.follow_up_questions = ['Compare with previous period', 'Why is OpEx high?', 'What should I fix first?'];
+        return answer;
+    }
+    const legacyIntent = legacyIntentFromPlan(plan.intent);
+    const answer = buildDeterministicAnswer({ intent: legacyIntent, message, pageContext, period: plan.period, tools });
+    answer.intent = plan.intent;
+    if (answer.answer_type === 'analysis' && plan.question_type === 'recommendation') answer.answer_type = 'recommendation';
+    return answer;
+}
+
 function financeAnswerSchema() {
     return {
         type: 'object',
@@ -807,7 +1626,7 @@ function financeAnswerSchema() {
         properties: {
             intent: { type: 'string', enum: SUPPORTED_INTENTS },
             scope: { type: 'string', enum: [FINANCE_SCOPE] },
-            answer_type: { type: 'string', enum: ['analysis', 'lookup', 'refusal', 'clarification'] },
+            answer_type: { type: 'string', enum: ['analysis', 'lookup', 'comparison', 'recommendation', 'no_data', 'refusal', 'clarification'] },
             confidence: { type: 'number' },
             period: {
                 type: 'object',
@@ -890,7 +1709,7 @@ function financeAnswerSchema() {
 function validateFinanceAnswer(candidate, expectedIntent, period) {
     if (!candidate || typeof candidate !== 'object') return null;
     if (candidate.scope !== FINANCE_SCOPE || candidate.intent !== expectedIntent) return null;
-    const answerTypes = ['analysis', 'lookup', 'refusal', 'clarification'];
+    const answerTypes = ['analysis', 'lookup', 'comparison', 'recommendation', 'no_data', 'refusal', 'clarification'];
     if (!answerTypes.includes(candidate.answer_type)) return null;
     const directAnswer = typeof candidate.direct_answer === 'string' ? candidate.direct_answer.trim() : '';
     if (!directAnswer) return null;
@@ -986,7 +1805,7 @@ function sanitizeActions(value) {
     }).filter(Boolean);
 }
 
-async function callOpenAIFinanceAnalyst({ message, pageContext, period, intent, deterministicAnswer, tools }) {
+async function callOpenAIFinanceAnalyst({ message, pageContext, period, intent, plan, dataCoverage, deterministicAnswer, tools }) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) return null;
     const model = process.env.OPENAI_FINANCE_MODEL || 'gpt-4o-mini';
@@ -1019,7 +1838,9 @@ Return only structured JSON matching the schema.`;
                                 message,
                                 page_context: pageContext,
                                 intent,
+                                planner_output: plan,
                                 period,
+                                data_coverage: dataCoverage,
                                 computed_tool_results: safeTools,
                                 deterministic_baseline: deterministicAnswer,
                             }),
@@ -1054,11 +1875,32 @@ async function buildBrainChatResponse({ request, uid, token }) {
 
     const chatId = typeof request.chat_id === 'string' && request.chat_id.trim() ? request.chat_id.trim().slice(0, 128) : null;
     const pageContext = typeof request.page_context === 'string' ? request.page_context : 'global';
-    const period = normalizePeriod(request.period, message);
-    const intent = classifyIntent(message, pageContext);
+    const currentDate = todayJakarta();
+    const basePlan = planFinanceQuestion(message, currentDate, pageContext);
+    if (request.period?.type === 'custom') {
+        const customPeriod = normalizePeriod(request.period, message);
+        basePlan.period = customPeriod;
+        if (!basePlan.comparison_period?.start_date && basePlan.intent === 'comparison') basePlan.comparison_period = previousEquivalentPeriod(customPeriod);
+    }
+    let plan = buildQuestionPlan(basePlan);
+    if (process.env.OPENAI_API_KEY && plan.is_supported && !['unsupported', 'ambiguous'].includes(plan.intent)) {
+        try {
+            const modelPlan = await callOpenAIQuestionPlanner({
+                message,
+                pageContext,
+                currentDate,
+                deterministicPlan: plan,
+            });
+            const validatedPlan = validatePlannerOutput(modelPlan, plan);
+            if (validatedPlan) plan = validatedPlan;
+        } catch (err) {
+            console.error('[brain/chat] OpenAI planner fallback used:', err?.message || err);
+        }
+    }
+    const intent = plan.intent;
 
-    if (intent === 'unsupported' || intent === 'ambiguous') {
-        const answer = buildDeterministicAnswer({ intent, message, pageContext, period, tools: {} });
+    if (!plan.is_supported || intent === 'unsupported' || intent === 'ambiguous') {
+        const answer = buildPlannedDeterministicAnswer({ plan, message, pageContext, tools: {} });
         return { status: 200, body: { success: true, chat_id: chatId, intent, scope: FINANCE_SCOPE, answer, related_records: [], error: null } };
     }
 
@@ -1088,53 +1930,32 @@ async function buildBrainChatResponse({ request, uid, token }) {
         billResult.error && !billsSnapshotOk ? 'bills' : null,
         subscriptionResult.error && !subscriptionsSnapshotOk ? 'subscriptions' : null,
     ].filter(Boolean);
-    const missingRequiredCollections = requiredCollectionsForIntent(intent)
+    const missingRequiredCollections = (plan.collections_needed || [])
         .filter(collectionName => unavailableCollections.includes(collectionName));
     if (missingRequiredCollections.length) {
-        const answer = buildDataUnavailableAnswer(intent, period, missingRequiredCollections);
+        const answer = buildDataUnavailableAnswer(intent, plan.period, missingRequiredCollections);
         return {
             status: 200,
             body: { success: true, chat_id: chatId, intent, scope: FINANCE_SCOPE, answer, related_records: [], error: null },
         };
     }
 
-    const today = toDateKey(todayJakarta());
-    const windowDays = detectWindowDays(message);
-    const financeSummary = getFinanceSummary(transactions, period);
-    const messageText = normalizeText(message);
-    const revenueAnalysis = getRevenueAnalysis(
-        transactions,
-        period,
-        messageText.includes('expected') || messageText.includes('live revenue') || messageText.includes('pending receivable')
-    );
-    const expenseAnalysis = getExpenseAnalysis(transactions, period);
-    const marginAnalysis = getMarginAnalysis(transactions, period);
-    const billsAnalysis = getBillsAnalysis(bills, today, windowDays);
-    const subscriptionAnalysis = getSubscriptionAnalysis(subscriptions, today, windowDays);
-    const ledgerQuality = getLedgerQuality(transactions, period);
-    const cashPressure = getCashPressure(transactions, billsAnalysis, today, windowDays);
-    const searchResults = searchFinanceRecords(message, transactions, bills, subscriptions, period, 10);
-    const tools = {
-        financeSummary,
-        revenueAnalysis,
-        expenseAnalysis,
-        marginAnalysis,
-        billsAnalysis,
-        subscriptionAnalysis,
-        ledgerQuality,
-        cashPressure,
-        searchResults,
-    };
+    const tools = executeFinancePlan(plan, transactions, bills, subscriptions, message);
+    const dataCoverage = calculateDataCoverage(plan, tools);
+    if (!dataCoverage.has_data) {
+        const answer = buildNoDataAnswer(plan);
+        return { status: 200, body: { success: true, chat_id: chatId, intent, scope: FINANCE_SCOPE, answer, related_records: [], error: null } };
+    }
 
-    const deterministicAnswer = buildDeterministicAnswer({ intent, message, pageContext, period, tools });
+    const deterministicAnswer = buildPlannedDeterministicAnswer({ plan, message, pageContext, tools });
     let answer = deterministicAnswer;
-    const forceDeterministic = pageContext === 'dashboard' && ['finance_health', 'action_recommendation'].includes(intent);
+    const forceDeterministic = pageContext === 'dashboard' && ['business_health', 'finance_health', 'recommendation', 'action_recommendation'].includes(intent);
     if (process.env.OPENAI_API_KEY && !forceDeterministic) {
         try {
             let validatedAnswer = null;
             for (let attempt = 0; attempt < 2 && !validatedAnswer; attempt += 1) {
-                const modelAnswer = await callOpenAIFinanceAnalyst({ message, pageContext, period, intent, deterministicAnswer, tools });
-                validatedAnswer = validateFinanceAnswer(modelAnswer, intent, period);
+                const modelAnswer = await callOpenAIFinanceAnalyst({ message, pageContext, period: plan.period, intent, plan, dataCoverage, deterministicAnswer, tools });
+                validatedAnswer = validateFinanceAnswer(modelAnswer, intent, plan.period);
                 if (!validatedAnswer && attempt === 1) throw new Error('OpenAI finance analyst returned invalid structured output');
             }
             if (validatedAnswer) answer = validatedAnswer;
@@ -2025,6 +2846,11 @@ exports.__test__ = {
     classifyIntent,
     requiredCollectionsForIntent,
     buildDeterministicAnswer,
+    buildPlannedDeterministicAnswer,
+    calculateDataCoverage,
+    executeFinancePlan,
+    parsePeriodFromMessage,
+    planFinanceQuestion,
     validateFinanceAnswer,
     normalizePeriod,
 };

@@ -62,20 +62,28 @@ class ChatRecommendedAction(BaseModel):
 class ChatAnswer(BaseModel):
     intent: Literal[
         "finance_health",
+        "business_health",
+        "period_performance",
         "revenue_analysis",
         "expense_analysis",
         "margin_analysis",
+        "vendor_analysis",
+        "category_analysis",
         "bills_analysis",
         "subscription_analysis",
         "ledger_cleanup",
+        "ledger_quality",
         "cash_pressure",
         "data_lookup",
+        "lookup",
         "action_recommendation",
+        "recommendation",
+        "comparison",
         "unsupported",
         "ambiguous",
     ]
     scope: Literal["project_finance"] = "project_finance"
-    answer_type: Literal["analysis", "lookup", "refusal", "clarification"]
+    answer_type: Literal["analysis", "lookup", "comparison", "recommendation", "no_data", "refusal", "clarification"]
     confidence: float
     period: ChatAnswerPeriod
     direct_answer: str

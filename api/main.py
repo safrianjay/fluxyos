@@ -6,6 +6,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import datetime
 import os
 import json
+import re
 import urllib.request
 import urllib.parse
 from jose import jwt, JWTError
@@ -69,6 +70,20 @@ PAID_STATUSES = {"completed", "paid", "reconciled", "cancelled"}
 DOCUMENT_ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "application/pdf", "text/csv", "application/vnd.ms-excel"}
 DOCUMENT_MAX_FILE_BYTES = 10 * 1024 * 1024
 ALLOWED_CATEGORIES = {"Revenue", "Marketing", "Infrastructure", "Operations", "SaaS"}
+MONTH_NAMES = {
+    "january": 1, "jan": 1,
+    "february": 2, "feb": 2,
+    "march": 3, "mar": 3,
+    "april": 4, "apr": 4,
+    "may": 5,
+    "june": 6, "jun": 6,
+    "july": 7, "jul": 7,
+    "august": 8, "aug": 8,
+    "september": 9, "sep": 9, "sept": 9,
+    "october": 10, "oct": 10,
+    "november": 11, "nov": 11,
+    "december": 12, "dec": 12,
+}
 
 def _today_jakarta() -> datetime.date:
     return (datetime.datetime.utcnow() + datetime.timedelta(hours=7)).date()
@@ -85,8 +100,34 @@ def _infer_period_type_from_message(message: str) -> str | None:
         return "last_month"
     return None
 
+def _month_period(year: int, month: int) -> Dict[str, str]:
+    start = datetime.date(year, month, 1)
+    end = (start.replace(day=28) + datetime.timedelta(days=4)).replace(day=1) - datetime.timedelta(days=1)
+    label = start.strftime("%B %Y")
+    return {"type": "month", "label": label, "start_date": start.isoformat(), "end_date": end.isoformat()}
+
+def _quarter_period(year: int, quarter: int) -> Dict[str, str]:
+    start_month = ((quarter - 1) * 3) + 1
+    start = datetime.date(year, start_month, 1)
+    end = (start.replace(day=28) + datetime.timedelta(days=95)).replace(day=1) - datetime.timedelta(days=1)
+    return {"type": "quarter", "label": f"Q{quarter} {year}", "start_date": start.isoformat(), "end_date": end.isoformat()}
+
+def _explicit_period_from_message(message: str) -> Dict[str, str] | None:
+    msg = (message or "").lower()
+    q_match = re.search(r"\bq([1-4])\s+(20\d{2})\b", msg)
+    if q_match:
+        return _quarter_period(int(q_match.group(2)), int(q_match.group(1)))
+    month_pattern = "|".join(MONTH_NAMES.keys())
+    month_match = re.search(rf"\b({month_pattern})\s+(20\d{{2}})\b", msg)
+    if month_match:
+        return _month_period(int(month_match.group(2)), MONTH_NAMES[month_match.group(1)])
+    return None
+
 def _period_dict(period, message: str = "") -> Dict[str, str]:
     today = _today_jakarta()
+    explicit = _explicit_period_from_message(message)
+    if explicit:
+        return explicit
     message_type = _infer_period_type_from_message(message)
     requested_type = period.type if period and period.type in {"this_month", "last_month", "custom"} else "this_month"
     resolved_type = requested_type if requested_type == "custom" else message_type or requested_type
@@ -109,14 +150,27 @@ def _classify_intent(message: str, page_context: str = "global") -> str:
     msg = (message or "").lower()
     if not msg:
         return "ambiguous"
-    if any(term in msg for term in ["president", "politic", "election", "medical", "doctor", "diagnosis", "dating", "crypto", "bitcoin", "stock pick", "stock to buy", "legal advice", "investment advice", "who is", "weather", "sports"]):
+    finance_hints = ["finance", "business", "revenue", "income", "sales", "expense", "spend", "opex", "cost", "bill", "subscription", "saas", "ledger", "transaction", "receipt", "margin", "profit", "cash", "vendor", "category", "performance", "records"]
+    if any(term in msg for term in ["president", "politic", "election", "medical", "doctor", "diagnosis", "dating", "crypto", "bitcoin", "stock pick", "stock to buy", "legal advice", "investment advice", "weather", "sports"]):
+        return "unsupported"
+    if msg.startswith("who is") and not any(term in msg for term in finance_hints):
         return "unsupported"
     if msg.strip() in {"hi", "hello", "hey", "test"}:
         return "ambiguous"
+    if "compare" in msg or " vs " in msg or "versus" in msg or "better than" in msg or "changed" in msg:
+        return "comparison"
+    if _explicit_period_from_message(message) and any(term in msg for term in ["performance", "summarize", "summary", "how was", "how did"]):
+        return "period_performance"
     if any(term in msg for term in ["receipt", "cleanup", "clean up", "trust my ledger", "reconcile"]):
         return "ledger_cleanup"
-    if any(term in msg for term in ["subscription", "saas", "renewal", "recurring"]):
+    if any(term in msg for term in ["subscription", "renewal", "recurring"]):
         return "subscription_analysis"
+    if any(term in msg for term in ["revenue", "income", "receivable", "sales"]):
+        return "revenue_analysis"
+    if any(category.lower() in msg for category in ALLOWED_CATEGORIES if category != "Revenue"):
+        return "category_analysis"
+    if re.search(r"\b(?:spend|spent|pay|paid|transactions?|records?)\s+(?:on|to|from|for)\s+[a-z0-9&.\- ]{2,48}", msg):
+        return "vendor_analysis"
     if any(term in msg for term in ["cash pressure", "cash runway", "cash risk", "cover upcoming", "can i cover", "cover my bills"]):
         return "cash_pressure"
     if any(term in msg for term in ["bill", "payable", "due soon", "overdue"]):
@@ -125,14 +179,12 @@ def _classify_intent(message: str, page_context: str = "global") -> str:
         return "margin_analysis"
     if any(term in msg for term in ["expense", "spend", "opex", "cost", "vendor"]):
         return "expense_analysis"
-    if any(term in msg for term in ["revenue", "income", "receivable", "sales"]):
-        return "revenue_analysis"
     if any(term in msg for term in ["what should i", "fix first", "needs attention", "biggest problem", "worry"]):
-        return "action_recommendation"
+        return "recommendation"
     if any(term in msg for term in ["healthy", "health", "summary", "summarize", "performance", "founder"]):
         return "finance_health"
     if any(term in msg for term in ["show", "find", "list"]):
-        return "data_lookup"
+        return "lookup"
     return {
         "ledger": "ledger_cleanup",
         "bills": "bills_analysis",
@@ -594,7 +646,7 @@ def _key_number(label: str, value: float, status_value: str = "neutral", formatt
     return {"label": label, "value": value, "formatted_value": formatted or _format_idr(value), "status": status_value}
 
 def _required_collections_for_intent(intent: str) -> List[str]:
-    if intent in {"revenue_analysis", "expense_analysis", "margin_analysis", "ledger_cleanup"}:
+    if intent in {"revenue_analysis", "expense_analysis", "margin_analysis", "ledger_cleanup", "ledger_quality", "period_performance", "vendor_analysis", "category_analysis", "comparison"}:
         return ["transactions"]
     if intent == "bills_analysis":
         return ["bills"]
@@ -602,9 +654,9 @@ def _required_collections_for_intent(intent: str) -> List[str]:
         return ["transactions", "bills"]
     if intent == "subscription_analysis":
         return ["subscriptions"]
-    if intent in {"finance_health", "action_recommendation"}:
+    if intent in {"finance_health", "business_health", "action_recommendation", "recommendation"}:
         return ["transactions", "bills"]
-    if intent == "data_lookup":
+    if intent in {"data_lookup", "lookup"}:
         return ["transactions", "bills", "subscriptions"]
     return []
 
@@ -677,6 +729,13 @@ def _build_answer(intent: str, message: str, period: Dict[str, str], transaction
             "follow_up_questions": ["Which finance area should I analyze?"],
         })
         return base
+    intent = {
+        "business_health": "finance_health",
+        "period_performance": "finance_health",
+        "ledger_quality": "ledger_cleanup",
+        "lookup": "data_lookup",
+        "recommendation": "action_recommendation",
+    }.get(intent, intent)
 
     period_txs = [tx for tx in transactions if _in_period(tx, period)]
     confirmed_revenue_records = [tx for tx in period_txs if str(tx.get("type", "")).lower() in REVENUE_TYPES]
@@ -700,6 +759,36 @@ def _build_answer(intent: str, message: str, period: Dict[str, str], transaction
     pending_receivables = sum(abs(float(tx.get("amount") or 0)) for tx in transactions if str(tx.get("type", "")).lower() == "pending_receivable")
     active_subscriptions = [s for s in subscriptions if str(s.get("status", "")).lower() != "cancelled"]
     subs_total = sum(abs(float(s.get("amount") or 0)) for s in active_subscriptions)
+
+    if base["intent"] in {"vendor_analysis", "category_analysis", "comparison"} and not period_txs:
+        base.update({
+            "answer_type": "no_data",
+            "confidence": 1,
+            "direct_answer": "I don't see finance records for the selected scope yet, so I can't calculate this accurately. Once revenue, expenses, bills, or subscriptions exist for that scope, I can summarize it.",
+            "recommended_actions": [{"title": "Add or review finance records", "description": "Check the relevant FluxyOS table, then ask again once records exist for this period or filter.", "priority": "medium"}],
+            "limitations": ["No matching records were found for the selected period, entity, or filter."],
+            "follow_up_questions": ["Summarize this month", "Show missing receipts", "Show upcoming bills"],
+        })
+        return base
+    if base["intent"] == "vendor_analysis":
+        match = re.search(r"\b(?:spend|spent|pay|paid|transactions?|records?)\s+(?:on|to|from|for)\s+([a-z0-9&.\- ]{2,48})", message.lower())
+        vendor = (match.group(1).strip(" ?.!,") if match else "")
+        records = [tx for tx in period_txs if vendor and vendor in str(tx.get("vendor_name", "")).lower()]
+        total = sum(abs(float(tx.get("amount") or 0)) for tx in records)
+        base["direct_answer"] = f"{vendor.title()} has {_format_idr(total)} in matched transaction activity for {period['label'].lower()}." if records else f"I could not find matched records for {vendor.title() or 'that vendor'} in {period['label'].lower()}."
+        base["key_numbers"] = [_key_number("Matched amount", total, "neutral"), _key_number("Matched records", len(records), "neutral", str(len(records)))]
+        base["insights"] = [{"title": "Matched vendor records", "description": "These are the closest vendor records I found.", "severity": "info", "evidence": [_compact(r) for r in records[:5]]}] if records else []
+        base["recommended_actions"] = [{"title": "Review matching records", "description": "Open related records to confirm vendor name, category, and transaction type.", "priority": "medium"}]
+        return base
+    if base["intent"] == "category_analysis":
+        category = next((item for item in ALLOWED_CATEGORIES if item.lower() in message.lower()), "SaaS" if "saas" in message.lower() else "")
+        records = [tx for tx in period_txs if category and str(tx.get("category", "")).lower() == category.lower()]
+        total = sum(abs(float(tx.get("amount") or 0)) for tx in records if str(tx.get("type", "")).lower() in OPEX_TYPES)
+        base["direct_answer"] = f"{category} has {_format_idr(total)} in expenses for {period['label'].lower()}."
+        base["key_numbers"] = [_key_number(f"{category} expense", total, "neutral"), _key_number("Matched records", len(records), "neutral", str(len(records)))]
+        base["insights"] = [{"title": "Related category records", "description": "These are the largest matched category records.", "severity": "info", "evidence": [_compact(r) for r in records[:5]]}]
+        base["recommended_actions"] = [{"title": "Review category drivers", "description": "Start with the largest vendor and individual records in this category.", "priority": "medium"}]
+        return base
 
     if intent == "revenue_analysis":
         base["direct_answer"] = f"Based on the current records, revenue for {period['label'].lower()} is {_format_idr(revenue)}." if revenue else f"No confirmed revenue records were found for {period['label'].lower()}."

@@ -1345,6 +1345,9 @@
         const config = {
             analysis: ['Analyst answer', 'border-green-200 bg-green-50 text-green-700'],
             lookup: ['Data lookup', 'border-blue-200 bg-blue-50 text-blue-700'],
+            comparison: ['Comparison', 'border-blue-200 bg-blue-50 text-blue-700'],
+            recommendation: ['Next actions', 'border-green-200 bg-green-50 text-green-700'],
+            no_data: ['No data found', 'border-gray-200 bg-white text-gray-600'],
             refusal: ['Finance scope only', 'border-amber-200 bg-amber-50 text-amber-700'],
             clarification: ['Needs clarification', 'border-amber-200 bg-white text-amber-700'],
         }[answerType] || ['Analyst answer', 'border-gray-200 bg-white text-gray-500'];
