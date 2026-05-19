@@ -208,11 +208,18 @@ Calculated by `DataService.getDashboardStats(userId)`:
 Path: `users/{userId}/settings/{settingsDoc}`
 
 Supported docs are `company`, `finance`, `import_rules`, `ai`, and
-`whatsapp`. Settings are owner-scoped workspace preferences used by
-`settings.html`; they must not store API keys, WhatsApp tokens, OTPs, bank
-credentials, payment data, or formatted currency strings.
+`whatsapp`. Settings are owner-scoped workspace preferences; they must not
+store API keys, WhatsApp tokens, OTPs, bank credentials, payment data, or
+formatted currency strings.
 
-Primary consumer: `settings.html`.
+**UI surface:** an index page `settings.html` + 7 detail pages
+(`settings-personal`, `settings-business`, `settings-finance`,
+`settings-import-rules`, `settings-ai`, `settings-whatsapp`,
+`settings-security`). The index is search + grouped tiles. Each detail page
+loads its slice via `DataService.getUserSettings(uid)` and saves through the
+matching `save*Settings` method. `settings-business.html` uses a tabbed layout
+where two tabs (Account details, Business details) edit the `company` doc.
+`settings-personal` and `settings-security` are display-only.
 
 ### New entity template
 
@@ -266,7 +273,10 @@ Must include:
 ### Dashboard app page
 
 Examples: `dashboard.html`, `ledger.html`, `bill.html`, `subscription.html`,
-`integration.html`, `settings.html`.
+`integration.html`, and the Settings family (`settings.html`,
+`settings-personal.html`, `settings-business.html`, `settings-finance.html`,
+`settings-import-rules.html`, `settings-ai.html`, `settings-whatsapp.html`,
+`settings-security.html`).
 
 Must include:
 

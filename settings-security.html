@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Team and security</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <aside id="sidebar" class="hidden w-[220px] bg-white text-[#1E2F4A] flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
+            <div class="flex items-center gap-4 min-w-0 flex-1">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <h1 class="text-lg font-bold text-gray-900">Team and security</h1>
+            </div>
+            <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                Fluxy AI
+            </button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10">
+            <div class="max-w-3xl mx-auto space-y-8">
+
+                <section>
+                    <a href="/settings" class="text-[12px] font-bold text-[#EA580C] hover:underline">Settings</a>
+                    <h1 class="mt-2 text-[26px] font-bold text-gray-900 tracking-tight">Team and security</h1>
+                    <p class="mt-1 text-[13px] text-gray-500">Roles, account access, and security rules for your workspace.</p>
+                </section>
+
+                <!-- CURRENT POSTURE -->
+                <section class="space-y-3">
+                    <h2 class="text-[16px] font-bold text-gray-900">Current posture</h2>
+                    <dl class="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
+                        <div class="flex items-center justify-between gap-4 px-5 py-3">
+                            <dt class="text-[13px] text-gray-500 w-44 flex-shrink-0">Current role</dt>
+                            <dd class="text-[14px] font-bold text-gray-900">Account Owner</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-4 px-5 py-3">
+                            <dt class="text-[13px] text-gray-500 w-44 flex-shrink-0">Data scope</dt>
+                            <dd class="text-[14px] font-bold text-gray-900">User scoped</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-4 px-5 py-3">
+                            <dt class="text-[13px] text-gray-500 w-44 flex-shrink-0">AI writes</dt>
+                            <dd class="text-[14px] font-bold text-gray-900">Confirmation required</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-4 px-5 py-3">
+                            <dt class="text-[13px] text-gray-500 w-44 flex-shrink-0">Sign-in security</dt>
+                            <dd class="text-[14px] font-bold text-gray-900">Managed by Firebase Auth</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <!-- TEAM ROLES PLANNED -->
+                <section class="space-y-3">
+                    <h2 class="text-[16px] font-bold text-gray-900">Team roles</h2>
+                    <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-5 py-4 flex items-center justify-between gap-4">
+                        <p class="text-[13px] text-gray-500 max-w-md">Inviting teammates, role-based access, and shared workspaces are planned once the permission model is ready.</p>
+                        <span class="settings-planned-pill">Planned</span>
+                    </div>
+                </section>
+
+                <!-- AUDIT LOGS PLANNED -->
+                <section class="space-y-3">
+                    <h2 class="text-[16px] font-bold text-gray-900">Audit log</h2>
+                    <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-5 py-4 flex items-center justify-between gap-4">
+                        <p class="text-[13px] text-gray-500 max-w-md">A full activity audit log is planned. Until then, every AI draft and import still requires explicit user confirmation before save.</p>
+                        <span class="settings-planned-pill">Planned</span>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <style>
+        .settings-planned-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            border: 1px solid #fed7aa;
+            background: #fff7ed;
+            color: #c2410c;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+    </style>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.firebaseapp.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
+            measurementId: "G-ZN7J6DRD2L"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+
+        const authTimeout = setTimeout(() => window.location.replace('/login'), 2000);
+        onAuthStateChanged(auth, (user) => {
+            if (user) clearTimeout(authTimeout);
+        });
+    </script>
+</body>
+</html>

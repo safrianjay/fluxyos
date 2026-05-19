@@ -54,7 +54,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 3 | **Dashboard loads** | Sign in → `dashboard.html` — KPI cards show, ledger table renders or shows empty state |
 | 4 | **Sidebar navigation** | Click each working link (Overview, Transactions, Bills, Subscriptions, Integrations, Settings) — correct page loads, active item highlighted; disabled `Soon` entries do not navigate |
 | 5 | **Footer appears** | Scroll to bottom of `fluxyos.html`, `pricing.html`, `budgetlanding.html` — footer renders with starfield animation |
-| 6 | **Footer NOT on dashboard pages** | `dashboard.html`, `ledger.html`, `bill.html`, `subscription.html`, `integration.html`, `settings.html` — footer must NOT appear |
+| 6 | **Footer NOT on dashboard pages** | `dashboard.html`, `ledger.html`, `bill.html`, `subscription.html`, `integration.html`, and all `settings*.html` pages — footer must NOT appear |
 | 7 | **No broken console errors** | Open DevTools Console on every page you changed — zero red errors |
 | 8 | **Mobile nav works** | Resize browser to 375px on `fluxyos.html` — hamburger icon visible, click opens menu, Escape closes it |
 | 9 | **New nav entry points work** | For any new page/use case, verify the production entry point from BOTH desktop mega-menu and mobile menu. The visible label must be inside an `<a>` whose `href` is the real route, never `#`; click it and confirm the target page loads. |
@@ -93,7 +93,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | # | Check |
 |---|-------|
 | 1 | Footer loads on landing pages: `fluxyos.html`, `budgetlanding.html`, `pricing.html`, `index.html` |
-| 2 | Footer does NOT load on app pages: `dashboard.html`, `ledger.html`, `bill.html`, `subscription.html`, `integration.html`, `settings.html` |
+| 2 | Footer does NOT load on app pages: `dashboard.html`, `ledger.html`, `bill.html`, `subscription.html`, `integration.html`, and every `settings*.html` (`settings`, `settings-personal`, `settings-business`, `settings-finance`, `settings-import-rules`, `settings-ai`, `settings-whatsapp`, `settings-security`) |
 | 3 | Universe canvas animation plays (starfield moving outward from center) |
 | 4 | No teal/green colors — only dark navy (#0B0F19) and purple tones |
 | 5 | Logo (orange F icon) visible and links to homepage |
@@ -118,7 +118,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 10 | Google SSO domains are authorized in Firebase Console: every production/login host used for QA (e.g. `fluxyos.com`, `www.fluxyos.com`, and any preview domain tested) is listed under Authentication → Settings → Authorized domains |
 | 11 | Rapid-click guard: repeatedly click Sign In / Continue with Google during auth — only one auth request starts, controls disable, and failed auth re-enables controls |
 
-### D. Dashboard / App Page Changes (dashboard.html, ledger.html, bill.html, subscription.html, integration.html, settings.html)
+### D. Dashboard / App Page Changes (dashboard.html, ledger.html, bill.html, subscription.html, integration.html, settings*.html)
 
 | # | Check |
 |---|-------|
@@ -139,9 +139,14 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 15 | Ledger Status Breakdown and Type Breakdown panels show about 4 rows before scrolling, and the Ledger Activity card does not leave a large empty area under the volume chart |
 | 16 | Ledger search filters the selected date-period rows by vendor/description, category, type, status, amount, or visible date; no-match searches show an inline empty row instead of breaking pagination |
 | 17 | **Chart hover regression** — on every page with a bar chart (`ledger.html`, `revenue-sync.html`, any future chart), hover the **tallest visible bar** and confirm the tooltip never overlaps the chart's axis labels, date footer, or count captions below the bars. Per [DESIGN_SYSTEM.md §4 Charts](../docs/DESIGN_SYSTEM.md), the shared `attachChartHover` helper clamps to the chart container top — do not reintroduce flip-below behavior at any call site. |
-| 18 | Settings page renders Company Profile, Finance Preferences, Categories / Import Rules, WhatsApp Connection, AI Preferences, and Account & Security Basics |
-| 19 | Settings saves only under `users/{uid}/settings/company`, `finance`, `import_rules`, `ai`, or `whatsapp`; no global settings collections are created |
-| 20 | Settings shows loading, default/empty, saved, and friendly error states; locked AI confirmation and inactive WhatsApp states cannot imply autonomous writes or a fake connection |
+| 18 | `/settings` (index) renders search + three group sections (Personal, Workspace, Product) with all entry tiles; disabled tiles ("Communication preferences", "Data export", "Billing & plan") show a `Planned` pill and do not navigate |
+| 19 | Index search filters tiles by title + description (e.g., typing "ai" leaves only the AI tile visible; typing "zzz" shows the "No settings found." empty state) |
+| 20 | Each live detail page (`settings-personal`, `settings-business`, `settings-finance`, `settings-import-rules`, `settings-ai`, `settings-whatsapp`, `settings-security`) loads with breadcrumb `Settings`, focused max-w-3xl content, and sidebar Settings active state |
+| 21 | `settings-business` tabs work: Account details (active) and Business details switch panels; Branding and Documents are visibly disabled and unclickable |
+| 22 | Save flow on every editable detail page: change a field → Save → status pill flips to "Saved", success toast appears, reload page → value persists |
+| 23 | Settings saves only under `users/{uid}/settings/company`, `finance`, `import_rules`, `ai`, or `whatsapp`; no global settings collections are created |
+| 24 | Loading, default/empty, saved, and friendly error states are visible on every detail page; locked AI confirmation and inactive WhatsApp states cannot imply autonomous writes or a fake connection |
+| 25 | `settings-personal` and `settings-security` show no save buttons and no fake auth flows (no real passkey/2FA/close-account); all unimplemented controls render as `Planned` |
 
 ### E. Add Transaction / Bill / Subscription (shared-dashboard.js, db-service.js)
 
@@ -275,7 +280,14 @@ Open each page and confirm no visual breakage:
 | `pricing.html` | Cards, toggle, footer |
 | `budgetlanding.html` | Hero, footer |
 | `integration.html` | Cards grid, sidebar |
-| `settings.html` | Settings forms, sidebar active state, no footer |
+| `settings.html` | Index page tiles, search, sidebar active state, no footer |
+| `settings-personal.html` | User rows, Planned pills, no save button, no footer |
+| `settings-business.html` | Tab switching, Account/Business detail forms save, no footer |
+| `settings-finance.html` | Locked currency/locale rows, timezone & date format save, no footer |
+| `settings-import-rules.html` | Category chips, CSV behavior save, locked confirmation row, no footer |
+| `settings-ai.html` | Style/period/toggles save, locked confirmation row, AI safety panel, no footer |
+| `settings-whatsapp.html` | Status panel reflects saved state (no fake "Connected"), phone/name save, no footer |
+| `settings-security.html` | Read-only posture, Planned team/audit panels, no footer |
 
 ---
 

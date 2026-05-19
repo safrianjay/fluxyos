@@ -54,7 +54,14 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Bills | `bill.html` | App | ✅ | **No** | ✅ |
 | Subscriptions | `subscription.html` | App | ✅ | **No** | ✅ |
 | Integrations | `integration.html` | App | ✅ | **No** | ✅ |
-| Settings | `settings.html` | App | ✅ | **No** | ✅ |
+| Settings (index) | `settings.html` | App | ✅ | **No** | ✅ |
+| Settings — Personal details | `settings-personal.html` | App | ✅ | **No** | ✅ |
+| Settings — Business | `settings-business.html` | App | ✅ | **No** | ✅ |
+| Settings — Finance preferences | `settings-finance.html` | App | ✅ | **No** | ✅ |
+| Settings — Categories & import rules | `settings-import-rules.html` | App | ✅ | **No** | ✅ |
+| Settings — AI preferences | `settings-ai.html` | App | ✅ | **No** | ✅ |
+| Settings — WhatsApp connection | `settings-whatsapp.html` | App | ✅ | **No** | ✅ |
+| Settings — Team and security | `settings-security.html` | App | ✅ | **No** | ✅ |
 
 **Rule:** Footer loads on all landing pages, never on app pages. Any page that renders `#sidebar` is an app page and must not load the marketing footer.
 
@@ -137,6 +144,15 @@ tokens, OTPs, card data, bank credentials, or formatted currency strings.
 **Mutation rule:** owner read/create/update only through `DataService`; delete is
 blocked. WhatsApp status is configuration metadata only. Real WhatsApp API
 tokens must not be stored in Firestore.
+
+**UI surface:** Settings expose this schema through an index page
+(`settings.html`) and 7 focused detail pages (`settings-personal.html`,
+`settings-business.html`, `settings-finance.html`, `settings-import-rules.html`,
+`settings-ai.html`, `settings-whatsapp.html`, `settings-security.html`). Each
+detail page reads its slice via `DataService.getUserSettings(uid)` and saves
+through the matching `save*Settings` method. `settings-personal.html` and
+`settings-security.html` are display-only (Firebase Auth profile + posture
+summary); they do not write to Firestore.
 
 ---
 
@@ -320,11 +336,13 @@ Auto-runs on landing pages. Fetches `includes/footer.html`, appends to `<body>`,
 | `sidebar` | All app pages | Sidebar container (populated by sidebar-loader.js) |
 | `sidebar-user-name` | Sidebar | User display name |
 | `sidebar-user-avatar` | Sidebar | User avatar `<img>` |
-| `company-settings-form` | `settings.html` | Saves `settings/company` |
-| `finance-settings-form` | `settings.html` | Saves `settings/finance` |
-| `import-settings-form` | `settings.html` | Saves `settings/import_rules` |
-| `ai-settings-form` | `settings.html` | Saves `settings/ai` |
-| `whatsapp-settings-form` | `settings.html` | Saves `settings/whatsapp` |
+| `settings-search` | `settings.html` | Index page search input |
+| `company-settings-form` | `settings-business.html` (Account details tab) | Saves `settings/company` (name + entity label) |
+| `company-details-form` | `settings-business.html` (Business details tab) | Saves `settings/company` (business_type + country) |
+| `finance-settings-form` | `settings-finance.html` | Saves `settings/finance` |
+| `import-settings-form` | `settings-import-rules.html` | Saves `settings/import_rules` |
+| `ai-settings-form` | `settings-ai.html` | Saves `settings/ai` |
+| `whatsapp-settings-form` | `settings-whatsapp.html` | Saves `settings/whatsapp` |
 | `login-universe-canvas` | `login.html` | Canvas for starfield animation |
 
 ---

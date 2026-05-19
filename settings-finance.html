@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Finance preferences</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <aside id="sidebar" class="hidden w-[220px] bg-white text-[#1E2F4A] flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
+            <div class="flex items-center gap-4 min-w-0 flex-1">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <h1 class="text-lg font-bold text-gray-900">Finance preferences</h1>
+            </div>
+            <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                Fluxy AI
+            </button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10">
+            <div class="max-w-3xl mx-auto space-y-6">
+
+                <section>
+                    <a href="/settings" class="text-[12px] font-bold text-[#EA580C] hover:underline">Settings</a>
+                    <h1 class="mt-2 text-[26px] font-bold text-gray-900 tracking-tight">Finance preferences</h1>
+                    <p class="mt-1 text-[13px] text-gray-500">Currency, locale, date format, and finance display rules.</p>
+                </section>
+
+                <div id="settings-load-state" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-medium text-gray-500 shadow-sm" aria-live="polite">
+                    <span class="h-2 w-2 rounded-full bg-gray-300"></span>
+                    Loading settings
+                </div>
+                <div id="settings-error-state" class="hidden rounded-lg border border-red-200 bg-red-50 p-3 text-[13px] text-red-700" aria-live="assertive">
+                    Could not load finance settings. Refresh the page or try again in a moment.
+                </div>
+
+                <form id="finance-settings-form" class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-section="finance">
+                    <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <label class="block">
+                            <span class="text-[12px] font-bold text-gray-500">Currency</span>
+                            <input id="finance-currency" type="text" value="IDR" disabled class="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[14px] font-bold text-gray-500">
+                            <span class="mt-1 block text-[11px] text-gray-400">IDR is locked for MVP.</span>
+                        </label>
+                        <label class="block">
+                            <span class="text-[12px] font-bold text-gray-500">Locale</span>
+                            <input id="finance-locale" type="text" value="id-ID" disabled class="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[14px] font-bold text-gray-500">
+                            <span class="mt-1 block text-[11px] text-gray-400">Bahasa Indonesia formatting rules.</span>
+                        </label>
+                        <label class="block">
+                            <span class="text-[12px] font-bold text-gray-500">Timezone</span>
+                            <select id="finance-timezone" name="timezone" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] text-gray-900 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
+                                <option value="Asia/Jakarta">Asia/Jakarta</option>
+                                <option value="Asia/Makassar">Asia/Makassar</option>
+                                <option value="Asia/Jayapura">Asia/Jayapura</option>
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="text-[12px] font-bold text-gray-500">Date format</span>
+                            <select id="finance-date-format" name="date_format" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] text-gray-900 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
+                                <option value="DD MMM YYYY">DD MMM YYYY</option>
+                                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="px-5 pb-5 -mt-1 text-[12px] text-gray-500">
+                        Amounts always display as <span class="font-bold text-gray-700">Rp</span> with dot thousand-separators (e.g., Rp 1.234.567).
+                    </div>
+                    <div class="px-5 py-4 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <p id="finance-settings-status" class="text-[12px] text-gray-500">Finance display rules apply across dashboard, reports, and AI.</p>
+                        <div class="flex items-center gap-2">
+                            <button type="reset" class="settings-cancel-btn inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-[13px] font-bold text-gray-700 hover:bg-gray-50">Cancel</button>
+                            <button type="submit" class="settings-save-btn inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-[13px] font-bold text-white shadow-sm transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60">Save</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.firebaseapp.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
+            measurementId: "G-ZN7J6DRD2L"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+        const DEFAULT_CATEGORIES = ['Revenue', 'Marketing', 'Infrastructure', 'Operations', 'SaaS'];
+
+        const loadState = document.getElementById('settings-load-state');
+        const errorState = document.getElementById('settings-error-state');
+        let currentFinance = {};
+
+        const authTimeout = setTimeout(() => window.location.replace('/login'), 2000);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) return;
+            clearTimeout(authTimeout);
+            await loadFinance(user);
+        });
+
+        async function loadFinance(user) {
+            setLoadState('loading', 'Loading settings');
+            errorState.classList.add('hidden');
+            try {
+                const settings = await ds.getUserSettings(user.uid);
+                currentFinance = settings.finance || {};
+                renderFinance(currentFinance);
+                bindForm('finance-settings-form', saveFinance);
+                wireResets();
+                setLoadState('ready', 'Settings ready');
+            } catch (error) {
+                setLoadState('error', 'Could not load settings');
+                errorState.classList.remove('hidden');
+                window.showToast?.('Could not load finance settings. Please try again.', 'error');
+            }
+        }
+
+        function renderFinance(finance) {
+            setValue('finance-timezone', finance.timezone || 'Asia/Jakarta');
+            setValue('finance-date-format', finance.date_format || 'DD MMM YYYY');
+        }
+
+        function bindForm(formId, handler) {
+            const form = document.getElementById(formId);
+            if (!form || form.dataset.bound === 'true') return;
+            form.dataset.bound = 'true';
+            form.addEventListener('submit', handler);
+        }
+
+        function wireResets() {
+            document.querySelectorAll('.settings-cancel-btn').forEach((btn) => {
+                btn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    renderFinance(currentFinance);
+                });
+            });
+        }
+
+        async function saveFinance(event) {
+            event.preventDefault();
+            const payload = {
+                currency: 'IDR',
+                locale: 'id-ID',
+                timezone: getValue('finance-timezone'),
+                date_format: getValue('finance-date-format'),
+                categories: Array.isArray(currentFinance.categories) && currentFinance.categories.length ? currentFinance.categories : DEFAULT_CATEGORIES
+            };
+            const saved = await saveSection(event.currentTarget, 'finance-settings-status', () => ds.saveFinanceSettings(auth.currentUser.uid, payload), 'Finance preferences saved.');
+            if (saved) currentFinance = { ...currentFinance, ...payload };
+        }
+
+        async function saveSection(form, statusId, action, successMessage) {
+            if (!auth.currentUser) {
+                window.showToast?.('Session expired. Please log in again.', 'error');
+                return false;
+            }
+            const button = form.querySelector('.settings-save-btn');
+            const status = document.getElementById(statusId);
+            const originalLabel = button?.textContent || 'Save';
+            setButtonLoading(button, true, 'Saving...');
+            if (status) status.textContent = 'Saving changes...';
+            try {
+                await action();
+                if (status) status.textContent = successMessage;
+                window.showToast?.(successMessage, 'success');
+                return true;
+            } catch (error) {
+                if (status) status.textContent = 'Could not save. Check your connection and try again.';
+                window.showToast?.('Could not save finance settings. Please try again.', 'error');
+                return false;
+            } finally {
+                setButtonLoading(button, false, originalLabel);
+            }
+        }
+
+        function setLoadState(state, text) {
+            if (!loadState) return;
+            const color = state === 'ready' ? 'bg-green-500' : state === 'error' ? 'bg-red-500' : 'bg-gray-300';
+            loadState.innerHTML = `<span class="h-2 w-2 rounded-full ${color}"></span>${escapeHtml(text)}`;
+        }
+
+        function setButtonLoading(button, isLoading, label) {
+            if (!button) return;
+            button.disabled = isLoading;
+            button.textContent = label;
+        }
+
+        function setValue(id, value) { const el = document.getElementById(id); if (el) el.value = value; }
+        function getValue(id) { return String(document.getElementById(id)?.value || '').trim(); }
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>
