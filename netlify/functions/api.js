@@ -1253,7 +1253,7 @@ function buildDeterministicDocumentDetection({ fileName, mimeType, sizeBytes }) 
             preview: { document_name: cleanFileStem(fileName) },
         });
     }
-    if (normalizedMime.startsWith('image/')) {
+    if (/(selfie|profile|avatar|holiday|vacation|family|random|wallpaper|logo|brand photo)/.test(text)) {
         return detectionPayload({
             detectedType: 'non_financial_image',
             confidence: 0.72,
@@ -1503,7 +1503,7 @@ async function inputFromFile(event, headers) {
     if (!file_base64 || typeof file_base64 !== 'string') {
         return jsonResponse(headers, 400, { success: false, error: { code: 'missing_file', message: 'file_base64 is required.' } });
     }
-    const detection = buildDeterministicDocumentDetection({ fileName: file_name, mimeType: normalizedMime, sizeBytes: size });
+    let detection = buildDeterministicDocumentDetection({ fileName: file_name, mimeType: normalizedMime, sizeBytes: size });
     if (['unsupported_file', 'non_financial_image'].includes(detection.detected_type)) {
         return jsonResponse(headers, 200, {
             ...detection,
@@ -1517,13 +1517,25 @@ async function inputFromFile(event, headers) {
 
     let providerState = 'deterministic_fallback';
     let extracted = buildFallbackInputExtraction(detection, file_name);
-    if (['bill', 'invoice'].includes(detection.detected_type)) {
+    if (['bill', 'invoice', 'unknown_financial_document'].includes(detection.detected_type)) {
         if (process.env.OPENAI_API_KEY) {
             try {
                 extracted = sanitizeExtraction(await callOpenAIVision({ file_base64, mime_type: normalizedMime, file_name }));
                 providerState = 'openai';
+                if (detection.detected_type === 'unknown_financial_document' && (extracted.vendor_name || extracted.amount || extracted.invoice_number || extracted.due_date)) {
+                    detection = detectionPayload({
+                        detectedType: 'invoice',
+                        confidence: Math.max(Number(extracted.confidence?.overall || 0), 0.76),
+                        destination: 'bills',
+                        action: 'review_and_save_to_bills',
+                        message: 'This looks like a bill or invoice. I extracted the available fields and prepared them for review before saving to Bills.',
+                        fileName: file_name,
+                        warnings: ['Review the extracted fields before saving. No ledger transaction will be created.'],
+                        preview: { vendor_name: extracted.vendor_name || cleanFileStem(file_name) },
+                    });
+                }
             } catch (err) {
-                console.error('[ai/input-from-file] OpenAI extraction failed:', err?.message || err);
+                console.error('[ai/input-from-file] OpenAI extraction failed; using review-only fallback.');
                 providerState = 'deterministic_fallback';
                 extracted = buildFallbackInputExtraction(detection, file_name);
                 extracted.warnings = [...(extracted.warnings || []), 'Live extraction failed, so this fallback needs careful review.'];

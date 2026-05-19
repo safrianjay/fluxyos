@@ -232,7 +232,7 @@ def _detect_document_type(file_name: str | None, mime_type: str | None, size_byt
             ["Revenue Sync data may be limited if no integration is connected."],
             {"document_name": _clean_stem(file_name)},
         )
-    if normalized_mime.startswith("image/"):
+    if any(term in text for term in ["selfie", "profile", "avatar", "holiday", "vacation", "family", "random", "wallpaper", "logo", "brand photo"]):
         return _document_detection_payload(
             "non_financial_image", 0.72, "none", "refuse",
             "This does not look like a finance-related document. I can help with bills, receipts, transactions, subscriptions, revenue reports, and financial records inside FluxyOS.",

@@ -132,6 +132,8 @@ Save is disabled when required fields are missing. Duplicate warnings do not sil
 
 When provider extraction is unavailable, FluxyOS still classifies by safe filename/MIME hints and returns low-confidence mapped fields. The UI labels this as provider-dependent fallback and requires user review. It must not pretend extraction is live.
 
+Supported image and PDF uploads are not refused solely because the filename is generic. If a file such as `vendor.jpg` has no clear finance keywords, FluxyOS treats it as `unknown_financial_document` and asks the user to choose the review destination. With a configured AI provider, the backend may upgrade that ambiguous upload to a bill/invoice result when structured extraction finds bill fields such as vendor, amount, invoice number, or due date.
+
 ## Duplicate Checks
 
 The review drawer checks likely duplicates before saving:
