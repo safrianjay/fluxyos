@@ -32,9 +32,10 @@ class ChatPeriod(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
+    chat_id: Optional[str] = None
     page_context: Optional[Literal["dashboard", "ledger", "bills", "subscriptions", "revenue_sync", "ai_command_center", "global"]] = "global"
     period: Optional[ChatPeriod] = None
-    finance_snapshot: Optional[Dict[str, List[Dict[str, Any]]]] = None
+    finance_snapshot: Optional[Dict[str, Any]] = None
 
 class ChatAnswerPeriod(BaseModel):
     label: str
@@ -67,6 +68,7 @@ class ChatAnswer(BaseModel):
         "bills_analysis",
         "subscription_analysis",
         "ledger_cleanup",
+        "cash_pressure",
         "data_lookup",
         "action_recommendation",
         "unsupported",
@@ -89,6 +91,7 @@ class ChatError(BaseModel):
 
 class ChatResponse(BaseModel):
     success: bool
+    chat_id: Optional[str] = None
     intent: Optional[str] = None
     scope: Literal["project_finance"] = "project_finance"
     answer: Optional[ChatAnswer] = None

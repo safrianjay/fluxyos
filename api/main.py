@@ -94,7 +94,7 @@ def _classify_intent(message: str, page_context: str = "global") -> str:
     msg = (message or "").lower()
     if not msg:
         return "ambiguous"
-    if any(term in msg for term in ["president", "politic", "medical", "dating", "crypto", "bitcoin", "legal advice", "investment advice", "weather"]):
+    if any(term in msg for term in ["president", "politic", "election", "medical", "doctor", "diagnosis", "dating", "crypto", "bitcoin", "stock pick", "stock to buy", "legal advice", "investment advice", "who is", "weather", "sports"]):
         return "unsupported"
     if msg.strip() in {"hi", "hello", "hey", "test"}:
         return "ambiguous"
@@ -102,7 +102,9 @@ def _classify_intent(message: str, page_context: str = "global") -> str:
         return "ledger_cleanup"
     if any(term in msg for term in ["subscription", "saas", "renewal", "recurring"]):
         return "subscription_analysis"
-    if any(term in msg for term in ["bill", "payable", "due soon", "overdue", "cash pressure"]):
+    if any(term in msg for term in ["cash pressure", "cash runway", "cash risk", "cover upcoming", "can i cover", "cover my bills"]):
+        return "cash_pressure"
+    if any(term in msg for term in ["bill", "payable", "due soon", "overdue"]):
         return "bills_analysis"
     if any(term in msg for term in ["margin", "profitable", "profitability"]):
         return "margin_analysis"
@@ -581,9 +583,13 @@ def _required_collections_for_intent(intent: str) -> List[str]:
         return ["transactions"]
     if intent == "bills_analysis":
         return ["bills"]
+    if intent == "cash_pressure":
+        return ["transactions", "bills"]
     if intent == "subscription_analysis":
         return ["subscriptions"]
-    if intent in {"finance_health", "action_recommendation", "data_lookup"}:
+    if intent in {"finance_health", "action_recommendation"}:
+        return ["transactions", "bills"]
+    if intent == "data_lookup":
         return ["transactions", "bills", "subscriptions"]
     return []
 
@@ -669,6 +675,16 @@ def _build_answer(intent: str, message: str, period: Dict[str, str], transaction
     opex = sum(abs(float(tx.get("amount") or 0)) for tx in expense_records)
     margin = ((revenue - opex) / revenue * 100) if revenue > 0 else 0
     missing = [tx for tx in period_txs if tx.get("status") == "Missing Receipt"]
+    today = _today_jakarta()
+    window_end = today + datetime.timedelta(days=30)
+    unpaid_bills = [b for b in bills if str(b.get("status", "")).lower() not in PAID_STATUSES]
+    bills_with_due_dates = [b for b in unpaid_bills if _parse_record_date(b.get("due_date"))]
+    overdue_bills = [b for b in bills_with_due_dates if _parse_record_date(b.get("due_date")) < today]
+    due_soon_bills = [b for b in bills_with_due_dates if today <= _parse_record_date(b.get("due_date")) <= window_end]
+    total_unpaid_amount = sum(abs(float(b.get("amount") or 0)) for b in unpaid_bills)
+    pending_receivables = sum(abs(float(tx.get("amount") or 0)) for tx in transactions if str(tx.get("type", "")).lower() == "pending_receivable")
+    active_subscriptions = [s for s in subscriptions if str(s.get("status", "")).lower() != "cancelled"]
+    subs_total = sum(abs(float(s.get("amount") or 0)) for s in active_subscriptions)
 
     if intent == "revenue_analysis":
         base["direct_answer"] = f"Based on the current records, revenue for {period['label'].lower()} is {_format_idr(revenue)}." if revenue else f"No confirmed revenue records were found for {period['label'].lower()}."
@@ -687,15 +703,73 @@ def _build_answer(intent: str, message: str, period: Dict[str, str], transaction
         base["key_numbers"] = [_key_number("Revenue", revenue, "good" if revenue else "warning"), _key_number("OpEx", opex), _key_number("Gross margin", margin, "warning" if margin < 40 else "good", f"{margin:.1f}%")]
         base["recommended_actions"] = [{"title": "Review margin drivers", "description": "Check the largest expense categories and vendors first.", "priority": "high"}]
         return base
+    if intent == "cash_pressure":
+        risk = "critical" if total_unpaid_amount and pending_receivables < total_unpaid_amount else "warning" if total_unpaid_amount else "neutral"
+        base["direct_answer"] = f"I do not have actual bank balance data yet, so this is a cash pressure proxy. Upcoming payables are {_format_idr(total_unpaid_amount)} against {_format_idr(pending_receivables)} in pending receivables." if total_unpaid_amount else "I do not see upcoming unpaid payables in the supported bill data, but I still do not have actual bank balance data."
+        base["key_numbers"] = [
+            _key_number("Upcoming payables", total_unpaid_amount, risk),
+            _key_number("Pending receivables", pending_receivables, "good" if pending_receivables >= total_unpaid_amount and total_unpaid_amount else "neutral"),
+            _key_number("Recent revenue", revenue, "good" if revenue else "warning"),
+            _key_number("Recent OpEx", opex, "critical" if revenue and opex > revenue else "neutral"),
+        ]
+        base["insights"] = [
+            {"title": "Overdue bills", "description": f"{len(overdue_bills)} unpaid bill(s) are overdue.", "severity": "critical" if overdue_bills else "info", "evidence": [_compact(b, "due_date") for b in overdue_bills[:5]]},
+            {"title": "Bills due soon", "description": f"{len(due_soon_bills)} bill(s) are due within 30 days.", "severity": "warning" if due_soon_bills else "info", "evidence": [_compact(b, "due_date") for b in due_soon_bills[:5]]},
+        ]
+        base["recommended_actions"] = [
+            {"title": "Review upcoming payables", "description": "Check due soon and overdue bills before making spending decisions.", "priority": "high" if overdue_bills else "medium"},
+            {"title": "Confirm receivables timing", "description": "Pending receivables only reduce pressure if they are likely to clear before bills are due.", "priority": "medium"},
+        ]
+        base["limitations"].extend([
+            "I do not have your real bank balance yet, so this is a cash-pressure proxy, not an actual cash runway calculation.",
+            "Bank balance is not connected. Cash pressure is based on upcoming payables, pending receivables, recent revenue, and recent OpEx.",
+        ])
+        return base
+    if intent == "bills_analysis":
+        risk = "critical" if overdue_bills else "warning" if due_soon_bills else "neutral"
+        base["direct_answer"] = f"You have {len(unpaid_bills)} unpaid bills totaling {_format_idr(total_unpaid_amount)}." if unpaid_bills else "No unpaid bills are recorded right now."
+        base["key_numbers"] = [
+            _key_number("Unpaid bills", len(unpaid_bills), risk, str(len(unpaid_bills))),
+            _key_number("Unpaid amount", total_unpaid_amount, risk),
+        ]
+        base["insights"] = [
+            {"title": "Overdue bills found", "description": f"{len(overdue_bills)} unpaid bill(s) are overdue.", "severity": "critical" if overdue_bills else "info", "evidence": [_compact(b, "due_date") for b in overdue_bills[:5]]},
+            {"title": "Bills due soon", "description": f"{len(due_soon_bills)} bill(s) are due within 30 days.", "severity": "warning" if due_soon_bills else "info", "evidence": [_compact(b, "due_date") for b in due_soon_bills[:5]]},
+        ]
+        base["recommended_actions"] = [{"title": "Prioritize overdue bills", "description": "Review overdue and largest bills before lower-value upcoming items.", "priority": "high" if overdue_bills else "medium"}]
+        return base
+    if intent == "subscription_analysis":
+        base["direct_answer"] = f"Your recorded monthly subscription spend is {_format_idr(subs_total)} across {len(active_subscriptions)} subscription(s)." if active_subscriptions else "No active subscriptions were found."
+        base["key_numbers"] = [
+            _key_number("Monthly subscriptions", subs_total, "neutral" if subs_total else "warning"),
+            _key_number("Active subscriptions", len(active_subscriptions), "neutral", str(len(active_subscriptions))),
+        ]
+        base["insights"] = [{"title": "Largest subscriptions", "description": "Here are the largest subscriptions found.", "severity": "info", "evidence": [_compact(s, "renewal_date") for s in sorted(active_subscriptions, key=lambda s: abs(float(s.get("amount") or 0)), reverse=True)[:5]]}]
+        base["recommended_actions"] = [{"title": "Review recurring costs", "description": "Start with the largest subscriptions and upcoming renewals.", "priority": "medium"}]
+        return base
     if intent == "ledger_cleanup":
         base["direct_answer"] = f"I found {len(missing)} missing receipt record(s) for {period['label'].lower()}." if missing else f"The ledger looks clean for missing receipts in {period['label'].lower()}."
         base["key_numbers"] = [_key_number("Missing receipts", len(missing), "warning" if missing else "good", str(len(missing)))]
         base["insights"] = [{"title": "Missing receipts", "description": "These records need receipt attachments before the ledger is reliable for reporting.", "severity": "warning" if missing else "info", "evidence": [_compact(r) for r in missing[:5]]}]
         base["recommended_actions"] = [{"title": "Clean missing receipts first", "description": "Attach receipts for the highest-value missing receipt records before relying on reports.", "priority": "high" if missing else "low"}]
         return base
+    if intent == "data_lookup":
+        terms = [term for term in message.lower().split() if len(term) > 2]
+        records = [
+            *[_compact(tx) for tx in period_txs],
+            *[_compact(b, "due_date") for b in bills],
+            *[_compact(s, "renewal_date") for s in subscriptions],
+        ]
+        matches = [
+            record for record in records
+            if any(term in " ".join(str(record.get(field) or "").lower() for field in ["vendor_name", "category", "type", "status"]).lower() for term in terms)
+        ][:10]
+        base["answer_type"] = "lookup"
+        base["direct_answer"] = f"I found {len(matches)} related finance record(s)." if matches else "I could not find matching finance records in the current data."
+        base["insights"] = [{"title": "Matching records", "description": "Here are the closest records I found.", "severity": "info", "evidence": matches}] if matches else []
+        base["recommended_actions"] = [{"title": "Refine the lookup", "description": "Try a vendor name, category, or record status if you need a narrower result.", "priority": "low"}]
+        return base
 
-    unpaid_bills = [b for b in bills if str(b.get("status", "")).lower() not in PAID_STATUSES]
-    subs_total = sum(abs(float(s.get("amount") or 0)) for s in subscriptions if str(s.get("status", "")).lower() != "cancelled")
     revenue_label = "Live Revenue" if use_dashboard_basis else "Revenue"
     base["direct_answer"] = f"Here is what I am seeing for {period['label'].lower()}: {revenue_label.lower()} is {_format_idr(revenue)}, OpEx is {_format_idr(opex)}, and gross margin is {margin:.1f}%." if period_txs else f"There is not enough ledger data for {period['label'].lower()} to judge business health yet."
     base["key_numbers"] = [_key_number(revenue_label, revenue, "good" if revenue else "warning"), _key_number("OpEx", opex), _key_number("Gross margin", margin, "warning" if margin < 40 else "good", f"{margin:.1f}%"), _key_number("Missing receipts", len(missing), "warning" if missing else "good", str(len(missing)))]
@@ -756,9 +830,10 @@ async def brain_chat(request: ChatRequest, _user=Depends(verify_firebase_token))
 
     period = _period_dict(request.period)
     intent = _classify_intent(message, request.page_context or "global")
+    chat_id = request.chat_id.strip()[:128] if isinstance(request.chat_id, str) and request.chat_id.strip() else None
     if intent in {"unsupported", "ambiguous"}:
         answer = _build_answer(intent, message, period, [], [], [], request.page_context or "global")
-        return {"success": True, "intent": intent, "scope": FINANCE_SCOPE, "answer": answer, "related_records": [], "error": None}
+        return {"success": True, "chat_id": chat_id, "intent": intent, "scope": FINANCE_SCOPE, "answer": answer, "related_records": [], "error": None}
 
     uid = _user.get("user_id") or _user.get("sub")
     token = _user.get("_id_token")
@@ -792,7 +867,7 @@ async def brain_chat(request: ChatRequest, _user=Depends(verify_firebase_token))
     ]
     if missing_required_collections:
         answer = _build_data_unavailable_answer(intent, period, missing_required_collections)
-        return {"success": True, "intent": intent, "scope": FINANCE_SCOPE, "answer": answer, "related_records": [], "error": None}
+        return {"success": True, "chat_id": chat_id, "intent": intent, "scope": FINANCE_SCOPE, "answer": answer, "related_records": [], "error": None}
 
     answer = _build_answer(intent, message, period, transactions, bills, subscriptions, request.page_context or "global")
     read_limitations = [
@@ -810,7 +885,7 @@ async def brain_chat(request: ChatRequest, _user=Depends(verify_firebase_token))
             f"Used the authenticated page data snapshot for {', '.join(used_snapshot)} because direct backend Firestore read was unavailable.",
         ]
     related_records = [record for item in answer.get("insights", []) for record in item.get("evidence", [])][:10]
-    return {"success": True, "intent": intent, "scope": FINANCE_SCOPE, "answer": answer, "related_records": related_records, "error": None}
+    return {"success": True, "chat_id": chat_id, "intent": intent, "scope": FINANCE_SCOPE, "answer": answer, "related_records": related_records, "error": None}
 
 @app.post("/api/v1/ai/detect-document")
 async def detect_document(payload: Dict[str, Any], _user=Depends(verify_firebase_token)):

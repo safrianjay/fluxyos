@@ -546,6 +546,7 @@
                 },
                 body: JSON.stringify({
                     message: prompt,
+                    chat_id: state.currentChatId || undefined,
                     page_context: 'ai_command_center',
                     period: getCurrentPeriod(),
                     finance_snapshot: financeSnapshot,
@@ -1058,6 +1059,11 @@
                 ['Show upcoming bills', 'Show upcoming bills.'],
                 ['Check cash pressure', 'Can I cover upcoming bills?'],
                 ['Find risky bills', 'Which bills are risky?'],
+            ],
+            cash_pressure: [
+                ['Show upcoming bills', 'Show upcoming bills.'],
+                ['Which bills are risky?', 'Which bills are risky?'],
+                ['What should I fix first?', 'What should I fix first?'],
             ],
             ledger: [
                 ['Find missing receipts', 'Find missing receipts.'],
@@ -1626,6 +1632,7 @@
     function inferIntent(text) {
         const lower = String(text || '').toLowerCase();
         if (lower.includes('receipt')) return 'ledger_cleanup';
+        if (lower.includes('cash pressure') || lower.includes('can i cover') || lower.includes('cover upcoming')) return 'cash_pressure';
         if (lower.includes('bill')) return 'bills_risk';
         if (lower.includes('subscription')) return 'subscriptions';
         if (lower.includes('revenue')) return 'revenue_sync';
