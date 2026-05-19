@@ -73,14 +73,29 @@ ALLOWED_CATEGORIES = {"Revenue", "Marketing", "Infrastructure", "Operations", "S
 def _today_jakarta() -> datetime.date:
     return (datetime.datetime.utcnow() + datetime.timedelta(hours=7)).date()
 
-def _period_dict(period) -> Dict[str, str]:
+def _infer_period_type_from_message(message: str) -> str | None:
+    msg = (message or "").lower()
+    if any(term in msg for term in ["bulan lalu", "bulan kemarin", "periode sebelumnya"]):
+        return "last_month"
+    if "month before" in msg or "previous performance" in msg or "last month's" in msg or "previous month's" in msg or "prior month's" in msg:
+        return "last_month"
+    if "last month" in msg or "previous month" in msg or "prior month" in msg:
+        return "last_month"
+    if "last performance month" in msg or "previous performance month" in msg:
+        return "last_month"
+    return None
+
+def _period_dict(period, message: str = "") -> Dict[str, str]:
     today = _today_jakarta()
-    if period and period.type == "last_month":
+    message_type = _infer_period_type_from_message(message)
+    requested_type = period.type if period and period.type in {"this_month", "last_month", "custom"} else "this_month"
+    resolved_type = requested_type if requested_type == "custom" else message_type or requested_type
+    if resolved_type == "last_month":
         first_this = today.replace(day=1)
         end = first_this - datetime.timedelta(days=1)
         start = end.replace(day=1)
         return {"type": "last_month", "label": "Last month", "start_date": start.isoformat(), "end_date": end.isoformat()}
-    if period and period.type == "custom" and period.start_date and period.end_date:
+    if resolved_type == "custom" and period and period.start_date and period.end_date:
         return {"type": "custom", "label": "Selected period", "start_date": period.start_date, "end_date": period.end_date}
     start = today.replace(day=1)
     next_month = (start.replace(day=28) + datetime.timedelta(days=4)).replace(day=1)
@@ -828,7 +843,7 @@ async def brain_chat(request: ChatRequest, _user=Depends(verify_firebase_token))
     if len(message) > 500:
         raise HTTPException(status_code=400, detail="message must be 500 characters or fewer")
 
-    period = _period_dict(request.period)
+    period = _period_dict(request.period, message)
     intent = _classify_intent(message, request.page_context or "global")
     chat_id = request.chat_id.strip()[:128] if isinstance(request.chat_id, str) and request.chat_id.strip() else None
     if intent in {"unsupported", "ambiguous"}:

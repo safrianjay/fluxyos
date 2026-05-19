@@ -118,10 +118,28 @@ function getDefaultPeriod() {
     };
 }
 
-function normalizePeriod(input) {
+function inferPeriodTypeFromMessage(message) {
+    const msg = normalizeText(message);
+    if (/\b(last|previous|prior)\s+(performance\s+)?(month|period)\b/.test(msg)) return 'last_month';
+    if (/\b(last|previous|prior) month's\b/.test(msg) || msg.includes('month before') || msg.includes('previous performance')) return 'last_month';
+    if (msg.includes('bulan lalu') || msg.includes('bulan kemarin') || msg.includes('periode sebelumnya')) return 'last_month';
+    return null;
+}
+
+function normalizePeriod(input, message = '') {
     const fallback = getDefaultPeriod();
-    if (!input || typeof input !== 'object') return fallback;
-    const type = ['this_month', 'last_month', 'custom'].includes(input.type) ? input.type : fallback.type;
+    const messageType = inferPeriodTypeFromMessage(message);
+    if (!input || typeof input !== 'object') {
+        if (messageType === 'last_month') {
+            const today = todayJakarta();
+            const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            const end = new Date(today.getFullYear(), today.getMonth(), 0);
+            return { type: 'last_month', label: 'Last month', start_date: toDateKey(start), end_date: toDateKey(end) };
+        }
+        return fallback;
+    }
+    const requestedType = ['this_month', 'last_month', 'custom'].includes(input.type) ? input.type : fallback.type;
+    const type = requestedType === 'custom' ? requestedType : messageType || requestedType;
     if (type === 'last_month') {
         const today = todayJakarta();
         const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
@@ -1036,7 +1054,7 @@ async function buildBrainChatResponse({ request, uid, token }) {
 
     const chatId = typeof request.chat_id === 'string' && request.chat_id.trim() ? request.chat_id.trim().slice(0, 128) : null;
     const pageContext = typeof request.page_context === 'string' ? request.page_context : 'global';
-    const period = normalizePeriod(request.period);
+    const period = normalizePeriod(request.period, message);
     const intent = classifyIntent(message, pageContext);
 
     if (intent === 'unsupported' || intent === 'ambiguous') {
@@ -2008,4 +2026,5 @@ exports.__test__ = {
     requiredCollectionsForIntent,
     buildDeterministicAnswer,
     validateFinanceAnswer,
+    normalizePeriod,
 };

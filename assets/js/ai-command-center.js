@@ -573,7 +573,7 @@
                     message: prompt,
                     chat_id: state.currentChatId || undefined,
                     page_context: 'ai_command_center',
-                    period: getCurrentPeriod(),
+                    period: getCurrentPeriod(prompt),
                     finance_snapshot: financeSnapshot,
                 }),
             });
@@ -1751,11 +1751,21 @@
         return user.getIdToken();
     }
 
-    function getCurrentPeriod() {
+    function getCurrentPeriod(prompt) {
         const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
-        const start = new Date(now.getFullYear(), now.getMonth(), 1);
-        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        return { type: 'this_month', start_date: toDateKey(start), end_date: toDateKey(end) };
+        const periodType = inferPromptPeriodType(prompt);
+        const monthOffset = periodType === 'last_month' ? -1 : 0;
+        const start = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + monthOffset + 1, 0);
+        return { type: periodType, start_date: toDateKey(start), end_date: toDateKey(end) };
+    }
+
+    function inferPromptPeriodType(prompt) {
+        const text = String(prompt || '').toLowerCase();
+        if (/\b(last|previous|prior)\s+(performance\s+)?(month|period)\b/.test(text)) return 'last_month';
+        if (/\b(last|previous|prior) month's\b/.test(text) || text.includes('month before') || text.includes('previous performance')) return 'last_month';
+        if (text.includes('bulan lalu') || text.includes('bulan kemarin') || text.includes('periode sebelumnya')) return 'last_month';
+        return 'this_month';
     }
 
     function toDateKey(date) {
