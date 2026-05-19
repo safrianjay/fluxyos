@@ -396,6 +396,7 @@ function parseRecordDate(value) {
 }
 
 function isWithinPeriod(record, period, field = 'timestamp') {
+    if (period?.type === 'all_time' || period?.type === 'none') return true;
     const date = parseRecordDate(record[field]);
     if (!date) return false;
     const start = parseDateKey(period.start_date);
@@ -663,7 +664,12 @@ function yearPeriod(year, label = `${year}`) {
     return buildPeriod('year', label, new Date(year, 0, 1), new Date(year, 11, 31));
 }
 
+function allTimePeriod() {
+    return { type: 'all_time', label: 'All time', start_date: '', end_date: '' };
+}
+
 function previousEquivalentPeriod(period) {
+    if (period?.type === 'all_time' || period?.type === 'none') return null;
     const start = parseDateKey(period.start_date);
     const end = parseDateKey(period.end_date);
     if (!start || !end) return null;
@@ -686,6 +692,9 @@ function parsePeriodFromMessage(message, currentDate = todayJakarta()) {
     const msg = normalizeText(message);
     const currentYear = currentDate.getFullYear();
     const monthPattern = Object.keys(MONTH_NAMES).join('|');
+    if (/\b(all time|all-time|lifetime|entire history|full history|since the beginning|from the beginning)\b/.test(msg)) {
+        return { period: allTimePeriod(), comparison_period: null };
+    }
     if (/\bthan\s+last\s+month\b/.test(msg)) {
         const current = getDefaultPeriod();
         const currentStart = parseDateKey(current.start_date);
@@ -956,7 +965,7 @@ function financePlanSchema() {
                 type: 'object',
                 additionalProperties: false,
                 properties: {
-                    type: { type: 'string', enum: ['month', 'quarter', 'year', 'rolling', 'custom', 'default', 'none'] },
+                    type: { type: 'string', enum: ['month', 'quarter', 'year', 'rolling', 'custom', 'default', 'all_time', 'none'] },
                     label: { type: 'string' },
                     start_date: { type: 'string' },
                     end_date: { type: 'string' },

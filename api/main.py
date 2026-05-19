@@ -114,6 +114,8 @@ def _quarter_period(year: int, quarter: int) -> Dict[str, str]:
 
 def _explicit_period_from_message(message: str) -> Dict[str, str] | None:
     msg = (message or "").lower()
+    if re.search(r"\b(all time|all-time|lifetime|entire history|full history|since the beginning|from the beginning)\b", msg):
+        return {"type": "all_time", "label": "All time", "start_date": "", "end_date": ""}
     q_match = re.search(r"\bq([1-4])\s+(20\d{2})\b", msg)
     if q_match:
         return _quarter_period(int(q_match.group(2)), int(q_match.group(1)))
@@ -635,6 +637,8 @@ def _parse_record_date(value) -> datetime.date | None:
     return None
 
 def _in_period(record: Dict[str, Any], period: Dict[str, str], field: str = "timestamp") -> bool:
+    if period.get("type") in {"all_time", "none"}:
+        return True
     date = _parse_record_date(record.get(field))
     if not date:
         return False
