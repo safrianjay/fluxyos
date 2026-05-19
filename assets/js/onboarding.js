@@ -169,9 +169,6 @@ function showStep() {
     const stepEl = document.querySelector(`.onboarding-step[data-step="${step.key}"]`);
     if (stepEl) stepEl.hidden = false;
 
-    document.getElementById('step-pill-text').textContent =
-        `Step ${state.stepIndex + 1} of ${STEPS.length} · ${step.pillLabel}`;
-
     document.getElementById('btn-back').hidden = state.stepIndex === 0;
     const isReview = state.stepIndex === STEPS.length - 1;
     document.getElementById('btn-continue').hidden = isReview;
