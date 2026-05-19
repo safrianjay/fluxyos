@@ -1370,9 +1370,6 @@
         const warnings = issueList.length
             ? `<div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">${issueList.map(item => `<p class="text-[12px] font-medium text-amber-800">${escapeHtml(item)}</p>`).join('')}</div>`
             : '';
-        const provider = result.provider_state
-            ? `<span class="mt-2 inline-flex rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-500">${escapeHtml(toLabel(result.provider_state))}</span>`
-            : '';
         const action = renderDocumentAction(result, actionId, file);
 
         renderAssistantMessage(actionId, `
@@ -1381,7 +1378,6 @@
                         <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Detected document</p>
                         <h2 class="mt-1 text-[22px] font-extrabold text-gray-950">${escapeHtml(toLabel(result.detected_type || 'unknown_financial_document'))}</h2>
                         <p class="mt-2 text-[14px] leading-relaxed text-gray-600">${escapeHtml(result.message || '')}</p>
-                        ${provider}
                     </div>
                     <div class="rounded-xl border ${lowConfidence ? 'border-amber-200' : 'border-gray-200'} px-4 py-3 text-right">
                         <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Confidence</p>
