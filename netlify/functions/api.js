@@ -2141,6 +2141,209 @@ function detectionPayload({ detectedType, confidence, destination, action, messa
     };
 }
 
+function parseCsvRows(text, limit = 26) {
+    const rows = [];
+    let current = '';
+    let row = [];
+    let inQuotes = false;
+    const input = String(text || '').replace(/^\uFEFF/, '');
+
+    for (let index = 0; index < input.length; index += 1) {
+        const char = input[index];
+        const next = input[index + 1];
+        if (char === '"' && inQuotes && next === '"') {
+            current += '"';
+            index += 1;
+        } else if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            row.push(current.trim());
+            current = '';
+        } else if ((char === '\n' || char === '\r') && !inQuotes) {
+            if (char === '\r' && next === '\n') index += 1;
+            row.push(current.trim());
+            if (row.some(value => value !== '')) rows.push(row);
+            row = [];
+            current = '';
+            if (rows.length >= limit) break;
+        } else {
+            current += char;
+        }
+    }
+    if (rows.length < limit) {
+        row.push(current.trim());
+        if (row.some(value => value !== '')) rows.push(row);
+    }
+    return rows;
+}
+
+function normalizeCsvHeader(header) {
+    return String(header || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function csvHas(headers, names) {
+    return names.some(name => headers.includes(normalizeCsvHeader(name)));
+}
+
+function scoreCsv(headers, sample, names) {
+    return names.reduce((score, name) => {
+        const normalized = normalizeCsvHeader(name);
+        if (headers.includes(normalized)) return score + 2;
+        return sample.includes(String(name).toLowerCase()) ? score + 1 : score;
+    }, 0);
+}
+
+function isCsvUpload(fileName, mimeType) {
+    const ext = fileExtension(fileName);
+    return ext === 'csv' || ['text/csv', 'application/vnd.ms-excel', 'application/csv'].includes(mimeType || '');
+}
+
+function analyzeCsvContent(fileBase64, fileName) {
+    let csvText = '';
+    try {
+        csvText = Buffer.from(String(fileBase64 || ''), 'base64').toString('utf8').slice(0, 160000);
+    } catch {
+        csvText = '';
+    }
+    const rows = parseCsvRows(csvText, 26);
+    const rawHeaders = rows[0] || [];
+    const headers = rawHeaders.map(normalizeCsvHeader);
+    const sampleRows = rows.slice(1, 6).map(row => {
+        const item = {};
+        rawHeaders.forEach((header, index) => {
+            item[header || `Column ${index + 1}`] = row[index] || '';
+        });
+        return item;
+    });
+    const sampleText = `${fileName || ''} ${rawHeaders.join(' ')} ${rows.slice(1, 6).flat().join(' ')}`.toLowerCase();
+    const scores = {
+        transactions: scoreCsv(headers, sampleText, ['description', 'vendor', 'vendor_name', 'category', 'type', 'amount', 'status', 'date', 'transaction_date', 'debit', 'credit', 'memo', 'reference']),
+        bills: scoreCsv(headers, sampleText, ['invoice_number', 'invoice', 'bill', 'due_date', 'due date', 'amount_due', 'amount due', 'payable', 'supplier', 'vendor_name', 'vendor', 'tax_amount']),
+        subscriptions: scoreCsv(headers, sampleText, ['subscription', 'renewal_date', 'renewal date', 'billing_cycle', 'billing cycle', 'recurring', 'plan', 'seat', 'monthly']),
+        revenue: scoreCsv(headers, sampleText, ['order_id', 'order number', 'order_number', 'sales', 'revenue', 'total_revenue', 'gross_sales', 'net_sales', 'payout', 'settlement', 'channel', 'customer']),
+        bank: scoreCsv(headers, sampleText, ['bank', 'account', 'balance', 'debit', 'credit', 'statement', 'reference', 'transaction date']),
+    };
+    const hasTransactionShape = csvHas(headers, ['description', 'vendor', 'vendor_name'])
+        && csvHas(headers, ['amount'])
+        && (csvHas(headers, ['type', 'category']) || csvHas(headers, ['debit', 'credit']));
+    const hasBankShape = csvHas(headers, ['balance'])
+        && csvHas(headers, ['debit', 'credit'])
+        && !csvHas(headers, ['category', 'type'])
+        && !csvHas(headers, ['amount']);
+    let kind = 'unknown_financial_document';
+    if (hasBankShape || (scores.bank >= Math.max(6, scores.transactions) && !csvHas(headers, ['category', 'type']))) kind = 'bank_statement';
+    else if (hasTransactionShape || scores.transactions >= Math.max(6, scores.bills + 2, scores.revenue + 1, scores.subscriptions + 1)) kind = 'csv_transactions';
+    else if (scores.bills >= 5 && scores.bills >= scores.transactions && scores.bills >= scores.revenue) kind = 'bill';
+    else if (scores.subscriptions >= 4 && scores.subscriptions >= scores.bills) kind = 'subscription_invoice';
+    else if (scores.revenue >= 4 && scores.revenue >= scores.transactions) kind = 'revenue_report';
+    else if (scores.bank >= 4) kind = 'bank_statement';
+
+    return {
+        kind,
+        headers: rawHeaders,
+        row_count: Math.max(0, rows.length - 1),
+        sample_rows: sampleRows,
+        scores,
+        preview: {
+            document_name: cleanFileStem(fileName),
+            csv_kind: kind === 'csv_transactions' ? 'Ledger transactions'
+                : kind === 'bill' ? 'Bills or invoices'
+                    : kind === 'subscription_invoice' ? 'Subscriptions'
+                        : kind === 'revenue_report' ? 'Revenue or order report'
+                            : kind === 'bank_statement' ? 'Bank statement'
+                                : 'Unknown finance CSV',
+            detected_columns: rawHeaders,
+            row_count: Math.max(0, rows.length - 1),
+            sample_rows: sampleRows,
+        },
+    };
+}
+
+function buildCsvDetection(csvAnalysis, fileName) {
+    if (!csvAnalysis.headers.length) {
+        return detectionPayload({
+            detectedType: 'unknown_financial_document',
+            confidence: 0.45,
+            destination: 'ai_review',
+            action: 'ask_user',
+            message: 'I could not read the CSV headers clearly. Choose where this CSV belongs before saving anything.',
+            fileName,
+            warnings: ['CSV headers were empty or unreadable.'],
+            preview: csvAnalysis.preview,
+        });
+    }
+    if (csvAnalysis.kind === 'csv_transactions') {
+        return detectionPayload({
+            detectedType: 'csv_transactions',
+            confidence: 0.9,
+            destination: 'ledger',
+            action: 'review_csv_import',
+            message: 'This CSV looks like ledger transaction data. I found transaction-style columns such as description/vendor, category/type, amount, status, or date.',
+            fileName,
+            warnings: ['Review the parsed CSV rows before importing. No rows are saved until you confirm upload.'],
+            preview: csvAnalysis.preview,
+        });
+    }
+    if (csvAnalysis.kind === 'bill') {
+        return detectionPayload({
+            detectedType: 'bill',
+            confidence: 0.78,
+            destination: 'bills',
+            action: 'ask_user',
+            message: 'This CSV looks more like bills or invoices than ledger transactions. It has bill-style signals such as invoice, due date, payable, supplier, or amount due columns.',
+            fileName,
+            warnings: ['Bulk bill CSV save is not enabled yet. Review the rows and choose a destination before saving anything.'],
+            preview: csvAnalysis.preview,
+        });
+    }
+    if (csvAnalysis.kind === 'subscription_invoice') {
+        return detectionPayload({
+            detectedType: 'subscription_invoice',
+            confidence: 0.76,
+            destination: 'subscriptions',
+            action: 'ask_user',
+            message: 'This CSV looks like subscription or recurring billing data. It has subscription-style signals such as renewal, billing cycle, recurring, plan, or monthly columns.',
+            fileName,
+            warnings: ['Bulk subscription CSV save is not enabled yet. Review before saving anything.'],
+            preview: csvAnalysis.preview,
+        });
+    }
+    if (csvAnalysis.kind === 'revenue_report') {
+        return detectionPayload({
+            detectedType: 'revenue_report',
+            confidence: 0.76,
+            destination: 'revenue_sync',
+            action: 'ask_user',
+            message: 'This CSV looks like a revenue or order report. It has revenue-style signals such as order, sales, payout, settlement, channel, or customer columns.',
+            fileName,
+            warnings: ['Revenue Sync CSV import is review-only here unless a supported import flow exists.'],
+            preview: csvAnalysis.preview,
+        });
+    }
+    if (csvAnalysis.kind === 'bank_statement') {
+        return detectionPayload({
+            detectedType: 'bank_statement',
+            confidence: 0.72,
+            destination: 'ledger',
+            action: 'ask_user',
+            message: 'This CSV looks like a bank statement or payment export. Review it before deciding whether to import it as ledger transactions.',
+            fileName,
+            warnings: ['Bank statement CSV mapping may need manual review before importing.'],
+            preview: csvAnalysis.preview,
+        });
+    }
+    return detectionPayload({
+        detectedType: 'unknown_financial_document',
+        confidence: 0.52,
+        destination: 'ai_review',
+        action: 'ask_user',
+        message: 'This is a CSV file, but I am not confident whether it is transactions, bills, subscriptions, or revenue data. Choose the destination before saving anything.',
+        fileName,
+        warnings: ['Low-confidence CSV routing. Please review columns and rows before import.'],
+        preview: csvAnalysis.preview,
+    });
+}
+
 function buildDeterministicDocumentDetection({ fileName, mimeType, sizeBytes }) {
     const normalizedMime = mimeType || guessMimeFromFileName(fileName);
     const ext = fileExtension(fileName);
@@ -2280,11 +2483,15 @@ async function detectDocument(event, headers) {
     } catch {
         return jsonResponse(headers, 400, { success: false, error: { code: 'invalid_json', message: 'Request body must be valid JSON.' } });
     }
-    const result = buildDeterministicDocumentDetection({
+    const normalizedMime = body.mime_type || guessMimeFromFileName(body.file_name);
+    let result = buildDeterministicDocumentDetection({
         fileName: body.file_name,
-        mimeType: body.mime_type || guessMimeFromFileName(body.file_name),
+        mimeType: normalizedMime,
         sizeBytes: body.size_bytes,
     });
+    if (body.file_base64 && isCsvUpload(body.file_name, normalizedMime) && result.detected_type !== 'unsupported_file') {
+        result = buildCsvDetection(analyzeCsvContent(body.file_base64, body.file_name), body.file_name);
+    }
     return jsonResponse(headers, 200, result);
 }
 
@@ -2322,7 +2529,7 @@ function blankConfidence(overall = 0.46) {
     };
 }
 
-function buildFallbackInputExtraction(detection, fileName) {
+function buildFallbackInputExtraction(detection, fileName, csvAnalysis = null) {
     const stem = cleanFileStem(fileName);
     const type = detection.detected_type;
     const baseWarnings = [
@@ -2341,6 +2548,7 @@ function buildFallbackInputExtraction(detection, fileName) {
             confidence: { overall: 0.5, vendor_name: 0.5, amount: 0.3, due_date: 0.3, category: 0.4 },
             warnings: ['Bill scanning provider not configured — amount and dates must be entered before saving.'],
             raw_text_preview: null,
+            ...(csvAnalysis ? csvAnalysis.preview : {}),
         };
     }
     if (type === 'subscription_invoice') {
@@ -2356,6 +2564,7 @@ function buildFallbackInputExtraction(detection, fileName) {
             notes: '',
             confidence: blankConfidence(0.48),
             warnings: baseWarnings,
+            ...(csvAnalysis ? csvAnalysis.preview : {}),
         };
     }
     if (['receipt', 'payment_screenshot', 'bank_transfer', 'bank_statement'].includes(type)) {
@@ -2373,6 +2582,7 @@ function buildFallbackInputExtraction(detection, fileName) {
             notes: '',
             confidence: blankConfidence(0.48),
             warnings: baseWarnings,
+            ...(csvAnalysis ? csvAnalysis.preview : {}),
         };
     }
     if (type === 'revenue_report') {
@@ -2384,21 +2594,23 @@ function buildFallbackInputExtraction(detection, fileName) {
             period_start: null,
             period_end: null,
             customer_or_source: stem,
-            rows: [],
+            rows: csvAnalysis?.sample_rows || [],
             confidence: blankConfidence(0.42),
             warnings: ['Revenue Sync data is not connected yet. I can prepare this for review, but I cannot sync it automatically.'],
+            ...(csvAnalysis ? csvAnalysis.preview : {}),
         };
     }
     if (type === 'csv_transactions') {
         return {
             document_type: type,
-            rows: [],
-            detected_columns: [],
+            rows: csvAnalysis?.sample_rows || [],
+            detected_columns: csvAnalysis?.headers || [],
             mapped_columns: {},
             unmapped_columns: [],
             validation_errors: [],
             confidence: { overall: 0.88 },
             warnings: ['Review CSV rows through the existing Ledger CSV import flow before saving.'],
+            csv_kind: csvAnalysis?.preview?.csv_kind || 'Ledger transactions',
         };
     }
     return {
@@ -2406,6 +2618,7 @@ function buildFallbackInputExtraction(detection, fileName) {
         document_name: stem,
         confidence: blankConfidence(0.32),
         warnings: detection.warnings?.length ? detection.warnings : ['Low-confidence routing. Choose a destination before saving anything.'],
+        ...(csvAnalysis ? csvAnalysis.preview : {}),
     };
 }
 
@@ -2530,7 +2743,12 @@ async function inputFromFile(event, headers) {
     if (!file_base64 || typeof file_base64 !== 'string') {
         return jsonResponse(headers, 400, { success: false, error: { code: 'missing_file', message: 'file_base64 is required.' } });
     }
+    let csvAnalysis = null;
     let detection = buildDeterministicDocumentDetection({ fileName: file_name, mimeType: normalizedMime, sizeBytes: size });
+    if (isCsvUpload(file_name, normalizedMime) && detection.detected_type !== 'unsupported_file') {
+        csvAnalysis = analyzeCsvContent(file_base64, file_name);
+        detection = buildCsvDetection(csvAnalysis, file_name);
+    }
     if (['unsupported_file', 'non_financial_image'].includes(detection.detected_type)) {
         return jsonResponse(headers, 200, {
             ...detection,
@@ -2543,7 +2761,7 @@ async function inputFromFile(event, headers) {
     }
 
     let providerState = 'deterministic_fallback';
-    let extracted = buildFallbackInputExtraction(detection, file_name);
+    let extracted = buildFallbackInputExtraction(detection, file_name, csvAnalysis);
     if (['bill', 'invoice', 'unknown_financial_document'].includes(detection.detected_type)) {
         if (process.env.OPENAI_API_KEY) {
             try {
@@ -2579,7 +2797,7 @@ async function inputFromFile(event, headers) {
             } catch (err) {
                 console.error('[ai/input-from-file] OpenAI extraction failed; using review-only fallback.');
                 providerState = 'deterministic_fallback';
-                extracted = buildFallbackInputExtraction(detection, file_name);
+                extracted = buildFallbackInputExtraction(detection, file_name, csvAnalysis);
                 extracted.warnings = [...(extracted.warnings || []), 'Live extraction failed, so this fallback needs careful review.'];
             }
         } else {
@@ -2862,4 +3080,7 @@ exports.__test__ = {
     planFinanceQuestion,
     validateFinanceAnswer,
     normalizePeriod,
+    analyzeCsvContent,
+    buildCsvDetection,
+    isCsvUpload,
 };

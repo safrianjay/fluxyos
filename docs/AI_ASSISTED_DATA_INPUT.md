@@ -72,6 +72,21 @@ The response is a strict review contract:
 | `unknown_financial_document` | AI Review | `ask_user` |
 | `non_financial_image`, `unsupported_file` | None | `refuse` |
 
+## CSV Content Routing
+
+CSV uploads are not classified from the `.csv` extension alone. The backend reads the CSV headers and a small sample of rows, then predicts the finance shape before recommending a destination.
+
+| CSV signals | Predicted data type | Destination behavior |
+| --- | --- | --- |
+| `Description` or `vendor_name`, `Category`, `Type`, `Amount`, `Status`, `Date` | Ledger transactions | Open existing Ledger CSV import review. |
+| `invoice`, `invoice_number`, `due_date`, `amount_due`, `supplier`, `payable` | Bills or invoices | Show Bills routing/review suggestion only; no bulk bill save is created here. |
+| `subscription`, `renewal_date`, `billing_cycle`, `recurring`, `plan`, `monthly` | Subscriptions | Show Subscriptions routing/review suggestion only. |
+| `order`, `sales`, `revenue`, `payout`, `settlement`, `channel`, `customer` | Revenue or order report | Route to Revenue Sync review; do not invent a new revenue import schema. |
+| `debit`, `credit`, `balance`, `account`, `statement`, `reference` without Fluxy category/type columns | Bank statement | Route to Ledger review; require manual mapping before any import. |
+| Unclear headers or mixed signals | Unknown finance CSV | Ask the user to choose Bills, Ledger, Subscriptions, Revenue Sync, or Ignore. |
+
+Only the first case opens the existing Ledger CSV importer automatically. Every other CSV prediction stays review-first because FluxyOS does not yet have dedicated bulk import save flows for Bills, Subscriptions, or Revenue Sync. This prevents a bill CSV from being silently treated as transaction rows.
+
 ## Field Mapping
 
 Bills map to `users/{uid}/bills`:

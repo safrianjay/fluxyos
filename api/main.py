@@ -3,7 +3,10 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import base64
+import csv
 import datetime
+import io
 import os
 import json
 import re
@@ -228,6 +231,166 @@ def _document_detection_payload(detected_type: str, confidence: float, destinati
         "warnings": warnings or [],
     }
 
+def _normalize_csv_header(header: Any) -> str:
+    return re.sub(r"[^a-z0-9]", "", str(header or "").lower())
+
+def _csv_has(headers: List[str], names: List[str]) -> bool:
+    return any(_normalize_csv_header(name) in headers for name in names)
+
+def _score_csv(headers: List[str], sample: str, names: List[str]) -> int:
+    score = 0
+    for name in names:
+        normalized = _normalize_csv_header(name)
+        if normalized in headers:
+            score += 2
+        elif str(name).lower() in sample:
+            score += 1
+    return score
+
+def _is_csv_upload(file_name: str | None, mime_type: str | None) -> bool:
+    return _file_ext(file_name) == "csv" or (mime_type or "") in {"text/csv", "application/vnd.ms-excel", "application/csv"}
+
+def _analyze_csv_content(file_base64: str | None, file_name: str | None) -> Dict[str, Any]:
+    csv_text = ""
+    try:
+        raw = base64.b64decode(file_base64 or "", validate=False)
+        csv_text = raw.decode("utf-8", errors="ignore")[:160000].lstrip("\ufeff")
+    except Exception:
+        csv_text = ""
+    rows: List[List[str]] = []
+    try:
+        reader = csv.reader(io.StringIO(csv_text))
+        for row in reader:
+            cleaned = [str(item or "").strip() for item in row]
+            if any(cleaned):
+                rows.append(cleaned)
+            if len(rows) >= 26:
+                break
+    except Exception:
+        rows = []
+
+    raw_headers = rows[0] if rows else []
+    headers = [_normalize_csv_header(header) for header in raw_headers]
+    sample_rows: List[Dict[str, str]] = []
+    for row in rows[1:6]:
+        item: Dict[str, str] = {}
+        for index, header in enumerate(raw_headers):
+            item[header or f"Column {index + 1}"] = row[index] if index < len(row) else ""
+        sample_rows.append(item)
+
+    sample_text = f"{file_name or ''} {' '.join(raw_headers)} {' '.join(cell for row in rows[1:6] for cell in row)}".lower()
+    scores = {
+        "transactions": _score_csv(headers, sample_text, ["description", "vendor", "vendor_name", "category", "type", "amount", "status", "date", "transaction_date", "debit", "credit", "memo", "reference"]),
+        "bills": _score_csv(headers, sample_text, ["invoice_number", "invoice", "bill", "due_date", "due date", "amount_due", "amount due", "payable", "supplier", "vendor_name", "vendor", "tax_amount"]),
+        "subscriptions": _score_csv(headers, sample_text, ["subscription", "renewal_date", "renewal date", "billing_cycle", "billing cycle", "recurring", "plan", "seat", "monthly"]),
+        "revenue": _score_csv(headers, sample_text, ["order_id", "order number", "order_number", "sales", "revenue", "total_revenue", "gross_sales", "net_sales", "payout", "settlement", "channel", "customer"]),
+        "bank": _score_csv(headers, sample_text, ["bank", "account", "balance", "debit", "credit", "statement", "reference", "transaction date"]),
+    }
+    has_transaction_shape = (
+        _csv_has(headers, ["description", "vendor", "vendor_name"])
+        and _csv_has(headers, ["amount"])
+        and (_csv_has(headers, ["type", "category"]) or _csv_has(headers, ["debit", "credit"]))
+    )
+    has_bank_shape = (
+        _csv_has(headers, ["balance"])
+        and _csv_has(headers, ["debit", "credit"])
+        and not _csv_has(headers, ["category", "type"])
+        and not _csv_has(headers, ["amount"])
+    )
+    kind = "unknown_financial_document"
+    if has_bank_shape or (scores["bank"] >= max(6, scores["transactions"]) and not _csv_has(headers, ["category", "type"])):
+        kind = "bank_statement"
+    elif has_transaction_shape or scores["transactions"] >= max(6, scores["bills"] + 2, scores["revenue"] + 1, scores["subscriptions"] + 1):
+        kind = "csv_transactions"
+    elif scores["bills"] >= 5 and scores["bills"] >= scores["transactions"] and scores["bills"] >= scores["revenue"]:
+        kind = "bill"
+    elif scores["subscriptions"] >= 4 and scores["subscriptions"] >= scores["bills"]:
+        kind = "subscription_invoice"
+    elif scores["revenue"] >= 4 and scores["revenue"] >= scores["transactions"]:
+        kind = "revenue_report"
+    elif scores["bank"] >= 4:
+        kind = "bank_statement"
+
+    preview = {
+        "document_name": _clean_stem(file_name),
+        "csv_kind": {
+            "csv_transactions": "Ledger transactions",
+            "bill": "Bills or invoices",
+            "subscription_invoice": "Subscriptions",
+            "revenue_report": "Revenue or order report",
+            "bank_statement": "Bank statement",
+        }.get(kind, "Unknown finance CSV"),
+        "detected_columns": raw_headers,
+        "row_count": max(0, len(rows) - 1),
+        "sample_rows": sample_rows,
+    }
+    return {
+        "kind": kind,
+        "headers": raw_headers,
+        "row_count": max(0, len(rows) - 1),
+        "sample_rows": sample_rows,
+        "scores": scores,
+        "preview": preview,
+    }
+
+def _csv_detection_payload(csv_analysis: Dict[str, Any], file_name: str | None) -> Dict[str, Any]:
+    if not csv_analysis.get("headers"):
+        return _document_detection_payload(
+            "unknown_financial_document", 0.45, "ai_review", "ask_user",
+            "I could not read the CSV headers clearly. Choose where this CSV belongs before saving anything.",
+            file_name,
+            ["CSV headers were empty or unreadable."],
+            csv_analysis.get("preview"),
+        )
+    kind = csv_analysis.get("kind")
+    if kind == "csv_transactions":
+        return _document_detection_payload(
+            "csv_transactions", 0.9, "ledger", "review_csv_import",
+            "This CSV looks like ledger transaction data. I found transaction-style columns such as description/vendor, category/type, amount, status, or date.",
+            file_name,
+            ["Review the parsed CSV rows before importing. No rows are saved until you confirm upload."],
+            csv_analysis.get("preview"),
+        )
+    if kind == "bill":
+        return _document_detection_payload(
+            "bill", 0.78, "bills", "ask_user",
+            "This CSV looks more like bills or invoices than ledger transactions. It has bill-style signals such as invoice, due date, payable, supplier, or amount due columns.",
+            file_name,
+            ["Bulk bill CSV save is not enabled yet. Review the rows and choose a destination before saving anything."],
+            csv_analysis.get("preview"),
+        )
+    if kind == "subscription_invoice":
+        return _document_detection_payload(
+            "subscription_invoice", 0.76, "subscriptions", "ask_user",
+            "This CSV looks like subscription or recurring billing data. It has subscription-style signals such as renewal, billing cycle, recurring, plan, or monthly columns.",
+            file_name,
+            ["Bulk subscription CSV save is not enabled yet. Review before saving anything."],
+            csv_analysis.get("preview"),
+        )
+    if kind == "revenue_report":
+        return _document_detection_payload(
+            "revenue_report", 0.76, "revenue_sync", "ask_user",
+            "This CSV looks like a revenue or order report. It has revenue-style signals such as order, sales, payout, settlement, channel, or customer columns.",
+            file_name,
+            ["Revenue Sync CSV import is review-only here unless a supported import flow exists."],
+            csv_analysis.get("preview"),
+        )
+    if kind == "bank_statement":
+        return _document_detection_payload(
+            "bank_statement", 0.72, "ledger", "ask_user",
+            "This CSV looks like a bank statement or payment export. Review it before deciding whether to import it as ledger transactions.",
+            file_name,
+            ["Bank statement CSV mapping may need manual review before importing."],
+            csv_analysis.get("preview"),
+        )
+    return _document_detection_payload(
+        "unknown_financial_document", 0.52, "ai_review", "ask_user",
+        "This is a CSV file, but I am not confident whether it is transactions, bills, subscriptions, or revenue data. Choose the destination before saving anything.",
+        file_name,
+        ["Low-confidence CSV routing. Please review columns and rows before import."],
+        csv_analysis.get("preview"),
+    )
+
 def _detect_document_type(file_name: str | None, mime_type: str | None, size_bytes: int | None) -> Dict[str, Any]:
     normalized_mime = mime_type or _guess_mime(file_name)
     ext = _file_ext(file_name)
@@ -363,10 +526,11 @@ def _is_date_key(value: Any) -> bool:
     except ValueError:
         return False
 
-def _fallback_input_extraction(detection: Dict[str, Any], file_name: str | None) -> Dict[str, Any]:
+def _fallback_input_extraction(detection: Dict[str, Any], file_name: str | None, csv_analysis: Dict[str, Any] | None = None) -> Dict[str, Any]:
     detected_type = detection.get("detected_type")
     stem = _clean_stem(file_name)
     low_conf = {"overall": 0.46, "vendor_name": 0.46, "amount": 0.46, "date": 0.46, "category": 0.42}
+    csv_preview = csv_analysis.get("preview", {}) if csv_analysis else {}
     if detected_type in {"bill", "invoice"}:
         return {
             "document_type": detected_type,
@@ -380,6 +544,7 @@ def _fallback_input_extraction(detection: Dict[str, Any], file_name: str | None)
             "confidence": {"overall": 0.5, "vendor_name": 0.5, "amount": 0.3, "due_date": 0.3, "category": 0.4},
             "warnings": ["Bill scanning provider not configured — amount and dates must be entered before saving."],
             "raw_text_preview": None,
+            **csv_preview,
         }
     if detected_type == "subscription_invoice":
         return {
@@ -394,6 +559,7 @@ def _fallback_input_extraction(detection: Dict[str, Any], file_name: str | None)
             "notes": "",
             "confidence": low_conf,
             "warnings": ["Live AI extraction is not configured for this document type yet. Review and correct every field before saving."],
+            **csv_preview,
         }
     if detected_type in {"receipt", "payment_screenshot", "bank_transfer", "bank_statement"}:
         return {
@@ -410,6 +576,7 @@ def _fallback_input_extraction(detection: Dict[str, Any], file_name: str | None)
             "notes": "",
             "confidence": low_conf,
             "warnings": ["Live AI extraction is not configured for this document type yet. Review and correct every field before saving."],
+            **csv_preview,
         }
     if detected_type == "revenue_report":
         return {
@@ -420,26 +587,29 @@ def _fallback_input_extraction(detection: Dict[str, Any], file_name: str | None)
             "period_start": None,
             "period_end": None,
             "customer_or_source": stem,
-            "rows": [],
+            "rows": csv_analysis.get("sample_rows", []) if csv_analysis else [],
             "confidence": {"overall": 0.42},
             "warnings": ["Revenue Sync data is not connected yet. I can prepare this for review, but I cannot sync it automatically."],
+            **csv_preview,
         }
     if detected_type == "csv_transactions":
         return {
             "document_type": detected_type,
-            "rows": [],
-            "detected_columns": [],
+            "rows": csv_analysis.get("sample_rows", []) if csv_analysis else [],
+            "detected_columns": csv_analysis.get("headers", []) if csv_analysis else [],
             "mapped_columns": {},
             "unmapped_columns": [],
             "validation_errors": [],
             "confidence": {"overall": 0.88},
             "warnings": ["Review CSV rows through the existing Ledger CSV import flow before saving."],
+            "csv_kind": csv_preview.get("csv_kind", "Ledger transactions"),
         }
     return {
         "document_type": detected_type or "unknown_financial_document",
         "document_name": stem,
         "confidence": {"overall": 0.32},
         "warnings": detection.get("warnings") or ["Low-confidence routing. Choose a destination before saving anything."],
+        **csv_preview,
     }
 
 def _map_input_fields(detected_type: str, extracted: Dict[str, Any]) -> Dict[str, Any]:
@@ -1005,7 +1175,10 @@ async def detect_document(payload: Dict[str, Any], _user=Depends(verify_firebase
             size_bytes = int(size_bytes)
         except (TypeError, ValueError):
             size_bytes = None
-    return _detect_document_type(file_name, mime_type, size_bytes)
+    detection = _detect_document_type(file_name, mime_type, size_bytes)
+    if payload.get("file_base64") and _is_csv_upload(file_name, mime_type) and detection.get("detected_type") != "unsupported_file":
+        detection = _csv_detection_payload(_analyze_csv_content(payload.get("file_base64"), file_name), file_name)
+    return detection
 
 @app.post("/api/v1/ai/input-from-file")
 async def input_from_file(payload: Dict[str, Any], _user=Depends(verify_firebase_token)):
@@ -1021,6 +1194,9 @@ async def input_from_file(payload: Dict[str, Any], _user=Depends(verify_firebase
     except (TypeError, ValueError):
         numeric_size = 0
     detection = _detect_document_type(file_name, mime_type, numeric_size)
+    csv_analysis = _analyze_csv_content(file_base64, file_name) if _is_csv_upload(file_name, mime_type) and detection.get("detected_type") != "unsupported_file" else None
+    if csv_analysis:
+        detection = _csv_detection_payload(csv_analysis, file_name)
     if detection.get("detected_type") in {"unsupported_file", "non_financial_image"}:
         return {
             **detection,
@@ -1031,7 +1207,7 @@ async def input_from_file(payload: Dict[str, Any], _user=Depends(verify_firebase
             "provider_state": "deterministic_fallback",
         }
 
-    extracted = _fallback_input_extraction(detection, file_name)
+    extracted = _fallback_input_extraction(detection, file_name, csv_analysis)
     provider_state = "provider_not_configured"
     destination = destination_hint if destination_hint and destination_hint != "auto" else detection.get("recommended_destination")
     mapped = _map_input_fields(detection.get("detected_type", "unknown_financial_document"), extracted)

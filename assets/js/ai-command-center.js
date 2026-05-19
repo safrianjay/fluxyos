@@ -1455,11 +1455,21 @@
         const actionId = messageId || nextMessageId('assistant');
         const confidence = Math.round((Number(result.confidence) || 0) * 100);
         const lowConfidence = confidence < 70;
-        const previewData = result.mapped_fields && Object.keys(result.mapped_fields).length
+        const detectionPreview = result.extracted_preview || {};
+        const extractedPreview = result.extracted || {};
+        const mappedPreview = result.mapped_fields && Object.keys(result.mapped_fields).length
             ? result.mapped_fields
-            : result.extracted_preview || result.extracted || {};
-        const preview = previewData && Object.keys(previewData).length
-            ? `<div class="mt-4 rounded-xl border border-gray-200 overflow-hidden">${Object.entries(previewData).filter(([, value]) => value != null && value !== '' && !(Array.isArray(value) && !value.length)).map(([key, value]) => `
+            : {};
+        const previewData = {
+            ...detectionPreview,
+            ...extractedPreview,
+            ...mappedPreview,
+        };
+        const hiddenPreviewKeys = new Set(['confidence', 'warnings', 'raw_text_preview', 'validation_errors']);
+        const previewEntries = Object.entries(previewData || {})
+            .filter(([key, value]) => !hiddenPreviewKeys.has(key) && value != null && value !== '' && !(Array.isArray(value) && !value.length));
+        const preview = previewEntries.length
+            ? `<div class="mt-4 rounded-xl border border-gray-200 overflow-hidden">${previewEntries.map(([key, value]) => `
                 <div class="flex items-center justify-between gap-3 border-b border-gray-100 last:border-b-0 px-4 py-2.5">
                     <span class="text-[12px] font-bold text-gray-500">${escapeHtml(toLabel(key))}</span>
                     <strong class="min-w-0 text-right text-[12px] font-semibold text-gray-900 break-words">${escapeHtml(formatPreviewValue(value))}</strong>
@@ -1824,7 +1834,13 @@
 
     function formatPreviewValue(value) {
         if (typeof value === 'number' && Number.isFinite(value)) return `Rp ${Math.abs(value).toLocaleString('id-ID')}`;
-        if (Array.isArray(value)) return `${value.length} row${value.length === 1 ? '' : 's'}`;
+        if (Array.isArray(value)) {
+            if (value.every(item => item == null || ['string', 'number', 'boolean'].includes(typeof item))) {
+                const labels = value.filter(item => item != null && item !== '').slice(0, 6).map(String);
+                return `${labels.join(', ')}${value.length > labels.length ? ` +${value.length - labels.length} more` : ''}`;
+            }
+            return `${value.length} row${value.length === 1 ? '' : 's'}`;
+        }
         if (value && typeof value === 'object') return JSON.stringify(value);
         return value;
     }
