@@ -110,7 +110,8 @@ window.showAddTransactionModal = function(options = {}) {
         defaultType = 'expense',
         defaultCategory = 'Operations',
         context = 'transaction', // 'transaction', 'bill', 'subscription'
-        openBulk = false
+        openBulk = false,
+        csvFile = null
     } = options;
     const supportsBulkCsv = context === 'transaction';
     const todayKey = getLocalDateKey();
@@ -231,6 +232,32 @@ window.showAddTransactionModal = function(options = {}) {
                             </label>
                             <input type="file" id="tx-csv-file" accept=".csv,text/csv" class="sr-only">
                             <div id="tx-csv-feedback" class="hidden mt-3 text-[12px] font-medium"></div>
+                        </div>
+                        <div id="tx-csv-preview-card" class="hidden rounded-xl border border-gray-200 bg-white p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">CSV import preview</p>
+                                    <p id="tx-csv-preview-title" class="mt-1 truncate text-[13px] font-bold text-gray-900"></p>
+                                    <p id="tx-csv-preview-summary" class="mt-1 text-[12px] text-gray-500"></p>
+                                </div>
+                                <span id="tx-csv-preview-badge" class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">Ready</span>
+                            </div>
+                            <div id="tx-csv-mapping-summary" class="mt-3 flex flex-wrap gap-2"></div>
+                            <div class="mt-3 overflow-x-auto rounded-lg border border-gray-200">
+                                <table class="w-full min-w-[560px] text-left">
+                                    <thead class="bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                        <tr>
+                                            <th class="px-3 py-2">Description</th>
+                                            <th class="px-3 py-2">Category</th>
+                                            <th class="px-3 py-2">Type</th>
+                                            <th class="px-3 py-2">Amount</th>
+                                            <th class="px-3 py-2">Status</th>
+                                            <th class="px-3 py-2">Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tx-csv-preview-body" class="divide-y divide-gray-100 text-[12px]"></tbody>
+                                </table>
+                            </div>
                         </div>
                         <div class="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
                             <div class="flex items-center justify-between">
@@ -522,6 +549,16 @@ window.showAddTransactionModal = function(options = {}) {
         return header.toLowerCase().replace(/[^a-z0-9]/g, '');
     }
 
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, char => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        }[char]));
+    }
+
     function parseCsvAmount(value) {
         const cleaned = String(value || '').replace(/rp/gi, '').replace(/\s/g, '');
         const withoutGrouping = cleaned.includes(',') && cleaned.includes('.')
@@ -530,12 +567,13 @@ window.showAddTransactionModal = function(options = {}) {
         return parseFloat(withoutGrouping.replace(/[^\d.-]/g, ''));
     }
 
-    function parseBulkTransactions(csvText, defaultDateKey, Timestamp, overrideStatus = null) {
+    function analyzeBulkCsv(csvText, defaultDateKey, overrideStatus = null) {
         const rows = parseCsv(csvText);
         if (rows.length < 2) throw new Error("CSV needs one header row and at least one transaction row.");
         if (rows.length > 501) throw new Error("CSV imports are limited to 500 transactions at a time.");
 
-        const headers = rows[0].map(normalizeHeader);
+        const originalHeaders = rows[0];
+        const headers = originalHeaders.map(normalizeHeader);
         const findIndex = (names) => names.map(normalizeHeader).map(name => headers.indexOf(name)).find(index => index >= 0);
         const indexes = {
             vendor: findIndex(['vendor_name', 'vendor', 'description']),
@@ -554,7 +592,7 @@ window.showAddTransactionModal = function(options = {}) {
         const allowedTypes = ['income', 'revenue', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending receivable', 'pending_payable', 'pending payable'];
         const allowedStatuses = ['Completed', 'Missing Receipt', 'Pending', 'Reconciled', 'Cancelled'];
 
-        return rows.slice(1).map((row, index) => {
+        const transactions = rows.slice(1).map((row, index) => {
             const line = index + 2;
             const amount = parseCsvAmount(row[indexes.amount]);
             const category = row[indexes.category];
@@ -578,6 +616,21 @@ window.showAddTransactionModal = function(options = {}) {
                 type,
                 status,
                 icon: ['income', 'revenue', 'refund', 'pending_receivable'].includes(type) ? '💰' : '💸',
+                dateKey,
+                line
+            };
+        });
+
+        return { headers: originalHeaders, indexes, transactions };
+    }
+
+    function parseBulkTransactions(csvText, defaultDateKey, Timestamp, overrideStatus = null) {
+        const parsed = analyzeBulkCsv(csvText, defaultDateKey, overrideStatus);
+        return parsed.transactions.map(row => {
+            const { dateKey, line, ...transaction } = row;
+            void line;
+            return {
+                ...transaction,
                 timestamp: buildTransactionTimestamp(dateKey, Timestamp)
             };
         });
@@ -694,6 +747,79 @@ window.showAddTransactionModal = function(options = {}) {
         const fileInput = document.getElementById('tx-csv-file');
         const fileLabel = document.getElementById('tx-csv-file-label');
         const dropzone = document.getElementById('tx-csv-dropzone');
+        let csvImportState = {
+            file: null,
+            csvText: '',
+            parsed: null,
+            status: 'idle'
+        };
+
+        const getSelectedCsvFile = () => fileInput.files?.[0] || csvImportState.file || null;
+
+        const renderCsvPreview = (file, parsed) => {
+            const card = document.getElementById('tx-csv-preview-card');
+            const title = document.getElementById('tx-csv-preview-title');
+            const summary = document.getElementById('tx-csv-preview-summary');
+            const badge = document.getElementById('tx-csv-preview-badge');
+            const mapping = document.getElementById('tx-csv-mapping-summary');
+            const body = document.getElementById('tx-csv-preview-body');
+            if (!card || !title || !summary || !badge || !mapping || !body) return;
+
+            const indexLabel = (key) => {
+                const index = parsed.indexes[key];
+                return index === undefined ? 'Not mapped' : parsed.headers[index];
+            };
+            const requiredMap = [
+                ['Description', 'vendor'],
+                ['Category', 'category'],
+                ['Type', 'type'],
+                ['Amount', 'amount'],
+                ['Status', 'status'],
+                ['Date', 'date'],
+            ];
+
+            title.textContent = file.name;
+            summary.textContent = `${parsed.transactions.length} row${parsed.transactions.length === 1 ? '' : 's'} ready for review. Showing first ${Math.min(parsed.transactions.length, 5)}.`;
+            badge.textContent = 'Ready';
+            badge.className = 'shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700';
+            mapping.innerHTML = requiredMap.map(([label, key]) => `
+                <span class="rounded-full border ${parsed.indexes[key] === undefined ? 'border-gray-200 bg-gray-50 text-gray-500' : 'border-emerald-200 bg-emerald-50 text-emerald-700'} px-2.5 py-1 text-[11px] font-bold">
+                    ${escapeHtml(label)}: ${escapeHtml(indexLabel(key))}
+                </span>
+            `).join('');
+            body.innerHTML = parsed.transactions.slice(0, 5).map(row => `
+                <tr>
+                    <td class="px-3 py-2 font-semibold text-gray-900">${escapeHtml(row.vendor_name)}</td>
+                    <td class="px-3 py-2 text-gray-600">${escapeHtml(row.category)}</td>
+                    <td class="px-3 py-2 text-gray-600">${escapeHtml(row.type.replace(/_/g, ' '))}</td>
+                    <td class="px-3 py-2 font-mono font-bold text-gray-900">Rp ${Math.abs(row.amount).toLocaleString('id-ID')}</td>
+                    <td class="px-3 py-2 text-gray-600">${escapeHtml(row.status)}</td>
+                    <td class="px-3 py-2 text-gray-600">${escapeHtml(row.dateKey)}</td>
+                </tr>
+            `).join('');
+            card.classList.remove('hidden');
+        };
+
+        const renderCsvPreviewError = (file, message) => {
+            const card = document.getElementById('tx-csv-preview-card');
+            const title = document.getElementById('tx-csv-preview-title');
+            const summary = document.getElementById('tx-csv-preview-summary');
+            const badge = document.getElementById('tx-csv-preview-badge');
+            const mapping = document.getElementById('tx-csv-mapping-summary');
+            const body = document.getElementById('tx-csv-preview-body');
+            if (!card || !title || !summary || !badge || !mapping || !body) return;
+            title.textContent = file?.name || 'CSV file';
+            summary.textContent = message;
+            badge.textContent = 'Needs fix';
+            badge.className = 'shrink-0 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-700';
+            mapping.innerHTML = '';
+            body.innerHTML = `<tr><td colspan="6" class="px-3 py-4 text-[12px] font-medium text-red-700">${escapeHtml(message)}</td></tr>`;
+            card.classList.remove('hidden');
+        };
+
+        const clearCsvPreview = () => {
+            document.getElementById('tx-csv-preview-card')?.classList.add('hidden');
+        };
 
         const setEntryMode = (mode) => {
             activeEntryMode = mode;
@@ -707,9 +833,11 @@ window.showAddTransactionModal = function(options = {}) {
             singleFields.forEach(field => {
                 field.disabled = isBulk;
             });
-            setSubmitButton(isBulk ? 'Upload CSV' : submitLabel, isBulk ? !fileInput.files?.[0] : !isSingleEntryComplete());
+            setSubmitButton(isBulk ? 'Upload CSV' : submitLabel, isBulk ? csvImportState.status !== 'ready' : !isSingleEntryComplete());
             if (isBulk) {
-                setCsvFeedback(fileInput.files?.[0] ? 'Ready to upload. We will validate every row before saving.' : '', 'info');
+                if (csvImportState.status === 'ready') setCsvFeedback('CSV preview is ready. Review it, then upload when ready.', 'success');
+                else if (csvImportState.status === 'parsing') setCsvFeedback('Reading CSV and building preview...', 'info');
+                else if (csvImportState.status !== 'error') setCsvFeedback('', 'info');
             }
             updateDateWarning();
         };
@@ -717,21 +845,53 @@ window.showAddTransactionModal = function(options = {}) {
         singleTab.onclick = () => setEntryMode('single');
         bulkTab.onclick = () => setEntryMode('bulk');
 
-        const updateSelectedCsvFile = async () => {
-            const file = fileInput.files?.[0];
-            setSubmitButton('Upload CSV', !file);
+        const updateSelectedCsvFile = async (incomingFile = null) => {
+            const file = incomingFile || getSelectedCsvFile();
+            csvImportState = {
+                file,
+                csvText: '',
+                parsed: null,
+                status: file ? 'parsing' : 'idle'
+            };
+            setSubmitButton('Parsing CSV', true);
             fileLabel.textContent = file ? file.name : 'Choose or drop a CSV file';
             dropzone.classList.toggle('border-[#E85D19]', Boolean(file));
             dropzone.classList.toggle('ring-2', Boolean(file));
             dropzone.classList.toggle('ring-orange-100', Boolean(file));
-            setCsvFeedback(file ? 'Ready to upload. We will validate every row before saving.' : '', 'info');
+            setCsvFeedback(file ? 'Reading CSV and building preview...' : '', 'info');
+            clearCsvPreview();
             fileInput.dataset.hasPastDates = 'false';
+            if (!file) {
+                csvImportState.status = 'idle';
+                setSubmitButton('Upload CSV', true);
+                updateDateWarning();
+                return;
+            }
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                csvImportState.status = 'error';
+                setCsvFeedback('Upload a .csv file.', 'error');
+                renderCsvPreviewError(file, 'Upload a .csv file.');
+                setSubmitButton('Upload CSV', true);
+                updateDateWarning();
+                return;
+            }
             if (file) {
+                let csvText = '';
                 try {
-                    const csvText = await file.text();
-                    fileInput.dataset.hasPastDates = hasCsvPastDates(csvText, todayKey) ? 'true' : 'false';
-                } catch (_) {
+                    csvText = await file.text();
+                    const parsed = analyzeBulkCsv(csvText, todayKey, bulkStatusOverride);
+                    csvImportState = { file, csvText, parsed, status: 'ready' };
+                    fileInput.dataset.hasPastDates = parsed.transactions.some(row => isPastDateKey(row.dateKey)) ? 'true' : 'false';
+                    renderCsvPreview(file, parsed);
+                    setCsvFeedback(`${parsed.transactions.length} rows parsed. Review the preview, then upload when ready.`, 'success');
+                    setSubmitButton('Upload CSV', false);
+                } catch (err) {
+                    csvImportState = { file, csvText: '', parsed: null, status: 'error' };
                     fileInput.dataset.hasPastDates = 'false';
+                    const message = err?.message || 'Could not read this CSV file.';
+                    setCsvFeedback(message, 'error');
+                    renderCsvPreviewError(file, message);
+                    setSubmitButton('Upload CSV', true);
                 }
             }
             updateDateWarning();
@@ -765,11 +925,13 @@ window.showAddTransactionModal = function(options = {}) {
             bulkStatusOverride = nowOn ? bulkStatusSelect.value : null;
             if (nowOn) updateBulkStatusNote();
             else bulkStatusNote.classList.add('hidden');
+            if (getSelectedCsvFile()) updateSelectedCsvFile();
         };
 
         bulkStatusSelect.onchange = () => {
             bulkStatusOverride = bulkStatusSelect.value;
             updateBulkStatusNote();
+            if (getSelectedCsvFile()) updateSelectedCsvFile();
         };
 
         dropzone.ondragover = (event) => {
@@ -800,6 +962,17 @@ window.showAddTransactionModal = function(options = {}) {
         if (openBulk) {
             setEntryMode('bulk');
         }
+        if (csvFile) {
+            setEntryMode('bulk');
+            try {
+                const files = new DataTransfer();
+                files.items.add(csvFile);
+                fileInput.files = files.files;
+            } catch (_) {
+                csvImportState.file = csvFile;
+            }
+            updateSelectedCsvFile(csvFile);
+        }
     }
 
     // Form Submission
@@ -815,14 +988,18 @@ window.showAddTransactionModal = function(options = {}) {
                 const fileInput = document.getElementById('tx-csv-file');
                 const dropzone = document.getElementById('tx-csv-dropzone');
                 const fileLabel = document.getElementById('tx-csv-file-label');
-                const file = fileInput?.files?.[0];
+                const file = getSelectedCsvFile();
                 if (!file) {
                     setCsvFeedback('Choose a CSV file before uploading.', 'error');
                     return;
                 }
+                if (csvImportState.status !== 'ready') {
+                    setCsvFeedback('Fix the CSV issues shown in the preview before uploading.', 'error');
+                    return;
+                }
 
                 dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#E85D19]');
-                const csvText = await file.text();
+                const csvText = csvImportState.csvText || await file.text();
                 const { ds, user, Timestamp } = await getTransactionDataService();
                 const transactions = parseBulkTransactions(csvText, todayKey, Timestamp, bulkStatusOverride);
                 btn.innerText = `Uploading ${transactions.length}...`;
@@ -835,6 +1012,7 @@ window.showAddTransactionModal = function(options = {}) {
                 keepSubmitState = true;
                 fileInput.value = '';
                 fileLabel.textContent = 'Choose or drop a CSV file';
+                csvImportState = { file: null, csvText: '', parsed: null, status: 'idle' };
                 window.setTimeout(() => {
                     window.closeAddTransactionModal();
                     setSubmitButton('Upload CSV', true);
@@ -922,8 +1100,7 @@ window.showAddTransactionModal = function(options = {}) {
         } finally {
             if (keepSubmitState) return;
             if (activeEntryMode === 'bulk') {
-                const hasFile = Boolean(document.getElementById('tx-csv-file')?.files?.[0]);
-                setSubmitButton('Upload CSV', !hasFile);
+                setSubmitButton('Upload CSV', csvImportState.status !== 'ready');
             } else {
                 setSubmitButton(submitLabel, !isSingleEntryComplete());
             }

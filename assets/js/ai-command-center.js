@@ -1512,7 +1512,7 @@
     function renderDocumentAction(result, messageId, file) {
         const action = result.recommended_action;
         if (action === 'refuse') return '';
-        if (!file && ['review_and_save_to_bills', 'review_as_expense', 'review_transaction', 'review_as_subscription'].includes(action)) {
+        if (!file && ['review_and_save_to_bills', 'review_as_expense', 'review_transaction', 'review_as_subscription', 'review_csv_import'].includes(action)) {
             return `
                 <div class="mt-5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
                     <p class="text-[12px] font-medium text-gray-500">Upload the file again to open the review workflow. FluxyOS does not store raw document contents in chat history.</p>
@@ -1582,7 +1582,7 @@
             }
             if (action === 'review_csv_import') {
                 if (typeof window.showAddTransactionModal === 'function') {
-                    window.showAddTransactionModal({ openBulk: true });
+                    window.showAddTransactionModal({ openBulk: true, csvFile: file });
                 } else {
                     window.location.href = '/ledger';
                 }
