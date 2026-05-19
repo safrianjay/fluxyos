@@ -148,6 +148,29 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 24 | Loading, default/empty, saved, and friendly error states are visible on every detail page; locked AI confirmation and inactive WhatsApp states cannot imply autonomous writes or a fake connection |
 | 25 | `settings-personal` and `settings-security` show no save buttons and no fake auth flows (no real passkey/2FA/close-account); all unimplemented controls render as `Planned` |
 
+### D2. Onboarding & Dashboard Gate (onboarding.html, onboarding-gate.js, onboarding.js)
+
+| # | Check |
+|---|-------|
+| 1 | **Legacy user regression** — log in as a user created before `2026-05-20T00:00:00.000Z`. Landing is `/dashboard`, no redirect to `/onboarding`, no gate card or locked overlay anywhere. Add Transaction, Add Bill, Add Subscription, CSV import, Export, ledger render, bills render, subscriptions render — all still work |
+| 2 | Firestore shows `users/{uid}/onboarding/progress.onboarding_exempt: true` for the legacy account; `profile` and `documents` docs are not created |
+| 3 | **New user redirect** — create a fresh Google account (or sign in with one created on/after the cutoff). Login lands on `/onboarding` and not `/dashboard` |
+| 4 | Onboarding page renders the left progress rail (4 steps, current step highlighted, future steps show "Next / Unlocks after this step") and the right step content |
+| 5 | Step 1 requires `business_name`, `role`, `main_goal`, `monthly_revenue_range`, `employee_count_range`. Role dropdown includes `Staff`. Continue without filling shows red invalid borders and does not advance |
+| 6 | Step 2 requires `legal_full_name` and `phone_number`. The two document upload fields are optional, render a stub `Choose file` label, and accept files without uploading (file inputs don't actually POST anywhere) |
+| 7 | Step 3 has exactly 4 radio cards: Upload CSV (default selected), Add transaction, Add first bill, Explore sample data |
+| 8 | Step 4 shows a read-only review with all values, including filenames for any documents picked and the chosen first action |
+| 9 | Submit saves `users/{uid}/onboarding/profile`, `users/{uid}/onboarding/documents` (status `not_uploaded`), flips `progress.onboarding_completed: true`, writes an `audit_logs` entry with `action: "onboarding.submit"`, and routes per first action (`?openAddTx=1` for Add transaction, `?openCsv=1` for Upload CSV, `?openAddBill=1` for Add first bill, `/dashboard` for sample data) |
+| 10 | Completed user re-logging-in lands on `/dashboard` directly with no gate |
+| 11 | **Skip flow** — reset progress doc, log in as new user, click "Save and finish later" on Step 1. `progress.skipped: true`, `current_step` is set, audit log `onboarding.skip` is written, user lands on `/dashboard` |
+| 12 | Gate card with "Secure setup required" pill renders at the top of `/dashboard`, `/ledger`, `/bill`, `/subscription`, `/revenue-sync`, `/integration`, `/ai`. Contextual title/body changes per page |
+| 13 | On each gated page, header action buttons (Add record, Export, Filter, AI submit, Connect) are dimmed and pointer-disabled; main data areas are blurred behind a "This area is locked until setup is complete" overlay |
+| 14 | Both `Continue setup` CTAs on the gate route to `/onboarding` and resume the user at their saved `current_step` |
+| 15 | "Use sample data" CTA is **not** visible in v1 |
+| 16 | Console clean across the flow: no `permission-denied`, no CSP/CORS/404, no Firebase error strings shown in alerts |
+| 17 | No global onboarding/businesses/KYC collections appear in Firestore; all writes stay under `users/{uid}/onboarding/...` |
+| 18 | Responsive — onboarding form fields are single-column at 375px; gate card readable and CTA tappable; no horizontal scroll |
+
 ### E. Add Transaction / Bill / Subscription (shared-dashboard.js, db-service.js)
 
 | # | Check |

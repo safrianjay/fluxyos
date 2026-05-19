@@ -25,6 +25,16 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | User display name + avatar in sidebar | ✅ Shipped | |
 | Google SSO login | 🔧 Stub | Button exists on login page, no OAuth handler |
 
+### Onboarding (new-user-only)
+| Feature | Status | Notes |
+|---------|--------|-------|
+| 4-step setup flow on `/onboarding` | ✅ Shipped | Business setup → Account owner → Finance setup → Review |
+| New-user detection via `ONBOARDING_RELEASE_CUTOFF = 2026-05-20T00:00:00.000Z` | ✅ Shipped | Users created before cutoff are exempt |
+| Dashboard gate on app pages for incomplete new users | ✅ Shipped | Contextual copy per page; no impact on legacy users |
+| Optional identity / business document upload | 🔧 Stub | UI present, no Firebase Storage upload yet; status always `not_uploaded` |
+| Sample-data mode after onboarding | 📋 Planned | "Explore sample data" routes to dashboard without seeding records |
+| "Use sample data" CTA on the dashboard gate | 📋 Planned | Hidden in v1 |
+
 ### Transactions (Ledger)
 | Feature | Status | Notes |
 |---------|--------|-------|

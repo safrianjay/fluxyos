@@ -154,6 +154,33 @@ through the matching `save*Settings` method. `settings-personal.html` and
 `settings-security.html` are display-only (Firebase Auth profile + posture
 summary); they do not write to Firestore.
 
+### 4f. Onboarding — `users/{userId}/onboarding/{onboardingDoc}`
+
+User-scoped first-run setup. Applied **only to users created on/after
+`ONBOARDING_RELEASE_CUTOFF` (2026-05-20T00:00:00.000Z)**. Pre-cutoff users get a
+silent `onboarding_exempt: true` marker on first login and are never gated or
+redirected.
+
+| Document | Fields |
+|----------|--------|
+| `progress` | `onboarding_completed` (bool), `onboarding_exempt` (bool), `eligible_for_onboarding_gate` (bool), `current_step` (`business_setup`/`account_owner`/`finance_setup`/`review`/`complete`), `completed_steps` (string[]), `selected_first_action` (`csv_upload`/`add_transaction`/`add_bill`/`sample_data`), `skipped` (bool), `source` (`onboarding_v2`/`legacy_exemption`), `created_at`, `updated_at`, `completed_at`, `skipped_at` |
+| `profile` | `business_name`, `role` (one of: `Owner / Founder`, `Finance admin`, `Accountant`, `Operations manager`, `Staff`), `main_goal`, `monthly_revenue_range`, `employee_count_range`, `legal_full_name`, `phone_number`, `created_at`, `updated_at` |
+| `documents` | `identity_document_status` (`not_uploaded`/`uploaded`), `identity_document_storage_path` (null in v1), `business_document_status`, `business_document_storage_path` (null in v1), `created_at`, `updated_at` |
+
+**Detection logic** lives in `assets/js/onboarding-gate.js`. Imported as an ES
+module by `login.html` (for post-login routing) and by each app page's auth
+guard (for in-page gate rendering). `DataService` exposes
+`getOnboardingProgress`, `saveOnboardingProgress`, `saveOnboardingProfile`,
+`saveOnboardingDocuments`, `completeOnboarding`, `skipOnboarding`,
+`markLegacyOnboardingExempt`.
+
+**Audit:** `onboarding.submit` and `onboarding.skip` actions are recorded under
+`users/{userId}/audit_logs` via the existing `addAuditLog` method.
+
+**Storage:** Document upload is UI-stub only in v1 — no Firebase Storage writes,
+no PII persisted beyond legal name + phone in `profile`. Storage paths remain
+null.
+
 ---
 
 ## 5. Business Logic Rules

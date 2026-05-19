@@ -184,6 +184,120 @@ class DataService {
         });
     }
 
+    // --- ONBOARDING ---
+    _onboardingDoc(userId, docId) {
+        return doc(this.db, `users/${userId}/onboarding/${docId}`);
+    }
+
+    async getOnboardingProgress(userId) {
+        const snap = await getDoc(this._onboardingDoc(userId, 'progress'));
+        return snap.exists() ? snap.data() : null;
+    }
+
+    async saveOnboardingProgress(userId, data) {
+        const payload = this._cleanDefined({
+            ...data,
+            updated_at: serverTimestamp()
+        });
+        await setDoc(this._onboardingDoc(userId, 'progress'), {
+            created_at: serverTimestamp(),
+            ...payload
+        }, { merge: true });
+        return payload;
+    }
+
+    async saveOnboardingProfile(userId, data) {
+        const payload = this._cleanDefined({
+            business_name: this._stringOrDefault(data.business_name, '', 120),
+            role: this._allowedValue(data.role,
+                ['Owner / Founder', 'Finance admin', 'Accountant', 'Operations manager', 'Staff'],
+                'Owner / Founder'),
+            main_goal: this._stringOrDefault(data.main_goal, '', 160),
+            monthly_revenue_range: this._stringOrDefault(data.monthly_revenue_range, '', 80),
+            employee_count_range: this._stringOrDefault(data.employee_count_range, '', 80),
+            legal_full_name: this._stringOrDefault(data.legal_full_name, '', 120),
+            phone_number: this._nullableString(data.phone_number, 32),
+            updated_at: serverTimestamp()
+        });
+        await setDoc(this._onboardingDoc(userId, 'profile'), {
+            created_at: serverTimestamp(),
+            ...payload
+        }, { merge: true });
+        return payload;
+    }
+
+    async saveOnboardingDocuments(userId, data) {
+        const payload = this._cleanDefined({
+            identity_document_status: this._allowedValue(data.identity_document_status, ['not_uploaded', 'uploaded'], 'not_uploaded'),
+            identity_document_storage_path: null,
+            business_document_status: this._allowedValue(data.business_document_status, ['not_uploaded', 'uploaded'], 'not_uploaded'),
+            business_document_storage_path: null,
+            updated_at: serverTimestamp()
+        });
+        await setDoc(this._onboardingDoc(userId, 'documents'), {
+            created_at: serverTimestamp(),
+            ...payload
+        }, { merge: true });
+        return payload;
+    }
+
+    async completeOnboarding(userId, payload = {}) {
+        const selectedAction = this._allowedValue(payload.selected_first_action,
+            ['csv_upload', 'add_transaction', 'add_bill', 'sample_data'],
+            'csv_upload');
+        await setDoc(this._onboardingDoc(userId, 'progress'), {
+            onboarding_completed: true,
+            onboarding_exempt: false,
+            eligible_for_onboarding_gate: false,
+            current_step: 'complete',
+            selected_first_action: selectedAction,
+            source: 'onboarding_v2',
+            completed_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        }, { merge: true });
+        await this.addAuditLog(userId, {
+            action: 'onboarding.submit',
+            target_collection: 'onboarding',
+            target_id: 'progress',
+            after: { onboarding_completed: true, selected_first_action: selectedAction },
+            source: 'onboarding'
+        });
+    }
+
+    async skipOnboarding(userId, currentStep = 'business_setup') {
+        await setDoc(this._onboardingDoc(userId, 'progress'), {
+            onboarding_completed: false,
+            onboarding_exempt: false,
+            eligible_for_onboarding_gate: true,
+            current_step: currentStep,
+            skipped: true,
+            source: 'onboarding_v2',
+            skipped_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        }, { merge: true });
+        await this.addAuditLog(userId, {
+            action: 'onboarding.skip',
+            target_collection: 'onboarding',
+            target_id: 'progress',
+            after: { skipped: true, current_step: currentStep },
+            reason: 'User selected Save and finish later',
+            source: 'onboarding'
+        });
+    }
+
+    async markLegacyOnboardingExempt(userId) {
+        const existing = await this.getOnboardingProgress(userId);
+        if (existing?.onboarding_exempt === true || existing?.onboarding_completed === true) return;
+        await setDoc(this._onboardingDoc(userId, 'progress'), {
+            onboarding_exempt: true,
+            onboarding_completed: false,
+            eligible_for_onboarding_gate: false,
+            source: 'legacy_exemption',
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        }, { merge: true });
+    }
+
     // --- AUDIT LOGS ---
     async addAuditLog(userId, data) {
         return await addDoc(collection(this.db, `users/${userId}/audit_logs`), {

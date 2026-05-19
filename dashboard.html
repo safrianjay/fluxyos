@@ -252,6 +252,7 @@
     <script type="module">
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { applyToPage } from "./assets/js/onboarding-gate.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -268,19 +269,15 @@
 
         // SMART AUTH GUARD
         let checkTimeout = setTimeout(() => {
-            console.log("Auth Timeout: No user found after 2 seconds.");
             window.location.replace('/login');
         }, 2000);
 
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 clearTimeout(checkTimeout);
-                console.log("Authenticated as:", user.email);
-                
-                // Load page specific data
+                const gated = await applyToPage(user, { pageKey: 'overview' });
+                if (gated) return;
                 if (typeof loadDashboard === 'function') loadDashboard();
-            } else {
-                console.log("No user session. Waiting for timeout or redirect...");
             }
         });
     </script>

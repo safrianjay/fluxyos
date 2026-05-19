@@ -599,6 +599,14 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      match /onboarding/{onboardingDoc} {
+        allow read: if isOwner(userId)
+          && onboardingDoc in ['progress', 'profile', 'documents'];
+        allow create, update: if isOwner(userId)
+          && onboardingDoc in ['progress', 'profile', 'documents'];
+        allow delete: if false;
+      }
+
       match /{document=**} {
         allow read, write: if false;
       }

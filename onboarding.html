@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Setup your workspace</title>
+    <meta name="description" content="Set up your FluxyOS finance workspace in four short steps.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="assets/css/onboarding.css">
+</head>
+<body class="onboarding-body">
+
+    <main class="onboarding-shell">
+        <div class="onboarding-card" role="region" aria-label="FluxyOS workspace setup">
+
+            <!-- LEFT: Progress rail -->
+            <aside class="onboarding-rail" aria-label="Setup progress">
+                <div class="onboarding-rail-top">
+                    <div class="onboarding-brand">
+                        <div class="onboarding-brand-mark" aria-hidden="true">
+                            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="40" height="40" rx="9" fill="#0B0F19" />
+                                <path d="M 11 10 L 30 10 L 26 14 L 16 14 L 16 31 L 11 31 Z" fill="#FFFFFF" />
+                                <path d="M 18 19 L 27 19 L 23 23 L 18 23 Z" fill="#FFFFFF" />
+                            </svg>
+                        </div>
+                        <span class="onboarding-brand-name">FluxyOS</span>
+                    </div>
+
+                    <div class="onboarding-rail-divider"></div>
+
+                    <p class="onboarding-rail-kicker">ONBOARDING</p>
+                    <h2 class="onboarding-rail-title">Setup progress</h2>
+                    <p id="rail-context" class="onboarding-rail-context">Step 1 · Basic setup</p>
+
+                    <ol class="onboarding-rail-steps" id="rail-steps">
+                        <!-- step rows injected by onboarding.js -->
+                    </ol>
+                </div>
+
+                <div class="onboarding-rail-bottom">
+                    <span class="onboarding-pill onboarding-pill--secure">Secure setup</span>
+                    <p class="onboarding-rail-note">We only ask for what is needed now. Extra verification appears only when a higher-trust feature requires it.</p>
+                </div>
+            </aside>
+
+            <!-- RIGHT: Step content -->
+            <section class="onboarding-content" aria-live="polite">
+                <header class="onboarding-content-head">
+                    <span class="onboarding-step-pill" id="step-pill">
+                        <span class="onboarding-step-pill-dot" aria-hidden="true"></span>
+                        <span id="step-pill-text">Step 1 of 4 · Business setup</span>
+                    </span>
+                    <button type="button" id="btn-save-later" class="onboarding-link">Save and finish later</button>
+                </header>
+
+                <!-- STEP 1 -->
+                <div class="onboarding-step" data-step="business_setup" hidden>
+                    <h1 class="onboarding-h1">What business are you setting up?</h1>
+                    <p class="onboarding-sub">Start with the few details FluxyOS needs to create the workspace and understand the business size.</p>
+
+                    <form id="form-business" class="onboarding-form" novalidate>
+                        <label class="onboarding-field">
+                            <span class="onboarding-label">Business name</span>
+                            <input type="text" name="business_name" id="f-business-name" required maxlength="120" autocomplete="organization" placeholder="e.g. Kopi Senja Digital">
+                        </label>
+
+                        <label class="onboarding-field">
+                            <span class="onboarding-label">Your role</span>
+                            <select name="role" id="f-role" required>
+                                <option value="Owner / Founder">Owner / Founder</option>
+                                <option value="Finance admin">Finance admin</option>
+                                <option value="Accountant">Accountant</option>
+                                <option value="Operations manager">Operations manager</option>
+                                <option value="Staff">Staff</option>
+                            </select>
+                        </label>
+
+                        <label class="onboarding-field">
+                            <span class="onboarding-label">Main goal</span>
+                            <select name="main_goal" id="f-main-goal" required>
+                                <option value="Track revenue and expenses">Track revenue and expenses</option>
+                                <option value="Manage bills and payables">Manage bills and payables</option>
+                                <option value="Monitor subscriptions">Monitor subscriptions</option>
+                                <option value="Prepare reports and exports">Prepare reports and exports</option>
+                                <option value="Ask Fluxy AI finance questions">Ask Fluxy AI finance questions</option>
+                            </select>
+                        </label>
+
+                        <label class="onboarding-field">
+                            <span class="onboarding-label">Monthly revenue</span>
+                            <select name="monthly_revenue_range" id="f-revenue" required>
+                                <option value="Under Rp 50.000.000">Under Rp 50.000.000</option>
+                                <option value="Rp 50.000.000 - Rp 100.000.000">Rp 50.000.000 - Rp 100.000.000</option>
+                                <option value="Rp 100.000.000 - Rp 500.000.000">Rp 100.000.000 - Rp 500.000.000</option>
+                                <option value="Rp 500.000.000 - Rp 1.000.000.000">Rp 500.000.000 - Rp 1.000.000.000</option>
+                                <option value="Above Rp 1.000.000.000">Above Rp 1.000.000.000</option>
+                            </select>
+                        </label>
+
+                        <label class="onboarding-field">
+                            <span class="onboarding-label">Number of employees</span>
+                            <select name="employee_count_range" id="f-employees" required>
+                                <option value="0 - 10 employees">0 - 10 employees</option>
+                                <option value="11 - 50 employees">11 - 50 employees</option>
+                                <option value="51 - 200 employees">51 - 200 employees</option>
+                                <option value="201 - 500 employees">201 - 500 employees</option>
+                                <option value="More than 500 employees">More than 500 employees</option>
+                            </select>
+                        </label>
+                    </form>
+
+                    <p class="onboarding-foot-note">Basic setup unlocks the workspace. Extra verification appears only when needed.</p>
+                </div>
+
+                <!-- STEP 2 -->
+                <div class="onboarding-step" data-step="account_owner" hidden>
+                    <h1 class="onboarding-h1">Who is responsible for this workspace?</h1>
+                    <p class="onboarding-sub">FluxyOS uses this to protect the workspace and verify identity later if a higher-trust feature is requested.</p>
+
+                    <form id="form-owner" class="onboarding-form" novalidate>
+                        <label class="onboarding-field">
+                            <span class="onboarding-label">Legal full name</span>
+                            <input type="text" name="legal_full_name" id="f-legal-name" required maxlength="120" autocomplete="name">
+                        </label>
+
+                        <label class="onboarding-field">
+                            <span class="onboarding-label">Phone number</span>
+                            <input type="tel" name="phone_number" id="f-phone" required maxlength="32" autocomplete="tel" placeholder="+62...">
+                        </label>
+
+                        <div class="onboarding-field">
+                            <span class="onboarding-label">Identity document <span class="onboarding-optional">Optional</span></span>
+                            <label class="onboarding-upload" for="f-id-doc">
+                                <span class="onboarding-upload-icon" aria-hidden="true">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                </span>
+                                <span class="onboarding-upload-text">
+                                    <span class="onboarding-upload-title" id="f-id-doc-name">Choose file</span>
+                                    <span class="onboarding-upload-hint">Optional for now. KTP, passport, or another supported identity document can be added later.</span>
+                                </span>
+                                <input type="file" id="f-id-doc" accept=".jpg,.jpeg,.png,.pdf" hidden>
+                            </label>
+                        </div>
+
+                        <div class="onboarding-field">
+                            <span class="onboarding-label">Business document <span class="onboarding-optional">Optional</span></span>
+                            <label class="onboarding-upload" for="f-biz-doc">
+                                <span class="onboarding-upload-icon" aria-hidden="true">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                </span>
+                                <span class="onboarding-upload-text">
+                                    <span class="onboarding-upload-title" id="f-biz-doc-name">Choose file</span>
+                                    <span class="onboarding-upload-hint">Optional for now. Add NIB, company registration, or business proof when needed.</span>
+                                </span>
+                                <input type="file" id="f-biz-doc" accept=".jpg,.jpeg,.png,.pdf" hidden>
+                            </label>
+                        </div>
+                    </form>
+
+                    <p class="onboarding-foot-note">Documents are optional in this step. Higher-trust features may request them later.</p>
+                </div>
+
+                <!-- STEP 3 -->
+                <div class="onboarding-step" data-step="finance_setup" hidden>
+                    <h1 class="onboarding-h1">How do you want to start?</h1>
+                    <p class="onboarding-sub">Choose the first action FluxyOS opens after setup. You can change later from the dashboard.</p>
+
+                    <fieldset class="onboarding-radio-grid" id="finance-actions">
+                        <legend class="sr-only">First finance action</legend>
+
+                        <label class="onboarding-radio">
+                            <input type="radio" name="first_action" value="csv_upload" checked>
+                            <span class="onboarding-radio-body">
+                                <span class="onboarding-radio-title">Upload CSV</span>
+                                <span class="onboarding-radio-hint">Import existing transactions from a spreadsheet.</span>
+                            </span>
+                        </label>
+
+                        <label class="onboarding-radio">
+                            <input type="radio" name="first_action" value="add_transaction">
+                            <span class="onboarding-radio-body">
+                                <span class="onboarding-radio-title">Add transaction</span>
+                                <span class="onboarding-radio-hint">Start by recording a single revenue or expense.</span>
+                            </span>
+                        </label>
+
+                        <label class="onboarding-radio">
+                            <input type="radio" name="first_action" value="add_bill">
+                            <span class="onboarding-radio-body">
+                                <span class="onboarding-radio-title">Add first bill</span>
+                                <span class="onboarding-radio-hint">Capture an upcoming payable to keep cash flow visible.</span>
+                            </span>
+                        </label>
+
+                        <label class="onboarding-radio">
+                            <input type="radio" name="first_action" value="sample_data">
+                            <span class="onboarding-radio-body">
+                                <span class="onboarding-radio-title">Explore sample data</span>
+                                <span class="onboarding-radio-hint">Open the dashboard and decide what to do next.</span>
+                            </span>
+                        </label>
+                    </fieldset>
+                </div>
+
+                <!-- STEP 4 -->
+                <div class="onboarding-step" data-step="review" hidden>
+                    <h1 class="onboarding-h1">Review before continuing.</h1>
+                    <p class="onboarding-sub">Confirm the workspace details. You can edit anything later from settings.</p>
+
+                    <dl class="onboarding-review" id="review-list">
+                        <!-- populated by onboarding.js -->
+                    </dl>
+
+                    <p class="onboarding-foot-note">Submitting will create your workspace profile and unlock the FluxyOS dashboard.</p>
+                </div>
+
+                <!-- ACTION BAR -->
+                <footer class="onboarding-actions">
+                    <button type="button" id="btn-back" class="onboarding-btn onboarding-btn--ghost" hidden>Back</button>
+                    <div class="onboarding-actions-spacer"></div>
+                    <button type="button" id="btn-continue" class="onboarding-btn onboarding-btn--primary">Continue</button>
+                    <button type="button" id="btn-submit" class="onboarding-btn onboarding-btn--primary" hidden>Submit setup</button>
+                </footer>
+            </section>
+
+        </div>
+    </main>
+
+    <script type="module" src="assets/js/onboarding.js"></script>
+</body>
+</html>

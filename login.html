@@ -279,15 +279,16 @@
     <!-- FIREBASE INTEGRATION (REDIRECT VERSION) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { 
-            getAuth, 
-            signInWithEmailAndPassword, 
-            GoogleAuthProvider, 
+        import {
+            getAuth,
+            signInWithEmailAndPassword,
+            GoogleAuthProvider,
             signInWithPopup,
             signInWithRedirect,
             getRedirectResult,
-            onAuthStateChanged 
+            onAuthStateChanged
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { redirectIfRequired } from "./assets/js/onboarding-gate.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -362,9 +363,10 @@
             });
 
             // Handle Auth State (Auto-Redirect)
-            onAuthStateChanged(auth, (user) => {
+            onAuthStateChanged(auth, async (user) => {
                 if (user) {
-                    console.log("User detected, moving to dashboard...");
+                    const redirected = await redirectIfRequired(user);
+                    if (redirected) return;
                     window.location.href = '/dashboard';
                 }
             });

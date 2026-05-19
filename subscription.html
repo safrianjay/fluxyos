@@ -82,6 +82,7 @@
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import DataService from './assets/js/db-service.js';
+        import { applyToPage } from './assets/js/onboarding-gate.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -104,9 +105,14 @@
             if (input) input.value = linkedSubscriptionSearch;
         }
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) window.loadSubscriptions();
-            else window.location.replace('/login');
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const gated = await applyToPage(user, { pageKey: 'subscriptions' });
+                if (gated) return;
+                window.loadSubscriptions();
+            } else {
+                window.location.replace('/login');
+            }
         });
 
         function escapeHtml(value) {
