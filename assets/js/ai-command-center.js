@@ -78,6 +78,9 @@
         pendingDeleteChatId: null,
         chatStarted: false,
         messageId: 0,
+        greetingInterval: null,
+        greetingPhrases: [],
+        greetingIndex: 0,
     };
 
     const els = {};
@@ -189,7 +192,30 @@
         if (!els.name) return;
         const user = state.user;
         const name = user?.displayName || user?.email?.split('@')[0] || 'there';
-        els.name.textContent = name;
+        setupGreetingFlip(name);
+    }
+
+    function setupGreetingFlip(name) {
+        if (!els.name) return;
+        window.clearInterval(state.greetingInterval);
+        state.greetingInterval = null;
+        state.greetingIndex = 0;
+        state.greetingPhrases = [
+            name,
+            'how are you?',
+            'hope everything goes well',
+            'ready to review finance?',
+        ];
+        els.name.textContent = state.greetingPhrases[0];
+        if (prefersReducedMotion()) return;
+        state.greetingInterval = window.setInterval(() => {
+            if (state.mode !== 'home' || !els.greeting || els.greeting.offsetParent === null) return;
+            state.greetingIndex = (state.greetingIndex + 1) % state.greetingPhrases.length;
+            els.name.classList.remove('is-flipping');
+            void els.name.offsetWidth;
+            els.name.textContent = state.greetingPhrases[state.greetingIndex];
+            els.name.classList.add('is-flipping');
+        }, 3200);
     }
 
     async function bootRoute(options = {}) {
