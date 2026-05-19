@@ -101,7 +101,7 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Approvals | 📋 Planned | Visible as disabled `Soon`; no app page yet |
 | Reports & Exports | 📋 Planned | Visible as disabled `Soon`; no app page yet |
 | Audit Log | 📋 Planned | Visible as disabled `Soon`; no app page yet |
-| Settings | 📋 Planned | Visible as disabled `Soon`; no app page yet |
+| Settings | ✅ Shipped MVP | Working app page at `/settings` with company, finance, import, WhatsApp, AI, and account basics |
 
 Visible `Soon` entries communicate product direction only. They must stay
 disabled until a real authenticated app page and data contract exist.

@@ -210,6 +210,157 @@ service cloud.firestore {
         && data.expires_at is timestamp;
     }
 
+    function isValidSettingsTimestamp(data) {
+      return data.updated_at == request.time;
+    }
+
+    function isValidCompanySettings(data) {
+      return data.keys().hasAll([
+          'business_name',
+          'business_type',
+          'country',
+          'entity_label',
+          'updated_at'
+        ])
+        && data.keys().hasOnly([
+          'business_name',
+          'business_type',
+          'country',
+          'entity_label',
+          'updated_at'
+        ])
+        && data.business_name is string
+        && data.business_name.size() > 0
+        && data.business_name.size() <= 120
+        && data.business_type is string
+        && data.business_type.size() <= 80
+        && data.country is string
+        && data.country.size() > 0
+        && data.country.size() <= 80
+        && data.entity_label is string
+        && data.entity_label.size() > 0
+        && data.entity_label.size() <= 80
+        && isValidSettingsTimestamp(data);
+    }
+
+    function isValidFinanceSettings(data) {
+      return data.keys().hasAll([
+          'currency',
+          'locale',
+          'timezone',
+          'date_format',
+          'categories',
+          'updated_at'
+        ])
+        && data.keys().hasOnly([
+          'currency',
+          'locale',
+          'timezone',
+          'date_format',
+          'categories',
+          'updated_at'
+        ])
+        && data.currency == 'IDR'
+        && data.locale == 'id-ID'
+        && data.timezone in ['Asia/Jakarta', 'Asia/Makassar', 'Asia/Jayapura']
+        && data.date_format in ['DD MMM YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD']
+        && data.categories is list
+        && data.categories.size() <= 8
+        && isValidSettingsTimestamp(data);
+    }
+
+    function isValidImportRulesSettings(data) {
+      return data.keys().hasAll([
+          'csv_date_behavior',
+          'unknown_document_route',
+          'bill_scan_behavior',
+          'receipt_scan_behavior',
+          'payment_screenshot_behavior',
+          'require_confirmation_before_save',
+          'updated_at'
+        ])
+        && data.keys().hasOnly([
+          'csv_date_behavior',
+          'unknown_document_route',
+          'bill_scan_behavior',
+          'receipt_scan_behavior',
+          'payment_screenshot_behavior',
+          'require_confirmation_before_save',
+          'updated_at'
+        ])
+        && data.csv_date_behavior in ['use_row_date', 'use_upload_date']
+        && data.unknown_document_route == 'ai_review'
+        && data.bill_scan_behavior == 'create_bill_draft'
+        && data.receipt_scan_behavior == 'create_ledger_draft'
+        && data.payment_screenshot_behavior == 'create_review_item'
+        && data.require_confirmation_before_save == true
+        && isValidSettingsTimestamp(data);
+    }
+
+    function isValidAISettings(data) {
+      return data.keys().hasAll([
+          'answer_style',
+          'default_analysis_period',
+          'show_data_quality_warnings',
+          'allow_ai_suggestions',
+          'allow_ai_draft_actions',
+          'require_confirmation_before_save',
+          'updated_at'
+        ])
+        && data.keys().hasOnly([
+          'answer_style',
+          'default_analysis_period',
+          'show_data_quality_warnings',
+          'allow_ai_suggestions',
+          'allow_ai_draft_actions',
+          'require_confirmation_before_save',
+          'updated_at'
+        ])
+        && data.answer_style in ['concise', 'practical', 'detailed']
+        && data.default_analysis_period in ['current_month', 'last_month', 'last_90_days']
+        && data.show_data_quality_warnings is bool
+        && data.allow_ai_suggestions is bool
+        && data.allow_ai_draft_actions is bool
+        && data.require_confirmation_before_save == true
+        && isValidSettingsTimestamp(data);
+    }
+
+    function isValidWhatsAppSettings(data) {
+      return data.keys().hasAll([
+          'status',
+          'phone_number',
+          'business_display_name',
+          'last_sync_at',
+          'last_verified_at',
+          'provider',
+          'updated_at'
+        ])
+        && data.keys().hasOnly([
+          'status',
+          'phone_number',
+          'business_display_name',
+          'last_sync_at',
+          'last_verified_at',
+          'provider',
+          'updated_at'
+        ])
+        && data.status in ['not_connected', 'pending', 'connected']
+        && (data.phone_number == null || (data.phone_number is string && data.phone_number.size() <= 32))
+        && (data.business_display_name == null || (data.business_display_name is string && data.business_display_name.size() <= 120))
+        && (data.last_sync_at == null || data.last_sync_at is timestamp)
+        && (data.last_verified_at == null || data.last_verified_at is timestamp)
+        && data.provider == 'whatsapp_cloud_api'
+        && isValidSettingsTimestamp(data);
+    }
+
+    function isValidSettingsDoc(settingsDoc, data) {
+      return (settingsDoc == 'company' && isValidCompanySettings(data))
+        || (settingsDoc == 'finance' && isValidFinanceSettings(data))
+        || (settingsDoc == 'import_rules' && isValidImportRulesSettings(data))
+        || (settingsDoc == 'ai' && isValidAISettings(data))
+        || (settingsDoc == 'whatsapp' && isValidWhatsAppSettings(data));
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create, update, delete: if false;
@@ -438,6 +589,14 @@ service cloud.firestore {
             && isValidAIChatMessage(request.resource.data);
           allow update, delete: if false;
         }
+      }
+
+      match /settings/{settingsDoc} {
+        allow read: if isOwner(userId)
+          && settingsDoc in ['company', 'finance', 'import_rules', 'ai', 'whatsapp'];
+        allow create, update: if isOwner(userId)
+          && isValidSettingsDoc(settingsDoc, request.resource.data);
+        allow delete: if false;
       }
 
       match /{document=**} {

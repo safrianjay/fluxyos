@@ -52,9 +52,9 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 1 | **Homepage loads** | Open `fluxyos.html` — nav, hero, and footer all visible, no console errors |
 | 2 | **Login page loads** | Open `login.html` — left panel + form visible, universe canvas animating |
 | 3 | **Dashboard loads** | Sign in → `dashboard.html` — KPI cards show, ledger table renders or shows empty state |
-| 4 | **Sidebar navigation** | Click each working link (Overview, Transactions, Bills, Subscriptions, Integrations) — correct page loads, active item highlighted; disabled `Soon` entries do not navigate |
+| 4 | **Sidebar navigation** | Click each working link (Overview, Transactions, Bills, Subscriptions, Integrations, Settings) — correct page loads, active item highlighted; disabled `Soon` entries do not navigate |
 | 5 | **Footer appears** | Scroll to bottom of `fluxyos.html`, `pricing.html`, `budgetlanding.html` — footer renders with starfield animation |
-| 6 | **Footer NOT on dashboard pages** | `dashboard.html`, `ledger.html`, `bill.html`, `subscription.html`, `integration.html` — footer must NOT appear |
+| 6 | **Footer NOT on dashboard pages** | `dashboard.html`, `ledger.html`, `bill.html`, `subscription.html`, `integration.html`, `settings.html` — footer must NOT appear |
 | 7 | **No broken console errors** | Open DevTools Console on every page you changed — zero red errors |
 | 8 | **Mobile nav works** | Resize browser to 375px on `fluxyos.html` — hamburger icon visible, click opens menu, Escape closes it |
 | 9 | **New nav entry points work** | For any new page/use case, verify the production entry point from BOTH desktop mega-menu and mobile menu. The visible label must be inside an `<a>` whose `href` is the real route, never `#`; click it and confirm the target page loads. |
@@ -93,7 +93,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | # | Check |
 |---|-------|
 | 1 | Footer loads on landing pages: `fluxyos.html`, `budgetlanding.html`, `pricing.html`, `index.html` |
-| 2 | Footer does NOT load on app pages: `dashboard.html`, `ledger.html`, `bill.html`, `subscription.html`, `integration.html` |
+| 2 | Footer does NOT load on app pages: `dashboard.html`, `ledger.html`, `bill.html`, `subscription.html`, `integration.html`, `settings.html` |
 | 3 | Universe canvas animation plays (starfield moving outward from center) |
 | 4 | No teal/green colors — only dark navy (#0B0F19) and purple tones |
 | 5 | Logo (orange F icon) visible and links to homepage |
@@ -118,7 +118,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 10 | Google SSO domains are authorized in Firebase Console: every production/login host used for QA (e.g. `fluxyos.com`, `www.fluxyos.com`, and any preview domain tested) is listed under Authentication → Settings → Authorized domains |
 | 11 | Rapid-click guard: repeatedly click Sign In / Continue with Google during auth — only one auth request starts, controls disable, and failed auth re-enables controls |
 
-### D. Dashboard / App Page Changes (dashboard.html, ledger.html, bill.html, subscription.html, integration.html)
+### D. Dashboard / App Page Changes (dashboard.html, ledger.html, bill.html, subscription.html, integration.html, settings.html)
 
 | # | Check |
 |---|-------|
@@ -139,6 +139,9 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 15 | Ledger Status Breakdown and Type Breakdown panels show about 4 rows before scrolling, and the Ledger Activity card does not leave a large empty area under the volume chart |
 | 16 | Ledger search filters the selected date-period rows by vendor/description, category, type, status, amount, or visible date; no-match searches show an inline empty row instead of breaking pagination |
 | 17 | **Chart hover regression** — on every page with a bar chart (`ledger.html`, `revenue-sync.html`, any future chart), hover the **tallest visible bar** and confirm the tooltip never overlaps the chart's axis labels, date footer, or count captions below the bars. Per [DESIGN_SYSTEM.md §4 Charts](../docs/DESIGN_SYSTEM.md), the shared `attachChartHover` helper clamps to the chart container top — do not reintroduce flip-below behavior at any call site. |
+| 18 | Settings page renders Company Profile, Finance Preferences, Categories / Import Rules, WhatsApp Connection, AI Preferences, and Account & Security Basics |
+| 19 | Settings saves only under `users/{uid}/settings/company`, `finance`, `import_rules`, `ai`, or `whatsapp`; no global settings collections are created |
+| 20 | Settings shows loading, default/empty, saved, and friendly error states; locked AI confirmation and inactive WhatsApp states cannot imply autonomous writes or a fake connection |
 
 ### E. Add Transaction / Bill / Subscription (shared-dashboard.js, db-service.js)
 
@@ -272,6 +275,7 @@ Open each page and confirm no visual breakage:
 | `pricing.html` | Cards, toggle, footer |
 | `budgetlanding.html` | Hero, footer |
 | `integration.html` | Cards grid, sidebar |
+| `settings.html` | Settings forms, sidebar active state, no footer |
 
 ---
 

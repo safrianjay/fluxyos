@@ -1,4 +1,4 @@
-import { getFirestore, collection, query, getDocs, getDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, doc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, query, getDocs, getDoc, setDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, doc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 class DataService {
     constructor(app) {
@@ -72,6 +72,92 @@ class DataService {
         const q = query(collection(this.db, `users/${userId}/subscriptions`), orderBy('timestamp', 'desc'));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    // --- SETTINGS ---
+    async getUserSettings(userId) {
+        const docIds = ['company', 'finance', 'import_rules', 'ai', 'whatsapp'];
+        const entries = await Promise.all(docIds.map(async (docId) => {
+            const snap = await getDoc(this._settingsDoc(userId, docId));
+            return [docId, snap.exists() ? snap.data() : {}];
+        }));
+
+        return entries.reduce((settings, [docId, data]) => {
+            settings[docId] = { ...this._defaultSettings(docId), ...data };
+            return settings;
+        }, {});
+    }
+
+    async saveCompanySettings(userId, data) {
+        const payload = this._cleanDefined({
+            business_name: this._stringOrDefault(data.business_name, 'Global HQ', 120),
+            business_type: this._stringOrDefault(data.business_type, '', 80),
+            country: this._stringOrDefault(data.country, 'Indonesia', 80),
+            entity_label: this._stringOrDefault(data.entity_label, 'Consolidated', 80),
+            updated_at: serverTimestamp()
+        });
+        await setDoc(this._settingsDoc(userId, 'company'), payload, { merge: true });
+        return payload;
+    }
+
+    async saveFinanceSettings(userId, data) {
+        const payload = this._cleanDefined({
+            currency: 'IDR',
+            locale: 'id-ID',
+            timezone: this._allowedValue(data.timezone, ['Asia/Jakarta', 'Asia/Makassar', 'Asia/Jayapura'], 'Asia/Jakarta'),
+            date_format: this._allowedValue(data.date_format, ['DD MMM YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD'], 'DD MMM YYYY'),
+            categories: this._normalizeCategories(data.categories),
+            updated_at: serverTimestamp()
+        });
+        await setDoc(this._settingsDoc(userId, 'finance'), payload, { merge: true });
+        return payload;
+    }
+
+    async saveImportRules(userId, data) {
+        const payload = this._cleanDefined({
+            csv_date_behavior: this._allowedValue(data.csv_date_behavior, ['use_row_date', 'use_upload_date'], 'use_row_date'),
+            unknown_document_route: 'ai_review',
+            bill_scan_behavior: 'create_bill_draft',
+            receipt_scan_behavior: 'create_ledger_draft',
+            payment_screenshot_behavior: 'create_review_item',
+            require_confirmation_before_save: true,
+            updated_at: serverTimestamp()
+        });
+        await setDoc(this._settingsDoc(userId, 'import_rules'), payload, { merge: true });
+        return payload;
+    }
+
+    async saveAISettings(userId, data) {
+        const payload = this._cleanDefined({
+            answer_style: this._allowedValue(data.answer_style, ['concise', 'practical', 'detailed'], 'practical'),
+            default_analysis_period: this._allowedValue(data.default_analysis_period, ['current_month', 'last_month', 'last_90_days'], 'current_month'),
+            show_data_quality_warnings: data.show_data_quality_warnings !== false,
+            allow_ai_suggestions: data.allow_ai_suggestions !== false,
+            allow_ai_draft_actions: data.allow_ai_draft_actions === true,
+            require_confirmation_before_save: true,
+            updated_at: serverTimestamp()
+        });
+        await setDoc(this._settingsDoc(userId, 'ai'), payload, { merge: true });
+        return payload;
+    }
+
+    async getWhatsAppSettings(userId) {
+        const snap = await getDoc(this._settingsDoc(userId, 'whatsapp'));
+        return { ...this._defaultSettings('whatsapp'), ...(snap.exists() ? snap.data() : {}) };
+    }
+
+    async saveWhatsAppSettings(userId, data) {
+        const payload = this._cleanDefined({
+            status: this._allowedValue(data.status, ['not_connected', 'pending', 'connected'], 'not_connected'),
+            phone_number: this._nullableString(data.phone_number, 32),
+            business_display_name: this._nullableString(data.business_display_name, 120),
+            last_sync_at: data.last_sync_at || null,
+            last_verified_at: data.last_verified_at || null,
+            provider: 'whatsapp_cloud_api',
+            updated_at: serverTimestamp()
+        });
+        await setDoc(this._settingsDoc(userId, 'whatsapp'), payload, { merge: true });
+        return payload;
     }
 
     // --- RECEIPTS ---
@@ -265,6 +351,79 @@ class DataService {
         if (value && typeof value.toDate === 'function') return value.toDate().getTime() <= now;
         const parsed = new Date(value);
         return !Number.isNaN(parsed.getTime()) && parsed.getTime() <= now;
+    }
+
+    _settingsDoc(userId, docId) {
+        return doc(this.db, `users/${userId}/settings/${docId}`);
+    }
+
+    _defaultSettings(docId) {
+        const defaults = {
+            company: {
+                business_name: 'Global HQ',
+                business_type: '',
+                country: 'Indonesia',
+                entity_label: 'Consolidated'
+            },
+            finance: {
+                currency: 'IDR',
+                locale: 'id-ID',
+                timezone: 'Asia/Jakarta',
+                date_format: 'DD MMM YYYY',
+                categories: ['Revenue', 'Marketing', 'Infrastructure', 'Operations', 'SaaS']
+            },
+            import_rules: {
+                csv_date_behavior: 'use_row_date',
+                unknown_document_route: 'ai_review',
+                bill_scan_behavior: 'create_bill_draft',
+                receipt_scan_behavior: 'create_ledger_draft',
+                payment_screenshot_behavior: 'create_review_item',
+                require_confirmation_before_save: true
+            },
+            ai: {
+                answer_style: 'practical',
+                default_analysis_period: 'current_month',
+                show_data_quality_warnings: true,
+                allow_ai_suggestions: true,
+                allow_ai_draft_actions: false,
+                require_confirmation_before_save: true
+            },
+            whatsapp: {
+                status: 'not_connected',
+                phone_number: null,
+                business_display_name: null,
+                last_sync_at: null,
+                last_verified_at: null,
+                provider: 'whatsapp_cloud_api'
+            }
+        };
+        return defaults[docId] || {};
+    }
+
+    _cleanDefined(data) {
+        return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
+    }
+
+    _stringOrDefault(value, fallback, maxLength = 120) {
+        const clean = String(value ?? '').trim().slice(0, maxLength);
+        return clean || fallback;
+    }
+
+    _nullableString(value, maxLength = 120) {
+        const clean = String(value ?? '').trim().slice(0, maxLength);
+        return clean || null;
+    }
+
+    _allowedValue(value, allowed, fallback) {
+        return allowed.includes(value) ? value : fallback;
+    }
+
+    _normalizeCategories(categories) {
+        const fallback = this._defaultSettings('finance').categories;
+        if (!Array.isArray(categories)) return fallback;
+        const allowed = new Set(fallback);
+        const clean = categories.filter(category => allowed.has(category));
+        return clean.length ? clean : fallback;
     }
 }
 

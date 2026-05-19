@@ -104,6 +104,13 @@ Current responsibilities:
 - `getAuditLogs(userId, limitCount = 100)`
 - `addAuditLog(userId, data)`
 - `getDashboardStats(userId)`
+- `getUserSettings(userId)`
+- `saveCompanySettings(userId, data)`
+- `saveFinanceSettings(userId, data)`
+- `saveImportRules(userId, data)`
+- `saveAISettings(userId, data)`
+- `getWhatsAppSettings(userId)`
+- `saveWhatsAppSettings(userId, data)`
 
 Rules:
 
@@ -196,6 +203,17 @@ Calculated by `DataService.getDashboardStats(userId)`:
 - Margin: `(revenue - opex) / revenue * 100`, or `0` when revenue is zero
 - Needs Action: count of transactions where `status === 'Missing Receipt'`
 
+### Settings
+
+Path: `users/{userId}/settings/{settingsDoc}`
+
+Supported docs are `company`, `finance`, `import_rules`, `ai`, and
+`whatsapp`. Settings are owner-scoped workspace preferences used by
+`settings.html`; they must not store API keys, WhatsApp tokens, OTPs, bank
+credentials, payment data, or formatted currency strings.
+
+Primary consumer: `settings.html`.
+
 ### New entity template
 
 Before adding a collection, define:
@@ -248,7 +266,7 @@ Must include:
 ### Dashboard app page
 
 Examples: `dashboard.html`, `ledger.html`, `bill.html`, `subscription.html`,
-`integration.html`.
+`integration.html`, `settings.html`.
 
 Must include:
 

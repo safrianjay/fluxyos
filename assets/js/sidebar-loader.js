@@ -152,11 +152,10 @@
                 <span class="sidebar-text text-[13px] sidebar-hide">Integrations</span>
             </a>
 
-            <button type="button" id="nav-settings" class="nav-item nav-item-disabled flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 font-medium w-full justify-center lg:justify-start" disabled aria-disabled="true">
+            <a href="/settings" id="nav-settings" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium transition-all w-full justify-center lg:justify-start">
                 <svg class="w-6 h-6 lg:w-5 lg:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8a4 4 0 100 8 4 4 0 000-8z"></path></svg>
                 <span class="sidebar-text text-[13px] sidebar-hide">Settings</span>
-                <span class="sidebar-soon-badge sidebar-hide">Soon</span>
-            </button>
+            </a>
         </div>
 
         <!-- USER PROFILE & SIGNOUT (Bottom) -->
@@ -240,7 +239,8 @@
             'revenue-sync': 'nav-revenue-sync',
             'bill': 'nav-bills',
             'subscription': 'nav-subscriptions',
-            'integration': 'nav-integrations'
+            'integration': 'nav-integrations',
+            'settings': 'nav-settings'
         };
 
         const activeId = Object.keys(pageIdMap).find(p => path.includes(p));

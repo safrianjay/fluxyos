@@ -54,6 +54,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Bills | `bill.html` | App | ✅ | **No** | ✅ |
 | Subscriptions | `subscription.html` | App | ✅ | **No** | ✅ |
 | Integrations | `integration.html` | App | ✅ | **No** | ✅ |
+| Settings | `settings.html` | App | ✅ | **No** | ✅ |
 
 **Rule:** Footer loads on all landing pages, never on app pages. Any page that renders `#sidebar` is an app page and must not load the marketing footer.
 
@@ -119,6 +120,23 @@ shipping edit/delete, approvals, exports, integrations, or AI write actions.
 
 **Ordering:** `created_at DESC`. Default limit: 100.
 **Mutation rule:** create/read only for the owning user; never update/delete.
+
+### 4e. Settings — `users/{userId}/settings/{settingsDoc}`
+
+Settings are user-scoped workspace preferences. They must never store secrets,
+tokens, OTPs, card data, bank credentials, or formatted currency strings.
+
+| Document | Fields |
+|----------|--------|
+| `company` | `business_name`, `business_type`, `country`, `entity_label`, `updated_at` |
+| `finance` | `currency` (`"IDR"`), `locale` (`"id-ID"`), `timezone`, `date_format`, `categories`, `updated_at` |
+| `import_rules` | `csv_date_behavior`, `unknown_document_route`, `bill_scan_behavior`, `receipt_scan_behavior`, `payment_screenshot_behavior`, `require_confirmation_before_save`, `updated_at` |
+| `ai` | `answer_style`, `default_analysis_period`, `show_data_quality_warnings`, `allow_ai_suggestions`, `allow_ai_draft_actions`, `require_confirmation_before_save`, `updated_at` |
+| `whatsapp` | `status`, `phone_number`, `business_display_name`, `last_sync_at`, `last_verified_at`, `provider`, `updated_at` |
+
+**Mutation rule:** owner read/create/update only through `DataService`; delete is
+blocked. WhatsApp status is configuration metadata only. Real WhatsApp API
+tokens must not be stored in Firestore.
 
 ---
 
@@ -302,6 +320,11 @@ Auto-runs on landing pages. Fetches `includes/footer.html`, appends to `<body>`,
 | `sidebar` | All app pages | Sidebar container (populated by sidebar-loader.js) |
 | `sidebar-user-name` | Sidebar | User display name |
 | `sidebar-user-avatar` | Sidebar | User avatar `<img>` |
+| `company-settings-form` | `settings.html` | Saves `settings/company` |
+| `finance-settings-form` | `settings.html` | Saves `settings/finance` |
+| `import-settings-form` | `settings.html` | Saves `settings/import_rules` |
+| `ai-settings-form` | `settings.html` | Saves `settings/ai` |
+| `whatsapp-settings-form` | `settings.html` | Saves `settings/whatsapp` |
 | `login-universe-canvas` | `login.html` | Canvas for starfield animation |
 
 ---
@@ -325,7 +348,7 @@ Sidebar is injected into every app page at `#sidebar`. Active item is detected b
 | Reporting | Reports & Exports | Disabled button | `Soon` | 📋 Planned |
 | Reporting | Audit Log | Disabled button | `Soon` | 📋 Planned |
 | Workspace | Integrations | Link | `/integration` | ✅ Shipped |
-| Workspace | Settings | Disabled button | `Soon` | 📋 Planned |
+| Workspace | Settings | Link | `/settings` | ✅ Shipped MVP |
 
 Future sidebar entries stay visible only as disabled `Soon` buttons until a real
 authenticated app page exists. Dashboard sidebar entries must never link to
