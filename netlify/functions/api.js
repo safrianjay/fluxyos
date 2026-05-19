@@ -1430,7 +1430,11 @@ function mapInputFields(detectedType, extracted) {
             vendor_name: extracted.vendor_name || extracted.recipient_or_vendor || '',
             amount: normalizeInputAmount(extracted.amount),
             category: ALLOWED_CATEGORIES.includes(extracted.category) ? extracted.category : 'Operations',
-            transaction_date: isDateKey(extracted.transaction_date) ? extracted.transaction_date : '',
+            transaction_date: isDateKey(extracted.transaction_date)
+                ? extracted.transaction_date
+                : isDateKey(extracted.invoice_date)
+                    ? extracted.invoice_date
+                    : '',
             type: ['expense', 'income', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_payable', 'pending_receivable'].includes(extracted.type) ? extracted.type : 'expense',
             status: extracted.status || 'Completed',
             notes: extracted.notes || '',
@@ -1490,6 +1494,27 @@ function validateMappedFields(destination, mapped) {
     return { missing, errors };
 }
 
+function billEvidenceFromExtraction(extracted) {
+    const documentType = String(extracted?.document_type || '').toLowerCase();
+    const text = `${extracted?.raw_text_preview || ''}`.toLowerCase();
+    return Boolean(
+        extracted?.invoice_number ||
+        extracted?.due_date ||
+        ['bill', 'invoice', 'payment_request'].includes(documentType) && /(invoice|bill|amount due|due date|pay before|jatuh tempo|tagihan|faktur)/.test(text)
+    );
+}
+
+function receiptEvidenceFromExtraction(extracted) {
+    const documentType = String(extracted?.document_type || '').toLowerCase();
+    return documentType === 'receipt' || Boolean(extracted?.vendor_name && extracted?.amount && !extracted?.invoice_number && !extracted?.due_date);
+}
+
+function classifyAmbiguousExtraction(extracted) {
+    if (billEvidenceFromExtraction(extracted)) return 'bill';
+    if (receiptEvidenceFromExtraction(extracted)) return 'receipt';
+    return 'unknown';
+}
+
 async function inputFromFile(event, headers) {
     let body;
     try {
@@ -1522,7 +1547,10 @@ async function inputFromFile(event, headers) {
             try {
                 extracted = sanitizeExtraction(await callOpenAIVision({ file_base64, mime_type: normalizedMime, file_name }));
                 providerState = 'openai';
-                if (detection.detected_type === 'unknown_financial_document' && (extracted.vendor_name || extracted.amount || extracted.invoice_number || extracted.due_date)) {
+                const ambiguousClassification = detection.detected_type === 'unknown_financial_document'
+                    ? classifyAmbiguousExtraction(extracted)
+                    : null;
+                if (ambiguousClassification === 'bill') {
                     detection = detectionPayload({
                         detectedType: 'invoice',
                         confidence: Math.max(Number(extracted.confidence?.overall || 0), 0.76),
@@ -1531,6 +1559,18 @@ async function inputFromFile(event, headers) {
                         message: 'This looks like a bill or invoice. I extracted the available fields and prepared them for review before saving to Bills.',
                         fileName: file_name,
                         warnings: ['Review the extracted fields before saving. No ledger transaction will be created.'],
+                        preview: { vendor_name: extracted.vendor_name || cleanFileStem(file_name) },
+                    });
+                } else if (ambiguousClassification === 'receipt') {
+                    extracted.transaction_date = extracted.invoice_date || null;
+                    detection = detectionPayload({
+                        detectedType: 'receipt',
+                        confidence: Math.max(Number(extracted.confidence?.overall || 0), 0.74),
+                        destination: 'ledger',
+                        action: 'review_as_expense',
+                        message: 'This looks like a purchase receipt. I extracted the available fields and prepared it for Ledger expense review.',
+                        fileName: file_name,
+                        warnings: ['Review the extracted fields before saving. No bill or payment record will be created.'],
                         preview: { vendor_name: extracted.vendor_name || cleanFileStem(file_name) },
                     });
                 }
@@ -1805,3 +1845,9 @@ function sanitizeExtraction(data) {
 function numOrZero(n) {
     return typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
 }
+
+exports.__test__ = {
+    billEvidenceFromExtraction,
+    receiptEvidenceFromExtraction,
+    classifyAmbiguousExtraction,
+};

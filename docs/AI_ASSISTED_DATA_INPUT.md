@@ -132,7 +132,15 @@ Save is disabled when required fields are missing. Duplicate warnings do not sil
 
 When provider extraction is unavailable, FluxyOS still classifies by safe filename/MIME hints and returns low-confidence mapped fields. The UI labels this as provider-dependent fallback and requires user review. It must not pretend extraction is live.
 
-Supported image and PDF uploads are not refused solely because the filename is generic. If a file such as `vendor.jpg` has no clear finance keywords, FluxyOS treats it as `unknown_financial_document` and asks the user to choose the review destination. With a configured AI provider, the backend may upgrade that ambiguous upload to a bill/invoice result when structured extraction finds bill fields such as vendor, amount, invoice number, or due date.
+Supported image and PDF uploads are not refused solely because the filename is generic. If a file such as `vendor.jpg` has no clear finance keywords, FluxyOS treats it as `unknown_financial_document` and asks the user to choose the review destination.
+
+With a configured AI provider, the backend may upgrade an ambiguous upload based on structured evidence:
+
+- Bills/invoices require bill-specific evidence such as `invoice_number`, `due_date`, or visible bill/invoice/due wording.
+- Purchase receipts route to Ledger review when extraction finds a vendor and amount without bill-specific evidence.
+- Vendor and amount alone are not enough to classify a document as a bill, because ordinary expense receipts also contain both.
+
+This guardrail is covered by `scripts/qa-ai-upload-routing.js`. Any future change to AI upload routing must keep the Starbucks-style receipt case routing to `receipt`/Ledger unless the extracted document has bill-specific evidence. Do not remove this regression check when changing provider prompts, schemas, or fallback routing.
 
 ## Duplicate Checks
 
