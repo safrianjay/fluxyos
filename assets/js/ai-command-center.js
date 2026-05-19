@@ -81,6 +81,8 @@
         greetingInterval: null,
         greetingPhrases: [],
         greetingIndex: 0,
+        historyChats: [],
+        historyExpanded: false,
     };
 
     const els = {};
@@ -134,6 +136,8 @@
         els.scrollContainer = document.querySelector('main > div.flex-1.overflow-y-auto');
         els.historySection = document.getElementById('ai-history-section');
         els.historyList = document.getElementById('ai-history-list');
+        els.historyMoreWrap = document.getElementById('ai-history-more-wrap');
+        els.historySeeMore = document.getElementById('ai-history-see-more');
         els.deleteModal = document.getElementById('ai-delete-modal');
         els.deleteCancel = document.getElementById('ai-delete-cancel');
         els.deleteConfirm = document.getElementById('ai-delete-confirm');
@@ -155,6 +159,10 @@
         els.form?.addEventListener('submit', submitComposer);
         els.backHome?.addEventListener('click', () => renderHome({ updateRoute: true }));
         els.newChat?.addEventListener('click', () => renderHome({ updateRoute: true }));
+        els.historySeeMore?.addEventListener('click', () => {
+            state.historyExpanded = true;
+            renderRecentChats(state.historyChats);
+        });
         els.deleteCancel?.addEventListener('click', closeDeleteModal);
         els.deleteModal?.addEventListener('click', (event) => {
             if (event.target === els.deleteModal) closeDeleteModal();
@@ -215,7 +223,7 @@
             void els.name.offsetWidth;
             els.name.textContent = state.greetingPhrases[state.greetingIndex];
             els.name.classList.add('is-flipping');
-        }, 3200);
+        }, 3600);
     }
 
     async function bootRoute(options = {}) {
@@ -238,6 +246,7 @@
         state.messageCount = 0;
         state.chatStarted = false;
         state.messageId = 0;
+        state.historyExpanded = false;
         state.bootedFor = state.user ? `${state.user.uid}:home` : null;
         els.workspace?.classList.remove('ai-chat-active');
         els.workspace?.classList.add('justify-center');
@@ -271,25 +280,54 @@
             return;
         }
         els.historyList.innerHTML = renderHistorySkeleton();
+        hideHistoryMore();
         try {
-            const chats = await ds.getRecentAIChats(state.user.uid, 5);
-            if (!chats.length) {
-                renderHistoryEmpty('No recent AI chats yet. Start with a finance prompt above.');
-                return;
-            }
-            els.historyList.innerHTML = chats.map(renderHistoryItem).join('');
-            els.historyList.querySelectorAll('[data-ai-open-chat]').forEach(button => {
-                button.addEventListener('click', () => openChatFromHistory(button.dataset.aiOpenChat));
-            });
-            els.historyList.querySelectorAll('[data-ai-delete-chat]').forEach(button => {
-                button.addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    openDeleteModal(button.dataset.aiDeleteChat);
-                });
-            });
+            state.historyChats = await ds.getRecentAIChats(state.user.uid, 20);
+            renderRecentChats(state.historyChats);
         } catch (err) {
+            state.historyChats = [];
             renderHistoryEmpty('Could not load recent AI chats right now.');
         }
+    }
+
+    function renderRecentChats(chats) {
+        if (!els.historyList) return;
+        const safeChats = Array.isArray(chats) ? chats : [];
+        if (!safeChats.length) {
+            renderHistoryEmpty('No recent AI chats yet. Start with a finance prompt above.');
+            hideHistoryMore();
+            return;
+        }
+        const visibleChats = state.historyExpanded ? safeChats : safeChats.slice(0, 5);
+        els.historyList.innerHTML = visibleChats.map(renderHistoryItem).join('');
+        wireHistoryItems();
+        if (safeChats.length > 5 && !state.historyExpanded) {
+            showHistoryMore();
+        } else {
+            hideHistoryMore();
+        }
+    }
+
+    function wireHistoryItems() {
+        els.historyList?.querySelectorAll('[data-ai-open-chat]').forEach(button => {
+            button.addEventListener('click', () => openChatFromHistory(button.dataset.aiOpenChat));
+        });
+        els.historyList?.querySelectorAll('[data-ai-delete-chat]').forEach(button => {
+            button.addEventListener('click', (event) => {
+                event.stopPropagation();
+                openDeleteModal(button.dataset.aiDeleteChat);
+            });
+        });
+    }
+
+    function showHistoryMore() {
+        els.historyMoreWrap?.classList.remove('hidden');
+        els.historyMoreWrap?.classList.add('flex');
+    }
+
+    function hideHistoryMore() {
+        els.historyMoreWrap?.classList.add('hidden');
+        els.historyMoreWrap?.classList.remove('flex');
     }
 
     function renderHistorySkeleton() {
