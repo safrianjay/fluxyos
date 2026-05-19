@@ -112,11 +112,12 @@ service cloud.firestore {
           'budgets',
           'integrations',
           'exports',
-          'users'
+          'users',
+          'onboarding'
         ]
         && data.target_id is string
         && data.target_id.size() <= 160
-        && data.source in ['dashboard', 'ai', 'integration', 'system']
+        && data.source in ['dashboard', 'ai', 'integration', 'system', 'onboarding']
         && data.created_at == request.time;
     }
 
