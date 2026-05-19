@@ -383,6 +383,13 @@ window.showAddTransactionModal = function(options = {}) {
     let selectedEntryDate = todayKey;
     let updateSelectedCsvDateState = updateDateWarning;
     let bulkStatusOverride = null;
+    let csvImportState = {
+        file: null,
+        csvText: '',
+        parsed: null,
+        status: 'idle'
+    };
+    const getSelectedCsvFile = () => document.getElementById('tx-csv-file')?.files?.[0] || csvImportState.file || null;
 
     // Live Formatting for Amount
     const amountInput = document.getElementById('tx-amount');
@@ -747,14 +754,6 @@ window.showAddTransactionModal = function(options = {}) {
         const fileInput = document.getElementById('tx-csv-file');
         const fileLabel = document.getElementById('tx-csv-file-label');
         const dropzone = document.getElementById('tx-csv-dropzone');
-        let csvImportState = {
-            file: null,
-            csvText: '',
-            parsed: null,
-            status: 'idle'
-        };
-
-        const getSelectedCsvFile = () => fileInput.files?.[0] || csvImportState.file || null;
 
         const renderCsvPreview = (file, parsed) => {
             const card = document.getElementById('tx-csv-preview-card');
