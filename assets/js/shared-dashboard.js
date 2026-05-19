@@ -109,7 +109,8 @@ window.showAddTransactionModal = function(options = {}) {
         submitLabel = "Add Transaction",
         defaultType = 'expense',
         defaultCategory = 'Operations',
-        context = 'transaction' // 'transaction', 'bill', 'subscription'
+        context = 'transaction', // 'transaction', 'bill', 'subscription'
+        openBulk = false
     } = options;
     const supportsBulkCsv = context === 'transaction';
     const todayKey = getLocalDateKey();
@@ -795,6 +796,10 @@ window.showAddTransactionModal = function(options = {}) {
             fileInput.files = files.files;
             updateSelectedCsvFile();
         };
+
+        if (openBulk) {
+            setEntryMode('bulk');
+        }
     }
 
     // Form Submission

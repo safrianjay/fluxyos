@@ -22,6 +22,7 @@
             source: 'bill_scan',
             createdVia: 'ai_bill_capture',
             toastSuccess: 'Bill scanned and added to your schedule.',
+            saveLabel: 'Save Bill',
             showTypeStatus: false,
             futureDates: true,
         },
@@ -37,8 +38,25 @@
             source: 'transaction_scan',
             createdVia: 'ai_transaction_capture',
             toastSuccess: 'Transaction scanned and added to your ledger.',
+            saveLabel: 'Save Transaction',
             showTypeStatus: true,
             futureDates: false,
+        },
+        subscription: {
+            title: 'Review Subscription',
+            subtitle: 'Review a subscription invoice before adding it to your recurring costs.',
+            primaryDateLabel: 'Renewal Date',
+            contextKey: '__fluxySubContext',
+            saveMethod: 'addSubscription',
+            refreshFn: 'loadSubscriptions',
+            defaultType: 'expense',
+            defaultStatus: 'Completed',
+            source: 'subscription_scan',
+            createdVia: 'ai_subscription_capture',
+            toastSuccess: 'Subscription scanned and added to your recurring costs.',
+            saveLabel: 'Save Subscription',
+            showTypeStatus: false,
+            futureDates: true,
         },
     };
 
@@ -50,6 +68,7 @@
         extraction: null,
         extractionSource: null,
         saving: false,
+        duplicateConfirmed: false,
         pickers: { primary: null, invoice: null },
         dates: { primary: null, invoice: null },
         errorMessage: null,
@@ -57,6 +76,9 @@
 
     function $(id) { return document.getElementById(id); }
     function modeCfg() { return MODES[state.mode] || MODES.bill; }
+    function normalizeMode(mode) {
+        return Object.prototype.hasOwnProperty.call(MODES, mode) ? mode : 'bill';
+    }
 
     function escapeHtml(str) {
         if (str == null) return '';
@@ -157,6 +179,7 @@
         state.file = null;
         state.extraction = null;
         state.extractionSource = null;
+        state.duplicateConfirmed = false;
     }
 
     function setHeader() {
@@ -168,10 +191,11 @@
     }
 
     function openDrawer(mode) {
-        state.mode = (mode === 'transaction') ? 'transaction' : 'bill';
+        state.mode = normalizeMode(mode);
         setHeader();
         const isOnline = navigator.onLine !== false;
         state.dates = { primary: null, invoice: null };
+        state.duplicateConfirmed = false;
         setStep(isOnline ? 'upload' : 'offline');
         $('scan-drawer-backdrop')?.classList.remove('hidden');
         requestAnimationFrame(() => {
@@ -211,7 +235,11 @@
         const content = $('scan-drawer-content');
         const footer = $('scan-drawer-footer');
         const file = state.file;
-        const manualLabel = state.mode === 'transaction' ? 'Use Add Transaction' : 'Use Add New Bill';
+        const manualLabel = state.mode === 'transaction'
+            ? 'Use Add Transaction'
+            : state.mode === 'subscription'
+                ? 'Use Add Subscription'
+                : 'Use Add New Bill';
 
         if (!file) {
             content.innerHTML = `
@@ -369,12 +397,16 @@
 
         const footerNote = state.mode === 'bill'
             ? 'This bill will be saved as a <span class="font-mono">pending_payable</span>. No ledger transaction will be created.'
-            : 'This will be saved as a ledger transaction. You can refine its category and status later.';
+            : state.mode === 'subscription'
+                ? 'This subscription will be saved to recurring costs. No payment or ledger transaction will be created.'
+                : 'This will be saved as a ledger transaction. You can refine its category and status later.';
+        const dateConfidence = conf.due_date ?? conf.renewal_date ?? conf.transaction_date ?? conf.date;
 
         content.innerHTML = `
             <form id="scan-review-form" class="space-y-4">
                 ${mockBanner}
                 ${warningsBlock}
+                <div id="scan-duplicate-warning" class="hidden rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-800"></div>
 
                 <div>
                     <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Vendor ${confidenceMark(conf.vendor_name)}</label>
@@ -400,7 +432,7 @@
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">${escapeHtml(cfg.primaryDateLabel)} ${confidenceMark(conf.due_date)}</label>
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">${escapeHtml(cfg.primaryDateLabel)} ${confidenceMark(dateConfidence)}</label>
                         <div data-picker="primary"></div>
                     </div>
                     <div>
@@ -423,7 +455,7 @@
         `;
         footer.innerHTML = `
             <button id="scan-rescan-btn" type="button" class="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-50 transition-colors">Rescan</button>
-            <button id="scan-save-btn" type="button" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">${state.mode === 'transaction' ? 'Save Transaction' : 'Save Bill'}</button>
+            <button id="scan-save-btn" type="button" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">${escapeHtml(cfg.saveLabel)}</button>
         `;
         mountReviewDatePickers();
         wireReviewHandlers();
@@ -439,7 +471,11 @@
         // invoice_date (when the receipt was issued / money was spent). Using due_date
         // for a transaction yielded a future timestamp that landed outside the ledger's
         // current month filter, so the row never appeared after save.
-        const primarySource = (state.mode === 'bill') ? data.due_date : data.invoice_date;
+        const primarySource = state.mode === 'bill'
+            ? data.due_date
+            : state.mode === 'subscription'
+                ? data.renewal_date
+                : (data.transaction_date || data.invoice_date);
         state.dates.primary = (primarySource && /^\d{4}-\d{2}-\d{2}$/.test(primarySource)) ? primarySource : null;
         state.dates.invoice = (data.invoice_date && /^\d{4}-\d{2}-\d{2}$/.test(data.invoice_date)) ? data.invoice_date : null;
 
@@ -558,14 +594,37 @@
 
     function wireReviewHandlers() {
         const form = $('scan-review-form');
-        form?.addEventListener('input', updateSaveEnabled);
-        form?.addEventListener('change', updateSaveEnabled);
+        form?.addEventListener('input', () => {
+            state.duplicateConfirmed = false;
+            hideDuplicateWarning();
+            updateSaveEnabled();
+        });
+        form?.addEventListener('change', () => {
+            state.duplicateConfirmed = false;
+            hideDuplicateWarning();
+            updateSaveEnabled();
+        });
         $('scan-save-btn')?.addEventListener('click', saveScannedDocument);
         $('scan-rescan-btn')?.addEventListener('click', () => {
             state.extraction = null;
             state.extractionSource = null;
+            state.duplicateConfirmed = false;
             setStep('upload');
         });
+    }
+
+    function hideDuplicateWarning() {
+        const warning = $('scan-duplicate-warning');
+        if (!warning) return;
+        warning.classList.add('hidden');
+        warning.textContent = '';
+    }
+
+    function showDuplicateWarning(message) {
+        const warning = $('scan-duplicate-warning');
+        if (!warning) return;
+        warning.textContent = message;
+        warning.classList.remove('hidden');
     }
 
     function updateSaveEnabled() {
@@ -583,6 +642,13 @@
         closeDrawer();
         if (state.mode === 'transaction') {
             window.showAddTransactionModal();
+        } else if (state.mode === 'subscription') {
+            window.showAddTransactionModal({
+                title: 'Add Subscription',
+                submitLabel: 'Activate Subscription',
+                defaultCategory: 'SaaS',
+                context: 'subscription',
+            });
         } else {
             window.showAddTransactionModal({
                 title: 'Add New Bill',
@@ -607,7 +673,7 @@
         setStep('upload');
     }
 
-    function openDrawerWithFile(mode, file) {
+    function openDrawerWithFile(mode, file, options = {}) {
         openDrawer(mode);
         if (!file) return;
         const err = validateBillFile(file);
@@ -619,6 +685,13 @@
         state.file = file;
         if (file.type.startsWith('image/')) {
             state.previewUrl = URL.createObjectURL(file);
+        }
+        const extraction = options.extraction || options.mappedFields || options.mapped_fields || null;
+        if (extraction && typeof extraction === 'object') {
+            state.extraction = normalizeExtraction(extraction);
+            state.extractionSource = options.extractionSource || options.provider_state || 'prefilled';
+            setStep('review');
+            return;
         }
         setStep('upload');
     }
@@ -700,13 +773,72 @@
             amount: typeof data.amount === 'number' ? Math.round(data.amount) : normalizeRupiahAmount(data.amount),
             category,
             due_date: typeof data.due_date === 'string' ? data.due_date : '',
+            renewal_date: typeof data.renewal_date === 'string' ? data.renewal_date : '',
+            transaction_date: typeof data.transaction_date === 'string' ? data.transaction_date : '',
             invoice_date: typeof data.invoice_date === 'string' ? data.invoice_date : '',
             invoice_number: typeof data.invoice_number === 'string' ? data.invoice_number : '',
             document_type: typeof data.document_type === 'string' ? data.document_type : 'unknown',
+            billing_cycle: typeof data.billing_cycle === 'string' ? data.billing_cycle : '',
+            notes: typeof data.notes === 'string' ? data.notes : '',
             confidence: data.confidence || {},
             warnings: Array.isArray(data.warnings) ? data.warnings : [],
             raw_text_preview: typeof data.raw_text_preview === 'string' ? data.raw_text_preview.slice(0, 500) : null,
         };
+    }
+
+    function dayKeyFromAny(value) {
+        if (!value) return '';
+        if (typeof value === 'string') return value.slice(0, 10);
+        if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
+        if (typeof value.toDate === 'function') {
+            try {
+                return value.toDate().toISOString().slice(0, 10);
+            } catch {
+                return '';
+            }
+        }
+        if (Number.isFinite(value.seconds)) return new Date(value.seconds * 1000).toISOString().slice(0, 10);
+        return '';
+    }
+
+    async function findPossibleDuplicate(ctx, userId, payload) {
+        const vendor = String(payload.vendor_name || '').trim().toLowerCase();
+        const amount = Number(payload.amount) || 0;
+        if (!vendor || amount <= 0) return null;
+        try {
+            if (state.mode === 'bill' && typeof ctx.ds.getBills === 'function') {
+                const dueKey = dayKeyFromAny(payload.due_date);
+                const invoice = String(payload.invoice_number || '').trim().toLowerCase();
+                const bills = await ctx.ds.getBills(userId);
+                return bills.find(item => {
+                    const sameVendor = String(item.vendor_name || '').trim().toLowerCase() === vendor;
+                    const sameAmount = Number(item.amount) === amount;
+                    const sameInvoice = invoice && String(item.invoice_number || '').trim().toLowerCase() === invoice;
+                    const sameDue = dueKey && dayKeyFromAny(item.due_date) === dueKey;
+                    return sameVendor && sameAmount && (sameInvoice || sameDue);
+                }) || null;
+            }
+            if (state.mode === 'transaction' && typeof ctx.ds.getTransactions === 'function') {
+                const txKey = dayKeyFromAny(payload.timestamp);
+                const txs = await ctx.ds.getTransactions(userId, 1000);
+                return txs.find(item => (
+                    String(item.vendor_name || '').trim().toLowerCase() === vendor &&
+                    Number(item.amount) === amount &&
+                    txKey &&
+                    dayKeyFromAny(item.timestamp) === txKey
+                )) || null;
+            }
+            if (state.mode === 'subscription' && typeof ctx.ds.getSubscriptions === 'function') {
+                const subs = await ctx.ds.getSubscriptions(userId);
+                return subs.find(item => (
+                    String(item.vendor_name || '').trim().toLowerCase() === vendor &&
+                    Number(item.amount) === amount
+                )) || null;
+            }
+        } catch {
+            return null;
+        }
+        return null;
     }
 
     async function saveScannedDocument() {
@@ -766,9 +898,22 @@
             if (primaryDate) payload.due_date = primaryDate;
             if (invoiceDate) payload.invoice_date = invoiceDate;
             payload.payment_status = 'unpaid';
+        } else if (state.mode === 'subscription') {
+            if (primaryDate) payload.renewal_date = primaryDate;
+            if (invoiceDate) payload.invoice_date = invoiceDate;
+            payload.billing_cycle = extraction.billing_cycle || 'monthly';
         } else {
             if (primaryDate) payload.timestamp = primaryDate;
             if (invoiceDate) payload.invoice_date = invoiceDate;
+        }
+
+        const duplicate = await findPossibleDuplicate(ctx, user.uid, payload);
+        if (duplicate && !state.duplicateConfirmed) {
+            state.duplicateConfirmed = true;
+            const message = 'Possible duplicate found. Review the existing record, then click save again if you still want to continue.';
+            showDuplicateWarning(message);
+            window.showToast?.(message, 'info');
+            return;
         }
 
         state.saving = true;
@@ -799,7 +944,7 @@
             state.saving = false;
             if (saveBtn) {
                 saveBtn.disabled = false;
-                saveBtn.textContent = state.mode === 'transaction' ? 'Save Transaction' : 'Save Bill';
+                saveBtn.textContent = cfg.saveLabel;
             }
             updateSaveEnabled();
         }
@@ -827,6 +972,7 @@
     window.openScanDrawerWithFile = openDrawerWithFile;
     window.openScanBillDrawer = () => openDrawer('bill');
     window.openScanTransactionDrawer = () => openDrawer('transaction');
+    window.openScanSubscriptionDrawer = () => openDrawer('subscription');
     window.closeScanDrawer = closeDrawer;
 
     if (document.readyState === 'loading') {

@@ -35,10 +35,10 @@ service cloud.firestore {
           'Others'
         ]
         && data.type in ['revenue', 'income', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending_payable']
-        && data.status in ['Completed', 'Missing Receipt', 'Pending', 'Reconciled', 'Cancelled']
+        && data.status in ['Completed', 'Missing Receipt', 'Pending', 'Upcoming', 'Reconciled', 'Cancelled']
         && data.icon is string
         && data.icon.size() <= 16
-        && data.timestamp == request.time;
+        && data.timestamp is timestamp;
     }
 
     function isValidBaseRecordUpdate(data, existingData) {
@@ -66,10 +66,29 @@ service cloud.firestore {
           'Others'
         ]
         && data.type in ['revenue', 'income', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending_payable']
-        && data.status in ['Completed', 'Missing Receipt', 'Pending', 'Reconciled', 'Cancelled']
+        && data.status in ['Completed', 'Missing Receipt', 'Pending', 'Upcoming', 'Reconciled', 'Cancelled']
         && data.icon is string
         && data.icon.size() <= 16
         && data.timestamp == existingData.timestamp;
+    }
+
+    function isValidAICaptureMetadata(data) {
+      return (!('source' in data) || data.source in ['bill_scan', 'transaction_scan', 'subscription_scan'])
+        && (!('created_via' in data) || data.created_via in ['ai_bill_capture', 'ai_transaction_capture', 'ai_subscription_capture'])
+        && (!('extraction_status' in data) || data.extraction_status == 'reviewed')
+        && (!('extraction_source' in data) || data.extraction_source is string)
+        && (!('extraction_confidence' in data) || data.extraction_confidence == null || data.extraction_confidence is number)
+        && (!('extraction_warnings' in data) || data.extraction_warnings is list)
+        && (!('document_type' in data) || data.document_type is string)
+        && (!('invoice_number' in data) || data.invoice_number == null || data.invoice_number is string)
+        && (!('invoice_date' in data) || data.invoice_date is timestamp)
+        && (!('raw_text_preview' in data) || data.raw_text_preview == null || (data.raw_text_preview is string && data.raw_text_preview.size() <= 500))
+        && (!('source_file_name' in data) || data.source_file_name == null || data.source_file_name is string)
+        && (!('source_file_mime_type' in data) || data.source_file_mime_type == null || data.source_file_mime_type is string)
+        && (!('source_file_size_bytes' in data) || data.source_file_size_bytes == null || data.source_file_size_bytes is number)
+        && (!('payment_reference' in data) || data.payment_reference == null || data.payment_reference is string)
+        && (!('notes' in data) || data.notes == null || data.notes is string)
+        && (!('billing_cycle' in data) || data.billing_cycle in ['monthly', 'annual', 'weekly', 'quarterly', 'unknown']);
     }
 
     function isValidAuditLog(data) {
@@ -207,11 +226,27 @@ service cloud.firestore {
             'icon',
             'timestamp',
             'created_at',
-            'receipt_url'
+            'receipt_url',
+            'source',
+            'created_via',
+            'extraction_status',
+            'extraction_source',
+            'extraction_confidence',
+            'extraction_warnings',
+            'document_type',
+            'invoice_number',
+            'invoice_date',
+            'raw_text_preview',
+            'source_file_name',
+            'source_file_mime_type',
+            'source_file_size_bytes',
+            'payment_reference',
+            'notes'
           ])
           && isValidBaseRecord(request.resource.data)
           && (!('created_at' in request.resource.data) || request.resource.data.created_at == request.time)
-          && (!('receipt_url' in request.resource.data) || request.resource.data.receipt_url is string);
+          && (!('receipt_url' in request.resource.data) || request.resource.data.receipt_url is string)
+          && isValidAICaptureMetadata(request.resource.data);
         allow update: if isOwner(userId)
           && request.resource.data.keys().hasOnly([
             'amount',
@@ -222,9 +257,25 @@ service cloud.firestore {
             'icon',
             'timestamp',
             'created_at',
-            'receipt_url'
+            'receipt_url',
+            'source',
+            'created_via',
+            'extraction_status',
+            'extraction_source',
+            'extraction_confidence',
+            'extraction_warnings',
+            'document_type',
+            'invoice_number',
+            'invoice_date',
+            'raw_text_preview',
+            'source_file_name',
+            'source_file_mime_type',
+            'source_file_size_bytes',
+            'payment_reference',
+            'notes'
           ])
-          && isValidBaseRecordUpdate(request.resource.data, resource.data);
+          && isValidBaseRecordUpdate(request.resource.data, resource.data)
+          && isValidAICaptureMetadata(request.resource.data);
         allow delete: if false;
       }
 
@@ -239,10 +290,26 @@ service cloud.firestore {
             'status',
             'icon',
             'timestamp',
-            'due_date'
+            'due_date',
+            'source',
+            'created_via',
+            'extraction_status',
+            'extraction_source',
+            'extraction_confidence',
+            'extraction_warnings',
+            'document_type',
+            'invoice_number',
+            'invoice_date',
+            'payment_status',
+            'raw_text_preview',
+            'source_file_name',
+            'source_file_mime_type',
+            'source_file_size_bytes'
           ])
           && isValidBaseRecord(request.resource.data)
-          && (!('due_date' in request.resource.data) || request.resource.data.due_date is string);
+          && (!('due_date' in request.resource.data) || request.resource.data.due_date is timestamp)
+          && (!('payment_status' in request.resource.data) || request.resource.data.payment_status in ['unpaid', 'paid', 'overdue', 'unknown'])
+          && isValidAICaptureMetadata(request.resource.data);
         allow update: if isOwner(userId)
           && request.resource.data.keys().hasOnly([
             'amount',
@@ -252,9 +319,26 @@ service cloud.firestore {
             'status',
             'icon',
             'timestamp',
-            'due_date'
+            'due_date',
+            'source',
+            'created_via',
+            'extraction_status',
+            'extraction_source',
+            'extraction_confidence',
+            'extraction_warnings',
+            'document_type',
+            'invoice_number',
+            'invoice_date',
+            'payment_status',
+            'raw_text_preview',
+            'source_file_name',
+            'source_file_mime_type',
+            'source_file_size_bytes'
           ])
-          && isValidBaseRecordUpdate(request.resource.data, resource.data);
+          && isValidBaseRecordUpdate(request.resource.data, resource.data)
+          && (!('due_date' in request.resource.data) || request.resource.data.due_date is timestamp)
+          && (!('payment_status' in request.resource.data) || request.resource.data.payment_status in ['unpaid', 'paid', 'overdue', 'unknown'])
+          && isValidAICaptureMetadata(request.resource.data);
         allow delete: if false;
       }
 
@@ -269,10 +353,26 @@ service cloud.firestore {
             'status',
             'icon',
             'timestamp',
-            'renewal_date'
+            'renewal_date',
+            'source',
+            'created_via',
+            'extraction_status',
+            'extraction_source',
+            'extraction_confidence',
+            'extraction_warnings',
+            'document_type',
+            'invoice_number',
+            'invoice_date',
+            'billing_cycle',
+            'raw_text_preview',
+            'source_file_name',
+            'source_file_mime_type',
+            'source_file_size_bytes',
+            'notes'
           ])
           && isValidBaseRecord(request.resource.data)
-          && (!('renewal_date' in request.resource.data) || request.resource.data.renewal_date is string);
+          && (!('renewal_date' in request.resource.data) || request.resource.data.renewal_date is timestamp)
+          && isValidAICaptureMetadata(request.resource.data);
         allow update: if isOwner(userId)
           && request.resource.data.keys().hasOnly([
             'amount',
@@ -282,9 +382,26 @@ service cloud.firestore {
             'status',
             'icon',
             'timestamp',
-            'renewal_date'
+            'renewal_date',
+            'source',
+            'created_via',
+            'extraction_status',
+            'extraction_source',
+            'extraction_confidence',
+            'extraction_warnings',
+            'document_type',
+            'invoice_number',
+            'invoice_date',
+            'billing_cycle',
+            'raw_text_preview',
+            'source_file_name',
+            'source_file_mime_type',
+            'source_file_size_bytes',
+            'notes'
           ])
-          && isValidBaseRecordUpdate(request.resource.data, resource.data);
+          && isValidBaseRecordUpdate(request.resource.data, resource.data)
+          && (!('renewal_date' in request.resource.data) || request.resource.data.renewal_date is timestamp)
+          && isValidAICaptureMetadata(request.resource.data);
         allow delete: if false;
       }
 

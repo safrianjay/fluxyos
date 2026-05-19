@@ -704,23 +704,26 @@
                 attachments: [serializeAttachment(file)],
             });
             loadingId = appendAssistantLoading();
+            const base64 = await readFileAsBase64(file);
             if (els.input) els.input.value = '';
             updateCharCount();
             autoGrowComposer();
             clearFile();
             scrollToLatest(true);
             const token = await getAuthToken();
-            const response = await fetch('/api/v1/ai/detect-document', {
+            const response = await fetch('/api/v1/ai/input-from-file', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify({
+                    file_base64: base64,
                     file_name: file.name,
                     mime_type: file.type || guessMimeFromName(file.name),
                     size_bytes: file.size,
-                    page_context: 'ai_command_center',
+                    source_page: 'ai_command_center',
+                    destination_hint: 'auto',
                     user_intent: userIntent || null,
                     locale: 'id-ID',
                     currency_hint: 'IDR',
@@ -845,6 +848,19 @@
             state.previewUrl = URL.createObjectURL(file);
         }
         renderFilePreview();
+    }
+
+    function readFileAsBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error('Could not read the selected file.'));
+            reader.onload = () => {
+                const result = String(reader.result || '');
+                const comma = result.indexOf(',');
+                resolve(comma >= 0 ? result.slice(comma + 1) : result);
+            };
+            reader.readAsDataURL(file);
+        });
     }
 
     function validateFile(file) {
@@ -1335,16 +1351,27 @@
         const actionId = messageId || nextMessageId('assistant');
         const confidence = Math.round((Number(result.confidence) || 0) * 100);
         const lowConfidence = confidence < 70;
-        const preview = result.extracted_preview && Object.keys(result.extracted_preview).length
-            ? `<div class="mt-4 rounded-xl border border-gray-200 overflow-hidden">${Object.entries(result.extracted_preview).filter(([, value]) => value != null && value !== '').map(([key, value]) => `
+        const previewData = result.mapped_fields && Object.keys(result.mapped_fields).length
+            ? result.mapped_fields
+            : result.extracted_preview || result.extracted || {};
+        const preview = previewData && Object.keys(previewData).length
+            ? `<div class="mt-4 rounded-xl border border-gray-200 overflow-hidden">${Object.entries(previewData).filter(([, value]) => value != null && value !== '' && !(Array.isArray(value) && !value.length)).map(([key, value]) => `
                 <div class="flex items-center justify-between gap-3 border-b border-gray-100 last:border-b-0 px-4 py-2.5">
                     <span class="text-[12px] font-bold text-gray-500">${escapeHtml(toLabel(key))}</span>
                     <strong class="min-w-0 text-right text-[12px] font-semibold text-gray-900 break-words">${escapeHtml(formatPreviewValue(value))}</strong>
                 </div>
             `).join('')}</div>`
             : '';
-        const warnings = Array.isArray(result.warnings) && result.warnings.length
-            ? `<div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">${result.warnings.map(item => `<p class="text-[12px] font-medium text-amber-800">${escapeHtml(item)}</p>`).join('')}</div>`
+        const issueList = [
+            ...(Array.isArray(result.missing_required_fields) ? result.missing_required_fields.map(item => `Missing required field: ${toLabel(item)}`) : []),
+            ...(Array.isArray(result.validation_errors) ? result.validation_errors : []),
+            ...(Array.isArray(result.warnings) ? result.warnings : []),
+        ];
+        const warnings = issueList.length
+            ? `<div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">${issueList.map(item => `<p class="text-[12px] font-medium text-amber-800">${escapeHtml(item)}</p>`).join('')}</div>`
+            : '';
+        const provider = result.provider_state
+            ? `<span class="mt-2 inline-flex rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-500">${escapeHtml(toLabel(result.provider_state))}</span>`
             : '';
         const action = renderDocumentAction(result, actionId, file);
 
@@ -1354,6 +1381,7 @@
                         <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Detected document</p>
                         <h2 class="mt-1 text-[22px] font-extrabold text-gray-950">${escapeHtml(toLabel(result.detected_type || 'unknown_financial_document'))}</h2>
                         <p class="mt-2 text-[14px] leading-relaxed text-gray-600">${escapeHtml(result.message || '')}</p>
+                        ${provider}
                     </div>
                     <div class="rounded-xl border ${lowConfidence ? 'border-amber-200' : 'border-gray-200'} px-4 py-3 text-right">
                         <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Confidence</p>
@@ -1384,7 +1412,7 @@
     function renderDocumentAction(result, messageId, file) {
         const action = result.recommended_action;
         if (action === 'refuse') return '';
-        if (!file && ['review_and_save_to_bills', 'review_as_expense', 'review_transaction'].includes(action)) {
+        if (!file && ['review_and_save_to_bills', 'review_as_expense', 'review_transaction', 'review_as_subscription'].includes(action)) {
             return `
                 <div class="mt-5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
                     <p class="text-[12px] font-medium text-gray-500">Upload the file again to open the review workflow. FluxyOS does not store raw document contents in chat history.</p>
@@ -1395,10 +1423,22 @@
             review_and_save_to_bills: 'Review and Save to Bills',
             review_as_expense: 'Review as Expense',
             review_transaction: 'Review Transaction',
-            review_as_subscription: 'Open Subscriptions',
+            review_as_subscription: 'Review and Save as Subscription',
             review_csv_import: 'Review CSV Import',
             ask_user: 'Choose Destination',
         }[action] || 'Review';
+        if (result.recommended_destination === 'ai_review' || action === 'ask_user') {
+            return `
+                <div class="mt-5">
+                    <p class="text-[12px] font-semibold text-gray-500">Choose where to review it</p>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        ${['bills', 'ledger', 'subscriptions', 'revenue_sync', 'ignore'].map(destination => `
+                            <button type="button" data-ai-route-document-destination="${escapeAttr(destination)}" class="inline-flex items-center justify-center rounded-full border border-gray-200 bg-white px-3 py-2 text-[12px] font-bold text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-[#EA580C]">${escapeHtml(toLabel(destination))}</button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
         return `
             <div class="mt-5 flex flex-col sm:flex-row gap-3">
                 <button type="button" data-ai-primary-document-action="${escapeAttr(messageId || '')}" class="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0B0F19] px-4 py-3 text-[13px] font-bold text-white hover:bg-gray-800 transition-colors">
@@ -1416,23 +1456,40 @@
         root?.querySelector(`[data-ai-clear-document="${cssEscape(messageId || '')}"]`)?.addEventListener('click', () => {
             root.remove();
         });
+        root?.querySelectorAll('[data-ai-route-document-destination]').forEach(button => {
+            button.addEventListener('click', () => {
+                const destination = button.dataset.aiRouteDocumentDestination;
+                if (destination === 'ignore') {
+                    root.remove();
+                    return;
+                }
+                if (destination === 'bills') return openExistingReview('bill', file, result);
+                if (destination === 'ledger') return openExistingReview('transaction', file, result);
+                if (destination === 'subscriptions') return openExistingReview('subscription', file, result);
+                if (destination === 'revenue_sync') window.location.href = '/revenue-sync';
+            });
+        });
         root?.querySelector(`[data-ai-primary-document-action="${cssEscape(messageId || '')}"]`)?.addEventListener('click', () => {
             const action = result.recommended_action;
             const type = result.detected_type;
             if (['review_and_save_to_bills'].includes(action) || ['bill', 'invoice'].includes(type)) {
-                openExistingReview('bill', file);
+                openExistingReview('bill', file, result);
                 return;
             }
-            if (['review_as_expense', 'review_transaction'].includes(action) || ['receipt', 'bank_statement', 'payment_screenshot'].includes(type)) {
-                openExistingReview('transaction', file);
+            if (['review_as_expense', 'review_transaction'].includes(action) || ['receipt', 'bank_statement', 'payment_screenshot', 'bank_transfer'].includes(type)) {
+                openExistingReview('transaction', file, result);
                 return;
             }
             if (action === 'review_csv_import') {
-                window.location.href = '/ledger';
+                if (typeof window.showAddTransactionModal === 'function') {
+                    window.showAddTransactionModal({ openBulk: true });
+                } else {
+                    window.location.href = '/ledger';
+                }
                 return;
             }
             if (action === 'review_as_subscription') {
-                window.location.href = '/subscription';
+                openExistingReview('subscription', file, result);
                 return;
             }
             if (result.recommended_destination === 'revenue_sync') {
@@ -1441,10 +1498,29 @@
         });
     }
 
-    function openExistingReview(mode, file) {
+    function openExistingReview(mode, file, result = {}) {
         if (!file) return;
+        const extracted = result.extracted || result.extracted_preview || {};
+        const mapped = result.mapped_fields || {};
+        const warnings = [
+            ...(Array.isArray(result.missing_required_fields) ? result.missing_required_fields.map(item => `Missing required field: ${toLabel(item)}`) : []),
+            ...(Array.isArray(result.validation_errors) ? result.validation_errors : []),
+            ...(Array.isArray(result.warnings) ? result.warnings : []),
+            ...(Array.isArray(extracted.warnings) ? extracted.warnings : []),
+        ];
+        const options = {
+            extraction: {
+                ...extracted,
+                ...mapped,
+                document_type: result.detected_type || extracted.document_type || 'unknown_financial_document',
+                confidence: extracted.confidence || { overall: Number(result.confidence) || 0 },
+                warnings,
+            },
+            extractionSource: result.provider_state || 'ai_command_center',
+            provider_state: result.provider_state || null,
+        };
         if (typeof window.openScanDrawerWithFile === 'function') {
-            window.openScanDrawerWithFile(mode, file);
+            window.openScanDrawerWithFile(mode, file, options);
             return;
         }
         if (mode === 'bill' && typeof window.openScanBillDrawer === 'function') {
@@ -1453,6 +1529,10 @@
         }
         if (mode === 'transaction' && typeof window.openScanTransactionDrawer === 'function') {
             window.openScanTransactionDrawer();
+            return;
+        }
+        if (mode === 'subscription' && typeof window.openScanSubscriptionDrawer === 'function') {
+            window.openScanSubscriptionDrawer();
         }
     }
 
@@ -1633,6 +1713,8 @@
 
     function formatPreviewValue(value) {
         if (typeof value === 'number' && Number.isFinite(value)) return `Rp ${Math.abs(value).toLocaleString('id-ID')}`;
+        if (Array.isArray(value)) return `${value.length} row${value.length === 1 ? '' : 's'}`;
+        if (value && typeof value === 'object') return JSON.stringify(value);
         return value;
     }
 

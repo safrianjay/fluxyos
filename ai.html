@@ -307,6 +307,7 @@
 
         window.__fluxyBillsContext = { app, auth, ds };
         window.__fluxyTxContext = { app, auth, ds };
+        window.__fluxySubContext = { app, auth, ds };
         window.__fluxyAICommandContext = { app, auth, ds };
         window.dispatchEvent(new CustomEvent('fluxy-ai-context-ready', { detail: { app, auth, ds } }));
 

@@ -261,6 +261,187 @@ def _mock_bill_extraction(file_name: str | None) -> Dict[str, Any]:
         "raw_text_preview": None,
     }
 
+def _normalize_input_amount(value: Any) -> int | None:
+    if isinstance(value, (int, float)) and value > 0:
+        return round(abs(value))
+    cleaned = "".join(ch for ch in str(value or "") if ch.isdigit() or ch in ",.-")
+    if not cleaned:
+        return None
+    last_comma = cleaned.rfind(",")
+    last_dot = cleaned.rfind(".")
+    normalized = cleaned
+    if last_comma > last_dot:
+        normalized = cleaned.replace(".", "").replace(",", ".")
+    else:
+        normalized = cleaned.replace(",", "")
+        parts = normalized.split(".")
+        if len(parts) > 2 or (len(parts) == 2 and len(parts[1]) == 3):
+            normalized = normalized.replace(".", "")
+    try:
+        parsed = float(normalized)
+    except ValueError:
+        return None
+    return round(abs(parsed)) if parsed > 0 else None
+
+def _is_date_key(value: Any) -> bool:
+    if not isinstance(value, str) or len(value) != 10:
+        return False
+    try:
+        datetime.date.fromisoformat(value)
+        return True
+    except ValueError:
+        return False
+
+def _fallback_input_extraction(detection: Dict[str, Any], file_name: str | None) -> Dict[str, Any]:
+    detected_type = detection.get("detected_type")
+    stem = _clean_stem(file_name)
+    low_conf = {"overall": 0.46, "vendor_name": 0.46, "amount": 0.46, "date": 0.46, "category": 0.42}
+    if detected_type in {"bill", "invoice"}:
+        return {
+            "document_type": detected_type,
+            "vendor_name": stem,
+            "amount": None,
+            "currency": "IDR",
+            "due_date": None,
+            "invoice_date": None,
+            "invoice_number": None,
+            "category": "Operations",
+            "confidence": {"overall": 0.5, "vendor_name": 0.5, "amount": 0.3, "due_date": 0.3, "category": 0.4},
+            "warnings": ["Bill scanning provider not configured — amount and dates must be entered before saving."],
+            "raw_text_preview": None,
+        }
+    if detected_type == "subscription_invoice":
+        return {
+            "document_type": detected_type,
+            "vendor_name": stem,
+            "amount": None,
+            "currency": "IDR",
+            "renewal_date": None,
+            "billing_cycle": "monthly",
+            "category": "SaaS",
+            "status": "Completed",
+            "notes": "",
+            "confidence": low_conf,
+            "warnings": ["Live AI extraction is not configured for this document type yet. Review and correct every field before saving."],
+        }
+    if detected_type in {"receipt", "payment_screenshot", "bank_transfer", "bank_statement"}:
+        return {
+            "document_type": detected_type,
+            "vendor_name": stem,
+            "recipient_or_vendor": stem,
+            "amount": None,
+            "currency": "IDR",
+            "transaction_date": None,
+            "type": "transfer" if detected_type == "bank_transfer" else "expense",
+            "status": "Missing Receipt" if detected_type == "receipt" else "Completed",
+            "category": "Operations",
+            "payment_reference": None,
+            "notes": "",
+            "confidence": low_conf,
+            "warnings": ["Live AI extraction is not configured for this document type yet. Review and correct every field before saving."],
+        }
+    if detected_type == "revenue_report":
+        return {
+            "document_type": detected_type,
+            "total_revenue": None,
+            "order_count": None,
+            "channel": stem,
+            "period_start": None,
+            "period_end": None,
+            "customer_or_source": stem,
+            "rows": [],
+            "confidence": {"overall": 0.42},
+            "warnings": ["Revenue Sync data is not connected yet. I can prepare this for review, but I cannot sync it automatically."],
+        }
+    if detected_type == "csv_transactions":
+        return {
+            "document_type": detected_type,
+            "rows": [],
+            "detected_columns": [],
+            "mapped_columns": {},
+            "unmapped_columns": [],
+            "validation_errors": [],
+            "confidence": {"overall": 0.88},
+            "warnings": ["Review CSV rows through the existing Ledger CSV import flow before saving."],
+        }
+    return {
+        "document_type": detected_type or "unknown_financial_document",
+        "document_name": stem,
+        "confidence": {"overall": 0.32},
+        "warnings": detection.get("warnings") or ["Low-confidence routing. Choose a destination before saving anything."],
+    }
+
+def _map_input_fields(detected_type: str, extracted: Dict[str, Any]) -> Dict[str, Any]:
+    if detected_type in {"bill", "invoice"}:
+        return {
+            "vendor_name": extracted.get("vendor_name") or "",
+            "amount": _normalize_input_amount(extracted.get("amount")),
+            "category": extracted.get("category") if extracted.get("category") in ALLOWED_CATEGORIES else "Operations",
+            "invoice_number": extracted.get("invoice_number") or "",
+            "due_date": extracted.get("due_date") if _is_date_key(extracted.get("due_date")) else "",
+            "invoice_date": extracted.get("invoice_date") if _is_date_key(extracted.get("invoice_date")) else "",
+            "type": "pending_payable",
+            "status": "Missing Receipt",
+            "payment_status": "unpaid",
+        }
+    if detected_type in {"receipt", "payment_screenshot", "bank_transfer", "bank_statement"}:
+        return {
+            "vendor_name": extracted.get("vendor_name") or extracted.get("recipient_or_vendor") or "",
+            "amount": _normalize_input_amount(extracted.get("amount")),
+            "category": extracted.get("category") if extracted.get("category") in ALLOWED_CATEGORIES else "Operations",
+            "transaction_date": extracted.get("transaction_date") if _is_date_key(extracted.get("transaction_date")) else "",
+            "type": extracted.get("type") if extracted.get("type") in {"expense", "income", "transfer", "refund", "adjustment", "fee", "tax", "pending_payable", "pending_receivable"} else "expense",
+            "status": extracted.get("status") or "Completed",
+            "notes": extracted.get("notes") or "",
+            "payment_reference": extracted.get("payment_reference") or "",
+        }
+    if detected_type == "subscription_invoice":
+        return {
+            "vendor_name": extracted.get("vendor_name") or "",
+            "amount": _normalize_input_amount(extracted.get("amount")),
+            "category": "SaaS",
+            "renewal_date": extracted.get("renewal_date") if _is_date_key(extracted.get("renewal_date")) else "",
+            "billing_cycle": extracted.get("billing_cycle") or "monthly",
+            "type": "expense",
+            "status": extracted.get("status") or "Completed",
+            "notes": extracted.get("notes") or "",
+        }
+    if detected_type == "revenue_report":
+        return {
+            "total_revenue": _normalize_input_amount(extracted.get("total_revenue")),
+            "order_count": extracted.get("order_count") if isinstance(extracted.get("order_count"), (int, float)) else None,
+            "channel": extracted.get("channel") or extracted.get("customer_or_source") or "",
+            "period_start": extracted.get("period_start") if _is_date_key(extracted.get("period_start")) else "",
+            "period_end": extracted.get("period_end") if _is_date_key(extracted.get("period_end")) else "",
+            "rows": extracted.get("rows")[:25] if isinstance(extracted.get("rows"), list) else [],
+        }
+    if detected_type == "csv_transactions":
+        return {
+            "rows": extracted.get("rows")[:25] if isinstance(extracted.get("rows"), list) else [],
+            "detected_columns": extracted.get("detected_columns") if isinstance(extracted.get("detected_columns"), list) else [],
+            "mapped_columns": extracted.get("mapped_columns") if isinstance(extracted.get("mapped_columns"), dict) else {},
+            "unmapped_columns": extracted.get("unmapped_columns") if isinstance(extracted.get("unmapped_columns"), list) else [],
+        }
+    return extracted
+
+def _validate_mapped(destination: str, mapped: Dict[str, Any]) -> Dict[str, List[str]]:
+    missing: List[str] = []
+    errors: List[str] = []
+    if destination in {"bills", "ledger", "subscriptions"}:
+        if not mapped.get("vendor_name"):
+            missing.append("vendor_name")
+        if not mapped.get("amount"):
+            missing.append("amount")
+        if mapped.get("amount") is not None and mapped.get("amount") <= 0:
+            errors.append("Amount must be greater than 0.")
+    if destination == "bills" and not mapped.get("due_date"):
+        errors.append("Due date is recommended for Bills review.")
+    if destination == "subscriptions" and not mapped.get("renewal_date") and not mapped.get("billing_cycle"):
+        errors.append("Renewal date or billing cycle is recommended for subscription review.")
+    if destination == "revenue_sync" and not mapped.get("total_revenue") and not mapped.get("rows"):
+        missing.append("total_revenue_or_rows")
+    return {"missing": missing, "errors": errors}
+
 def _decode_firestore_value(value: Dict[str, Any]) -> Any:
     if "stringValue" in value:
         return value["stringValue"]
@@ -642,6 +823,51 @@ async def detect_document(payload: Dict[str, Any], _user=Depends(verify_firebase
         except (TypeError, ValueError):
             size_bytes = None
     return _detect_document_type(file_name, mime_type, size_bytes)
+
+@app.post("/api/v1/ai/input-from-file")
+async def input_from_file(payload: Dict[str, Any], _user=Depends(verify_firebase_token)):
+    file_base64 = payload.get("file_base64")
+    file_name = payload.get("file_name")
+    mime_type = payload.get("mime_type") or _guess_mime(file_name)
+    size_bytes = payload.get("size_bytes")
+    destination_hint = payload.get("destination_hint")
+    if not isinstance(file_base64, str) or not file_base64:
+        return {"success": False, "error": {"code": "missing_file", "message": "file_base64 is required."}}
+    try:
+        numeric_size = int(size_bytes) if size_bytes is not None else 0
+    except (TypeError, ValueError):
+        numeric_size = 0
+    detection = _detect_document_type(file_name, mime_type, numeric_size)
+    if detection.get("detected_type") in {"unsupported_file", "non_financial_image"}:
+        return {
+            **detection,
+            "extracted": {},
+            "mapped_fields": {},
+            "missing_required_fields": [],
+            "validation_errors": detection.get("warnings", []),
+            "provider_state": "deterministic_fallback",
+        }
+
+    extracted = _fallback_input_extraction(detection, file_name)
+    provider_state = "provider_not_configured"
+    destination = destination_hint if destination_hint and destination_hint != "auto" else detection.get("recommended_destination")
+    mapped = _map_input_fields(detection.get("detected_type", "unknown_financial_document"), extracted)
+    validation = _validate_mapped(destination or "ai_review", mapped)
+    warnings = [*(detection.get("warnings") or []), *(extracted.get("warnings") or [])]
+    return {
+        "success": True,
+        "detected_type": detection.get("detected_type"),
+        "recommended_destination": destination,
+        "recommended_action": detection.get("recommended_action"),
+        "confidence": extracted.get("confidence", {}).get("overall", detection.get("confidence", 0)),
+        "extracted": extracted,
+        "mapped_fields": mapped,
+        "missing_required_fields": validation["missing"],
+        "validation_errors": validation["errors"],
+        "warnings": warnings,
+        "message": f"{detection.get('message', '')} Live AI extraction is not configured, so review these low-confidence fields before saving.",
+        "provider_state": provider_state,
+    }
 
 @app.post("/api/v1/bills/extract")
 async def extract_bill(payload: Dict[str, Any], _user=Depends(verify_firebase_token)):

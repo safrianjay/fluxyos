@@ -1060,6 +1060,10 @@ exports.handler = async (event) => {
         return extractBill(event, headers);
     }
 
+    if (path === '/ai/input-from-file' && method === 'POST') {
+        return inputFromFile(event, headers);
+    }
+
     if (path === '/ai/detect-document' && method === 'POST') {
         return detectDocument(event, headers);
     }
@@ -1284,6 +1288,279 @@ async function detectDocument(event, headers) {
         sizeBytes: body.size_bytes,
     });
     return jsonResponse(headers, 200, result);
+}
+
+function normalizeInputAmount(value) {
+    if (typeof value === 'number' && Number.isFinite(value)) return Math.round(Math.abs(value));
+    const cleaned = String(value || '').replace(/[^\d,.-]/g, '');
+    if (!cleaned) return null;
+    const lastComma = cleaned.lastIndexOf(',');
+    const lastDot = cleaned.lastIndexOf('.');
+    let normalized = cleaned;
+    if (lastComma > lastDot) {
+        normalized = cleaned.replace(/\./g, '').replace(',', '.');
+    } else {
+        normalized = cleaned.replace(/,/g, '');
+        const parts = normalized.split('.');
+        if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+            normalized = normalized.replace(/\./g, '');
+        }
+    }
+    const parsed = Number.parseFloat(normalized);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : null;
+}
+
+function isDateKey(value) {
+    return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function blankConfidence(overall = 0.46) {
+    return {
+        overall,
+        vendor_name: overall,
+        amount: overall,
+        date: overall,
+        category: Math.min(overall, 0.42),
+    };
+}
+
+function buildFallbackInputExtraction(detection, fileName) {
+    const stem = cleanFileStem(fileName);
+    const type = detection.detected_type;
+    const baseWarnings = [
+        'Live AI extraction is not configured for this document type yet. Review and correct every field before saving.',
+    ];
+    if (['bill', 'invoice'].includes(type)) {
+        return {
+            document_type: type,
+            vendor_name: stem,
+            amount: null,
+            currency: 'IDR',
+            due_date: null,
+            invoice_date: null,
+            invoice_number: null,
+            category: 'Operations',
+            confidence: { overall: 0.5, vendor_name: 0.5, amount: 0.3, due_date: 0.3, category: 0.4 },
+            warnings: ['Bill scanning provider not configured — amount and dates must be entered before saving.'],
+            raw_text_preview: null,
+        };
+    }
+    if (type === 'subscription_invoice') {
+        return {
+            document_type: type,
+            vendor_name: stem,
+            amount: null,
+            currency: 'IDR',
+            renewal_date: null,
+            billing_cycle: 'monthly',
+            category: 'SaaS',
+            status: 'Completed',
+            notes: '',
+            confidence: blankConfidence(0.48),
+            warnings: baseWarnings,
+        };
+    }
+    if (['receipt', 'payment_screenshot', 'bank_transfer', 'bank_statement'].includes(type)) {
+        return {
+            document_type: type,
+            vendor_name: stem,
+            recipient_or_vendor: stem,
+            amount: null,
+            currency: 'IDR',
+            transaction_date: null,
+            type: type === 'bank_transfer' ? 'transfer' : 'expense',
+            status: type === 'receipt' ? 'Missing Receipt' : 'Completed',
+            category: 'Operations',
+            payment_reference: null,
+            notes: '',
+            confidence: blankConfidence(0.48),
+            warnings: baseWarnings,
+        };
+    }
+    if (type === 'revenue_report') {
+        return {
+            document_type: type,
+            total_revenue: null,
+            order_count: null,
+            channel: stem,
+            period_start: null,
+            period_end: null,
+            customer_or_source: stem,
+            rows: [],
+            confidence: blankConfidence(0.42),
+            warnings: ['Revenue Sync data is not connected yet. I can prepare this for review, but I cannot sync it automatically.'],
+        };
+    }
+    if (type === 'csv_transactions') {
+        return {
+            document_type: type,
+            rows: [],
+            detected_columns: [],
+            mapped_columns: {},
+            unmapped_columns: [],
+            validation_errors: [],
+            confidence: { overall: 0.88 },
+            warnings: ['Review CSV rows through the existing Ledger CSV import flow before saving.'],
+        };
+    }
+    return {
+        document_type: type || 'unknown_financial_document',
+        document_name: stem,
+        confidence: blankConfidence(0.32),
+        warnings: detection.warnings?.length ? detection.warnings : ['Low-confidence routing. Choose a destination before saving anything.'],
+    };
+}
+
+function mapInputFields(detectedType, extracted) {
+    if (['bill', 'invoice'].includes(detectedType)) {
+        return {
+            vendor_name: extracted.vendor_name || '',
+            amount: normalizeInputAmount(extracted.amount),
+            category: ALLOWED_CATEGORIES.includes(extracted.category) ? extracted.category : 'Operations',
+            invoice_number: extracted.invoice_number || '',
+            due_date: isDateKey(extracted.due_date) ? extracted.due_date : '',
+            invoice_date: isDateKey(extracted.invoice_date) ? extracted.invoice_date : '',
+            type: 'pending_payable',
+            status: 'Missing Receipt',
+            payment_status: 'unpaid',
+        };
+    }
+    if (['receipt', 'payment_screenshot', 'bank_transfer', 'bank_statement'].includes(detectedType)) {
+        return {
+            vendor_name: extracted.vendor_name || extracted.recipient_or_vendor || '',
+            amount: normalizeInputAmount(extracted.amount),
+            category: ALLOWED_CATEGORIES.includes(extracted.category) ? extracted.category : 'Operations',
+            transaction_date: isDateKey(extracted.transaction_date) ? extracted.transaction_date : '',
+            type: ['expense', 'income', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_payable', 'pending_receivable'].includes(extracted.type) ? extracted.type : 'expense',
+            status: extracted.status || 'Completed',
+            notes: extracted.notes || '',
+            payment_reference: extracted.payment_reference || '',
+        };
+    }
+    if (detectedType === 'subscription_invoice') {
+        return {
+            vendor_name: extracted.vendor_name || '',
+            amount: normalizeInputAmount(extracted.amount),
+            category: 'SaaS',
+            renewal_date: isDateKey(extracted.renewal_date) ? extracted.renewal_date : '',
+            billing_cycle: extracted.billing_cycle || 'monthly',
+            type: 'expense',
+            status: extracted.status || 'Completed',
+            notes: extracted.notes || '',
+        };
+    }
+    if (detectedType === 'revenue_report') {
+        return {
+            total_revenue: normalizeInputAmount(extracted.total_revenue),
+            order_count: Number.isFinite(Number(extracted.order_count)) ? Number(extracted.order_count) : null,
+            channel: extracted.channel || extracted.customer_or_source || '',
+            period_start: isDateKey(extracted.period_start) ? extracted.period_start : '',
+            period_end: isDateKey(extracted.period_end) ? extracted.period_end : '',
+            rows: Array.isArray(extracted.rows) ? extracted.rows.slice(0, 25) : [],
+        };
+    }
+    if (detectedType === 'csv_transactions') {
+        return {
+            rows: Array.isArray(extracted.rows) ? extracted.rows.slice(0, 25) : [],
+            detected_columns: Array.isArray(extracted.detected_columns) ? extracted.detected_columns : [],
+            mapped_columns: extracted.mapped_columns || {},
+            unmapped_columns: Array.isArray(extracted.unmapped_columns) ? extracted.unmapped_columns : [],
+        };
+    }
+    return { ...extracted };
+}
+
+function validateMappedFields(destination, mapped) {
+    const missing = [];
+    const errors = [];
+    if (['bills', 'ledger', 'subscriptions'].includes(destination)) {
+        if (!mapped.vendor_name) missing.push('vendor_name');
+        if (!mapped.amount) missing.push('amount');
+        if (mapped.amount != null && mapped.amount <= 0) errors.push('Amount must be greater than 0.');
+    }
+    if (destination === 'bills' && !mapped.due_date) {
+        errors.push('Due date is recommended for Bills review.');
+    }
+    if (destination === 'subscriptions' && !mapped.renewal_date && !mapped.billing_cycle) {
+        errors.push('Renewal date or billing cycle is recommended for subscription review.');
+    }
+    if (destination === 'revenue_sync' && !mapped.total_revenue && !(Array.isArray(mapped.rows) && mapped.rows.length)) {
+        missing.push('total_revenue_or_rows');
+    }
+    return { missing, errors };
+}
+
+async function inputFromFile(event, headers) {
+    let body;
+    try {
+        body = JSON.parse(event.body || '{}');
+    } catch {
+        return jsonResponse(headers, 400, { success: false, error: { code: 'invalid_json', message: 'Request body must be valid JSON.' } });
+    }
+    const { file_base64, file_name, mime_type, size_bytes, destination_hint } = body || {};
+    const normalizedMime = mime_type || guessMimeFromFileName(file_name);
+    const size = Number(size_bytes) || 0;
+    if (!file_base64 || typeof file_base64 !== 'string') {
+        return jsonResponse(headers, 400, { success: false, error: { code: 'missing_file', message: 'file_base64 is required.' } });
+    }
+    const detection = buildDeterministicDocumentDetection({ fileName: file_name, mimeType: normalizedMime, sizeBytes: size });
+    if (['unsupported_file', 'non_financial_image'].includes(detection.detected_type)) {
+        return jsonResponse(headers, 200, {
+            ...detection,
+            extracted: {},
+            mapped_fields: {},
+            missing_required_fields: [],
+            validation_errors: detection.warnings || [],
+            provider_state: 'deterministic_fallback',
+        });
+    }
+
+    let providerState = 'deterministic_fallback';
+    let extracted = buildFallbackInputExtraction(detection, file_name);
+    if (['bill', 'invoice'].includes(detection.detected_type)) {
+        if (process.env.OPENAI_API_KEY) {
+            try {
+                extracted = sanitizeExtraction(await callOpenAIVision({ file_base64, mime_type: normalizedMime, file_name }));
+                providerState = 'openai';
+            } catch (err) {
+                console.error('[ai/input-from-file] OpenAI extraction failed:', err?.message || err);
+                providerState = 'deterministic_fallback';
+                extracted = buildFallbackInputExtraction(detection, file_name);
+                extracted.warnings = [...(extracted.warnings || []), 'Live extraction failed, so this fallback needs careful review.'];
+            }
+        } else {
+            providerState = 'provider_not_configured';
+        }
+    } else if (!process.env.OPENAI_API_KEY) {
+        providerState = 'provider_not_configured';
+    }
+
+    const destination = destination_hint && destination_hint !== 'auto'
+        ? destination_hint
+        : detection.recommended_destination;
+    const mappedFields = mapInputFields(detection.detected_type, extracted);
+    const validation = validateMappedFields(destination, mappedFields);
+    const warnings = [
+        ...(detection.warnings || []),
+        ...(Array.isArray(extracted.warnings) ? extracted.warnings : []),
+    ];
+
+    return jsonResponse(headers, 200, {
+        success: true,
+        detected_type: detection.detected_type,
+        recommended_destination: destination,
+        recommended_action: detection.recommended_action,
+        confidence: Number(extracted.confidence?.overall ?? detection.confidence ?? 0),
+        extracted,
+        mapped_fields: mappedFields,
+        missing_required_fields: validation.missing,
+        validation_errors: validation.errors,
+        warnings,
+        message: providerState === 'provider_not_configured'
+            ? `${detection.message} Live AI extraction is not configured, so review these low-confidence fields before saving.`
+            : detection.message,
+        provider_state: providerState,
+    });
 }
 
 async function extractBill(event, headers) {

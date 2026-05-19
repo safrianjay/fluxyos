@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 
@@ -93,4 +93,27 @@ class ChatResponse(BaseModel):
     scope: Literal["project_finance"] = "project_finance"
     answer: Optional[ChatAnswer] = None
     related_records: List[Dict[str, Any]] = []
+    error: Optional[ChatError] = None
+
+class AIInputFromFileRequest(BaseModel):
+    file_base64: str
+    file_name: str
+    mime_type: Optional[str] = None
+    size_bytes: Optional[int] = None
+    source_page: Optional[Literal["ai_command_center", "bills", "ledger", "subscriptions", "revenue_sync"]] = "ai_command_center"
+    destination_hint: Optional[Literal["bills", "ledger", "subscriptions", "revenue_sync", "ai_review", "auto"]] = "auto"
+
+class AIInputFromFileResponse(BaseModel):
+    success: bool
+    detected_type: Optional[str] = None
+    recommended_destination: Optional[str] = None
+    recommended_action: Optional[str] = None
+    confidence: Optional[float] = None
+    extracted: Dict[str, Any] = Field(default_factory=dict)
+    mapped_fields: Dict[str, Any] = Field(default_factory=dict)
+    missing_required_fields: List[str] = Field(default_factory=list)
+    validation_errors: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+    message: str = ""
+    provider_state: Optional[Literal["openai", "deterministic_fallback", "provider_not_configured"]] = None
     error: Optional[ChatError] = None
