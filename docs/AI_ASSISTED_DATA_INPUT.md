@@ -136,10 +136,10 @@ Supported image and PDF uploads are not refused solely because the filename is g
 
 With a configured AI provider, the backend may upgrade an ambiguous upload based on structured evidence:
 
-- Bills/invoices require bill-specific evidence such as `invoice_number`, `due_date`, or visible bill/invoice/due wording.
+- Bills/invoices require a real payment-obligation signal such as `due_date`, `amount due`, `payment due`, `pay before`, `pay by`, `batas pembayaran`, or `jatuh tempo`.
 - Purchase receipts route to Ledger review when extraction finds a vendor and amount without bill-specific evidence.
-- Vendor and amount alone are not enough to classify a document as a bill, because ordinary expense receipts also contain both.
-- POS receipt wording wins over generic bill/invoice wording. A paid receipt that says `Tax Invoice`, `Bill No`, `Total Paid`, `Cashier`, `Kasir`, or similar must still route to Ledger unless it has a real payment-obligation signal such as `due_date`, `amount due`, `payment due`, `pay before`, or `jatuh tempo`.
+- Vendor, amount, and invoice/order number alone are not enough to classify a document as a bill, because ordinary expense receipts also contain them.
+- POS receipt wording wins over generic bill/invoice wording. A paid receipt that says `Tax Invoice`, `Bill No`, `Order Number`, `Order Time`, `Subtotal`, `QRIS`, `Total Paid`, `Cashier`, `Kasir`, or similar must still route to Ledger unless it has a real payment-obligation signal.
 
 This guardrail is covered by `scripts/qa-ai-upload-routing.js`. Any future change to AI upload routing must keep the Starbucks-style receipt case routing to `receipt`/Ledger unless the extracted document has bill-specific evidence. Do not remove this regression check when changing provider prompts, schemas, or fallback routing.
 

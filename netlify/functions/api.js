@@ -1495,7 +1495,6 @@ function validateMappedFields(destination, mapped) {
 }
 
 function billEvidenceFromExtraction(extracted) {
-    const documentType = String(extracted?.document_type || '').toLowerCase();
     const text = `${extracted?.raw_text_preview || ''}`.toLowerCase();
     const hasPaymentDueSignal = Boolean(
         extracted?.due_date ||
@@ -1504,16 +1503,13 @@ function billEvidenceFromExtraction(extracted) {
     const hasReceiptSignal = receiptEvidenceFromExtraction(extracted);
     if (hasPaymentDueSignal) return true;
     if (hasReceiptSignal) return false;
-    return Boolean(
-        extracted?.invoice_number &&
-        ['bill', 'invoice', 'payment_request'].includes(documentType)
-    );
+    return false;
 }
 
 function receiptEvidenceFromExtraction(extracted) {
     const documentType = String(extracted?.document_type || '').toLowerCase();
     const text = `${extracted?.raw_text_preview || ''}`.toLowerCase();
-    const hasReceiptText = /(receipt|struk|nota|kuitansi|paid|cashier|kasir|change|total paid|payment received|tax invoice|bill no|order no|transaction)/.test(text);
+    const hasReceiptText = /(receipt|struk|nota|kuitansi|paid|cashier|kasir|change|total paid|payment received|tax invoice|bill no|order no|order number|order time|transaction|qris|subtotal|items?)/.test(text);
     return documentType === 'receipt' || Boolean(extracted?.vendor_name && extracted?.amount && !extracted?.due_date && (hasReceiptText || !extracted?.invoice_number));
 }
 

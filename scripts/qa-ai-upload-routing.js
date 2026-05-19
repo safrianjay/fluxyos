@@ -47,7 +47,19 @@ const cases = [
         expected: 'receipt',
     },
     {
-        name: 'Invoice number without receipt signals is bill evidence',
+        name: 'Order number without due date is still a receipt signal',
+        input: {
+            document_type: 'invoice',
+            vendor_name: 'Chagee',
+            amount: 49000,
+            invoice_number: '20260518092041000073418068',
+            due_date: null,
+            raw_text_preview: 'TIE GUAN YIN MILK TEA Rp 49.000 1 Items Subtotal Rp 49.000 QRIS Rp 49.000 Order Time 18/05/2026 16:10:08 Order Number 20260518092041000073418068',
+        },
+        expected: 'receipt',
+    },
+    {
+        name: 'Invoice number alone without due date stays unknown',
         input: {
             document_type: 'invoice',
             vendor_name: 'Cloud Vendor',
@@ -56,7 +68,7 @@ const cases = [
             due_date: null,
             raw_text_preview: 'Invoice INV-1001 total Rp 750.000',
         },
-        expected: 'bill',
+        expected: 'unknown',
     },
     {
         name: 'Due date is bill-specific evidence',
