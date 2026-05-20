@@ -255,6 +255,17 @@ async function onContinue() {
                 monthly_revenue_range: state.fields.monthly_revenue_range,
                 employee_count_range: state.fields.employee_count_range
             });
+            // Mirror business_name to settings/company as soon as it's
+            // entered so the dashboard sidebar resolves to the right name
+            // the moment the user lands there — no waiting on the final
+            // submit. Surfaces errors loudly via console.
+            try {
+                await data.saveCompanySettings(state.user.uid, {
+                    business_name: state.fields.business_name
+                });
+            } catch (e) {
+                console.warn('[onboarding] step1 settings/company mirror failed', e);
+            }
         } else if (stepKey === 'account_owner') {
             await data.saveOnboardingProfile(state.user.uid, {
                 legal_full_name: state.fields.legal_full_name,
@@ -331,11 +342,17 @@ async function onSubmit() {
         });
         // Mirror the business name into the canonical settings/company doc so
         // the sidebar entity switcher and Settings → Business stay in sync.
+        // Treated as critical now — without it the dashboard's first read of
+        // settings/company falls back to onboarding/profile, which works but
+        // means edits made from Settings later may diverge.
         try {
             await data.saveCompanySettings(state.user.uid, {
                 business_name: state.fields.business_name
             });
-        } catch (e) { /* non-fatal — onboarding can complete without this */ }
+            console.log('[onboarding] settings/company mirrored', { business_name: state.fields.business_name });
+        } catch (e) {
+            console.warn('[onboarding] settings/company mirror failed', e);
+        }
         await data.completeOnboarding(state.user.uid, {
             selected_first_action: state.fields.first_action
         });
