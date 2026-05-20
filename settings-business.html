@@ -273,6 +273,10 @@
             const nextName = (payload.business_name || '').trim();
             const nameChanged = prevName.length > 0 && nextName.length > 0 && prevName !== nextName;
 
+            const prevLabel = (currentCompany.entity_label || '').trim();
+            const nextLabel = (payload.entity_label || '').trim();
+            const labelChanged = prevLabel !== nextLabel && nextLabel.length > 0;
+
             if (nameChanged) {
                 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) =>
                     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -295,6 +299,15 @@
                             uid: auth.currentUser?.uid,
                             name: payload.business_name,
                             previous: prevName
+                        }
+                    }));
+                }
+                if (labelChanged) {
+                    window.dispatchEvent(new CustomEvent('fluxy:entity-label-changed', {
+                        detail: {
+                            uid: auth.currentUser?.uid,
+                            label: payload.entity_label,
+                            previous: prevLabel
                         }
                     }));
                 }

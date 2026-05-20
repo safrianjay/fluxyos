@@ -381,10 +381,9 @@ main > header {
 
 /* Inline skeleton used for the sidebar entity name while it loads from
    Firestore. Sized to match the 12px label so the row height stays stable. */
-.entity-name-skeleton {
+.entity-name-skeleton,
+.entity-label-skeleton {
     display: inline-block;
-    width: 92px;
-    height: 11px;
     border-radius: 6px;
     background:
         linear-gradient(90deg, #E5E7EB 0%, #F3F4F6 45%, #E5E7EB 100%);
@@ -392,12 +391,15 @@ main > header {
     animation: entitySkeletonShimmer 1.4s ease-in-out infinite;
     vertical-align: middle;
 }
+.entity-name-skeleton  { width: 92px; height: 11px; }
+.entity-label-skeleton { width: 64px; height: 8px;  border-radius: 5px; }
 @keyframes entitySkeletonShimmer {
     0%   { background-position: 220% 0; }
     100% { background-position: -220% 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .entity-name-skeleton { animation: none; background: #E5E7EB; }
+    .entity-name-skeleton,
+    .entity-label-skeleton { animation: none; background: #E5E7EB; }
 }
 
 /* ── Fluxy Dialog (canonical popup) ────────────────────────────────────

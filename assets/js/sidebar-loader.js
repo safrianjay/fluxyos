@@ -45,7 +45,7 @@
                 <span class="entity-status-dot w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></span>
                 <span class="flex-1 min-w-0">
                     <span class="entity-name block text-[12px] font-semibold text-[#1E2F4A] truncate leading-tight" data-entity-name><span class="entity-name-skeleton" aria-hidden="true"></span></span>
-                    <span class="entity-sub block text-[10px] text-slate-500 truncate leading-tight mt-0.5">Consolidated</span>
+                    <span class="entity-sub block text-[10px] text-slate-500 truncate leading-tight mt-0.5" data-entity-label><span class="entity-label-skeleton" aria-hidden="true"></span></span>
                 </span>
                 <svg class="entity-chevron w-3 h-3 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
             </button>
@@ -54,7 +54,7 @@
                     <span class="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></span>
                     <span class="flex-1 min-w-0">
                         <span class="block text-[12px] font-semibold text-[#1E2F4A] truncate leading-tight" data-entity-name><span class="entity-name-skeleton" aria-hidden="true"></span></span>
-                        <span class="block text-[10px] text-slate-500 truncate leading-tight">Consolidated</span>
+                        <span class="block text-[10px] text-slate-500 truncate leading-tight" data-entity-label><span class="entity-label-skeleton" aria-hidden="true"></span></span>
                     </span>
                     <svg class="w-3 h-3 text-[#EA580C] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
                 </button>
@@ -206,27 +206,35 @@
 
     function applyEntityName(name) {
         const resolved = (name && String(name).trim()) || 'Global HQ';
-        const targets = document.querySelectorAll('[data-entity-name]');
-        targets.forEach((el) => {
+        document.querySelectorAll('[data-entity-name]').forEach((el) => {
             el.textContent = resolved;
-            el.removeAttribute('data-entity-name-loading');
         });
     }
 
-    async function syncEntityName(app, uid) {
+    function applyEntityLabel(label) {
+        const resolved = (label && String(label).trim()) || 'Consolidated';
+        document.querySelectorAll('[data-entity-label]').forEach((el) => {
+            el.textContent = resolved;
+        });
+    }
+
+    async function syncEntityProfile(app, uid) {
         if (!app || !uid) {
-            applyEntityName(null); // resolve the shimmer to default
+            applyEntityName(null);
+            applyEntityLabel(null);
             return;
         }
         try {
             const fs = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
             const db = fs.getFirestore(app);
             let name = null;
+            let label = null;
             try {
                 const compSnap = await fs.getDoc(fs.doc(db, `users/${uid}/settings/company`));
                 if (compSnap.exists()) {
-                    const v = compSnap.data()?.business_name;
-                    if (v && v !== 'Global HQ') name = v;
+                    const data = compSnap.data() || {};
+                    if (data.business_name && data.business_name !== 'Global HQ') name = data.business_name;
+                    if (data.entity_label && data.entity_label !== 'Consolidated') label = data.entity_label;
                 }
             } catch (e) {}
             if (!name) {
@@ -238,9 +246,11 @@
                     }
                 } catch (e) {}
             }
-            applyEntityName(name); // always — null falls back to "Global HQ"
+            applyEntityName(name);
+            applyEntityLabel(label);
         } catch (e) {
-            applyEntityName(null); // network/import failed — still resolve the shimmer
+            applyEntityName(null);
+            applyEntityLabel(null);
         }
     }
 
@@ -249,6 +259,9 @@
     // change instantly with no reload required.
     window.addEventListener('fluxy:entity-name-changed', (event) => {
         applyEntityName(event?.detail?.name);
+    });
+    window.addEventListener('fluxy:entity-label-changed', (event) => {
+        applyEntityLabel(event?.detail?.label);
     });
 
     function inject() {
@@ -344,7 +357,7 @@
                         const avatarElem = document.getElementById('sidebar-user-avatar');
                         if (nameElem) nameElem.innerText = user.displayName || user.email.split('@')[0];
                         if (avatarElem && user.photoURL) avatarElem.src = user.photoURL;
-                        syncEntityName(app, user.uid);
+                        syncEntityProfile(app, user.uid);
                     }
                 });
             });
