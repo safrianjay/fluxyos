@@ -204,6 +204,13 @@
         });
     }
 
+    function applyEntityName(name) {
+        if (!name) return;
+        document.querySelectorAll('[data-entity-name]').forEach((el) => {
+            el.textContent = name;
+        });
+    }
+
     async function syncEntityName(app, uid) {
         if (!app || !uid) return;
         try {
@@ -226,13 +233,17 @@
                     }
                 } catch (e) {}
             }
-            if (name) {
-                document.querySelectorAll('[data-entity-name]').forEach((el) => {
-                    el.textContent = name;
-                });
-            }
+            applyEntityName(name);
         } catch (e) { /* silent */ }
     }
+
+    // Listen for live updates broadcast by Settings → Business (or any other
+    // surface that mutates the workspace name) so the sidebar reflects the
+    // change instantly with no reload required.
+    window.addEventListener('fluxy:entity-name-changed', (event) => {
+        const next = event?.detail?.name;
+        applyEntityName(next);
+    });
 
     function inject() {
         const sidebar = document.getElementById('sidebar');

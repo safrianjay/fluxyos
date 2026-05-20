@@ -289,10 +289,17 @@
             if (saved) {
                 currentCompany = { ...currentCompany, ...payload };
                 if (nameChanged) {
-                    // Brief delay so the success toast/status pill is visible
-                    // before the reload, then refresh so the sidebar entity
-                    // switcher re-reads settings/company.business_name.
-                    setTimeout(() => window.location.reload(), 700);
+                    // Broadcast the change so anywhere on the current page that
+                    // displays the business name (sidebar entity switcher,
+                    // any future header/badge) can update live without a
+                    // full reload. Future listeners filter on detail.uid.
+                    window.dispatchEvent(new CustomEvent('fluxy:entity-name-changed', {
+                        detail: {
+                            uid: auth.currentUser?.uid,
+                            name: payload.business_name,
+                            previous: prevName
+                        }
+                    }));
                 }
             }
         }
