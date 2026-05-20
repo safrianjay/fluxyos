@@ -296,7 +296,7 @@ Run this section whenever any data write, read, calculation, or modal logic is c
 
 Run the **Cross-Page Regression** section below — changes to shared files affect every page.
 
-### J. Reports & Exports (reports.html, reports.js)
+### J. Reports & Exports + Report Preview (reports.html, reports.js, report-preview.html, report-preview.js, report-builder.js)
 
 | # | Check |
 |---|-------|
@@ -315,6 +315,19 @@ Run the **Cross-Page Regression** section below — changes to shared files affe
 | 13 | Recent exports panel refreshes after a successful export; empty state shows otherwise |
 | 14 | With `revenue = 0`, the preview Gross margin shows `0%` or "Not available" — never `NaN` / `Infinity` |
 | 15 | Mobile width 375px → no horizontal scroll, drawer renders full width |
+| 16 | Drawer footer shows three buttons: Cancel / Open Full Report / Confirm export & log action |
+| 17 | Open Full Report navigates to `/report-preview` and renders all 9 sections from real `monthlyReportPack` data |
+| 18 | `/report-preview` redirects to `/login` when signed out |
+| 19 | With no sessionStorage payload, `/report-preview` shows "No report preview found" + Back to Reports |
+| 20 | Period Comparison shows "Unavailable" when previous period has no records — never invents numbers |
+| 21 | Finance Predictability shows ARR as "Unavailable" because recurring revenue is unclassified |
+| 22 | Cash pressure copy never uses the word "runway" or implies bank coverage |
+| 23 | Print / Save PDF opens browser print dialog; toolbar is hidden in print preview; report colors preserved |
+| 24 | App never claims "PDF downloaded successfully" — only the user knows if they saved |
+| 25 | Download CSV Bundle on viewer downloads the 6 expected CSVs with raw integer amounts |
+| 26 | Confirm Export on viewer writes a row to `users/{uid}/report_exports` AND an `export.create` audit log with `target_collection: "report_exports"` |
+| 27 | Audit log + report_exports rows never contain row-level finance data or CSV content |
+| 28 | Recent Exports panel on `/reports` reads from `report_exports` and refreshes after a confirmed export |
 
 ### I. Favicon / Meta / Head Changes
 

@@ -54,6 +54,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Bills | `bill.html` | App | ✅ | **No** | ✅ |
 | Subscriptions | `subscription.html` | App | ✅ | **No** | ✅ |
 | Reports & Exports | `reports.html` | App | ✅ | **No** | ✅ |
+| Report Preview (viewer) | `report-preview.html` | App | ✅ | **No** | No |
 | Integrations | `integration.html` | App | ✅ | **No** | ✅ |
 | Settings (index) | `settings.html` | App | ✅ | **No** | ✅ |
 | Settings — Personal details | `settings-personal.html` | App | ✅ | **No** | ✅ |
@@ -565,3 +566,50 @@ current month. `DataService` exposes `getTransactionsForPeriod`,
 - Verified vs basic user: MVP defaults to verified. Future work: gate on a
   `users/{uid}/settings/account.verification_status` field; UI is already
   wired to disable Confirm export with a lock reason.
+
+### Level 1 report viewer (`report-preview.html`)
+
+The drawer's **Open Full Report** CTA stages a normalized
+`monthlyReportPack` object into `sessionStorage` under
+`fluxyos_report_preview` and navigates to `/report-preview`. The viewer
+auth-guards, reads from sessionStorage, and renders all nine sections
+(Cover, Executive Summary, Key Takeaways, Profit & Loss, Period
+Comparison, Finance Predictability, Expense Breakdown, Bills &
+Subscription Commitments, Report Confidence Method, Data Quality &
+Cleanup, Export Manifest).
+
+Toolbar actions:
+
+- **Back to Reports** → returns to `/reports`
+- **Print / Save PDF** → calls `window.print()` (browser-native PDF save;
+  the app cannot verify the user actually saved the file, so no
+  `downloaded: true` is ever logged)
+- **Download CSV Bundle** → six sequential CSV downloads from the same
+  report model
+- **Confirm Export** → writes `report_exports` + `export.create` audit log
+  (formats: `["pdf_print", "csv_bundle"]`)
+
+`assets/js/report-builder.js` is the single source of truth for report
+calculations. Both `reports.js` and `report-preview.js` import from it
+so financial logic is never duplicated.
+
+### `users/{userId}/report_exports/{exportId}`
+
+Metadata for confirmed exports. Append-only. Must never contain
+row-level financial data or CSV content.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `report_type` | string | `"monthly_report_pack"`, `"profit_loss"`, etc. |
+| `period_start` / `period_end` | ISO date string | |
+| `formats` | string[] | Subset of `["csv_bundle", "pdf_print"]` |
+| `status` | string | `"generated"` for Level 1 |
+| `included_sections` | string[] | Section keys included in this run |
+| `record_counts` | map | `{transactions, bills, subscriptions}` |
+| `warning_counts` | map | `{missing_receipts, bills_without_due_date, subscriptions_without_renewal}` |
+| `limitations` | string[] | e.g., "Previous period records not found" |
+| `created_at` | Timestamp | `serverTimestamp()` |
+| `created_by` | string | `request.auth.uid` |
+
+**Mutation rule:** owner read/create only — update and delete are
+blocked. Recent Exports on `reports.html` reads from this collection.

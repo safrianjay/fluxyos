@@ -1,0 +1,1608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FluxyOS Report Output V2 — Finance Audit / Investor Grade Benchmark</title>
+  <style>
+    :root {
+      --page: #f3f6fa;
+      --paper: #ffffff;
+      --ink: #101827;
+      --muted: #667085;
+      --muted-2: #7a8496;
+      --line: #dfe4ea;
+      --soft: #f8fafc;
+      --orange: #ea4b0b;
+      --orange-soft: #fff7ed;
+      --navy: #080d17;
+      --navy-2: #111827;
+      --green: #15803d;
+      --green-soft: #ecfdf3;
+      --blue: #2563eb;
+      --blue-soft: #eff6ff;
+      --amber: #d97706;
+      --amber-soft: #fffbeb;
+      --red: #dc2626;
+      --red-soft: #fef2f2;
+      --mono: "SFMono-Regular", "Fira Code", Menlo, Consolas, monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --shadow: 0 28px 90px rgba(15, 23, 42, .14);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 82% 4%, rgba(234, 75, 11, .18), transparent 32%),
+        linear-gradient(180deg, #e7ecf3 0%, #f3f6fa 360px, #eef2f7 100%);
+      color: var(--ink);
+      font-family: var(--sans);
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      height: 64px;
+      background: rgba(255,255,255,.9);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 28px;
+    }
+
+    .toolbar strong { display: block; font-size: 14px; }
+    .toolbar span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+    button {
+      height: 40px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 10px;
+      padding: 0 14px;
+      color: var(--ink);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: var(--navy);
+      color: #fff;
+      border-color: var(--navy);
+    }
+
+    .report {
+      width: min(100%, 1440px);
+      margin: 30px auto;
+      background: var(--page);
+      border-radius: 26px;
+      overflow: hidden;
+      border: 1px solid rgba(15, 23, 42, .10);
+      box-shadow: var(--shadow);
+    }
+
+    .section {
+      padding: 34px 32px 42px;
+      border-bottom: 1px solid var(--line);
+      break-inside: avoid;
+    }
+
+    .section:last-child { border-bottom: 0; }
+
+    .cover {
+      min-height: 640px;
+      background:
+        radial-gradient(circle at 84% 12%, rgba(234,75,11,.34), transparent 30%),
+        radial-gradient(circle at 18% 90%, rgba(37,99,235,.16), transparent 26%),
+        linear-gradient(135deg, #080d17 0%, #111827 58%, #171923 100%);
+      color: #fff;
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(390px, .72fr);
+      gap: 52px;
+      align-items: stretch;
+      padding: 52px 48px;
+      break-inside: avoid;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 72px;
+    }
+
+    .logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+      background: var(--orange);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 900;
+      font-size: 18px;
+    }
+
+    .brand-row strong { display: block; font-size: 18px; letter-spacing: -.02em; }
+    .brand-row span { color: #cbd5e1; font-size: 12px; }
+
+    .pill {
+      min-height: 30px;
+      border-radius: 999px;
+      padding: 0 11px;
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.08);
+      color: #e2e8f0;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      white-space: nowrap;
+    }
+
+    .pill.light {
+      color: #647084;
+      background: #fff;
+      border-color: #c5ccd8;
+      font-size: 13px;
+      text-transform: none;
+      letter-spacing: 0;
+      min-height: 42px;
+      padding: 0 16px;
+      border-radius: 10px;
+    }
+
+    .pill.orange { color: #9a3412; background: #fff7ed; border-color: #fed7aa; }
+    .pill.green { color: #166534; background: #f0fdf4; border-color: #bbf7d0; }
+    .pill.blue { color: #1d4ed8; background: #eff6ff; border-color: #bfdbfe; }
+    .pill.amber { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+    .pill.red { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
+
+    h1, h2 {
+      margin: 0;
+      letter-spacing: -.055em;
+      font-weight: 400;
+      line-height: .98;
+    }
+
+    h1 {
+      font-size: clamp(54px, 7vw, 88px);
+      max-width: 820px;
+      color: #fff;
+      margin-top: 18px;
+    }
+
+    h2 {
+      font-size: clamp(48px, 5.8vw, 72px);
+      color: var(--ink);
+    }
+
+    h3 {
+      margin: 0;
+      letter-spacing: -.032em;
+      color: var(--ink);
+    }
+
+    .cover-subtitle {
+      max-width: 700px;
+      margin: 24px 0 0;
+      color: #cbd5e1;
+      font-size: 18px;
+      line-height: 1.55;
+    }
+
+    .cover-note {
+      margin-top: 42px;
+      max-width: 720px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      border-radius: 18px;
+      padding: 18px;
+      color: #cbd5e1;
+      font-size: 14px;
+      line-height: 1.48;
+    }
+
+    .cover-note strong { color: #fff; }
+
+    .cover-meta {
+      align-self: stretch;
+      display: grid;
+      gap: 14px;
+      align-content: end;
+    }
+
+    .meta-card {
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      border-radius: 22px;
+      padding: 22px;
+    }
+
+    .meta-card small {
+      display: block;
+      color: #94a3b8;
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 900;
+      letter-spacing: .06em;
+      margin-bottom: 8px;
+    }
+
+    .meta-card strong {
+      display: block;
+      color: #fff;
+      font-size: 26px;
+      letter-spacing: -.04em;
+      font-weight: 650;
+    }
+
+    .meta-card span {
+      display: block;
+      margin-top: 7px;
+      color: #cbd5e1;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .report-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+      margin-bottom: 34px;
+    }
+
+    .kicker {
+      color: var(--orange);
+      font-size: 16px;
+      line-height: 1;
+      font-weight: 900;
+      margin-bottom: 34px;
+    }
+
+    .subtitle {
+      margin: 24px 0 0;
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.4;
+      max-width: 1040px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(0, .97fr);
+      gap: 34px;
+      align-items: stretch;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .grid-5 {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 38px 32px;
+      min-height: 390px;
+      break-inside: avoid;
+    }
+
+    .card.compact { min-height: 240px; }
+    .card.tall { min-height: 520px; }
+    .card.auto { min-height: 0; }
+    .card.dark { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+    .card-title {
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 900;
+      font-size: 12px;
+      letter-spacing: .02em;
+      margin-bottom: 26px;
+    }
+
+    .metric-card {
+      min-height: 188px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+      break-inside: avoid;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: 900;
+      letter-spacing: .04em;
+    }
+
+    .metric-value {
+      margin-top: 20px;
+      font-size: 31px;
+      font-weight: 900;
+      letter-spacing: -.05em;
+      font-family: var(--mono);
+    }
+
+    .metric-note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .summary-callout {
+      margin-bottom: 20px;
+      padding: 26px 28px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--orange);
+      border-radius: 8px;
+      font-size: 22px;
+      line-height: 1.35;
+      color: var(--ink);
+    }
+
+    .summary-callout strong { font-weight: 900; }
+
+    .takeaway {
+      min-height: 212px;
+      padding: 26px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      break-inside: avoid;
+    }
+
+    .takeaway-no {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      background: var(--navy);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 900;
+      border-radius: 50%;
+      margin-bottom: 24px;
+    }
+
+    .takeaway h3 {
+      font-size: 21px;
+      line-height: 1.18;
+    }
+
+    .takeaway p {
+      margin: 13px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .bar-chart {
+      height: 300px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-around;
+      gap: 30px;
+      padding: 12px 18px 0;
+      margin-top: 34px;
+    }
+
+    .bar-item {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 20px;
+      text-align: center;
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .bar-label-value {
+      font-weight: 900;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .bar {
+      width: min(100%, 150px);
+      background: var(--navy);
+    }
+
+    .bar.orange { background: var(--orange); }
+    .bar.blue { background: var(--blue); }
+    .bar.green { background: var(--green); }
+    .bar.amber { background: var(--amber); }
+
+    .bar-name {
+      min-height: 36px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      line-height: 1.25;
+    }
+
+    .bar.h-100 { height: 220px; }
+    .bar.h-78 { height: 172px; }
+    .bar.h-70 { height: 150px; }
+    .bar.h-66 { height: 142px; }
+    .bar.h-63 { height: 138px; }
+    .bar.h-44 { height: 98px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      break-inside: avoid;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 14px 14px;
+      background: var(--soft);
+      color: #647084;
+      font-weight: 900;
+      vertical-align: bottom;
+    }
+
+    tbody td {
+      padding: 13px 14px;
+      color: var(--ink);
+      vertical-align: top;
+      border-bottom: 1px solid #f0f2f5;
+    }
+
+    tbody tr:last-child td { border-bottom: 0; }
+    td.amount, th.amount { text-align: right; font-family: var(--mono); white-space: nowrap; }
+    td.nowrap { white-space: nowrap; }
+
+    .interpretation {
+      margin-top: 44px;
+    }
+
+    .interpretation .label,
+    .csv-columns .label,
+    .small-label {
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 900;
+      font-size: 12px;
+      margin-bottom: 18px;
+    }
+
+    .interpretation p {
+      color: var(--muted);
+      font-size: 19px;
+      line-height: 1.32;
+      margin: 0;
+      max-width: 720px;
+    }
+
+    .interpretation strong { color: var(--ink); font-weight: 900; }
+
+    .csv-columns {
+      margin-top: 40px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+    }
+
+    .csv-columns p {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 900;
+      line-height: 1.4;
+      color: var(--ink);
+    }
+
+    .formula-note {
+      margin-top: 24px;
+      padding: 16px 18px;
+      border-radius: 8px;
+      background: var(--orange-soft);
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .compare-visual {
+      display: grid;
+      gap: 18px;
+    }
+
+    .compare-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 86px;
+      gap: 14px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .track {
+      height: 12px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      overflow: hidden;
+    }
+
+    .fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    .fill.amber { background: var(--amber); }
+    .fill.navy { background: var(--navy); }
+    .fill.orange { background: var(--orange); }
+
+    .status-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: 52px 1fr auto;
+      gap: 16px;
+      align-items: center;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      break-inside: avoid;
+    }
+
+    .status-count {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      background: var(--soft);
+      display: grid;
+      place-items: center;
+      font-family: var(--mono);
+      font-weight: 900;
+    }
+
+    .status-row strong { display: block; font-size: 16px; }
+    .status-row span { display: block; color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+    .confidence-score {
+      height: 100%;
+      min-height: 320px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid #fed7aa;
+      background: var(--orange-soft);
+      border-radius: 8px;
+      padding: 32px;
+    }
+
+    .confidence-score .big {
+      font-family: var(--mono);
+      font-size: 86px;
+      letter-spacing: -.08em;
+      font-weight: 900;
+      color: #9a3412;
+    }
+
+    .confidence-score p {
+      margin: 14px 0 0;
+      color: #9a3412;
+      font-size: 16px;
+      line-height: 1.45;
+    }
+
+    .manifest-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 16px;
+    }
+
+    .manifest-list li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      color: var(--ink);
+      font-size: 15px;
+      line-height: 1.35;
+    }
+
+    .manifest-list li::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--orange);
+      margin-top: 7px;
+      flex: 0 0 auto;
+    }
+
+    .manifest-final {
+      background:
+        radial-gradient(circle at 88% 0%, rgba(234,75,11,.25), transparent 30%),
+        linear-gradient(135deg, #080d17 0%, #111827 70%, #171923 100%);
+      color: #fff;
+    }
+
+    .manifest-final h2 { color: #fff; }
+    .manifest-final .subtitle { color: #cbd5e1; }
+    .manifest-final .kicker { color: #fdba74; }
+
+    .manifest-final .card {
+      background: rgba(255,255,255,.06);
+      border-color: rgba(255,255,255,.14);
+      color: #fff;
+    }
+
+    .manifest-final .card-title { color: #fdba74; }
+    .manifest-final .manifest-list li { color: #e2e8f0; }
+    .manifest-final .manifest-list li::before { background: var(--orange); }
+
+    .footer-manifest {
+      margin-top: 34px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 8px;
+      padding: 22px;
+      background: rgba(255,255,255,.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 28px;
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+
+    .footer-manifest code {
+      font-family: var(--mono);
+      color: #fff;
+      font-weight: 900;
+    }
+
+    .sample-note {
+      margin-top: 20px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+
+    .predictability-grid {
+      display: grid;
+      grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr);
+      gap: 34px;
+      align-items: stretch;
+    }
+
+    .outlook-card {
+      min-height: 210px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 26px;
+      position: relative;
+      overflow: hidden;
+      break-inside: avoid;
+    }
+
+    .outlook-label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: 900;
+      letter-spacing: .04em;
+    }
+
+    .outlook-value {
+      margin-top: 20px;
+      font-size: 30px;
+      font-weight: 900;
+      letter-spacing: -.05em;
+      font-family: var(--mono);
+      color: var(--ink);
+    }
+
+    .outlook-note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .scenario-stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .scenario-row {
+      display: grid;
+      grid-template-columns: 126px 1fr 150px;
+      align-items: center;
+      gap: 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .scenario-row strong {
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .scenario-row .scenario-amount {
+      text-align: right;
+      font-family: var(--mono);
+      font-weight: 900;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+
+    .scenario-track {
+      height: 12px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      overflow: hidden;
+    }
+
+    .scenario-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--navy);
+    }
+
+    .scenario-fill.green { background: var(--green); }
+    .scenario-fill.orange { background: var(--orange); }
+    .scenario-fill.amber { background: var(--amber); }
+
+    .predictability-note {
+      margin-top: 24px;
+      padding: 18px;
+      background: var(--blue-soft);
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 1100px) {
+      .grid-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 980px) {
+      .cover,
+      .report-top,
+      .grid-2,
+      .grid-3,
+      .grid-4,
+      .grid-5,
+      .predictability-grid {
+        grid-template-columns: 1fr;
+        display: grid;
+      }
+
+      .scenario-row {
+        grid-template-columns: 1fr;
+      }
+
+      .cover {
+        padding: 36px 24px;
+        min-height: auto;
+      }
+
+      .report {
+        margin: 0;
+        border-radius: 0;
+      }
+
+      .section {
+        padding: 28px 18px;
+      }
+
+      h1, h2 {
+        font-size: 44px;
+      }
+
+      .card {
+        min-height: auto;
+      }
+
+      .bar-chart {
+        height: 260px;
+        gap: 14px;
+      }
+
+      .footer-manifest {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .compare-row {
+        grid-template-columns: 1fr;
+      }
+
+      .status-row {
+        grid-template-columns: 52px 1fr;
+      }
+
+      .status-row .pill {
+        grid-column: 2;
+      }
+    }
+
+    @media print {
+      @page {
+        size: 1440px 5950px;
+        margin: 0;
+      }
+
+      body {
+        background: var(--page);
+      }
+
+      .toolbar,
+      .sample-note {
+        display: none !important;
+      }
+
+      .report {
+        margin: 0;
+        width: 100%;
+        max-width: none;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .section,
+      .cover,
+      .card,
+      table,
+      .metric-card,
+      .takeaway {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <div>
+      <strong>FluxyOS Report Output V2 · finance-audit / investor benchmark</strong>
+      <span>Static HTML · print/PDF-ready · sample data only</span>
+    </div>
+    <button class="primary" onclick="window.print()">Print / Save PDF</button>
+  </div>
+
+  <main class="report">
+    <section class="cover">
+      <div>
+        <div class="brand-row">
+          <div class="logo">F</div>
+          <div>
+            <strong>FluxyOS</strong>
+            <span>Financial operations report</span>
+          </div>
+        </div>
+
+        <span class="pill">Monthly Report Pack</span>
+        <h1>May 2026 Financial Report</h1>
+        <p class="cover-subtitle">A shareable management report generated from FluxyOS operational records. It summarizes performance, cost drivers, payable pressure, data quality, source coverage, and export traceability.</p>
+
+        <div class="cover-note">
+          <strong>Management report generated from FluxyOS operational records.</strong><br>
+          Not audited financial statements. Full row-level review should use the CSV source files.
+        </div>
+      </div>
+
+      <aside class="cover-meta">
+        <div class="meta-card">
+          <small>Prepared for</small>
+          <strong>PT Demo Nusantara</strong>
+          <span>Reporting period: May 1–31, 2026</span>
+        </div>
+        <div class="meta-card">
+          <small>Generated by</small>
+          <strong>Jay</strong>
+          <span>20 May 2026, 17:42</span>
+        </div>
+        <div class="meta-card">
+          <small>Export package</small>
+          <strong>PDF + CSV</strong>
+          <span>PDF summary + CSV source files</span>
+        </div>
+        <div class="meta-card">
+          <small>Status & audit</small>
+          <strong>Draft management report</strong>
+          <span>Audit ref: export_2026_05_demo</span>
+        </div>
+      </aside>
+    </section>
+
+    <section class="section">
+      <div class="report-top">
+        <div>
+          <div class="kicker">FluxyOS Report Output</div>
+          <h2>Executive Summary</h2>
+          <p class="subtitle">The minimum information a founder, accountant, or stakeholder needs before reading the detailed report.</p>
+        </div>
+      </div>
+
+      <div class="summary-callout">
+        May closed profitably with <strong>Rp 44.2M net result</strong> and <strong>51.1% gross margin</strong>. Infrastructure was the largest OpEx driver at <strong>Rp 14.8M</strong>. The report is usable for internal review, but <strong>6 missing receipts</strong> and incomplete payable records should be resolved before external handoff.
+      </div>
+
+      <div class="grid-5">
+        <div class="metric-card">
+          <div class="metric-label">Revenue</div>
+          <div class="metric-value">Rp 86.5M</div>
+          <div class="metric-note">42 income-side records included.</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">OpEx</div>
+          <div class="metric-value">Rp 42.3M</div>
+          <div class="metric-note">31 expense, fee, tax, and payable records.</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Net Result</div>
+          <div class="metric-value">Rp 44.2M</div>
+          <div class="metric-note">Revenue minus OpEx.</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Gross Margin</div>
+          <div class="metric-value">51.1%</div>
+          <div class="metric-note">Safe fallback required if revenue is zero.</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Report Confidence</div>
+          <div class="metric-value">82%</div>
+          <div class="metric-note">Based on receipt, due-date, renewal-date, and source coverage.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="report-top">
+        <div>
+          <h2>Key Takeaways</h2>
+          <p class="subtitle">Actual report insights, not generic reading instructions.</p>
+        </div>
+      </div>
+
+      <div class="grid-4">
+        <div class="takeaway">
+          <div class="takeaway-no">1</div>
+          <h3>May closed profitably</h3>
+          <p>Rp 44.2M net result with 51.1% gross margin.</p>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-no">2</div>
+          <h3>Infrastructure led OpEx</h3>
+          <p>Rp 14.8M, equal to 35% of total OpEx.</p>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-no">3</div>
+          <h3>Payables need attention</h3>
+          <p>Rp 18.7M pending payable pressure from bills and subscriptions.</p>
+        </div>
+        <div class="takeaway">
+          <div class="takeaway-no">4</div>
+          <h3>Usable, not fully clean</h3>
+          <p>6 missing receipts and 3 incomplete payable/renewal records need review.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="report-top">
+        <div>
+          <div class="kicker">FluxyOS Report Output</div>
+          <h2>Profit & Loss Summary</h2>
+          <p class="subtitle">Period performance view generated from ledger records and selected report scope.</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">IDR Millions</div>
+          <div class="bar-chart">
+            <div class="bar-item">
+              <div>
+                <div class="bar-label-value">86.5</div>
+                <div class="bar h-100"></div>
+              </div>
+              <div class="bar-name">Revenue</div>
+            </div>
+            <div class="bar-item">
+              <div>
+                <div class="bar-label-value">42.3</div>
+                <div class="bar h-70"></div>
+              </div>
+              <div class="bar-name">OpEx</div>
+            </div>
+            <div class="bar-item">
+              <div>
+                <div class="bar-label-value">44.2</div>
+                <div class="bar h-70"></div>
+              </div>
+              <div class="bar-name">Net Result</div>
+            </div>
+          </div>
+
+          <div class="formula-note">
+            Gross Margin = (Revenue - OpEx) / Revenue. If revenue is zero, FluxyOS must show 0% or a safe fallback, never NaN or Infinity.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">P&L Table</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th class="amount">Amount</th>
+                <th>Basis / Rule</th>
+                <th>Source records</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Revenue</td>
+                <td class="amount">86,500,000</td>
+                <td>Income + selected receivable records</td>
+                <td>42 records</td>
+              </tr>
+              <tr>
+                <td>OpEx</td>
+                <td class="amount">42,300,000</td>
+                <td>Expense + fee + tax + selected payable records</td>
+                <td>31 records</td>
+              </tr>
+              <tr>
+                <td>Gross Margin</td>
+                <td class="amount">51.1%</td>
+                <td>(Revenue - OpEx) / Revenue</td>
+                <td>Calculated</td>
+              </tr>
+              <tr>
+                <td>Net Result</td>
+                <td class="amount">44,200,000</td>
+                <td>Revenue - OpEx</td>
+                <td>Calculated</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="interpretation">
+            <div class="label">Interpretation</div>
+            <p>May is profitable based on current FluxyOS records, but confidence is limited by missing receipts and disconnected Revenue Sync.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="report-top">
+        <div>
+          <h2>Period Comparison</h2>
+          <p class="subtitle">Shows whether May improved or declined versus April. Sample benchmark data only; production must calculate this from real selected-period and previous-period records.</p>
+        </div>
+        <span class="pill amber">Sample comparison data</span>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Apr 2026 vs May 2026</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th class="amount">Apr 2026</th>
+                <th class="amount">May 2026</th>
+                <th>Change</th>
+                <th>Interpretation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Revenue</td>
+                <td class="amount">77,200,000</td>
+                <td class="amount">86,500,000</td>
+                <td><span class="pill green">+12.0%</span></td>
+                <td>Revenue improved</td>
+              </tr>
+              <tr>
+                <td>OpEx</td>
+                <td class="amount">39,900,000</td>
+                <td class="amount">42,300,000</td>
+                <td><span class="pill amber">+6.0%</span></td>
+                <td>Cost grew slower than revenue</td>
+              </tr>
+              <tr>
+                <td>Net Result</td>
+                <td class="amount">37,300,000</td>
+                <td class="amount">44,200,000</td>
+                <td><span class="pill green">+18.5%</span></td>
+                <td>Profitability improved</td>
+              </tr>
+              <tr>
+                <td>Gross Margin</td>
+                <td class="amount">48.3%</td>
+                <td class="amount">51.1%</td>
+                <td><span class="pill green">+2.8 pts</span></td>
+                <td>Margin expanded</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Delta indicators</div>
+          <div class="compare-visual">
+            <div class="compare-row">
+              <strong>Revenue</strong>
+              <div class="track"><div class="fill" style="width:72%"></div></div>
+              <span>+12.0%</span>
+            </div>
+            <div class="compare-row">
+              <strong>OpEx</strong>
+              <div class="track"><div class="fill amber" style="width:44%"></div></div>
+              <span>+6.0%</span>
+            </div>
+            <div class="compare-row">
+              <strong>Net Result</strong>
+              <div class="track"><div class="fill" style="width:88%"></div></div>
+              <span>+18.5%</span>
+            </div>
+            <div class="compare-row">
+              <strong>Margin</strong>
+              <div class="track"><div class="fill navy" style="width:58%"></div></div>
+              <span>+2.8 pts</span>
+            </div>
+          </div>
+
+          <div class="interpretation">
+            <div class="label">Investor read</div>
+            <p>May looks healthier than April because revenue and net result improved faster than OpEx. This comparison is directional until production data calculates both periods from real user-scoped records.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="report-top">
+        <div>
+          <h2>Finance Predictability Snapshot</h2>
+          <p class="subtitle">A forward-looking view based on current run rate, recurring revenue, and selected assumptions. This is not an audited forecast.</p>
+        </div>
+        <span class="pill blue">Run-rate view</span>
+      </div>
+
+      <div class="grid-4">
+        <div class="outlook-card">
+          <div class="outlook-label">Monthly revenue run rate</div>
+          <div class="outlook-value">Rp 86.5M</div>
+          <div class="outlook-note">May revenue used as the current monthly run-rate basis.</div>
+        </div>
+        <div class="outlook-card">
+          <div class="outlook-label">Annualized revenue run rate</div>
+          <div class="outlook-value">Rp 1.038B</div>
+          <div class="outlook-note">Current month revenue × 12. Simple run-rate projection, not a committed forecast.</div>
+        </div>
+        <div class="outlook-card">
+          <div class="outlook-label">Estimated ARR</div>
+          <div class="outlook-value">Rp 420M</div>
+          <div class="outlook-note">Recurring revenue only. Excludes one-time income and non-recurring services.</div>
+        </div>
+        <div class="outlook-card">
+          <div class="outlook-label">Year-end net result outlook</div>
+          <div class="outlook-value">Rp 430M–510M</div>
+          <div class="outlook-note">Scenario-based estimate using current revenue and OpEx pattern.</div>
+        </div>
+      </div>
+
+      <div class="predictability-grid" style="margin-top:34px;">
+        <div class="card">
+          <div class="card-title">Year-end scenario range</div>
+          <div class="scenario-stack">
+            <div class="scenario-row">
+              <strong>Conservative</strong>
+              <div class="scenario-track"><div class="scenario-fill amber" style="width:72%"></div></div>
+              <div class="scenario-amount">Rp 970M revenue</div>
+            </div>
+            <div class="scenario-row">
+              <strong>Current run-rate</strong>
+              <div class="scenario-track"><div class="scenario-fill orange" style="width:84%"></div></div>
+              <div class="scenario-amount">Rp 1.038B revenue</div>
+            </div>
+            <div class="scenario-row">
+              <strong>Growth case</strong>
+              <div class="scenario-track"><div class="scenario-fill green" style="width:96%"></div></div>
+              <div class="scenario-amount">Rp 1.080B revenue</div>
+            </div>
+          </div>
+
+          <div class="predictability-note">
+            This section is a planning view. It helps a founder or investor understand potential scale if the current pattern continues, but it should not be treated as guaranteed revenue or audited forecast.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Projection Assumptions</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Basis</th>
+                <th>Limitation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Revenue run rate</td>
+                <td>May revenue × 12</td>
+                <td>Sensitive to one-time revenue spikes</td>
+              </tr>
+              <tr>
+                <td>ARR</td>
+                <td>Active recurring revenue × 12</td>
+                <td>Only valid when recurring revenue is classified</td>
+              </tr>
+              <tr>
+                <td>Year-end revenue</td>
+                <td>Current run-rate + scenario range</td>
+                <td>Not guaranteed</td>
+              </tr>
+              <tr>
+                <td>Year-end profit</td>
+                <td>Projected revenue - projected OpEx</td>
+                <td>Excludes tax/accounting adjustments</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="interpretation">
+            <div class="label">Interpretation</div>
+            <p>Predictability improves when recurring revenue is clearly classified and one-time revenue is separated from run-rate assumptions.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="report-top">
+        <div>
+          <h2>Expense Breakdown</h2>
+          <p class="subtitle">Spend grouped by category and vendor so the user can see where money went and what should be reviewed first.</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Expense by Category · IDR Millions</div>
+          <div class="bar-chart">
+            <div class="bar-item">
+              <div>
+                <div class="bar-label-value">14.8</div>
+                <div class="bar orange h-100"></div>
+              </div>
+              <div class="bar-name">Infrastructure<br><small>35%</small></div>
+            </div>
+            <div class="bar-item">
+              <div>
+                <div class="bar-label-value">11.6</div>
+                <div class="bar orange h-78"></div>
+              </div>
+              <div class="bar-name">Marketing<br><small>27%</small></div>
+            </div>
+            <div class="bar-item">
+              <div>
+                <div class="bar-label-value">9.4</div>
+                <div class="bar orange h-63"></div>
+              </div>
+              <div class="bar-name">Operations<br><small>22%</small></div>
+            </div>
+            <div class="bar-item">
+              <div>
+                <div class="bar-label-value">6.5</div>
+                <div class="bar orange h-44"></div>
+              </div>
+              <div class="bar-name">SaaS<br><small>16%</small></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Top Vendors</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Vendor</th>
+                <th class="amount">Amount</th>
+                <th>Category</th>
+                <th>Records</th>
+                <th>Missing Receipts</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>AWS</td><td class="amount">14,800,000</td><td>Infrastructure</td><td>4</td><td>1</td></tr>
+              <tr><td>Meta Ads</td><td class="amount">9,700,000</td><td>Marketing</td><td>3</td><td>1</td></tr>
+              <tr><td>Office Rent</td><td class="amount">12,000,000</td><td>Operations</td><td>1</td><td>0</td></tr>
+              <tr><td>Figma</td><td class="amount">850,000</td><td>SaaS</td><td>1</td><td>0</td></tr>
+            </tbody>
+          </table>
+
+          <div class="interpretation">
+            <div class="label">Interpretation</div>
+            <p><strong>Infrastructure is the largest OpEx driver.</strong> Review usage, vendor invoices, and missing receipts before sharing externally.</p>
+          </div>
+
+          <div class="csv-columns">
+            <div class="label">CSV Output Columns</div>
+            <p>Category, Vendor, Amount, Record Count, Missing Receipt Count</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="report-top">
+        <div>
+          <h2>Bills & Subscription Commitments</h2>
+          <p class="subtitle">Upcoming obligations from bills and active subscriptions, shown as a cash pressure proxy.</p>
+        </div>
+      </div>
+
+      <div class="grid-4">
+        <div class="metric-card">
+          <div class="metric-label">Upcoming Bills</div>
+          <div class="metric-value">5</div>
+          <div class="metric-note">Bills due inside selected period.</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Overdue Bills</div>
+          <div class="metric-value">2</div>
+          <div class="metric-note">Requires review before handoff.</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Subscriptions</div>
+          <div class="metric-value">5</div>
+          <div class="metric-note">Active recurring commitments.</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Pending Payable</div>
+          <div class="metric-value">Rp 18.7M</div>
+          <div class="metric-note">Proxy only, not cash runway.</div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top:34px;">
+        <div class="card compact">
+          <div class="card-title">Obligation Window</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Window</th>
+                <th class="amount">Amount</th>
+                <th>Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Next 7 days</td><td class="amount">4,200,000</td><td>Near-term pressure</td></tr>
+              <tr><td>Next 14 days</td><td class="amount">9,800,000</td><td>Short-term payable view</td></tr>
+              <tr><td>Next 30 days</td><td class="amount">18,700,000</td><td>Total payable proxy</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card compact">
+          <div class="card-title">Interpretation</div>
+          <p style="margin:0;color:var(--muted);font-size:20px;line-height:1.35;">The business is profitable for the period, but upcoming obligations should be reviewed before committing to new spend. This is a <strong style="color:var(--ink);">cash pressure proxy</strong>, not a real bank-balance forecast.</p>
+
+          <div class="csv-columns">
+            <div class="label">CSV Output Columns</div>
+            <p>Vendor, Category, Amount, Status, Due Date, Record ID</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="report-top">
+        <div>
+          <h2>Report Confidence Method</h2>
+          <p class="subtitle">Defines what the 82% score means, so the report does not imply accounting assurance.</p>
+        </div>
+        <span class="pill orange">Usable with warnings</span>
+      </div>
+
+      <div class="grid-2">
+        <div class="confidence-score">
+          <div>
+            <div class="small-label" style="color:#9a3412;">Confidence score</div>
+            <div class="big">82%</div>
+            <p>Report Confidence is based on source coverage and cleanup completeness, not financial performance.</p>
+          </div>
+          <div class="formula-note" style="margin-top:32px;">
+            Confidence score is a product-readiness indicator. It is not an accounting assurance opinion.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Confidence Breakdown</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Area</th>
+                <th>Status</th>
+                <th>Finding</th>
+                <th>Read</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Receipt coverage</td><td>68%</td><td>6 transactions missing receipts</td><td><span class="pill amber">Caution</span></td></tr>
+              <tr><td>Due-date completeness</td><td>75%</td><td>2 bills missing due date</td><td><span class="pill amber">Caution</span></td></tr>
+              <tr><td>Subscription renewal completeness</td><td>80%</td><td>1 subscription missing renewal date</td><td><span class="pill amber">Caution</span></td></tr>
+              <tr><td>Connected source coverage</td><td>Partial</td><td>Revenue Sync not connected</td><td><span class="pill blue">Limitation</span></td></tr>
+              <tr><td>Audit trail</td><td>Available</td><td>export.create logged</td><td><span class="pill green">Good</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="report-top">
+        <div>
+          <h2>Data Quality & Cleanup</h2>
+          <p class="subtitle">The trust layer: what data is incomplete and what should be fixed before external handoff.</p>
+        </div>
+      </div>
+
+      <div class="card auto">
+        <div class="card-title">Data Quality Warnings</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Issue</th>
+              <th>Count</th>
+              <th>Severity</th>
+              <th>Impact</th>
+              <th>Recommended action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Missing receipts</td>
+              <td>6</td>
+              <td><span class="pill amber">High</span></td>
+              <td>Expense verification is incomplete</td>
+              <td>Upload or attach receipts</td>
+            </tr>
+            <tr>
+              <td>Bills without due date</td>
+              <td>2</td>
+              <td><span class="pill blue">Medium</span></td>
+              <td>Payable timing may be incomplete</td>
+              <td>Add due dates</td>
+            </tr>
+            <tr>
+              <td>Subscription without renewal date</td>
+              <td>1</td>
+              <td><span class="pill blue">Medium</span></td>
+              <td>Recurring forecast may be incomplete</td>
+              <td>Add renewal date</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="interpretation">
+          <div class="label">Recommended cleanup</div>
+          <p>Resolve missing receipts first, then review bills without due dates before sending the report externally.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section manifest-final">
+      <div class="report-top">
+        <div>
+          <div class="kicker">Export Manifest</div>
+          <h2>PDF summary generated. CSV source files available.</h2>
+          <p class="subtitle">This closing section explains what data supports the report, what was excluded, and what source files exist for row-level review.</p>
+        </div>
+        <span class="pill">Audit logged</span>
+      </div>
+
+      <div class="grid-4">
+        <div class="card">
+          <div class="card-title">Included sources</div>
+          <ul class="manifest-list">
+            <li>42 transactions</li>
+            <li>8 bills</li>
+            <li>5 subscriptions</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Excluded / limited</div>
+          <ul class="manifest-list">
+            <li>Revenue Sync not connected</li>
+            <li>No bank balance source</li>
+            <li>Cash pressure is proxy only</li>
+            <li>9 data quality warnings</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Source files</div>
+          <ul class="manifest-list">
+            <li>profit_loss_may_2026.csv</li>
+            <li>expense_breakdown_may_2026.csv</li>
+            <li>bills_payables_may_2026.csv</li>
+            <li>subscriptions_may_2026.csv</li>
+            <li>ledger_export_may_2026.csv</li>
+            <li>data_quality_may_2026.csv</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Audit</div>
+          <ul class="manifest-list">
+            <li>action: export.create</li>
+            <li>audit ref: export_2026_05_demo</li>
+            <li>generated by: Jay</li>
+            <li>generated at: 20 May 2026, 17:42</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-manifest">
+        <span>Generated from FluxyOS user-scoped records. Export action logged. Full row-level review should use the CSV source files.</span>
+        <code>Management report · not audited financial statements</code>
+      </div>
+    </section>
+  </main>
+
+  <div class="sample-note">Benchmark HTML uses sample data. Production must replace all values with real authenticated user-scoped FluxyOS records.</div>
+</body>
+</html>

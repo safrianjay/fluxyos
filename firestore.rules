@@ -112,6 +112,7 @@ service cloud.firestore {
           'budgets',
           'integrations',
           'exports',
+          'report_exports',
           'users',
           'onboarding'
         ]
@@ -583,6 +584,39 @@ service cloud.firestore {
           && (!('renewal_date' in request.resource.data) || request.resource.data.renewal_date is timestamp)
           && isValidAICaptureMetadata(request.resource.data);
         allow delete: if false;
+      }
+
+      match /report_exports/{exportId} {
+        // Metadata for a confirmed Reports & Exports run. Stores period,
+        // formats, included sections, record counts, and warning counts.
+        // Must never contain row-level financial data or CSV content.
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && request.resource.data.keys().hasOnly([
+            'report_type',
+            'period_start',
+            'period_end',
+            'formats',
+            'status',
+            'included_sections',
+            'record_counts',
+            'warning_counts',
+            'limitations',
+            'created_at',
+            'created_by'
+          ])
+          && request.resource.data.report_type is string
+          && request.resource.data.report_type.size() > 0
+          && request.resource.data.report_type.size() <= 80
+          && request.resource.data.created_by == request.auth.uid
+          && request.resource.data.created_at == request.time
+          && request.resource.data.formats is list
+          && request.resource.data.status is string
+          && request.resource.data.included_sections is list
+          && request.resource.data.record_counts is map
+          && request.resource.data.warning_counts is map
+          && request.resource.data.limitations is list;
+        allow update, delete: if false;
       }
 
       match /audit_logs/{auditLogId} {

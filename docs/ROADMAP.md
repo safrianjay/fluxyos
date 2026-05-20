@@ -102,7 +102,15 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Recent exports panel | ✅ Shipped MVP | Filters `audit_logs` for `export.create` |
 | Verified-user export gate | 🔧 Stub | UI ready; defaults to verified until a real verification field exists |
 | Audit Log app page (`/audit-log`) | 📋 Planned | Topbar "View audit trail" is disabled until shipped |
-| PDF report rendering | 📋 Planned | MVP is CSV only |
+| **Level 1 full report viewer (`/report-preview`)** | ✅ Shipped MVP | Renders 9 sections from `monthlyReportPack` staged in `sessionStorage`. Toolbar: Back · Print/Save PDF · Download CSV Bundle · Confirm Export |
+| **Browser-native PDF save (`window.print()`)** | ✅ Shipped MVP | App cannot verify save, so never logs `downloaded: true` |
+| **`report_exports` metadata collection** | ✅ Shipped MVP | Append-only, user-scoped, no row-level data |
+| **Period Comparison (vs previous period)** | ✅ Shipped MVP | Falls back to "Unavailable" when previous period has no records |
+| **Finance Predictability (run rate + ARR + year-end scenarios)** | ✅ Shipped MVP | ARR stays unavailable until recurring revenue classification ships |
+| Backend PDF generation (Level 2) | 📋 Planned | Replace browser-print path with stored PDF files |
+| ZIP CSV bundle | 📋 Planned | MVP downloads files individually |
+| Recurring revenue classification (for ARR) | 📋 Planned | Required to flip ARR from "unavailable" to "available" |
+| Bank balance / cash runway | 📋 Planned | Cash pressure stays proxy-only until real balance source exists |
 
 ### Integrations
 | Feature | Status | Notes |

@@ -455,15 +455,42 @@ class DataService {
         return await this.addAuditLog(userId, {
             action: 'export.create',
             // Must be one of the values allowed by firestore.rules
-            // isValidAuditLog. Reports & Exports uses the dedicated "exports"
-            // slot rather than "reports".
-            target_collection: 'exports',
+            // isValidAuditLog. Reports & Exports targets the report_exports
+            // metadata collection.
+            target_collection: 'report_exports',
             target_id: payload.target_id || '',
             before: null,
             after: payload.after || null,
             reason: payload.reason || null,
             source: payload.source || 'dashboard'
         });
+    }
+
+    async addReportExport(userId, data = {}) {
+        // Metadata only. Never store row-level financial data or CSV content.
+        return await addDoc(collection(this.db, `users/${userId}/report_exports`), {
+            report_type: data.report_type || 'monthly_report_pack',
+            period_start: data.period_start || null,
+            period_end: data.period_end || null,
+            formats: Array.isArray(data.formats) ? data.formats : ['csv_bundle'],
+            status: data.status || 'generated',
+            included_sections: Array.isArray(data.included_sections) ? data.included_sections : [],
+            record_counts: data.record_counts || {},
+            warning_counts: data.warning_counts || {},
+            limitations: Array.isArray(data.limitations) ? data.limitations : [],
+            created_at: serverTimestamp(),
+            created_by: userId
+        });
+    }
+
+    async getRecentReportExports(userId, limitCount = 10) {
+        const q = query(
+            collection(this.db, `users/${userId}/report_exports`),
+            orderBy('created_at', 'desc'),
+            limit(limitCount)
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     }
 
     // --- AUDIT LOGS ---
