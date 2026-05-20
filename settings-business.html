@@ -277,14 +277,40 @@
             const nextLabel = (payload.entity_label || '').trim();
             const labelChanged = prevLabel !== nextLabel && nextLabel.length > 0;
 
-            if (nameChanged) {
-                const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) =>
-                    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) =>
+                ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const arrow = (from, to) =>
+                `<strong>${escapeHtml(from || '—')}</strong> → <strong>${escapeHtml(to)}</strong>`;
+
+            if (nameChanged && labelChanged) {
+                const ok = await window.showConfirmDialog?.({
+                    icon: 'pencil',
+                    title: 'Update workspace identity?',
+                    body: `
+                        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+                            <div>Business name: ${arrow(prevName, nextName)}</div>
+                            <div>Entity label: ${arrow(prevLabel, nextLabel)}</div>
+                        </div>
+                        Both will appear across the sidebar, exports, audit logs, and AI summaries from now on. Existing transactions, bills, and subscriptions stay in this workspace.`,
+                    confirmLabel: 'Apply changes',
+                    cancelLabel: 'Cancel'
+                });
+                if (!ok) return;
+            } else if (nameChanged) {
                 const ok = await window.showConfirmDialog?.({
                     icon: 'pencil',
                     title: 'Change business name?',
-                    body: `<strong>${escapeHtml(prevName)}</strong> → <strong>${escapeHtml(nextName)}</strong> will appear in the sidebar, exports, audit logs, and AI summaries from now on. Existing transactions, bills, and subscriptions stay in this workspace.`,
+                    body: `${arrow(prevName, nextName)} will appear in the sidebar, exports, audit logs, and AI summaries from now on. Existing transactions, bills, and subscriptions stay in this workspace.`,
                     confirmLabel: 'Change name',
+                    cancelLabel: 'Cancel'
+                });
+                if (!ok) return;
+            } else if (labelChanged) {
+                const ok = await window.showConfirmDialog?.({
+                    icon: 'pencil',
+                    title: 'Change entity label?',
+                    body: `${arrow(prevLabel, nextLabel)} will appear under the business name in the workspace switcher and in any report that groups by entity.`,
+                    confirmLabel: 'Change label',
                     cancelLabel: 'Cancel'
                 });
                 if (!ok) return;
