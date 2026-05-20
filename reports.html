@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Reports & Exports</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="assets/css/platform-learning.css">
+    <style>
+        /* Reports page — finance control surface. Scoped styles only. */
+        .reports-bar { height: 7px; background: #F1F5F9; border-radius: 999px; overflow: hidden; margin-top: 8px; }
+        .reports-bar > i { display: block; height: 100%; border-radius: 999px; background: #111827; transition: width .2s ease; }
+        .reports-bar.bar-good > i { background: #16A34A; }
+        .reports-bar.bar-warn > i { background: #D97706; }
+
+        .tag { display: inline-flex; align-items: center; min-height: 24px; padding: 0 9px; border-radius: 999px; border: 1px solid #E5E7EB; background: #fff; color: #64748B; font-size: 11px; font-weight: 700; white-space: nowrap; }
+        .tag-good { color: #15803D; border-color: #BBF7D0; background: #F0FDF4; }
+        .tag-warn { color: #B45309; border-color: #FED7AA; background: #FFF7ED; }
+        .tag-lock { color: #64748B; background: #F8FAFC; }
+
+        .reports-score { font-family: "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 22px; }
+        .reports-mono { font-family: "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+        .drawer-overlay {
+            position: fixed; inset: 0; background: rgba(15, 23, 42, .42); z-index: 30;
+            opacity: 0; pointer-events: none; transition: .2s ease;
+        }
+        .drawer-panel {
+            position: fixed; top: 0; right: 0; width: min(620px, 100vw); height: 100vh;
+            background: #fff; z-index: 31; transform: translateX(100%); transition: .24s ease;
+            display: flex; flex-direction: column; box-shadow: -28px 0 90px rgba(15, 23, 42, .24);
+        }
+        body.reports-drawer-open .drawer-overlay { opacity: 1; pointer-events: auto; }
+        body.reports-drawer-open .drawer-panel { transform: translateX(0); }
+
+        .preview-section { border: 1px solid #E5E7EB; border-radius: 14px; overflow: hidden; background: #fff; }
+        .preview-section h4 { margin: 0; padding: 12px 14px; border-bottom: 1px solid #F1F5F9; font-size: 13px; font-weight: 700; }
+        .preview-grid { padding: 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+        .preview-metric { border: 1px solid #F1F5F9; border-radius: 11px; padding: 11px; }
+        .preview-metric span { display: block; color: #6B7280; font-size: 11px; margin-bottom: 4px; }
+        .preview-metric strong { font-family: "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; }
+        .file-list { padding: 8px 12px 12px; display: grid; gap: 6px; }
+        .file-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; border: 1px solid #F1F5F9; border-radius: 11px; padding: 10px 11px; }
+        .file-row strong { font-size: 13px; }
+        .file-row span { display: block; color: #6B7280; font-size: 12px; margin-top: 3px; }
+        .warning-row { padding: 10px 12px; font-size: 13px; color: #92400E; border-top: 1px solid #FED7AA; background: #FFF7ED; }
+        .warning-row:first-child { border-top: 0; }
+
+        .audit-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #F1F5F9; }
+        .audit-row:last-child { border-bottom: 0; }
+        .audit-row strong { font-size: 13px; }
+        .audit-row span { display: block; color: #6B7280; margin-top: 3px; font-size: 12px; }
+        .recent-empty { color: #6B7280; font-size: 13px; padding: 14px 0; }
+
+        @media (max-width: 640px) {
+            .preview-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-4">
+            <div class="flex items-center gap-3">
+                <span class="hidden sm:inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                <h1 class="text-[16px] font-bold text-gray-900 tracking-tight">Reports &amp; Exports</h1>
+            </div>
+            <div class="flex items-center gap-3">
+                <button type="button"
+                    title="Audit Log page is not yet shipped"
+                    aria-disabled="true"
+                    disabled
+                    class="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 text-[13px] font-medium text-gray-400 bg-white border border-gray-200 rounded-lg cursor-not-allowed">
+                    View audit trail
+                    <span class="text-[10px] font-bold text-gray-400">Soon</span>
+                </button>
+                <button id="topbar-generate-btn" type="button"
+                    class="inline-flex items-center gap-2 px-3 py-2 bg-gray-900 text-white rounded-lg text-[13px] font-bold hover:bg-gray-800 transition-colors active:scale-95">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
+                    Generate report
+                </button>
+                <button onclick="window.toggleFluxyAI()" class="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Fluxy AI
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            <div class="max-w-[1400px] mx-auto space-y-6">
+
+                <div id="reports-error-banner" class="hidden rounded-xl border border-red-200 bg-red-50 text-red-700 text-[13px] px-4 py-3"></div>
+                <div id="reports-loading-bar" class="hidden text-[12px] text-gray-500">Loading report data…</div>
+
+                <!-- 1. Intro / control surface -->
+                <section class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-6">
+                    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 sm:p-8 flex flex-col justify-between min-h-[230px]">
+                        <div>
+                            <span class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-orange-50 border border-orange-200 text-[11px] font-bold text-[#9A3412]">Controlled financial export</span>
+                            <h2 class="mt-4 text-[28px] sm:text-[36px] leading-tight tracking-tight font-medium text-gray-900 max-w-3xl">Choose a period. Check readiness. Export only after review.</h2>
+                            <p class="mt-3 max-w-2xl text-[14px] text-gray-500 leading-relaxed">This page turns FluxyOS records into a sendable finance package without pretending the data is cleaner than it is. The main job is trust: what is included, what is missing, and what gets logged.</p>
+                        </div>
+                        <div class="mt-6 flex flex-wrap gap-2 items-center">
+                            <span class="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-200 bg-white rounded-full text-[12px] font-bold text-gray-700"><span class="w-4 h-4 grid place-items-center rounded-full bg-gray-900 text-white text-[10px]">1</span> Select period</span>
+                            <span class="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-200 bg-white rounded-full text-[12px] font-bold text-gray-700"><span class="w-4 h-4 grid place-items-center rounded-full bg-gray-900 text-white text-[10px]">2</span> Review coverage</span>
+                            <span class="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-200 bg-white rounded-full text-[12px] font-bold text-gray-700"><span class="w-4 h-4 grid place-items-center rounded-full bg-gray-900 text-white text-[10px]">3</span> Preview report</span>
+                            <span class="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-200 bg-white rounded-full text-[12px] font-bold text-gray-700"><span class="w-4 h-4 grid place-items-center rounded-full bg-gray-900 text-white text-[10px]">4</span> Confirm export</span>
+                        </div>
+                    </div>
+
+                    <aside class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-6 space-y-4">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 class="text-[15px] font-bold text-gray-900">Report readiness</h3>
+                                <p id="readiness-label" class="mt-1 text-[13px] text-gray-500 leading-snug">Loading readiness…</p>
+                            </div>
+                            <div class="w-[78px] h-[78px] grid place-items-center rounded-2xl border border-gray-200 bg-gradient-to-b from-white to-slate-50">
+                                <strong id="readiness-score" class="reports-score text-gray-900">—</strong>
+                            </div>
+                        </div>
+                        <div class="space-y-3 pt-1">
+                            <div class="grid grid-cols-[1fr_auto] gap-3 items-center text-[12px]">
+                                <div>
+                                    <span class="text-gray-500">Ledger completeness</span>
+                                    <div id="bar-ledger-wrap" class="reports-bar"><i id="bar-ledger-fill" style="width:0%"></i></div>
+                                </div>
+                                <strong id="bar-ledger-value" class="reports-mono text-gray-800">—</strong>
+                            </div>
+                            <div class="grid grid-cols-[1fr_auto] gap-3 items-center text-[12px]">
+                                <div>
+                                    <span class="text-gray-500">Receipt coverage</span>
+                                    <div id="bar-receipt-wrap" class="reports-bar"><i id="bar-receipt-fill" style="width:0%"></i></div>
+                                </div>
+                                <strong id="bar-receipt-value" class="reports-mono text-gray-800">—</strong>
+                            </div>
+                            <div class="grid grid-cols-[1fr_auto] gap-3 items-center text-[12px]">
+                                <div>
+                                    <span class="text-gray-500">Bills with due dates</span>
+                                    <div id="bar-bills-wrap" class="reports-bar"><i id="bar-bills-fill" style="width:0%"></i></div>
+                                </div>
+                                <strong id="bar-bills-value" class="reports-mono text-gray-800">—</strong>
+                            </div>
+                        </div>
+                    </aside>
+                </section>
+
+                <!-- 2. Filter strip -->
+                <section class="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_auto] gap-3 items-end">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 mb-1.5">Reporting period</label>
+                        <div id="reports-date-range-picker"></div>
+                        <span id="reports-period-label" class="sr-only" aria-live="polite"></span>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 mb-1.5">Report package</label>
+                        <select id="filter-report-type" class="w-full h-10 px-3 border border-gray-200 rounded-lg text-[13px] bg-white focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                            <option value="monthly_report_pack">Monthly Report Pack</option>
+                            <option value="profit_loss">Profit &amp; Loss only</option>
+                            <option value="ledger_export">Ledger export only</option>
+                            <option value="data_quality">Data quality only</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 mb-1.5">Data source</label>
+                        <select id="filter-data-source" class="w-full h-10 px-3 border border-gray-200 rounded-lg text-[13px] bg-white focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                            <option value="all">Transactions, bills, subscriptions</option>
+                            <option value="transactions">Transactions only</option>
+                            <option value="bills">Bills only</option>
+                            <option value="subscriptions">Subscriptions only</option>
+                        </select>
+                    </div>
+                    <button id="filter-apply-btn" type="button" class="h-10 px-4 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 active:scale-95 transition-all">Apply</button>
+                </section>
+
+                <!-- Empty state banner -->
+                <div id="reports-empty-banner" class="hidden bg-white border border-orange-200 rounded-2xl shadow-sm p-6 sm:p-8">
+                    <h3 class="text-[18px] font-bold text-gray-900">No report data yet</h3>
+                    <p class="mt-2 text-[14px] text-gray-500 max-w-xl">Reports are generated from real FluxyOS records. Add transactions, bills, or subscriptions first before creating a report.</p>
+                    <div class="mt-5 flex flex-wrap gap-3">
+                        <button id="empty-add-transaction" type="button" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors active:scale-95">Add Transaction</button>
+                        <button id="empty-add-bill" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 active:scale-95">Add Bill</button>
+                    </div>
+                </div>
+
+                <!-- 3. Workspace: recommended output + right column -->
+                <section class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-6">
+
+                    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                        <div class="flex items-start justify-between gap-4 p-5 border-b border-slate-100">
+                            <div>
+                                <h3 class="text-[16px] font-bold text-gray-900">Recommended output</h3>
+                                <p class="mt-1 text-[13px] text-gray-500 leading-snug">A single monthly pack is the default because it matches the real user job: handoff, review, and decision-making.</p>
+                            </div>
+                            <span id="recommended-status-tag" class="tag tag-good">Verified export enabled</span>
+                        </div>
+
+                        <div class="p-5 grid grid-cols-1 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-5">
+                            <div class="border border-orange-200 rounded-2xl p-5 bg-gradient-to-b from-orange-50/40 to-white flex flex-col justify-between min-h-[320px]">
+                                <div>
+                                    <div class="flex items-center justify-between gap-3 mb-6">
+                                        <div class="w-10 h-10 rounded-xl bg-gray-900 text-white grid place-items-center font-bold">M</div>
+                                        <span id="recommended-warnings-tag" class="tag tag-warn hidden">0 data warnings</span>
+                                    </div>
+                                    <h4 class="text-[22px] sm:text-[26px] leading-tight tracking-tight font-medium text-gray-900">Monthly Report Pack</h4>
+                                    <p class="mt-2 text-[13px] text-gray-500 leading-relaxed">One controlled export containing P&amp;L, expense breakdown, payables, subscriptions, ledger rows, and data quality notes for the selected period.</p>
+                                </div>
+                                <div class="mt-5 flex flex-wrap gap-2">
+                                    <button id="recommended-generate-btn" type="button" class="flex-1 min-w-[160px] px-4 py-2.5 bg-gray-900 text-white rounded-lg text-[13px] font-bold hover:bg-gray-800 transition-colors active:scale-95">Generate preview</button>
+                                    <button id="recommended-fix-btn" type="button" class="px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors active:scale-95">Fix warnings first</button>
+                                </div>
+                            </div>
+
+                            <div class="border border-gray-200 rounded-2xl overflow-hidden">
+                                <div class="grid grid-cols-[140px_minmax(0,1fr)_auto] items-center gap-3 p-4 border-b border-slate-100">
+                                    <strong class="text-[13px]">Primary use</strong>
+                                    <span class="text-[13px] text-gray-500 leading-snug">Monthly close, accountant handoff, founder review</span>
+                                    <span class="tag">Core</span>
+                                </div>
+                                <div class="grid grid-cols-[140px_minmax(0,1fr)_auto] items-center gap-3 p-4 border-b border-slate-100">
+                                    <strong class="text-[13px]">Included files</strong>
+                                    <span class="text-[13px] text-gray-500 leading-snug">Profit &amp; Loss, Expense Breakdown, Bills, Subscriptions, Ledger, Data Quality</span>
+                                    <span class="tag">6 files</span>
+                                </div>
+                                <div class="grid grid-cols-[140px_minmax(0,1fr)_auto] items-center gap-3 p-4 border-b border-slate-100">
+                                    <strong class="text-[13px]">Export formats</strong>
+                                    <span class="text-[13px] text-gray-500 leading-snug">CSV bundle. PDF summary can be generated from preview state.</span>
+                                    <span class="tag">CSV</span>
+                                </div>
+                                <div class="grid grid-cols-[140px_minmax(0,1fr)_auto] items-center gap-3 p-4 border-b border-slate-100">
+                                    <strong class="text-[13px]">Security</strong>
+                                    <span class="text-[13px] text-gray-500 leading-snug">User must confirm export. Export metadata is stored in audit log.</span>
+                                    <span class="tag tag-good">Logged</span>
+                                </div>
+                                <div class="grid grid-cols-[140px_minmax(0,1fr)_auto] items-center gap-3 p-4">
+                                    <strong class="text-[13px]">Limitations</strong>
+                                    <span class="text-[13px] text-gray-500 leading-snug">Revenue Sync is excluded until connected. Missing receipts are listed as report warnings.</span>
+                                    <span class="tag tag-warn">Partial data</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Individual reports table -->
+                        <div class="border-t border-slate-100 p-5">
+                            <h3 class="text-[15px] font-bold text-gray-900">Individual reports</h3>
+                            <p class="mt-1 text-[13px] text-gray-500">Use these when one specific file is needed instead of the full monthly package.</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-[13px]">
+                                <thead>
+                                    <tr class="bg-slate-50 text-[11px] uppercase tracking-wider text-gray-500 border-y border-slate-100">
+                                        <th class="px-5 py-3 font-medium">Report</th>
+                                        <th class="px-5 py-3 font-medium">Purpose</th>
+                                        <th class="px-5 py-3 font-medium hidden md:table-cell">Data source</th>
+                                        <th class="px-5 py-3 font-medium hidden sm:table-cell">Format</th>
+                                        <th class="px-5 py-3 font-medium"></th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-gray-700">
+                                    <tr class="border-b border-slate-100">
+                                        <td class="px-5 py-4">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-9 h-9 rounded-lg bg-slate-50 border border-slate-200 grid place-items-center text-[11px] font-bold text-slate-700">P&amp;L</div>
+                                                <div>
+                                                    <strong class="block">Profit &amp; Loss</strong>
+                                                    <span class="block text-[12px] text-gray-500">Revenue, OpEx, margin</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-5 py-4 text-gray-600">Understand official result for the period.</td>
+                                        <td class="px-5 py-4 text-gray-600 hidden md:table-cell">Transactions + pending receivables/payables</td>
+                                        <td class="px-5 py-4 hidden sm:table-cell"><span class="tag">CSV</span></td>
+                                        <td class="px-5 py-4 text-right"><button type="button" data-preview-report="profit_loss" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-700 hover:bg-gray-50">Preview</button></td>
+                                    </tr>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="px-5 py-4">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-9 h-9 rounded-lg bg-slate-50 border border-slate-200 grid place-items-center text-[11px] font-bold text-slate-700">EX</div>
+                                                <div>
+                                                    <strong class="block">Expense Breakdown</strong>
+                                                    <span class="block text-[12px] text-gray-500">Category and vendor spend</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-5 py-4 text-gray-600">Find where money went and which vendors dominate spend.</td>
+                                        <td class="px-5 py-4 text-gray-600 hidden md:table-cell">Transactions + subscriptions</td>
+                                        <td class="px-5 py-4 hidden sm:table-cell"><span class="tag">CSV</span></td>
+                                        <td class="px-5 py-4 text-right"><button type="button" data-preview-report="expense_breakdown" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-700 hover:bg-gray-50">Preview</button></td>
+                                    </tr>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="px-5 py-4">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-9 h-9 rounded-lg bg-slate-50 border border-slate-200 grid place-items-center text-[11px] font-bold text-slate-700">AP</div>
+                                                <div>
+                                                    <strong class="block">Bills &amp; Payables</strong>
+                                                    <span class="block text-[12px] text-gray-500">Upcoming and overdue bills</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-5 py-4 text-gray-600">Review short-term cash pressure from unpaid bills.</td>
+                                        <td class="px-5 py-4 text-gray-600 hidden md:table-cell">Bills</td>
+                                        <td class="px-5 py-4 hidden sm:table-cell"><span class="tag">CSV</span></td>
+                                        <td class="px-5 py-4 text-right"><button type="button" data-preview-report="bills_payables" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-700 hover:bg-gray-50">Preview</button></td>
+                                    </tr>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="px-5 py-4">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-9 h-9 rounded-lg bg-slate-50 border border-slate-200 grid place-items-center text-[11px] font-bold text-slate-700">SA</div>
+                                                <div>
+                                                    <strong class="block">Subscriptions</strong>
+                                                    <span class="block text-[12px] text-gray-500">Recurring commitments</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-5 py-4 text-gray-600">Track SaaS renewals and recurring vendor costs.</td>
+                                        <td class="px-5 py-4 text-gray-600 hidden md:table-cell">Subscriptions</td>
+                                        <td class="px-5 py-4 hidden sm:table-cell"><span class="tag">CSV</span></td>
+                                        <td class="px-5 py-4 text-right"><button type="button" data-preview-report="subscriptions" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-700 hover:bg-gray-50">Preview</button></td>
+                                    </tr>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="px-5 py-4">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-9 h-9 rounded-lg bg-slate-50 border border-slate-200 grid place-items-center text-[11px] font-bold text-slate-700">LG</div>
+                                                <div>
+                                                    <strong class="block">Ledger Export</strong>
+                                                    <span class="block text-[12px] text-gray-500">Raw transaction rows</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-5 py-4 text-gray-600">Give the accountant the full transaction list.</td>
+                                        <td class="px-5 py-4 text-gray-600 hidden md:table-cell">Transactions</td>
+                                        <td class="px-5 py-4 hidden sm:table-cell"><span class="tag">CSV</span></td>
+                                        <td class="px-5 py-4 text-right"><button type="button" data-preview-report="ledger_export" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-700 hover:bg-gray-50">Preview</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-5 py-4">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-9 h-9 rounded-lg bg-slate-50 border border-slate-200 grid place-items-center text-[11px] font-bold text-slate-700">DQ</div>
+                                                <div>
+                                                    <strong class="block">Data Quality</strong>
+                                                    <span class="block text-[12px] text-gray-500">Records needing cleanup</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-5 py-4 text-gray-600">List missing receipts, missing dates, and incomplete records.</td>
+                                        <td class="px-5 py-4 text-gray-600 hidden md:table-cell">All finance records</td>
+                                        <td class="px-5 py-4 hidden sm:table-cell"><span class="tag">CSV</span></td>
+                                        <td class="px-5 py-4 text-right"><button type="button" data-preview-report="data_quality" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-700 hover:bg-gray-50">Preview</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Right column: coverage, cleanup, recent exports -->
+                    <aside class="space-y-6">
+                        <section class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                            <div class="p-5 border-b border-slate-100">
+                                <h3 class="text-[15px] font-bold text-gray-900">Data coverage</h3>
+                                <p class="mt-1 text-[12px] text-gray-500">Counts match the selected period and export scope.</p>
+                            </div>
+                            <div class="p-5 grid grid-cols-2 gap-3">
+                                <div class="border border-gray-200 rounded-xl p-3">
+                                    <span class="block text-[11px] text-gray-500 mb-1">Transactions</span>
+                                    <strong id="coverage-transactions" class="reports-mono text-[20px] text-gray-900">0</strong>
+                                </div>
+                                <div class="border border-gray-200 rounded-xl p-3">
+                                    <span class="block text-[11px] text-gray-500 mb-1">Bills</span>
+                                    <strong id="coverage-bills" class="reports-mono text-[20px] text-gray-900">0</strong>
+                                </div>
+                                <div class="border border-gray-200 rounded-xl p-3">
+                                    <span class="block text-[11px] text-gray-500 mb-1">Subscriptions</span>
+                                    <strong id="coverage-subscriptions" class="reports-mono text-[20px] text-gray-900">0</strong>
+                                </div>
+                                <div class="border border-gray-200 rounded-xl p-3">
+                                    <span class="block text-[11px] text-gray-500 mb-1">Revenue Sync</span>
+                                    <strong id="coverage-revenue-sync" class="text-[13px] text-gray-500">Not connected</strong>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="panel-needs-cleanup" class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                            <div class="p-5 border-b border-slate-100">
+                                <h3 class="text-[15px] font-bold text-gray-900">Needs cleanup</h3>
+                                <p class="mt-1 text-[12px] text-gray-500">These issues appear before the user confirms export.</p>
+                            </div>
+                            <div class="p-5 space-y-2.5">
+                                <div class="flex items-center justify-between gap-3 border border-slate-100 rounded-xl p-3">
+                                    <div>
+                                        <strong class="block text-[13px]">Missing receipts</strong>
+                                        <span class="block text-[12px] text-gray-500 mt-0.5">Transactions cannot be fully verified.</span>
+                                    </div>
+                                    <span id="cleanup-missing-receipts" class="tag tag-warn">0</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-3 border border-slate-100 rounded-xl p-3">
+                                    <div>
+                                        <strong class="block text-[13px]">Bills without due date</strong>
+                                        <span class="block text-[12px] text-gray-500 mt-0.5">Payables timing may be incomplete.</span>
+                                    </div>
+                                    <span id="cleanup-missing-due-dates" class="tag tag-warn">0</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-3 border border-slate-100 rounded-xl p-3">
+                                    <div>
+                                        <strong class="block text-[13px]">Subscriptions without renewal</strong>
+                                        <span class="block text-[12px] text-gray-500 mt-0.5">Recurring cost forecast may be incomplete.</span>
+                                    </div>
+                                    <span id="cleanup-missing-renewals" class="tag tag-warn">0</span>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                            <div class="p-5 border-b border-slate-100">
+                                <h3 class="text-[15px] font-bold text-gray-900">Recent exports</h3>
+                                <p class="mt-1 text-[12px] text-gray-500">Preview of what later belongs in Audit Log.</p>
+                            </div>
+                            <div id="recent-exports-list" class="px-5 pb-3">
+                                <div class="recent-empty">No exports yet. Confirmed exports will appear here.</div>
+                            </div>
+                        </section>
+                    </aside>
+                </section>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Preview drawer -->
+    <div id="drawer-overlay" class="drawer-overlay"></div>
+    <aside class="drawer-panel" aria-label="Report preview drawer">
+        <div class="px-6 py-5 border-b border-gray-200 flex justify-between items-start gap-5">
+            <div>
+                <h3 id="drawer-title" class="text-[20px] font-semibold tracking-tight text-gray-900">Preview</h3>
+                <p class="mt-1 text-[13px] text-gray-500 leading-snug">Confirm the period, included sources, generated files, and warnings before exporting financial data.</p>
+                <p class="mt-2 text-[12px] text-gray-400">Period: <span id="drawer-period" class="text-gray-600 font-medium">—</span></p>
+            </div>
+            <button id="drawer-close-btn" type="button" aria-label="Close preview" class="w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50">
+                <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="px-6 py-5 flex-1 overflow-auto space-y-4">
+            <section id="drawer-financial" class="preview-section">
+                <h4>Financial summary</h4>
+                <div class="preview-grid">
+                    <div class="preview-metric"><span>Revenue</span><strong id="drawer-revenue">Rp 0</strong></div>
+                    <div class="preview-metric"><span>OpEx</span><strong id="drawer-opex">Rp 0</strong></div>
+                    <div class="preview-metric"><span>Gross margin</span><strong id="drawer-margin">0%</strong></div>
+                    <div class="preview-metric"><span>Net result</span><strong id="drawer-net">Rp 0</strong></div>
+                </div>
+            </section>
+
+            <section class="preview-section">
+                <h4>Included sources</h4>
+                <div id="drawer-sources" class="file-list"></div>
+            </section>
+
+            <section class="preview-section">
+                <h4>Generated files</h4>
+                <div id="drawer-files" class="file-list"></div>
+            </section>
+
+            <section class="preview-section hidden">
+                <h4>Warnings</h4>
+                <div id="drawer-warnings"></div>
+            </section>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 bg-white">
+            <p id="drawer-lock-reason" class="hidden text-[12px] text-amber-700 mb-3"></p>
+            <div class="grid grid-cols-1 sm:grid-cols-[1fr_1.3fr] gap-3">
+                <button id="drawer-cancel-btn" type="button" class="px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button id="drawer-confirm-btn" type="button" class="px-4 py-2.5 bg-gray-900 text-white rounded-lg text-[13px] font-bold hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed">Confirm export &amp; log action</button>
+            </div>
+        </div>
+    </aside>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/date-range-picker.js"></script>
+    <script type="module" src="assets/js/reports.js"></script>
+</body>
+</html>

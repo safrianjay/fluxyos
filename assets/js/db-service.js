@@ -1,4 +1,4 @@
-import { getFirestore, collection, query, getDocs, getDoc, setDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, doc, Timestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, doc, Timestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 class DataService {
     constructor(app) {
@@ -398,6 +398,69 @@ class DataService {
             last_seen_at: serverTimestamp(),
             updated_at: serverTimestamp()
         }, { merge: true });
+    }
+
+    // --- REPORTS & EXPORTS ---
+    // Period-scoped fetchers. startKey / endKey are 'YYYY-MM-DD' day keys
+    // (inclusive on both ends, interpreted in the client's local timezone).
+    async getTransactionsForPeriod(userId, startKey, endKey) {
+        return this._getRecordsForPeriod(userId, 'transactions', startKey, endKey);
+    }
+
+    async getBillsForPeriod(userId, startKey, endKey) {
+        return this._getRecordsForPeriod(userId, 'bills', startKey, endKey);
+    }
+
+    async getSubscriptionsForPeriod(userId, startKey, endKey) {
+        return this._getRecordsForPeriod(userId, 'subscriptions', startKey, endKey);
+    }
+
+    async _getRecordsForPeriod(userId, collectionName, startKey, endKey) {
+        const start = this._parseDayKey(startKey);
+        const end = this._parseDayKey(endKey);
+        if (!start || !end) return [];
+        const endExclusive = new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1);
+        try {
+            const q = query(
+                collection(this.db, `users/${userId}/${collectionName}`),
+                where('timestamp', '>=', Timestamp.fromDate(start)),
+                where('timestamp', '<', Timestamp.fromDate(endExclusive)),
+                orderBy('timestamp', 'desc'),
+                limit(1000)
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (e) {
+            // Fallback for missing/legacy timestamp indexing: client-side filter.
+            const q = query(
+                collection(this.db, `users/${userId}/${collectionName}`),
+                orderBy('timestamp', 'desc'),
+                limit(1000)
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .filter(r => this._isTransactionInPeriod(r, startKey, endKey));
+        }
+    }
+
+    async getRecentExportLogs(userId, limitCount = 10) {
+        // Fetch a broader audit window then filter by action; avoids needing a
+        // composite (action, created_at) index for an MVP read.
+        const logs = await this.getAuditLogs(userId, Math.max(limitCount * 5, 50));
+        return logs.filter(log => log.action === 'export.create').slice(0, limitCount);
+    }
+
+    async createExportAuditLog(userId, payload = {}) {
+        return await this.addAuditLog(userId, {
+            action: 'export.create',
+            target_collection: 'reports',
+            target_id: payload.target_id || '',
+            before: null,
+            after: payload.after || null,
+            reason: payload.reason || null,
+            source: payload.source || 'dashboard'
+        });
     }
 
     // --- AUDIT LOGS ---

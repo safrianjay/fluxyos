@@ -186,6 +186,17 @@ const PAGE_CONFIG = {
         disable: ['header button', '[data-action="connect-integration"]'],
         lockTargets: ['main .max-w-\\[1400px\\] > section', '.integrations-shell']
     },
+    reports: {
+        title: "Complete setup before generating reports.",
+        body: "Reports & Exports turns real FluxyOS records into a sendable finance package. The workspace profile must be in place before exports can be confirmed and logged.",
+        steps: [
+            "Confirm your business name, role, and main finance goal.",
+            "Add the account owner details so FluxyOS can protect the workspace.",
+            "Then come back here to preview and export financial reports."
+        ],
+        disable: ['header button', '[data-preview-report]', '#topbar-generate-btn', '#recommended-generate-btn', '#drawer-confirm-btn'],
+        lockTargets: ['main .max-w-\\[1400px\\] > section']
+    },
     fluxy_ai: {
         title: "Complete setup before using Fluxy AI.",
         body: "AI finance answers must be grounded in your user-scoped data. Finish setup and add records before asking business performance questions.",

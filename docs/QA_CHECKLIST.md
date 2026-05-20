@@ -296,6 +296,26 @@ Run this section whenever any data write, read, calculation, or modal logic is c
 
 Run the **Cross-Page Regression** section below — changes to shared files affect every page.
 
+### J. Reports & Exports (reports.html, reports.js)
+
+| # | Check |
+|---|-------|
+| 1 | Open `/reports` logged out → redirects to `/login` within 2s |
+| 2 | After login, sidebar renders and "Reports & Exports" is the active item |
+| 3 | Marketing footer does NOT appear |
+| 4 | Reporting period defaults to current month; switching range refreshes coverage, cleanup, and readiness |
+| 5 | With zero records, readiness shows "—" / "Not enough data"; no fake numbers |
+| 6 | Data coverage counts match real Firestore records under `users/{uid}/...` |
+| 7 | Needs cleanup counts match real Missing Receipt / missing due date / missing renewal date records |
+| 8 | Clicking a Preview button on the individual reports table opens the drawer; Escape, overlay click, and Cancel all close it |
+| 9 | Confirm export is disabled when there are no records or when the user is not verified, and shows a lock reason |
+| 10 | Confirming export downloads CSV file(s) and writes an `export.create` audit log under `users/{uid}/audit_logs` |
+| 11 | CSV output contains raw integer amounts (no `Rp ` prefix, no dot separators) |
+| 12 | Audit log payload contains report type, period, formats, included sources, `record_counts`, `warning_counts` — and **no row-level financial data** |
+| 13 | Recent exports panel refreshes after a successful export; empty state shows otherwise |
+| 14 | With `revenue = 0`, the preview Gross margin shows `0%` or "Not available" — never `NaN` / `Infinity` |
+| 15 | Mobile width 375px → no horizontal scroll, drawer renders full width |
+
 ### I. Favicon / Meta / Head Changes
 
 | # | Check |

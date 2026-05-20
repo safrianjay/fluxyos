@@ -87,6 +87,23 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | "Resolve Now" link | 🔧 Stub | Link exists on Needs Action card, `href="#"` |
 | FluxyOS Brain chat widget (dashboard) | 🔧 Stub | Input + button exist, no submit handler |
 
+### Reports & Exports
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Reports & Exports app page (`/reports`) | ✅ Shipped MVP | Auth-guarded, sidebar-active, no marketing footer |
+| Period filter (default current month) | ✅ Shipped MVP | Uses shared `FluxyDateRangePicker` |
+| Report readiness score + ledger/receipt/bills bars | ✅ Shipped MVP | Computed from real records |
+| Data coverage panel | ✅ Shipped MVP | |
+| Needs cleanup panel (missing receipts/due dates/renewals) | ✅ Shipped MVP | |
+| Preview drawer (financial summary, sources, files, warnings) | ✅ Shipped MVP | |
+| CSV export (P&L, expense breakdown, bills, subscriptions, ledger, data quality) | ✅ Shipped MVP | Raw integer amounts in output |
+| Monthly Report Pack (bundled CSV download) | ✅ Shipped MVP | Sequential downloads after confirmation |
+| `export.create` audit log written before download | ✅ Shipped MVP | Metadata only — no CSV/row content stored |
+| Recent exports panel | ✅ Shipped MVP | Filters `audit_logs` for `export.create` |
+| Verified-user export gate | 🔧 Stub | UI ready; defaults to verified until a real verification field exists |
+| Audit Log app page (`/audit-log`) | 📋 Planned | Topbar "View audit trail" is disabled until shipped |
+| PDF report rendering | 📋 Planned | MVP is CSV only |
+
 ### Integrations
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -110,7 +127,7 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Receipt Capture | 📋 Planned | Visible as disabled `Soon`; no app page yet |
 | Budgets | 📋 Planned | Visible as disabled `Soon`; no app page yet |
 | Approvals | 📋 Planned | Visible as disabled `Soon`; no app page yet |
-| Reports & Exports | 📋 Planned | Visible as disabled `Soon`; no app page yet |
+| Reports & Exports | ✅ Shipped MVP | `/reports` — period filter, readiness score, preview drawer, CSV export, `export.create` audit log |
 | Audit Log | 📋 Planned | Visible as disabled `Soon`; no app page yet |
 | Settings | ✅ Shipped MVP | Working app page at `/settings` with company, finance, import, WhatsApp, AI, and account basics |
 

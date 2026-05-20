@@ -53,6 +53,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Revenue Sync | `revenue-sync.html` | App | ✅ | **No** | ✅ |
 | Bills | `bill.html` | App | ✅ | **No** | ✅ |
 | Subscriptions | `subscription.html` | App | ✅ | **No** | ✅ |
+| Reports & Exports | `reports.html` | App | ✅ | **No** | ✅ |
 | Integrations | `integration.html` | App | ✅ | **No** | ✅ |
 | Settings (index) | `settings.html` | App | ✅ | **No** | ✅ |
 | Settings — Personal details | `settings-personal.html` | App | ✅ | **No** | ✅ |
@@ -423,7 +424,7 @@ Sidebar is injected into every app page at `#sidebar`. Active item is detected b
 | Operations | Receipt Capture | Disabled button | `Soon` | 📋 Planned |
 | Operations | Budgets | Disabled button | `Soon` | 📋 Planned |
 | Operations | Approvals | Disabled button | `Soon` | 📋 Planned |
-| Reporting | Reports & Exports | Disabled button | `Soon` | 📋 Planned |
+| Reporting | Reports & Exports | Link | `/reports` | ✅ Shipped MVP |
 | Reporting | Audit Log | Disabled button | `Soon` | 📋 Planned |
 | Workspace | Integrations | Link | `/integration` | ✅ Shipped |
 | Workspace | Settings | Link | `/settings` | ✅ Shipped MVP |
@@ -503,3 +504,63 @@ Netlify auto-deploys on main push. No manual deploy step needed.
 - Search on bills/subscriptions tables (input exists, no handler). Ledger search is implemented client-side against the selected date period.
 
 **Before building any of the above: check this list first to avoid rebuilding from scratch.**
+
+---
+
+## 13. Reports & Exports (`reports.html`)
+
+Reports & Exports is the controlled export workflow that turns user-scoped
+records into a sendable finance package. It is an authenticated app page —
+auth guard, sidebar, no marketing footer.
+
+Flow: **choose period → check readiness → preview → confirm export → audit log**.
+
+### Data sources (all user-scoped)
+
+- Transactions: `users/{userId}/transactions`
+- Bills: `users/{userId}/bills`
+- Subscriptions: `users/{userId}/subscriptions`
+- Recent export history: filtered from `users/{userId}/audit_logs`
+  (`action == "export.create"`)
+
+Period scope uses the shared `FluxyDateRangePicker`. Default range is the
+current month. `DataService` exposes `getTransactionsForPeriod`,
+`getBillsForPeriod`, `getSubscriptionsForPeriod`, `getRecentExportLogs`, and
+`createExportAuditLog`.
+
+### Report packages and CSV files
+
+| Package | Files generated (slug = period, e.g. `2026_05`) |
+|---------|-------------------------------------------------|
+| Monthly Report Pack | `profit_loss_{slug}.csv`, `expense_breakdown_{slug}.csv`, `bills_payables_{slug}.csv`, `subscriptions_{slug}.csv`, `ledger_export_{slug}.csv`, `data_quality_{slug}.csv` |
+| Profit & Loss | `profit_loss_{slug}.csv` |
+| Expense Breakdown | `expense_breakdown_{slug}.csv` |
+| Bills & Payables | `bills_payables_{slug}.csv` |
+| Subscriptions | `subscriptions_{slug}.csv` |
+| Ledger Export | `ledger_export_{slug}.csv` |
+| Data Quality | `data_quality_{slug}.csv` |
+
+### Calculation rules
+
+- **Revenue** = sum of `amount` where `type ∈ {income, revenue, refund, pending_receivable}`
+- **OpEx** = sum of `Math.abs(amount)` where `type ∈ {expense, fee, tax, pending_payable}`
+- **Gross margin** = `revenue > 0 ? (revenue - opex) / revenue * 100 : 0`
+  Never emit `NaN` or `Infinity`.
+- **Net result** = `revenue - opex`
+- **Readiness score**: starts at 100, subtracts `4 × missing_receipts +
+  6 × bills_without_due_date + 6 × subs_without_renewal`, clamped to `[0, 100]`.
+  If there are no records, score is `null` and UI shows "Not enough data".
+
+### Export rules
+
+- Generation never starts without an explicit Confirm export click.
+- CSV files store **raw integer amounts** (never `Rp 1.234.567` display strings).
+- Audit log (`action: "export.create"`, `target_collection: "reports"`) is
+  written **before** files are delivered. If the log write fails, no file is
+  downloaded.
+- Audit log `after` payload contains report type, period, formats,
+  included sources, `record_counts`, and `warning_counts`. **It does not
+  contain row-level financial data or CSV content.**
+- Verified vs basic user: MVP defaults to verified. Future work: gate on a
+  `users/{uid}/settings/account.verification_status` field; UI is already
+  wired to disable Confirm export with a lock reason.
