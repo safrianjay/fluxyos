@@ -248,28 +248,6 @@
         }
         .chart-col-label small { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; font-family: var(--mono); font-weight: 500; }
 
-        /* Horizontal bar chart — used when value distribution is skewed
-           (e.g., one dominant category) so the panel doesn't read as empty. */
-        .hchart { display: grid; gap: 14px; margin-top: 14px; }
-        .hchart-row {
-            display: grid;
-            grid-template-columns: 150px minmax(0, 1fr) 100px;
-            gap: 16px;
-            align-items: center;
-        }
-        .hchart-label strong { display: block; font-size: 13px; color: var(--ink); font-weight: 600; line-height: 1.2; }
-        .hchart-label .hchart-sub { display: block; color: var(--muted); font-family: var(--mono); font-size: 11px; margin-top: 3px; font-weight: 500; }
-        .hchart-track { height: 26px; background: #eef2f7; border-radius: 6px; overflow: hidden; }
-        .hchart-fill { height: 100%; background: var(--navy); border-radius: 6px; min-width: 4px; }
-        .hchart-fill.orange { background: var(--orange); }
-        .hchart-fill.green { background: var(--green); }
-        .hchart-fill.amber { background: var(--amber); }
-        .hchart-value { text-align: right; font-family: var(--mono); font-weight: 500; font-size: 13px; color: var(--ink); letter-spacing: -.01em; }
-
-        @media (max-width: 720px) {
-            .hchart-row { grid-template-columns: 1fr; }
-            .hchart-value { text-align: left; }
-        }
 
         table { width: 100%; border-collapse: collapse; font-size: 13px; break-inside: avoid; }
         thead th { text-align: left; padding: 12px 12px; background: var(--soft); color: #647084; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; vertical-align: bottom; }
@@ -345,7 +323,65 @@
         .empty-state h2 { font-size: 26px; }
         .empty-state p { color: var(--muted); margin: 12px 0 24px; font-size: 14px; line-height: 1.5; }
 
-        .preview-loading { padding: 60px; text-align: center; color: var(--muted); font-size: 13px; }
+        /* Loading state — shown while auth resolves and the report assembles.
+           Visible long enough to act as a meaningful transition. */
+        .preview-loading {
+            width: min(100%, 1440px);
+            margin: 30px auto;
+            border-radius: 18px;
+            overflow: hidden;
+            border: 1px solid rgba(15, 23, 42, .10);
+            box-shadow: var(--shadow);
+            background: var(--page);
+        }
+        .preview-loading-cover {
+            min-height: 360px;
+            padding: 48px 44px;
+            background:
+                radial-gradient(circle at 84% 12%, rgba(234,75,11,.34), transparent 30%),
+                radial-gradient(circle at 18% 90%, rgba(37,99,235,.16), transparent 26%),
+                linear-gradient(135deg, #080d17 0%, #111827 58%, #171923 100%);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 18px;
+        }
+        .preview-loading-logo { width: 56px; height: 56px; }
+        .preview-loading-logo svg { width: 100%; height: 100%; display: block; animation: fluxy-logo-pulse 1.4s ease-in-out infinite; }
+        @keyframes fluxy-logo-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .65; transform: scale(.92); }
+        }
+        .preview-loading-title { font-size: 22px; font-weight: 500; letter-spacing: -.02em; color: #fff; }
+        .preview-loading-sub { color: #cbd5e1; font-size: 14px; line-height: 1.5; max-width: 480px; }
+        .preview-loading-dots { display: inline-flex; gap: 6px; margin-top: 6px; }
+        .preview-loading-dots span {
+            width: 6px; height: 6px; border-radius: 50%; background: var(--orange);
+            animation: fluxy-loading-dot 1s ease-in-out infinite;
+        }
+        .preview-loading-dots span:nth-child(2) { animation-delay: .15s; }
+        .preview-loading-dots span:nth-child(3) { animation-delay: .3s; }
+        @keyframes fluxy-loading-dot {
+            0%, 100% { transform: translateY(0); opacity: .4; }
+            50% { transform: translateY(-3px); opacity: 1; }
+        }
+        .preview-loading-body { padding: 28px 32px 36px; display: grid; gap: 18px; }
+        .skel { background: linear-gradient(90deg, #eef2f7 0%, #f8fafc 50%, #eef2f7 100%); background-size: 200% 100%; border-radius: 8px; animation: skel-shimmer 1.4s ease-in-out infinite; }
+        @keyframes skel-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .skel-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+        .skel-card { height: 130px; }
+        .skel-row.skel-row-2 { grid-template-columns: 1fr 1fr; }
+        .skel-row.skel-row-2 .skel-card { height: 260px; }
+
+        @media (max-width: 920px) {
+            .preview-loading { margin: 0; border-radius: 0; }
+            .preview-loading-cover { padding: 32px 22px; min-height: 280px; }
+            .preview-loading-title { font-size: 20px; }
+            .skel-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .skel-row.skel-row-2 { grid-template-columns: 1fr; }
+        }
 
         @media (max-width: 1100px) {
             .grid-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -394,7 +430,35 @@
         </div>
     </div>
 
-    <div id="loading" class="preview-loading">Loading report preview…</div>
+    <div id="loading" class="preview-loading" role="status" aria-live="polite">
+        <div class="preview-loading-cover">
+            <div class="preview-loading-logo">
+                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="40" height="40" rx="9" fill="#EA580C"></rect>
+                    <g transform="translate(1.5, 0)">
+                        <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF"></path>
+                        <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF"></path>
+                    </g>
+                </svg>
+            </div>
+            <div class="preview-loading-title">Generating your report preview</div>
+            <div class="preview-loading-sub">Reading your selected period and assembling sections from your FluxyOS records.</div>
+            <div class="preview-loading-dots"><span></span><span></span><span></span></div>
+        </div>
+        <div class="preview-loading-body">
+            <div class="skel-row">
+                <div class="skel skel-card"></div>
+                <div class="skel skel-card"></div>
+                <div class="skel skel-card"></div>
+                <div class="skel skel-card"></div>
+                <div class="skel skel-card"></div>
+            </div>
+            <div class="skel-row skel-row-2">
+                <div class="skel skel-card"></div>
+                <div class="skel skel-card"></div>
+            </div>
+        </div>
+    </div>
 
     <div id="empty-state" class="empty-state" style="display:none;">
         <h2>No report preview found</h2>
