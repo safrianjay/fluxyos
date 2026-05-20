@@ -1,4 +1,4 @@
-import { getFirestore, collection, query, getDocs, getDoc, setDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, doc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, query, getDocs, getDoc, setDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, doc, Timestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 class DataService {
     constructor(app) {
@@ -294,6 +294,108 @@ class DataService {
             eligible_for_onboarding_gate: false,
             source: 'legacy_exemption',
             created_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        }, { merge: true });
+    }
+
+    // --- PLATFORM LEARNING ---
+    _platformLearningDoc(userId) {
+        return doc(this.db, `users/${userId}/platform_learning/state`);
+    }
+
+    _platformLearningPayload(data = {}) {
+        return this._cleanDefined({
+            dismissed: data.dismissed === true,
+            dismissed_at: data.dismissed_at === undefined ? null : data.dismissed_at,
+            first_rendered_at: data.first_rendered_at,
+            last_seen_at: data.last_seen_at,
+            started_tours: Array.isArray(data.started_tours) ? data.started_tours : undefined,
+            completed_tours: Array.isArray(data.completed_tours) ? data.completed_tours : undefined,
+            skipped_tours: Array.isArray(data.skipped_tours) ? data.skipped_tours : undefined,
+            active_tour: data.active_tour === undefined ? null : data.active_tour,
+            updated_at: serverTimestamp()
+        });
+    }
+
+    async getPlatformLearningState(userId) {
+        const snap = await getDoc(this._platformLearningDoc(userId));
+        if (!snap.exists()) {
+            return {
+                dismissed: false,
+                dismissed_at: null,
+                first_rendered_at: null,
+                last_seen_at: null,
+                started_tours: [],
+                completed_tours: [],
+                skipped_tours: [],
+                active_tour: null
+            };
+        }
+        const data = snap.data();
+        return {
+            dismissed: data.dismissed === true,
+            dismissed_at: data.dismissed_at || null,
+            first_rendered_at: data.first_rendered_at || null,
+            last_seen_at: data.last_seen_at || null,
+            started_tours: Array.isArray(data.started_tours) ? data.started_tours : [],
+            completed_tours: Array.isArray(data.completed_tours) ? data.completed_tours : [],
+            skipped_tours: Array.isArray(data.skipped_tours) ? data.skipped_tours : [],
+            active_tour: data.active_tour || null,
+            updated_at: data.updated_at || null
+        };
+    }
+
+    async savePlatformLearningState(userId, data = {}) {
+        const existing = await this.getPlatformLearningState(userId);
+        const payload = this._platformLearningPayload({
+            dismissed: existing.dismissed,
+            dismissed_at: existing.dismissed_at,
+            first_rendered_at: existing.first_rendered_at || serverTimestamp(),
+            last_seen_at: serverTimestamp(),
+            started_tours: existing.started_tours,
+            completed_tours: existing.completed_tours,
+            skipped_tours: existing.skipped_tours,
+            active_tour: existing.active_tour,
+            ...data
+        });
+        await setDoc(this._platformLearningDoc(userId), payload, { merge: true });
+        return payload;
+    }
+
+    async markPlatformTourStarted(userId, tourId) {
+        await setDoc(this._platformLearningDoc(userId), {
+            dismissed: false,
+            last_seen_at: serverTimestamp(),
+            started_tours: arrayUnion(tourId),
+            active_tour: tourId,
+            updated_at: serverTimestamp()
+        }, { merge: true });
+    }
+
+    async markPlatformTourCompleted(userId, tourId) {
+        await setDoc(this._platformLearningDoc(userId), {
+            completed_tours: arrayUnion(tourId),
+            active_tour: null,
+            last_seen_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        }, { merge: true });
+    }
+
+    async markPlatformTourSkipped(userId, tourId) {
+        await setDoc(this._platformLearningDoc(userId), {
+            skipped_tours: arrayUnion(tourId),
+            active_tour: null,
+            last_seen_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        }, { merge: true });
+    }
+
+    async dismissPlatformLearning(userId) {
+        await setDoc(this._platformLearningDoc(userId), {
+            dismissed: true,
+            dismissed_at: serverTimestamp(),
+            active_tour: null,
+            last_seen_at: serverTimestamp(),
             updated_at: serverTimestamp()
         }, { merge: true });
     }

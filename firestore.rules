@@ -362,6 +362,34 @@ service cloud.firestore {
         || (settingsDoc == 'whatsapp' && isValidWhatsAppSettings(data));
     }
 
+    function isValidTourId(tourId) {
+      return tourId == null
+        || tourId in ['overview', 'ledger', 'bills', 'fluxy_ai', 'revenue_sync', 'subscriptions'];
+    }
+
+    function isValidPlatformLearningState(data) {
+      return data.keys().hasOnly([
+          'dismissed',
+          'dismissed_at',
+          'first_rendered_at',
+          'last_seen_at',
+          'started_tours',
+          'completed_tours',
+          'skipped_tours',
+          'active_tour',
+          'updated_at'
+        ])
+        && (!('dismissed' in data) || data.dismissed is bool)
+        && (!('dismissed_at' in data) || data.dismissed_at == null || data.dismissed_at is timestamp)
+        && (!('first_rendered_at' in data) || data.first_rendered_at is timestamp)
+        && (!('last_seen_at' in data) || data.last_seen_at is timestamp)
+        && (!('started_tours' in data) || (data.started_tours is list && data.started_tours.size() <= 12))
+        && (!('completed_tours' in data) || (data.completed_tours is list && data.completed_tours.size() <= 12))
+        && (!('skipped_tours' in data) || (data.skipped_tours is list && data.skipped_tours.size() <= 12))
+        && (!('active_tour' in data) || isValidTourId(data.active_tour))
+        && (!('updated_at' in data) || data.updated_at == request.time);
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create, update, delete: if false;
@@ -605,6 +633,14 @@ service cloud.firestore {
           && onboardingDoc in ['progress', 'profile', 'documents'];
         allow create, update: if isOwner(userId)
           && onboardingDoc in ['progress', 'profile', 'documents'];
+        allow delete: if false;
+      }
+
+      match /platform_learning/{learningDoc} {
+        allow read: if isOwner(userId) && learningDoc == 'state';
+        allow create, update: if isOwner(userId)
+          && learningDoc == 'state'
+          && isValidPlatformLearningState(request.resource.data);
         allow delete: if false;
       }
 
