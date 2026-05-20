@@ -147,6 +147,69 @@ function isTourComplete(learningState, tourId) {
     return Array.isArray(learningState?.completed_tours) && learningState.completed_tours.includes(tourId);
 }
 
+function renderCardVisual(tourId) {
+    const visualClass = `platform-learning-visual-${tourId.replace('_', '-')}`;
+    const scenes = {
+        overview: `
+            <span class="pl-mini-panel pl-mini-panel-main">
+                <span class="pl-mini-kpi-row">
+                    <span></span><span></span><span></span>
+                </span>
+                <span class="pl-mini-chart">
+                    <span style="height: 42%;"></span>
+                    <span style="height: 70%;"></span>
+                    <span style="height: 52%;"></span>
+                    <span style="height: 82%;"></span>
+                </span>
+            </span>
+            <span class="pl-mini-badge pl-mini-badge-top">Margin</span>
+            <span class="pl-mini-badge pl-mini-badge-bottom">Needs action</span>
+        `,
+        ledger: `
+            <span class="pl-mini-table">
+                <span></span><span></span><span></span><span></span>
+            </span>
+            <span class="pl-mini-upload">
+                <span class="pl-mini-upload-icon"></span>
+                CSV
+            </span>
+            <span class="pl-mini-route-line"></span>
+        `,
+        bills: `
+            <span class="pl-mini-calendar">
+                <span class="pl-mini-calendar-top"></span>
+                <span class="pl-mini-calendar-grid"><span></span><span></span><span></span><span></span><span></span><span></span></span>
+            </span>
+            <span class="pl-mini-due-card">Due soon</span>
+            <span class="pl-mini-status-pill">Open</span>
+        `,
+        fluxy_ai: `
+            <span class="pl-mini-chat pl-mini-chat-user">How is cash?</span>
+            <span class="pl-mini-chat pl-mini-chat-ai">Review revenue first</span>
+            <span class="pl-mini-spark"></span>
+            <span class="pl-mini-prompt-lines"><span></span><span></span><span></span></span>
+        `,
+        revenue_sync: `
+            <span class="pl-mini-channel pl-mini-channel-a">Storefront</span>
+            <span class="pl-mini-channel pl-mini-channel-b">Payments</span>
+            <span class="pl-mini-channel-line"></span>
+            <span class="pl-mini-sync-card">
+                <span></span><span></span><span></span>
+            </span>
+        `,
+        subscriptions: `
+            <span class="pl-mini-stack-card pl-mini-stack-back"></span>
+            <span class="pl-mini-stack-card pl-mini-stack-mid"></span>
+            <span class="pl-mini-stack-card pl-mini-stack-front">
+                <span></span><span></span>
+            </span>
+            <span class="pl-mini-renewal-pill">Renews</span>
+        `
+    };
+
+    return `<span class="platform-learning-card-visual ${visualClass}" aria-hidden="true">${scenes[tourId] || ''}</span>`;
+}
+
 async function canUsePlatformLearning(userId, ds = getDataService()) {
     if (!userId) return false;
     const onboardingProgress = await ds.getOnboardingProgress(userId);
@@ -204,9 +267,7 @@ export async function renderQuickStartLearning(containerId, options = {}) {
         return `
             <button type="button" class="platform-learning-card" data-platform-tour="${tourId}" aria-label="Start ${tour.label}">
                 <span class="platform-learning-card-chip">${tour.chip}</span>
-                <span class="platform-learning-card-visual" aria-hidden="true">
-                    <span>${tour.icon}</span>
-                </span>
+                ${renderCardVisual(tourId)}
                 <span class="platform-learning-card-copy">
                     <span class="platform-learning-card-title">${tour.label}</span>
                     <span class="platform-learning-card-desc">${tour.description}</span>
@@ -224,7 +285,13 @@ export async function renderQuickStartLearning(containerId, options = {}) {
         <section class="platform-learning-section" aria-labelledby="platform-learning-title">
             <div class="platform-learning-header">
                 <div>
-                    <h2 id="platform-learning-title">Quick ways to get started</h2>
+                    <div class="platform-learning-title-row">
+                        <h2 id="platform-learning-title">Quick ways to get started</h2>
+                        <div class="platform-learning-scroll-controls" aria-label="Scroll learning cards">
+                            <button type="button" data-platform-learning-scroll="prev" aria-label="Previous learning card">&lt;</button>
+                            <button type="button" data-platform-learning-scroll="next" aria-label="Next learning card">&gt;</button>
+                        </div>
+                    </div>
                     <p>Pick what you want to learn first. FluxyOS will guide you through the page step by step.</p>
                 </div>
                 <button type="button" class="platform-learning-dismiss" data-platform-learning-dismiss>Dismiss</button>
@@ -243,6 +310,15 @@ export async function renderQuickStartLearning(containerId, options = {}) {
 
     container.querySelectorAll('[data-platform-tour]').forEach(card => {
         card.addEventListener('click', () => startPlatformTour(card.dataset.platformTour, userId));
+    });
+
+    const row = container.querySelector('.platform-learning-row');
+    container.querySelectorAll('[data-platform-learning-scroll]').forEach(button => {
+        button.addEventListener('click', () => {
+            const direction = button.dataset.platformLearningScroll === 'prev' ? -1 : 1;
+            const cardWidth = row?.querySelector('.platform-learning-card')?.getBoundingClientRect().width || 360;
+            row?.scrollBy({ left: direction * (cardWidth + 22), behavior: 'smooth' });
+        });
     });
 }
 
@@ -384,8 +460,8 @@ function renderCurrentStep() {
 
 function positionPopover(target, popover) {
     const rect = target.getBoundingClientRect();
-    const spacing = 14;
-    const width = Math.min(360, window.innerWidth - 24);
+    const spacing = 16;
+    const width = Math.min(480, window.innerWidth - 24);
     popover.style.width = `${width}px`;
 
     let left = rect.left;
@@ -393,7 +469,7 @@ function positionPopover(target, popover) {
     if (left < 12) left = 12;
 
     let top = rect.bottom + spacing;
-    const popoverHeight = popover.offsetHeight || 220;
+    const popoverHeight = popover.offsetHeight || 280;
     if (top + popoverHeight > window.innerHeight - 12) {
         top = rect.top - popoverHeight - spacing;
     }
