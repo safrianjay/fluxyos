@@ -336,11 +336,11 @@ function renderRecommendedOutput() {
     const statusTag = el('recommended-status-tag');
     if (statusTag) {
         if (reportsState.isUserVerified) {
-            statusTag.textContent = 'Verified export enabled';
+            statusTag.textContent = 'Export ready';
             statusTag.classList.remove('tag-lock');
             statusTag.classList.add('tag-good');
         } else {
-            statusTag.textContent = 'Preview available · Export locked';
+            statusTag.textContent = 'Preview only · Export locked';
             statusTag.classList.add('tag-lock');
             statusTag.classList.remove('tag-good');
         }
