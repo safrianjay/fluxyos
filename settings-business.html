@@ -264,8 +264,33 @@
                 country: currentCompany.country || 'Indonesia',
                 entity_label: getValue('company-entity-label')
             };
+
+            // If the business entity name actually changed, surface the
+            // implications before persisting and reload after save so the
+            // sidebar entity switcher picks up the new value immediately.
+            const prevName = (currentCompany.business_name || '').trim();
+            const nextName = (payload.business_name || '').trim();
+            const nameChanged = prevName.length > 0 && nextName.length > 0 && prevName !== nextName;
+
+            if (nameChanged) {
+                const ok = window.confirm(
+                    `You're about to change the business entity name from "${prevName}" to "${nextName}".\n\n` +
+                    `This is the name shown across FluxyOS — the sidebar entity switcher, exports, audit logs, and any AI summaries will use the new name from now on. Existing records (transactions, bills, subscriptions) stay attached to this workspace and are not retroactively rebranded.\n\n` +
+                    `Continue?`
+                );
+                if (!ok) return;
+            }
+
             const saved = await saveSection(event.currentTarget, 'company-settings-status', () => ds.saveCompanySettings(auth.currentUser.uid, payload), 'Account details saved.');
-            if (saved) currentCompany = { ...currentCompany, ...payload };
+            if (saved) {
+                currentCompany = { ...currentCompany, ...payload };
+                if (nameChanged) {
+                    // Brief delay so the success toast/status pill is visible
+                    // before the reload, then refresh so the sidebar entity
+                    // switcher re-reads settings/company.business_name.
+                    setTimeout(() => window.location.reload(), 700);
+                }
+            }
         }
 
         async function saveBusinessDetails(event) {
