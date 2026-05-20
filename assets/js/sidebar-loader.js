@@ -205,8 +205,10 @@
     }
 
     function applyEntityName(name) {
+        const targets = document.querySelectorAll('[data-entity-name]');
+        console.log('[entity-name] applyEntityName', { name, targetsFound: targets.length });
         if (!name) return;
-        document.querySelectorAll('[data-entity-name]').forEach((el) => {
+        targets.forEach((el) => {
             el.textContent = name;
         });
     }
@@ -242,6 +244,7 @@
     // change instantly with no reload required.
     window.addEventListener('fluxy:entity-name-changed', (event) => {
         const next = event?.detail?.name;
+        console.log('[entity-name] event received', { next, detail: event?.detail });
         applyEntityName(next);
     });
 
