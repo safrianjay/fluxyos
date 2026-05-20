@@ -7,16 +7,42 @@
 
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import DataService from './db-service.js';
 import {
     buildCsvBundle,
     downloadFile,
     formatRupiahCompact,
-    formatPercent,
-    isoFromDayKey
+    formatPercent
 } from './report-builder.js';
 
 const REPORT_PREVIEW_STORAGE_KEY = 'fluxyos_report_preview';
+
+// The drawer's Open Full Report opens this page in a new tab. New tabs get
+// their own sessionStorage, so the payload is staged in localStorage instead
+// and cleared once read. This keeps the handoff one-shot.
+function readPreviewStorage() {
+    try {
+        return localStorage.getItem(REPORT_PREVIEW_STORAGE_KEY)
+            || sessionStorage.getItem(REPORT_PREVIEW_STORAGE_KEY);
+    } catch {
+        return null;
+    }
+}
+function clearPreviewStorage() {
+    try { localStorage.removeItem(REPORT_PREVIEW_STORAGE_KEY); } catch {}
+    try { sessionStorage.removeItem(REPORT_PREVIEW_STORAGE_KEY); } catch {}
+}
+
+// Mirrors the navbar/login logo. Orange tile, navy F path — matches the
+// sidebar logo defined in sidebar-loader.js. Render via JS so styling stays
+// consistent with the rest of the app.
+const COVER_LOGO_SVG = `
+<svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <rect width="40" height="40" rx="9" fill="#EA580C" />
+    <g transform="translate(1.5, 0)">
+        <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+        <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+    </g>
+</svg>`;
 
 const firebaseConfig = {
     apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -28,13 +54,11 @@ const firebaseConfig = {
 };
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
-const ds = new DataService(app);
 
 const state = {
     user: null,
     pack: null,
-    sourceData: null,
-    exporting: false
+    sourceData: null
 };
 
 function el(id) { return document.getElementById(id); }
@@ -50,7 +74,7 @@ function escapeHtml(value) {
 
 function readPreviewPayload() {
     try {
-        const raw = sessionStorage.getItem(REPORT_PREVIEW_STORAGE_KEY);
+        const raw = readPreviewStorage();
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         if (!parsed?.pack || !parsed.pack.report_identity) return null;
@@ -64,6 +88,53 @@ function showEmptyState() {
     el('loading').style.display = 'none';
     el('report-root').hidden = true;
     el('empty-state').style.display = 'block';
+}
+
+// ---------- Chart helpers ----------
+
+// Round `max` up to a "nice" axis ceiling at 1/2/5 * 10^n.
+function niceMax(max) {
+    const v = Math.max(1, Number(max) || 0);
+    const power = Math.pow(10, Math.floor(Math.log10(v)));
+    const normalized = v / power;
+    let nice;
+    if (normalized <= 1) nice = 1;
+    else if (normalized <= 2) nice = 2;
+    else if (normalized <= 5) nice = 5;
+    else nice = 10;
+    return nice * power;
+}
+
+function axisTicks(maxValue) {
+    const top = niceMax(maxValue);
+    return [top, top * 0.75, top * 0.5, top * 0.25, 0];
+}
+
+function renderBarChart(items, { yAxisLabel = '' } = {}) {
+    const values = items.map(i => Math.abs(Number(i.value) || 0));
+    const top = niceMax(Math.max(...values, 0)) || 1;
+    const ticks = axisTicks(top);
+
+    const yAxisHtml = ticks.map(t => `<span>${formatRupiahCompact(t)}</span>`).join('');
+    const colsHtml = items.map(item => {
+        const v = Math.abs(Number(item.value) || 0);
+        const heightPct = top > 0 ? (v / top) * 100 : 0;
+        const tone = item.color ? ` ${item.color}` : '';
+        const label = item.label || '';
+        const sublabel = item.sublabel ? `<small>${escapeHtml(item.sublabel)}</small>` : '';
+        return `
+            <div class="chart-col">
+                <div class="chart-col-value">${formatRupiahCompact(item.value)}</div>
+                <div class="chart-col-bar${tone}" style="height:${heightPct.toFixed(1)}%;"></div>
+                <div class="chart-col-label">${escapeHtml(label)}${sublabel}</div>
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="chart-wrap" ${yAxisLabel ? `aria-label="${escapeHtml(yAxisLabel)}"` : ''}>
+            <div class="chart-yaxis">${yAxisHtml}</div>
+            <div class="chart-plot">${colsHtml}</div>
+        </div>`;
 }
 
 function showReport() {
@@ -100,7 +171,7 @@ function renderCover(pack) {
     <section class="cover">
         <div>
             <div class="brand-row">
-                <div class="logo">F</div>
+                <div class="logo">${COVER_LOGO_SVG}</div>
                 <div>
                     <strong>FluxyOS</strong>
                     <span>Financial operations report</span>
@@ -185,8 +256,11 @@ function renderKeyTakeaways(pack) {
 
 function renderProfitLoss(pack) {
     const pl = pack.profit_loss;
-    const max = Math.max(pl.revenue, pl.opex, Math.abs(pl.netResult), 1);
-    const heightPct = (v) => Math.max(8, Math.round((Math.abs(v) / max) * 100));
+    const chart = renderBarChart([
+        { value: pl.revenue, label: 'Revenue' },
+        { value: pl.opex, label: 'OpEx', color: 'orange' },
+        { value: pl.netResult, label: 'Net Result', color: pl.netResult >= 0 ? 'green' : 'amber' }
+    ], { yAxisLabel: 'Revenue, OpEx, Net Result in IDR' });
     return `
     <section class="section">
         <div class="report-top">
@@ -199,30 +273,8 @@ function renderProfitLoss(pack) {
         <div class="grid-2">
             <div class="card">
                 <div class="card-title">IDR · ${escapeHtml(pack.report_identity.period_label)}</div>
-                <div class="bar-chart">
-                    <div class="bar-item">
-                        <div>
-                            <div class="bar-label-value">${formatRupiahCompact(pl.revenue)}</div>
-                            <div class="bar" style="height:${heightPct(pl.revenue)}%; min-height:8px;"></div>
-                        </div>
-                        <div class="bar-name">Revenue</div>
-                    </div>
-                    <div class="bar-item">
-                        <div>
-                            <div class="bar-label-value">${formatRupiahCompact(pl.opex)}</div>
-                            <div class="bar orange" style="height:${heightPct(pl.opex)}%; min-height:8px;"></div>
-                        </div>
-                        <div class="bar-name">OpEx</div>
-                    </div>
-                    <div class="bar-item">
-                        <div>
-                            <div class="bar-label-value">${formatRupiahCompact(pl.netResult)}</div>
-                            <div class="bar ${pl.netResult >= 0 ? 'green' : 'amber'}" style="height:${heightPct(pl.netResult)}%; min-height:8px;"></div>
-                        </div>
-                        <div class="bar-name">Net Result</div>
-                    </div>
-                </div>
-                <div class="formula-note">${escapeHtml(pl.calculation_note)}</div>
+                ${chart}
+                <div class="formula-note" style="margin-top:42px;">${escapeHtml(pl.calculation_note)}</div>
             </div>
             <div class="card">
                 <div class="card-title">P&amp;L Table</div>
@@ -425,7 +477,12 @@ function renderExpenseBreakdown(pack) {
             <div class="card"><p style="margin:0;color:var(--muted);font-size:15px;">No expense records in the selected period.</p></div>
         </section>`;
     }
-    const max = Math.max(...eb.categories.map(c => c.amount), 1);
+    const chart = renderBarChart(eb.categories.slice(0, 4).map(c => ({
+        value: c.amount,
+        label: c.category,
+        sublabel: `${c.pct}%`,
+        color: 'orange'
+    })), { yAxisLabel: 'Spend by category in IDR' });
     return `
     <section class="section">
         <div class="report-top">
@@ -437,16 +494,7 @@ function renderExpenseBreakdown(pack) {
         <div class="grid-2">
             <div class="card">
                 <div class="card-title">Expense by category</div>
-                <div class="bar-chart">
-                    ${eb.categories.slice(0, 4).map(c => `
-                        <div class="bar-item">
-                            <div>
-                                <div class="bar-label-value">${formatRupiahCompact(c.amount)}</div>
-                                <div class="bar orange" style="height:${Math.round((c.amount / max) * 100)}%; min-height:8px;"></div>
-                            </div>
-                            <div class="bar-name">${escapeHtml(c.category)}<br><small>${c.pct}%</small></div>
-                        </div>`).join('')}
-                </div>
+                ${chart}
             </div>
             <div class="card">
                 <div class="card-title">Top vendors</div>
@@ -608,7 +656,7 @@ function renderExportManifest(pack) {
                 <h2>PDF summary on print. CSV source files available.</h2>
                 <p class="subtitle">What data supports the report, what was excluded, and what source files exist for row-level review.</p>
             </div>
-            <span class="pill">Audit logged on confirm</span>
+            <span class="pill">Confirm export back on Reports</span>
         </div>
         <div class="grid-4">
             <div class="card">
@@ -629,7 +677,7 @@ function renderExportManifest(pack) {
                     <li>action: export.create</li>
                     <li>target: report_exports</li>
                     <li>generated by: ${escapeHtml(em.audit.generated_by || '—')}</li>
-                    <li>logged on: Confirm Export click</li>
+                    <li>logged on: Confirm Export in the Reports drawer</li>
                 </ul>
             </div>
         </div>
@@ -656,76 +704,11 @@ function handleDownloadCsv() {
     });
 }
 
-async function handleConfirmExport() {
-    if (state.exporting || !state.user || !state.pack) return;
-    const totalRecords = state.pack.record_counts.transactions + state.pack.record_counts.bills + state.pack.record_counts.subscriptions;
-    if (totalRecords === 0) return;
-
-    state.exporting = true;
-    const btn = el('confirm-btn');
-    const original = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Exporting…';
-
-    try {
-        const includedSections = state.pack.sections_availability
-            .filter(s => s.status !== 'unavailable')
-            .map(s => s.key);
-
-        const limitations = [];
-        if (state.pack.period_comparison.status === 'unavailable') limitations.push(...state.pack.period_comparison.limitations);
-        if (state.pack.finance_predictability.status !== 'available') limitations.push(...state.pack.finance_predictability.limitations);
-
-        const exportRef = await ds.addReportExport(state.user.uid, {
-            report_type: 'monthly_report_pack',
-            period_start: isoFromDayKey(state.pack.period.start),
-            period_end: isoFromDayKey(state.pack.period.end),
-            formats: ['pdf_print', 'csv_bundle'],
-            status: 'generated',
-            included_sections: includedSections,
-            record_counts: { ...state.pack.record_counts },
-            warning_counts: { ...state.pack.warning_counts },
-            limitations
-        });
-
-        await ds.createExportAuditLog(state.user.uid, {
-            target_id: exportRef.id,
-            after: {
-                report_type: 'monthly_report_pack',
-                period_start: isoFromDayKey(state.pack.period.start),
-                period_end: isoFromDayKey(state.pack.period.end),
-                formats: ['pdf_print', 'csv_bundle'],
-                included_sections: includedSections,
-                record_counts: { ...state.pack.record_counts }
-            },
-            source: 'dashboard'
-        });
-
-        btn.textContent = 'Exported · audit logged';
-        // Re-enable after a moment so user can re-export if needed.
-        setTimeout(() => {
-            btn.disabled = false;
-            btn.textContent = original;
-            state.exporting = false;
-        }, 2500);
-    } catch (err) {
-        btn.disabled = false;
-        btn.textContent = original;
-        state.exporting = false;
-        // Surface friendly inline state — no raw Firebase error.
-        btn.dataset.error = '1';
-        const old = btn.textContent;
-        btn.textContent = 'Export failed';
-        setTimeout(() => { btn.textContent = old; btn.removeAttribute('data-error'); }, 2500);
-    }
-}
-
 function bindEvents() {
     el('back-btn')?.addEventListener('click', () => { window.location.href = '/reports'; });
     el('empty-back-btn')?.addEventListener('click', () => { window.location.href = '/reports'; });
     el('print-btn')?.addEventListener('click', handlePrint);
     el('download-csv-btn')?.addEventListener('click', handleDownloadCsv);
-    el('confirm-btn')?.addEventListener('click', handleConfirmExport);
 }
 
 // ---------- Boot ----------
@@ -747,6 +730,9 @@ onAuthStateChanged(auth, (user) => {
         }
         state.pack = payload.pack;
         state.sourceData = payload.sourceData || { transactions: [], bills: [], subscriptions: [] };
+        // Handoff payload is one-shot — clear it so a hard refresh shows
+        // the empty state instead of stale data from a previous period.
+        clearPreviewStorage();
         const period = state.pack.report_identity;
         el('toolbar-period').textContent = `${period.period_label} · Generated ${new Date(period.generated_at).toLocaleString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}`;
         showReport();

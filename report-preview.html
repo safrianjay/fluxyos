@@ -106,7 +106,8 @@
         }
 
         .brand-row { display: flex; align-items: center; gap: 12px; margin-bottom: 56px; }
-        .logo { width: 42px; height: 42px; border-radius: 12px; background: var(--orange); display: grid; place-items: center; color: #fff; font-weight: 900; font-size: 18px; }
+        .logo { width: 42px; height: 42px; flex-shrink: 0; }
+        .logo svg { width: 100%; height: 100%; display: block; }
         .brand-row strong { display: block; font-size: 18px; letter-spacing: -.02em; }
         .brand-row span { color: #cbd5e1; font-size: 12px; }
 
@@ -165,14 +166,85 @@
         .takeaway h3 { font-size: 18px; line-height: 1.2; }
         .takeaway p { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
 
-        .bar-chart { height: 260px; display: flex; align-items: flex-end; justify-content: space-around; gap: 28px; padding: 12px 12px 0; margin-top: 16px; }
-        .bar-item { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 14px; text-align: center; color: var(--ink); font-size: 13px; }
-        .bar-label-value { font-weight: 800; margin-bottom: 6px; font-size: 13px; font-family: var(--mono); }
-        .bar { width: min(100%, 110px); background: var(--navy); border-radius: 4px 4px 0 0; }
-        .bar.orange { background: var(--orange); }
-        .bar.green { background: var(--green); }
-        .bar.amber { background: var(--amber); }
-        .bar-name { min-height: 30px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.25; }
+        /* Axis-anchored bar chart */
+        .chart-wrap {
+            display: grid;
+            grid-template-columns: 72px 1fr;
+            gap: 12px;
+            height: 280px;
+            margin-top: 18px;
+        }
+        .chart-yaxis {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-bottom: 38px;
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            line-height: 1;
+        }
+        .chart-plot {
+            position: relative;
+            display: grid;
+            align-items: end;
+            grid-auto-flow: column;
+            grid-auto-columns: 1fr;
+            gap: 18px;
+            padding: 0 6px 38px;
+            border-left: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+        }
+        .chart-plot::before {
+            content: "";
+            position: absolute;
+            inset: 0 0 38px 0;
+            background-image:
+                linear-gradient(to top, transparent 0, transparent calc(25% - 1px), #eef2f7 calc(25% - 1px), #eef2f7 25%, transparent 25%),
+                linear-gradient(to top, transparent 0, transparent calc(50% - 1px), #eef2f7 calc(50% - 1px), #eef2f7 50%, transparent 50%),
+                linear-gradient(to top, transparent 0, transparent calc(75% - 1px), #eef2f7 calc(75% - 1px), #eef2f7 75%, transparent 75%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .chart-col {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            height: 100%;
+            z-index: 1;
+        }
+        .chart-col-value {
+            font-family: var(--mono);
+            font-weight: 700;
+            font-size: 12px;
+            margin-bottom: 6px;
+            color: var(--ink);
+            white-space: nowrap;
+        }
+        .chart-col-bar {
+            width: 100%;
+            max-width: 120px;
+            background: var(--navy);
+            border-radius: 4px 4px 0 0;
+            min-height: 4px;
+        }
+        .chart-col-bar.orange { background: var(--orange); }
+        .chart-col-bar.green { background: var(--green); }
+        .chart-col-bar.amber { background: var(--amber); }
+        .chart-col-label {
+            position: absolute;
+            top: 100%;
+            margin-top: 8px;
+            left: 0; right: 0;
+            text-align: center;
+            font-size: 12px;
+            color: var(--ink);
+            line-height: 1.2;
+        }
+        .chart-col-label small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; font-family: var(--mono); }
 
         table { width: 100%; border-collapse: collapse; font-size: 13px; break-inside: avoid; }
         thead th { text-align: left; padding: 12px 12px; background: var(--soft); color: #647084; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; vertical-align: bottom; }
@@ -292,9 +364,8 @@
         </div>
         <div class="toolbar-actions">
             <button id="back-btn" class="tbtn" type="button">← Back to Reports</button>
-            <button id="print-btn" class="tbtn primary" type="button">Print / Save PDF</button>
             <button id="download-csv-btn" class="tbtn" type="button">Download CSV Bundle</button>
-            <button id="confirm-btn" class="tbtn" type="button">Confirm Export</button>
+            <button id="print-btn" class="tbtn primary" type="button">Print / Save PDF</button>
         </div>
     </div>
 

@@ -455,19 +455,26 @@ function openFullReport() {
         const payload = {
             pack,
             // Pass raw source records so the full report can run CSV bundle
-            // and confirm-export without re-fetching from Firestore. Records
-            // contain only the same fields already shown on this page.
+            // without re-fetching from Firestore. Records contain only the
+            // fields already shown on this page.
             sourceData: serializableSourceData(reportsState.sourceData),
             userDisplayName: reportsState.userDisplayName,
             businessName: reportsState.businessName
         };
-        sessionStorage.setItem(REPORT_PREVIEW_STORAGE_KEY, JSON.stringify(payload));
+        // New tabs get a fresh sessionStorage, so persist the handoff in
+        // localStorage. The viewer reads and clears it once.
+        localStorage.setItem(REPORT_PREVIEW_STORAGE_KEY, JSON.stringify(payload));
     } catch (err) {
         window.showToast?.('Could not stage report preview. Please retry.', 'error');
         return;
     }
+    // Open the tab first so the popup blocker treats it as a direct
+    // response to the user gesture, then close the drawer.
+    const opened = window.open('/report-preview', '_blank', 'noopener');
+    if (!opened) {
+        window.showToast?.('Allow popups for FluxyOS, or check your browser settings.', 'info');
+    }
     closeReportPreview();
-    window.location.href = '/report-preview';
 }
 
 function serializableSourceData(source) {
