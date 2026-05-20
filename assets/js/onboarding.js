@@ -309,6 +309,7 @@ async function onSubmit() {
     const btn = document.getElementById('btn-submit');
     btn.disabled = true;
     btn.textContent = 'Submitting...';
+    showSubmitLoader();
 
     try {
         await data.saveOnboardingProfile(state.user.uid, {
@@ -331,11 +332,55 @@ async function onSubmit() {
         state.submitting = false;
         btn.disabled = false;
         btn.textContent = 'Submit setup';
+        hideSubmitLoader();
         alert('Could not complete setup. Please try again.');
         return;
     }
 
     routeAfterSubmit(state.fields.first_action);
+}
+
+function showSubmitLoader() {
+    if (document.getElementById('onboarding-submit-loader')) return;
+    const host = document.querySelector('.onboarding-content');
+    if (!host) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'onboarding-submit-loader';
+    overlay.className = 'onboarding-submit-loader';
+    overlay.innerHTML = `
+        <div class="onboarding-submit-loader-card">
+            <div class="absolute -inset-12 scan-loader-bg-purple opacity-25 blur-2xl"></div>
+            <div class="absolute inset-0" style="background: radial-gradient(ellipse at center, rgba(255,255,255,0) 30%, rgba(255,255,255,0.92) 78%);"></div>
+            <span class="scan-star scan-star-lg" style="top:14%; left:12%; animation-delay: 0s;"></span>
+            <span class="scan-star" style="top:22%; right:14%; animation-delay: 0.7s;"></span>
+            <span class="scan-star scan-star-sm" style="top:8%; left:46%; animation-delay: 1.1s;"></span>
+            <span class="scan-star scan-star-sm" style="top:46%; left:6%; animation-delay: 1.6s;"></span>
+            <span class="scan-star" style="bottom:24%; right:10%; animation-delay: 0.4s;"></span>
+            <span class="scan-star scan-star-sm" style="bottom:14%; left:24%; animation-delay: 1.3s;"></span>
+            <span class="scan-star scan-star-lg" style="bottom:10%; right:30%; animation-delay: 0.2s;"></span>
+            <span class="scan-star scan-star-sm" style="top:52%; right:7%; animation-delay: 0.9s;"></span>
+            <span class="scan-star scan-star-sm" style="bottom:6%; left:50%; animation-delay: 1.8s;"></span>
+            <div class="onboarding-submit-loader-inner">
+                <div class="onboarding-submit-loader-halo">
+                    <div class="absolute inset-0 rounded-full scan-loader-halo-purple opacity-70 blur-2xl"></div>
+                    <div class="absolute inset-3 rounded-full scan-loader-halo-purple opacity-55 blur-md"></div>
+                    <div class="relative scan-loader-pulse">
+                        <div class="onboarding-submit-loader-tile">
+                            <img src="assets/images/favicon.svg" alt="" class="onboarding-submit-loader-mark scan-loader-spin" aria-hidden="true">
+                        </div>
+                    </div>
+                </div>
+                <p class="onboarding-submit-loader-title">Setting up your workspace…</p>
+                <p class="onboarding-submit-loader-sub">This usually takes a few seconds.</p>
+            </div>
+        </div>
+    `;
+    host.appendChild(overlay);
+}
+
+function hideSubmitLoader() {
+    const overlay = document.getElementById('onboarding-submit-loader');
+    if (overlay) overlay.remove();
 }
 
 function routeAfterSubmit(firstAction) {

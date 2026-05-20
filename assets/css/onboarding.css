@@ -430,6 +430,81 @@
 }
 .onboarding-btn--ghost:hover { background: #F9FAFB; color: #0B0F19; }
 
+/* Submit loader (uses shared scan-loader-* classes) */
+.onboarding-content { position: relative; }
+.onboarding-submit-loader {
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    border-radius: 24px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    animation: onboardingLoaderFade 280ms ease-out both;
+}
+.onboarding-submit-loader-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 20px;
+    background: #FFFFFF;
+    border: 1px solid #F1F2F4;
+    width: 100%;
+    max-width: 460px;
+}
+.onboarding-submit-loader-inner {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 56px 24px 48px;
+}
+.onboarding-submit-loader-halo {
+    position: relative;
+    width: 144px;
+    height: 144px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.onboarding-submit-loader-tile {
+    width: 80px;
+    height: 80px;
+    border-radius: 16px;
+    background: #FFFFFF;
+    box-shadow: 0 12px 36px rgba(124, 58, 237, 0.18), 0 1px 2px rgba(0,0,0,0.04);
+    border: 1px solid #EDE9FE;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.onboarding-submit-loader-mark {
+    width: 48px;
+    height: 48px;
+}
+.onboarding-submit-loader-title {
+    margin: 24px 0 4px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #0B0F19;
+}
+.onboarding-submit-loader-sub {
+    margin: 0;
+    font-size: 12px;
+    color: #6B7280;
+}
+@keyframes onboardingLoaderFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .onboarding-submit-loader { animation: none; }
+}
+
 /* Accessibility helper */
 .sr-only {
     position: absolute;
