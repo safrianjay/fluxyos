@@ -454,7 +454,10 @@ class DataService {
     async createExportAuditLog(userId, payload = {}) {
         return await this.addAuditLog(userId, {
             action: 'export.create',
-            target_collection: 'reports',
+            // Must be one of the values allowed by firestore.rules
+            // isValidAuditLog. Reports & Exports uses the dedicated "exports"
+            // slot rather than "reports".
+            target_collection: 'exports',
             target_id: payload.target_id || '',
             before: null,
             after: payload.after || null,

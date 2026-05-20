@@ -555,8 +555,9 @@ current month. `DataService` exposes `getTransactionsForPeriod`,
 
 - Generation never starts without an explicit Confirm export click.
 - CSV files store **raw integer amounts** (never `Rp 1.234.567` display strings).
-- Audit log (`action: "export.create"`, `target_collection: "reports"`) is
-  written **before** files are delivered. If the log write fails, no file is
+- Audit log (`action: "export.create"`, `target_collection: "exports"`) is
+  written **before** files are delivered. `"exports"` is the value allowlisted
+  by `firestore.rules` (`isValidAuditLog`) for this flow. If the log write fails, no file is
   downloaded.
 - Audit log `after` payload contains report type, period, formats,
   included sources, `record_counts`, and `warning_counts`. **It does not
