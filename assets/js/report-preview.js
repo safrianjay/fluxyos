@@ -721,7 +721,6 @@ function handleDownloadCsv() {
 }
 
 function bindEvents() {
-    el('back-btn')?.addEventListener('click', () => { window.location.href = '/reports'; });
     el('empty-back-btn')?.addEventListener('click', () => { window.location.href = '/reports'; });
     el('print-btn')?.addEventListener('click', handlePrint);
     el('download-csv-btn')?.addEventListener('click', handleDownloadCsv);
