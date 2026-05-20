@@ -258,6 +258,10 @@
 
         async function saveAccountDetails(event) {
             event.preventDefault();
+            // event.currentTarget is null'd by the browser as soon as the
+            // synchronous handler returns. We await a confirm dialog below,
+            // so the form reference must be captured here.
+            const formEl = event.currentTarget || event.target?.closest('form');
             const payload = {
                 business_name: getValue('company-business-name'),
                 business_type: currentCompany.business_type || '',
@@ -265,9 +269,6 @@
                 entity_label: getValue('company-entity-label')
             };
 
-            // If the business entity name actually changed, surface the
-            // implications before persisting and reload after save so the
-            // sidebar entity switcher picks up the new value immediately.
             const prevName = (currentCompany.business_name || '').trim();
             const nextName = (payload.business_name || '').trim();
             const nameChanged = prevName.length > 0 && nextName.length > 0 && prevName !== nextName;
@@ -286,7 +287,7 @@
             }
 
             console.log('[entity-name] saving', { prevName, nextName, nameChanged });
-            const saved = await saveSection(event.currentTarget, 'company-settings-status', () => ds.saveCompanySettings(auth.currentUser.uid, payload), 'Account details saved.');
+            const saved = await saveSection(formEl, 'company-settings-status', () => ds.saveCompanySettings(auth.currentUser.uid, payload), 'Account details saved.');
             console.log('[entity-name] save result', { saved });
             if (saved) {
                 currentCompany = { ...currentCompany, ...payload };
@@ -320,7 +321,7 @@
                 window.showToast?.('Session expired. Please log in again.', 'error');
                 return false;
             }
-            const button = form.querySelector('.settings-save-btn');
+            const button = form?.querySelector?.('.settings-save-btn') || null;
             const status = document.getElementById(statusId);
             const originalLabel = button?.textContent || 'Save';
             setButtonLoading(button, true, 'Saving...');
