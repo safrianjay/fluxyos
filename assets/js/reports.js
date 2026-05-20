@@ -214,7 +214,7 @@ async function loadReportData() {
     if (!reportsState.user) return;
     reportsState.loading = true;
     reportsState.error = null;
-    renderLoadingStates(true);
+    renderLoadingStates();
     const { start, end } = reportsState.selectedPeriod;
     try {
         const [transactions, bills, subscriptions, exports] = await Promise.all([
@@ -239,9 +239,9 @@ async function loadReportData() {
 
 // ---------- Rendering ----------
 
-function renderLoadingStates(loading) {
-    el('reports-loading-bar')?.classList.toggle('hidden', !loading);
-    el('reports-period-label').textContent = periodLabel(reportsState.selectedPeriod);
+function renderLoadingStates() {
+    const label = el('reports-period-label');
+    if (label) label.textContent = periodLabel(reportsState.selectedPeriod);
 }
 
 function renderAll() {
