@@ -273,11 +273,15 @@
             const nameChanged = prevName.length > 0 && nextName.length > 0 && prevName !== nextName;
 
             if (nameChanged) {
-                const ok = window.confirm(
-                    `You're about to change the business entity name from "${prevName}" to "${nextName}".\n\n` +
-                    `This is the name shown across FluxyOS — the sidebar entity switcher, exports, audit logs, and any AI summaries will use the new name from now on. Existing records (transactions, bills, subscriptions) stay attached to this workspace and are not retroactively rebranded.\n\n` +
-                    `Continue?`
-                );
+                const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) =>
+                    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+                const ok = await window.showConfirmDialog?.({
+                    kicker: 'Workspace name',
+                    title: 'Change business name?',
+                    body: `<strong>${escapeHtml(prevName)}</strong> → <strong>${escapeHtml(nextName)}</strong> will appear in the sidebar, exports, audit logs, and AI summaries from now on. Existing transactions, bills, and subscriptions stay in this workspace.`,
+                    confirmLabel: 'Change name',
+                    cancelLabel: 'Cancel'
+                });
                 if (!ok) return;
             }
 

@@ -103,6 +103,86 @@ window.__compressReceiptImage = compressReceiptImage;
     };
 })();
 
+// ---------- Confirm Dialog ----------
+// Branded replacement for window.confirm(). Returns Promise<boolean>.
+// Usage:
+//   const ok = await window.showConfirmDialog({
+//       kicker: 'Workspace name',
+//       title: 'Change business name?',
+//       body: '…',
+//       confirmLabel: 'Change name',
+//       cancelLabel: 'Cancel',
+//       tone: 'default' | 'danger'
+//   });
+window.showConfirmDialog = function(options = {}) {
+    const {
+        kicker = '',
+        title = 'Are you sure?',
+        body = '',
+        confirmLabel = 'Confirm',
+        cancelLabel = 'Cancel',
+        tone = 'default'
+    } = options;
+
+    return new Promise((resolve) => {
+        document.getElementById('fluxy-confirm-modal')?.remove();
+        const isDanger = tone === 'danger';
+        const wrap = document.createElement('div');
+        wrap.id = 'fluxy-confirm-modal';
+        wrap.innerHTML = `
+            <div class="fluxy-confirm-overlay" data-confirm-action="cancel"></div>
+            <div class="fluxy-confirm-card" role="dialog" aria-modal="true" aria-labelledby="fluxy-confirm-title" aria-describedby="fluxy-confirm-body">
+                <div class="fluxy-confirm-icon ${isDanger ? 'is-danger' : ''}" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        ${isDanger
+                            ? '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'
+                            : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
+                    </svg>
+                </div>
+                ${kicker ? `<p class="fluxy-confirm-kicker">${kicker}</p>` : ''}
+                <h3 id="fluxy-confirm-title" class="fluxy-confirm-title">${title}</h3>
+                ${body ? `<p id="fluxy-confirm-body" class="fluxy-confirm-body">${body}</p>` : ''}
+                <div class="fluxy-confirm-actions">
+                    <button type="button" class="fluxy-confirm-btn fluxy-confirm-btn--ghost" data-confirm-action="cancel">${cancelLabel}</button>
+                    <button type="button" class="fluxy-confirm-btn fluxy-confirm-btn--primary ${isDanger ? 'is-danger' : ''}" data-confirm-action="confirm">${confirmLabel}</button>
+                </div>
+            </div>
+        `;
+        wrap.className = 'fluxy-confirm-modal';
+        document.body.appendChild(wrap);
+
+        // Lock background scroll while dialog is open
+        const prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        const close = (result) => {
+            document.removeEventListener('keydown', onKey);
+            wrap.classList.add('is-closing');
+            window.setTimeout(() => {
+                wrap.remove();
+                document.body.style.overflow = prevOverflow;
+                resolve(result);
+            }, 140);
+        };
+        const onKey = (e) => {
+            if (e.key === 'Escape') close(false);
+            else if (e.key === 'Enter') close(true);
+        };
+
+        wrap.addEventListener('click', (e) => {
+            const action = e.target?.closest('[data-confirm-action]')?.dataset?.confirmAction;
+            if (action === 'confirm') close(true);
+            else if (action === 'cancel') close(false);
+        });
+        document.addEventListener('keydown', onKey);
+
+        // Focus the primary button so Enter confirms intuitively
+        window.setTimeout(() => {
+            wrap.querySelector('[data-confirm-action="confirm"]')?.focus();
+        }, 50);
+    });
+};
+
 window.showAddTransactionModal = function(options = {}) {
     const {
         title = "Add Transaction",
