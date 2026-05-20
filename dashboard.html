@@ -10,6 +10,7 @@
     
     <link rel="stylesheet" href="assets/css/shared-dashboard.css">
     <link rel="stylesheet" href="assets/css/dashboard.css">
+    <link rel="stylesheet" href="assets/css/platform-learning.css">
 </head>
 <body class="dashboard-page flex h-screen overflow-hidden text-gray-900 bg-gray-50">
 
@@ -47,7 +48,7 @@
                 <div id="dashboard-date-range-picker" class="hidden sm:block"></div>
 
                 <!-- AI ENTRY POINT -->
-                <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                <button onclick="window.toggleFluxyAI()" data-tour-target="fluxy-ai-entry" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
                     <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     Fluxy AI
                 </button>
@@ -58,12 +59,14 @@
         <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
             <div class="max-w-[1400px] mx-auto space-y-6">
 
+                <div id="quick-start-container" class="hidden"></div>
+
                 <!-- 1. Overview Analytics Summary -->
                 <section class="overview-summary-shell">
                     <div class="overview-kpi-grid">
 
                         <!-- Live Revenue -->
-                        <div class="overview-kpi-card">
+                        <div class="overview-kpi-card" data-tour-target="dashboard-revenue-kpi">
                             <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Live Revenue</p>
                             <p id="kpi-revenue" class="overview-kpi-value text-gray-900 tabular-nums">Rp 0</p>
                             <p class="text-[11px] text-gray-400 mt-1">
@@ -73,14 +76,14 @@
                         </div>
 
                         <!-- OpEx & Ad Spend -->
-                        <div class="overview-kpi-card">
+                        <div class="overview-kpi-card" data-tour-target="dashboard-opex-kpi">
                             <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">OpEx &amp; Ad Spend</p>
                             <p id="kpi-opex" class="overview-kpi-value text-gray-900 tabular-nums">Rp 0</p>
                             <p class="text-[11px] text-gray-400 mt-1">Mapped to 14 budgets</p>
                         </div>
 
                         <!-- Gross Margin -->
-                        <div class="overview-kpi-card">
+                        <div class="overview-kpi-card" data-tour-target="dashboard-margin-kpi">
                             <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Gross Margin</p>
                             <p id="kpi-margin" class="text-2xl font-bold text-gray-900 mt-1">76.0%</p>
                             <div class="w-full bg-gray-100 rounded-full h-1.5 mt-3">
@@ -89,7 +92,7 @@
                         </div>
 
                         <!-- Needs Action -->
-                        <div class="overview-kpi-card">
+                        <div class="overview-kpi-card" data-tour-target="dashboard-needs-action">
                             <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Needs Action</p>
                             <p id="kpi-action-count" class="text-2xl font-bold text-red-600 mt-1">5 Items</p>
                             <p class="text-[11px] text-gray-400 mt-1">
@@ -101,7 +104,7 @@
                     </div>
 
                     <!-- Wide Summary Chart -->
-                    <div class="overview-chart-panel">
+                    <div class="overview-chart-panel" data-tour-target="dashboard-cashflow">
                         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
                             <div>
                                 <h3 class="text-[16px] font-bold text-gray-900">Cash Flow Projection</h3>
@@ -127,7 +130,7 @@
                 <section class="overview-lower-grid">
 
                     <!-- Left: Live Ledger -->
-                    <div class="overview-ledger-panel bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+                    <div class="overview-ledger-panel bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col" data-tour-target="dashboard-ledger-preview">
                         <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
                                 <h3 class="text-[16px] font-bold text-gray-900">Live Ledger</h3>
@@ -169,7 +172,7 @@
                     </div>
 
                     <!-- Right: FluxyOS Brain (Formerly Copilot) -->
-                    <div class="overview-brain-panel ai-gradient-border bg-white shadow-sm flex flex-col p-5">
+                    <div class="overview-brain-panel ai-gradient-border bg-white shadow-sm flex flex-col p-5" data-tour-target="dashboard-ai-panel">
                         <div class="flex items-center gap-2.5 mb-5">
                             <!-- Unified Landing Page Logo for Brain -->
                             <div class="w-8 h-8 text-[#EA580C] shadow-sm flex-shrink-0">
@@ -253,6 +256,7 @@
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { applyToPage } from "./assets/js/onboarding-gate.js";
+        import { renderQuickStartLearning, continuePendingTourIfAny } from "./assets/js/platform-learning.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -276,8 +280,13 @@
             if (user) {
                 clearTimeout(checkTimeout);
                 const gated = await applyToPage(user, { pageKey: 'overview' });
-                if (gated) return;
-                if (typeof loadDashboard === 'function') loadDashboard();
+                if (gated) {
+                    sessionStorage.removeItem('fluxy_pending_tour');
+                    return;
+                }
+                if (typeof loadDashboard === 'function') await loadDashboard();
+                await renderQuickStartLearning('quick-start-container', { userId: user.uid });
+                await continuePendingTourIfAny(user.uid);
             }
         });
     </script>

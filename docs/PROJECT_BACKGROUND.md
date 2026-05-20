@@ -181,6 +181,34 @@ guard (for in-page gate rendering). `DataService` exposes
 no PII persisted beyond legal name + phone in `profile`. Storage paths remain
 null.
 
+### 4g. Platform Learning — `users/{userId}/platform_learning/state`
+
+User-scoped post-KYC learning progress. This is an educational layer only and
+must never bypass or replace the onboarding gate.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `dismissed` | bool | If true, do not auto-render Quick ways to get started |
+| `dismissed_at` | Firestore Timestamp \| null | Set when the learning section is dismissed |
+| `first_rendered_at` | Firestore Timestamp | First time the learning section was rendered |
+| `last_seen_at` | Firestore Timestamp | Latest learning section or tour activity |
+| `started_tours` | string[] | Tour IDs the user started |
+| `completed_tours` | string[] | Tour IDs the user completed |
+| `skipped_tours` | string[] | Tour IDs the user skipped |
+| `active_tour` | string \| null | Current tour intent, if any |
+| `updated_at` | Firestore Timestamp | Server timestamp for the latest mutation |
+
+Valid tour IDs: `overview`, `ledger`, `bills`, `fluxy_ai`, `revenue_sync`,
+`subscriptions`.
+
+`DataService` exposes `getPlatformLearningState`, `savePlatformLearningState`,
+`markPlatformTourStarted`, `markPlatformTourCompleted`,
+`markPlatformTourSkipped`, and `dismissPlatformLearning`.
+
+**Critical order:** App pages must run auth and `FluxyOnboardingGate.applyToPage`
+first. If the onboarding gate renders, clear `sessionStorage.fluxy_pending_tour`
+and do not render Quick ways to get started or start coachmarks.
+
 ---
 
 ## 5. Business Logic Rules

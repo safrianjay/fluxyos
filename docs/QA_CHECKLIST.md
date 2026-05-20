@@ -171,6 +171,21 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 17 | No global onboarding/businesses/KYC collections appear in Firestore; all writes stay under `users/{uid}/onboarding/...` |
 | 18 | Responsive — onboarding form fields are single-column at 375px; gate card readable and CTA tappable; no horizontal scroll |
 
+### D3. Post-KYC Platform Learning (platform-learning.js, dashboard app pages)
+
+| # | Check |
+|---|-------|
+| 1 | New user with incomplete onboarding sees the dashboard gate only; Quick ways to get started does not render |
+| 2 | Pending `sessionStorage.fluxy_pending_tour` is cleared when the onboarding gate renders |
+| 3 | Legacy/exempt users are not forced into platform learning or coachmark tours |
+| 4 | New user with `onboarding_completed: true` sees Quick ways to get started near the top of Overview |
+| 5 | Dismiss hides the section, writes `users/{uid}/platform_learning/state.dismissed: true`, and stays hidden after refresh |
+| 6 | Each card stores the pending tour, navigates to the correct page, and starts after auth, gate check, and page render |
+| 7 | Coachmarks show overlay, target highlight, step count, Back, Next, Skip, and Done |
+| 8 | Skip and Done write only to `users/{uid}/platform_learning/state`; no financial collections are changed |
+| 9 | Missing tour targets are skipped gracefully; if no targets exist, show "This guide is not available on this page yet." |
+| 10 | Mobile at 375px: quick-start cards and coachmark popovers are readable with no horizontal overflow |
+
 ### E. Add Transaction / Bill / Subscription (shared-dashboard.js, db-service.js)
 
 | # | Check |

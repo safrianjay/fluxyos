@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="assets/css/platform-learning.css">
 </head>
 <body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
 
@@ -28,7 +29,7 @@
                 </div>
             </div>
             <div class="flex items-center gap-4">
-                <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                <button onclick="window.toggleFluxyAI()" data-tour-target="fluxy-ai-entry" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
                     <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     Fluxy AI
                 </button>
@@ -54,7 +55,7 @@
                             <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2m4-5h10"></path></svg>
                             Scan Bill
                         </button>
-                        <button onclick="window.showAddTransactionModal({ title: 'Add New Bill', submitLabel: 'Save Bill', defaultCategory: 'Operations', context: 'bill' })" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
+                        <button onclick="window.showAddTransactionModal({ title: 'Add New Bill', submitLabel: 'Save Bill', defaultCategory: 'Operations', context: 'bill' })" data-tour-target="bill-add" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                             Add New Bill
                         </button>
@@ -65,7 +66,7 @@
                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
 
                     <!-- Total Bills -->
-                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5" data-tour-target="bill-due-summary">
                         <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Bills</p>
                         <p id="card-total-bills" class="text-2xl font-bold text-gray-900 mt-1">—</p>
                         <p class="text-[11px] text-gray-400 mt-1">Current obligations</p>
@@ -102,7 +103,7 @@
                 </div>
 
                 <!-- Upcoming Payment Timeline -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden" data-tour-target="bill-timeline">
                     <div class="px-6 py-4 border-b border-gray-100">
                         <h2 class="text-[14px] font-bold text-gray-900">Upcoming Payment Timeline</h2>
                         <p class="text-[12px] text-gray-400 mt-0.5">Bills grouped by payment urgency</p>
@@ -119,7 +120,7 @@
                         <p id="bill-table-count" class="text-[12px] text-gray-400"></p>
                     </div>
                     <div id="bill-empty-state" class="hidden"></div>
-                    <div id="bill-table-container" class="overflow-x-auto">
+                    <div id="bill-table-container" data-tour-target="bill-table" class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-50 border-b border-gray-200">
@@ -128,7 +129,7 @@
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Due Date</th>
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
                                     <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider" data-tour-target="bill-action-column">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="bill-table-body" class="divide-y divide-gray-100 text-[13px]">
@@ -211,6 +212,7 @@
         import { collection, getDocs, limit, orderBy, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import DataService from './assets/js/db-service.js';
         import { applyToPage } from './assets/js/onboarding-gate.js';
+        import { continuePendingTourIfAny } from './assets/js/platform-learning.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -763,12 +765,16 @@
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 const gated = await applyToPage(user, { pageKey: 'bills' });
-                if (gated) return;
-                window.loadBills();
+                if (gated) {
+                    sessionStorage.removeItem('fluxy_pending_tour');
+                    return;
+                }
+                await window.loadBills();
                 const params = new URLSearchParams(window.location.search);
                 if (params.get('openAddBill') === '1' && typeof window.showAddBillModal === 'function') {
                     setTimeout(() => window.showAddBillModal(), 300);
                 }
+                await continuePendingTourIfAny(user.uid);
             } else {
                 window.location.replace('/login');
             }
