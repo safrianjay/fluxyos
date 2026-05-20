@@ -110,6 +110,33 @@ function axisTicks(maxValue) {
     return [top, top * 0.75, top * 0.5, top * 0.25, 0];
 }
 
+// Horizontal bars — preferred when value distribution is skewed so the
+// panel fills its canvas honestly instead of leaving large empty regions.
+function renderHorizontalBarChart(items) {
+    const values = items.map(i => Math.abs(Number(i.value) || 0));
+    const top = niceMax(Math.max(...values, 0)) || 1;
+    return `
+        <div class="hchart">
+            ${items.map(item => {
+                const v = Math.abs(Number(item.value) || 0);
+                const widthPct = top > 0 ? (v / top) * 100 : 0;
+                const tone = item.color ? ` ${item.color}` : '';
+                const sub = item.sublabel ? `<span class="hchart-sub">${escapeHtml(item.sublabel)}</span>` : '';
+                return `
+                    <div class="hchart-row">
+                        <div class="hchart-label">
+                            <strong>${escapeHtml(item.label || '')}</strong>
+                            ${sub}
+                        </div>
+                        <div class="hchart-track">
+                            <div class="hchart-fill${tone}" style="width:${widthPct.toFixed(1)}%;"></div>
+                        </div>
+                        <div class="hchart-value">${formatRupiahCompact(item.value)}</div>
+                    </div>`;
+            }).join('')}
+        </div>`;
+}
+
 function renderBarChart(items, { yAxisLabel = '' } = {}) {
     const values = items.map(i => Math.abs(Number(i.value) || 0));
     const top = niceMax(Math.max(...values, 0)) || 1;
@@ -477,12 +504,12 @@ function renderExpenseBreakdown(pack) {
             <div class="card"><p style="margin:0;color:var(--muted);font-size:15px;">No expense records in the selected period.</p></div>
         </section>`;
     }
-    const chart = renderBarChart(eb.categories.slice(0, 4).map(c => ({
+    const chart = renderHorizontalBarChart(eb.categories.slice(0, 6).map(c => ({
         value: c.amount,
         label: c.category,
-        sublabel: `${c.pct}%`,
+        sublabel: `${c.pct}% of OpEx`,
         color: 'orange'
-    })), { yAxisLabel: 'Spend by category in IDR' });
+    })));
     return `
     <section class="section">
         <div class="report-top">

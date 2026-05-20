@@ -181,7 +181,8 @@
             align-items: flex-end;
             padding-bottom: 38px;
             font-family: var(--mono);
-            font-size: 10px;
+            font-size: 11px;
+            font-weight: 500;
             color: var(--muted);
             line-height: 1;
         }
@@ -218,10 +219,11 @@
         }
         .chart-col-value {
             font-family: var(--mono);
-            font-weight: 700;
+            font-weight: 500;
             font-size: 12px;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             color: var(--ink);
+            letter-spacing: -.01em;
             white-space: nowrap;
         }
         .chart-col-bar {
@@ -244,7 +246,30 @@
             color: var(--ink);
             line-height: 1.2;
         }
-        .chart-col-label small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; font-family: var(--mono); }
+        .chart-col-label small { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; font-family: var(--mono); font-weight: 500; }
+
+        /* Horizontal bar chart — used when value distribution is skewed
+           (e.g., one dominant category) so the panel doesn't read as empty. */
+        .hchart { display: grid; gap: 14px; margin-top: 14px; }
+        .hchart-row {
+            display: grid;
+            grid-template-columns: 150px minmax(0, 1fr) 100px;
+            gap: 16px;
+            align-items: center;
+        }
+        .hchart-label strong { display: block; font-size: 13px; color: var(--ink); font-weight: 600; line-height: 1.2; }
+        .hchart-label .hchart-sub { display: block; color: var(--muted); font-family: var(--mono); font-size: 11px; margin-top: 3px; font-weight: 500; }
+        .hchart-track { height: 26px; background: #eef2f7; border-radius: 6px; overflow: hidden; }
+        .hchart-fill { height: 100%; background: var(--navy); border-radius: 6px; min-width: 4px; }
+        .hchart-fill.orange { background: var(--orange); }
+        .hchart-fill.green { background: var(--green); }
+        .hchart-fill.amber { background: var(--amber); }
+        .hchart-value { text-align: right; font-family: var(--mono); font-weight: 500; font-size: 13px; color: var(--ink); letter-spacing: -.01em; }
+
+        @media (max-width: 720px) {
+            .hchart-row { grid-template-columns: 1fr; }
+            .hchart-value { text-align: left; }
+        }
 
         table { width: 100%; border-collapse: collapse; font-size: 13px; break-inside: avoid; }
         thead th { text-align: left; padding: 12px 12px; background: var(--soft); color: #647084; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; vertical-align: bottom; }
