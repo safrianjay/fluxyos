@@ -272,7 +272,11 @@ async function onContinue() {
         }
     } catch (err) {
         // Generic feedback — never expose Firebase error strings
-        alert('Could not save your progress. Please try again.');
+        await (window.showAlertDialog?.({
+            title: 'Could not save your progress',
+            body: 'Something went wrong while saving this step. Check your connection and try again — your previous answers are still here.',
+            confirmLabel: 'OK'
+        }) ?? Promise.resolve());
         return;
     }
 
@@ -340,7 +344,12 @@ async function onSubmit() {
         btn.disabled = false;
         btn.textContent = 'Submit setup';
         hideSubmitLoader();
-        alert('Could not complete setup. Please try again.');
+        await (window.showAlertDialog?.({
+            title: 'Could not complete setup',
+            body: 'Something went wrong while creating your workspace. Check your connection and try again — your answers are still here.',
+            confirmLabel: 'OK',
+            tone: 'danger'
+        }) ?? Promise.resolve());
         return;
     }
 

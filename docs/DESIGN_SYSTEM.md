@@ -78,6 +78,50 @@ Mobile/touch: hover is desktop-only. Charts that would hide their data values on
 
 Reference implementations: Revenue Sync Volume (`revenue-sync.html` `renderVolumeChart`) and Ledger Volume (`ledger.html` `renderVolumeChart`). See [docs/COMPONENT_GUIDE.md](COMPONENT_GUIDE.md) Recipe 7 for the build steps and [docs/PROJECT_BACKGROUND.md §6](PROJECT_BACKGROUND.md) for the helper API.
 
+### 5. Dialog (Confirmation & Alert Popups)
+
+There is one canonical popup component in FluxyOS. **Never call `window.confirm()` or `window.alert()` directly** — they break the design system and produce unstyled OS dialogs.
+
+Use the helpers in `assets/js/shared-dashboard.js`:
+
+```js
+const ok = await window.showConfirmDialog({
+    title: 'Change business name?',
+    body: '<strong>Old</strong> → <strong>New</strong> will appear in the sidebar, exports, audit logs, and AI summaries.',
+    confirmLabel: 'Change name',
+    cancelLabel: 'Cancel',
+    tone: 'default'  // or 'danger' for destructive actions
+});
+if (!ok) return;
+```
+
+```js
+await window.showAlertDialog({
+    title: 'Could not save your progress',
+    body: 'Check your connection and try again — your previous answers are still here.',
+    confirmLabel: 'OK',
+    tone: 'danger'
+});
+```
+
+**Component contract:**
+
+- White card, `gray-200` border, `rounded-xl` (16px), `0 24px 48px rgba(11,15,25,0.18)` shadow.
+- Backdrop: `rgba(11,15,25,0.5)` with 6px backdrop-blur.
+- 3px gradient accent strip at the top of the card — orange (`#EA580C → #F97316`) for default tone, red (`#DC2626 → #EF4444`) for danger. No icons inside the card.
+- Title: 18px, weight 700, deep-navy (`#0B0F19`), -0.01em tracking.
+- Body: 14px, `gray-600`, line-height 1.55, max 56ch. Inline HTML allowed (`<strong>` etc.). Caller must escape any user-supplied substring before interpolating.
+- Actions bottom-right: ghost `Cancel` then primary `Confirm`. `Confirm` is deep-navy by default, red for `tone: 'danger'`. For `showAlertDialog`, no cancel button — single OK.
+- Behavior: **Enter** confirms, **Escape** cancels, overlay click cancels, primary button auto-focused, background scroll locked.
+- Fade + 12px-rise entrance (220ms ease-out), fade + 8px-drop exit (140ms). Respects `prefers-reduced-motion`.
+- Returns `Promise<boolean>` from `showConfirmDialog`, `Promise<void>` from `showAlertDialog`.
+
+**When to use which tone:**
+- `default`: anything that affects display, navigation, or non-destructive workspace state (rename, switch entity, change setting).
+- `danger`: deletes, irreversible writes, sign-out everywhere, downgrades.
+
+Reference implementations: business-name change confirm in [settings-business.html](../settings-business.html), and the two error-path alerts in [assets/js/onboarding.js](../assets/js/onboarding.js).
+
 ---
 
 ## 📐 Layout & Spacing

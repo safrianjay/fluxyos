@@ -103,55 +103,49 @@ window.__compressReceiptImage = compressReceiptImage;
     };
 })();
 
-// ---------- Confirm Dialog ----------
-// Branded replacement for window.confirm(). Returns Promise<boolean>.
-// Usage:
-//   const ok = await window.showConfirmDialog({
-//       kicker: 'Workspace name',
-//       title: 'Change business name?',
-//       body: '…',
-//       confirmLabel: 'Change name',
-//       cancelLabel: 'Cancel',
-//       tone: 'default' | 'danger'
-//   });
-window.showConfirmDialog = function(options = {}) {
+// ---------- Dialog (canonical popup component) ----------
+// Single branded popup used everywhere in FluxyOS — replaces native
+// window.confirm() and window.alert(). Two thin wrappers:
+//   • window.showConfirmDialog(opts) → Promise<boolean>  (Cancel / Confirm)
+//   • window.showAlertDialog(opts)   → Promise<void>      (single OK)
+// Opts: { title, body, confirmLabel, cancelLabel, tone }
+// tone: 'default' | 'danger'
+// body accepts inline HTML (caller is responsible for escaping user input).
+window.showFluxyDialog = function(options = {}) {
     const {
-        kicker = '',
-        title = 'Are you sure?',
+        title = '',
         body = '',
-        confirmLabel = 'Confirm',
+        confirmLabel = 'Continue',
         cancelLabel = 'Cancel',
-        tone = 'default'
+        tone = 'default',
+        singleOk = false
     } = options;
 
     return new Promise((resolve) => {
-        document.getElementById('fluxy-confirm-modal')?.remove();
+        document.getElementById('fluxy-dialog')?.remove();
         const isDanger = tone === 'danger';
+
+        const cancelBtn = singleOk
+            ? ''
+            : `<button type="button" class="fluxy-dialog-btn fluxy-dialog-btn--ghost" data-dialog-action="cancel">${cancelLabel}</button>`;
+
         const wrap = document.createElement('div');
-        wrap.id = 'fluxy-confirm-modal';
+        wrap.id = 'fluxy-dialog';
+        wrap.className = 'fluxy-dialog';
         wrap.innerHTML = `
-            <div class="fluxy-confirm-overlay" data-confirm-action="cancel"></div>
-            <div class="fluxy-confirm-card" role="dialog" aria-modal="true" aria-labelledby="fluxy-confirm-title" aria-describedby="fluxy-confirm-body">
-                <div class="fluxy-confirm-icon ${isDanger ? 'is-danger' : ''}" aria-hidden="true">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        ${isDanger
-                            ? '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'
-                            : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
-                    </svg>
-                </div>
-                ${kicker ? `<p class="fluxy-confirm-kicker">${kicker}</p>` : ''}
-                <h3 id="fluxy-confirm-title" class="fluxy-confirm-title">${title}</h3>
-                ${body ? `<p id="fluxy-confirm-body" class="fluxy-confirm-body">${body}</p>` : ''}
-                <div class="fluxy-confirm-actions">
-                    <button type="button" class="fluxy-confirm-btn fluxy-confirm-btn--ghost" data-confirm-action="cancel">${cancelLabel}</button>
-                    <button type="button" class="fluxy-confirm-btn fluxy-confirm-btn--primary ${isDanger ? 'is-danger' : ''}" data-confirm-action="confirm">${confirmLabel}</button>
+            <div class="fluxy-dialog-overlay" data-dialog-action="cancel"></div>
+            <div class="fluxy-dialog-card" role="dialog" aria-modal="true" aria-labelledby="fluxy-dialog-title"${body ? ' aria-describedby="fluxy-dialog-body"' : ''}>
+                ${isDanger ? '<span class="fluxy-dialog-accent fluxy-dialog-accent--danger" aria-hidden="true"></span>' : '<span class="fluxy-dialog-accent" aria-hidden="true"></span>'}
+                <h3 id="fluxy-dialog-title" class="fluxy-dialog-title">${title}</h3>
+                ${body ? `<div id="fluxy-dialog-body" class="fluxy-dialog-body">${body}</div>` : ''}
+                <div class="fluxy-dialog-actions">
+                    ${cancelBtn}
+                    <button type="button" class="fluxy-dialog-btn fluxy-dialog-btn--primary ${isDanger ? 'is-danger' : ''}" data-dialog-action="confirm">${confirmLabel}</button>
                 </div>
             </div>
         `;
-        wrap.className = 'fluxy-confirm-modal';
         document.body.appendChild(wrap);
 
-        // Lock background scroll while dialog is open
         const prevOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
 
@@ -161,7 +155,7 @@ window.showConfirmDialog = function(options = {}) {
             window.setTimeout(() => {
                 wrap.remove();
                 document.body.style.overflow = prevOverflow;
-                resolve(result);
+                resolve(singleOk ? undefined : result);
             }, 140);
         };
         const onKey = (e) => {
@@ -170,18 +164,19 @@ window.showConfirmDialog = function(options = {}) {
         };
 
         wrap.addEventListener('click', (e) => {
-            const action = e.target?.closest('[data-confirm-action]')?.dataset?.confirmAction;
+            const action = e.target?.closest('[data-dialog-action]')?.dataset?.dialogAction;
             if (action === 'confirm') close(true);
             else if (action === 'cancel') close(false);
         });
         document.addEventListener('keydown', onKey);
-
-        // Focus the primary button so Enter confirms intuitively
         window.setTimeout(() => {
-            wrap.querySelector('[data-confirm-action="confirm"]')?.focus();
+            wrap.querySelector('[data-dialog-action="confirm"]')?.focus();
         }, 50);
     });
 };
+
+window.showConfirmDialog = (options = {}) => window.showFluxyDialog({ ...options, singleOk: false });
+window.showAlertDialog   = (options = {}) => window.showFluxyDialog({ confirmLabel: 'OK', ...options, singleOk: true });
 
 window.showAddTransactionModal = function(options = {}) {
     const {
