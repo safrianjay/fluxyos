@@ -286,13 +286,10 @@
                 if (!ok) return;
             }
 
-            console.log('[entity-name] saving', { prevName, nextName, nameChanged });
             const saved = await saveSection(formEl, 'company-settings-status', () => ds.saveCompanySettings(auth.currentUser.uid, payload), 'Account details saved.');
-            console.log('[entity-name] save result', { saved });
             if (saved) {
                 currentCompany = { ...currentCompany, ...payload };
                 if (nameChanged) {
-                    console.log('[entity-name] dispatching fluxy:entity-name-changed', payload.business_name);
                     window.dispatchEvent(new CustomEvent('fluxy:entity-name-changed', {
                         detail: {
                             uid: auth.currentUser?.uid,

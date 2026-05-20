@@ -44,7 +44,7 @@
                 aria-haspopup="listbox" aria-expanded="false">
                 <span class="entity-status-dot w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></span>
                 <span class="flex-1 min-w-0">
-                    <span class="entity-name block text-[12px] font-semibold text-[#1E2F4A] truncate leading-tight" data-entity-name>Global HQ</span>
+                    <span class="entity-name block text-[12px] font-semibold text-[#1E2F4A] truncate leading-tight" data-entity-name><span class="entity-name-skeleton" aria-hidden="true"></span></span>
                     <span class="entity-sub block text-[10px] text-slate-500 truncate leading-tight mt-0.5">Consolidated</span>
                 </span>
                 <svg class="entity-chevron w-3 h-3 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -53,7 +53,7 @@
                 <button type="button" class="entity-menu-item w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-50" role="option" aria-selected="true">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></span>
                     <span class="flex-1 min-w-0">
-                        <span class="block text-[12px] font-semibold text-[#1E2F4A] truncate leading-tight" data-entity-name>Global HQ</span>
+                        <span class="block text-[12px] font-semibold text-[#1E2F4A] truncate leading-tight" data-entity-name><span class="entity-name-skeleton" aria-hidden="true"></span></span>
                         <span class="block text-[10px] text-slate-500 truncate leading-tight">Consolidated</span>
                     </span>
                     <svg class="w-3 h-3 text-[#EA580C] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
@@ -205,16 +205,19 @@
     }
 
     function applyEntityName(name) {
+        const resolved = (name && String(name).trim()) || 'Global HQ';
         const targets = document.querySelectorAll('[data-entity-name]');
-        console.log('[entity-name] applyEntityName', { name, targetsFound: targets.length });
-        if (!name) return;
         targets.forEach((el) => {
-            el.textContent = name;
+            el.textContent = resolved;
+            el.removeAttribute('data-entity-name-loading');
         });
     }
 
     async function syncEntityName(app, uid) {
-        if (!app || !uid) return;
+        if (!app || !uid) {
+            applyEntityName(null); // resolve the shimmer to default
+            return;
+        }
         try {
             const fs = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
             const db = fs.getFirestore(app);
@@ -235,17 +238,17 @@
                     }
                 } catch (e) {}
             }
-            applyEntityName(name);
-        } catch (e) { /* silent */ }
+            applyEntityName(name); // always — null falls back to "Global HQ"
+        } catch (e) {
+            applyEntityName(null); // network/import failed — still resolve the shimmer
+        }
     }
 
     // Listen for live updates broadcast by Settings → Business (or any other
     // surface that mutates the workspace name) so the sidebar reflects the
     // change instantly with no reload required.
     window.addEventListener('fluxy:entity-name-changed', (event) => {
-        const next = event?.detail?.name;
-        console.log('[entity-name] event received', { next, detail: event?.detail });
-        applyEntityName(next);
+        applyEntityName(event?.detail?.name);
     });
 
     function inject() {

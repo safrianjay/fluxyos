@@ -379,6 +379,27 @@ main > header {
     50% { opacity: .5; }
 }
 
+/* Inline skeleton used for the sidebar entity name while it loads from
+   Firestore. Sized to match the 12px label so the row height stays stable. */
+.entity-name-skeleton {
+    display: inline-block;
+    width: 92px;
+    height: 11px;
+    border-radius: 6px;
+    background:
+        linear-gradient(90deg, #E5E7EB 0%, #F3F4F6 45%, #E5E7EB 100%);
+    background-size: 220% 100%;
+    animation: entitySkeletonShimmer 1.4s ease-in-out infinite;
+    vertical-align: middle;
+}
+@keyframes entitySkeletonShimmer {
+    0%   { background-position: 220% 0; }
+    100% { background-position: -220% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .entity-name-skeleton { animation: none; background: #E5E7EB; }
+}
+
 /* ── Fluxy Dialog (canonical popup) ────────────────────────────────────
    The single branded popup component used by window.showConfirmDialog,
    window.showAlertDialog, and window.showFluxyDialog. Replaces every
