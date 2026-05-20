@@ -325,6 +325,13 @@ async function onSubmit() {
             identity_document_status: 'not_uploaded',
             business_document_status: 'not_uploaded'
         });
+        // Mirror the business name into the canonical settings/company doc so
+        // the sidebar entity switcher and Settings → Business stay in sync.
+        try {
+            await data.saveCompanySettings(state.user.uid, {
+                business_name: state.fields.business_name
+            });
+        } catch (e) { /* non-fatal — onboarding can complete without this */ }
         await data.completeOnboarding(state.user.uid, {
             selected_first_action: state.fields.first_action
         });

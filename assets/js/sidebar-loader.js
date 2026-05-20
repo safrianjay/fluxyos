@@ -44,7 +44,7 @@
                 aria-haspopup="listbox" aria-expanded="false">
                 <span class="entity-status-dot w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></span>
                 <span class="flex-1 min-w-0">
-                    <span class="entity-name block text-[12px] font-semibold text-[#1E2F4A] truncate leading-tight">Global HQ</span>
+                    <span class="entity-name block text-[12px] font-semibold text-[#1E2F4A] truncate leading-tight" data-entity-name>Global HQ</span>
                     <span class="entity-sub block text-[10px] text-slate-500 truncate leading-tight mt-0.5">Consolidated</span>
                 </span>
                 <svg class="entity-chevron w-3 h-3 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -53,7 +53,7 @@
                 <button type="button" class="entity-menu-item w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-50" role="option" aria-selected="true">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></span>
                     <span class="flex-1 min-w-0">
-                        <span class="block text-[12px] font-semibold text-[#1E2F4A] truncate leading-tight">Global HQ</span>
+                        <span class="block text-[12px] font-semibold text-[#1E2F4A] truncate leading-tight" data-entity-name>Global HQ</span>
                         <span class="block text-[10px] text-slate-500 truncate leading-tight">Consolidated</span>
                     </span>
                     <svg class="w-3 h-3 text-[#EA580C] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
@@ -204,6 +204,36 @@
         });
     }
 
+    async function syncEntityName(app, uid) {
+        if (!app || !uid) return;
+        try {
+            const fs = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+            const db = fs.getFirestore(app);
+            let name = null;
+            try {
+                const compSnap = await fs.getDoc(fs.doc(db, `users/${uid}/settings/company`));
+                if (compSnap.exists()) {
+                    const v = compSnap.data()?.business_name;
+                    if (v && v !== 'Global HQ') name = v;
+                }
+            } catch (e) {}
+            if (!name) {
+                try {
+                    const profSnap = await fs.getDoc(fs.doc(db, `users/${uid}/onboarding/profile`));
+                    if (profSnap.exists()) {
+                        const v = profSnap.data()?.business_name;
+                        if (v) name = v;
+                    }
+                } catch (e) {}
+            }
+            if (name) {
+                document.querySelectorAll('[data-entity-name]').forEach((el) => {
+                    el.textContent = name;
+                });
+            }
+        } catch (e) { /* silent */ }
+    }
+
     function inject() {
         const sidebar = document.getElementById('sidebar');
         if (!sidebar) return;
@@ -297,6 +327,7 @@
                         const avatarElem = document.getElementById('sidebar-user-avatar');
                         if (nameElem) nameElem.innerText = user.displayName || user.email.split('@')[0];
                         if (avatarElem && user.photoURL) avatarElem.src = user.photoURL;
+                        syncEntityName(app, user.uid);
                     }
                 });
             });
