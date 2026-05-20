@@ -772,12 +772,13 @@
 .fluxy-tour-popover {
     position: fixed;
     z-index: 100;
+    box-sizing: border-box;
     border: 1px solid #e5e7eb;
-    border-radius: 18px;
+    border-radius: 14px;
     background: #ffffff;
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+    box-shadow: 0 18px 46px rgba(15, 23, 42, 0.24);
     color: #111827;
-    padding: 26px;
+    padding: 18px;
     transform-origin: top center;
     will-change: transform, opacity;
 }
@@ -791,37 +792,37 @@
 }
 
 .fluxy-tour-count {
-    margin: 0 0 7px;
+    margin: 0 0 5px;
     color: #4b5563;
-    font-size: 15px;
+    font-size: 12px;
     font-weight: 800;
 }
 
 .fluxy-tour-popover h3 {
     margin: 0;
     color: #111827;
-    font-size: 25px;
-    line-height: 1.18;
+    font-size: 19px;
+    line-height: 1.22;
     font-weight: 800;
     letter-spacing: 0;
 }
 
-.fluxy-tour-popover p {
-    margin: 14px 0 0;
+.fluxy-tour-popover p:not(.fluxy-tour-count) {
+    margin: 9px 0 0;
     color: #4b5563;
-    font-size: 17px;
-    line-height: 1.55;
+    font-size: 14px;
+    line-height: 1.45;
 }
 
 .fluxy-tour-skip {
     position: absolute;
-    top: 20px;
-    right: 22px;
+    top: 14px;
+    right: 16px;
     border: 0;
     background: transparent;
     color: #6b7280;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 800;
 }
 
@@ -833,18 +834,18 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 14px;
-    margin-top: 26px;
+    gap: 10px;
+    margin-top: 18px;
 }
 
 .fluxy-tour-secondary,
 .fluxy-tour-primary {
-    border-radius: 14px;
+    border-radius: 10px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 800;
-    min-width: 92px;
-    padding: 13px 20px;
+    min-width: 72px;
+    padding: 10px 14px;
 }
 
 .fluxy-tour-secondary {
@@ -938,14 +939,14 @@
 
     .fluxy-tour-popover {
         max-width: calc(100vw - 24px);
-        padding: 22px;
+        padding: 16px;
     }
 
     .fluxy-tour-popover h3 {
-        font-size: 22px;
+        font-size: 18px;
     }
 
-    .fluxy-tour-popover p {
-        font-size: 15px;
+    .fluxy-tour-popover p:not(.fluxy-tour-count) {
+        font-size: 13px;
     }
 }

@@ -520,11 +520,11 @@ function syncTourPosition() {
 
 function positionPopover(target, popover) {
     const rect = target.getBoundingClientRect();
-    const spacing = 18;
+    const spacing = 14;
     const edge = 14;
-    const width = Math.min(480, window.innerWidth - 24);
+    const width = Math.min(380, window.innerWidth - 24);
     popover.style.width = `${width}px`;
-    const popoverHeight = popover.offsetHeight || 280;
+    const popoverHeight = popover.offsetHeight || 220;
 
     const centeredLeft = rect.left + (rect.width / 2) - (width / 2);
     const belowTop = rect.bottom + spacing;
