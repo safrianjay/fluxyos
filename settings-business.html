@@ -276,6 +276,7 @@
                 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) =>
                     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
                 const ok = await window.showConfirmDialog?.({
+                    icon: 'pencil',
                     title: 'Change business name?',
                     body: `<strong>${escapeHtml(prevName)}</strong> → <strong>${escapeHtml(nextName)}</strong> will appear in the sidebar, exports, audit logs, and AI summaries from now on. Existing transactions, bills, and subscriptions stay in this workspace.`,
                     confirmLabel: 'Change name',

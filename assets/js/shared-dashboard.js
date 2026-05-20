@@ -111,6 +111,17 @@ window.__compressReceiptImage = compressReceiptImage;
 // Opts: { title, body, confirmLabel, cancelLabel, tone }
 // tone: 'default' | 'danger'
 // body accepts inline HTML (caller is responsible for escaping user input).
+// Lucide-style 24x24 stroke icons. Keep them minimal and consistent.
+const FLUXY_DIALOG_ICONS = {
+    pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+    info:   '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+    alert:  '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
+    warn:   '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    trash:  '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+    check:  '<path d="M20 6 9 17l-5-5"/>',
+    building: '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>'
+};
+
 window.showFluxyDialog = function(options = {}) {
     const {
         title = '',
@@ -118,12 +129,25 @@ window.showFluxyDialog = function(options = {}) {
         confirmLabel = 'Continue',
         cancelLabel = 'Cancel',
         tone = 'default',
+        icon,                   // 'pencil' | 'info' | 'alert' | 'warn' | 'trash' | 'check' | 'building' | 'none' | custom SVG string
         singleOk = false
     } = options;
 
     return new Promise((resolve) => {
         document.getElementById('fluxy-dialog')?.remove();
         const isDanger = tone === 'danger';
+
+        // Pick the icon: explicit option wins, else sensible default per tone.
+        const iconKey = icon ?? (isDanger ? 'warn' : 'info');
+        const iconInner = iconKey === 'none'
+            ? null
+            : (FLUXY_DIALOG_ICONS[iconKey] || iconKey); // raw SVG path string also accepted
+
+        const iconBlock = iconInner
+            ? `<div class="fluxy-dialog-icon ${isDanger ? 'is-danger' : ''}" aria-hidden="true">
+                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${iconInner}</svg>
+               </div>`
+            : '';
 
         const cancelBtn = singleOk
             ? ''
@@ -135,7 +159,7 @@ window.showFluxyDialog = function(options = {}) {
         wrap.innerHTML = `
             <div class="fluxy-dialog-overlay" data-dialog-action="cancel"></div>
             <div class="fluxy-dialog-card" role="dialog" aria-modal="true" aria-labelledby="fluxy-dialog-title"${body ? ' aria-describedby="fluxy-dialog-body"' : ''}>
-                ${isDanger ? '<span class="fluxy-dialog-accent fluxy-dialog-accent--danger" aria-hidden="true"></span>' : '<span class="fluxy-dialog-accent" aria-hidden="true"></span>'}
+                ${iconBlock}
                 <h3 id="fluxy-dialog-title" class="fluxy-dialog-title">${title}</h3>
                 ${body ? `<div id="fluxy-dialog-body" class="fluxy-dialog-body">${body}</div>` : ''}
                 <div class="fluxy-dialog-actions">

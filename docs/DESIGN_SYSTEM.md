@@ -108,7 +108,7 @@ await window.showAlertDialog({
 
 - White card, `gray-200` border, `rounded-xl` (16px), `0 24px 48px rgba(11,15,25,0.18)` shadow.
 - Backdrop: `rgba(11,15,25,0.5)` with 6px backdrop-blur.
-- 3px gradient accent strip at the top of the card — orange (`#EA580C → #F97316`) for default tone, red (`#DC2626 → #EF4444`) for danger. No icons inside the card.
+- Icon: 44px rounded square with a soft tinted gradient (`#FFF7ED → #FFEDD5`) + 1px inset ring in `rgba(234,88,12,0.18)`. Inner SVG at 22px, 1.75 stroke, Lucide-style. Red palette (`#FEF2F2 → #FEE2E2` + red ring) for `tone: 'danger'`. Pass `icon: 'pencil' | 'info' | 'alert' | 'warn' | 'trash' | 'check' | 'building'` to pick a contextual glyph, `icon: 'none'` to suppress, or a raw SVG path string for a one-off. Defaults: `info` for default tone, `warn` for danger.
 - Title: 18px, weight 700, deep-navy (`#0B0F19`), -0.01em tracking.
 - Body: 14px, `gray-600`, line-height 1.55, max 56ch. Inline HTML allowed (`<strong>` etc.). Caller must escape any user-supplied substring before interpolating.
 - Actions bottom-right: ghost `Cancel` then primary `Confirm`. `Confirm` is deep-navy by default, red for `tone: 'danger'`. For `showAlertDialog`, no cancel button — single OK.
