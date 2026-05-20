@@ -205,6 +205,11 @@ Valid tour IDs: `overview`, `ledger`, `bills`, `fluxy_ai`, `revenue_sync`,
 `markPlatformTourStarted`, `markPlatformTourCompleted`,
 `markPlatformTourSkipped`, and `dismissPlatformLearning`.
 
+Completed tours stay restartable from their cards while the quick-start section
+is visible. When every rendered tour ID is present in `completed_tours`, the
+dashboard action changes from Dismiss to Completed; clicking it stores
+`dismissed: true` and stops future auto-renders.
+
 **Critical order:** App pages must run auth and `FluxyOnboardingGate.applyToPage`
 first. If the onboarding gate renders, clear `sessionStorage.fluxy_pending_tour`
 and do not render Quick ways to get started or start coachmarks.

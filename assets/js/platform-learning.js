@@ -13,7 +13,7 @@ const FIREBASE_CONFIG = {
 };
 
 const PENDING_TOUR_KEY = 'fluxy_pending_tour';
-const TOUR_IDS = ['overview', 'ledger', 'bills', 'fluxy_ai', 'revenue_sync', 'subscriptions'];
+const TOUR_IDS = ['overview', 'fluxy_ai', 'ledger', 'bills', 'revenue_sync', 'subscriptions'];
 
 const TOUR_CONFIG = {
     overview: {
@@ -41,7 +41,7 @@ const TOUR_CONFIG = {
             { selector: '[data-tour-target="ledger-add-transaction"]', title: 'Add Transaction', body: 'Use this to add one income, expense, fee, tax, transfer, or CSV upload.' },
             { selector: '[data-tour-target="ledger-date-filter"]', title: 'Period filter', body: 'Filter by date so charts, rows, and exports stay focused.' },
             { selector: '[data-tour-target="ledger-control-cards"]', title: 'Ledger quality', body: 'These cards summarize missing receipts and records that need review.' },
-            { selector: '[data-tour-target="ledger-table"]', title: 'Ledger table', body: 'This is your transaction source of truth for reporting and cleanup.' },
+            { selector: '#ledger-empty-state:not(.hidden), [data-tour-target="ledger-table"]', title: 'Ledger table', body: 'This is your transaction source of truth for reporting and cleanup.' },
             { selector: '[data-tour-target="ledger-export"]', title: 'CSV export', body: 'Download the currently loaded ledger period when records are available.' }
         ]
     },
@@ -55,7 +55,7 @@ const TOUR_CONFIG = {
             { selector: '[data-tour-target="bill-add"]', title: 'Add Bill', body: 'Create a payable before money leaves the business.' },
             { selector: '[data-tour-target="bill-due-summary"]', title: 'Due dates', body: 'Due dates help you see upcoming cash pressure.' },
             { selector: '[data-tour-target="bill-timeline"]', title: 'Payment timeline', body: 'Bills are grouped by urgency so you know what to review first.' },
-            { selector: '[data-tour-target="bill-table"]', title: 'Bills table', body: 'Review vendor, category, due date, amount, status, and available actions.' },
+            { selector: '#bill-empty-state:not(.hidden), [data-tour-target="bill-table"]', title: 'Bills table', body: 'Review vendor, category, due date, amount, status, and available actions.' },
             { selector: '[data-tour-target="bill-action-column"]', title: 'Payment actions', body: 'Payment-like actions stay unavailable until a real handler exists.' }
         ]
     },
@@ -82,7 +82,7 @@ const TOUR_CONFIG = {
             { selector: '[data-tour-target="revenue-connect"]', title: 'Connect channels', body: 'Revenue Sync is for source visibility, not general expense tracking.' },
             { selector: '[data-tour-target="revenue-summary"]', title: 'Revenue health', body: 'These cards summarize revenue rows, detected channels, and review needs.' },
             { selector: '[data-tour-target="revenue-channels"]', title: 'Connected channels', body: 'Channels group synced or manually detected revenue sources.' },
-            { selector: '[data-tour-target="revenue-table"]', title: 'Revenue rows', body: 'Use this table to review revenue transactions and flags.' }
+            { selector: '#revenue-empty-state:not(.hidden), [data-tour-target="revenue-table"]', title: 'Revenue rows', body: 'Use this table to review revenue transactions and flags.' }
         ]
     },
     subscriptions: {
@@ -93,7 +93,7 @@ const TOUR_CONFIG = {
         icon: 'SB',
         steps: [
             { selector: '[data-tour-target="subscription-add"]', title: 'Add Subscription', body: 'Add recurring SaaS or vendor costs here.' },
-            { selector: '[data-tour-target="subscription-table"]', title: 'Subscription table', body: 'Track service name, monthly cost, renewal date, status, and actions.' },
+            { selector: '#sub-empty-state:not(.hidden), [data-tour-target="subscription-table"]', title: 'Subscription table', body: 'Track service name, monthly cost, renewal date, status, and actions.' },
             { selector: '[data-tour-target="subscription-renewal"]', title: 'Renewal dates', body: 'Renewal dates help prevent surprise charges.' },
             { selector: '[data-tour-target="subscription-manage"]', title: 'Manage action', body: 'Management actions are visible, but real cancel flows are planned later.' }
         ]
@@ -147,6 +147,24 @@ function isTourComplete(learningState, tourId) {
     return Array.isArray(learningState?.completed_tours) && learningState.completed_tours.includes(tourId);
 }
 
+function renderArrowIcon() {
+    return `
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M5 12h13"></path>
+            <path d="m13 6 6 6-6 6"></path>
+        </svg>
+    `;
+}
+
+function renderChevronIcon(direction) {
+    const path = direction === 'prev' ? 'm15 18-6-6 6-6' : 'm9 18 6-6-6-6';
+    return `
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="${path}"></path>
+        </svg>
+    `;
+}
+
 function renderCardVisual(tourId) {
     const visualClass = `platform-learning-visual-${tourId.replace('_', '-')}`;
     const scenes = {
@@ -184,10 +202,14 @@ function renderCardVisual(tourId) {
             <span class="pl-mini-status-pill">Open</span>
         `,
         fluxy_ai: `
-            <span class="pl-mini-chat pl-mini-chat-user">How is cash?</span>
-            <span class="pl-mini-chat pl-mini-chat-ai">Review revenue first</span>
-            <span class="pl-mini-spark"></span>
-            <span class="pl-mini-prompt-lines"><span></span><span></span><span></span></span>
+            <span class="pl-ai-orbit pl-ai-orbit-a"></span>
+            <span class="pl-ai-orbit pl-ai-orbit-b"></span>
+            <span class="pl-ai-core">
+                <span class="pl-ai-core-mark">AI</span>
+            </span>
+            <span class="pl-mini-chat pl-mini-chat-user">Can I pay bills?</span>
+            <span class="pl-mini-chat pl-mini-chat-ai">Check cash runway</span>
+            <span class="pl-mini-ai-input"><span></span><span></span></span>
         `,
         revenue_sync: `
             <span class="pl-mini-channel pl-mini-channel-a">Storefront</span>
@@ -220,6 +242,25 @@ async function canUsePlatformLearning(userId, ds = getDataService()) {
     return true;
 }
 
+function isVisibleTourTarget(element) {
+    if (!element) return false;
+    const rect = element.getBoundingClientRect();
+    const style = window.getComputedStyle(element);
+    return rect.width > 8
+        && rect.height > 8
+        && style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && style.opacity !== '0';
+}
+
+function findTourTarget(selector) {
+    try {
+        return Array.from(document.querySelectorAll(selector)).find(isVisibleTourTarget) || null;
+    } catch (_) {
+        return null;
+    }
+}
+
 export async function getPlatformLearningState(userId) {
     try {
         return await getDataService().getPlatformLearningState(userId);
@@ -236,9 +277,6 @@ export async function shouldShowPlatformLearning(userId) {
 
         const learningState = await ds.getPlatformLearningState(userId);
         if (learningState?.dismissed === true) return false;
-
-        const completedTours = learningState?.completed_tours || [];
-        if (getRenderableTours().every(tourId => completedTours.includes(tourId))) return false;
 
         return true;
     } catch (_) {
@@ -260,21 +298,24 @@ export async function renderQuickStartLearning(containerId, options = {}) {
 
     const state = await getDataService().getPlatformLearningState(userId);
     await getDataService().savePlatformLearningState(userId, {});
+    const completedTours = state?.completed_tours || [];
+    const allToursComplete = getRenderableTours().every(tourId => completedTours.includes(tourId));
 
     const cards = getRenderableTours().map((tourId) => {
         const tour = TOUR_CONFIG[tourId];
         const done = isTourComplete(state, tourId);
         return `
-            <button type="button" class="platform-learning-card" data-platform-tour="${tourId}" aria-label="Start ${tour.label}">
+            <button type="button" class="platform-learning-card ${done ? 'is-complete' : ''}" data-platform-tour="${tourId}" aria-label="${done ? 'Restart' : 'Start'} ${tour.label}">
                 <span class="platform-learning-card-chip">${tour.chip}</span>
+                ${done ? '<span class="platform-learning-complete-mark"><span aria-hidden="true">&#10003;</span> Completed</span>' : ''}
                 ${renderCardVisual(tourId)}
                 <span class="platform-learning-card-copy">
                     <span class="platform-learning-card-title">${tour.label}</span>
                     <span class="platform-learning-card-desc">${tour.description}</span>
                 </span>
                 <span class="platform-learning-card-footer">
-                    <span>${done ? 'Done' : 'Start guide'}</span>
-                    <span aria-hidden="true">-&gt;</span>
+                    <span>${done ? 'Review guide' : 'Start guide'}</span>
+                    <span class="platform-learning-card-arrow">${renderArrowIcon()}</span>
                 </span>
             </button>
         `;
@@ -288,13 +329,15 @@ export async function renderQuickStartLearning(containerId, options = {}) {
                     <div class="platform-learning-title-row">
                         <h2 id="platform-learning-title">Quick ways to get started</h2>
                         <div class="platform-learning-scroll-controls" aria-label="Scroll learning cards">
-                            <button type="button" data-platform-learning-scroll="prev" aria-label="Previous learning card">&lt;</button>
-                            <button type="button" data-platform-learning-scroll="next" aria-label="Next learning card">&gt;</button>
+                            <button type="button" data-platform-learning-scroll="prev" aria-label="Previous learning card">${renderChevronIcon('prev')}</button>
+                            <button type="button" data-platform-learning-scroll="next" aria-label="Next learning card">${renderChevronIcon('next')}</button>
                         </div>
                     </div>
                     <p>Pick what you want to learn first. FluxyOS will guide you through the page step by step.</p>
                 </div>
-                <button type="button" class="platform-learning-dismiss" data-platform-learning-dismiss>Dismiss</button>
+                <button type="button" class="platform-learning-dismiss ${allToursComplete ? 'is-complete' : ''}" data-platform-learning-dismiss>
+                    ${allToursComplete ? '<span aria-hidden="true">&#10003;</span> Completed' : 'Dismiss'}
+                </button>
             </div>
             <div class="platform-learning-row">
                 ${cards}
@@ -372,7 +415,7 @@ export async function continuePendingTourIfAny(userId = getAuthUser()?.uid) {
     if (normalizePath() !== tour.route) return;
 
     const validSteps = tour.steps
-        .map(step => ({ ...step, target: document.querySelector(step.selector) }))
+        .map(step => ({ ...step, target: findTourTarget(step.selector) }))
         .filter(step => step.target);
 
     clearPendingTour();
@@ -397,7 +440,7 @@ export async function dismissPlatformLearning(userId) {
 function runTour(userId, tourId, steps) {
     closeActiveTour(false);
     lastFocusedElement = document.activeElement;
-    activeTour = { userId, tourId, steps, index: 0 };
+    activeTour = { userId, tourId, steps, index: 0, direction: 'forward' };
 
     const overlay = document.createElement('div');
     overlay.id = 'fluxy-tour-overlay';
@@ -413,6 +456,8 @@ function runTour(userId, tourId, steps) {
     document.body.append(overlay, popover);
     document.body.classList.add('fluxy-tour-active');
     document.addEventListener('keydown', handleTourKeydown);
+    window.addEventListener('resize', syncTourPosition);
+    window.addEventListener('scroll', syncTourPosition, true);
     renderCurrentStep();
 }
 
@@ -427,6 +472,7 @@ function renderCurrentStep() {
     document.querySelectorAll('.fluxy-tour-highlight').forEach(el => el.classList.remove('fluxy-tour-highlight'));
     target.classList.add('fluxy-tour-highlight');
     target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    const direction = activeTour.direction || 'forward';
 
     popover.innerHTML = `
         <button type="button" class="fluxy-tour-skip" data-tour-skip>Skip</button>
@@ -443,6 +489,7 @@ function renderCurrentStep() {
     popover.querySelector('[data-tour-back]')?.addEventListener('click', () => {
         if (activeTour.index > 0) {
             activeTour.index -= 1;
+            activeTour.direction = 'back';
             renderCurrentStep();
         }
     });
@@ -450,31 +497,79 @@ function renderCurrentStep() {
         if (activeTour.index >= activeTour.steps.length - 1) finishTour('completed');
         else {
             activeTour.index += 1;
+            activeTour.direction = 'forward';
             renderCurrentStep();
         }
     });
 
-    window.requestAnimationFrame(() => positionPopover(target, popover));
+    popover.classList.remove('is-step-forward', 'is-step-back');
+    void popover.offsetWidth;
+    popover.classList.add(direction === 'back' ? 'is-step-back' : 'is-step-forward');
+
+    window.requestAnimationFrame(syncTourPosition);
+    window.setTimeout(syncTourPosition, 180);
     popover.querySelector('[data-tour-next]')?.focus();
+}
+
+function syncTourPosition() {
+    if (!activeTour) return;
+    const target = activeTour.steps[activeTour.index]?.target;
+    const popover = document.getElementById('fluxy-tour-popover');
+    if (target && popover) positionPopover(target, popover);
 }
 
 function positionPopover(target, popover) {
     const rect = target.getBoundingClientRect();
-    const spacing = 16;
+    const spacing = 18;
+    const edge = 14;
     const width = Math.min(480, window.innerWidth - 24);
     popover.style.width = `${width}px`;
-
-    let left = rect.left;
-    if (left + width > window.innerWidth - 12) left = window.innerWidth - width - 12;
-    if (left < 12) left = 12;
-
-    let top = rect.bottom + spacing;
     const popoverHeight = popover.offsetHeight || 280;
-    if (top + popoverHeight > window.innerHeight - 12) {
-        top = rect.top - popoverHeight - spacing;
-    }
-    if (top < 12) top = 12;
 
+    const centeredLeft = rect.left + (rect.width / 2) - (width / 2);
+    const belowTop = rect.bottom + spacing;
+    const aboveTop = rect.top - popoverHeight - spacing;
+    const rightLeft = rect.right + spacing;
+    const leftLeft = rect.left - width - spacing;
+    const canFitBelow = belowTop + popoverHeight <= window.innerHeight - edge;
+    const canFitAbove = aboveTop >= edge;
+    const canFitRight = rightLeft + width <= window.innerWidth - edge;
+    const canFitLeft = leftLeft >= edge;
+
+    let top;
+    let left;
+    let placement = 'bottom';
+
+    if (canFitBelow || (!canFitAbove && rect.bottom < window.innerHeight * 0.68)) {
+        top = belowTop;
+        left = centeredLeft;
+        placement = 'bottom';
+    } else if (canFitAbove) {
+        top = aboveTop;
+        left = centeredLeft;
+        placement = 'top';
+    } else if (canFitRight) {
+        top = rect.top + (rect.height / 2) - (popoverHeight / 2);
+        left = rightLeft;
+        placement = 'right';
+    } else if (canFitLeft) {
+        top = rect.top + (rect.height / 2) - (popoverHeight / 2);
+        left = leftLeft;
+        placement = 'left';
+    } else {
+        top = Math.min(
+            Math.max(rect.top + Math.min(28, Math.max(0, rect.height - popoverHeight) / 2), edge),
+            window.innerHeight - popoverHeight - edge
+        );
+        left = Math.min(Math.max(centeredLeft, edge), window.innerWidth - width - edge);
+        placement = 'center';
+    }
+
+    const maxLeft = Math.max(edge, window.innerWidth - width - edge);
+    const maxTop = Math.max(edge, window.innerHeight - popoverHeight - edge);
+    left = Math.min(Math.max(left, edge), maxLeft);
+    top = Math.min(Math.max(top, edge), maxTop);
+    popover.dataset.placement = placement;
     popover.style.left = `${left}px`;
     popover.style.top = `${top}px`;
 }
@@ -493,10 +588,13 @@ async function finishTour(result) {
         window.showToast?.('Could not save guide progress.', 'info');
     }
     closeActiveTour(true);
+    refreshLearningSection(userId);
 }
 
 function closeActiveTour(restoreFocus = true) {
     document.removeEventListener('keydown', handleTourKeydown);
+    window.removeEventListener('resize', syncTourPosition);
+    window.removeEventListener('scroll', syncTourPosition, true);
     document.body.classList.remove('fluxy-tour-active');
     document.querySelectorAll('.fluxy-tour-highlight').forEach(el => el.classList.remove('fluxy-tour-highlight'));
     document.getElementById('fluxy-tour-overlay')?.remove();
@@ -506,6 +604,11 @@ function closeActiveTour(restoreFocus = true) {
     }
     activeTour = null;
     lastFocusedElement = null;
+}
+
+function refreshLearningSection(userId) {
+    const quickStart = document.getElementById('quick-start-container');
+    if (quickStart) renderQuickStartLearning('quick-start-container', { userId });
 }
 
 function handleTourKeydown(event) {

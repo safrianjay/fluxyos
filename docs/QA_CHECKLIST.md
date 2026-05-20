@@ -182,9 +182,12 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 5 | Dismiss hides the section, writes `users/{uid}/platform_learning/state.dismissed: true`, and stays hidden after refresh |
 | 6 | Each card stores the pending tour, navigates to the correct page, and starts after auth, gate check, and page render |
 | 7 | Coachmarks show overlay, target highlight, step count, Back, Next, Skip, and Done |
-| 8 | Skip and Done write only to `users/{uid}/platform_learning/state`; no financial collections are changed |
-| 9 | Missing tour targets are skipped gracefully; if no targets exist, show "This guide is not available on this page yet." |
-| 10 | Mobile at 375px: quick-start cards and coachmark popovers are readable with no horizontal overflow |
+| 8 | Next and Back animate without moving the coachmark to a disconnected corner of the viewport |
+| 9 | Completed tours show a completed mark on their card, but the card can still restart the guide |
+| 10 | When every rendered tour is completed, the dashboard action changes from Dismiss to Completed |
+| 11 | Skip and Done write only to `users/{uid}/platform_learning/state`; no financial collections are changed |
+| 12 | Missing or hidden tour targets are skipped gracefully; if no targets exist, show "This guide is not available on this page yet." |
+| 13 | Mobile at 375px: quick-start cards and coachmark popovers are readable with no horizontal overflow |
 
 ### E. Add Transaction / Bill / Subscription (shared-dashboard.js, db-service.js)
 

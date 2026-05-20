@@ -62,12 +62,16 @@
     width: 34px;
     height: 34px;
     border-radius: 999px;
-    font-size: 19px;
-    line-height: 1;
     font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .platform-learning-dismiss {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
     flex: 0 0 auto;
     border-radius: 12px;
     font-size: 13px;
@@ -87,6 +91,22 @@
     transform: scale(0.98);
 }
 
+.platform-learning-scroll-controls svg,
+.platform-learning-card-arrow svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.5;
+}
+
+.platform-learning-dismiss.is-complete {
+    border-color: #bbf7d0;
+    color: #166534;
+}
+
 .platform-learning-row {
     display: grid;
     grid-auto-flow: column;
@@ -95,8 +115,8 @@
     max-width: 100%;
     overflow-x: auto;
     overscroll-behavior-x: contain;
-    padding: 0 0 6px;
-    scroll-padding: 0;
+    padding: 6px 4px 28px;
+    scroll-padding: 4px;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
 }
@@ -119,7 +139,8 @@
     position: relative;
     text-align: left;
     scroll-snap-align: start;
-    transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    isolation: isolate;
+    transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .platform-learning-card::after {
@@ -134,8 +155,7 @@
 .platform-learning-card:hover {
     background: #ffffff;
     border-color: #fed7aa;
-    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.1);
-    transform: translateY(-2px);
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.1);
 }
 
 .platform-learning-card:focus-visible {
@@ -153,6 +173,36 @@
     font-weight: 800;
     line-height: 1;
     padding: 8px 13px;
+    z-index: 1;
+}
+
+.platform-learning-complete-mark {
+    position: absolute;
+    top: 22px;
+    right: 22px;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #bbf7d0;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #166534;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    padding: 8px 11px;
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+}
+
+.platform-learning-card.is-complete {
+    border-color: #fdba74;
+    background: #ffffff;
+}
+
+.platform-learning-card.is-complete .platform-learning-card-chip {
+    border-color: #e5e7eb;
+    color: #334155;
 }
 
 .platform-learning-card-visual {
@@ -166,6 +216,7 @@
     display: block;
     overflow: hidden;
     position: relative;
+    z-index: 0;
 }
 
 .platform-learning-card-visual::before {
@@ -180,6 +231,7 @@
 .platform-learning-card-copy {
     display: grid;
     gap: 7px;
+    z-index: 1;
 }
 
 .platform-learning-card-title {
@@ -187,6 +239,7 @@
     font-size: 18px;
     font-weight: 800;
     line-height: 1.25;
+    letter-spacing: 0;
 }
 
 .platform-learning-card-desc {
@@ -202,18 +255,22 @@
     align-items: center;
     justify-content: space-between;
     color: #374151;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 800;
+    letter-spacing: 0;
+    z-index: 1;
 }
 
-.platform-learning-card-footer span:last-child {
+.platform-learning-card-arrow {
     color: #0f172a;
-    font-size: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     transition: transform 160ms ease;
 }
 
-.platform-learning-card:hover .platform-learning-card-footer span:last-child {
-    transform: translateX(4px);
+.platform-learning-card:hover .platform-learning-card-arrow {
+    transform: translateX(3px);
 }
 
 .pl-mini-panel,
@@ -441,15 +498,101 @@
     padding: 12px 14px;
 }
 
+.platform-learning-visual-fluxy-ai {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98)),
+        #ffffff;
+}
+
+.pl-ai-orbit {
+    position: absolute;
+    border: 1px solid #dbe4ef;
+    border-radius: 999px;
+    opacity: 0.86;
+}
+
+.pl-ai-orbit-a {
+    left: 82px;
+    top: 24px;
+    width: 184px;
+    height: 96px;
+}
+
+.pl-ai-orbit-b {
+    left: 128px;
+    top: 14px;
+    width: 96px;
+    height: 122px;
+}
+
+.pl-ai-core {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 76px;
+    height: 76px;
+    border: 1px solid #fdba74;
+    border-radius: 24px;
+    background: #ffffff;
+    box-shadow:
+        0 16px 38px rgba(234, 88, 12, 0.14),
+        0 0 0 8px rgba(255, 255, 255, 0.72);
+    transform: translate(-50%, -52%) rotate(4deg);
+}
+
+.pl-ai-core-mark {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0f172a;
+    font-family: "Fira Code", ui-monospace, monospace;
+    font-size: 22px;
+    font-weight: 800;
+}
+
 .pl-mini-chat-user {
-    left: 54px;
-    top: 34px;
+    left: 42px;
+    top: 32px;
 }
 
 .pl-mini-chat-ai {
-    right: 48px;
-    top: 80px;
+    right: 36px;
+    top: 78px;
     color: #0f172a;
+}
+
+.pl-mini-ai-input {
+    position: absolute;
+    left: 72px;
+    right: 72px;
+    bottom: 20px;
+    height: 28px;
+    border: 1px solid #dbe4ef;
+    border-radius: 999px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+}
+
+.pl-mini-ai-input span {
+    height: 7px;
+    border-radius: 999px;
+    background: #e2e8f0;
+}
+
+.pl-mini-ai-input span:first-child {
+    width: 64%;
+}
+
+.pl-mini-ai-input span:last-child {
+    width: 18px;
+    border: 1px solid #fdba74;
+    background: #ffffff;
 }
 
 .pl-mini-spark {
@@ -619,6 +762,7 @@
     position: relative !important;
     z-index: 95 !important;
     border-radius: 12px;
+    transition: box-shadow 180ms ease, outline-color 180ms ease;
     box-shadow:
         0 0 0 4px rgba(255, 255, 255, 0.95),
         0 0 0 7px rgba(234, 88, 12, 0.78),
@@ -634,6 +778,16 @@
     box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
     color: #111827;
     padding: 26px;
+    transform-origin: top center;
+    will-change: transform, opacity;
+}
+
+.fluxy-tour-popover.is-step-forward {
+    animation: fluxyCoachmarkNext 180ms ease-out;
+}
+
+.fluxy-tour-popover.is-step-back {
+    animation: fluxyCoachmarkBack 180ms ease-out;
 }
 
 .fluxy-tour-count {
@@ -708,6 +862,33 @@
     border: 1px solid #0b0f19;
     background: #0b0f19;
     color: #ffffff;
+}
+
+.fluxy-tour-primary:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, 0.42);
+    outline-offset: 2px;
+}
+
+@keyframes fluxyCoachmarkNext {
+    from {
+        opacity: 0;
+        transform: translateX(14px) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes fluxyCoachmarkBack {
+    from {
+        opacity: 0;
+        transform: translateX(-14px) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
 }
 
 @media (max-width: 768px) {
