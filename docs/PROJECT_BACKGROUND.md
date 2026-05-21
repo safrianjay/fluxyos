@@ -601,15 +601,42 @@ row-level financial data or CSV content.
 | Field | Type | Notes |
 |-------|------|-------|
 | `report_type` | string | `"monthly_report_pack"`, `"profit_loss"`, etc. |
-| `period_start` / `period_end` | ISO date string | |
+| `report_scope` | map \| absent | Optional. For YTD/YoY/quarter-to-date exports, stores `{ mode, comparison_mode, current_period, comparison_period, generated_title, fiscal_year_basis }`. |
+| `period_start` / `period_end` | ISO date string | Current period (matches `report_scope.current_period` when present). |
 | `formats` | string[] | Subset of `["csv_bundle", "pdf_print"]` |
 | `status` | string | `"generated"` for Level 1 |
 | `included_sections` | string[] | Section keys included in this run |
-| `record_counts` | map | `{transactions, bills, subscriptions}` |
+| `record_counts` | map | `{transactions, bills, subscriptions, current_period_transactions, comparison_period_transactions}` |
 | `warning_counts` | map | `{missing_receipts, bills_without_due_date, subscriptions_without_renewal}` |
-| `limitations` | string[] | e.g., "Previous period records not found" |
+| `limitations` | string[] | e.g., "Previous-year records not found" |
 | `created_at` | Timestamp | `serverTimestamp()` |
 | `created_by` | string | `request.auth.uid` |
 
 **Mutation rule:** owner read/create only — update and delete are
 blocked. Recent Exports on `reports.html` reads from this collection.
+
+### Report scope (YTD / YoY / QTD)
+
+The Reports & Exports filter strip exposes two controls that drive the
+shared `monthlyReportPack` model:
+
+- **Report period:** `monthly | last_month | quarter_to_date | year_to_date | custom`
+- **Compare with:** `none | previous_period | same_period_last_year | previous_year_to_date`
+
+`report-builder.js → resolveReportScope({...})` turns those inputs into a
+concrete `report_scope` object with current and comparison periods,
+generated title (e.g. `2026 YTD Year-on-Year Financial Report`), and
+fiscal-year basis (calendar year for MVP). Date math handles leap years
+(Feb 29 → Feb 28 when the previous year is not a leap year) and clamps
+end-of-period for partial months.
+
+YTD/QTD modes add `ytd_summary` (averages, best/worst month, partial-
+month flag) and `monthly_trend` to the pack. YoY comparison modes add
+`yoy_comparison` (with `change_pct` returning `null` when previous is
+zero, never `NaN`/`Infinity`) and `monthly_trend_comparison`.
+
+Source-file lists are scope-aware: monthly exports emit
+`profit_loss_YYYY_MM.csv` etc; YTD emits `ytd_profit_loss_YYYY.csv` +
+`monthly_trend_YYYY_ytd.csv`; YTD YoY emits
+`yoy_profit_loss_YYYY_vs_YYYY-1_ytd.csv` +
+`monthly_trend_yoy_YYYY_vs_YYYY-1.csv`.

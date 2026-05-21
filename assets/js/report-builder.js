@@ -30,6 +30,10 @@ export const REPORT_SECTION_LABELS = {
     executive_summary: 'Executive Summary',
     profit_loss: 'Profit & Loss Summary',
     period_comparison: 'Period Comparison',
+    ytd_pl: 'Year-to-Date Profit & Loss',
+    monthly_trend: 'Monthly Trend Breakdown',
+    yoy_pl: 'YTD Profit & Loss Comparison',
+    monthly_trend_comparison: 'Monthly Trend Comparison',
     finance_predictability: 'Finance Predictability Snapshot',
     expense_breakdown: 'Expense Breakdown',
     bills_subscriptions: 'Bills & Subscription Commitments',
@@ -37,6 +41,9 @@ export const REPORT_SECTION_LABELS = {
     data_quality: 'Data Quality & Cleanup',
     export_manifest: 'Export Manifest'
 };
+
+export const REPORT_PERIOD_MODES = ['monthly', 'last_month', 'quarter_to_date', 'year_to_date', 'custom'];
+export const COMPARISON_MODES = ['none', 'previous_period', 'same_period_last_year', 'previous_year_to_date'];
 
 // ---------- Date helpers ----------
 
@@ -89,6 +96,193 @@ export function periodFilenameSlug(period) {
         start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
     if (sameMonth) return `${start.getFullYear()}_${String(start.getMonth() + 1).padStart(2, '0')}`;
     return `${period.start.replace(/-/g, '_')}_to_${period.end.replace(/-/g, '_')}`;
+}
+
+function daysInMonth(year, monthZeroIdx) {
+    return new Date(year, monthZeroIdx + 1, 0).getDate();
+}
+
+// Returns the same calendar day one year earlier, clamping Feb 29 to Feb 28
+// when the previous year is not a leap year.
+export function subtractOneYear(key) {
+    const d = parseDay(key);
+    if (!d) return null;
+    const year = d.getFullYear() - 1;
+    const month = d.getMonth();
+    const day = Math.min(d.getDate(), daysInMonth(year, month));
+    return dayKey(new Date(year, month, day));
+}
+
+export function sameMonthAndDayLastYear(key) {
+    return subtractOneYear(key);
+}
+
+function monthStart(date) { return new Date(date.getFullYear(), date.getMonth(), 1); }
+function monthEnd(date) { return new Date(date.getFullYear(), date.getMonth() + 1, 0); }
+function quarterStart(date) {
+    const q = Math.floor(date.getMonth() / 3);
+    return new Date(date.getFullYear(), q * 3, 1);
+}
+
+// Resolve a report scope from UI inputs into concrete current/comparison
+// periods plus a generated title. Pure function — safe to call repeatedly.
+//
+// today defaults to the system clock; pass an explicit Date in tests.
+export function resolveReportScope({
+    reportPeriodMode = 'monthly',
+    comparisonMode = 'none',
+    selectedStartDate = null,
+    selectedEndDate = null,
+    today = new Date(),
+    fiscalYearStart = null // reserved for future user fiscal year support
+} = {}) {
+    const todayDate = today instanceof Date ? today : new Date();
+    const currentYear = todayDate.getFullYear();
+
+    let currentStartKey;
+    let currentEndKey;
+
+    switch (reportPeriodMode) {
+        case 'year_to_date': {
+            const fy = fiscalYearStart ? parseDay(fiscalYearStart) : null;
+            currentStartKey = fy ? dayKey(fy) : `${currentYear}-01-01`;
+            currentEndKey = selectedEndDate || dayKey(todayDate);
+            // Guard: end can't be before start.
+            if (parseDay(currentEndKey) < parseDay(currentStartKey)) currentEndKey = currentStartKey;
+            break;
+        }
+        case 'quarter_to_date': {
+            currentStartKey = dayKey(quarterStart(todayDate));
+            currentEndKey = selectedEndDate || dayKey(todayDate);
+            break;
+        }
+        case 'last_month': {
+            const ref = new Date(todayDate.getFullYear(), todayDate.getMonth() - 1, 1);
+            currentStartKey = dayKey(monthStart(ref));
+            currentEndKey = dayKey(monthEnd(ref));
+            break;
+        }
+        case 'custom': {
+            currentStartKey = selectedStartDate || dayKey(monthStart(todayDate));
+            currentEndKey = selectedEndDate || dayKey(monthEnd(todayDate));
+            break;
+        }
+        case 'monthly':
+        default: {
+            currentStartKey = dayKey(monthStart(todayDate));
+            currentEndKey = dayKey(monthEnd(todayDate));
+        }
+    }
+
+    const currentPeriod = {
+        start_date: currentStartKey,
+        end_date: currentEndKey,
+        label: periodLabelForScope(reportPeriodMode, currentStartKey, currentEndKey)
+    };
+
+    let comparisonPeriod = null;
+    let resolvedComparisonMode = comparisonMode;
+    if (comparisonMode !== 'none') {
+        comparisonPeriod = resolveComparisonPeriod(comparisonMode, currentStartKey, currentEndKey);
+        if (!comparisonPeriod) {
+            // If we can't resolve a comparison range, downgrade to none.
+            resolvedComparisonMode = 'none';
+        }
+    }
+
+    return {
+        mode: reportPeriodMode,
+        comparison_mode: resolvedComparisonMode,
+        current_period: currentPeriod,
+        comparison_period: comparisonPeriod,
+        generated_title: composeReportTitle(reportPeriodMode, resolvedComparisonMode, currentPeriod),
+        fiscal_year_basis: fiscalYearStart ? 'user_fiscal_year' : 'calendar_year'
+    };
+}
+
+function resolveComparisonPeriod(mode, currentStartKey, currentEndKey) {
+    const start = parseDay(currentStartKey);
+    const end = parseDay(currentEndKey);
+    if (!start || !end) return null;
+    switch (mode) {
+        case 'previous_period': {
+            // Full calendar month → previous calendar month (so May 1–31
+            // compares against Apr 1–30, not Mar 31–Apr 30).
+            const sameMonth = start.getDate() === 1
+                && end.getDate() === new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate()
+                && start.getMonth() === end.getMonth()
+                && start.getFullYear() === end.getFullYear();
+            if (sameMonth) {
+                const prevStart = new Date(start.getFullYear(), start.getMonth() - 1, 1);
+                const prevEnd = new Date(start.getFullYear(), start.getMonth(), 0);
+                return labelledPeriod('previous_period', dayKey(prevStart), dayKey(prevEnd));
+            }
+            const days = Math.round((end - start) / 86400000) + 1;
+            const prevEnd = new Date(start.getFullYear(), start.getMonth(), start.getDate() - 1);
+            const prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), prevEnd.getDate() - (days - 1));
+            return labelledPeriod('previous_period', dayKey(prevStart), dayKey(prevEnd));
+        }
+        case 'same_period_last_year': {
+            const prevStart = subtractOneYear(currentStartKey);
+            const prevEnd = subtractOneYear(currentEndKey);
+            if (!prevStart || !prevEnd) return null;
+            return labelledPeriod('same_period_last_year', prevStart, prevEnd);
+        }
+        case 'previous_year_to_date': {
+            const prevYear = start.getFullYear() - 1;
+            const prevStart = `${prevYear}-01-01`;
+            const prevEnd = subtractOneYear(currentEndKey);
+            if (!prevEnd) return null;
+            return labelledPeriod('previous_year_to_date', prevStart, prevEnd);
+        }
+        default:
+            return null;
+    }
+}
+
+function labelledPeriod(mode, startKey, endKey) {
+    const start = parseDay(startKey);
+    return {
+        start_date: startKey,
+        end_date: endKey,
+        label: periodLabelForScope(mode, startKey, endKey)
+    };
+}
+
+function periodLabelForScope(mode, startKey, endKey) {
+    const start = parseDay(startKey);
+    if (!start) return periodLabel({ start: startKey, end: endKey });
+    if (mode === 'year_to_date' || mode === 'previous_year_to_date') return `${start.getFullYear()} YTD`;
+    if (mode === 'quarter_to_date') {
+        const q = Math.floor(start.getMonth() / 3) + 1;
+        return `${start.getFullYear()} Q${q} to date`;
+    }
+    return periodLabel({ start: startKey, end: endKey });
+}
+
+function composeReportTitle(mode, comparisonMode, currentPeriod) {
+    const start = parseDay(currentPeriod.start_date);
+    const year = start ? start.getFullYear() : '';
+    if (mode === 'year_to_date') {
+        if (comparisonMode === 'previous_year_to_date') return `${year} YTD Year-on-Year Financial Report`;
+        if (comparisonMode === 'same_period_last_year') return `${year} YTD Year-on-Year Financial Report`;
+        return `${year} Year-to-Date Financial Report`;
+    }
+    if (mode === 'quarter_to_date') {
+        const q = Math.floor(start.getMonth() / 3) + 1;
+        if (comparisonMode !== 'none') return `${year} Q${q} Year-on-Year Financial Report`;
+        return `${year} Q${q} Quarter-to-Date Financial Report`;
+    }
+    if (mode === 'custom') {
+        if (comparisonMode === 'same_period_last_year') return 'Custom Year-on-Year Financial Report';
+        if (comparisonMode === 'previous_period') return 'Custom Period Financial Report';
+        return 'Custom Period Financial Report';
+    }
+    // monthly + last_month
+    const periodHuman = periodLabel({ start: currentPeriod.start_date, end: currentPeriod.end_date });
+    if (comparisonMode === 'previous_period') return `${periodHuman} Financial Report (vs Previous Period)`;
+    if (comparisonMode === 'same_period_last_year') return `${periodHuman} Year-on-Year Financial Report`;
+    return `${periodHuman} Financial Report`;
 }
 
 export function formatRupiah(n) {
@@ -268,6 +462,228 @@ export function calculateFinancePredictability(currentPL, recurringRevenue) {
             { metric: 'Year-end net result', basis: 'Projected revenue − projected OpEx', limitation: 'Excludes tax and accounting adjustments' }
         ],
         limitations
+    };
+}
+
+// ---------- YTD / monthly trend / YoY comparison ----------
+
+function monthBucketKey(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthBucketLabel(year, monthZeroIdx) {
+    return new Date(year, monthZeroIdx, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+// Returns the count of calendar months covered by the period, inclusive on
+// both ends. e.g. Jan 1 → May 21 = 5.
+function elapsedMonthsInPeriod(period) {
+    const start = parseDay(period?.start_date || period?.start);
+    const end = parseDay(period?.end_date || period?.end);
+    if (!start || !end) return 0;
+    return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
+}
+
+function isCurrentMonthPartial(period, today = new Date()) {
+    const end = parseDay(period?.end_date || period?.end);
+    if (!end) return false;
+    const endOfEndMonth = new Date(end.getFullYear(), end.getMonth() + 1, 0);
+    return end.getFullYear() === today.getFullYear()
+        && end.getMonth() === today.getMonth()
+        && end.getDate() < endOfEndMonth.getDate();
+}
+
+// Build a month-by-month trend across the period. transactions drive revenue/
+// opex/record-count; bills + subscriptions only contribute to record counts.
+export function calculateMonthlyTrend(transactions = [], bills = [], subscriptions = [], scope) {
+    const period = scope?.current_period || scope; // accept either shape
+    const startKey = period?.start_date || period?.start;
+    const endKey = period?.end_date || period?.end;
+    const start = parseDay(startKey);
+    const end = parseDay(endKey);
+    if (!start || !end) return [];
+
+    const buckets = new Map();
+    let cur = new Date(start.getFullYear(), start.getMonth(), 1);
+    const stop = new Date(end.getFullYear(), end.getMonth(), 1);
+    while (cur <= stop) {
+        const key = monthBucketKey(cur);
+        buckets.set(key, {
+            month: key,
+            monthLabel: monthBucketLabel(cur.getFullYear(), cur.getMonth()),
+            revenue: 0,
+            opex: 0,
+            recordCount: 0,
+            missingReceipts: 0,
+            billCount: 0,
+            subCount: 0
+        });
+        cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+    }
+
+    transactions.forEach(tx => {
+        const d = timestampToDate(tx.timestamp);
+        if (!d) return;
+        const bucket = buckets.get(monthBucketKey(d));
+        if (!bucket) return;
+        const type = String(tx.type || '').toLowerCase();
+        const amount = Number(tx.amount || 0);
+        if (REVENUE_TYPES.has(type)) bucket.revenue += amount;
+        else if (OPEX_TYPES.has(type)) bucket.opex += Math.abs(amount);
+        bucket.recordCount += 1;
+        if (tx.status === 'Missing Receipt') bucket.missingReceipts += 1;
+    });
+    bills.forEach(b => {
+        const d = timestampToDate(b.timestamp);
+        if (!d) return;
+        const bucket = buckets.get(monthBucketKey(d));
+        if (bucket) bucket.billCount += 1;
+    });
+    subscriptions.forEach(s => {
+        const d = timestampToDate(s.timestamp);
+        if (!d) return;
+        const bucket = buckets.get(monthBucketKey(d));
+        if (bucket) bucket.subCount += 1;
+    });
+
+    return Array.from(buckets.values()).map(m => ({
+        ...m,
+        netResult: m.revenue - m.opex,
+        grossMargin: m.revenue > 0 ? ((m.revenue - m.opex) / m.revenue) * 100 : 0,
+        warnings: m.missingReceipts
+    }));
+}
+
+// YTD aggregate metrics — extends profit_loss with averages, best/worst,
+// and partial-month flag. trend can be passed in to avoid recomputation.
+export function calculateYtdSummary(transactions = [], scope, trend = null) {
+    const pl = calculateProfitLoss(transactions);
+    const monthlyTrend = trend || calculateMonthlyTrend(transactions, [], [], scope);
+    const elapsed = Math.max(1, elapsedMonthsInPeriod(scope?.current_period || scope));
+    const monthsWithRevenue = monthlyTrend.filter(m => m.revenue > 0);
+
+    let bestRevenueMonth = null;
+    let worstNetMonth = null;
+    monthlyTrend.forEach(m => {
+        if (!bestRevenueMonth || m.revenue > bestRevenueMonth.revenue) bestRevenueMonth = m;
+        if (!worstNetMonth || m.netResult < worstNetMonth.netResult) worstNetMonth = m;
+    });
+
+    return {
+        ...pl,
+        elapsedMonths: elapsed,
+        avgMonthlyRevenue: pl.revenue / elapsed,
+        avgMonthlyOpex: pl.opex / elapsed,
+        avgMonthlyNetResult: pl.netResult / elapsed,
+        bestRevenueMonth: bestRevenueMonth && bestRevenueMonth.revenue > 0 ? bestRevenueMonth : null,
+        worstNetMonth: worstNetMonth && monthsWithRevenue.length > 0 ? worstNetMonth : null,
+        isPartialCurrentMonth: isCurrentMonthPartial(scope?.current_period || scope)
+    };
+}
+
+function pctChange(current, previous) {
+    if (previous === 0 || previous === null || previous === undefined) return null;
+    return ((current - previous) / Math.abs(previous)) * 100;
+}
+
+function pctChangeInterpretation(metric, pct, { inverseGood = false } = {}) {
+    if (pct === null || pct === undefined) return previousZeroInterpretation(metric);
+    if (Math.abs(pct) < 0.1) return `${metric} held flat`;
+    const grew = pct > 0;
+    if (inverseGood) return grew ? `${metric} grew` : `${metric} fell`;
+    return grew ? `${metric} improved` : `${metric} declined`;
+}
+
+function previousZeroInterpretation(metric) {
+    return `Previous period had no ${metric.toLowerCase()} to compare.`;
+}
+
+// YoY comparison between two precomputed P&L summaries. Status:
+//   available  → previous-year records exist and produce meaningful values
+//   partial    → some metrics comparable, others use N/A
+//   unavailable → no previous-year records at all
+export function calculateYoYComparison(currentSummary, previousSummary) {
+    if (!previousSummary) {
+        return { status: 'unavailable', rows: [], limitations: ['Previous-year records not found.'] };
+    }
+    const totalPrev = (previousSummary.revenue || 0) + (previousSummary.opex || 0);
+    if (totalPrev === 0) {
+        return { status: 'unavailable', rows: [], limitations: ['Previous-year records not found.'] };
+    }
+
+    const marginPointChange = (currentSummary.grossMargin || 0) - (previousSummary.grossMargin || 0);
+    const limitations = [];
+    let anyNa = false;
+
+    const rows = [
+        ytdComparisonRow('Revenue', currentSummary.revenue, previousSummary.revenue),
+        ytdComparisonRow('OpEx', currentSummary.opex, previousSummary.opex, { inverseGood: true }),
+        ytdComparisonRow('Net Result', currentSummary.netResult, previousSummary.netResult),
+        {
+            metric: 'Gross Margin',
+            current: currentSummary.grossMargin,
+            previous: previousSummary.grossMargin,
+            change_points: marginPointChange,
+            is_percent: true,
+            interpretation: marginPointChange > 0 ? 'Margin expanded' : (marginPointChange < 0 ? 'Margin compressed' : 'Margin held')
+        }
+    ];
+
+    if (typeof currentSummary.avgMonthlyRevenue === 'number' && typeof previousSummary.avgMonthlyRevenue === 'number') {
+        rows.push(ytdComparisonRow('Average Monthly Revenue', currentSummary.avgMonthlyRevenue, previousSummary.avgMonthlyRevenue));
+        rows.push(ytdComparisonRow('Average Monthly OpEx', currentSummary.avgMonthlyOpex, previousSummary.avgMonthlyOpex, { inverseGood: true }));
+    }
+
+    rows.forEach(r => { if (r.change_pct === null && !r.is_percent) anyNa = true; });
+    if (anyNa) limitations.push('Some metrics show N/A because the previous-year value is zero.');
+
+    return {
+        status: limitations.length ? 'partial' : 'available',
+        rows,
+        limitations
+    };
+}
+
+function ytdComparisonRow(metric, current, previous, { inverseGood = false } = {}) {
+    const change = (current || 0) - (previous || 0);
+    const change_pct = pctChange(current || 0, previous || 0);
+    return {
+        metric,
+        current: current || 0,
+        previous: previous || 0,
+        change,
+        change_pct,
+        is_percent: false,
+        interpretation: pctChangeInterpretation(metric, change_pct, { inverseGood })
+    };
+}
+
+// Aligns two monthly trends by index (so month N of current period aligns
+// with month N of comparison period). Useful for YoY YTD comparison.
+export function calculateMonthlyTrendComparison(currentTrend = [], previousTrend = []) {
+    const limitations = [];
+    if (!previousTrend.length) return { status: 'unavailable', months: [], limitations: ['No previous-year monthly trend data found.'] };
+
+    const length = Math.max(currentTrend.length, previousTrend.length);
+    const months = [];
+    for (let i = 0; i < length; i++) {
+        const cur = currentTrend[i] || null;
+        const prev = previousTrend[i] || null;
+        months.push({
+            index: i,
+            currentLabel: cur?.monthLabel || null,
+            previousLabel: prev?.monthLabel || null,
+            current: cur,
+            previous: prev,
+            revenue_change_pct: cur && prev ? pctChange(cur.revenue, prev.revenue) : null
+        });
+        if (!cur || !prev) limitations.push(`Month ${i + 1} comparison is partial — missing one side.`);
+    }
+    const dedupedLimitations = Array.from(new Set(limitations));
+    return {
+        status: dedupedLimitations.length ? 'partial' : 'available',
+        months,
+        limitations: dedupedLimitations
     };
 }
 
@@ -481,20 +897,66 @@ export function buildMonthlyReportPack({
     userDisplayName,
     businessName,
     period,
+    scope = null,
     transactions = [],
     bills = [],
     subscriptions = [],
     previousPeriodTransactions = null,
+    previousPeriodBills = null,
+    previousPeriodSubscriptions = null,
     recurringRevenue = null
 }) {
+    // Back-compat: callers may pass `period` only. Derive a monthly scope if
+    // `scope` is not supplied so existing flows keep working.
+    const reportScope = scope || resolveReportScope({
+        reportPeriodMode: 'monthly',
+        comparisonMode: previousPeriodTransactions ? 'previous_period' : 'none',
+        selectedStartDate: period?.start,
+        selectedEndDate: period?.end
+    });
+    const currentPeriodForBuilder = period || { start: reportScope.current_period.start_date, end: reportScope.current_period.end_date };
+    const isYtdMode = reportScope.mode === 'year_to_date' || reportScope.mode === 'quarter_to_date';
+    const isYoYComparison = reportScope.comparison_mode === 'previous_year_to_date' || reportScope.comparison_mode === 'same_period_last_year';
+
     const profit_loss = calculateProfitLoss(transactions);
     const previousPL = Array.isArray(previousPeriodTransactions)
         ? calculateProfitLoss(previousPeriodTransactions)
         : null;
-    const period_comparison = calculatePeriodComparison(profit_loss, previousPL);
-    const finance_predictability = calculateFinancePredictability(profit_loss, recurringRevenue);
+
+    // Monthly trend + YTD summary apply to YTD/QTD modes.
+    const monthly_trend = isYtdMode
+        ? calculateMonthlyTrend(transactions, bills, subscriptions, reportScope)
+        : null;
+    const ytd_summary = isYtdMode
+        ? calculateYtdSummary(transactions, reportScope, monthly_trend)
+        : null;
+
+    // YoY comparison reuses YTD summaries on both sides.
+    let yoy_comparison = null;
+    let monthly_trend_comparison = null;
+    if (isYoYComparison && previousPeriodTransactions !== null) {
+        const previousScope = { current_period: reportScope.comparison_period };
+        const previousMonthlyTrend = calculateMonthlyTrend(previousPeriodTransactions || [], previousPeriodBills || [], previousPeriodSubscriptions || [], previousScope);
+        const previousYtdSummary = calculateYtdSummary(previousPeriodTransactions || [], previousScope, previousMonthlyTrend);
+        const currentSummaryForCompare = isYtdMode
+            ? ytd_summary
+            : { ...profit_loss, avgMonthlyRevenue: profit_loss.revenue, avgMonthlyOpex: profit_loss.opex };
+        yoy_comparison = calculateYoYComparison(currentSummaryForCompare, previousYtdSummary);
+        monthly_trend_comparison = calculateMonthlyTrendComparison(monthly_trend || calculateMonthlyTrend(transactions, [], [], reportScope), previousMonthlyTrend);
+    }
+
+    const period_comparison = (!isYoYComparison && previousPL)
+        ? calculatePeriodComparison(profit_loss, previousPL)
+        : { status: 'unavailable', previous_period: null, current_period: profit_loss, rows: [], limitations: previousPL === null ? ['No comparison data fetched.'] : [] };
+
+    const finance_predictability = calculateFinancePredictability(
+        isYtdMode && ytd_summary
+            ? { ...profit_loss, revenue: ytd_summary.avgMonthlyRevenue, opex: ytd_summary.avgMonthlyOpex, grossMargin: profit_loss.grossMargin, netResult: profit_loss.netResult }
+            : profit_loss,
+        recurringRevenue
+    );
     const expense_breakdown = calculateExpenseBreakdown(transactions, subscriptions);
-    const bills_subscriptions = calculateBillsSubscriptions(bills, subscriptions, period.end);
+    const bills_subscriptions = calculateBillsSubscriptions(bills, subscriptions, reportScope.current_period.end_date);
     const data_quality = calculateDataQuality(transactions, bills, subscriptions);
     const report_confidence_method = calculateReportConfidence(
         { transactions, bills, subscriptions },
@@ -503,16 +965,8 @@ export function buildMonthlyReportPack({
 
     const totalRecords = transactions.length + bills.length + subscriptions.length;
     const generatedAtIso = new Date().toISOString();
-    const slug = periodFilenameSlug(period);
 
-    const sourceFiles = [
-        `profit_loss_${slug}.csv`,
-        `expense_breakdown_${slug}.csv`,
-        `bills_payables_${slug}.csv`,
-        `subscriptions_${slug}.csv`,
-        `ledger_export_${slug}.csv`,
-        `data_quality_${slug}.csv`
-    ];
+    const sourceFiles = sourceFilesForScope(reportScope);
 
     const warningTotal = data_quality.warning_counts.missing_receipts +
         data_quality.warning_counts.bills_without_due_date +
@@ -530,19 +984,31 @@ export function buildMonthlyReportPack({
         }
     });
 
-    // Executive summary text — concrete, references real values.
-    const periodHuman = periodLabel(period);
-    const summaryText = totalRecords === 0
-        ? `${periodHuman} has no FluxyOS records yet. Add transactions, bills, or subscriptions to populate this report.`
-        : (profit_loss.netResult >= 0
-            ? `${periodHuman} closed with ${formatRupiah(profit_loss.netResult)} net result and ${formatPercent(profit_loss.grossMargin)} gross margin. ${expense_breakdown.top_vendors[0] ? expense_breakdown.categories[0]?.category + ' was the largest OpEx driver at ' + formatRupiah(expense_breakdown.categories[0].amount) + '. ' : ''}${warningTotal ? warningTotal + ' data warning' + (warningTotal === 1 ? '' : 's') + ' should be resolved before external handoff.' : 'Data quality is clean for this period.'}`
-            : `${periodHuman} closed at a loss of ${formatRupiah(Math.abs(profit_loss.netResult))} with ${formatPercent(profit_loss.grossMargin)} gross margin. Review the largest expense categories${warningTotal ? ' and ' + warningTotal + ' data warning' + (warningTotal === 1 ? '' : 's') : ''} before handoff.`);
+    const periodHumanLabel = reportScope.current_period.label || periodLabel(currentPeriodForBuilder);
+    const summaryText = composeExecutiveSummary({
+        scope: reportScope,
+        totalRecords,
+        profit_loss,
+        ytd_summary,
+        yoy_comparison,
+        expense_breakdown,
+        warningTotal,
+        periodHumanLabel
+    });
 
-    const key_takeaways = buildKeyTakeaways({ profit_loss, expense_breakdown, bills_subscriptions, data_quality, warningTotal });
+    const key_takeaways = isYoYComparison && yoy_comparison?.status !== 'unavailable'
+        ? buildYoyKeyTakeaways({ yoy_comparison, monthly_trend, monthly_trend_comparison, warningTotal })
+        : (isYtdMode
+            ? buildYtdKeyTakeaways({ ytd_summary, expense_breakdown, monthly_trend, warningTotal })
+            : buildKeyTakeaways({ profit_loss, expense_breakdown, bills_subscriptions, data_quality, warningTotal }));
 
     const sectionsAvailability = computeSectionsAvailability({
+        scope: reportScope,
         totalRecords,
         period_comparison,
+        yoy_comparison,
+        monthly_trend_comparison,
+        monthly_trend,
         finance_predictability,
         data_quality,
         report_confidence_method
@@ -551,21 +1017,22 @@ export function buildMonthlyReportPack({
     return {
         report_identity: {
             report_type: 'monthly_report_pack',
-            report_title: `${periodHuman} Financial Report`,
+            report_title: reportScope.generated_title,
             business_name: businessName || '',
-            period_start: period.start,
-            period_end: period.end,
-            period_label: periodHuman,
+            period_start: reportScope.current_period.start_date,
+            period_end: reportScope.current_period.end_date,
+            period_label: periodHumanLabel,
             generated_by_uid: userId,
             generated_by_name: userDisplayName || '',
             generated_at: generatedAtIso,
             status: 'draft_management_report',
             disclaimer: 'Management report generated from FluxyOS operational records. Not audited financial statements.'
         },
+        report_scope: reportScope,
         executive_summary: {
-            revenue: profit_loss.revenue,
-            opex: profit_loss.opex,
-            net_result: profit_loss.netResult,
+            revenue: (isYtdMode && ytd_summary) ? ytd_summary.revenue : profit_loss.revenue,
+            opex: (isYtdMode && ytd_summary) ? ytd_summary.opex : profit_loss.opex,
+            net_result: (isYtdMode && ytd_summary) ? ytd_summary.netResult : profit_loss.netResult,
             gross_margin: profit_loss.grossMargin,
             report_confidence: report_confidence_method.score,
             summary_text: summaryText,
@@ -574,7 +1041,11 @@ export function buildMonthlyReportPack({
         },
         key_takeaways,
         profit_loss,
+        ytd_summary,
+        monthly_trend,
         period_comparison,
+        yoy_comparison,
+        monthly_trend_comparison,
         finance_predictability,
         expense_breakdown,
         bills_subscriptions,
@@ -585,13 +1056,115 @@ export function buildMonthlyReportPack({
         record_counts: {
             transactions: transactions.length,
             bills: bills.length,
-            subscriptions: subscriptions.length
+            subscriptions: subscriptions.length,
+            current_period_transactions: transactions.length,
+            comparison_period_transactions: Array.isArray(previousPeriodTransactions) ? previousPeriodTransactions.length : 0
         },
         warning_counts: data_quality.warning_counts,
         warning_total: warningTotal,
         source_files: sourceFiles,
-        period
+        period: currentPeriodForBuilder
     };
+}
+
+// File list adapts to the scope so CSV filenames make sense for the report
+// the user actually requested.
+function sourceFilesForScope(scope) {
+    const slug = periodFilenameSlug({ start: scope.current_period.start_date, end: scope.current_period.end_date });
+    const currentYear = parseDay(scope.current_period.start_date)?.getFullYear();
+    const previousYear = scope.comparison_period ? parseDay(scope.comparison_period.start_date)?.getFullYear() : null;
+    const ytdSlug = currentYear ? `${currentYear}_ytd` : slug;
+    const yoySlug = (currentYear && previousYear) ? `${currentYear}_vs_${previousYear}_ytd` : ytdSlug;
+
+    if (scope.mode === 'year_to_date' || scope.mode === 'quarter_to_date') {
+        if (scope.comparison_mode === 'previous_year_to_date' || scope.comparison_mode === 'same_period_last_year') {
+            return [
+                `yoy_profit_loss_${yoySlug}.csv`,
+                `monthly_trend_yoy_${currentYear}_vs_${previousYear}.csv`,
+                `expense_breakdown_${ytdSlug}.csv`,
+                `ledger_export_${ytdSlug}.csv`,
+                `data_quality_${ytdSlug}.csv`
+            ];
+        }
+        return [
+            `ytd_profit_loss_${currentYear || slug}.csv`,
+            `monthly_trend_${ytdSlug}.csv`,
+            `expense_breakdown_${ytdSlug}.csv`,
+            `bills_payables_${ytdSlug}.csv`,
+            `ledger_export_${ytdSlug}.csv`,
+            `data_quality_${ytdSlug}.csv`
+        ];
+    }
+    return [
+        `profit_loss_${slug}.csv`,
+        `expense_breakdown_${slug}.csv`,
+        `bills_payables_${slug}.csv`,
+        `subscriptions_${slug}.csv`,
+        `ledger_export_${slug}.csv`,
+        `data_quality_${slug}.csv`
+    ];
+}
+
+function composeExecutiveSummary({ scope, totalRecords, profit_loss, ytd_summary, yoy_comparison, expense_breakdown, warningTotal, periodHumanLabel }) {
+    if (totalRecords === 0) {
+        return `${periodHumanLabel} has no FluxyOS records yet. Add transactions, bills, or subscriptions to populate this report.`;
+    }
+
+    if (yoy_comparison && yoy_comparison.status !== 'unavailable') {
+        const rev = yoy_comparison.rows.find(r => r.metric === 'Revenue');
+        const opex = yoy_comparison.rows.find(r => r.metric === 'OpEx');
+        const net = yoy_comparison.rows.find(r => r.metric === 'Net Result');
+        const margin = yoy_comparison.rows.find(r => r.metric === 'Gross Margin');
+        const fmtPct = (r) => r?.change_pct === null ? 'N/A' : (r.change_pct >= 0 ? '+' : '') + r.change_pct.toFixed(1) + '%';
+        const marginPart = margin ? `Margin ${margin.change_points >= 0 ? 'expanded' : 'compressed'} by ${Math.abs(margin.change_points).toFixed(1)} pts.` : '';
+        return `Revenue ${rev?.change_pct === null ? 'is new this year' : (rev.change_pct >= 0 ? 'grew' : 'declined') + ' by ' + fmtPct(rev)} compared with the same period last year. OpEx changed by ${fmtPct(opex)} while net result changed by ${fmtPct(net)}. ${marginPart}`;
+    }
+
+    if (ytd_summary) {
+        const best = ytd_summary.bestRevenueMonth;
+        const top = expense_breakdown.categories[0];
+        return `${periodHumanLabel} generated ${formatRupiah(ytd_summary.revenue)} revenue, ${formatRupiah(ytd_summary.opex)} OpEx, and ${formatRupiah(ytd_summary.netResult)} net result.${best ? ' The strongest month was ' + best.monthLabel + '.' : ''}${top ? ' ' + top.category + ' was the largest cost driver at ' + formatRupiah(top.amount) + '.' : ''}${warningTotal ? ' ' + warningTotal + ' data warning' + (warningTotal === 1 ? '' : 's') + ' should be resolved before external handoff.' : ''}`;
+    }
+
+    return profit_loss.netResult >= 0
+        ? `${periodHumanLabel} closed with ${formatRupiah(profit_loss.netResult)} net result and ${formatPercent(profit_loss.grossMargin)} gross margin. ${expense_breakdown.top_vendors[0] ? expense_breakdown.categories[0]?.category + ' was the largest OpEx driver at ' + formatRupiah(expense_breakdown.categories[0].amount) + '. ' : ''}${warningTotal ? warningTotal + ' data warning' + (warningTotal === 1 ? '' : 's') + ' should be resolved before external handoff.' : 'Data quality is clean for this period.'}`
+        : `${periodHumanLabel} closed at a loss of ${formatRupiah(Math.abs(profit_loss.netResult))} with ${formatPercent(profit_loss.grossMargin)} gross margin. Review the largest expense categories${warningTotal ? ' and ' + warningTotal + ' data warning' + (warningTotal === 1 ? '' : 's') : ''} before handoff.`;
+}
+
+function buildYtdKeyTakeaways({ ytd_summary, expense_breakdown, monthly_trend, warningTotal }) {
+    const out = [];
+    if (!ytd_summary || ytd_summary.revenue + ytd_summary.opex === 0) {
+        out.push({ no: 1, title: 'No year-to-date activity yet', body: 'Add transactions to populate the YTD report.' });
+        return out;
+    }
+    out.push({ no: 1, title: `${formatRupiah(ytd_summary.revenue)} YTD revenue`, body: `${ytd_summary.elapsedMonths} month${ytd_summary.elapsedMonths === 1 ? '' : 's'} so far. Average ${formatRupiah(ytd_summary.avgMonthlyRevenue)} per month.${ytd_summary.isPartialCurrentMonth ? ' Includes partial current month.' : ''}` });
+    if (ytd_summary.bestRevenueMonth) {
+        out.push({ no: 2, title: `Strongest month: ${ytd_summary.bestRevenueMonth.monthLabel}`, body: `${formatRupiah(ytd_summary.bestRevenueMonth.revenue)} revenue.` });
+    }
+    if (expense_breakdown.categories[0]) {
+        const c = expense_breakdown.categories[0];
+        out.push({ no: out.length + 1, title: `${c.category} led OpEx`, body: `${formatRupiah(c.amount)}, equal to ${c.pct}% of YTD OpEx.` });
+    }
+    if (warningTotal > 0) {
+        out.push({ no: out.length + 1, title: 'Usable, not fully clean', body: `${warningTotal} data warning${warningTotal === 1 ? '' : 's'} need review.` });
+    }
+    return out.slice(0, 4);
+}
+
+function buildYoyKeyTakeaways({ yoy_comparison, warningTotal }) {
+    const out = [];
+    const rev = yoy_comparison.rows.find(r => r.metric === 'Revenue');
+    const opex = yoy_comparison.rows.find(r => r.metric === 'OpEx');
+    const net = yoy_comparison.rows.find(r => r.metric === 'Net Result');
+    const margin = yoy_comparison.rows.find(r => r.metric === 'Gross Margin');
+    if (rev) out.push({ no: 1, title: `Revenue ${rev.change_pct === null ? 'is new this year' : (rev.change_pct >= 0 ? 'grew' : 'declined')}`, body: rev.change_pct === null ? 'No previous-year revenue to compare against.' : `${rev.change_pct >= 0 ? '+' : ''}${rev.change_pct.toFixed(1)}% vs the same YTD range last year.` });
+    if (opex) out.push({ no: 2, title: `OpEx ${opex.change_pct === null ? 'is new this year' : (opex.change_pct >= 0 ? 'grew' : 'fell')}`, body: opex.change_pct === null ? 'No previous-year OpEx to compare.' : `${opex.change_pct >= 0 ? '+' : ''}${opex.change_pct.toFixed(1)}% vs the same YTD range last year.` });
+    if (net) out.push({ no: 3, title: `Net result ${net.change_pct === null ? 'is new this year' : (net.change_pct >= 0 ? 'improved' : 'declined')}`, body: net.change_pct === null ? 'No previous-year net result to compare.' : `${net.change_pct >= 0 ? '+' : ''}${net.change_pct.toFixed(1)}% vs the same YTD range last year.` });
+    if (margin) out.push({ no: 4, title: `Margin ${margin.change_points >= 0 ? 'expanded' : 'compressed'}`, body: `${margin.change_points >= 0 ? '+' : ''}${margin.change_points.toFixed(1)} pts vs the same YTD range last year.` });
+    if (warningTotal > 0 && out.length < 4) {
+        out.push({ no: out.length + 1, title: 'Data warnings exist', body: `${warningTotal} item${warningTotal === 1 ? '' : 's'} need review before external handoff.` });
+    }
+    return out.slice(0, 4);
 }
 
 function buildKeyTakeaways({ profit_loss, expense_breakdown, bills_subscriptions, data_quality, warningTotal }) {
@@ -620,17 +1193,53 @@ function buildKeyTakeaways({ profit_loss, expense_breakdown, bills_subscriptions
     return takeaways.slice(0, 4);
 }
 
-function computeSectionsAvailability({ totalRecords, period_comparison, finance_predictability, data_quality, report_confidence_method }) {
+function computeSectionsAvailability({ scope, totalRecords, period_comparison, yoy_comparison, monthly_trend_comparison, monthly_trend, finance_predictability, data_quality, report_confidence_method }) {
     const empty = totalRecords === 0;
-    return REPORT_SECTION_KEYS.map(key => {
+    const isYtdMode = scope && (scope.mode === 'year_to_date' || scope.mode === 'quarter_to_date');
+    const isYoY = scope && (scope.comparison_mode === 'previous_year_to_date' || scope.comparison_mode === 'same_period_last_year');
+
+    // Build the section list dynamically based on the scope.
+    let keys = ['executive_summary'];
+    if (isYoY) {
+        keys.push('yoy_pl', 'monthly_trend_comparison');
+    } else if (isYtdMode) {
+        keys.push('ytd_pl', 'monthly_trend');
+    } else {
+        keys.push('profit_loss');
+        if (period_comparison?.status === 'available' || scope?.comparison_mode === 'previous_period') {
+            keys.push('period_comparison');
+        }
+    }
+    keys.push(
+        'finance_predictability',
+        'expense_breakdown',
+        'bills_subscriptions',
+        'report_confidence',
+        'data_quality',
+        'export_manifest'
+    );
+
+    return keys.map(key => {
         let status = 'available';
         let limitation = '';
         if (empty) {
             status = 'unavailable';
             limitation = 'No records in selected period';
-        } else if (key === 'period_comparison' && period_comparison.status === 'unavailable') {
+        } else if (key === 'period_comparison' && period_comparison?.status === 'unavailable') {
             status = 'unavailable';
             limitation = 'Previous period records not found';
+        } else if (key === 'yoy_pl' && yoy_comparison?.status === 'unavailable') {
+            status = 'unavailable';
+            limitation = 'Previous-year records not found';
+        } else if (key === 'yoy_pl' && yoy_comparison?.status === 'partial') {
+            status = 'partial';
+            limitation = yoy_comparison.limitations.join(' · ');
+        } else if (key === 'monthly_trend_comparison' && monthly_trend_comparison?.status !== 'available') {
+            status = monthly_trend_comparison?.status || 'unavailable';
+            limitation = monthly_trend_comparison?.limitations?.[0] || 'Previous-year monthly data not found';
+        } else if (key === 'monthly_trend' && (!monthly_trend || monthly_trend.length === 0)) {
+            status = 'unavailable';
+            limitation = 'Not enough months in the selected range';
         } else if (key === 'finance_predictability') {
             status = finance_predictability.status;
             limitation = finance_predictability.limitations.join(' · ');
@@ -640,7 +1249,7 @@ function computeSectionsAvailability({ totalRecords, period_comparison, finance_
             status = 'partial';
             limitation = 'Confidence below 70% — see breakdown';
         }
-        return { key, label: REPORT_SECTION_LABELS[key], status, limitation };
+        return { key, label: REPORT_SECTION_LABELS[key] || key, status, limitation };
     });
 }
 
@@ -760,18 +1369,132 @@ export function buildCsvFile(fileKey, pack, sourceData = {}) {
                 .forEach(s => rows.push(csvRow(['subscriptions', s.id || '', s.vendor_name || s.name || '', 'Missing Renewal Date', 'renewal_date', 'warning'])));
             return rows.join('\n');
         }
+        case 'ytd_profit_loss': {
+            const rows = [];
+            const summary = pack.ytd_summary || pack.profit_loss;
+            rows.push(csvRow(['Report', 'Year-to-Date Profit & Loss']));
+            rows.push(csvRow(['Period Start', period.start]));
+            rows.push(csvRow(['Period End', period.end]));
+            rows.push(csvRow(['Generated At', pack.report_identity.generated_at]));
+            rows.push('');
+            rows.push(csvRow(['Metric', 'Amount']));
+            rows.push(csvRow(['YTD Revenue', summary.revenue]));
+            rows.push(csvRow(['YTD OpEx', summary.opex]));
+            const margin = summary.revenue > 0 ? summary.grossMargin.toFixed(1) : 0;
+            rows.push(csvRow(['YTD Gross Margin %', margin]));
+            rows.push(csvRow(['YTD Net Result', summary.netResult]));
+            if (pack.ytd_summary) {
+                rows.push(csvRow(['Average Monthly Revenue', Math.round(pack.ytd_summary.avgMonthlyRevenue)]));
+                rows.push(csvRow(['Average Monthly OpEx', Math.round(pack.ytd_summary.avgMonthlyOpex)]));
+                rows.push(csvRow(['Elapsed Months', pack.ytd_summary.elapsedMonths]));
+                rows.push(csvRow(['Best Revenue Month', pack.ytd_summary.bestRevenueMonth?.monthLabel || 'N/A']));
+                rows.push(csvRow(['Worst Net Result Month', pack.ytd_summary.worstNetMonth?.monthLabel || 'N/A']));
+                rows.push(csvRow(['Includes Partial Current Month', pack.ytd_summary.isPartialCurrentMonth ? 'Yes' : 'No']));
+            }
+            return rows.join('\n');
+        }
+        case 'monthly_trend': {
+            const rows = [csvRow(['Month', 'Revenue', 'OpEx', 'Net Result', 'Gross Margin %', 'Record Count', 'Warnings'])];
+            (pack.monthly_trend || []).forEach(m => {
+                rows.push(csvRow([
+                    m.month,
+                    m.revenue,
+                    m.opex,
+                    m.netResult,
+                    m.revenue > 0 ? m.grossMargin.toFixed(1) : 0,
+                    m.recordCount,
+                    m.warnings
+                ]));
+            });
+            return rows.join('\n');
+        }
+        case 'yoy_profit_loss': {
+            const rows = [];
+            rows.push(csvRow(['Report', 'YTD Year-on-Year Profit & Loss']));
+            rows.push(csvRow(['Current Period', `${pack.report_scope?.current_period?.start_date} to ${pack.report_scope?.current_period?.end_date}`]));
+            rows.push(csvRow(['Comparison Period', `${pack.report_scope?.comparison_period?.start_date || ''} to ${pack.report_scope?.comparison_period?.end_date || ''}`]));
+            rows.push(csvRow(['Generated At', pack.report_identity.generated_at]));
+            rows.push('');
+            const yoy = pack.yoy_comparison;
+            if (!yoy || yoy.status === 'unavailable') {
+                rows.push(csvRow(['Note', 'Previous-year records not found. No comparison rows.']));
+                return rows.join('\n');
+            }
+            rows.push(csvRow(['Metric', 'Current YTD', 'Previous YTD', 'Change', 'Change %', 'Margin pts', 'Interpretation']));
+            yoy.rows.forEach(r => {
+                rows.push(csvRow([
+                    r.metric,
+                    r.is_percent ? r.current.toFixed(1) : r.current,
+                    r.is_percent ? r.previous.toFixed(1) : r.previous,
+                    r.is_percent ? '' : (r.change ?? ''),
+                    r.is_percent ? '' : (r.change_pct === null ? 'N/A' : r.change_pct.toFixed(1)),
+                    r.is_percent && typeof r.change_points === 'number' ? r.change_points.toFixed(1) : '',
+                    r.interpretation || ''
+                ]));
+            });
+            return rows.join('\n');
+        }
+        case 'monthly_trend_yoy': {
+            const rows = [csvRow(['Index', 'Current Month', 'Current Revenue', 'Current OpEx', 'Current Net Result', 'Previous Month', 'Previous Revenue', 'Previous OpEx', 'Previous Net Result', 'Revenue Change %'])];
+            const comp = pack.monthly_trend_comparison;
+            if (!comp || comp.status === 'unavailable' || !comp.months?.length) {
+                rows.push(csvRow(['', '', '', '', '', '', '', '', '', 'No previous-year monthly trend data']));
+                return rows.join('\n');
+            }
+            comp.months.forEach((m, i) => {
+                const c = m.current || {};
+                const p = m.previous || {};
+                rows.push(csvRow([
+                    i + 1,
+                    m.currentLabel || '',
+                    c.revenue ?? '',
+                    c.opex ?? '',
+                    c.netResult ?? '',
+                    m.previousLabel || '',
+                    p.revenue ?? '',
+                    p.opex ?? '',
+                    p.netResult ?? '',
+                    m.revenue_change_pct === null || m.revenue_change_pct === undefined ? 'N/A' : m.revenue_change_pct.toFixed(1)
+                ]));
+            });
+            return rows.join('\n');
+        }
         default:
             return '';
     }
 }
 
+// Map source-file names → file key suffix. The pack's `source_files` array
+// holds final filenames; we look up the canonical key by prefix.
+function fileKeyFromFilename(filename) {
+    if (filename.startsWith('yoy_profit_loss_')) return 'yoy_profit_loss';
+    if (filename.startsWith('monthly_trend_yoy_')) return 'monthly_trend_yoy';
+    if (filename.startsWith('monthly_trend_')) return 'monthly_trend';
+    if (filename.startsWith('ytd_profit_loss_')) return 'ytd_profit_loss';
+    if (filename.startsWith('profit_loss_')) return 'profit_loss';
+    if (filename.startsWith('expense_breakdown_')) return 'expense_breakdown';
+    if (filename.startsWith('bills_payables_')) return 'bills_payables';
+    if (filename.startsWith('subscriptions_')) return 'subscriptions';
+    if (filename.startsWith('ledger_export_')) return 'ledger_export';
+    if (filename.startsWith('data_quality_')) return 'data_quality';
+    return null;
+}
+
 export function buildCsvBundle(pack, sourceData = {}) {
-    const slug = periodFilenameSlug(pack.period);
-    const keys = ['profit_loss', 'expense_breakdown', 'bills_payables', 'subscriptions', 'ledger_export', 'data_quality'];
-    return keys.map(k => ({
-        filename: `${k}_${slug}.csv`,
-        content: buildCsvFile(k, pack, sourceData)
-    }));
+    const files = pack.source_files || [];
+    if (!files.length) {
+        // Legacy fallback for callers without a scope-aware source_files list.
+        const slug = periodFilenameSlug(pack.period);
+        const keys = ['profit_loss', 'expense_breakdown', 'bills_payables', 'subscriptions', 'ledger_export', 'data_quality'];
+        return keys.map(k => ({ filename: `${k}_${slug}.csv`, content: buildCsvFile(k, pack, sourceData) }));
+    }
+    return files
+        .map(filename => {
+            const key = fileKeyFromFilename(filename);
+            if (!key) return null;
+            return { filename, content: buildCsvFile(key, pack, sourceData) };
+        })
+        .filter(Boolean);
 }
 
 export function downloadFile(filename, content, mime = 'text/csv;charset=utf-8;') {

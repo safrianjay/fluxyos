@@ -468,7 +468,7 @@ class DataService {
 
     async addReportExport(userId, data = {}) {
         // Metadata only. Never store row-level financial data or CSV content.
-        return await addDoc(collection(this.db, `users/${userId}/report_exports`), {
+        const payload = {
             report_type: data.report_type || 'monthly_report_pack',
             period_start: data.period_start || null,
             period_end: data.period_end || null,
@@ -480,7 +480,13 @@ class DataService {
             limitations: Array.isArray(data.limitations) ? data.limitations : [],
             created_at: serverTimestamp(),
             created_by: userId
-        });
+        };
+        // Optional YTD/YoY scope metadata. The firestore rule allows the field
+        // to be absent — only include it when supplied.
+        if (data.report_scope && typeof data.report_scope === 'object') {
+            payload.report_scope = data.report_scope;
+        }
+        return await addDoc(collection(this.db, `users/${userId}/report_exports`), payload);
     }
 
     async getRecentReportExports(userId, limitCount = 10) {

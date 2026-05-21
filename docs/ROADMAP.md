@@ -106,6 +106,10 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | **Browser-native PDF save (`window.print()`)** | ✅ Shipped MVP | App cannot verify save, so never logs `downloaded: true` |
 | **`report_exports` metadata collection** | ✅ Shipped MVP | Append-only, user-scoped, no row-level data |
 | **Period Comparison (vs previous period)** | ✅ Shipped MVP | Falls back to "Unavailable" when previous period has no records |
+| **YTD / QTD reports** | ✅ Shipped MVP | "Report period" select on the Reports filter strip; adds Monthly Trend Breakdown + averages + best/worst month |
+| **Year-on-Year comparison (Previous YTD or Same period last year)** | ✅ Shipped MVP | YTD P&L comparison + monthly trend comparison; `change_pct` returns N/A when previous is 0 (never NaN/Infinity); margin uses `pts` |
+| **Scope-aware CSV filenames** | ✅ Shipped MVP | `ytd_profit_loss_…`, `monthly_trend_…`, `yoy_profit_loss_…`, `monthly_trend_yoy_…` |
+| **`report_scope` metadata on `report_exports` + `export.create` audit log** | ✅ Shipped MVP | Mode, comparison mode, current/comparison periods, generated title persisted |
 | **Finance Predictability (run rate + ARR + year-end scenarios)** | ✅ Shipped MVP | ARR stays unavailable until recurring revenue classification ships |
 | Backend PDF generation (Level 2) | 📋 Planned | Replace browser-print path with stored PDF files |
 | ZIP CSV bundle | 📋 Planned | MVP downloads files individually |

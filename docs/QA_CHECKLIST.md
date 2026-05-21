@@ -328,6 +328,15 @@ Run the **Cross-Page Regression** section below — changes to shared files affe
 | 26 | Confirm Export on viewer writes a row to `users/{uid}/report_exports` AND an `export.create` audit log with `target_collection: "report_exports"` |
 | 27 | Audit log + report_exports rows never contain row-level finance data or CSV content |
 | 28 | Recent Exports panel on `/reports` reads from `report_exports` and refreshes after a confirmed export |
+| 29 | Filter strip exposes "Report period" + "Compare with" selects; the scope summary line under the strip updates after Apply |
+| 30 | YTD mode resolves start to Jan 1 of the current year and end to today (or selected end date); Custom range picker greys out for non-custom modes |
+| 31 | YTD + Previous year to date produces a "YYYY YTD Year-on-Year Financial Report" with both periods shown in the drawer and on the viewer cover |
+| 32 | YoY change% never renders `NaN`, `Infinity`, or `-Infinity` — previous-zero metrics show `N/A` |
+| 33 | Gross margin change in YoY uses `pts` (e.g. `+2.8 pts`), not `%` |
+| 34 | Leap-year edge: when current end date is Feb 29 and previous year has no Feb 29, comparison clamps to Feb 28 |
+| 35 | Monthly Trend Breakdown renders for YTD; Monthly Trend Comparison renders for YTD YoY when previous-year data exists |
+| 36 | CSV filenames adapt: `ytd_profit_loss_2026.csv` for YTD; `yoy_profit_loss_2026_vs_2025_ytd.csv` for YTD YoY |
+| 37 | `report_exports` row stores `report_scope` for YTD/YoY runs; audit log `after` mirrors mode + comparison mode + both periods |
 
 ### I. Favicon / Meta / Head Changes
 

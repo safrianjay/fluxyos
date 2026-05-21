@@ -588,12 +588,14 @@ service cloud.firestore {
 
       match /report_exports/{exportId} {
         // Metadata for a confirmed Reports & Exports run. Stores period,
-        // formats, included sections, record counts, and warning counts.
-        // Must never contain row-level financial data or CSV content.
+        // formats, included sections, record counts, warning counts, and
+        // (for YTD/YoY) the resolved report scope. Must never contain
+        // row-level financial data or CSV content.
         allow read: if isOwner(userId);
         allow create: if isOwner(userId)
           && request.resource.data.keys().hasOnly([
             'report_type',
+            'report_scope',
             'period_start',
             'period_end',
             'formats',
@@ -615,7 +617,8 @@ service cloud.firestore {
           && request.resource.data.included_sections is list
           && request.resource.data.record_counts is map
           && request.resource.data.warning_counts is map
-          && request.resource.data.limitations is list;
+          && request.resource.data.limitations is list
+          && (!('report_scope' in request.resource.data) || request.resource.data.report_scope is map);
         allow update, delete: if false;
       }
 

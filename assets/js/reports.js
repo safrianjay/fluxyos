@@ -24,7 +24,9 @@ import {
     isoFromDayKey,
     dayKey,
     periodFilenameSlug,
-    previousPeriodRange
+    resolveReportScope,
+    REPORT_PERIOD_MODES,
+    COMPARISON_MODES
 } from './report-builder.js';
 
 const REPORT_PREVIEW_STORAGE_KEY = 'fluxyos_report_preview';
@@ -60,10 +62,15 @@ const reportsState = {
     userDisplayName: '',
     businessName: '',
     isUserVerified: true,
-    selectedPeriod: { start: monthStartKey(), end: monthEndKey() },
+    // Scope controls (drive resolveReportScope).
+    reportPeriodMode: 'monthly',
+    comparisonMode: 'none',
+    customRange: { start: monthStartKey(), end: monthEndKey() },
+    // Resolved scope (rebuilt on every loadReportData).
+    scope: null,
     selectedReportType: 'monthly_report_pack',
-    selectedSources: ['transactions', 'bills', 'subscriptions'],
     sourceData: { transactions: [], bills: [], subscriptions: [] },
+    comparisonSourceData: { transactions: [], bills: [], subscriptions: [] },
     pack: null,
     recentExports: [],
     loading: false,
@@ -95,47 +102,73 @@ async function loadBusinessName() {
     }
 }
 
+function resolveCurrentScope() {
+    return resolveReportScope({
+        reportPeriodMode: reportsState.reportPeriodMode,
+        comparisonMode: reportsState.comparisonMode,
+        selectedStartDate: reportsState.customRange.start,
+        selectedEndDate: reportsState.customRange.end,
+        today: new Date()
+    });
+}
+
 async function loadReportData() {
     if (!reportsState.user) return;
     reportsState.loading = true;
     reportsState.error = null;
-    const { start, end } = reportsState.selectedPeriod;
+    const scope = resolveCurrentScope();
+    reportsState.scope = scope;
+    const current = scope.current_period;
+    const comparison = scope.comparison_period;
     try {
-        const previous = previousPeriodRange({ start, end });
-        const [transactions, bills, subscriptions, previousTransactions, recentExports] = await Promise.all([
-            ds.getTransactionsForPeriod(reportsState.user.uid, start, end),
-            ds.getBillsForPeriod(reportsState.user.uid, start, end),
-            ds.getSubscriptionsForPeriod(reportsState.user.uid, start, end),
-            previous
-                ? ds.getTransactionsForPeriod(reportsState.user.uid, previous.start, previous.end)
+        const [transactions, bills, subscriptions, prevTx, prevBills, prevSubs, recentExports] = await Promise.all([
+            ds.getTransactionsForPeriod(reportsState.user.uid, current.start_date, current.end_date),
+            ds.getBillsForPeriod(reportsState.user.uid, current.start_date, current.end_date),
+            ds.getSubscriptionsForPeriod(reportsState.user.uid, current.start_date, current.end_date),
+            comparison
+                ? ds.getTransactionsForPeriod(reportsState.user.uid, comparison.start_date, comparison.end_date)
+                : Promise.resolve(null),
+            comparison
+                ? ds.getBillsForPeriod(reportsState.user.uid, comparison.start_date, comparison.end_date).catch(() => [])
+                : Promise.resolve(null),
+            comparison
+                ? ds.getSubscriptionsForPeriod(reportsState.user.uid, comparison.start_date, comparison.end_date).catch(() => [])
                 : Promise.resolve(null),
             ds.getRecentReportExports(reportsState.user.uid, 5).catch(() => [])
         ]);
         reportsState.sourceData = { transactions, bills, subscriptions };
+        reportsState.comparisonSourceData = comparison
+            ? { transactions: prevTx || [], bills: prevBills || [], subscriptions: prevSubs || [] }
+            : { transactions: [], bills: [], subscriptions: [] };
         reportsState.pack = buildMonthlyReportPack({
             userId: reportsState.user.uid,
             userDisplayName: reportsState.userDisplayName,
             businessName: reportsState.businessName,
-            period: { start, end },
+            scope,
             transactions,
             bills,
             subscriptions,
-            previousPeriodTransactions: previousTransactions,
+            previousPeriodTransactions: comparison ? (prevTx || []) : null,
+            previousPeriodBills: comparison ? (prevBills || []) : null,
+            previousPeriodSubscriptions: comparison ? (prevSubs || []) : null,
             recurringRevenue: null
         });
         reportsState.recentExports = recentExports;
     } catch (err) {
         reportsState.error = 'Unable to load report data. Please refresh or try again.';
         reportsState.sourceData = { transactions: [], bills: [], subscriptions: [] };
+        reportsState.comparisonSourceData = { transactions: [], bills: [], subscriptions: [] };
         reportsState.pack = buildMonthlyReportPack({
             userId: reportsState.user.uid,
             userDisplayName: reportsState.userDisplayName,
             businessName: reportsState.businessName,
-            period: { start, end },
+            scope,
             transactions: [],
             bills: [],
             subscriptions: [],
-            previousPeriodTransactions: null,
+            previousPeriodTransactions: comparison ? [] : null,
+            previousPeriodBills: comparison ? [] : null,
+            previousPeriodSubscriptions: comparison ? [] : null,
             recurringRevenue: null
         });
         reportsState.recentExports = [];
@@ -145,17 +178,61 @@ async function loadReportData() {
     }
 }
 
+function comparisonModeLabel(mode) {
+    return {
+        none: 'None',
+        previous_period: 'Previous period',
+        same_period_last_year: 'Same period last year',
+        previous_year_to_date: 'Previous year to date'
+    }[mode] || mode;
+}
+
+function reportPeriodLabel(mode) {
+    return {
+        monthly: 'This month',
+        last_month: 'Last month',
+        quarter_to_date: 'Quarter to date',
+        year_to_date: 'Year to date',
+        custom: 'Custom range'
+    }[mode] || mode;
+}
+
+function periodHumanRange(period) {
+    if (!period) return '—';
+    const start = period.start_date || period.start;
+    const end = period.end_date || period.end;
+    return periodLabel({ start, end });
+}
+
 // ---------- Rendering ----------
 
 function renderAll() {
     if (reportsState.error) renderError(reportsState.error);
     else clearError();
+    renderScopeSummary();
     renderReadiness();
     renderDataCoverage();
     renderNeedsCleanup();
     renderRecommendedOutput();
     renderRecentExports();
     renderEmptyShellIfNeeded();
+}
+
+function renderScopeSummary() {
+    const target = el('filter-scope-summary');
+    if (!target) return;
+    const scope = reportsState.scope;
+    if (!scope) { target.textContent = ''; return; }
+    const cur = scope.current_period;
+    const parts = [`Current: ${cur.label} (${periodHumanRange(cur)})`];
+    if (scope.comparison_period) {
+        parts.push(`Comparison: ${scope.comparison_period.label} (${periodHumanRange(scope.comparison_period)})`);
+    } else if (scope.comparison_mode === 'none') {
+        // No comparison line.
+    } else {
+        parts.push('Comparison: unavailable for this period');
+    }
+    target.textContent = parts.join(' · ');
 }
 
 function renderError(message) {
@@ -186,6 +263,27 @@ function renderReadiness() {
     setBar('bar-receipt', confidence?.receiptCoverage);
     setBar('bar-bills', confidence?.dueDateCompleteness);
     setBar('bar-predict', predictabilityBarValue(pack));
+    setBar('bar-comparison', comparisonReadinessValue(pack));
+}
+
+function comparisonReadinessValue(pack) {
+    if (!pack || !pack.report_scope) return null;
+    const mode = pack.report_scope.comparison_mode;
+    if (mode === 'none') return null;
+    // YoY uses yoy_comparison + monthly_trend_comparison.
+    if (mode === 'previous_year_to_date' || mode === 'same_period_last_year') {
+        const yoy = pack.yoy_comparison;
+        const trend = pack.monthly_trend_comparison;
+        if (!yoy || yoy.status === 'unavailable') return 0;
+        if (yoy.status === 'partial') return 60;
+        if (trend && trend.status === 'partial') return 75;
+        return 95;
+    }
+    // Previous-period falls back to the existing period_comparison status.
+    const pc = pack.period_comparison;
+    if (!pc || pc.status === 'unavailable') return 0;
+    if (pc.status === 'partial') return 60;
+    return 95;
 }
 
 function predictabilityBarValue(pack) {
@@ -225,8 +323,39 @@ function renderDataCoverage() {
     el('coverage-bills').textContent = String(pack?.record_counts.bills ?? 0);
     el('coverage-subscriptions').textContent = String(pack?.record_counts.subscriptions ?? 0);
     el('coverage-revenue-sync').textContent = 'Not connected';
+
+    const currentTotal = (pack?.record_counts.transactions ?? 0) + (pack?.record_counts.bills ?? 0) + (pack?.record_counts.subscriptions ?? 0);
+    const currentRecordsEl = el('coverage-current-period-records');
+    if (currentRecordsEl) currentRecordsEl.textContent = String(currentTotal);
+
+    const comparisonRecordsEl = el('coverage-comparison-period-records');
+    if (comparisonRecordsEl) {
+        if (!pack?.report_scope?.comparison_period) {
+            comparisonRecordsEl.textContent = 'No comparison';
+        } else {
+            const comp = reportsState.comparisonSourceData;
+            const total = (comp?.transactions?.length ?? 0) + (comp?.bills?.length ?? 0) + (comp?.subscriptions?.length ?? 0);
+            comparisonRecordsEl.textContent = total === 0 ? 'No records' : String(total);
+        }
+    }
+
+    const previousCategoriesEl = el('coverage-previous-categories');
+    if (previousCategoriesEl) {
+        const comp = reportsState.comparisonSourceData;
+        const cats = new Set((comp?.transactions || []).map(t => t.category).filter(Boolean));
+        if (!pack?.report_scope?.comparison_period) previousCategoriesEl.textContent = '—';
+        else if (cats.size === 0) previousCategoriesEl.textContent = 'None';
+        else previousCategoriesEl.textContent = `${cats.size} categor${cats.size === 1 ? 'y' : 'ies'}`;
+    }
+
     const prevEl = el('coverage-previous-period');
-    if (prevEl) prevEl.textContent = pack?.period_comparison.status === 'available' ? 'Available' : 'Unavailable';
+    if (prevEl) {
+        const mode = pack?.report_scope?.comparison_mode;
+        if (mode === 'none' || !pack?.report_scope?.comparison_period) prevEl.textContent = 'No comparison';
+        else if (mode === 'previous_year_to_date' || mode === 'same_period_last_year') prevEl.textContent = pack?.yoy_comparison?.status === 'available' ? 'Available' : (pack?.yoy_comparison?.status === 'partial' ? 'Partial' : 'Unavailable');
+        else prevEl.textContent = pack?.period_comparison?.status === 'available' ? 'Available' : 'Unavailable';
+    }
+
     const recurringEl = el('coverage-recurring');
     if (recurringEl) recurringEl.textContent = pack?.finance_predictability.arr.status === 'unavailable' ? 'Unclassified' : 'Partial';
     const predictEl = el('coverage-predictability');
@@ -266,6 +395,26 @@ function renderRecommendedOutput() {
             statusTag.classList.remove('tag-good');
         }
     }
+    // Dynamic card title + description driven by scope.
+    const titleEl = el('recommended-title');
+    const descEl = el('recommended-description');
+    if (!pack || !titleEl || !descEl) return;
+    const scope = pack.report_scope;
+    if (scope.comparison_mode === 'previous_year_to_date' || scope.comparison_mode === 'same_period_last_year') {
+        titleEl.textContent = (scope.mode === 'year_to_date' || scope.mode === 'quarter_to_date')
+            ? 'YTD Year-on-Year Financial Report'
+            : 'Year-on-Year Financial Report';
+        descEl.textContent = `One controlled export containing current vs comparison P&L, monthly trend comparison, finance predictability, expense breakdown, and data quality notes.`;
+    } else if (scope.mode === 'year_to_date') {
+        titleEl.textContent = 'Year-to-Date Financial Report';
+        descEl.textContent = `One controlled export from ${scope.current_period.label} covering P&L, monthly trend, expense breakdown, payables, ledger rows, and data quality notes.`;
+    } else if (scope.mode === 'quarter_to_date') {
+        titleEl.textContent = 'Quarter-to-Date Financial Report';
+        descEl.textContent = `Quarter-to-date export covering P&L, monthly trend, expense breakdown, payables, ledger rows, and data quality notes.`;
+    } else {
+        titleEl.textContent = 'Monthly Report Pack';
+        descEl.textContent = 'One controlled export containing P&L, expense breakdown, payables, subscriptions, ledger rows, and data quality notes for the selected period.';
+    }
 }
 
 function renderRecentExports() {
@@ -278,10 +427,14 @@ function renderRecentExports() {
     }
     container.innerHTML = exports.map(record => {
         const type = record.report_type || 'monthly_report_pack';
-        const label = REPORT_TYPES[type]?.label || type;
-        const period = (record.period_start && record.period_end)
-            ? periodLabel({ start: String(record.period_start).slice(0, 10), end: String(record.period_end).slice(0, 10) })
-            : '—';
+        const label = record.report_scope?.current_period?.label
+            ? scopeBasedLabel(record.report_scope)
+            : (REPORT_TYPES[type]?.label || type);
+        const period = record.report_scope?.current_period?.label
+            ? record.report_scope.current_period.label
+            : ((record.period_start && record.period_end)
+                ? periodLabel({ start: String(record.period_start).slice(0, 10), end: String(record.period_end).slice(0, 10) })
+                : '—');
         const created = timestampToDate(record.created_at);
         const when = created ? created.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
         const formats = (record.formats || []).map(f => f === 'pdf_print' ? 'PDF' : (f === 'csv_bundle' ? 'CSV' : f)).join(' + ') || 'CSV';
@@ -295,6 +448,18 @@ function renderRecentExports() {
                 <span class="tag tag-good">Generated</span>
             </div>`;
     }).join('');
+}
+
+function scopeBasedLabel(scope) {
+    if (!scope) return 'Monthly Report Pack';
+    if (scope.comparison_mode === 'previous_year_to_date' || scope.comparison_mode === 'same_period_last_year') {
+        return scope.mode === 'year_to_date' || scope.mode === 'quarter_to_date'
+            ? 'YTD Year-on-Year Financial Report'
+            : 'Year-on-Year Financial Report';
+    }
+    if (scope.mode === 'year_to_date') return 'Year-to-Date Financial Report';
+    if (scope.mode === 'quarter_to_date') return 'Quarter-to-Date Financial Report';
+    return 'Monthly Report Pack';
 }
 
 function renderEmptyShellIfNeeded() {
@@ -325,8 +490,23 @@ function renderPreviewDrawer() {
     const meta = REPORT_TYPES[type];
     const pack = reportsState.pack;
     if (!meta || !pack) return;
-    el('drawer-title').textContent = `Preview: ${meta.label}`;
-    el('drawer-period').textContent = periodLabel(reportsState.selectedPeriod);
+    const scope = pack.report_scope;
+    const drawerTitle = type === 'monthly_report_pack'
+        ? `Preview: ${pack.report_identity.report_title}`
+        : `Preview: ${meta.label}`;
+    el('drawer-title').textContent = drawerTitle;
+    el('drawer-period').textContent = `${scope.current_period.label} (${periodHumanRange(scope.current_period)})`;
+    const compWrap = el('drawer-comparison-period-wrap');
+    const compModeWrap = el('drawer-comparison-mode-wrap');
+    if (scope.comparison_period && type === 'monthly_report_pack') {
+        compWrap.classList.remove('hidden');
+        el('drawer-comparison-period').textContent = `${scope.comparison_period.label} (${periodHumanRange(scope.comparison_period)})`;
+        compModeWrap.classList.remove('hidden');
+        el('drawer-comparison-mode').textContent = comparisonModeLabel(scope.comparison_mode);
+    } else {
+        compWrap.classList.add('hidden');
+        compModeWrap.classList.add('hidden');
+    }
 
     const totalRecords = pack.record_counts.transactions + pack.record_counts.bills + pack.record_counts.subscriptions;
 
@@ -387,13 +567,23 @@ function renderPreviewDrawer() {
         }
     }
 
-    // Generated files
-    const slug = periodFilenameSlug(pack.period);
-    el('drawer-files').innerHTML = meta.files.map(f => `
-        <div class="file-row">
-            <div><strong>${escapeHtml(f)}_${slug}.csv</strong><span>${escapeHtml(fileDescription(f))}</span></div>
-            <span class="tag">CSV</span>
-        </div>`).join('');
+    // Generated files. Monthly pack uses the scope-aware source_files list
+    // (so YTD/YoY filenames are correct); individual reports keep the
+    // legacy single-file format.
+    const slug = periodFilenameSlug({ start: scope.current_period.start_date, end: scope.current_period.end_date });
+    if (type === 'monthly_report_pack') {
+        el('drawer-files').innerHTML = (pack.source_files || []).map(filename => `
+            <div class="file-row">
+                <div><strong>${escapeHtml(filename)}</strong><span>${escapeHtml(fileDescriptionForFilename(filename))}</span></div>
+                <span class="tag">CSV</span>
+            </div>`).join('');
+    } else {
+        el('drawer-files').innerHTML = meta.files.map(f => `
+            <div class="file-row">
+                <div><strong>${escapeHtml(f)}_${slug}.csv</strong><span>${escapeHtml(fileDescription(f))}</span></div>
+                <span class="tag">CSV</span>
+            </div>`).join('');
+    }
 
     // Warnings
     const warningsBox = el('drawer-warnings');
@@ -433,12 +623,30 @@ function renderPreviewDrawer() {
 function fileDescription(file) {
     return {
         profit_loss: 'Revenue, OpEx, margin, net result',
+        ytd_profit_loss: 'YTD revenue, OpEx, averages, best/worst months',
+        yoy_profit_loss: 'YTD year-on-year comparison with deltas',
+        monthly_trend: 'Month-by-month revenue, OpEx, net result',
+        monthly_trend_yoy: 'Monthly trend aligned vs previous year',
         expense_breakdown: 'Spend grouped by category and vendor',
         bills_payables: 'Vendors, amounts, due dates, status',
         subscriptions: 'Recurring vendor and renewal dates',
         ledger_export: 'Raw ledger rows for accountant review',
         data_quality: 'Missing receipts and incomplete records'
     }[file] || 'CSV export';
+}
+
+function fileDescriptionForFilename(filename) {
+    if (filename.startsWith('yoy_profit_loss_')) return fileDescription('yoy_profit_loss');
+    if (filename.startsWith('monthly_trend_yoy_')) return fileDescription('monthly_trend_yoy');
+    if (filename.startsWith('monthly_trend_')) return fileDescription('monthly_trend');
+    if (filename.startsWith('ytd_profit_loss_')) return fileDescription('ytd_profit_loss');
+    if (filename.startsWith('profit_loss_')) return fileDescription('profit_loss');
+    if (filename.startsWith('expense_breakdown_')) return fileDescription('expense_breakdown');
+    if (filename.startsWith('bills_payables_')) return fileDescription('bills_payables');
+    if (filename.startsWith('subscriptions_')) return fileDescription('subscriptions');
+    if (filename.startsWith('ledger_export_')) return fileDescription('ledger_export');
+    if (filename.startsWith('data_quality_')) return fileDescription('data_quality');
+    return 'CSV export';
 }
 
 // ---------- Open Full Report ----------
@@ -523,11 +731,14 @@ async function confirmExportFromDrawer() {
 
     try {
         // 1. Build files in memory first so a render error blocks the audit log.
-        const meta = REPORT_TYPES[type];
+        const scope = pack.report_scope;
         const allFiles = buildCsvBundle(pack, reportsState.sourceData);
-        const filtered = meta.files
-            .map(key => allFiles.find(f => f.filename.startsWith(`${key}_`)))
-            .filter(Boolean);
+        // For Monthly Report Pack the full scope-aware bundle is delivered.
+        // For individual reports, only the matching file is sent.
+        const meta = REPORT_TYPES[type];
+        const filtered = type === 'monthly_report_pack'
+            ? allFiles
+            : meta.files.map(key => allFiles.find(f => f.filename.startsWith(`${key}_`))).filter(Boolean);
 
         // 2. Write report_exports metadata + audit log BEFORE downloads.
         const includedSections = type === 'monthly_report_pack'
@@ -537,8 +748,9 @@ async function confirmExportFromDrawer() {
 
         const exportRef = await ds.addReportExport(reportsState.user.uid, {
             report_type: type,
-            period_start: isoFromDayKey(reportsState.selectedPeriod.start),
-            period_end: isoFromDayKey(reportsState.selectedPeriod.end),
+            report_scope: type === 'monthly_report_pack' ? scope : undefined,
+            period_start: isoFromDayKey(scope.current_period.start_date),
+            period_end: isoFromDayKey(scope.current_period.end_date),
             formats: ['csv_bundle'],
             status: 'generated',
             included_sections: includedSections,
@@ -551,8 +763,14 @@ async function confirmExportFromDrawer() {
             target_id: exportRef.id,
             after: {
                 report_type: type,
-                period_start: isoFromDayKey(reportsState.selectedPeriod.start),
-                period_end: isoFromDayKey(reportsState.selectedPeriod.end),
+                report_scope: type === 'monthly_report_pack' ? {
+                    mode: scope.mode,
+                    comparison_mode: scope.comparison_mode,
+                    current_period: scope.current_period,
+                    comparison_period: scope.comparison_period
+                } : null,
+                period_start: isoFromDayKey(scope.current_period.start_date),
+                period_end: isoFromDayKey(scope.current_period.end_date),
                 formats: ['csv_bundle'],
                 included_sections: includedSections,
                 record_counts: { ...pack.record_counts }
@@ -609,20 +827,32 @@ function bindEvents() {
     });
 
     el('filter-apply-btn')?.addEventListener('click', () => {
-        const reportSelect = el('filter-report-type');
-        const sourcesSelect = el('filter-data-source');
-        if (reportSelect) reportsState.selectedReportType = reportSelect.value;
-        if (sourcesSelect) {
-            const map = {
-                'all': ['transactions', 'bills', 'subscriptions'],
-                'transactions': ['transactions'],
-                'bills': ['bills'],
-                'subscriptions': ['subscriptions']
-            };
-            reportsState.selectedSources = map[sourcesSelect.value] || ['transactions', 'bills', 'subscriptions'];
-        }
+        const periodSelect = el('filter-period-mode');
+        const comparisonSelect = el('filter-comparison-mode');
+        if (periodSelect && REPORT_PERIOD_MODES.includes(periodSelect.value)) reportsState.reportPeriodMode = periodSelect.value;
+        if (comparisonSelect && COMPARISON_MODES.includes(comparisonSelect.value)) reportsState.comparisonMode = comparisonSelect.value;
         loadReportData();
     });
+
+    // Disable the picker when the period mode isn't custom so the UI matches
+    // the resolved scope; keep label informative.
+    function updatePickerEnabled() {
+        const picker = document.querySelector('#reports-date-range-picker [data-drp-trigger]');
+        const isCustom = reportsState.reportPeriodMode === 'custom';
+        if (picker) picker.toggleAttribute('disabled', !isCustom);
+        const wrap = document.querySelector('#reports-date-range-picker');
+        if (wrap) wrap.style.opacity = isCustom ? '1' : '.55';
+    }
+    el('filter-period-mode')?.addEventListener('change', (e) => {
+        reportsState.reportPeriodMode = e.target.value;
+        updatePickerEnabled();
+        // When period mode is monthly/quarter/YTD, comparison options that don't apply collapse to none in resolve.
+    });
+    el('filter-comparison-mode')?.addEventListener('change', (e) => {
+        reportsState.comparisonMode = e.target.value;
+    });
+    // Initial state.
+    setTimeout(updatePickerEnabled, 50);
 
     el('drawer-close-btn')?.addEventListener('click', closeReportPreview);
     el('drawer-cancel-btn')?.addEventListener('click', closeReportPreview);
@@ -636,11 +866,13 @@ function bindEvents() {
 
     if (window.FluxyDateRangePicker?.mount) {
         window.FluxyDateRangePicker.mount('#reports-date-range-picker', {
-            start: reportsState.selectedPeriod.start,
-            end: reportsState.selectedPeriod.end,
+            start: reportsState.customRange.start,
+            end: reportsState.customRange.end,
             onChange: ({ start, end }) => {
-                reportsState.selectedPeriod = { start, end };
-                loadReportData();
+                reportsState.customRange = { start, end };
+                // Only auto-reload when we're in custom mode; otherwise the
+                // resolved scope ignores the picker until Apply.
+                if (reportsState.reportPeriodMode === 'custom') loadReportData();
             }
         });
     }
