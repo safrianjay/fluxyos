@@ -264,7 +264,7 @@ function renderKpiComparison(id, change, type) {
     const isGood = type === 'opex' ? value <= 0 : value >= 0;
     el.textContent = direction === 'Flat'
         ? 'Flat vs previous period'
-        : `${direction} ${Math.abs(value).toFixed(1)}% vs previous period`;
+        : `${value > 0 ? '↑' : '↓'} ${Math.abs(value).toFixed(1)}% vs previous period`;
     el.className = `metric-sub ${direction === 'Flat' ? 'is-neutral' : (isGood ? 'is-good' : 'is-bad')}`;
 }
 
@@ -274,7 +274,7 @@ function renderMarginStatus(margin, marginChange) {
         : (margin >= 50 ? 'Healthy' : (margin >= 20 ? 'Tight' : 'Negative'));
     const suffix = marginChange === null || marginChange === undefined || !Number.isFinite(Number(marginChange))
         ? ' - No previous period data'
-        : ` - ${Number(marginChange) >= 0 ? 'Up' : 'Down'} ${Math.abs(Number(marginChange)).toFixed(1)} pts`;
+        : ` - ${Number(marginChange) >= 0 ? '↑' : '↓'} ${Math.abs(Number(marginChange)).toFixed(1)} pts`;
     updateKPI('kpi-margin-status', `${label}${suffix}`);
 }
 
