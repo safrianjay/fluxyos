@@ -25,6 +25,7 @@ let dashboardRangeEnd = getMonthEndKey();
 let dashboardDatePicker = null;
 let attentionItemsCache = { all: [], needs_review: [], my_records: [] };
 let currentAttentionTab = 'all';
+let aiSummaryRequestSeq = 0;
 window.FluxyDashboardRange = { start: dashboardRangeStart, end: dashboardRangeEnd };
 
 window.loadDashboard = async () => {
@@ -169,6 +170,7 @@ function renderOverviewLoadingState() {
     setHtml('upcoming-obligations-content', '<div class="overview-card-loading">Loading upcoming obligations...</div>');
     setHtml('report-readiness-content', '<div class="overview-card-loading">Loading report readiness...</div>');
     setHtml('ai-business-summary-content', '<div class="overview-card-loading">Loading grounded summary...</div>');
+    aiSummaryRequestSeq += 1;
     updateKPI('attention-total-count', '0');
     updateKPI('attention-needs-review-count', '0');
     clearMetricSparklines();
@@ -545,7 +547,44 @@ function renderAttentionQueue() {
     `);
 }
 
-function renderAiBusinessSummary(overview) {
+async function renderAiBusinessSummary(overview) {
+    const requestSeq = ++aiSummaryRequestSeq;
+    updateKPI('ai-summary-period', overview.period?.label || 'Selected period');
+    setHtml('ai-business-summary-content', '<div class="overview-card-loading">Fluxy AI is reading this period...</div>');
+
+    try {
+        const user = auth.currentUser;
+        if (!user) throw new Error('No signed-in user available for AI summary.');
+        const token = await user.getIdToken();
+        const response = await fetch('/api/v1/brain/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                message: 'Summarize what happened in my business finance for this selected period. Focus on revenue, OpEx, gross margin, cash pressure, overdue bills, receivables, payables, data quality, and what I should do first.',
+                page_context: 'overview_summary',
+                period: {
+                    type: 'custom',
+                    start_date: dashboardRangeStart,
+                    end_date: dashboardRangeEnd,
+                },
+            }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (requestSeq !== aiSummaryRequestSeq) return;
+        if (!response.ok || data.success === false || !data.answer) {
+            throw new Error(data?.error?.message || data?.message || 'AI summary unavailable.');
+        }
+        renderAiBusinessSummaryAnswer(data.answer, overview);
+    } catch (error) {
+        if (requestSeq !== aiSummaryRequestSeq) return;
+        renderAiBusinessSummaryFallback(overview);
+    }
+}
+
+function renderAiBusinessSummaryFallback(overview) {
     const insights = overview.insights || {};
     updateKPI('ai-summary-period', overview.period?.label || 'Selected period');
     setHtml('ai-business-summary-content', `
@@ -562,6 +601,41 @@ function renderAiBusinessSummary(overview) {
         </div>
         ${(insights.limitations || []).length ? `<p class="overview-limitation">${escapeHtml(insights.limitations[0])}</p>` : ''}
     `);
+}
+
+function renderAiBusinessSummaryAnswer(answer, overview) {
+    updateKPI('ai-summary-period', answer.period?.label || overview.period?.label || 'Selected period');
+    const risk = pickAiInsight(answer.insights || []);
+    const actionItem = pickAiAction(answer.recommended_actions || []);
+    const limitation = (answer.limitations || []).find(item => typeof item === 'string' && item.trim());
+    setHtml('ai-business-summary-content', `
+        <div class="brain-message">
+            ${escapeHtml(answer.direct_answer || 'Not enough data for a grounded summary yet.')}
+        </div>
+        <div class="brain-block">
+            <div class="brain-block-label">Main risk</div>
+            <div class="brain-block-copy">${escapeHtml(risk?.description || risk?.title || 'No urgent finance risk detected from available records.')}</div>
+        </div>
+        <div class="brain-block">
+            <div class="brain-block-label">Recommended action</div>
+            <div class="brain-block-copy">${escapeHtml(actionItem ? `${actionItem.title}: ${actionItem.description}` : 'Keep reviewing new records as they come in.')}</div>
+        </div>
+        ${limitation ? `<p class="overview-limitation">${escapeHtml(limitation)}</p>` : ''}
+    `);
+}
+
+function pickAiInsight(insights = []) {
+    const severityRank = { critical: 3, warning: 2, info: 1 };
+    return [...insights]
+        .filter(item => item && (item.title || item.description))
+        .sort((a, b) => (severityRank[b.severity] || 0) - (severityRank[a.severity] || 0))[0] || null;
+}
+
+function pickAiAction(actions = []) {
+    const priorityRank = { high: 3, medium: 2, low: 1 };
+    return [...actions]
+        .filter(item => item && (item.title || item.description))
+        .sort((a, b) => (priorityRank[b.priority] || 0) - (priorityRank[a.priority] || 0))[0] || null;
 }
 
 function renderPayablesByCategory(overview) {
