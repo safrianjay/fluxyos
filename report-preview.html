@@ -148,10 +148,12 @@
         .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
         .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
         .grid-5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+        .expense-breakdown-grid { grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr); }
 
         .card { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 26px 22px; min-height: 0; break-inside: avoid; }
         .card.tall { min-height: 360px; }
         .card-title { color: var(--muted); text-transform: uppercase; font-weight: 800; font-size: 11px; letter-spacing: .04em; margin-bottom: 18px; }
+        .expense-vendors-card { padding-left: 18px; padding-right: 18px; overflow: hidden; }
 
         .metric-card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 20px; position: relative; overflow: hidden; break-inside: avoid; }
         .metric-label { color: var(--muted); font-size: 11px; text-transform: uppercase; font-weight: 800; letter-spacing: .04em; }
@@ -272,6 +274,21 @@
         tbody td { padding: 11px 12px; color: var(--ink); vertical-align: middle; border-bottom: 1px solid #f0f2f5; }
         tbody tr:last-child td { border-bottom: 0; }
         td.amount, th.amount { text-align: right; font-family: var(--mono); white-space: nowrap; }
+        .expense-vendors-table { table-layout: fixed; font-size: 12px; }
+        .expense-vendors-table th,
+        .expense-vendors-table td { padding-left: 8px; padding-right: 8px; }
+        .expense-vendors-table th { line-height: 1.18; white-space: normal; }
+        .expense-vendors-table .vendor-col { width: 16%; }
+        .expense-vendors-table .amount-col { width: 16%; }
+        .expense-vendors-table .previous-col { width: 13%; }
+        .expense-vendors-table .delta-col { width: 15%; }
+        .expense-vendors-table .category-col { width: 16%; }
+        .expense-vendors-table .records-col { width: 11%; text-align: center; }
+        .expense-vendors-table .receipts-col { width: 13%; text-align: center; }
+        .expense-vendors-table td { overflow-wrap: anywhere; }
+        .expense-vendors-table td.amount { overflow-wrap: normal; }
+        .expense-vendors-table td.records-col,
+        .expense-vendors-table td.receipts-col { font-family: var(--mono); }
 
         .interpretation { margin-top: 26px; }
         .interpretation .label, .csv-columns .label, .small-label { color: var(--muted); text-transform: uppercase; font-weight: 800; font-size: 11px; margin-bottom: 12px; letter-spacing: .04em; }
@@ -506,6 +523,10 @@
             h2 { font-size: 28px; }
             .scenario-row, .compare-row { grid-template-columns: 1fr; }
             .footer-manifest { flex-direction: column; align-items: flex-start; }
+        }
+
+        @media (max-width: 1180px) {
+            .expense-breakdown-grid { grid-template-columns: 1fr; }
         }
 
         @media print {

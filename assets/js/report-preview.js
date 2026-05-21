@@ -863,22 +863,22 @@ function renderExpenseBreakdown(pack) {
             </div>
             ${hasComparison ? `<span class="pill blue">Comparing vs ${escapeHtml(comparisonLabel)}</span>` : ''}
         </div>
-        <div class="grid-2">
+        <div class="grid-2 expense-breakdown-grid">
             <div class="card">
                 <div class="card-title">Expense by category${compTitle}</div>
                 ${chart}
             </div>
-            <div class="card">
+            <div class="card expense-vendors-card">
                 <div class="card-title">Top vendors${compTitle}</div>
-                <table>
+                <table class="expense-vendors-table">
                     <thead>
                         <tr>
-                            <th>Vendor</th>
-                            <th class="amount">Amount</th>
-                            ${hasComparison ? `<th class="amount">Previous</th><th class="amount">Δ %</th>` : ''}
-                            <th>Category</th>
-                            <th>Records</th>
-                            <th>Missing receipts</th>
+                            <th class="vendor-col">Vendor</th>
+                            <th class="amount amount-col">Amount</th>
+                            ${hasComparison ? `<th class="amount previous-col">Previous</th><th class="amount delta-col">Δ %</th>` : ''}
+                            <th class="category-col">Category</th>
+                            <th class="records-col">Records</th>
+                            <th class="receipts-col">Missing receipts</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -889,21 +889,21 @@ function renderExpenseBreakdown(pack) {
                                 const pct = v.change_pct;
                                 let pctCell;
                                 if (pct === null || pct === undefined) {
-                                    pctCell = `<td class="amount"><span class="pill gray">N/A</span></td>`;
+                                    pctCell = `<td class="amount delta-col"><span class="pill gray">N/A</span></td>`;
                                 } else {
                                     const tone = pct >= 0 ? 'amber' : 'green'; // expenses up = amber
                                     const sign = pct >= 0 ? '+' : '';
-                                    pctCell = `<td class="amount"><span class="pill ${tone}">${sign}${pct.toFixed(1)}%</span></td>`;
+                                    pctCell = `<td class="amount delta-col"><span class="pill ${tone}">${sign}${pct.toFixed(1)}%</span></td>`;
                                 }
-                                cmpCells = `<td class="amount">${prev > 0 ? Number(prev).toLocaleString('id-ID') : '—'}</td>${pctCell}`;
+                                cmpCells = `<td class="amount previous-col">${prev > 0 ? Number(prev).toLocaleString('id-ID') : '—'}</td>${pctCell}`;
                             }
                             return `<tr>
-                                <td>${escapeHtml(v.vendor)}</td>
-                                <td class="amount">${Number(v.amount).toLocaleString('id-ID')}</td>
+                                <td class="vendor-col">${escapeHtml(v.vendor)}</td>
+                                <td class="amount amount-col">${Number(v.amount).toLocaleString('id-ID')}</td>
                                 ${cmpCells}
-                                <td>${escapeHtml(v.category)}</td>
-                                <td>${v.count}</td>
-                                <td>${v.missing_receipts || 0}</td>
+                                <td class="category-col">${escapeHtml(v.category)}</td>
+                                <td class="records-col">${v.count}</td>
+                                <td class="receipts-col">${v.missing_receipts || 0}</td>
                             </tr>`;
                         }).join('')}
                     </tbody>
