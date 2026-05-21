@@ -18,16 +18,20 @@ const ds = new DataService(app);
 
 let cashflowChartType = 'line';
 let cashflowBuckets = [];
+let cashFlowBuckets = [];
 let dashboardPeriodMode = 'this_month';
 let dashboardRangeStart = getMonthStartKey();
 let dashboardRangeEnd = getMonthEndKey();
 let dashboardDatePicker = null;
+let attentionItemsCache = { all: [], needs_review: [], my_records: [] };
+let currentAttentionTab = 'all';
 window.FluxyDashboardRange = { start: dashboardRangeStart, end: dashboardRangeEnd };
 
 window.loadDashboard = async () => {
     const user = auth.currentUser;
     if (!user) return;
 
+    renderGreeting();
     const period = resolveDashboardPeriod(dashboardPeriodMode);
     dashboardRangeStart = period.start;
     dashboardRangeEnd = period.end;
@@ -42,20 +46,33 @@ window.loadDashboard = async () => {
             mode: dashboardPeriodMode
         });
 
-        renderKpiCards(overview);
         cashflowBuckets = buildCashflowBuckets(overview.chartTransactions || [], dashboardRangeStart, dashboardRangeEnd);
+        cashFlowBuckets = overview.cashFlow || [];
+
+        renderSummaryBoard(overview);
         renderCashflowChart();
         attachCashflowChartToggle();
-        renderCashPressureSnapshot(overview);
-        renderReceivablesPayables(overview);
-        renderNeedsAttention(overview);
-        renderUpcomingObligations(overview);
+        renderCashFlowChart();
+        buildAttentionCache(overview);
+        renderAttentionQueue();
         renderAiBusinessSummary(overview);
-        renderLedgerPreview(overview.ledgerPreview || []);
+        renderPayablesByCategory(overview);
+        renderUpcomingObligations(overview);
+        renderReportReadiness(overview);
     } catch (error) {
         renderOverviewErrorState();
     }
 };
+
+function renderGreeting() {
+    const hour = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })).getHours();
+    const greeting = hour < 12 ? 'Good morning' : (hour < 18 ? 'Good afternoon' : 'Good evening');
+    updateKPI('overview-greeting-text', greeting);
+    const user = auth.currentUser;
+    const fullName = user?.displayName || '';
+    const firstName = fullName ? fullName.split(' ')[0] : 'there';
+    updateKPI('overview-user-name', firstName);
+}
 
 function mountDashboardPeriodControls() {
     document.querySelectorAll('[data-dashboard-period]').forEach(button => {
@@ -82,13 +99,16 @@ function mountDashboardPeriodControls() {
         }
     });
 
-    document.getElementById('dashboard-export-route')?.addEventListener('click', () => {
-        window.location.href = '/reports';
+    document.querySelectorAll('[data-attention-tab]').forEach(button => {
+        button.addEventListener('click', () => {
+            currentAttentionTab = button.dataset.attentionTab || 'all';
+            document.querySelectorAll('[data-attention-tab]').forEach(tab => {
+                tab.classList.toggle('is-active', tab === button);
+            });
+            renderAttentionQueue();
+        });
     });
-    document.getElementById('brain-chat-submit')?.addEventListener('click', () => window.toggleFluxyAI?.());
-    document.getElementById('brain-chat-input')?.addEventListener('keydown', event => {
-        if (event.key === 'Enter') window.toggleFluxyAI?.();
-    });
+
     updatePeriodControlState();
 }
 
@@ -132,38 +152,103 @@ function resolveDashboardPeriod(mode) {
 }
 
 function renderOverviewLoadingState() {
-    updateKPI('kpi-revenue', 'Loading...');
-    updateKPI('kpi-opex', 'Loading...');
+    updateKPI('kpi-revenue', 'Rp 0');
+    updateKPI('kpi-opex', 'Rp 0');
     updateKPI('kpi-margin', '0%');
-    updateKPI('kpi-action-count', '...');
+    updateKPI('kpi-cash-pressure', 'Rp 0');
+    updateKPI('kpi-receivables', 'Rp 0');
+    updateKPI('kpi-payables', 'Rp 0');
     updateKPI('kpi-revenue-change', 'Loading...');
     updateKPI('kpi-opex-change', 'Loading...');
     updateKPI('kpi-margin-status', 'Loading...');
-    updateKPI('kpi-action-details', 'Checking records...');
-    setHtml('cash-pressure-content', '<div class="overview-card-loading">Loading cash pressure...</div>');
-    setHtml('receivables-payables-content', '<div class="overview-card-loading">Loading expected money in and out...</div>');
+    updateKPI('kpi-cash-pressure-sub', 'Loading...');
+    updateKPI('kpi-receivables-sub', 'Loading...');
+    updateKPI('kpi-payables-sub', 'Loading...');
     setHtml('needs-attention-content', '<div class="overview-card-loading">Loading action items...</div>');
+    setHtml('payables-by-category-content', '<div class="overview-card-loading">Loading payables...</div>');
     setHtml('upcoming-obligations-content', '<div class="overview-card-loading">Loading upcoming obligations...</div>');
+    setHtml('report-readiness-content', '<div class="overview-card-loading">Loading report readiness...</div>');
     setHtml('ai-business-summary-content', '<div class="overview-card-loading">Loading grounded summary...</div>');
+    updateKPI('attention-total-count', '0');
+    updateKPI('attention-needs-review-count', '0');
+    const status = document.getElementById('report-readiness-status');
+    if (status) {
+        status.textContent = 'Loading';
+        status.className = 'status-badge';
+    }
 }
 
-function renderKpiCards(overview) {
+function renderOverviewErrorState() {
+    updateKPI('kpi-revenue', 'Rp 0');
+    updateKPI('kpi-opex', 'Rp 0');
+    updateKPI('kpi-margin', '0%');
+    updateKPI('kpi-cash-pressure', 'Rp 0');
+    updateKPI('kpi-receivables', 'Rp 0');
+    updateKPI('kpi-payables', 'Rp 0');
+    updateKPI('kpi-revenue-change', 'No data');
+    updateKPI('kpi-opex-change', 'No data');
+    updateKPI('kpi-margin-status', 'No revenue data');
+    updateKPI('kpi-cash-pressure-sub', 'No data');
+    updateKPI('kpi-receivables-sub', 'No records found');
+    updateKPI('kpi-payables-sub', 'No records found');
+    const errorHtml = '<div class="overview-empty-copy">Overview data could not be loaded. Please refresh and try again.</div>';
+    setHtml('needs-attention-content', errorHtml);
+    setHtml('payables-by-category-content', errorHtml);
+    setHtml('upcoming-obligations-content', errorHtml);
+    setHtml('report-readiness-content', errorHtml);
+    setHtml('ai-business-summary-content', errorHtml);
+    const sparkline = document.getElementById('kpi-cash-pressure-sparkline');
+    if (sparkline) sparkline.innerHTML = '';
+    const status = document.getElementById('report-readiness-status');
+    if (status) {
+        status.textContent = 'Unavailable';
+        status.className = 'status-badge';
+    }
+}
+
+function renderSummaryBoard(overview) {
     const p = overview.performance || {};
-    const actions = overview.actionItems || {};
+    const rp = overview.receivablesPayables || {};
+    const c = overview.cashPressure || {};
     const margin = safeNumber(p.grossMargin);
-    const actionTotal = Number(actions.total || 0);
 
     updateKPI('kpi-revenue', formatIDR(p.revenue));
     updateKPI('kpi-opex', formatIDR(p.opex));
     updateKPI('kpi-margin', `${formatNumber(margin, 1)}%`);
-    updateKPI('kpi-action-count', actionTotal === 1 ? '1 Item' : `${actionTotal} Items`);
+    updateKPI('kpi-cash-pressure', formatSignedIDR(c.netPressure));
+    updateKPI('kpi-receivables', formatIDR(rp.receivablesTotal));
+    updateKPI('kpi-payables', formatIDR(rp.payablesTotal));
+
     renderKpiComparison('kpi-revenue-change', p.revenueChangePct, 'revenue');
     renderKpiComparison('kpi-opex-change', p.opexChangePct, 'opex');
     renderMarginStatus(margin, p.marginChangePct);
-    renderNeedsActionKpi(actions);
+
+    renderMetricArrow('kpi-revenue-arrow', p.revenueChangePct, 'revenue');
+    renderMetricArrow('kpi-opex-arrow', p.opexChangePct, 'opex');
+    renderMetricArrow('kpi-margin-arrow', p.marginChangePct, 'revenue');
+    renderMetricArrow('kpi-cash-pressure-arrow', safeNumber(c.netPressure), 'revenue');
+
+    const cashPressureSub = document.getElementById('kpi-cash-pressure-sub');
+    if (cashPressureSub) {
+        const risk = String(c.riskLevel || 'low');
+        const riskLabel = risk === 'high' ? 'High pressure' : (risk === 'watch' ? 'Watch' : 'Low pressure');
+        cashPressureSub.textContent = `${riskLabel} - obligations vs incoming`;
+    }
+    const receivablesSub = document.getElementById('kpi-receivables-sub');
+    if (receivablesSub) {
+        const n = Number(rp.receivableCount || 0);
+        receivablesSub.textContent = n === 0 ? 'No records expected in.' : `${n} record${n === 1 ? '' : 's'} expected in.`;
+    }
+    const payablesSub = document.getElementById('kpi-payables-sub');
+    if (payablesSub) {
+        const n = Number(rp.payableCount || 0);
+        payablesSub.textContent = n === 0 ? 'No records expected out.' : `${n} record${n === 1 ? '' : 's'} expected out.`;
+    }
 
     const bar = document.getElementById('kpi-margin-bar');
     if (bar) bar.style.width = `${Math.max(0, Math.min(100, margin))}%`;
+
+    renderCashPressureSparkline(cashFlowBuckets);
 }
 
 function renderKpiComparison(id, change, type) {
@@ -171,7 +256,7 @@ function renderKpiComparison(id, change, type) {
     if (!el) return;
     if (change === null || change === undefined || !Number.isFinite(Number(change))) {
         el.textContent = 'No previous period data';
-        el.className = 'text-[11px] text-gray-400 mt-1';
+        el.className = 'metric-sub';
         return;
     }
     const value = Number(change);
@@ -180,7 +265,7 @@ function renderKpiComparison(id, change, type) {
     el.textContent = direction === 'Flat'
         ? 'Flat vs previous period'
         : `${direction} ${Math.abs(value).toFixed(1)}% vs previous period`;
-    el.className = `text-[11px] mt-1 font-bold ${direction === 'Flat' ? 'text-gray-400' : (isGood ? 'text-emerald-600' : 'text-red-500')}`;
+    el.className = `metric-sub ${direction === 'Flat' ? 'is-neutral' : (isGood ? 'is-good' : 'is-bad')}`;
 }
 
 function renderMarginStatus(margin, marginChange) {
@@ -193,112 +278,147 @@ function renderMarginStatus(margin, marginChange) {
     updateKPI('kpi-margin-status', `${label}${suffix}`);
 }
 
-function renderNeedsActionKpi(actions) {
-    const details = [];
-    if (actions.missingReceipts) details.push(`${actions.missingReceipts} Missing Receipt${actions.missingReceipts === 1 ? '' : 's'}`);
-    if (actions.overdueBills) details.push(`${actions.overdueBills} Overdue Bill${actions.overdueBills === 1 ? '' : 's'}`);
-    if (actions.billsDueSoon) details.push(`${actions.billsDueSoon} Due Soon`);
-    if (actions.renewalsSoon) details.push(`${actions.renewalsSoon} Renewal${actions.renewalsSoon === 1 ? '' : 's'}`);
-    if (actions.highOpexIncrease) details.push('OpEx spike');
-
-    const detailsEl = document.getElementById('kpi-action-details');
-    const link = document.getElementById('kpi-action-link');
-    if (detailsEl) detailsEl.textContent = details.length ? details.slice(0, 2).join(' - ') : 'Records look clean';
-    if (!link) return;
-    link.classList.toggle('hidden', !details.length);
-    link.onclick = event => {
-        event.preventDefault();
-        document.getElementById('overview-needs-attention')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    };
-}
-
-function renderCashPressureSnapshot(overview) {
-    const c = overview.cashPressure || {};
-    const risk = String(c.riskLevel || 'low');
-    const pill = document.getElementById('cash-pressure-risk');
-    if (pill) {
-        pill.textContent = risk === 'high' ? 'High' : (risk === 'watch' ? 'Watch' : 'Low');
-        pill.className = `overview-risk-pill is-${risk}`;
-    }
-    const limitations = renderLimitations(overview.limitations);
-    setHtml('cash-pressure-content', `
-        <div class="overview-metric-grid overview-metric-grid-three">
-            <div class="overview-metric-tile">
-                <span>Upcoming obligations</span>
-                <strong>${formatIDR(c.upcomingObligations)}</strong>
-            </div>
-            <div class="overview-metric-tile">
-                <span>Expected incoming</span>
-                <strong>${formatIDR(c.expectedIncoming)}</strong>
-            </div>
-            <div class="overview-metric-tile is-emphasis">
-                <span>Net pressure</span>
-                <strong class="${safeNumber(c.netPressure) < 0 ? 'text-red-600' : 'text-emerald-600'}">${formatSignedIDR(c.netPressure)}</strong>
-            </div>
-        </div>
-        <p class="overview-inline-note">${escapeHtml(c.limitation || '')}</p>
-        ${limitations}
-        <div class="overview-link-row">
-            <a href="/bill">View Bills</a>
-            <a href="/subscription">View Subscriptions</a>
-            <button type="button" data-ask-fluxy>Ask Fluxy AI</button>
-        </div>
-    `);
-    document.querySelector('[data-ask-fluxy]')?.addEventListener('click', () => window.toggleFluxyAI?.());
-}
-
-function renderReceivablesPayables(overview) {
-    const rp = overview.receivablesPayables || {};
-    const hasReceivables = Number(rp.receivableCount || 0) > 0;
-    const hasPayables = Number(rp.payableCount || 0) > 0;
-    const emptyCopy = !hasReceivables && !hasPayables
-        ? '<p class="overview-inline-note">No pending receivables or upcoming payables found.</p>'
-        : '';
-    setHtml('receivables-payables-content', `
-        <div class="overview-metric-grid overview-metric-grid-three">
-            <div class="overview-metric-tile">
-                <span>Receivables</span>
-                <strong>${formatIDR(rp.receivablesTotal)}</strong>
-                <small>${rp.receivableCount || 0} record${rp.receivableCount === 1 ? '' : 's'}</small>
-            </div>
-            <div class="overview-metric-tile">
-                <span>Payables</span>
-                <strong>${formatIDR(rp.payablesTotal)}</strong>
-                <small>${rp.payableCount || 0} record${rp.payableCount === 1 ? '' : 's'}</small>
-            </div>
-            <div class="overview-metric-tile is-emphasis">
-                <span>Net expected</span>
-                <strong class="${safeNumber(rp.netExpected) < 0 ? 'text-red-600' : 'text-emerald-600'}">${formatSignedIDR(rp.netExpected)}</strong>
-                <small>Selected period</small>
-            </div>
-        </div>
-        ${emptyCopy}
-        <div class="overview-link-row">
-            <a href="/ledger">Review Ledger</a>
-            <a href="/bill">Review Bills</a>
-        </div>
-    `);
-}
-
-function renderNeedsAttention(overview) {
-    const items = buildAttentionItems(overview);
-    if (!items.length) {
-        setHtml('needs-attention-content', '<div class="overview-empty-copy">No urgent finance actions right now.</div>');
+function renderMetricArrow(id, change, type) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (change === null || change === undefined || !Number.isFinite(Number(change))) {
+        el.textContent = '';
+        el.className = 'metric-arrow';
         return;
     }
-    setHtml('needs-attention-content', `
-        <div class="overview-attention-list">
-            ${items.slice(0, 5).map(item => `
-                <a class="overview-attention-item" href="${item.href}">
-                    <div class="overview-row-main">
-                        <strong>${escapeHtml(item.title)}</strong>
-                        <p>${escapeHtml(item.description)}</p>
-                    </div>
-                    <span class="overview-action-link">${escapeHtml(item.action)}</span>
-                </a>
-            `).join('')}
+    const value = Number(change);
+    if (Math.abs(value) < 0.1) {
+        el.textContent = '';
+        el.className = 'metric-arrow';
+        return;
+    }
+    const isUp = value > 0;
+    const isGood = type === 'opex' ? !isUp : isUp;
+    el.textContent = isUp ? '^' : 'v';
+    el.className = `metric-arrow ${isGood ? 'is-good' : 'is-bad'}`;
+}
+
+function renderCashPressureSparkline(buckets) {
+    const svg = document.getElementById('kpi-cash-pressure-sparkline');
+    if (!svg) return;
+    if (!buckets || buckets.length === 0) {
+        svg.innerHTML = '';
+        return;
+    }
+    const width = 300;
+    const height = 60;
+    const paddingX = 4;
+    const paddingY = 6;
+    const nets = buckets.map(b => Number(b.netCashFlow) || 0);
+    const minVal = Math.min(...nets, 0);
+    const maxVal = Math.max(...nets, 0);
+    const range = (maxVal - minVal) || 1;
+    const stepX = nets.length > 1 ? (width - paddingX * 2) / (nets.length - 1) : 0;
+    const toY = (val) => height - paddingY - ((val - minVal) / range) * (height - paddingY * 2);
+    const points = nets.map((val, i) => ({
+        x: paddingX + i * stepX,
+        y: toY(val)
+    }));
+    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    const lastNet = nets[nets.length - 1];
+    const stroke = lastNet < 0 ? '#ef4444' : '#22c55e';
+    const fill = lastNet < 0 ? 'rgba(239,68,68,0.10)' : 'rgba(34,197,94,0.10)';
+    const areaPath = points.length
+        ? `M${points[0].x.toFixed(1)},${height} ${linePath.replace('M', 'L')} L${points[points.length - 1].x.toFixed(1)},${height} Z`
+        : '';
+    svg.innerHTML = `
+        <path d="${areaPath}" fill="${fill}" stroke="none"></path>
+        <path d="${linePath}" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+    `;
+}
+
+function renderCashFlowChart() {
+    const chart = document.getElementById('cash-flow-chart');
+    if (!chart) return;
+    if (!cashFlowBuckets || cashFlowBuckets.length === 0) {
+        chart.innerHTML = '<div class="overview-empty-copy">No cash flow data for this period.</div>';
+        return;
+    }
+
+    const maxIn = Math.max(...cashFlowBuckets.map(b => Number(b.cashIn) || 0), 1);
+    const maxOut = Math.max(...cashFlowBuckets.map(b => Number(b.cashOut) || 0), 1);
+    const maxAxis = Math.max(maxIn, maxOut);
+
+    chart.innerHTML = `
+        <div class="cash-flow-stage" data-cashflow-stage>
+            <div class="cash-flow-axis">
+                <div><span>${formatCompactIDR(maxAxis)}</span></div>
+                <div><span>${formatCompactIDR(maxAxis / 2)}</span></div>
+                <div><span>Rp 0</span></div>
+                <div><span>-${formatCompactIDR(maxAxis / 2)}</span></div>
+                <div><span>-${formatCompactIDR(maxAxis)}</span></div>
+            </div>
+            <div class="cash-flow-plot">
+                <div class="cash-flow-zero-line"></div>
+                <div class="cash-flow-bars">
+                    ${cashFlowBuckets.map(item => {
+                        const inHeight = (Number(item.cashIn) || 0) / maxAxis * 50;
+                        const outHeight = (Number(item.cashOut) || 0) / maxAxis * 50;
+                        const net = Number(item.netCashFlow) || 0;
+                        const netSide = net >= 0 ? 'pos' : 'neg';
+                        const netHeight = Math.abs(net) / maxAxis * 50;
+                        return `
+                            <div class="cash-flow-month" data-chart-bar
+                                data-label="${escapeHtml(item.label)}"
+                                data-cash-in="${item.cashIn}"
+                                data-cash-out="${item.cashOut}"
+                                data-net="${item.netCashFlow}">
+                                <span class="cash-bar cash-bar-in" style="height:${inHeight}%"></span>
+                                <span class="cash-bar cash-bar-out" style="height:${outHeight}%"></span>
+                                <span class="cash-bar cash-bar-net cash-bar-net-${netSide}" style="height:${netHeight}%"></span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
         </div>
-    `);
+        <div class="cash-flow-labels">
+            ${cashFlowBuckets.map(item => `<span>${escapeHtml(item.label)}</span>`).join('')}
+        </div>
+    `;
+
+    const stage = chart.querySelector('[data-cashflow-stage]');
+    if (stage && window.attachChartHover) {
+        window.attachChartHover(stage, {
+            bars: '[data-chart-bar]',
+            orientation: 'vertical',
+            buildTooltip: barEl => `
+                <div class="chart-tooltip-header">${escapeHtml(barEl.dataset.label)}</div>
+                <div class="chart-tooltip-row">
+                    <span class="chart-tooltip-swatch" style="background:#d9efdf"></span>
+                    <span class="chart-tooltip-label">Cash In</span>
+                    <span class="chart-tooltip-value">${formatIDR(Number(barEl.dataset.cashIn || 0))}</span>
+                </div>
+                <div class="chart-tooltip-row">
+                    <span class="chart-tooltip-swatch" style="background:#7f9278"></span>
+                    <span class="chart-tooltip-label">Cash Out</span>
+                    <span class="chart-tooltip-value">${formatIDR(Number(barEl.dataset.cashOut || 0))}</span>
+                </div>
+                <div class="chart-tooltip-row">
+                    <span class="chart-tooltip-swatch" style="background:#84ef52"></span>
+                    <span class="chart-tooltip-label">Net</span>
+                    <span class="chart-tooltip-value">${formatSignedIDR(Number(barEl.dataset.net || 0))}</span>
+                </div>
+            `
+        });
+    }
+}
+
+function buildAttentionCache(overview) {
+    const items = buildAttentionItems(overview);
+    const needsReview = items.filter(item => ['overdue', 'missing_receipt'].includes(item.kind));
+    attentionItemsCache = {
+        all: items,
+        needs_review: needsReview,
+        my_records: []
+    };
+    updateKPI('attention-total-count', String(items.length));
+    updateKPI('attention-needs-review-count', String(needsReview.length));
 }
 
 function buildAttentionItems(overview) {
@@ -307,6 +427,9 @@ function buildAttentionItems(overview) {
     const items = [];
     if (actions.overdueBills) {
         items.push({
+            kind: 'overdue',
+            iconKind: 'danger',
+            icon: '!',
             title: `${actions.overdueBills} overdue bill${actions.overdueBills === 1 ? '' : 's'}`,
             description: 'Overdue obligations can create vendor and cash pressure.',
             action: 'Open Bills',
@@ -315,6 +438,9 @@ function buildAttentionItems(overview) {
     }
     if (actions.missingReceipts) {
         items.push({
+            kind: 'missing_receipt',
+            iconKind: 'warning',
+            icon: '!',
             title: `${actions.missingReceipts} missing receipt${actions.missingReceipts === 1 ? '' : 's'}`,
             description: 'Missing receipts reduce confidence in reports and tax-ready records.',
             action: 'Open Ledger',
@@ -323,6 +449,9 @@ function buildAttentionItems(overview) {
     }
     if (actions.highOpexIncrease) {
         items.push({
+            kind: 'opex_spike',
+            iconKind: 'default',
+            icon: '^',
             title: `OpEx up ${Math.abs(Number(p.opexChangePct)).toFixed(1)}%`,
             description: 'Spending rose meaningfully against the previous period.',
             action: 'Review Ledger',
@@ -331,6 +460,9 @@ function buildAttentionItems(overview) {
     }
     if (actions.billsDueSoon) {
         items.push({
+            kind: 'bill_due_soon',
+            iconKind: 'default',
+            icon: 'Due',
             title: `${actions.billsDueSoon} bill${actions.billsDueSoon === 1 ? '' : 's'} due soon`,
             description: 'Upcoming bills should be checked before new spend is approved.',
             action: 'Open Bills',
@@ -339,49 +471,38 @@ function buildAttentionItems(overview) {
     }
     if (actions.renewalsSoon) {
         items.push({
+            kind: 'renewal',
+            iconKind: 'default',
+            icon: 'R',
             title: `${actions.renewalsSoon} renewal${actions.renewalsSoon === 1 ? '' : 's'} soon`,
             description: 'Subscription renewals may affect recurring spend.',
             action: 'Open Subscriptions',
             href: '/subscription'
         });
     }
-    if (overview.limitations?.length) {
-        items.push({
-            title: 'Partial data loaded',
-            description: overview.limitations[0],
-            action: 'Refresh',
-            href: '/dashboard'
-        });
-    }
     return items;
 }
 
-function renderUpcomingObligations(overview) {
-    const bills = overview.upcoming?.bills || [];
-    const subscriptions = overview.upcoming?.subscriptions || [];
-    const rows = [
-        ...bills.map(bill => ({ type: 'Bill', href: '/bill', dateField: 'due_date', record: bill })),
-        ...subscriptions.map(sub => ({ type: 'Renewal', href: '/subscription', dateField: 'renewal_date', record: sub }))
-    ].slice(0, 5);
-
-    if (!rows.length) {
-        setHtml('upcoming-obligations-content', '<div class="overview-empty-copy">No upcoming bills or renewals.</div>');
+function renderAttentionQueue() {
+    if (currentAttentionTab === 'my_records') {
+        setHtml('needs-attention-content', '<div class="overview-empty-copy">Filter by record owner is not yet available.</div>');
         return;
     }
-
-    setHtml('upcoming-obligations-content', `
-        <div class="overview-upcoming-list">
-            ${rows.map(row => `
-                <a class="overview-upcoming-item" href="${row.href}">
-                    <div class="overview-row-main">
-                        <span>${escapeHtml(row.type)}</span>
-                        <strong>${escapeHtml(row.record.vendor_name || row.record.name || 'Untitled record')}</strong>
-                        <small>${escapeHtml(formatRecordDate(row.record, row.dateField) || (row.type === 'Bill' ? 'No due date' : 'No renewal date'))}</small>
+    const items = attentionItemsCache[currentAttentionTab] || [];
+    if (!items.length) {
+        setHtml('needs-attention-content', '<div class="overview-empty-copy">No items require attention.</div>');
+        return;
+    }
+    setHtml('needs-attention-content', `
+        <div class="queue-list">
+            ${items.slice(0, 5).map(item => `
+                <a class="queue-row" href="${item.href}">
+                    <div class="queue-icon queue-icon-${item.iconKind}">${escapeHtml(item.icon)}</div>
+                    <div class="queue-row-body">
+                        <div class="queue-row-title">${escapeHtml(item.title)}</div>
+                        <div class="queue-row-meta">${escapeHtml(item.description)}</div>
                     </div>
-                    <div class="overview-row-side">
-                        <strong>${formatIDR(row.record.amount)}</strong>
-                        <small>${escapeHtml(row.record.status || 'Scheduled')}</small>
-                    </div>
+                    <span class="queue-row-arrow" aria-hidden="true">&rarr;</span>
                 </a>
             `).join('')}
         </div>
@@ -390,67 +511,97 @@ function renderUpcomingObligations(overview) {
 
 function renderAiBusinessSummary(overview) {
     const insights = overview.insights || {};
-    updateKPI('ai-summary-period', overview.period?.label || 'Selected period insight');
+    updateKPI('ai-summary-period', overview.period?.label || 'Selected period');
     setHtml('ai-business-summary-content', `
-        <div class="overview-ai-note">
-            <p>${escapeHtml(insights.summary || 'Not enough data for a grounded summary yet.')}</p>
+        <div class="brain-message">
+            ${escapeHtml(insights.summary || 'Not enough data for a grounded summary yet.')}
         </div>
-        <div class="overview-ai-fact">
-            <span>Main risk</span>
-            <strong>${escapeHtml(insights.mainRisk || 'No urgent finance risk detected from available records.')}</strong>
+        <div class="brain-block">
+            <div class="brain-block-label">Main risk</div>
+            <div class="brain-block-copy">${escapeHtml(insights.mainRisk || 'No urgent finance risk detected from available records.')}</div>
         </div>
-        <div class="overview-ai-fact">
-            <span>Recommended action</span>
-            <strong>${escapeHtml(insights.recommendedAction || 'Keep reviewing new records as they come in.')}</strong>
+        <div class="brain-block">
+            <div class="brain-block-label">Recommended action</div>
+            <div class="brain-block-copy">${escapeHtml(insights.recommendedAction || 'Keep reviewing new records as they come in.')}</div>
         </div>
         ${(insights.limitations || []).length ? `<p class="overview-limitation">${escapeHtml(insights.limitations[0])}</p>` : ''}
-        <button type="button" class="overview-ai-cta" data-ask-fluxy-summary>Ask Fluxy AI about this period</button>
     `);
-    document.querySelector('[data-ask-fluxy-summary]')?.addEventListener('click', () => window.toggleFluxyAI?.());
 }
 
-function renderOverviewErrorState() {
-    updateKPI('kpi-revenue', 'Rp 0');
-    updateKPI('kpi-opex', 'Rp 0');
-    updateKPI('kpi-margin', '0%');
-    updateKPI('kpi-action-count', '0 Items');
-    updateKPI('kpi-revenue-change', 'No previous period data');
-    updateKPI('kpi-opex-change', 'No previous period data');
-    updateKPI('kpi-margin-status', 'No revenue data');
-    updateKPI('kpi-action-details', 'Records could not be loaded');
-    const errorHtml = '<div class="overview-empty-copy">Overview data could not be loaded. Please refresh and try again.</div>';
-    setHtml('cash-pressure-content', errorHtml);
-    setHtml('receivables-payables-content', errorHtml);
-    setHtml('needs-attention-content', errorHtml);
-    setHtml('upcoming-obligations-content', errorHtml);
-    setHtml('ai-business-summary-content', errorHtml);
-    renderLedgerPreview([]);
+function renderPayablesByCategory(overview) {
+    const items = overview.payablesByCategory || [];
+    if (!items.length) {
+        setHtml('payables-by-category-content', '<div class="overview-empty-copy">No upcoming payables in this period.</div>');
+        return;
+    }
+    const total = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    setHtml('payables-by-category-content', `
+        <div class="rail-list">
+            ${items.map(item => `
+                <div class="rail-item">
+                    <div class="rail-row">
+                        <span class="rail-name">${escapeHtml(item.category)}</span>
+                        <span class="rail-amount">${formatIDR(item.amount)}</span>
+                    </div>
+                    <div class="rail-bar"><span style="width:${Math.max(8, Number(item.percentage) || 0)}%"></span></div>
+                </div>
+            `).join('')}
+        </div>
+        <div class="rail-footer">
+            <span class="rail-footer-total">Total ${formatIDR(total)}</span>
+            <a class="rail-footer-link" href="/bill">View all &rarr;</a>
+        </div>
+    `);
 }
 
-function renderLedgerPreview(transactions) {
-    const tableContainer = document.getElementById('ledger-table-container');
-    const emptyContainer = document.getElementById('ledger-empty-state');
-    const footer = document.getElementById('ledger-footer');
+function renderUpcomingObligations(overview) {
+    const bills = overview.upcoming?.bills || [];
+    const subscriptions = overview.upcoming?.subscriptions || [];
+    const rows = [
+        ...bills.map(bill => ({ type: 'Bill', href: '/bill', dateField: 'due_date', record: bill })),
+        ...subscriptions.map(sub => ({ type: 'Renewal', href: '/subscription', dateField: 'renewal_date', record: sub }))
+    ].slice(0, 3);
 
-    if (!transactions.length) {
-        tableContainer?.classList.add('hidden');
-        footer?.classList.add('hidden');
-        if (emptyContainer) {
-            emptyContainer.classList.remove('hidden');
-            window.renderEmptyState('ledger-empty-state', {
-                title: 'No transactions found for this period',
-                description: 'Try another period or log your first expense or revenue record.',
-                buttonText: 'Log First Transaction',
-                onAction: () => window.showAddTransactionModal()
-            });
-        }
+    if (!rows.length) {
+        setHtml('upcoming-obligations-content', '<div class="overview-empty-copy">No upcoming bills or renewals.</div>');
         return;
     }
 
-    tableContainer?.classList.remove('hidden');
-    footer?.classList.remove('hidden');
-    emptyContainer?.classList.add('hidden');
-    renderLedgerRows(transactions);
+    setHtml('upcoming-obligations-content', `
+        <div class="rail-mini-list">
+            ${rows.map(row => `
+                <a class="rail-mini-card" href="${row.href}">
+                    <div class="rail-mini-body">
+                        <div class="rail-mini-title">${escapeHtml(row.record.vendor_name || row.record.name || 'Untitled record')}</div>
+                        <div class="rail-mini-sub">${escapeHtml(row.type)} &middot; ${escapeHtml(formatRecordDate(row.record, row.dateField) || 'No date')} &middot; ${formatIDR(row.record.amount)}</div>
+                    </div>
+                    <span class="rail-mini-arrow" aria-hidden="true">&rsaquo;</span>
+                </a>
+            `).join('')}
+        </div>
+        <div class="rail-footer">
+            <a class="rail-footer-link" href="/bill">View all &rarr;</a>
+        </div>
+    `);
+}
+
+function renderReportReadiness(overview) {
+    const r = overview.reportReadiness || { status: 'Loading', missingReceipts: 0, overdueBills: 0, dataWarnings: [] };
+    const status = r.status || 'Loading';
+    const badge = document.getElementById('report-readiness-status');
+    if (badge) {
+        badge.textContent = status;
+        const tone = status === 'Ready' ? 'is-ready' : (status === 'Needs review' ? 'is-warning' : (status === 'Not ready' ? 'is-danger' : ''));
+        badge.className = `status-badge ${tone}`;
+    }
+    const dataWarningLabel = (r.dataWarnings && r.dataWarnings[0]) || 'None';
+    setHtml('report-readiness-content', `
+        <div class="readiness-rows">
+            <div class="readiness-row"><span>Missing receipts</span><strong>${Number(r.missingReceipts) || 0}</strong></div>
+            <div class="readiness-row"><span>Overdue bills</span><strong>${Number(r.overdueBills) || 0}</strong></div>
+            <div class="readiness-row"><span>Data warning</span><strong>${escapeHtml(dataWarningLabel)}</strong></div>
+        </div>
+    `);
 }
 
 function updateKPI(id, value) {
@@ -462,7 +613,6 @@ function setHtml(id, html) {
     const el = document.getElementById(id);
     if (!el) return;
     el.classList.remove('overview-card-loading', 'overview-empty-copy');
-    el.classList.add('overview-section-content');
     el.innerHTML = html;
 }
 
@@ -595,7 +745,11 @@ function formatSignedIDR(value) {
 }
 
 function formatCompactIDR(value) {
-    return formatIDR(value);
+    const n = Math.abs(Number(value) || 0);
+    if (n >= 1_000_000_000) return `Rp ${(n / 1_000_000_000).toFixed(1)}B`;
+    if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `Rp ${(n / 1_000).toFixed(0)}K`;
+    return `Rp ${Math.round(n)}`;
 }
 
 function formatNumber(value, digits = 1) {
@@ -727,48 +881,9 @@ function attachCashflowChartToggle() {
     });
 }
 
-function renderLedgerRows(txs) {
-    const body = document.getElementById('ledger-body');
-    if (!body) return;
-    body.innerHTML = txs.map(tx => `
-        <tr class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
-            <td class="px-5 py-3.5">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-[12px] shadow-sm">
-                        ${escapeHtml(tx.icon || '')}
-                    </div>
-                    <div>
-                        <p class="font-bold text-gray-900">${escapeHtml(tx.vendor_name || 'Untitled transaction')}</p>
-                        <p class="text-[11px] text-gray-500">${escapeHtml(formatRecordDate(tx, 'timestamp') || 'Date unavailable')}</p>
-                    </div>
-                </div>
-            </td>
-            <td class="px-5 py-3.5">
-                <span class="${isPositiveTransaction(tx) ? 'bg-gray-100 text-gray-600' : 'bg-[#FFEDD5] text-[#C2410C]'} px-2 py-0.5 rounded text-[11px] font-bold">
-                    ${escapeHtml(tx.category || 'Uncategorized')}
-                </span>
-            </td>
-            <td class="px-5 py-3.5 text-gray-600 text-[12px] font-medium">${escapeHtml(tx.entity || 'Main Entity')}</td>
-            <td class="px-5 py-3.5 text-right font-mono font-bold ${isPositiveTransaction(tx) ? 'text-green-600' : 'text-gray-900'}">
-                ${isPositiveTransaction(tx) ? '+' : ''}${formatIDR(tx.amount)}
-            </td>
-            <td class="px-5 py-3.5 text-right">
-                <span class="inline-flex items-center gap-1.5 ${tx.status === 'Missing Receipt' ? 'text-red-500 bg-red-50 px-2 py-1 rounded text-[10px]' : 'text-green-600 text-[11px]'} font-bold">
-                    ${escapeHtml(tx.status || 'Completed')}
-                </span>
-            </td>
-        </tr>
-    `).join('');
-}
-
 function formatRecordDate(record, fieldName) {
     const date = getRecordDate(record, fieldName);
     return date ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-}
-
-function renderLimitations(limitations = []) {
-    if (!limitations.length) return '';
-    return `<p class="overview-limitation">${escapeHtml(limitations[0])}</p>`;
 }
 
 function escapeHtml(value) {
@@ -779,6 +894,12 @@ function escapeHtml(value) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+
+document.addEventListener('click', event => {
+    if (event.target.closest('[data-ask-fluxy-summary]') || event.target.closest('[data-ask-fluxy]')) {
+        window.toggleFluxyAI?.();
+    }
+});
 
 mountDashboardPeriodControls();
 

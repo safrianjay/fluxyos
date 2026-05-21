@@ -758,8 +758,183 @@ class DataService {
             sourceStatus
         };
 
+        const billsInPeriod = bills.filter(bill => {
+            const date = this._getRecordDate(bill, 'due_date');
+            if (!date) return false;
+            const key = this._getDayKey(date);
+            return key >= period.startDate && key <= period.endDate;
+        });
+        const subsInPeriod = subscriptions.filter(sub => {
+            const date = this._getRecordDate(sub, 'renewal_date');
+            if (!date) return false;
+            const key = this._getDayKey(date);
+            return key >= period.startDate && key <= period.endDate;
+        });
+
+        overview.cashFlow = this._buildCashFlowBuckets(
+            periodTransactions, billsInPeriod, subsInPeriod,
+            period.startDate, period.endDate
+        );
+        overview.payablesByCategory = this._buildPayablesByCategory(
+            pendingPayables, overdueBills, billsDueSoon, renewalsSoon
+        );
+        overview.reportReadiness = this._buildReportReadiness(
+            missingReceipts, overdueBills
+        );
+
         overview.insights = this._buildOverviewInsights(overview, periodTransactions.length);
         return overview;
+    }
+
+    _buildCashFlowBuckets(transactions = [], bills = [], subscriptions = [], startKey, endKey) {
+        const start = this._parseDayKey(startKey);
+        const end = this._parseDayKey(endKey);
+        if (!start || !end) return [];
+        const rangeDays = Math.max(1, Math.round((end - start) / 86400000) + 1);
+        const bucketType = rangeDays <= 14 ? 'day' : (rangeDays > 93 ? 'month' : 'week');
+        const buckets = [];
+
+        if (bucketType === 'month') {
+            let cursor = this._getMonthStartKey(start);
+            while (cursor <= endKey) {
+                const cursorDate = this._parseDayKey(cursor);
+                const monthEnd = this._getMonthEndKey(cursorDate);
+                const bucketStart = cursor < startKey ? startKey : cursor;
+                const bucketEnd = monthEnd > endKey ? endKey : monthEnd;
+                buckets.push({
+                    start: bucketStart,
+                    end: bucketEnd,
+                    label: this._formatCashFlowLabel(bucketStart, bucketEnd, 'month'),
+                    cashIn: 0,
+                    cashOut: 0,
+                    netCashFlow: 0
+                });
+                const next = this._parseDayKey(cursor);
+                next.setMonth(next.getMonth() + 1);
+                cursor = this._getMonthStartKey(next);
+            }
+        } else {
+            const step = bucketType === 'day' ? 1 : 7;
+            let cursor = startKey;
+            while (cursor <= endKey) {
+                const bucketEndDate = this._addDays(this._parseDayKey(cursor), step - 1);
+                const bucketEndKey = this._getDayKey(bucketEndDate);
+                const bucketEnd = bucketEndKey > endKey ? endKey : bucketEndKey;
+                buckets.push({
+                    start: cursor,
+                    end: bucketEnd,
+                    label: this._formatCashFlowLabel(cursor, bucketEnd, bucketType),
+                    cashIn: 0,
+                    cashOut: 0,
+                    netCashFlow: 0
+                });
+                const nextDate = this._addDays(this._parseDayKey(bucketEnd), 1);
+                cursor = this._getDayKey(nextDate);
+            }
+        }
+
+        const findBucket = (dayKey) => buckets.find(b => dayKey >= b.start && dayKey <= b.end);
+
+        transactions.forEach(tx => {
+            const date = this._getTransactionDate(tx);
+            if (!date) return;
+            const dayKey = this._getDayKey(date);
+            const bucket = findBucket(dayKey);
+            if (!bucket) return;
+            const amount = Math.abs(Number(tx.amount) || 0);
+            const type = String(tx.type || '').toLowerCase();
+            if (['revenue', 'income', 'refund', 'pending_receivable'].includes(type)) bucket.cashIn += amount;
+            else if (['expense', 'fee', 'tax', 'pending_payable'].includes(type)) bucket.cashOut += amount;
+        });
+
+        bills.forEach(bill => {
+            const date = this._getRecordDate(bill, 'due_date');
+            if (!date) return;
+            const dayKey = this._getDayKey(date);
+            const bucket = findBucket(dayKey);
+            if (!bucket) return;
+            bucket.cashOut += Math.abs(Number(bill.amount) || 0);
+        });
+
+        subscriptions.forEach(sub => {
+            const date = this._getRecordDate(sub, 'renewal_date');
+            if (!date) return;
+            const dayKey = this._getDayKey(date);
+            const bucket = findBucket(dayKey);
+            if (!bucket) return;
+            bucket.cashOut += Math.abs(Number(sub.amount) || 0);
+        });
+
+        buckets.forEach(b => { b.netCashFlow = b.cashIn - b.cashOut; });
+
+        if (!buckets.length) {
+            buckets.push({
+                start: startKey,
+                end: endKey,
+                label: this._formatCashFlowLabel(startKey, endKey, 'day'),
+                cashIn: 0,
+                cashOut: 0,
+                netCashFlow: 0
+            });
+        }
+
+        return buckets;
+    }
+
+    _formatCashFlowLabel(startKey, endKey, bucketType) {
+        const start = this._parseDayKey(startKey);
+        const end = this._parseDayKey(endKey);
+        if (!start || !end) return '';
+        if (bucketType === 'month') return start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        if (startKey === endKey) return start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+            return `${start.toLocaleDateString('en-US', { month: 'short' })} ${start.getDate()}-${end.getDate()}`;
+        }
+        return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}-${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    }
+
+    _buildPayablesByCategory(...recordArrays) {
+        const totals = new Map();
+        recordArrays.flat().forEach(record => {
+            const category = (record.category && String(record.category).trim()) || 'Uncategorized';
+            const amount = Math.abs(Number(record.amount) || 0);
+            if (amount <= 0) return;
+            totals.set(category, (totals.get(category) || 0) + amount);
+        });
+        const entries = Array.from(totals.entries())
+            .map(([category, amount]) => ({ category, amount }))
+            .sort((a, b) => b.amount - a.amount)
+            .slice(0, 5);
+        const max = entries[0]?.amount || 1;
+        return entries.map(item => ({ ...item, percentage: Math.round((item.amount / max) * 100) }));
+    }
+
+    _buildReportReadiness(missingReceipts = [], overdueBills = []) {
+        const missingCount = missingReceipts.length;
+        const overdueCount = overdueBills.length;
+        const dataWarnings = [];
+
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const oldOverdue = overdueBills.some(bill => {
+            const date = this._getRecordDate(bill, 'due_date');
+            if (!date) return false;
+            const days = Math.round((now - date) / 86400000);
+            return days > 60;
+        });
+        if (oldOverdue) dataWarnings.push('Old due dates');
+
+        let status;
+        if (missingCount === 0 && overdueCount === 0) status = 'Ready';
+        else if (overdueCount > 3 || dataWarnings.length > 0) status = 'Not ready';
+        else status = 'Needs review';
+
+        return {
+            status,
+            missingReceipts: missingCount,
+            overdueBills: overdueCount,
+            dataWarnings
+        };
     }
 
     async getDashboardStats(userId, period = null) {
