@@ -1,4 +1,11 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(grep -nA 8 \"function setButtonLoading\" settings-business.html)",
+      "Bash(git commit -m ' *)",
+      "Bash(awk '/function isValidSettingsTimestamp/,/^    }/' firestore.rules)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
