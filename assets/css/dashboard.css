@@ -835,8 +835,8 @@
 /* Two-column layout */
 .overview-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
-    gap: 24px;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
     align-items: start;
 }
 
@@ -861,8 +861,8 @@
 }
 
 .metric-cell {
-    min-height: 128px;
-    padding: 18px 20px;
+    min-height: 136px;
+    padding: 20px 22px;
     border-right: 1px solid #E5E7EB;
     border-bottom: 1px solid #E5E7EB;
     position: relative;
@@ -892,7 +892,7 @@
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
     color: #111827;
-    font-size: clamp(22px, 1.65vw, 30px);
+    font-size: clamp(24px, 1.9vw, 32px);
     line-height: 1.1;
     letter-spacing: -0.015em;
     font-weight: 800;
@@ -900,14 +900,28 @@
 }
 
 .metric-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
     color: #111827;
-    font-size: 16px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 900;
     line-height: 1;
+    transform: translateY(-2px);
 }
 
-.metric-arrow.is-good { color: #16A34A; }
-.metric-arrow.is-bad { color: #EF4444; }
+.metric-arrow.is-good {
+    color: #15803D;
+    background: #DCFCE7;
+}
+
+.metric-arrow.is-bad {
+    color: #DC2626;
+    background: #FEE2E2;
+}
 
 .metric-sub {
     margin: 10px 0 0;
@@ -956,7 +970,7 @@
     border: 1px solid #E5E7EB;
     border-radius: 18px;
     box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 10px 22px rgba(15,23,42,0.04);
-    padding: 22px;
+    padding: 24px;
 }
 
 .chart-card-header {
@@ -1298,13 +1312,13 @@
 .right-workbench {
     background: #FFFFFF;
     border: 1px solid #E5E7EB;
-    border-radius: 18px;
-    box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 10px 22px rgba(15,23,42,0.04);
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 18px rgba(15,23,42,0.035);
     overflow: hidden;
 }
 
 .brain-panel {
-    padding: 24px;
+    padding: 16px;
     background:
         radial-gradient(circle at 100% 0%, rgba(148,163,184,0.34), transparent 34%),
         linear-gradient(135deg, #F8B894 0%, #FDC19C 54%, #CABCC8 100%);
@@ -1313,14 +1327,14 @@
 .brain-head {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: 10px;
+    margin-bottom: 12px;
 }
 
 .brain-logo {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
     color: #EA580C;
     flex-shrink: 0;
 }
@@ -1334,7 +1348,7 @@
 .brain-title {
     margin: 0;
     color: #111827;
-    font-size: 20px;
+    font-size: 16px;
     line-height: 1.15;
     font-weight: 800;
     letter-spacing: -0.02em;
@@ -1343,24 +1357,24 @@
 .brain-period {
     margin: 2px 0 0;
     color: #6B7280;
-    font-size: 15px;
+    font-size: 12px;
     font-weight: 600;
 }
 
 .brain-body {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
 }
 
 .brain-message {
     border: 1px solid #E5E7EB;
     border-left: 4px solid #EA580C;
-    border-radius: 14px;
+    border-radius: 12px;
     background: #FFFFFF;
-    padding: 18px 20px;
+    padding: 12px 14px;
     color: #111827;
-    font-size: 16px;
+    font-size: 13px;
     line-height: 1.5;
     font-weight: 700;
     letter-spacing: -0.005em;
@@ -1368,36 +1382,36 @@
 
 .brain-block {
     border: 1px solid #E5E7EB;
-    border-radius: 14px;
+    border-radius: 12px;
     background: #FFFFFF;
-    padding: 16px 18px;
+    padding: 11px 13px;
 }
 
 .brain-block-label {
     color: #94A3B8;
     text-transform: uppercase;
     letter-spacing: 0.14em;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 800;
     margin-bottom: 6px;
 }
 
 .brain-block-copy {
     color: #111827;
-    font-size: 15px;
+    font-size: 12px;
     line-height: 1.45;
     font-weight: 700;
 }
 
 .brain-cta {
     width: 100%;
-    height: 48px;
+    height: 40px;
     border: 1px solid #EA580C;
     border-radius: 12px;
     background: #EA580C;
     color: #FFFFFF;
     font-family: Inter, sans-serif;
-    font-size: 15px;
+    font-size: 12px;
     font-weight: 800;
     cursor: pointer;
     margin-top: 12px;
@@ -1411,7 +1425,7 @@
 .brain-cta:active { transform: scale(0.99); }
 
 .rail-section {
-    padding: 18px 20px;
+    padding: 14px 16px;
     border-top: 1px solid #E5E7EB;
 }
 
@@ -1419,13 +1433,13 @@
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     color: #94A3B8;
-    font-size: 10px;
+    font-size: 9px;
     text-transform: uppercase;
     letter-spacing: 0.14em;
     font-weight: 800;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
 }
 
 .rail-divider::before,
@@ -1440,19 +1454,19 @@
     justify-content: space-between;
     align-items: center;
     gap: 12px;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
 }
 
 .rail-title {
     color: #111827;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 800;
     letter-spacing: -0.005em;
 }
 
 .rail-list {
     display: grid;
-    gap: 14px;
+    gap: 10px;
 }
 
 .rail-item { display: grid; gap: 6px; }
@@ -1466,13 +1480,13 @@
 
 .rail-name {
     color: #111827;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
 }
 
 .rail-amount {
     color: #6B7280;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     font-family: "Fira Code", monospace;
     white-space: nowrap;
@@ -1496,19 +1510,19 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 14px;
+    margin-top: 10px;
     gap: 10px;
 }
 
 .rail-footer-total {
     color: #6B7280;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
 }
 
 .rail-footer-link {
     color: #EA580C;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
     text-decoration: none;
 }
@@ -1525,7 +1539,7 @@
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 10px;
-    padding: 12px;
+    padding: 10px;
     background: #F9FAFB;
     border: 1px solid #E5E7EB;
     border-radius: 12px;
@@ -1543,14 +1557,14 @@
 
 .rail-mini-title {
     color: #111827;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 800;
     margin-bottom: 2px;
 }
 
 .rail-mini-sub {
     color: #6B7280;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
@@ -1573,7 +1587,7 @@
     justify-content: space-between;
     gap: 12px;
     color: #6B7280;
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
 }
 
@@ -1586,10 +1600,10 @@
 .status-badge {
     display: inline-flex;
     align-items: center;
-    height: 22px;
-    padding: 0 10px;
+    height: 20px;
+    padding: 0 8px;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 800;
     background: #F1F5F9;
     color: #475569;
@@ -1605,8 +1619,6 @@
     .overview-layout {
         grid-template-columns: 1fr;
     }
-
-    .overview-right-column { order: -1; }
 
     .summary-board {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1646,7 +1658,7 @@
     .queue-row { grid-template-columns: 40px minmax(0, 1fr) 18px; padding: 12px 14px; }
 
     .right-workbench { border-radius: 14px; }
-    .brain-panel { padding: 20px; }
-    .brain-title { font-size: 18px; }
-    .brain-message { font-size: 15px; }
+    .brain-panel { padding: 16px; }
+    .brain-title { font-size: 16px; }
+    .brain-message { font-size: 13px; }
 }

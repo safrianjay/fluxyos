@@ -283,18 +283,21 @@ function renderMetricArrow(id, change, type) {
     if (!el) return;
     if (change === null || change === undefined || !Number.isFinite(Number(change))) {
         el.textContent = '';
+        el.removeAttribute('aria-label');
         el.className = 'metric-arrow';
         return;
     }
     const value = Number(change);
     if (Math.abs(value) < 0.1) {
         el.textContent = '';
+        el.removeAttribute('aria-label');
         el.className = 'metric-arrow';
         return;
     }
     const isUp = value > 0;
     const isGood = type === 'opex' ? !isUp : isUp;
-    el.textContent = isUp ? '^' : 'v';
+    el.textContent = isUp ? '↑' : '↓';
+    el.setAttribute('aria-label', isUp ? 'Trend up' : 'Trend down');
     el.className = `metric-arrow ${isGood ? 'is-good' : 'is-bad'}`;
 }
 
