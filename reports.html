@@ -223,47 +223,24 @@
                             <span id="recommended-status-tag" class="tag tag-good">Export ready</span>
                         </div>
 
-                        <div class="p-5 grid grid-cols-1 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-5">
-                            <div class="border border-orange-200 rounded-2xl p-5 bg-gradient-to-b from-orange-50/40 to-white flex flex-col justify-between min-h-[320px]">
-                                <div>
-                                    <div class="flex items-center justify-between gap-3 mb-6">
-                                        <div class="w-10 h-10 rounded-xl bg-gray-900 text-white grid place-items-center font-bold">M</div>
-                                        <span id="recommended-warnings-tag" class="tag tag-warn hidden">0 data warnings</span>
+                        <div class="p-5">
+                            <div class="border border-orange-200 rounded-2xl p-6 sm:p-7 bg-gradient-to-b from-orange-50/40 to-white">
+                                <div class="flex items-start justify-between gap-4">
+                                    <div class="min-w-0">
+                                        <h4 id="recommended-title" class="text-[24px] sm:text-[28px] leading-[1.15] tracking-tight font-medium text-gray-900">Monthly Report Pack</h4>
+                                        <p id="recommended-description" class="mt-2 text-[14px] text-gray-500 leading-relaxed max-w-2xl">One controlled export containing P&amp;L, expense breakdown, payables, subscriptions, ledger rows, and data quality notes for the selected period.</p>
                                     </div>
-                                    <h4 id="recommended-title" class="text-[22px] sm:text-[26px] leading-tight tracking-tight font-medium text-gray-900">Monthly Report Pack</h4>
-                                    <p id="recommended-description" class="mt-2 text-[13px] text-gray-500 leading-relaxed">One controlled export containing P&amp;L, expense breakdown, payables, subscriptions, ledger rows, and data quality notes for the selected period.</p>
+                                    <span id="recommended-warnings-tag" class="tag tag-warn hidden flex-shrink-0">0 data warnings</span>
                                 </div>
-                                <div class="mt-5 flex flex-wrap gap-2">
-                                    <button id="recommended-generate-btn" type="button" class="flex-1 min-w-[160px] px-4 py-2.5 bg-gray-900 text-white rounded-lg text-[13px] font-bold hover:bg-gray-800 transition-colors active:scale-95">Generate preview</button>
+                                <div class="mt-5 pt-5 border-t border-orange-100/80 flex flex-wrap items-center gap-x-6 gap-y-2 text-[12px] text-gray-600">
+                                    <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span><span id="recommended-fact-sections"><strong class="text-gray-900 font-semibold">9</strong> sections</span></span>
+                                    <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span><span><strong id="recommended-fact-format" class="text-gray-900 font-semibold">PDF + CSV</strong></span></span>
+                                    <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span><span id="recommended-fact-files"><strong class="text-gray-900 font-semibold">6</strong> source files</span></span>
+                                    <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span><span>Audit logged on confirm</span></span>
+                                </div>
+                                <div class="mt-6 flex flex-wrap gap-2">
+                                    <button id="recommended-generate-btn" type="button" class="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-[13px] font-bold hover:bg-gray-800 transition-colors active:scale-95">Generate preview</button>
                                     <button id="recommended-fix-btn" type="button" class="px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors active:scale-95">Fix warnings first</button>
-                                </div>
-                            </div>
-
-                            <div class="border border-gray-200 rounded-2xl overflow-hidden">
-                                <div class="grid grid-cols-[140px_minmax(0,1fr)_auto] items-center gap-3 p-4 border-b border-slate-100">
-                                    <strong class="text-[13px]">Primary use</strong>
-                                    <span class="text-[13px] text-gray-500 leading-snug">Monthly close, accountant handoff, founder review</span>
-                                    <span class="tag">Core</span>
-                                </div>
-                                <div class="grid grid-cols-[140px_minmax(0,1fr)_auto] items-center gap-3 p-4 border-b border-slate-100">
-                                    <strong class="text-[13px]">Report sections</strong>
-                                    <span class="text-[13px] text-gray-500 leading-snug">Executive Summary, Profit &amp; Loss, Period Comparison, Finance Predictability, Expense Breakdown, Bills &amp; Subscriptions, Report Confidence, Data Quality, Export Manifest</span>
-                                    <span class="tag">9 sections</span>
-                                </div>
-                                <div class="grid grid-cols-[140px_minmax(0,1fr)_auto] items-center gap-3 p-4 border-b border-slate-100">
-                                    <strong class="text-[13px]">Export formats</strong>
-                                    <span class="text-[13px] text-gray-500 leading-snug">PDF Summary (browser print) + CSV Bundle (6 source files).</span>
-                                    <span class="tag">PDF + CSV</span>
-                                </div>
-                                <div class="grid grid-cols-[140px_minmax(0,1fr)_auto] items-center gap-3 p-4 border-b border-slate-100">
-                                    <strong class="text-[13px]">Security</strong>
-                                    <span class="text-[13px] text-gray-500 leading-snug">User must confirm export. Export metadata is stored in audit log.</span>
-                                    <span class="tag tag-good">Logged</span>
-                                </div>
-                                <div class="grid grid-cols-[140px_minmax(0,1fr)_auto] items-center gap-3 p-4">
-                                    <strong class="text-[13px]">Limitations</strong>
-                                    <span class="text-[13px] text-gray-500 leading-snug">Revenue Sync is excluded until connected. Missing receipts are listed as report warnings.</span>
-                                    <span class="tag tag-warn">Partial data</span>
                                 </div>
                             </div>
                         </div>
@@ -387,50 +364,70 @@
                                 <h3 class="text-[15px] font-bold text-gray-900">Data coverage</h3>
                                 <p class="mt-1 text-[12px] text-gray-500">Counts match the selected period and export scope.</p>
                             </div>
-                            <div class="p-5 grid grid-cols-2 gap-3">
-                                <div class="border border-gray-200 rounded-xl p-3">
-                                    <span class="block text-[11px] text-gray-500 mb-1">Transactions</span>
-                                    <strong id="coverage-transactions" class="reports-mono text-[20px] text-gray-900">0</strong>
+                            <div class="p-5 space-y-5">
+                                <!-- Group 1: Records you have -->
+                                <div>
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-[.08em] mb-2.5">Records in scope</p>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <div class="border border-gray-200 rounded-xl p-3">
+                                            <span class="block text-[11px] text-gray-500 mb-1">Transactions</span>
+                                            <strong id="coverage-transactions" class="reports-mono text-[20px] text-gray-900">0</strong>
+                                        </div>
+                                        <div class="border border-gray-200 rounded-xl p-3">
+                                            <span class="block text-[11px] text-gray-500 mb-1">Bills</span>
+                                            <strong id="coverage-bills" class="reports-mono text-[20px] text-gray-900">0</strong>
+                                        </div>
+                                        <div class="border border-gray-200 rounded-xl p-3">
+                                            <span class="block text-[11px] text-gray-500 mb-1">Subscriptions</span>
+                                            <strong id="coverage-subscriptions" class="reports-mono text-[20px] text-gray-900">0</strong>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="border border-gray-200 rounded-xl p-3">
-                                    <span class="block text-[11px] text-gray-500 mb-1">Bills</span>
-                                    <strong id="coverage-bills" class="reports-mono text-[20px] text-gray-900">0</strong>
+
+                                <!-- Group 2: Comparison context -->
+                                <div>
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-[.08em] mb-2.5">Comparison</p>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div class="border border-gray-200 rounded-xl p-3">
+                                            <span class="block text-[11px] text-gray-500 mb-1">Current period</span>
+                                            <strong id="coverage-current-period-records" class="reports-mono text-[16px] text-gray-900">0</strong>
+                                        </div>
+                                        <div class="border border-gray-200 rounded-xl p-3">
+                                            <span class="block text-[11px] text-gray-500 mb-1">Comparison period</span>
+                                            <strong id="coverage-comparison-period-records" class="text-[13px] text-gray-700">—</strong>
+                                        </div>
+                                        <div class="border border-gray-200 rounded-xl p-3">
+                                            <span class="block text-[11px] text-gray-500 mb-1">Previous-year categories</span>
+                                            <strong id="coverage-previous-categories" class="text-[13px] text-gray-700">—</strong>
+                                        </div>
+                                        <div class="border border-gray-200 rounded-xl p-3">
+                                            <span class="block text-[11px] text-gray-500 mb-1">Previous period</span>
+                                            <strong id="coverage-previous-period" class="text-[13px] text-gray-700">—</strong>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="border border-gray-200 rounded-xl p-3">
-                                    <span class="block text-[11px] text-gray-500 mb-1">Subscriptions</span>
-                                    <strong id="coverage-subscriptions" class="reports-mono text-[20px] text-gray-900">0</strong>
-                                </div>
-                                <div class="border border-gray-200 rounded-xl p-3">
-                                    <span class="block text-[11px] text-gray-500 mb-1">Revenue Sync</span>
-                                    <strong id="coverage-revenue-sync" class="text-[13px] text-gray-500">Not connected</strong>
-                                </div>
-                                <div class="border border-gray-200 rounded-xl p-3">
-                                    <span class="block text-[11px] text-gray-500 mb-1">Current period records</span>
-                                    <strong id="coverage-current-period-records" class="reports-mono text-[16px] text-gray-900">0</strong>
-                                </div>
-                                <div class="border border-gray-200 rounded-xl p-3">
-                                    <span class="block text-[11px] text-gray-500 mb-1">Comparison period records</span>
-                                    <strong id="coverage-comparison-period-records" class="text-[13px] text-gray-700">—</strong>
-                                </div>
-                                <div class="border border-gray-200 rounded-xl p-3">
-                                    <span class="block text-[11px] text-gray-500 mb-1">Previous-year categories</span>
-                                    <strong id="coverage-previous-categories" class="text-[13px] text-gray-700">—</strong>
-                                </div>
-                                <div class="border border-gray-200 rounded-xl p-3">
-                                    <span class="block text-[11px] text-gray-500 mb-1">Previous period</span>
-                                    <strong id="coverage-previous-period" class="text-[13px] text-gray-700">—</strong>
-                                </div>
-                                <div class="border border-gray-200 rounded-xl p-3">
-                                    <span class="block text-[11px] text-gray-500 mb-1">Recurring revenue</span>
-                                    <strong id="coverage-recurring" class="text-[13px] text-gray-700">—</strong>
-                                </div>
-                                <div class="border border-gray-200 rounded-xl p-3">
-                                    <span class="block text-[11px] text-gray-500 mb-1">Predictability</span>
-                                    <strong id="coverage-predictability" class="text-[13px] text-gray-700">—</strong>
-                                </div>
-                                <div class="border border-gray-200 rounded-xl p-3">
-                                    <span class="block text-[11px] text-gray-500 mb-1">Bank balance</span>
-                                    <strong id="coverage-bank-balance" class="text-[13px] text-gray-500">Not connected</strong>
+
+                                <!-- Group 3: Sources & forecasting (status) -->
+                                <div>
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-[.08em] mb-2.5">Sources &amp; forecasting</p>
+                                    <ul class="space-y-1.5 text-[13px]">
+                                        <li class="flex items-center justify-between border border-gray-200 rounded-xl py-2 px-3">
+                                            <span class="text-gray-600">Revenue Sync</span>
+                                            <strong id="coverage-revenue-sync" class="text-gray-500 font-medium">Not connected</strong>
+                                        </li>
+                                        <li class="flex items-center justify-between border border-gray-200 rounded-xl py-2 px-3">
+                                            <span class="text-gray-600">Bank balance</span>
+                                            <strong id="coverage-bank-balance" class="text-gray-500 font-medium">Not connected</strong>
+                                        </li>
+                                        <li class="flex items-center justify-between border border-gray-200 rounded-xl py-2 px-3">
+                                            <span class="text-gray-600">Recurring revenue</span>
+                                            <strong id="coverage-recurring" class="text-gray-700 font-medium">—</strong>
+                                        </li>
+                                        <li class="flex items-center justify-between border border-gray-200 rounded-xl py-2 px-3">
+                                            <span class="text-gray-600">Predictability</span>
+                                            <strong id="coverage-predictability" class="text-gray-700 font-medium">—</strong>
+                                        </li>
+                                    </ul>
                                 </div>
                             </div>
                         </section>

@@ -415,6 +415,16 @@ function renderRecommendedOutput() {
         titleEl.textContent = 'Monthly Report Pack';
         descEl.textContent = 'One controlled export containing P&L, expense breakdown, payables, subscriptions, ledger rows, and data quality notes for the selected period.';
     }
+
+    // Compact at-a-glance facts on the orange card.
+    const sectionsCount = (pack.sections_availability || []).filter(s => s.status !== 'unavailable').length;
+    const filesCount = (pack.source_files || []).length;
+    const factSections = el('recommended-fact-sections');
+    const factFiles = el('recommended-fact-files');
+    const factFormat = el('recommended-fact-format');
+    if (factSections) factSections.innerHTML = `<strong class="text-gray-900 font-semibold">${sectionsCount}</strong> sections`;
+    if (factFiles) factFiles.innerHTML = `<strong class="text-gray-900 font-semibold">${filesCount}</strong> source file${filesCount === 1 ? '' : 's'}`;
+    if (factFormat) factFormat.textContent = 'PDF + CSV';
 }
 
 function renderRecentExports() {
