@@ -640,28 +640,140 @@ class DataService {
     }
 
     // --- SUMMARY STATS ---
-    async getDashboardStats(userId, period = null) {
-        const txs = await this.getTransactions(userId, 1000);
-        const filteredTxs = period?.start && period?.end
-            ? txs.filter(tx => this._isTransactionInPeriod(tx, period.start, period.end))
-            : txs;
-        let revenue = 0;
-        let opex = 0;
+    async getDashboardOverview(userId, options = {}) {
+        const period = this._normalizeOverviewPeriod(options);
+        const previousPeriod = this._getPreviousOverviewPeriod(period);
+        const sourceStatus = {
+            transactions: 'loaded',
+            bills: 'loaded',
+            subscriptions: 'loaded'
+        };
+        const limitations = [];
 
-        filteredTxs.forEach(tx => {
-            const type = String(tx.type || '').toLowerCase();
-            if (['revenue', 'income', 'refund', 'pending_receivable'].includes(type)) revenue += tx.amount;
-            else if (['expense', 'fee', 'tax', 'pending_payable'].includes(type)) opex += Math.abs(tx.amount);
+        const [txResult, billsResult, subsResult] = await Promise.allSettled([
+            this.getTransactions(userId, 1000),
+            this.getBills(userId),
+            this.getSubscriptions(userId)
+        ]);
+
+        const transactions = txResult.status === 'fulfilled' ? txResult.value : [];
+        const bills = billsResult.status === 'fulfilled' ? billsResult.value : [];
+        const subscriptions = subsResult.status === 'fulfilled' ? subsResult.value : [];
+
+        if (txResult.status !== 'fulfilled') {
+            sourceStatus.transactions = 'error';
+            limitations.push('Transactions data could not be loaded, so performance and ledger preview may be incomplete.');
+        }
+        if (billsResult.status !== 'fulfilled') {
+            sourceStatus.bills = 'error';
+            limitations.push('Bills data could not be loaded, so cash pressure may be incomplete.');
+        }
+        if (subsResult.status !== 'fulfilled') {
+            sourceStatus.subscriptions = 'error';
+            limitations.push('Subscriptions data could not be loaded, so upcoming renewals may be incomplete.');
+        }
+
+        const periodTransactions = transactions.filter(tx => this._isTransactionInPeriod(tx, period.startDate, period.endDate));
+        const previousTransactions = transactions.filter(tx => this._isTransactionInPeriod(tx, previousPeriod.startDate, previousPeriod.endDate));
+        const performance = this._calculateOverviewPerformance(periodTransactions);
+        const previousPerformance = this._calculateOverviewPerformance(previousTransactions);
+        const hasPreviousPeriodData = previousTransactions.length > 0;
+        performance.revenueChangePct = hasPreviousPeriodData ? this._safePercentChange(performance.revenue, previousPerformance.revenue) : null;
+        performance.opexChangePct = hasPreviousPeriodData ? this._safePercentChange(performance.opex, previousPerformance.opex) : null;
+        performance.marginChangePct = hasPreviousPeriodData && previousPerformance.revenue > 0
+            ? performance.grossMargin - previousPerformance.grossMargin
+            : null;
+
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const attentionEnd = this._addDays(now, 30);
+        const overdueBills = bills.filter(bill => this._isBeforeToday(this._getRecordDate(bill, 'due_date'), now));
+        const billsDueSoon = bills.filter(bill => this._isInUpcomingWindow(this._getRecordDate(bill, 'due_date'), now, attentionEnd, period.startDate, period.endDate));
+        const renewalsSoon = subscriptions.filter(sub => this._isInUpcomingWindow(this._getRecordDate(sub, 'renewal_date'), now, attentionEnd, period.startDate, period.endDate));
+        const missingReceipts = periodTransactions.filter(tx => tx.status === 'Missing Receipt');
+        const pendingReceivables = periodTransactions.filter(tx => String(tx.type || '').toLowerCase() === 'pending_receivable');
+        const pendingPayables = periodTransactions.filter(tx => String(tx.type || '').toLowerCase() === 'pending_payable');
+
+        const upcomingBills = [...overdueBills, ...billsDueSoon]
+            .filter((bill, index, arr) => arr.findIndex(item => item.id === bill.id) === index)
+            .sort((a, b) => this._sortByDate(a, b, 'due_date'))
+            .slice(0, 5);
+        const upcomingSubscriptions = renewalsSoon
+            .sort((a, b) => this._sortByDate(a, b, 'renewal_date'))
+            .slice(0, 5);
+
+        const upcomingObligations = this._sumAmounts(upcomingBills)
+            + this._sumAmounts(upcomingSubscriptions)
+            + this._sumAmounts(pendingPayables);
+        const expectedIncoming = this._sumAmounts(pendingReceivables);
+        const netPressure = expectedIncoming - upcomingObligations;
+        const riskLevel = this._getCashPressureRisk(netPressure, upcomingObligations, expectedIncoming, overdueBills.length);
+        const receivablesTotal = this._sumAmounts(pendingReceivables);
+        const payablesTotal = this._sumAmounts(billsDueSoon) + this._sumAmounts(overdueBills) + this._sumAmounts(renewalsSoon) + this._sumAmounts(pendingPayables);
+
+        const actionItems = {
+            total: missingReceipts.length + overdueBills.length + billsDueSoon.length + renewalsSoon.length,
+            missingReceipts: missingReceipts.length,
+            overdueBills: overdueBills.length,
+            billsDueSoon: billsDueSoon.length,
+            renewalsSoon: renewalsSoon.length,
+            highOpexIncrease: performance.opexChangePct !== null && performance.opexChangePct >= 25
+        };
+        if (actionItems.highOpexIncrease) actionItems.total += 1;
+
+        const overview = {
+            period: {
+                label: period.label,
+                mode: period.mode,
+                startDate: period.startDate,
+                endDate: period.endDate,
+                previousStartDate: previousPeriod.startDate,
+                previousEndDate: previousPeriod.endDate
+            },
+            performance,
+            actionItems,
+            cashPressure: {
+                upcomingObligations,
+                expectedIncoming,
+                netPressure,
+                riskLevel,
+                limitation: 'Cash pressure is estimated from FluxyOS records only. Connect bank balance later for real liquidity analysis.'
+            },
+            receivablesPayables: {
+                receivablesTotal,
+                payablesTotal,
+                netExpected: receivablesTotal - payablesTotal,
+                receivableCount: pendingReceivables.length,
+                payableCount: overdueBills.length + billsDueSoon.length + renewalsSoon.length + pendingPayables.length
+            },
+            upcoming: {
+                bills: upcomingBills,
+                subscriptions: upcomingSubscriptions
+            },
+            chartTransactions: periodTransactions,
+            ledgerPreview: periodTransactions
+                .sort((a, b) => this._sortByDate(b, a, 'timestamp'))
+                .slice(0, 5),
+            limitations,
+            sourceStatus
+        };
+
+        overview.insights = this._buildOverviewInsights(overview, periodTransactions.length);
+        return overview;
+    }
+
+    async getDashboardStats(userId, period = null) {
+        const overview = await this.getDashboardOverview(userId, {
+            startDate: period?.start,
+            endDate: period?.end
         });
 
-        const margin = revenue > 0 ? ((revenue - opex) / revenue) * 100 : 0;
-
         return {
-            revenue: revenue,
-            opex: opex,
-            margin: margin,
-            revenue_change: "0%", // Placeholder for growth calculation
-            action_items_count: filteredTxs.filter(t => t.status === 'Missing Receipt').length
+            revenue: overview.performance.revenue,
+            opex: overview.performance.opex,
+            margin: overview.performance.grossMargin,
+            revenue_change: overview.performance.revenueChangePct,
+            action_items_count: overview.actionItems.total
         };
     }
 
@@ -696,6 +808,201 @@ class DataService {
         if (value && typeof value.toDate === 'function') return value.toDate().getTime() <= now;
         const parsed = new Date(value);
         return !Number.isNaN(parsed.getTime()) && parsed.getTime() <= now;
+    }
+
+    _normalizeOverviewPeriod(options = {}) {
+        const todayKey = this._getDayKey(new Date());
+        const defaultStart = this._getMonthStartKey(new Date());
+        const defaultEnd = this._getMonthEndKey(new Date());
+        const startDate = options.startDate || options.start || defaultStart;
+        const endDate = options.endDate || options.end || defaultEnd;
+        return {
+            label: options.label || this._formatOverviewPeriodLabel(startDate, endDate),
+            mode: options.mode || 'custom',
+            startDate,
+            endDate: endDate > todayKey ? todayKey : endDate
+        };
+    }
+
+    _getPreviousOverviewPeriod(period) {
+        const start = this._parseDayKey(period.startDate);
+        const end = this._parseDayKey(period.endDate);
+        if (!start || !end) return { startDate: period.startDate, endDate: period.endDate };
+
+        if (period.mode === 'this_month') {
+            const previousStart = new Date(start.getFullYear(), start.getMonth() - 1, 1);
+            const previousMonthEnd = new Date(previousStart.getFullYear(), previousStart.getMonth() + 1, 0);
+            const equivalentEndDay = Math.min(end.getDate(), previousMonthEnd.getDate());
+            const previousEnd = new Date(previousStart.getFullYear(), previousStart.getMonth(), equivalentEndDay);
+            return {
+                startDate: this._getDayKey(previousStart),
+                endDate: this._getDayKey(previousEnd)
+            };
+        }
+
+        if (period.mode === 'last_month') {
+            const previousStart = new Date(start.getFullYear(), start.getMonth() - 1, 1);
+            const previousEnd = new Date(previousStart.getFullYear(), previousStart.getMonth() + 1, 0);
+            return {
+                startDate: this._getDayKey(previousStart),
+                endDate: this._getDayKey(previousEnd)
+            };
+        }
+
+        if (period.mode === 'year_to_date') {
+            const previousStart = new Date(start);
+            previousStart.setFullYear(start.getFullYear() - 1);
+            const previousEnd = new Date(end);
+            previousEnd.setFullYear(end.getFullYear() - 1);
+            return {
+                startDate: this._getDayKey(previousStart),
+                endDate: this._getDayKey(previousEnd)
+            };
+        }
+
+        const rangeDays = Math.max(1, Math.round((end - start) / 86400000) + 1);
+        const previousEnd = this._addDays(start, -1);
+        const previousStart = this._addDays(previousEnd, -(rangeDays - 1));
+        return {
+            startDate: this._getDayKey(previousStart),
+            endDate: this._getDayKey(previousEnd)
+        };
+    }
+
+    _calculateOverviewPerformance(transactions = []) {
+        let revenue = 0;
+        let opex = 0;
+        transactions.forEach(tx => {
+            const amount = Math.abs(Number(tx.amount) || 0);
+            const type = String(tx.type || '').toLowerCase();
+            if (['revenue', 'income', 'refund', 'pending_receivable'].includes(type)) revenue += amount;
+            else if (['expense', 'fee', 'tax', 'pending_payable'].includes(type)) opex += amount;
+        });
+        const grossMargin = revenue > 0 ? ((revenue - opex) / revenue) * 100 : 0;
+        return {
+            revenue,
+            opex,
+            grossMargin: Number.isFinite(grossMargin) ? grossMargin : 0,
+            revenueChangePct: null,
+            opexChangePct: null,
+            marginChangePct: null
+        };
+    }
+
+    _safePercentChange(current, previous) {
+        const currentValue = Number(current) || 0;
+        const previousValue = Number(previous) || 0;
+        if (previousValue === 0) return null;
+        const change = ((currentValue - previousValue) / Math.abs(previousValue)) * 100;
+        return Number.isFinite(change) ? change : null;
+    }
+
+    _getRecordDate(record, fieldName) {
+        const value = record?.[fieldName];
+        if (value && typeof value.toDate === 'function') return value.toDate();
+        if (value instanceof Date) return value;
+        if (typeof value === 'string' || typeof value === 'number') {
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+        return null;
+    }
+
+    _isBeforeToday(date, today) {
+        if (!date) return false;
+        const normalized = new Date(date);
+        normalized.setHours(0, 0, 0, 0);
+        return normalized < today;
+    }
+
+    _isInUpcomingWindow(date, today, attentionEnd, periodStartKey, periodEndKey) {
+        if (!date) return false;
+        const normalized = new Date(date);
+        normalized.setHours(0, 0, 0, 0);
+        const dayKey = this._getDayKey(normalized);
+        const inNextThirtyDays = normalized >= today && normalized <= attentionEnd;
+        const inSelectedPeriod = dayKey >= periodStartKey && dayKey <= periodEndKey;
+        return inNextThirtyDays || inSelectedPeriod;
+    }
+
+    _sumAmounts(records = []) {
+        return records.reduce((total, record) => total + Math.abs(Number(record.amount) || 0), 0);
+    }
+
+    _sortByDate(a, b, fieldName) {
+        const left = this._getRecordDate(a, fieldName);
+        const right = this._getRecordDate(b, fieldName);
+        return (left ? left.getTime() : 0) - (right ? right.getTime() : 0);
+    }
+
+    _getCashPressureRisk(netPressure, obligations, incoming, overdueCount) {
+        if (overdueCount > 0 || (obligations > 0 && netPressure < 0 && Math.abs(netPressure) > Math.max(incoming, 1))) return 'high';
+        if (obligations > 0 && netPressure < 0) return 'watch';
+        return 'low';
+    }
+
+    _buildOverviewInsights(overview, transactionCount) {
+        const p = overview.performance;
+        const risk = overview.cashPressure.riskLevel;
+        let mainRisk = 'No urgent finance risk detected from available records.';
+        let recommendedAction = 'Keep reviewing new records as they come in.';
+        let positiveSignal = p.revenue > p.opex && p.revenue > 0
+            ? 'Revenue is higher than OpEx for this period.'
+            : 'The overview has enough structure to highlight what needs attention.';
+
+        if (overview.actionItems.overdueBills > 0) {
+            mainRisk = `${overview.actionItems.overdueBills} overdue bill${overview.actionItems.overdueBills === 1 ? '' : 's'} may need review.`;
+            recommendedAction = 'Open Bills and review overdue obligations first.';
+        } else if (overview.actionItems.missingReceipts > 0) {
+            mainRisk = `${overview.actionItems.missingReceipts} transaction${overview.actionItems.missingReceipts === 1 ? '' : 's'} need receipt cleanup.`;
+            recommendedAction = 'Open Ledger and resolve missing receipts before reporting.';
+        } else if (risk !== 'low') {
+            mainRisk = 'Upcoming obligations may pressure expected cash.';
+            recommendedAction = 'Review upcoming bills and subscriptions before adding new spend.';
+        } else if (transactionCount === 0) {
+            positiveSignal = 'No transactions were found for this period yet.';
+            mainRisk = 'There is not enough period data for a confident finance read.';
+            recommendedAction = 'Add transactions or import ledger data to make Overview useful.';
+        }
+
+        return {
+            summary: `Here's what I'm seeing: ${positiveSignal} ${mainRisk}`,
+            mainRisk,
+            recommendedAction,
+            limitations: overview.limitations
+        };
+    }
+
+    _getDayKey(date = new Date()) {
+        return [
+            date.getFullYear(),
+            String(date.getMonth() + 1).padStart(2, '0'),
+            String(date.getDate()).padStart(2, '0')
+        ].join('-');
+    }
+
+    _getMonthStartKey(date = new Date()) {
+        return this._getDayKey(new Date(date.getFullYear(), date.getMonth(), 1));
+    }
+
+    _getMonthEndKey(date = new Date()) {
+        return this._getDayKey(new Date(date.getFullYear(), date.getMonth() + 1, 0));
+    }
+
+    _addDays(date, delta) {
+        const next = date instanceof Date ? new Date(date) : this._parseDayKey(date);
+        next.setDate(next.getDate() + delta);
+        return next;
+    }
+
+    _formatOverviewPeriodLabel(startKey, endKey) {
+        const start = this._parseDayKey(startKey);
+        const end = this._parseDayKey(endKey);
+        if (!start || !end) return 'Selected period';
+        if (startKey === this._getMonthStartKey(start) && endKey === this._getMonthEndKey(start)) {
+            return start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        }
+        return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
     }
 
     _settingsDoc(userId, docId) {

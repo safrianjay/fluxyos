@@ -44,7 +44,13 @@
                     <div class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-gray-400 bg-white border border-gray-200 px-1.5 py-0.5 rounded">⌘K</div>
                 </div>
 
-                <!-- Date Range -->
+                <!-- Period Controls -->
+                <div class="dashboard-period-controls hidden lg:flex" aria-label="Overview period">
+                    <button type="button" data-dashboard-period="this_month" class="dashboard-period-btn is-active">This Month</button>
+                    <button type="button" data-dashboard-period="last_month" class="dashboard-period-btn">Last Month</button>
+                    <button type="button" data-dashboard-period="year_to_date" class="dashboard-period-btn">YTD</button>
+                    <button type="button" data-dashboard-period="custom" class="dashboard-period-btn">Custom</button>
+                </div>
                 <div id="dashboard-date-range-picker" class="hidden sm:block"></div>
 
                 <!-- AI ENTRY POINT -->
@@ -70,8 +76,7 @@
                             <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Live Revenue</p>
                             <p id="kpi-revenue" class="overview-kpi-value text-gray-900 tabular-nums">Rp 0</p>
                             <p class="text-[11px] text-gray-400 mt-1">
-                                <span class="text-emerald-600 font-bold">↑ <span id="kpi-revenue-change">14.2%</span></span>
-                                vs last month
+                                <span id="kpi-revenue-change" class="font-bold">Loading...</span>
                             </p>
                         </div>
 
@@ -79,7 +84,7 @@
                         <div class="overview-kpi-card" data-tour-target="dashboard-opex-kpi">
                             <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">OpEx &amp; Ad Spend</p>
                             <p id="kpi-opex" class="overview-kpi-value text-gray-900 tabular-nums">Rp 0</p>
-                            <p class="text-[11px] text-gray-400 mt-1">Mapped to 14 budgets</p>
+                            <p id="kpi-opex-change" class="text-[11px] text-gray-400 mt-1">Loading...</p>
                         </div>
 
                         <!-- Gross Margin -->
@@ -89,6 +94,7 @@
                             <div class="w-full bg-gray-100 rounded-full h-1.5 mt-3">
                                 <div id="kpi-margin-bar" class="bg-blue-500 h-1.5 rounded-full" style="width: 76.0%"></div>
                             </div>
+                            <p id="kpi-margin-status" class="text-[11px] text-gray-400 mt-2">Loading...</p>
                         </div>
 
                         <!-- Needs Action -->
@@ -97,7 +103,7 @@
                             <p id="kpi-action-count" class="text-2xl font-bold text-red-600 mt-1">5 Items</p>
                             <p class="text-[11px] text-gray-400 mt-1">
                                 <span id="kpi-action-details">3 Missing Receipts &bull; 2 Approvals</span>
-                                <a href="#" class="text-[#EA580C] font-bold ml-1 hover:underline">Resolve now →</a>
+                                <a id="kpi-action-link" href="#overview-needs-attention" class="text-[#EA580C] font-bold ml-1 hover:underline">Resolve now →</a>
                             </p>
                         </div>
 
@@ -126,6 +132,54 @@
                     </div>
                 </section>
 
+                <section class="overview-command-grid" aria-label="Finance command center">
+                    <div class="overview-command-card" id="cash-pressure-card">
+                        <div class="overview-section-heading">
+                            <div>
+                                <p class="overview-section-kicker">Cash Pressure</p>
+                                <h3>Snapshot</h3>
+                            </div>
+                            <span id="cash-pressure-risk" class="overview-risk-pill">Loading</span>
+                        </div>
+                        <div id="cash-pressure-content" class="overview-card-loading">Loading cash pressure...</div>
+                    </div>
+
+                    <div class="overview-command-card" id="receivables-payables-card">
+                        <div class="overview-section-heading">
+                            <div>
+                                <p class="overview-section-kicker">Receivables / Payables</p>
+                                <h3>Expected Position</h3>
+                            </div>
+                        </div>
+                        <div id="receivables-payables-content" class="overview-card-loading">Loading expected money in and out...</div>
+                    </div>
+                </section>
+
+                <section id="overview-needs-attention" class="overview-command-card">
+                    <div class="overview-section-heading">
+                        <div>
+                            <p class="overview-section-kicker">Needs Attention</p>
+                            <h3>Action Queue</h3>
+                        </div>
+                        <a href="/ledger" class="overview-section-link">Open Ledger</a>
+                    </div>
+                    <div id="needs-attention-content" class="overview-card-loading">Loading action items...</div>
+                </section>
+
+                <section class="overview-command-card">
+                    <div class="overview-section-heading">
+                        <div>
+                            <p class="overview-section-kicker">Upcoming</p>
+                            <h3>Bills and Renewals</h3>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <a href="/bill" class="overview-section-link">View bills</a>
+                            <a href="/subscription" class="overview-section-link">View subscriptions</a>
+                        </div>
+                    </div>
+                    <div id="upcoming-obligations-content" class="overview-card-loading">Loading upcoming obligations...</div>
+                </section>
+
                 <!-- 2. Operational Grid -->
                 <section class="overview-lower-grid">
 
@@ -141,7 +195,7 @@
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
                                     Filter
                                 </button>
-                                <button class="text-[12px] font-medium text-white bg-gray-900 px-3 py-1.5 rounded-md hover:bg-gray-800 transition-colors shadow-sm flex items-center gap-1.5">
+                                <button id="dashboard-export-route" type="button" class="text-[12px] font-medium text-white bg-gray-900 px-3 py-1.5 rounded-md hover:bg-gray-800 transition-colors shadow-sm flex items-center gap-1.5">
                                     Export <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                 </button>
                             </div>
@@ -185,42 +239,13 @@
                                 </svg>
                             </div>
                             <div>
-                                <h3 class="text-[15px] font-bold text-gray-900 leading-tight">FluxyOS Brain</h3>
-                                <p class="text-[11px] text-gray-500">Live system insights</p>
+                                <h3 class="text-[15px] font-bold text-gray-900 leading-tight">AI Business Summary</h3>
+                                <p id="ai-summary-period" class="text-[11px] text-gray-500">Selected period insight</p>
                             </div>
                         </div>
 
-                        <div class="flex-1 space-y-3 overflow-y-auto pr-1">
-                            
-                            <!-- Insight 1 -->
-                            <div class="bg-[#FFF7ED] border border-[#FFEDD5] rounded-lg p-3 hover:shadow-sm transition-shadow cursor-pointer">
-                                <div class="flex items-start gap-2 mb-1.5">
-                                    <svg class="w-3.5 h-3.5 text-[#EA580C] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                                    <p class="text-[12px] font-bold text-gray-900">Duplicate Subscription</p>
-                                </div>
-                                <p class="text-[11px] text-gray-600 leading-snug ml-5.5">Detected 2 active charges for "Canva Pro". Potential saving: <span class="font-mono font-bold text-gray-800">Rp 198.000/mo</span>.</p>
-                                <div class="mt-2 ml-5.5">
-                                    <span class="text-[10px] font-bold text-[#EA580C] bg-white border border-[#FFEDD5] px-2 py-1 rounded shadow-sm">Review Licenses</span>
-                                </div>
-                            </div>
-
-                            <!-- Insight 2 -->
-                            <div class="bg-gray-50 border border-gray-100 rounded-lg p-3 hover:shadow-sm transition-shadow cursor-pointer">
-                                <div class="flex items-start gap-2 mb-1.5">
-                                    <svg class="w-3.5 h-3.5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    <p class="text-[12px] font-bold text-gray-900">Settlement Reconciled</p>
-                                </div>
-                                <p class="text-[11px] text-gray-600 leading-snug ml-5.5">Midtrans payout of <span class="font-mono font-bold text-gray-800">Rp 42.5M</span> successfully matched to 142 POS transactions.</p>
-                            </div>
-
-                            <!-- Insight 3 -->
-                            <div class="bg-gray-50 border border-gray-100 rounded-lg p-3 hover:shadow-sm transition-shadow cursor-pointer">
-                                <div class="flex items-start gap-2 mb-1.5">
-                                    <svg class="w-3.5 h-3.5 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                    <p class="text-[12px] font-bold text-gray-900">Uncategorized Spend</p>
-                                </div>
-                                <p class="text-[11px] text-gray-600 leading-snug ml-5.5">AI needs confirmation on a new vendor: "Biznet Gio Cloud". Defaulting to IT Operations.</p>
-                            </div>
+                        <div id="ai-business-summary-content" class="flex-1 space-y-3 overflow-y-auto pr-1">
+                            <div class="overview-card-loading">Loading grounded summary...</div>
                         </div>
 
                         <!-- Chat Input Mockup -->
