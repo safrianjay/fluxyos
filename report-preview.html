@@ -158,6 +158,24 @@
         .metric-value { margin-top: 14px; font-size: 26px; font-weight: 800; letter-spacing: -.04em; font-family: var(--mono); }
         .metric-note { margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.45; }
 
+        /* Year-over-year / previous-period delta chip shown beneath a
+           metric value when comparison data is available. */
+        .metric-delta {
+            display: inline-flex;
+            align-items: center;
+            margin-top: 8px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            font-family: var(--mono);
+            line-height: 1;
+            letter-spacing: -.01em;
+        }
+        .metric-delta.is-green { color: #166534; background: #F0FDF4; border: 1px solid #BBF7D0; }
+        .metric-delta.is-amber { color: #92400E; background: #FFFBEB; border: 1px solid #FDE68A; }
+        .metric-delta.is-na    { color: #475569; background: #F1F5F9; border: 1px solid #CBD5E1; font-weight: 600; }
+
         .summary-callout { margin-bottom: 18px; padding: 22px 24px; background: #fff; border: 1px solid var(--line); border-left: 5px solid var(--orange); border-radius: 8px; font-size: 18px; line-height: 1.4; color: var(--ink); }
         .summary-callout strong { font-weight: 800; }
 
@@ -290,6 +308,35 @@
         .scenario-fill.amber { background: var(--amber); }
 
         .predictability-note { margin-top: 18px; padding: 16px; background: var(--blue-soft); border: 1px solid #bfdbfe; color: #1d4ed8; border-radius: 8px; font-size: 13px; line-height: 1.45; }
+
+        /* Previous-period actuals callout in Finance Predictability */
+        .prev-reference {
+            margin-top: 18px;
+            padding: 14px 16px;
+            border: 1px dashed var(--line);
+            border-radius: 8px;
+            background: var(--soft);
+        }
+        .prev-reference-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            margin-bottom: 10px;
+        }
+        .prev-reference-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: baseline;
+            gap: 14px;
+            padding: 6px 0;
+            border-top: 1px solid var(--line);
+            font-size: 13px;
+        }
+        .prev-reference-row:first-of-type { border-top: 0; }
+        .prev-reference-row span { color: var(--muted); }
+        .prev-reference-row strong { font-family: var(--mono); font-weight: 600; color: var(--ink); }
 
         /* Period Comparison — previous vs current grouped bars */
         .pcompare { display: grid; gap: 18px; }

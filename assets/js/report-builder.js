@@ -955,7 +955,51 @@ export function buildMonthlyReportPack({
             : profit_loss,
         recurringRevenue
     );
+    // Attach a previous-year reference on Finance Predictability when we have
+    // comparison data. Lets the renderer show a "Last year actual" callout
+    // for context.
+    if (previousPL && reportScope.comparison_mode !== 'none') {
+        finance_predictability.previous_reference = {
+            label: reportScope.comparison_period?.label || 'Previous period',
+            annualized_revenue: previousPL.revenue * (reportScope.comparison_period
+                ? (12 / Math.max(1, elapsedMonthsInPeriod(reportScope.comparison_period)))
+                : 1),
+            actual_revenue: previousPL.revenue,
+            actual_opex: previousPL.opex,
+            actual_net_result: previousPL.netResult
+        };
+    }
+
     const expense_breakdown = calculateExpenseBreakdown(transactions, subscriptions);
+    // When comparison data is available, enrich each category and vendor row
+    // with a previous-period value + change%. Renderers gate on
+    // expense_breakdown.has_comparison.
+    if (reportScope.comparison_mode !== 'none' && Array.isArray(previousPeriodTransactions)) {
+        const previousBreakdown = calculateExpenseBreakdown(
+            previousPeriodTransactions || [],
+            Array.isArray(previousPeriodSubscriptions) ? previousPeriodSubscriptions : []
+        );
+        expense_breakdown.has_comparison = true;
+        expense_breakdown.comparison_label = reportScope.comparison_period?.label || 'Previous';
+        expense_breakdown.categories = expense_breakdown.categories.map(cur => {
+            const prev = previousBreakdown.categories.find(p => p.category === cur.category);
+            const previousAmount = prev ? prev.amount : 0;
+            return {
+                ...cur,
+                previous_amount: previousAmount,
+                change_pct: previousAmount === 0 ? null : ((cur.amount - previousAmount) / Math.abs(previousAmount)) * 100
+            };
+        });
+        expense_breakdown.top_vendors = expense_breakdown.top_vendors.map(cur => {
+            const prev = previousBreakdown.top_vendors.find(p => p.vendor === cur.vendor);
+            const previousAmount = prev ? prev.amount : 0;
+            return {
+                ...cur,
+                previous_amount: previousAmount,
+                change_pct: previousAmount === 0 ? null : ((cur.amount - previousAmount) / Math.abs(previousAmount)) * 100
+            };
+        });
+    }
     const bills_subscriptions = calculateBillsSubscriptions(bills, subscriptions, reportScope.current_period.end_date);
     const data_quality = calculateDataQuality(transactions, bills, subscriptions);
     const report_confidence_method = calculateReportConfidence(
@@ -1037,7 +1081,19 @@ export function buildMonthlyReportPack({
             report_confidence: report_confidence_method.score,
             summary_text: summaryText,
             record_counts_revenue_side: profit_loss.rows[0].source_records,
-            record_counts_opex_side: profit_loss.rows[1].source_records
+            record_counts_opex_side: profit_loss.rows[1].source_records,
+            // Delta chips render only when comparison data is available.
+            comparison: previousPL && reportScope.comparison_mode !== 'none' ? {
+                period_label: reportScope.comparison_period?.label || 'Previous',
+                previous_revenue: previousPL.revenue,
+                previous_opex: previousPL.opex,
+                previous_net_result: previousPL.netResult,
+                previous_gross_margin: previousPL.grossMargin,
+                delta_revenue_pct: previousPL.revenue === 0 ? null : ((profit_loss.revenue - previousPL.revenue) / Math.abs(previousPL.revenue)) * 100,
+                delta_opex_pct: previousPL.opex === 0 ? null : ((profit_loss.opex - previousPL.opex) / Math.abs(previousPL.opex)) * 100,
+                delta_net_result_pct: previousPL.netResult === 0 ? null : ((profit_loss.netResult - previousPL.netResult) / Math.abs(previousPL.netResult)) * 100,
+                delta_margin_points: profit_loss.grossMargin - previousPL.grossMargin
+            } : null
         },
         key_takeaways,
         profit_loss,

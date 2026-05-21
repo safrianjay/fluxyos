@@ -293,9 +293,29 @@ function renderCover(pack) {
     </section>`;
 }
 
+function deltaChip(deltaPct, { inverseGood = false } = {}) {
+    if (deltaPct === null || deltaPct === undefined) {
+        return `<span class="metric-delta is-na" title="Previous value was zero">N/A vs prev</span>`;
+    }
+    const positive = deltaPct >= 0;
+    const tone = inverseGood ? (positive ? 'amber' : 'green') : (positive ? 'green' : 'amber');
+    const sign = positive ? '+' : '';
+    return `<span class="metric-delta is-${tone}">${sign}${deltaPct.toFixed(1)}% vs prev</span>`;
+}
+
+function pointsChip(points) {
+    if (points === null || points === undefined) return '';
+    const positive = points >= 0;
+    const tone = positive ? 'green' : 'amber';
+    const sign = positive ? '+' : '';
+    return `<span class="metric-delta is-${tone}">${sign}${points.toFixed(1)} pts vs prev</span>`;
+}
+
 function renderExecutiveSummary(pack) {
     const es = pack.executive_summary;
+    const cmp = es.comparison;
     const marginText = pack.profit_loss.revenue === 0 ? 'Not available' : formatPercent(es.gross_margin);
+    const cmpNote = cmp ? `vs ${escapeHtml(cmp.period_label)}` : '';
     return `
     <section class="section">
         <div class="report-top">
@@ -307,11 +327,35 @@ function renderExecutiveSummary(pack) {
         </div>
         <div class="summary-callout">${escapeHtml(es.summary_text)}</div>
         <div class="grid-5">
-            <div class="metric-card"><div class="metric-label">Revenue</div><div class="metric-value">${formatRupiahCompact(es.revenue)}</div><div class="metric-note">${escapeHtml(es.record_counts_revenue_side)} included.</div></div>
-            <div class="metric-card"><div class="metric-label">OpEx</div><div class="metric-value">${formatRupiahCompact(es.opex)}</div><div class="metric-note">${escapeHtml(es.record_counts_opex_side)} included.</div></div>
-            <div class="metric-card"><div class="metric-label">Net Result</div><div class="metric-value">${formatRupiahCompact(es.net_result)}</div><div class="metric-note">Revenue minus OpEx.</div></div>
-            <div class="metric-card"><div class="metric-label">Gross Margin</div><div class="metric-value">${marginText}</div><div class="metric-note">Safe fallback when revenue is zero.</div></div>
-            <div class="metric-card"><div class="metric-label">Report Confidence</div><div class="metric-value">${es.report_confidence}%</div><div class="metric-note">Based on receipt, due-date, renewal, and source coverage.</div></div>
+            <div class="metric-card">
+                <div class="metric-label">Revenue</div>
+                <div class="metric-value">${formatRupiahCompact(es.revenue)}</div>
+                ${cmp ? deltaChip(cmp.delta_revenue_pct) : ''}
+                <div class="metric-note">${escapeHtml(es.record_counts_revenue_side)} included.${cmp ? ` ${cmpNote}.` : ''}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">OpEx</div>
+                <div class="metric-value">${formatRupiahCompact(es.opex)}</div>
+                ${cmp ? deltaChip(cmp.delta_opex_pct, { inverseGood: true }) : ''}
+                <div class="metric-note">${escapeHtml(es.record_counts_opex_side)} included.${cmp ? ` ${cmpNote}.` : ''}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Net Result</div>
+                <div class="metric-value">${formatRupiahCompact(es.net_result)}</div>
+                ${cmp ? deltaChip(cmp.delta_net_result_pct) : ''}
+                <div class="metric-note">Revenue minus OpEx.${cmp ? ` ${cmpNote}.` : ''}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Gross Margin</div>
+                <div class="metric-value">${marginText}</div>
+                ${cmp ? pointsChip(cmp.delta_margin_points) : ''}
+                <div class="metric-note">Safe fallback when revenue is zero.${cmp ? ` ${cmpNote}.` : ''}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Report Confidence</div>
+                <div class="metric-value">${es.report_confidence}%</div>
+                <div class="metric-note">Based on receipt, due-date, renewal, and source coverage.</div>
+            </div>
         </div>
     </section>`;
 }
@@ -755,6 +799,22 @@ function renderPredictability(pack) {
                         <div class="scenario-amount">${formatRupiahCompact(fp.year_end_revenue_outlook.growth_case)} revenue</div>
                     </div>
                 </div>
+                ${fp.previous_reference ? `
+                <div class="prev-reference">
+                    <div class="prev-reference-label">Reference · ${escapeHtml(fp.previous_reference.label)} actuals</div>
+                    <div class="prev-reference-row">
+                        <span>Revenue</span>
+                        <strong>${formatRupiahCompact(fp.previous_reference.actual_revenue)}</strong>
+                    </div>
+                    <div class="prev-reference-row">
+                        <span>OpEx</span>
+                        <strong>${formatRupiahCompact(fp.previous_reference.actual_opex)}</strong>
+                    </div>
+                    <div class="prev-reference-row">
+                        <span>Net result</span>
+                        <strong>${formatRupiahCompact(fp.previous_reference.actual_net_result)}</strong>
+                    </div>
+                </div>` : ''}
                 <div class="predictability-note">Planning view, not guaranteed revenue. Not an audited forecast.</div>
             </div>
             <div class="card">
@@ -780,12 +840,17 @@ function renderExpenseBreakdown(pack) {
             <div class="card"><p style="margin:0;color:var(--muted);font-size:15px;">No expense records in the selected period.</p></div>
         </section>`;
     }
+    const hasComparison = !!eb.has_comparison;
+    const comparisonLabel = eb.comparison_label || 'Previous';
     const chart = renderBarChart(eb.categories.slice(0, 4).map(c => ({
         value: c.amount,
         label: c.category,
-        sublabel: `${c.pct}%`,
+        sublabel: hasComparison
+            ? `${c.pct}% · ${c.change_pct === null ? 'N/A' : (c.change_pct >= 0 ? '+' : '') + c.change_pct.toFixed(0) + '% vs prev'}`
+            : `${c.pct}%`,
         color: 'orange'
     })), { yAxisLabel: 'Spend by category in IDR' });
+    const compTitle = hasComparison ? ` (vs ${escapeHtml(comparisonLabel)})` : '';
     return `
     <section class="section">
         <div class="report-top">
@@ -793,33 +858,51 @@ function renderExpenseBreakdown(pack) {
                 <h2>Expense Breakdown</h2>
                 <p class="subtitle">Spend grouped by category and vendor so the user can see where money went and what should be reviewed first.</p>
             </div>
+            ${hasComparison ? `<span class="pill blue">Comparing vs ${escapeHtml(comparisonLabel)}</span>` : ''}
         </div>
         <div class="grid-2">
             <div class="card">
-                <div class="card-title">Expense by category</div>
+                <div class="card-title">Expense by category${compTitle}</div>
                 ${chart}
             </div>
             <div class="card">
-                <div class="card-title">Top vendors</div>
+                <div class="card-title">Top vendors${compTitle}</div>
                 <table>
                     <thead>
                         <tr>
                             <th>Vendor</th>
                             <th class="amount">Amount</th>
+                            ${hasComparison ? `<th class="amount">Previous</th><th class="amount">Δ %</th>` : ''}
                             <th>Category</th>
                             <th>Records</th>
                             <th>Missing receipts</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${eb.top_vendors.map(v => `
-                            <tr>
+                        ${eb.top_vendors.map(v => {
+                            let cmpCells = '';
+                            if (hasComparison) {
+                                const prev = Number(v.previous_amount || 0);
+                                const pct = v.change_pct;
+                                let pctCell;
+                                if (pct === null || pct === undefined) {
+                                    pctCell = `<td class="amount"><span class="pill gray">N/A</span></td>`;
+                                } else {
+                                    const tone = pct >= 0 ? 'amber' : 'green'; // expenses up = amber
+                                    const sign = pct >= 0 ? '+' : '';
+                                    pctCell = `<td class="amount"><span class="pill ${tone}">${sign}${pct.toFixed(1)}%</span></td>`;
+                                }
+                                cmpCells = `<td class="amount">${prev > 0 ? Number(prev).toLocaleString('id-ID') : '—'}</td>${pctCell}`;
+                            }
+                            return `<tr>
                                 <td>${escapeHtml(v.vendor)}</td>
                                 <td class="amount">${Number(v.amount).toLocaleString('id-ID')}</td>
+                                ${cmpCells}
                                 <td>${escapeHtml(v.category)}</td>
                                 <td>${v.count}</td>
                                 <td>${v.missing_receipts || 0}</td>
-                            </tr>`).join('')}
+                            </tr>`;
+                        }).join('')}
                     </tbody>
                 </table>
                 <div class="interpretation">
