@@ -113,7 +113,7 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | **Finance Predictability (run rate + ARR + year-end scenarios)** | ✅ Shipped MVP | ARR stays unavailable until recurring revenue classification ships |
 | Backend PDF generation (Level 2) | 📋 Planned | Replace browser-print path with stored PDF files |
 | ZIP CSV bundle | 📋 Planned | MVP downloads files individually |
-| Recurring revenue classification (for ARR) | 📋 Planned | Required to flip ARR from "unavailable" to "available" |
+| Recurring revenue classification (for ARR — category-level) | ✅ Shipped MVP | `users/{uid}/settings/reports.recurring_revenue_category_ids` drives ARR; Settings → Finance preferences has the picker. Future: per-transaction `is_recurring` flag for higher precision. |
 | Bank balance / cash runway | 📋 Planned | Cash pressure stays proxy-only until real balance source exists |
 
 ### Integrations

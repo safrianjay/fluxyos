@@ -142,6 +142,7 @@ tokens, OTPs, card data, bank credentials, or formatted currency strings.
 | `import_rules` | `csv_date_behavior`, `unknown_document_route`, `bill_scan_behavior`, `receipt_scan_behavior`, `payment_screenshot_behavior`, `require_confirmation_before_save`, `updated_at` |
 | `ai` | `answer_style`, `default_analysis_period`, `show_data_quality_warnings`, `allow_ai_suggestions`, `allow_ai_draft_actions`, `require_confirmation_before_save`, `updated_at` |
 | `whatsapp` | `status`, `phone_number`, `business_display_name`, `last_sync_at`, `last_verified_at`, `provider`, `updated_at` |
+| `reports` | `arr_source` (`"none"` or `"tagged_income_categories"`), `recurring_revenue_category_ids` (string[] up to 32), `updated_at`. Drives Estimated ARR in Reports & Exports; without tagged categories ARR stays `unavailable`. |
 
 **Mutation rule:** owner read/create/update only through `DataService`; delete is
 blocked. WhatsApp status is configuration metadata only. Real WhatsApp API

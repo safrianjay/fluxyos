@@ -337,6 +337,10 @@ Run the **Cross-Page Regression** section below — changes to shared files affe
 | 35 | Monthly Trend Breakdown renders for YTD; Monthly Trend Comparison renders for YTD YoY when previous-year data exists |
 | 36 | CSV filenames adapt: `ytd_profit_loss_2026.csv` for YTD; `yoy_profit_loss_2026_vs_2025_ytd.csv` for YTD YoY |
 | 37 | `report_exports` row stores `report_scope` for YTD/YoY runs; audit log `after` mirrors mode + comparison mode + both periods |
+| 38 | Settings → Finance preferences shows "Recurring revenue categories" form; saving writes to `users/{uid}/settings/reports` |
+| 39 | When no recurring categories tagged: Estimated ARR card on report-preview shows "No recurring revenue category selected." and Export Manifest lists the limitation |
+| 40 | When categories tagged + matching income exists: ARR shows the rupiah value with the "(partial)" suffix and the caveat: "ARR excludes untagged revenue and may exclude valid recurring revenue if categories are not configured." |
+| 41 | ARR formula: recurring monthly revenue × 12; for YTD periods the monthly baseline is `total recurring income ÷ elapsed months` |
 
 ### I. Favicon / Meta / Head Changes
 

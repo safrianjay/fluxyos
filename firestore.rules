@@ -327,6 +327,18 @@ service cloud.firestore {
         && isValidSettingsTimestamp(data);
     }
 
+    function isValidReportsSettings(data) {
+      return data.keys().hasOnly([
+          'arr_source',
+          'recurring_revenue_category_ids',
+          'updated_at'
+        ])
+        && data.arr_source in ['none', 'tagged_income_categories']
+        && data.recurring_revenue_category_ids is list
+        && data.recurring_revenue_category_ids.size() <= 32
+        && isValidSettingsTimestamp(data);
+    }
+
     function isValidWhatsAppSettings(data) {
       return data.keys().hasAll([
           'status',
@@ -360,7 +372,8 @@ service cloud.firestore {
         || (settingsDoc == 'finance' && isValidFinanceSettings(data))
         || (settingsDoc == 'import_rules' && isValidImportRulesSettings(data))
         || (settingsDoc == 'ai' && isValidAISettings(data))
-        || (settingsDoc == 'whatsapp' && isValidWhatsAppSettings(data));
+        || (settingsDoc == 'whatsapp' && isValidWhatsAppSettings(data))
+        || (settingsDoc == 'reports' && isValidReportsSettings(data));
     }
 
     function isValidTourId(tourId) {
@@ -659,7 +672,7 @@ service cloud.firestore {
 
       match /settings/{settingsDoc} {
         allow read: if isOwner(userId)
-          && settingsDoc in ['company', 'finance', 'import_rules', 'ai', 'whatsapp'];
+          && settingsDoc in ['company', 'finance', 'import_rules', 'ai', 'whatsapp', 'reports'];
         allow create, update: if isOwner(userId)
           && isValidSettingsDoc(settingsDoc, request.resource.data);
         allow delete: if false;

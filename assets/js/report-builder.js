@@ -411,20 +411,44 @@ export function previousPeriodRange(period) {
     return { start: dayKey(prevStart), end: dayKey(prevEnd) };
 }
 
-export function calculateFinancePredictability(currentPL, recurringRevenue) {
+export function calculateFinancePredictability(currentPL, recurringRevenue, recurringSettings = null) {
     const monthlyRunRate = currentPL.revenue;
     const annualizedRunRate = monthlyRunRate * 12;
 
-    // ARR requires explicit recurring revenue classification. FluxyOS does not
-    // yet tag transactions as recurring vs one-time, so ARR is unavailable
-    // unless a positive recurring revenue value is supplied.
+    // ARR is derived only from income transactions whose category was tagged
+    // as recurring in Settings → Recurring revenue categories. No heuristic
+    // fallback; if nothing is tagged, ARR stays unavailable so the report
+    // doesn't over-state it with one-off income.
+    const taggedCount = Array.isArray(recurringSettings?.recurring_revenue_category_ids)
+        ? recurringSettings.recurring_revenue_category_ids.length
+        : 0;
     let arr;
     if (recurringRevenue === undefined || recurringRevenue === null) {
-        arr = { status: 'unavailable', value: null, basis: 'recurring_revenue_only', limitation: 'No recurring revenue classification detected in FluxyOS records.' };
+        arr = {
+            status: 'unavailable',
+            value: null,
+            basis: 'tagged_income_categories',
+            label: 'No recurring revenue category selected.',
+            limitation: 'Open Settings → Finance preferences → Recurring revenue categories to enable ARR.'
+        };
     } else if (recurringRevenue === 0) {
-        arr = { status: 'unavailable', value: 0, basis: 'recurring_revenue_only', limitation: 'Recurring revenue is currently 0 — classify recurring contracts/subscriptions to enable ARR.' };
+        arr = {
+            status: 'unavailable',
+            value: 0,
+            basis: 'tagged_income_categories',
+            label: 'No recurring revenue found in tagged categories.',
+            limitation: taggedCount
+                ? `Tagged ${taggedCount} categor${taggedCount === 1 ? 'y' : 'ies'}, but no matching income transactions in this period.`
+                : 'No recurring revenue category selected.'
+        };
     } else {
-        arr = { status: 'partial', value: recurringRevenue * 12, basis: 'recurring_revenue_only', limitation: 'Recurring revenue classification is not yet enforced — value is a directional estimate.' };
+        arr = {
+            status: 'partial',
+            value: recurringRevenue * 12,
+            basis: 'tagged_income_categories',
+            label: 'Estimated ARR from user-tagged recurring income categories.',
+            limitation: 'ARR excludes untagged revenue and may exclude valid recurring revenue if categories are not configured.'
+        };
     }
 
     const conservative = Math.round(monthlyRunRate * 11);          // skip a month for conservatism
@@ -878,6 +902,7 @@ export function buildExportManifest(reportData) {
             'Revenue Sync not connected',
             'No bank balance source',
             'Cash pressure is proxy only',
+            ...(sources.arrLimitation ? [sources.arrLimitation] : []),
             ...(sources.warningTotal ? [`${sources.warningTotal} data quality warnings`] : [])
         ],
         source_files: sources.fileSlugs || [],
@@ -904,7 +929,8 @@ export function buildMonthlyReportPack({
     previousPeriodTransactions = null,
     previousPeriodBills = null,
     previousPeriodSubscriptions = null,
-    recurringRevenue = null
+    recurringRevenue = null,
+    recurringRevenueSettings = null
 }) {
     // Back-compat: callers may pass `period` only. Derive a monthly scope if
     // `scope` is not supplied so existing flows keep working.
@@ -953,7 +979,8 @@ export function buildMonthlyReportPack({
         isYtdMode && ytd_summary
             ? { ...profit_loss, revenue: ytd_summary.avgMonthlyRevenue, opex: ytd_summary.avgMonthlyOpex, grossMargin: profit_loss.grossMargin, netResult: profit_loss.netResult }
             : profit_loss,
-        recurringRevenue
+        recurringRevenue,
+        recurringRevenueSettings
     );
     // Attach a previous-year reference on Finance Predictability when we have
     // comparison data. Lets the renderer show a "Last year actual" callout
@@ -1016,12 +1043,18 @@ export function buildMonthlyReportPack({
         data_quality.warning_counts.bills_without_due_date +
         data_quality.warning_counts.subscriptions_without_renewal;
 
+    const arrLimitation = finance_predictability.arr.status === 'unavailable'
+        ? (finance_predictability.arr.label || 'ARR unavailable — no recurring revenue category selected')
+        : (finance_predictability.arr.status === 'partial'
+            ? 'Estimated ARR based on user-tagged categories (partial)'
+            : null);
     const export_manifest = buildExportManifest({
         export_manifest_inputs: {
             transactionsCount: transactions.length,
             billsCount: bills.length,
             subscriptionsCount: subscriptions.length,
             warningTotal,
+            arrLimitation,
             fileSlugs: sourceFiles,
             generated_by: userDisplayName || '',
             generated_at: generatedAtIso

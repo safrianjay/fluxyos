@@ -76,7 +76,7 @@ class DataService {
 
     // --- SETTINGS ---
     async getUserSettings(userId) {
-        const docIds = ['company', 'finance', 'import_rules', 'ai', 'whatsapp'];
+        const docIds = ['company', 'finance', 'import_rules', 'ai', 'whatsapp', 'reports'];
         const entries = await Promise.all(docIds.map(async (docId) => {
             const snap = await getDoc(this._settingsDoc(userId, docId));
             return [docId, snap.exists() ? snap.data() : {}];
@@ -86,6 +86,23 @@ class DataService {
             settings[docId] = { ...this._defaultSettings(docId), ...data };
             return settings;
         }, {});
+    }
+
+    async saveReportsSettings(userId, data) {
+        const allowedSources = ['none', 'tagged_income_categories'];
+        const rawIds = Array.isArray(data.recurring_revenue_category_ids) ? data.recurring_revenue_category_ids : [];
+        const cleanIds = rawIds
+            .filter(v => typeof v === 'string')
+            .map(v => v.trim())
+            .filter(v => v.length > 0 && v.length <= 80)
+            .slice(0, 32);
+        const payload = this._cleanDefined({
+            arr_source: allowedSources.includes(data.arr_source) ? data.arr_source : (cleanIds.length ? 'tagged_income_categories' : 'none'),
+            recurring_revenue_category_ids: cleanIds,
+            updated_at: serverTimestamp()
+        });
+        await setDoc(this._settingsDoc(userId, 'reports'), payload, { merge: true });
+        return payload;
     }
 
     async saveCompanySettings(userId, data) {
@@ -710,6 +727,10 @@ class DataService {
                 last_sync_at: null,
                 last_verified_at: null,
                 provider: 'whatsapp_cloud_api'
+            },
+            reports: {
+                arr_source: 'none',
+                recurring_revenue_category_ids: []
             }
         };
         return defaults[docId] || {};

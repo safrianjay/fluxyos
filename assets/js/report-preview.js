@@ -746,7 +746,9 @@ function renderPredictability(pack) {
             </div>
         </section>`;
     }
-    const arrLabel = fp.arr.status === 'unavailable' ? 'Unavailable' : (fp.arr.status === 'partial' ? formatRupiahCompact(fp.arr.value) + ' (partial)' : formatRupiahCompact(fp.arr.value));
+    const arrLabel = fp.arr.status === 'unavailable'
+        ? (fp.arr.label || 'Unavailable')
+        : (fp.arr.status === 'partial' ? formatRupiahCompact(fp.arr.value) + ' (partial)' : formatRupiahCompact(fp.arr.value));
     const max = Math.max(fp.year_end_revenue_outlook.conservative, fp.year_end_revenue_outlook.current_run_rate, fp.year_end_revenue_outlook.growth_case, 1);
     return `
     <section class="section">
@@ -770,7 +772,8 @@ function renderPredictability(pack) {
             </div>
             <div class="card">
                 <div class="card-title">Estimated ARR</div>
-                <div style="font-family:var(--mono);font-size:22px;font-weight:800;letter-spacing:-.04em;">${arrLabel}</div>
+                <div style="font-family:var(--mono);font-size:${fp.arr.status === 'unavailable' ? '18px' : '22px'};font-weight:800;letter-spacing:-.04em;${fp.arr.status === 'unavailable' ? 'color:var(--muted);' : ''}">${escapeHtml(arrLabel)}</div>
+                ${fp.arr.label && fp.arr.status !== 'unavailable' ? `<p style="margin-top:8px;color:var(--ink);font-size:12px;line-height:1.4;font-weight:600;">${escapeHtml(fp.arr.label)}</p>` : ''}
                 <p style="margin-top:10px;color:var(--muted);font-size:12px;line-height:1.45;">${escapeHtml(fp.arr.limitation || 'Recurring revenue only. Excludes one-time income.')}</p>
             </div>
             <div class="card">

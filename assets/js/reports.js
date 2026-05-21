@@ -71,6 +71,9 @@ const reportsState = {
     selectedReportType: 'monthly_report_pack',
     sourceData: { transactions: [], bills: [], subscriptions: [] },
     comparisonSourceData: { transactions: [], bills: [], subscriptions: [] },
+    // Reports settings — drives Estimated ARR via user-tagged recurring revenue
+    // categories. Pulled from users/{uid}/settings/reports on init.
+    reportsSettings: { arr_source: 'none', recurring_revenue_category_ids: [] },
     pack: null,
     recentExports: [],
     loading: false,
@@ -97,9 +100,48 @@ async function loadBusinessName() {
     try {
         const settings = await ds.getUserSettings(reportsState.user.uid);
         reportsState.businessName = settings?.company?.business_name || '';
+        reportsState.reportsSettings = {
+            arr_source: settings?.reports?.arr_source || 'none',
+            recurring_revenue_category_ids: Array.isArray(settings?.reports?.recurring_revenue_category_ids)
+                ? settings.reports.recurring_revenue_category_ids
+                : []
+        };
     } catch {
         reportsState.businessName = '';
     }
+}
+
+// Compute the recurring monthly revenue baseline used for ARR. Returns:
+//   - number when categories are tagged AND matching transactions exist
+//   - 0 when categories are tagged but no matching transactions in the period
+//   - null when no categories are tagged (so ARR stays unavailable)
+function computeRecurringMonthlyRevenue(transactions, scope) {
+    const taggedIds = reportsState.reportsSettings.recurring_revenue_category_ids || [];
+    if (!taggedIds.length || reportsState.reportsSettings.arr_source !== 'tagged_income_categories') {
+        return null;
+    }
+    const taggedSet = new Set(taggedIds);
+    const recurringTotal = (transactions || []).reduce((sum, tx) => {
+        const type = String(tx.type || '').toLowerCase();
+        if (!['income', 'revenue', 'refund', 'pending_receivable'].includes(type)) return sum;
+        if (!taggedSet.has(tx.category)) return sum;
+        return sum + Number(tx.amount || 0);
+    }, 0);
+    // Normalize to monthly. For multi-month periods (YTD / QTD / custom),
+    // divide by elapsed months so ARR = monthly × 12 stays apples-to-apples.
+    const start = parseDay(scope?.current_period?.start_date);
+    const end = parseDay(scope?.current_period?.end_date);
+    let months = 1;
+    if (start && end) {
+        months = Math.max(1, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1);
+    }
+    return recurringTotal / months;
+}
+
+function parseDay(key) {
+    if (typeof key !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(key)) return null;
+    const [y, m, d] = key.split('-').map(Number);
+    return new Date(y, m - 1, d);
 }
 
 function resolveCurrentScope() {
@@ -160,7 +202,8 @@ async function loadReportData() {
             previousPeriodTransactions: comparison ? (prevTx || []) : null,
             previousPeriodBills: comparison ? (prevBills || []) : null,
             previousPeriodSubscriptions: comparison ? (prevSubs || []) : null,
-            recurringRevenue: null
+            recurringRevenue: computeRecurringMonthlyRevenue(transactions, scope),
+            recurringRevenueSettings: reportsState.reportsSettings
         });
         reportsState.recentExports = recentExports;
     } catch (err) {
@@ -178,7 +221,10 @@ async function loadReportData() {
             previousPeriodTransactions: comparison ? [] : null,
             previousPeriodBills: comparison ? [] : null,
             previousPeriodSubscriptions: comparison ? [] : null,
-            recurringRevenue: null
+            // Error branch — no transactions available, so the recurring
+            // baseline is null (ARR will render as unavailable for this run).
+            recurringRevenue: null,
+            recurringRevenueSettings: reportsState.reportsSettings
         });
         reportsState.recentExports = [];
     } finally {
