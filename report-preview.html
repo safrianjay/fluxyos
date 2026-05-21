@@ -291,6 +291,43 @@
 
         .predictability-note { margin-top: 18px; padding: 16px; background: var(--blue-soft); border: 1px solid #bfdbfe; color: #1d4ed8; border-radius: 8px; font-size: 13px; line-height: 1.45; }
 
+        /* Period Comparison — previous vs current grouped bars */
+        .pcompare { display: grid; gap: 18px; }
+        .pcompare-row strong { display: block; font-size: 13px; color: var(--ink); margin-bottom: 8px; }
+        .pcompare-bars { display: grid; gap: 6px; }
+        .pcompare-bar-row {
+            display: grid;
+            grid-template-columns: 70px 1fr 100px;
+            gap: 12px;
+            align-items: center;
+            font-size: 11px;
+        }
+        .pcompare-bar-label { color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; font-size: 10px; }
+        .pcompare-bar-track {
+            height: 12px;
+            background: #eef2f7;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .pcompare-bar-fill { height: 100%; border-radius: 4px; min-width: 3px; }
+        .pcompare-bar-fill.prev { background: var(--navy); }
+        .pcompare-bar-fill.curr { background: var(--orange); }
+        .pcompare-bar-value {
+            text-align: right;
+            font-family: var(--mono);
+            font-weight: 600;
+            color: var(--ink);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .pcompare-legend { display: flex; gap: 16px; font-size: 11px; color: var(--muted); margin-top: 4px; }
+        .pcompare-legend .pcompare-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+        .pcompare-legend .pcompare-swatch.prev { background: var(--navy); }
+        .pcompare-legend .pcompare-swatch.curr { background: var(--orange); }
+        @media (max-width: 720px) {
+            .pcompare-bar-row { grid-template-columns: 60px 1fr 80px; }
+        }
+
         /* Monthly trend dual-bar rows */
         .trend-bars { display: grid; gap: 10px; margin-top: 8px; }
         .trend-bar-row {

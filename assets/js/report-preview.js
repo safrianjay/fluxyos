@@ -155,6 +155,51 @@ function renderBarChart(items, { yAxisLabel = '' } = {}) {
         </div>`;
 }
 
+// Side-by-side grouped horizontal bars showing previous vs current for each
+// non-percent metric. Bars share the same axis (max of both periods across
+// all metrics) so absolute magnitude differences are visible at a glance —
+// useful when a previous period is dramatically smaller and a % delta would
+// be misleadingly enormous.
+function renderPeriodComparisonChart(rows) {
+    const metricRows = (rows || []).filter(r => !r.is_percent);
+    if (!metricRows.length) {
+        return '<p style="color:var(--muted);margin:0;font-size:14px;">No comparable metrics available.</p>';
+    }
+    const maxValue = Math.max(
+        ...metricRows.flatMap(r => [Math.abs(Number(r.previous) || 0), Math.abs(Number(r.current) || 0)]),
+        1
+    );
+    return `
+        <div class="pcompare">
+            ${metricRows.map(r => {
+                const prev = Math.abs(Number(r.previous) || 0);
+                const curr = Math.abs(Number(r.current) || 0);
+                const prevPct = maxValue > 0 ? (prev / maxValue) * 100 : 0;
+                const currPct = maxValue > 0 ? (curr / maxValue) * 100 : 0;
+                return `
+                    <div class="pcompare-row">
+                        <strong>${escapeHtml(r.metric)}</strong>
+                        <div class="pcompare-bars">
+                            <div class="pcompare-bar-row">
+                                <span class="pcompare-bar-label">Previous</span>
+                                <div class="pcompare-bar-track"><div class="pcompare-bar-fill prev" style="width:${prevPct.toFixed(1)}%;"></div></div>
+                                <span class="pcompare-bar-value">${formatRupiahCompact(prev)}</span>
+                            </div>
+                            <div class="pcompare-bar-row">
+                                <span class="pcompare-bar-label">Current</span>
+                                <div class="pcompare-bar-track"><div class="pcompare-bar-fill curr" style="width:${currPct.toFixed(1)}%;"></div></div>
+                                <span class="pcompare-bar-value">${formatRupiahCompact(curr)}</span>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('')}
+            <div class="pcompare-legend">
+                <span><i class="pcompare-swatch prev"></i>Previous period</span>
+                <span><i class="pcompare-swatch curr"></i>Current period</span>
+            </div>
+        </div>`;
+}
+
 function showReport() {
     // Pre-render so the swap from skeleton to report is instant once the
     // minimum loading window elapses.
@@ -629,15 +674,11 @@ function renderPeriodComparison(pack) {
                 </table>
             </div>
             <div class="card">
-                <div class="card-title">Delta indicators</div>
-                <div class="compare-visual">
-                    ${pc.rows.filter(r => !r.is_percent).map(r => {
-                        const change = r.change || 0;
-                        const width = Math.min(96, Math.max(6, Math.abs(change)));
-                        const tone = r.inverse ? (change > 0 ? 'amber' : '') : (change >= 0 ? '' : 'amber');
-                        const sign = change > 0 ? '+' : '';
-                        return `<div class="compare-row"><strong>${escapeHtml(r.metric)}</strong><div class="track"><div class="fill ${tone}" style="width:${width}%"></div></div><span class="delta">${sign}${change.toFixed(1)}%</span></div>`;
-                    }).join('')}
+                <div class="card-title">Previous vs current</div>
+                ${renderPeriodComparisonChart(pc.rows)}
+                <div class="interpretation" style="margin-top:18px;">
+                    <div class="label">How to read</div>
+                    <p>Bars scale to the larger of the two periods, so you can see the actual magnitude difference — not just the percentage change.</p>
                 </div>
             </div>
         </div>
