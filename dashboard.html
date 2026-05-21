@@ -23,14 +23,24 @@
     <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
         
         <!-- Header / Topbar -->
-        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm">
-            <div class="flex items-center gap-4">
+        <header class="dashboard-main-topbar h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm">
+            <div class="dashboard-topbar-left flex items-center gap-4">
                 <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
-                <div class="hidden sm:flex items-center gap-2">
-                    <span class="text-[18px] font-bold text-gray-900 tracking-tight">Overview</span>
+                <div class="dashboard-topbar-copy">
+                    <span class="dashboard-topbar-title">Overview</span>
+                    <p class="dashboard-topbar-subtitle">Here is your finance workbench for today.</p>
                 </div>
+            </div>
+            <div class="overview-period-strip dashboard-topbar-period">
+                <div class="dashboard-period-controls" aria-label="Overview period">
+                    <button type="button" data-dashboard-period="this_month" class="dashboard-period-btn is-active">This Month</button>
+                    <button type="button" data-dashboard-period="last_month" class="dashboard-period-btn">Last Month</button>
+                    <button type="button" data-dashboard-period="year_to_date" class="dashboard-period-btn">YTD</button>
+                    <button type="button" data-dashboard-period="custom" class="dashboard-period-btn">Custom</button>
+                </div>
+                <div id="dashboard-date-range-picker"></div>
             </div>
         </header>
 
@@ -39,24 +49,6 @@
             <div class="max-w-[1540px] mx-auto">
 
                 <div id="quick-start-container" class="hidden mb-6"></div>
-
-                <!-- In-content header: greeting + period control -->
-                <header class="overview-topbar">
-                    <div class="overview-topbar-intro">
-                        <p class="overview-eyebrow">Overview</p>
-                        <h1 class="overview-greeting"><span id="overview-greeting-text">Good morning</span>, <span id="overview-user-name">there</span></h1>
-                        <p class="overview-subtitle">Here is your finance workbench for today.</p>
-                    </div>
-                    <div class="overview-period-strip">
-                        <div class="dashboard-period-controls" aria-label="Overview period">
-                            <button type="button" data-dashboard-period="this_month" class="dashboard-period-btn is-active">This Month</button>
-                            <button type="button" data-dashboard-period="last_month" class="dashboard-period-btn">Last Month</button>
-                            <button type="button" data-dashboard-period="year_to_date" class="dashboard-period-btn">YTD</button>
-                            <button type="button" data-dashboard-period="custom" class="dashboard-period-btn">Custom</button>
-                        </div>
-                        <div id="dashboard-date-range-picker"></div>
-                    </div>
-                </header>
 
                 <div class="overview-layout">
 
@@ -68,9 +60,11 @@
                                 <div class="metric-label">Revenue</div>
                                 <div class="metric-value-row">
                                     <span id="kpi-revenue" class="metric-value tabular-nums">Rp 0</span>
+                                </div>
+                                <div class="metric-comparison-row">
+                                    <p id="kpi-revenue-change" class="metric-sub">Loading...</p>
                                     <span class="metric-arrow" id="kpi-revenue-arrow" aria-hidden="true"></span>
                                 </div>
-                                <p id="kpi-revenue-change" class="metric-sub">Loading...</p>
                                 <svg id="kpi-revenue-sparkline" class="metric-sparkline metric-sparkline-revenue" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true"></svg>
                             </article>
 
@@ -78,9 +72,11 @@
                                 <div class="metric-label">Cash pressure</div>
                                 <div class="metric-value-row">
                                     <span id="kpi-cash-pressure" class="metric-value tabular-nums">Rp 0</span>
+                                </div>
+                                <div class="metric-comparison-row">
+                                    <p id="kpi-cash-pressure-sub" class="metric-sub">Loading...</p>
                                     <span class="metric-arrow" id="kpi-cash-pressure-arrow" aria-hidden="true"></span>
                                 </div>
-                                <p id="kpi-cash-pressure-sub" class="metric-sub">Loading...</p>
                                 <svg id="kpi-cash-pressure-sparkline" class="metric-sparkline metric-sparkline-pressure" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true"></svg>
                             </article>
 
@@ -88,9 +84,11 @@
                                 <div class="metric-label">OpEx, selected period</div>
                                 <div class="metric-value-row">
                                     <span id="kpi-opex" class="metric-value tabular-nums">Rp 0</span>
+                                </div>
+                                <div class="metric-comparison-row">
+                                    <p id="kpi-opex-change" class="metric-sub">Loading...</p>
                                     <span class="metric-arrow" id="kpi-opex-arrow" aria-hidden="true"></span>
                                 </div>
-                                <p id="kpi-opex-change" class="metric-sub">Loading...</p>
                                 <svg id="kpi-opex-sparkline" class="metric-sparkline metric-sparkline-opex" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true"></svg>
                             </article>
 
