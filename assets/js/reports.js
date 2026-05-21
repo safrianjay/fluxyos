@@ -873,25 +873,24 @@ function bindEvents() {
         }, 900);
     }
 
-    // Disable the picker when the period mode isn't custom so the UI matches
-    // the resolved scope; keep label informative.
-    function updatePickerEnabled() {
-        const picker = document.querySelector('#reports-date-range-picker [data-drp-trigger]');
+    // The Custom range column only makes sense when the period mode is
+    // Custom range. For every other mode, hide the whole column so the
+    // resolved scope (driven by the dropdown) is the single source of truth
+    // and the strip doesn't clutter.
+    function updateCustomRangeVisibility() {
+        const wrap = el('filter-custom-range');
+        if (!wrap) return;
         const isCustom = reportsState.reportPeriodMode === 'custom';
-        if (picker) picker.toggleAttribute('disabled', !isCustom);
-        const wrap = document.querySelector('#reports-date-range-picker');
-        if (wrap) wrap.style.opacity = isCustom ? '1' : '.55';
+        wrap.classList.toggle('hidden', !isCustom);
     }
     el('filter-period-mode')?.addEventListener('change', (e) => {
         reportsState.reportPeriodMode = e.target.value;
-        updatePickerEnabled();
-        // When period mode is monthly/quarter/YTD, comparison options that don't apply collapse to none in resolve.
+        updateCustomRangeVisibility();
     });
     el('filter-comparison-mode')?.addEventListener('change', (e) => {
         reportsState.comparisonMode = e.target.value;
     });
-    // Initial state.
-    setTimeout(updatePickerEnabled, 50);
+    updateCustomRangeVisibility();
 
     el('drawer-close-btn')?.addEventListener('click', closeReportPreview);
     el('drawer-cancel-btn')?.addEventListener('click', closeReportPreview);
