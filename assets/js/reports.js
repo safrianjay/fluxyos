@@ -826,13 +826,52 @@ function bindEvents() {
         });
     });
 
-    el('filter-apply-btn')?.addEventListener('click', () => {
+    el('filter-apply-btn')?.addEventListener('click', async () => {
+        const btn = el('filter-apply-btn');
+        if (btn?.disabled) return;
         const periodSelect = el('filter-period-mode');
         const comparisonSelect = el('filter-comparison-mode');
         if (periodSelect && REPORT_PERIOD_MODES.includes(periodSelect.value)) reportsState.reportPeriodMode = periodSelect.value;
         if (comparisonSelect && COMPARISON_MODES.includes(comparisonSelect.value)) reportsState.comparisonMode = comparisonSelect.value;
-        loadReportData();
+
+        const originalLabel = btn ? btn.textContent : 'Apply';
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Applying…';
+        }
+        const summary = el('filter-scope-summary');
+        summary?.classList.add('text-gray-900');
+
+        try {
+            await loadReportData();
+            flashScopeSummary();
+            if (btn) {
+                btn.textContent = 'Applied ✓';
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = originalLabel;
+                }, 1100);
+            }
+            window.showToast?.('Filter applied to the report.', 'success');
+        } catch {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = originalLabel;
+            }
+            window.showToast?.('Could not apply filter. Please retry.', 'error');
+        }
     });
+
+    function flashScopeSummary() {
+        const summary = el('filter-scope-summary');
+        if (!summary) return;
+        summary.classList.remove('text-gray-500');
+        summary.classList.add('text-gray-900', 'font-medium');
+        setTimeout(() => {
+            summary.classList.remove('text-gray-900', 'font-medium');
+            summary.classList.add('text-gray-500');
+        }, 900);
+    }
 
     // Disable the picker when the period mode isn't custom so the UI matches
     // the resolved scope; keep label informative.
