@@ -16,7 +16,7 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 const auth = getAuth(app);
 const ds = new DataService(app);
 
-let cashflowChartType = 'bar';
+let cashflowChartType = 'line';
 let cashflowBuckets = [];
 let dashboardPeriodMode = 'this_month';
 let dashboardRangeStart = getMonthStartKey();
