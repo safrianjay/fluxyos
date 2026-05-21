@@ -76,16 +76,29 @@ class DataService {
 
     // --- SETTINGS ---
     async getUserSettings(userId) {
-        const docIds = ['company', 'finance', 'import_rules', 'ai', 'whatsapp', 'reports'];
+        const docIds = ['company', 'finance', 'import_rules', 'ai', 'whatsapp'];
         const entries = await Promise.all(docIds.map(async (docId) => {
             const snap = await getDoc(this._settingsDoc(userId, docId));
             return [docId, snap.exists() ? snap.data() : {}];
         }));
 
-        return entries.reduce((settings, [docId, data]) => {
+        const settings = entries.reduce((settings, [docId, data]) => {
             settings[docId] = { ...this._defaultSettings(docId), ...data };
             return settings;
         }, {});
+
+        settings.reports = await this.getReportsSettings(userId);
+        return settings;
+    }
+
+    async getReportsSettings(userId) {
+        try {
+            const snap = await getDoc(this._settingsDoc(userId, 'reports'));
+            return { ...this._defaultSettings('reports'), ...(snap.exists() ? snap.data() : {}) };
+        } catch (error) {
+            console.warn('Could not load reports settings; using defaults.', error);
+            return this._defaultSettings('reports');
+        }
     }
 
     async saveReportsSettings(userId, data) {
