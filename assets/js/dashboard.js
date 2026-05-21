@@ -222,19 +222,21 @@ function renderCashPressureSnapshot(overview) {
     }
     const limitations = renderLimitations(overview.limitations);
     setHtml('cash-pressure-content', `
-        <div class="overview-money-row">
-            <span>Upcoming obligations</span>
-            <strong>${formatIDR(c.upcomingObligations)}</strong>
+        <div class="overview-metric-grid overview-metric-grid-three">
+            <div class="overview-metric-tile">
+                <span>Upcoming obligations</span>
+                <strong>${formatIDR(c.upcomingObligations)}</strong>
+            </div>
+            <div class="overview-metric-tile">
+                <span>Expected incoming</span>
+                <strong>${formatIDR(c.expectedIncoming)}</strong>
+            </div>
+            <div class="overview-metric-tile is-emphasis">
+                <span>Net pressure</span>
+                <strong class="${safeNumber(c.netPressure) < 0 ? 'text-red-600' : 'text-emerald-600'}">${formatSignedIDR(c.netPressure)}</strong>
+            </div>
         </div>
-        <div class="overview-money-row">
-            <span>Expected incoming</span>
-            <strong>${formatIDR(c.expectedIncoming)}</strong>
-        </div>
-        <div class="overview-money-row is-total">
-            <span>Net pressure estimate</span>
-            <strong class="${safeNumber(c.netPressure) < 0 ? 'text-red-600' : 'text-emerald-600'}">${formatSignedIDR(c.netPressure)}</strong>
-        </div>
-        <p class="overview-limitation">${escapeHtml(c.limitation || '')}</p>
+        <p class="overview-inline-note">${escapeHtml(c.limitation || '')}</p>
         ${limitations}
         <div class="overview-link-row">
             <a href="/bill">View Bills</a>
@@ -250,24 +252,25 @@ function renderReceivablesPayables(overview) {
     const hasReceivables = Number(rp.receivableCount || 0) > 0;
     const hasPayables = Number(rp.payableCount || 0) > 0;
     const emptyCopy = !hasReceivables && !hasPayables
-        ? '<p class="overview-empty-copy">No pending receivables or upcoming payables found.</p>'
+        ? '<p class="overview-inline-note">No pending receivables or upcoming payables found.</p>'
         : '';
     setHtml('receivables-payables-content', `
-        <div class="overview-mini-metrics">
-            <div>
+        <div class="overview-metric-grid overview-metric-grid-three">
+            <div class="overview-metric-tile">
                 <span>Receivables</span>
                 <strong>${formatIDR(rp.receivablesTotal)}</strong>
                 <small>${rp.receivableCount || 0} record${rp.receivableCount === 1 ? '' : 's'}</small>
             </div>
-            <div>
+            <div class="overview-metric-tile">
                 <span>Payables</span>
                 <strong>${formatIDR(rp.payablesTotal)}</strong>
                 <small>${rp.payableCount || 0} record${rp.payableCount === 1 ? '' : 's'}</small>
             </div>
-        </div>
-        <div class="overview-money-row is-total">
-            <span>Net expected position</span>
-            <strong class="${safeNumber(rp.netExpected) < 0 ? 'text-red-600' : 'text-emerald-600'}">${formatSignedIDR(rp.netExpected)}</strong>
+            <div class="overview-metric-tile is-emphasis">
+                <span>Net expected</span>
+                <strong class="${safeNumber(rp.netExpected) < 0 ? 'text-red-600' : 'text-emerald-600'}">${formatSignedIDR(rp.netExpected)}</strong>
+                <small>Selected period</small>
+            </div>
         </div>
         ${emptyCopy}
         <div class="overview-link-row">
@@ -287,11 +290,11 @@ function renderNeedsAttention(overview) {
         <div class="overview-attention-list">
             ${items.slice(0, 5).map(item => `
                 <a class="overview-attention-item" href="${item.href}">
-                    <div>
+                    <div class="overview-row-main">
                         <strong>${escapeHtml(item.title)}</strong>
                         <p>${escapeHtml(item.description)}</p>
                     </div>
-                    <span>${escapeHtml(item.action)}</span>
+                    <span class="overview-action-link">${escapeHtml(item.action)}</span>
                 </a>
             `).join('')}
         </div>
@@ -370,12 +373,12 @@ function renderUpcomingObligations(overview) {
         <div class="overview-upcoming-list">
             ${rows.map(row => `
                 <a class="overview-upcoming-item" href="${row.href}">
-                    <div>
+                    <div class="overview-row-main">
                         <span>${escapeHtml(row.type)}</span>
                         <strong>${escapeHtml(row.record.vendor_name || row.record.name || 'Untitled record')}</strong>
                         <small>${escapeHtml(formatRecordDate(row.record, row.dateField) || (row.type === 'Bill' ? 'No due date' : 'No renewal date'))}</small>
                     </div>
-                    <div class="text-right">
+                    <div class="overview-row-side">
                         <strong>${formatIDR(row.record.amount)}</strong>
                         <small>${escapeHtml(row.record.status || 'Scheduled')}</small>
                     </div>
