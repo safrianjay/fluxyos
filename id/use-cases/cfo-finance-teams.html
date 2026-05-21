@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance OS untuk CFO & Tim Finance | FluxyOS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/fluxyos.css">
+
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .font-mono { font-family: 'Fira Code', monospace; }
+
+        .cfo-paper {
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.93) 0%, rgba(249, 250, 251, 0.98) 100%),
+                linear-gradient(90deg, rgba(11, 15, 25, 0.035) 1px, transparent 1px),
+                linear-gradient(rgba(11, 15, 25, 0.035) 1px, transparent 1px);
+            background-size: auto, 48px 48px, 48px 48px;
+        }
+
+        .cfo-shadow {
+            box-shadow: 0 32px 80px -40px rgba(11, 15, 25, 0.45);
+        }
+
+        .cockpit-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        @media (max-width: 767px) {
+            .cockpit-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .workflow-trail {
+            position: relative;
+        }
+
+        .workflow-trail::before {
+            content: "";
+            position: absolute;
+            left: 24px;
+            top: 48px;
+            bottom: 24px;
+            width: 1px;
+            background: #E5E7EB;
+            z-index: 0;
+        }
+
+        @media (min-width: 1024px) {
+            .workflow-trail::before {
+                left: 48px;
+                right: 48px;
+                top: 50%;
+                bottom: auto;
+                height: 1px;
+                width: auto;
+            }
+        }
+
+        .memo-glow {
+            background:
+                linear-gradient(#FFFFFF 0 0) padding-box,
+                linear-gradient(135deg, rgba(234, 88, 12, 0.4), rgba(11, 15, 25, 0.08)) border-box;
+            border: 1px solid transparent;
+        }
+
+        .badge-accent {
+            border: 1px solid rgba(234, 88, 12, 0.25);
+            background-color: rgba(254, 243, 199, 0.4);
+            color: #EA580C;
+        }
+    </style>
+
+    <meta name="description" content="Bantu CFO dan tim finance mengelola tutup buku, rekonsiliasi, tagihan, kwitansi, pengeluaran vendor, laporan, dan tanya-jawab keuangan dalam satu sistem operasi.">
+    <link rel="canonical" href="https://fluxyos.com/id/use-cases/cfo-finance-teams">
+    <link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/cfo-finance-teams">
+    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/cfo-finance-teams">
+    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/cfo-finance-teams">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://fluxyos.com/id/use-cases/cfo-finance-teams">
+    <meta property="og:title" content="Finance OS untuk CFO & Tim Finance | FluxyOS">
+    <meta property="og:description" content="Bantu CFO dan tim finance mengelola tutup buku, rekonsiliasi, tagihan, kwitansi, pengeluaran vendor, laporan, dan tanya-jawab keuangan dalam satu sistem operasi.">
+    <meta property="og:image" content="https://fluxyos.com/assets/images/og-cfo-finance-teams.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="FluxyOS">
+    <meta property="og:locale" content="id_ID">
+    <meta property="og:locale:alternate" content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Finance OS untuk CFO & Tim Finance | FluxyOS">
+    <meta name="twitter:description" content="Bantu CFO dan tim finance mengelola tutup buku, rekonsiliasi, tagihan, kwitansi, pengeluaran vendor, laporan, dan tanya-jawab keuangan dalam satu sistem operasi.">
+    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-cfo-finance-teams.png">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-ZN7J6DRD2L');
+    </script>
+
+    <!-- Schema.org structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "FluxyOS",
+      "url": "https://fluxyos.com",
+      "logo": "https://fluxyos.com/assets/images/favicon.svg",
+      "description": "Sistem operasi keuangan berbasis AI untuk usaha kecil dan menengah di Indonesia.",
+      "areaServed": {
+        "@type": "Country",
+        "name": "Indonesia"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "email": "support@fluxyos.com",
+        "availableLanguage": [
+          "English",
+          "Indonesian"
+        ]
+      }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "FluxyOS untuk CFO & Tim Finance",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Finance & Accounting Operations Software",
+      "operatingSystem": "Web, iOS, Android",
+      "url": "https://fluxyos.com/id/use-cases/cfo-finance-teams",
+      "inLanguage": "id-ID",
+      "description": "FluxyOS adalah sistem operasi keuangan untuk CFO dan tim finance. Hubungkan revenue, pengeluaran, tagihan, langganan software, kwitansi, dan vendor spend di satu tempat untuk tutup buku lebih cepat dan pelaporan yang siap diaudit.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "IDR",
+        "availability": "https://schema.org/InStock"
+      },
+      "featureList": [
+        "Scorecard kesiapan tutup buku akhir bulan",
+        "Pelacakan selisih rekonsiliasi lintas channel pembayaran",
+        "Kontrol tagihan dan utang usaha dengan batas waktu",
+        "Visibilitas pembaruan langganan SaaS dan software",
+        "Pelacakan kwitansi hilang dan petunjuk kategorisasi",
+        "Pemantauan konsentrasi vendor dan deviasi biaya",
+        "Asisten AI berbasis ledger untuk tanya-jawab langsung",
+        "Ekspor bersih yang siap digunakan oleh akuntan"
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://fluxyos.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Use Cases",
+          "item": "https://fluxyos.com/id/use-cases/cfo-finance-teams"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "CFO & Tim Finance",
+          "item": "https://fluxyos.com/id/use-cases/cfo-finance-teams"
+        }
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "inLanguage": "id-ID",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Apakah FluxyOS dirancang untuk CFO atau tim finance kecil?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ya. FluxyOS dirancang untuk pemilik bisnis dan tim finance yang membutuhkan sistem operasi yang lebih jelas untuk transaksi, tagihan, langganan, kwitansi, laporan, dan tanya-jawab keuangan."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah FluxyOS dapat membantu tutup buku akhir bulan?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "FluxyOS membantu tim mengidentifikasi kwitansi yang hilang, catatan transaksi yang tidak lengkap, tagihan jatuh tempo, pembaruan langganan, dan celah pelaporan sebelum mengekspor atau meninjau laporan keuangan."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah FluxyOS dapat melacak kwitansi yang hilang dan catatan transaksi yang belum lengkap?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ya. FluxyOS menggunakan status transaksi seperti Missing Receipt (Kwitansi Hilang) dan dapat menampilkan catatan tidak lengkap yang memerlukan perhatian tim finance sebelum ditinjau oleh akuntan."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah FluxyOS menggantikan software akuntansi?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tidak. FluxyOS adalah sistem operasi keuangan sebelum akuntansi. Platform ini membantu merapikan catatan operasional, menjelaskan angka keuangan, dan menyiapkan ekspor yang bersih agar Anda menghabiskan lebih sedikit waktu memperbaiki kesalahan di software akuntansi."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah FluxyOS bisa mengekspor laporan untuk akuntan?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ya. FluxyOS dirancang untuk mendukung data keuangan yang siap diekspor, menyediakan file CSV/Excel bersih dengan transaksi terkategori, lampiran bukti kwitansi, dan metadata audit yang jelas."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah Fluxy AI bisa menjawab pertanyaan keuangan dari data kami?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ya. Fluxy AI dirancang untuk menjawab pertanyaan keuangan menggunakan catatan ledger transaksi FluxyOS dan ringkasan data yang dihitung di backend, memastikan jawaban tetap akurat dan dapat diverifikasi."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah FluxyOS dapat menyetujui pembayaran atau memindahkan uang?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "FluxyOS mendukung alur kerja peninjauan dan pelacakan, namun pemindahan uang atau tindakan persetujuan pembayaran memerlukan konfirmasi eksplisit dari pengguna, riwayat audit, dan konfigurasi keamanan yang lebih ketat di masa depan."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah data keuangan dipisahkan per pengguna atau workspace?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ya. Semua data produksi sangat dibatasi per ruang lingkup pengguna (user-scoped) dan diisolasi di bawah kredensial terautentikasi, memastikan privasi penuh, pemisahan, dan keamanan catatan keuangan Anda."
+          }
+        }
+      ]
+    }
+    </script>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- 1. Navigation with Mega Menu -->
+    <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
+        <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
+            <div class="flex items-center gap-12 h-full">
+                <a href="/fluxyos" class="flex items-center gap-2.5 cursor-pointer group">
+                    <div class="w-8 h-8 text-black shadow-sm group-hover:scale-105 transition-transform duration-200">
+                        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                            <rect width="40" height="40" rx="8" fill="currentColor" />
+                            <g transform="translate(1.5, 0)">
+                                <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                                <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                            </g>
+                        </svg>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-gray-900">FluxyOS</span>
+                </a>
+
+                <div class="hidden lg:flex items-center gap-8 h-full">
+                    <!-- Platform Mega Menu -->
+                    <div class="group h-full flex items-center">
+                        <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
+                            Platform
+                            <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="max-w-[1280px] mx-auto flex">
+                                <div class="flex-1 py-10 px-6 flex gap-12">
+                                    <div class="flex-[2]">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Fitur</h4>
+                                        <div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                                            <a href="/budgetlanding" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Dynamic Budgeting</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Alokasikan dan pantau dana langsung</div>
+                                                </div>
+                                            </a>
+                                            <a href="/vendorspend" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Vendor Spend</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Kelola pembayaran SaaS & kontrak</div>
+                                                </div>
+                                            </a>
+                                            <a href="/revenuesync" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Revenue Sync</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Tarik retainer klien & data POS</div>
+                                                </div>
+                                            </a>
+                                            <a href="/receiptcapture" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Receipt Capture</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Otomatisasi penanganan kertas</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Platform</h4>
+                                        <div class="space-y-8">
+                                            <a href="/aiagents" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] text-gray-600 transition-colors relative">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">FluxyOS AI Agents</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Lipatgandakan efisiensi tim finance</div>
+                                                </div>
+                                            </a>
+                                            <a href="/fluxyos" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Global Ready</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Cocokkan 120+ mata uang global</div>
+                                                </div>
+                                            </a>
+                                            <a href="/integration" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l-4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Native Integrations</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Integrasi ERP, HRIS & Productivity</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
+                                    <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">Rilis Terbaru</h4>
+                                    <a href="/fluxyos" class="block group/release cursor-pointer mb-4">
+                                        <div class="bg-black rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-md group-hover/release:shadow-lg transition-all">
+                                            <div class="absolute inset-0 bg-gradient-to-tr from-gray-900 via-black to-gray-800"></div>
+                                            <h3 class="relative z-10 text-white font-bold text-[36px] leading-[0.9] tracking-tighter">
+                                                SPRING<br/>RELEASE<br/><span class="text-gray-400">2026</span>
+                                            </h3>
+                                        </div>
+                                        <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">
+                                            Lihat yang baru &rarr;
+                                        </h5>
+                                        <p class="text-[13px] text-gray-500 leading-relaxed">
+                                            Laporan margin multi-channel, rekonsiliasi Kopi Nusantara & Mitra Clinic yang lebih cepat, dan update AI agent.
+                                        </p>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Use Cases Mega Menu -->
+                    <div class="group h-full flex items-center">
+                        <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
+                            Use Cases
+                            <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="max-w-[1280px] mx-auto flex">
+                                <div class="flex-1 py-10 px-6 flex gap-12">
+                                    <div class="flex-[2]">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Berdasarkan Industri</h4>
+                                        <div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                                            <a href="/id/use-cases/ecommerce-brands" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">E-Commerce Brands</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Cocokkan ribuan transaksi POS & gateway.</div>
+                                                </div>
+                                            </a>
+                                            <a href="/id/use-cases/tech-startups-saas" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2-2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Tech Startups & SaaS</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Kelola burn rate, runway, dan langganan software.</div>
+                                                </div>
+                                            </a>
+                                            <a href="/id/use-cases/marketing-agencies" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Marketing Agencies</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Petakan ad spend ke budget klien dengan rapi.</div>
+                                                </div>
+                                            </a>
+                                            <a href="/id/use-cases/retail-franchises" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Retail & Franchises</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Konsolidasi P&L lintas banyak lokasi fisik.</div>
+                                                </div>
+                                            </a>
+                                            <a href="/id/use-cases/dropshippers-digital-ads" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Dropshippers & Digital Ads</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Lacak ROI ad live vs biaya supplier untuk lihat net margin asli.</div>
+                                                </div>
+                                            </a>
+                                            <a href="/id/use-cases/manufacturing" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Manufacturing</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Lacak unit economics dan COGS live saat operasi diskalakan.</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Berdasarkan Peran</h4>
+                                        <div class="space-y-8">
+                                            <a href="/id/use-cases/cfo-finance-teams" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-[#EA580C] bg-white flex items-center justify-center flex-shrink-0 text-[#EA580C]">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-[#EA580C] mb-0.5 transition-colors">CFO & Tim Finance</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Otomatisasi rekonsiliasi dan tutup buku.</div>
+                                                </div>
+                                            </a>
+                                            <a href="/fluxyos" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Founder & CEO</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Visibilitas real-time atas ekonomi bisnis.</div>
+                                                </div>
+                                            </a>
+                                            <a href="/fluxyos" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Department Head</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Lacak realisasi spend vs budget internal.</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
+                                    <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">Cerita Pilihan</h4>
+                                    <a href="/fluxyos" class="block group/release cursor-pointer mb-4">
+                                        <div class="bg-gray-100 rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-sm border border-gray-200 group-hover/release:shadow-md transition-all">
+                                            <div class="absolute inset-0 bg-gradient-to-tr from-gray-200 to-gray-50 z-0"></div>
+                                            <svg class="absolute top-4 right-4 w-24 h-24 text-gray-300 opacity-50 z-0 transform -rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                                            <div class="relative z-10 w-full">
+                                                <span class="bg-[#EA580C] text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wide inline-block mb-2">Case Study</span>
+                                                <h3 class="text-gray-900 font-bold text-[18px] leading-[1.2] tracking-tight">
+                                                    Merapikan Kas Multi-Outlet Retail
+                                                </h3>
+                                            </div>
+                                        </div>
+                                        <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">
+                                            Baca ceritanya &rarr;
+                                        </h5>
+                                        <p class="text-[13px] text-gray-500 leading-relaxed">
+                                            Lihat bagaimana agensi yang sedang tumbuh menyatukan retainer, contractor, media spend, dan P&L klien dalam satu view operasional.
+                                        </p>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="/fluxyos" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Pelanggan</a>
+                    <a href="/pricing" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Harga</a>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <!-- Language Selector -->
+                <div class="relative group cursor-pointer hidden sm:block h-full py-2">
+                    <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors h-full">
+                        <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        ID
+                        <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="absolute right-0 top-[100%] mt-2 w-36 bg-white border border-gray-100 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
+                        <a href="/use-cases/cfo-finance-teams" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">English (EN)</a>
+                        <a href="/id/use-cases/cfo-finance-teams" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">
+                            Bahasa (ID)
+                            <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        </a>
+                    </div>
+                </div>
+
+                <a href="/login" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Masuk</a>
+                <a href="/pricing" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-6 py-3 rounded-md transition-all duration-200 shadow-sm hover:shadow text-center">
+                    Coba FluxyOS
+                </a>
+                <button type="button" class="mobile-menu-toggle lg:hidden w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-800 flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open navigation menu">
+                    <svg data-menu-open-icon class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M4 7h16M4 12h16M4 17h16"></path></svg>
+                    <svg data-menu-close-icon class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Panel -->
+        <div id="mobile-menu" class="mobile-menu-panel hidden lg:hidden fixed left-0 right-0 top-[64px] z-[60] bg-white border-b border-gray-200 shadow-[0_20px_40px_-18px_rgba(0,0,0,0.2)] overflow-y-auto">
+            <div class="px-5 py-6 space-y-7">
+                <div>
+                    <h4 class="text-[12px] font-bold text-gray-900 uppercase tracking-wider mb-4">Platform</h4>
+                    <div class="grid grid-cols-1 gap-3">
+                        <a href="/budgetlanding" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Dynamic Budgeting</span><span class="block text-[13px] text-gray-500">Alokasikan dan pantau dana langsung</span></span>
+                        </a>
+                        <a href="/vendorspend" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Vendor Spend</span><span class="block text-[13px] text-gray-500">Kelola pembayaran SaaS & kontrak</span></span>
+                        </a>
+                        <a href="/revenuesync" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Revenue Sync</span><span class="block text-[13px] text-gray-500">Tarik retainer klien & data POS</span></span>
+                        </a>
+                        <a href="/receiptcapture" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Receipt Capture</span><span class="block text-[13px] text-gray-500">Otomatisasi penanganan kertas</span></span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-[12px] font-bold text-gray-900 uppercase tracking-wider mb-4">Use Cases</h4>
+                    <div class="grid grid-cols-1 gap-2">
+                        <a href="/id/use-cases/ecommerce-brands" class="mobile-menu-link block py-2 text-[15px] font-semibold text-gray-600 hover:text-gray-900 transition-colors">E-Commerce Brands</a>
+                        <a href="/id/use-cases/tech-startups-saas" class="mobile-menu-link block py-2 text-[15px] font-semibold text-gray-600 hover:text-gray-900 transition-colors">Tech Startups & SaaS</a>
+                        <a href="/id/use-cases/marketing-agencies" class="mobile-menu-link block py-2 text-[15px] font-semibold text-gray-600 hover:text-gray-900 transition-colors">Marketing Agencies</a>
+                        <a href="/id/use-cases/retail-franchises" class="mobile-menu-link block py-2 text-[15px] font-semibold text-gray-600 hover:text-gray-900 transition-colors">Retail & Franchises</a>
+                        <a href="/id/use-cases/dropshippers-digital-ads" class="mobile-menu-link block py-2 text-[15px] font-semibold text-gray-600 hover:text-gray-900 transition-colors">Dropshippers & Digital Ads</a>
+                        <a href="/id/use-cases/manufacturing" class="mobile-menu-link block py-2 text-[15px] font-semibold text-gray-600 hover:text-gray-900 transition-colors">Manufacturing</a>
+                        <a href="/id/use-cases/cfo-finance-teams" class="mobile-menu-link block py-2 text-[15px] font-bold text-[#EA580C] transition-colors">CFO & Tim Finance</a>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-100 pt-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <a href="/login" class="text-[15px] font-semibold text-gray-600 hover:text-gray-900 transition-colors">Masuk</a>
+                        <div class="flex items-center gap-3">
+                            <a href="/use-cases/cfo-finance-teams" class="text-[13px] font-medium text-gray-500 hover:text-gray-900">EN</a>
+                            <span class="text-gray-300">|</span>
+                            <a href="/id/use-cases/cfo-finance-teams" class="text-[13px] font-bold text-[#EA580C]">ID</a>
+                        </div>
+                    </div>
+                    <a href="/pricing" class="block w-full bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-bold text-center py-3 rounded-lg shadow-sm">
+                        Coba FluxyOS
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 2. Hero Section -->
+    <section class="cfo-paper border-b border-gray-200 pt-16 md:pt-24 pb-20 px-6 relative overflow-hidden">
+        <div class="max-w-[1280px] mx-auto relative z-10">
+            <div class="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
+                <div class="max-w-2xl" data-animate="hero-text">
+                    <span class="badge-accent text-[11px] font-mono font-semibold px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-5">Sistem Operasi Keuangan</span>
+                    <h1 class="text-[40px] md:text-[56px] font-bold tracking-tight text-gray-950 leading-[1.08] mb-6">
+                        Kuasai ledger operasional. Bersihkan kesalahan sebelum akuntansi.
+                    </h1>
+                    <p class="text-[17px] md:text-[19px] text-gray-600 leading-relaxed mb-8">
+                        Bantu tim finance Anda memantau kesiapan tutup buku, mencocokkan selisih transaksi setiap hari, menemukan kwitansi yang hilang, dan mengelola pengeluaran vendor dalam satu cockpit premium.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow text-center">Coba FluxyOS gratis</a>
+                        <a href="/pricing" class="border border-gray-300 text-gray-700 font-semibold text-[15px] px-8 py-3.5 rounded-md hover:border-gray-400 hover:text-gray-900 transition-colors bg-white/50 backdrop-blur text-center">Lihat harga</a>
+                    </div>
+                </div>
+
+                <!-- Cockpit Visual Container -->
+                <div class="w-full" data-animate="hero-visual">
+                    <div class="bg-white border border-gray-200 rounded-3xl p-5 md:p-6 cfo-shadow relative">
+                        <div class="flex items-center justify-between border-b border-gray-150 pb-3.5 mb-5">
+                            <div>
+                                <p class="font-mono text-[9px] uppercase tracking-wider text-gray-400">Ledger Operasional Live</p>
+                                <h3 class="text-[15px] font-bold text-gray-950 uppercase tracking-tight">COCKPIT TUTUP BUKU AKHIR BULAN</h3>
+                            </div>
+                            <span class="w-3.5 h-3.5 rounded-full bg-green-500 animate-pulse"></span>
+                        </div>
+
+                        <div class="space-y-5">
+                            <!-- Scorecard 1: Close Readiness -->
+                            <div class="border border-gray-250 bg-gray-50/50 rounded-2xl p-4 flex justify-between items-center">
+                                <div>
+                                    <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-1">Kesiapan Tutup Buku</h4>
+                                    <p class="text-[12px] text-gray-600">44 dari 48 transaksi telah dikategorikan dengan lampiran bukti.</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[32px] font-bold text-gray-900 tracking-tight font-mono">82%</span>
+                                </div>
+                            </div>
+
+                            <!-- Scorecard 2: reconciliation elements -->
+                            <div class="border border-gray-250 bg-gray-50/50 rounded-2xl p-4">
+                                <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-3">Rekonsiliasi & Celah Ledger</h4>
+                                <div class="space-y-2 text-[13px]">
+                                    <div class="flex justify-between border-b border-gray-150 pb-2">
+                                        <span class="text-gray-600">Tagihan Jatuh Tempo</span>
+                                        <span class="font-bold text-gray-950 font-mono">Rp 18.400.000</span>
+                                    </div>
+                                    <div class="flex justify-between border-b border-gray-150 pb-2">
+                                        <span class="text-gray-600">Kwitansi Hilang</span>
+                                        <span class="font-bold text-orange-600 font-mono">12 pending</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Belum Dikategorikan</span>
+                                        <span class="font-bold text-gray-950 font-mono">7 baris</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Scorecard 3: stream sample -->
+                            <div class="border border-gray-250 bg-gray-50/50 rounded-2xl p-4">
+                                <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-3">Ledger Stream Langsung</h4>
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between text-[12px] border-b border-gray-150 pb-2">
+                                        <span class="font-medium text-gray-800">Billing: Kopi Nusantara</span>
+                                        <span class="font-bold text-gray-900 font-mono">Rp 3.200.000</span>
+                                        <span class="text-[10px] font-mono text-green-700 bg-green-50 px-2 py-0.5 rounded border border-green-200">Aktif</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-[12px] border-b border-gray-150 pb-2">
+                                        <span class="font-medium text-gray-800">Langganan: AWS Cloud</span>
+                                        <span class="font-bold text-gray-900 font-mono">Rp 14.800.000</span>
+                                        <span class="text-[10px] font-mono text-orange-700 bg-orange-50 px-2 py-0.5 rounded border border-orange-200">Bukti Tertunda</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-[12px]">
+                                        <span class="font-medium text-gray-800">Reimbursement: Mitra Clinic</span>
+                                        <span class="font-bold text-gray-900 font-mono">Rp 450.000</span>
+                                        <span class="text-[10px] font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">Sedang Ditinjau</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Section 2: Pain Points -->
+    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="max-w-3xl mb-16">
+                <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Kesenjangan Operasional</p>
+                <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
+                    Tutup buku akhir bulan seharusnya tidak terasa seperti penyelidikan detektif.
+                </h2>
+                <p class="text-[17px] text-gray-600 leading-relaxed">
+                    Ketika catatan operasional tersebar di berbagai silo, tim finance menghabiskan minggu pertama setiap bulan hanya untuk mengejar kwitansi dan memperbaiki angka yang tidak cocok.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Pain 1 -->
+                <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow bg-gray-50/50">
+                    <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 text-[#EA580C] flex items-center justify-center font-mono font-bold mb-4">!</div>
+                    <h3 class="text-[18px] font-bold text-gray-950 mb-2">Penundaan Tutup Buku</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Mengejar dokumen yang hilang dari anggota tim menunda tutup buku akhir, menyebabkan hambatan pelaporan.
+                    </p>
+                </div>
+                <!-- Pain 2 -->
+                <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow bg-gray-50/50">
+                    <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 text-[#EA580C] flex items-center justify-center font-mono font-bold mb-4">?</div>
+                    <h3 class="text-[18px] font-bold text-gray-950 mb-2">Mengejar Kwitansi</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Permintaan manual untuk faktur pajak dan tangkapan layar pembayaran menghabiskan berhari-hari waktu produktif tim.
+                    </p>
+                </div>
+                <!-- Pain 3 -->
+                <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow bg-gray-50/50">
+                    <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 text-[#EA580C] flex items-center justify-center font-mono font-bold mb-4">&bull;</div>
+                    <h3 class="text-[18px] font-bold text-gray-950 mb-2">Kejutan Pembaruan SaaS</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Langganan software yang tidak terpantau diperbarui secara otomatis secara diam-diam, menguras anggaran tanpa sepengetahuan pemilik.
+                    </p>
+                </div>
+                <!-- Pain 4 -->
+                <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow bg-gray-50/50">
+                    <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 text-[#EA580C] flex items-center justify-center font-mono font-bold mb-4">&dollar;</div>
+                    <h3 class="text-[18px] font-bold text-gray-950 mb-2">Biaya Vendor Tidak Cocok</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Variasi harga kecil dan jam kerja kontraktor menciptakan deviasi biaya yang membutuhkan waktu berjam-jam untuk direkonsiliasi.
+                    </p>
+                </div>
+                <!-- Pain 5 -->
+                <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow bg-gray-50/50 md:col-span-2 lg:col-span-1">
+                    <h3 class="text-[18px] font-bold text-gray-950 mb-2 mt-12 lg:mt-2">Siklus Pembersihan Ledger</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Akuntan membuang-buang waktu membersihkan transaksi yang belum dikategorikan alih-alih meninjau strategi keuangan.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. Section 3: Finance OS Layer -->
+    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-b border-gray-200">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="grid lg:grid-cols-[0.85fr_1.15fr] gap-12 items-center">
+                <div>
+                    <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
+                        Sistem Operasi Sebelum Akuntansi
+                    </h2>
+                    <p class="text-[17px] text-gray-600 leading-relaxed mb-6">
+                        FluxyOS tidak menggantikan software akuntansi Anda. Platform ini mengatur catatan transaksi, menangkap kwitansi, dan memvalidasi kualitas data *sebelum* diekspor.
+                    </p>
+                    <div class="space-y-4">
+                        <div class="flex gap-4">
+                            <span class="w-6 h-6 rounded-full bg-orange-100 text-[#EA580C] flex items-center justify-center font-bold text-[13px] flex-shrink-0">&check;</span>
+                            <p class="text-[14px] text-gray-700 leading-relaxed">Cegah kesalahan klasifikasi dengan memvalidasi input operasional harian.</p>
+                        </div>
+                        <div class="flex gap-4">
+                            <span class="w-6 h-6 rounded-full bg-orange-100 text-[#EA580C] flex items-center justify-center font-bold text-[13px] flex-shrink-0">&check;</span>
+                            <p class="text-[14px] text-gray-700 leading-relaxed">Kumpulkan bukti transaksi langsung dari tim yang mengeluarkan biaya.</p>
+                        </div>
+                        <div class="flex gap-4">
+                            <span class="w-6 h-6 rounded-full bg-orange-100 text-[#EA580C] flex items-center justify-center font-bold text-[13px] flex-shrink-0">&check;</span>
+                            <p class="text-[14px] text-gray-700 leading-relaxed">Ekspor data siap audit yang rapi, bersih, dan terstruktur untuk akuntan Anda.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Operating System Map Visual -->
+                <div class="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm">
+                    <div class="text-center mb-6">
+                        <p class="text-[10px] font-mono uppercase tracking-wider text-gray-400">Peta Aliran Data Keuangan</p>
+                        <h4 class="text-[16px] font-bold text-gray-950 mt-1">Struktur Kontrol Ledger Operasional</h4>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center">
+                            <span class="text-[10px] font-mono uppercase tracking-wider text-gray-400 block mb-1">SUMBER INPUT</span>
+                            <span class="text-[12px] font-bold text-gray-800">Catatan Transaksi, Tagihan, Kwitansi, Langganan, Revenue</span>
+                        </div>
+                        <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center">
+                            <span class="text-[10px] font-mono uppercase tracking-wider text-gray-400 block mb-1">TUJUAN EKSPOR</span>
+                            <span class="text-[12px] font-bold text-gray-800">Software Akuntansi, Laporan Pajak, Presentasi Dewan Direksi</span>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-150 pt-6">
+                        <h5 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-4 text-center">Operational Ledger FluxyOS</h5>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center flex flex-col justify-between h-[110px]">
+                                <span class="text-[12px] font-bold text-gray-800">Ledger</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-orange-700 bg-orange-100 px-2 py-0.5 rounded self-center mt-1">Siap ditinjau</span>
+                            </div>
+                            <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center flex flex-col justify-between h-[110px]">
+                                <span class="text-[12px] font-bold text-gray-800">Tagihan</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-orange-700 bg-orange-100 px-2 py-0.5 rounded self-center mt-1">Dipantau</span>
+                            </div>
+                            <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center flex flex-col justify-between h-[110px]">
+                                <span class="text-[12px] font-bold text-gray-800">Langganan</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-100 px-2 py-0.5 rounded self-center mt-1">Terpantau</span>
+                            </div>
+                            <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center flex flex-col justify-between h-[110px]">
+                                <span class="text-[12px] font-bold text-gray-800">Laporan & Ekspor</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100 px-2 py-0.5 rounded self-center mt-1">Siap diekspor</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. Section 4: Workflow -->
+    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="max-w-3xl mb-12">
+                <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Alur Kerja</p>
+                <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
+                    Dari catatan yang tersebar hingga keuangan yang siap tutup buku.
+                </h2>
+                <p class="text-[17px] text-gray-600 leading-relaxed">
+                    Bangun alur operasional terstruktur yang mengumpulkan input, membersihkan pengecualian, dan meninjau celah data secara berkelanjutan.
+                </p>
+            </div>
+
+            <div class="workflow-trail grid lg:grid-cols-5 gap-8">
+                <!-- Step 1 -->
+                <div class="relative pl-14 lg:pl-0 lg:pt-14 z-10">
+                    <span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">1</span>
+                    <h3 class="font-bold text-gray-950 mb-2">Capture (Kumpulkan)</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Kumpulkan transaksi, tagihan, kwitansi, invoice, langganan, dan catatan revenue secara otomatis.
+                    </p>
+                </div>
+                <!-- Step 2 -->
+                <div class="relative pl-14 lg:pl-0 lg:pt-14 z-10">
+                    <span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">2</span>
+                    <h3 class="font-bold text-gray-950 mb-2">Classify (Klasifikasikan)</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Salurkan catatan ke modul FluxyOS yang tepat: Ledger, Bills, Subscriptions, atau Revenue Sync.
+                    </p>
+                </div>
+                <!-- Step 3 -->
+                <div class="relative pl-14 lg:pl-0 lg:pt-14 z-10">
+                    <span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">3</span>
+                    <h3 class="font-bold text-gray-950 mb-2">Review (Tinjau)</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Lacak kwitansi yang hilang, periksa catatan belum terkategori, tagihan jatuh tempo, dan deviasi pengeluaran vendor yang ganda atau tidak biasa.
+                    </p>
+                </div>
+                <!-- Step 4 -->
+                <div class="relative pl-14 lg:pl-0 lg:pt-14 z-10">
+                    <span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">4</span>
+                    <h3 class="font-bold text-gray-950 mb-2">Tanya Fluxy AI</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Ajukan pertanyaan wajar seperti &ldquo;Apa yang menghambat tutup buku?&rdquo; untuk segera menemukan anomali data yang belum selesai.
+                    </p>
+                </div>
+                <!-- Step 5 -->
+                <div class="relative pl-14 lg:pl-0 lg:pt-14 z-10">
+                    <span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">5</span>
+                    <h3 class="font-bold text-gray-950 mb-2">Ekspor atau Laporkan</h3>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Bagikan ekspor bersih kaya konteks dengan akuntan atau stakeholder, menghilangkan siklus rekonsiliasi menit-menit terakhir.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. Section 5: Feature Fit -->
+    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-b border-gray-200">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="max-w-3xl mb-12">
+                <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Kemampuan Utama</p>
+                <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
+                    Dirancang sesuai dengan pekerjaan operasional nyata tim finance.
+                </h2>
+                <p class="text-[17px] text-gray-600 leading-relaxed">
+                    FluxyOS memprioritaskan visibilitas pada aspek yang memengaruhi kepercayaan pelaporan terlebih dahulu, menyusun fitur-fitur pendukung secara rapi di bawahnya.
+                </p>
+            </div>
+
+            <!-- Featured Card & Supporting Grid -->
+            <div class="grid lg:grid-cols-3 gap-6">
+                <!-- Large Featured Card -->
+                <div class="lg:col-span-3 rounded-3xl border border-gray-200 bg-white p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-8 items-center">
+                    <div class="flex-1">
+                        <span class="bg-[#EA580C]/10 text-[#EA580C] text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider inline-block mb-3">Pekerjaan Utama</span>
+                        <h3 class="text-[24px] md:text-[28px] font-bold text-gray-950 mb-3">Scorecard kesiapan tutup buku akhir bulan</h3>
+                        <p class="text-[15px] text-gray-600 leading-relaxed mb-4">
+                            Lihat dengan jelas apa yang menghambat proses tutup buku Anda. Temukan invoice yang hilang, kwitansi belum terlampir, pengeluaran vendor tanpa dokumen, atau kategori klasifikasi tertunda dalam satu scorecard persentase sederhana sebelum mengekspor data.
+                        </p>
+                        <ul class="space-y-2 text-[14px] text-gray-700">
+                            <li class="flex items-center gap-2">&bull; Identifikasi kebutuhan kwitansi tertunda per anggota tim</li>
+                            <li class="flex items-center gap-2">&bull; Deteksi tekanan utang usaha sebelum tanggal jatuh tempo tiba</li>
+                            <li class="flex items-center gap-2">&bull; Validasi kebersihan ledger sebelum diserahkan ke akuntan</li>
+                        </ul>
+                    </div>
+                    <div class="w-full md:w-[320px] bg-gray-50 border border-gray-200 rounded-2xl p-5 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between text-[12px] font-bold text-gray-500 mb-2">
+                                <span>STATUS TUTUP BUKU</span>
+                                <span class="text-orange-600">Butuh Tindakan</span>
+                            </div>
+                            <div class="h-2 w-full bg-gray-200 rounded-full overflow-hidden mb-4">
+                                <div class="h-full bg-[#EA580C] rounded-full" style="width: 82%;"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex justify-between text-[13px] border-b border-gray-200 pb-2">
+                                <span class="text-gray-600">Bukti Terlampir</span>
+                                <span class="font-bold text-gray-800">44 dari 48</span>
+                            </div>
+                            <div class="flex justify-between text-[13px] border-b border-gray-200 pb-2">
+                                <span class="text-gray-600">Baris Terkategori</span>
+                                <span class="font-bold text-gray-800">92% Selesai</span>
+                            </div>
+                            <div class="flex justify-between text-[13px]">
+                                <span class="text-gray-600">Tagihan Tertunda</span>
+                                <span class="font-bold text-gray-800 font-mono">Rp 18.400.000</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grid of Supporting Cards -->
+                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Pelacakan selisih rekonsiliasi</h4>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Identifikasi perbedaan antara register transaksi dan pengeluaran aktual lebih awal, melindungi bisnis dari kebocoran kas.
+                    </p>
+                </div>
+                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Kontrol tagihan & utang usaha</h4>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Lihat tagihan terjadwal, periksa tanggal jatuh tempo, nilai komitmen vendor, dan hindari denda keterlambatan dari satu register terpadu.
+                    </p>
+                </div>
+                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Visibilitas pengeluaran langganan</h4>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Pantau lini software aktif, lacak jadwal pembaruan kontrak, temukan lisensi ganda, dan periksa kepemilikan SaaS.
+                    </p>
+                </div>
+                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Tindak lanjut kwitansi hilang</h4>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Tandai dan tindak lanjuti catatan transaksi tanpa dokumen secara otomatis, menjaga kelengkapan riwayat audit PPN Anda.
+                    </p>
+                </div>
+                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Pemantauan pengeluaran vendor</h4>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Identifikasi lonjakan harga vendor yang tiba-tiba, periksa risiko konsentrasi vendor, dan lacak variasi pengeluaran kontraktor secara berkelanjutan.
+                    </p>
+                </div>
+                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Log aktivitas ramah audit</h4>
+                    <p class="text-[14px] text-gray-600 leading-relaxed">
+                        Jaga riwayat berkelanjutan atas perubahan ledger, lampiran dokumen, dan revisi kategorisasi, mempermudah pemeriksaan auditor.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 7. Section 6: Fluxy AI for Finance Teams -->
+    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200">
+        <div class="max-w-[1120px] mx-auto">
+            <div class="rounded-3xl border border-gray-200 bg-gray-50 p-6 md:p-8 shadow-sm">
+                <div class="grid lg:grid-cols-[0.85fr_1.15fr] gap-8 items-center">
+                    <div>
+                        <span class="bg-[#EA580C]/10 text-[#EA580C] text-[11px] font-bold px-2 py-1 rounded uppercase tracking-wider inline-block mb-3">Fluxy AI</span>
+                        <h2 class="text-[30px] md:text-[38px] font-bold tracking-tight text-gray-950 mb-5">
+                            Ajukan pertanyaan keuangan tanpa menyusun ulang spreadsheet.
+                        </h2>
+                        <p class="text-[16px] text-gray-600 leading-relaxed mb-6">
+                            Fluxy AI dibangun dengan logika ledger yang terverifikasi. AI ini memeriksa jumlah transaksi, mencocokkan tagihan jatuh tempo, dan menjelaskan variasi pengeluaran berdasarkan catatan ledger FluxyOS yang valid.
+                        </p>
+                        <div class="rounded-2xl bg-orange-50 border border-orange-200/50 p-4">
+                            <h5 class="text-[13px] font-bold text-orange-800 mb-1">Landasan Keamanan Keuangan</h5>
+                            <p class="text-[12px] text-[#EA580C] leading-relaxed">
+                                Fluxy AI memberikan jawaban berdasarkan data sistem yang dihitung. AI tidak akan mengarang angka, menulis aturan database, atau melakukan pembayaran secara otomatis tanpa konfirmasi langsung dari Anda.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- AI Prompt/Response Memo Visual -->
+                    <div class="memo-glow rounded-2xl bg-white p-5 md:p-6 shadow-md">
+                        <div class="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+                            <div>
+                                <p class="font-mono text-[9px] uppercase tracking-wider text-gray-400">Tinjauan Tanya-Jawab Ledger</p>
+                                <h3 class="text-[16px] font-bold text-gray-900">Validasi Tutup Buku Akhir Bulan</h3>
+                            </div>
+                            <span class="rounded bg-gray-950 text-white font-mono text-[10px] font-bold px-2 py-0.5">AI</span>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                                <p class="text-[11px] font-bold text-[#EA580C]">Pertanyaan Pengguna</p>
+                                <p class="text-[13px] text-gray-800 font-mono mt-1">&ldquo;Apa yang menghambat tutup buku bulan ini?&rdquo;</p>
+                            </div>
+                            <div class="bg-orange-50/40 rounded-xl p-3 border border-orange-100">
+                                <p class="text-[11px] font-bold text-[#EA580C]">Jawaban Fluxy AI</p>
+                                <p class="text-[13px] text-gray-800 leading-relaxed font-sans mt-1">
+                                    Saya menemukan 12 transaksi tanpa kwitansi, 7 catatan belum dikategorikan, dan 3 tagihan jatuh tempo. Fokuslah pada kwitansi yang hilang terlebih dahulu untuk memastikan kepatuhan audit PPN/pajak.
+                                </p>
+                            </div>
+                            <div class="border border-gray-150 rounded-xl p-3">
+                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Ringkasan Validasi</p>
+                                <div class="grid grid-cols-2 gap-2 text-[12px]">
+                                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Kwitansi Hilang</span><span class="font-bold font-mono">12</span></div>
+                                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Belum Terkategori</span><span class="font-bold font-mono">7</span></div>
+                                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Tagihan Jatuh Tempo</span><span class="font-bold font-mono">3</span></div>
+                                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Skor Kesiapan</span><span class="font-bold text-orange-600 font-mono">82%</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 8. Section 7: Before / After -->
+    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-b border-gray-200">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="max-w-3xl mb-12 text-center mx-auto">
+                <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Perbandingan Operasi</p>
+                <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
+                    Sebelum FluxyOS, pekerjaan finance tersebar. Setelah FluxyOS, semuanya terkendali.
+                </h2>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                <!-- Before -->
+                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <h3 class="text-[18px] font-bold text-gray-500 mb-4 flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
+                        Sebelum FluxyOS
+                    </h3>
+                    <ul class="space-y-3.5 text-[14px] text-gray-600">
+                        <li class="flex items-start gap-2.5">
+                            <span class="text-red-500 font-bold mt-0.5">&times;</span>
+                            <span>Selisih rekonsiliasi baru diketahui berminggu-minggu terlambat saat penutupan bank.</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <span class="text-red-500 font-bold mt-0.5">&times;</span>
+                            <span>Kwitansi tercecer di dalam chat pribadi dan berbagai email tim.</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <span class="text-red-500 font-bold mt-0.5">&times;</span>
+                            <span>Pembaruan SaaS terjadi secara tiba-tiba tanpa pelacakan pemilik yang jelas.</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <span class="text-red-500 font-bold mt-0.5">&times;</span>
+                            <span>Laporan manajemen membutuhkan waktu berhari-hari untuk disusun, dibersihkan, dan diverifikasi.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- After -->
+                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <h3 class="text-[18px] font-bold text-gray-950 mb-4 flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+                        Setelah FluxyOS
+                    </h3>
+                    <ul class="space-y-3.5 text-[14px] text-gray-700 font-semibold">
+                        <li class="flex items-start gap-2.5">
+                            <span class="text-green-500 font-bold mt-0.5">&bull;</span>
+                            <span>Rekonsiliasi dilakukan setiap hari, mencocokkan baris pembayaran secara berkelanjutan.</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <span class="text-green-500 font-bold mt-0.5">&bull;</span>
+                            <span>Capture kwitansi memformat dokumen agar langsung sesuai dengan klaim ledger.</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <span class="text-green-500 font-bold mt-0.5">&bull;</span>
+                            <span>Dashboard langganan memberi tahu pemilik sebelum pembaruan kontrak.</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <span class="text-green-500 font-bold mt-0.5">&bull;</span>
+                            <span>Laporan disusun secara dinamis, menampilkan kesiapan ekspor secara langsung.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 9. Section 8: CFO Control Layer -->
+    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200">
+        <div class="max-w-[1280px] mx-auto">
+            <div class="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
+                <div>
+                    <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Visibilitas Strategis</p>
+                    <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
+                        Berikan visibilitas kepada CFO tanpa memperlambat gerak tim.
+                    </h2>
+                    <p class="text-[17px] text-gray-600 leading-relaxed mb-6">
+                        Berikan sinyal yang jelas kepada manajemen tentang kesehatan operasional: lacak konsentrasi vendor, tinjau tekanan pembaruan kontrak, dan pantau kecepatan belanja departemen tanpa membuat proses persetujuan yang rumit.
+                    </p>
+                    <div class="rounded-2xl border border-gray-150 p-4 bg-gray-50">
+                        <h4 class="text-[14px] font-bold text-gray-900 mb-1">Ketentuan Proksi Tekanan Kas (Cash Pressure)</h4>
+                        <p class="text-[13px] text-gray-600 leading-relaxed">
+                            FluxyOS menampilkan komitmen utang usaha dan tren pengeluaran sebagai proksi Tekanan Kas. Kami tetap transparan: perhitungan tekanan kas berfungsi sebagai proksi (perkiraan) kecuali jika catatan saldo bank yang sebenarnya telah terhubung.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Strategic Stats Visual -->
+                <div class="rounded-3xl border border-gray-200 bg-white p-6 shadow-md relative">
+                    <div class="border-b border-gray-100 pb-3 mb-4">
+                        <p class="font-mono text-[9px] uppercase tracking-wider text-gray-400">Panel Ringkasan Eksekutif</p>
+                        <h3 class="text-[16px] font-bold text-gray-950">Konsentrasi & Deviasi Vendor</h3>
+                    </div>
+                    <div class="space-y-4 text-[13px]">
+                        <div>
+                            <div class="flex justify-between font-medium text-gray-800 mb-1">
+                                <span>AWS Cloud Infra</span>
+                                <span>+18% vs bulan lalu</span>
+                            </div>
+                            <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-orange-500" style="width: 74%;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between font-medium text-gray-800 mb-1">
+                                <span>Meta Marketing Spend</span>
+                                <span>-2% vs bulan lalu</span>
+                            </div>
+                            <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-green-500" style="width: 48%;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between font-medium text-gray-800 mb-1">
+                                <span>Layanan Kontraktor</span>
+                                <span>Pengeluaran stabil</span>
+                            </div>
+                            <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-gray-500" style="width: 35%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 10. Section 9: FAQ -->
+    <section id="faq" class="py-16 md:py-20 px-6 bg-white border-b border-gray-200">
+        <div class="max-w-[1120px] mx-auto">
+            <div class="grid lg:grid-cols-[0.8fr_1.2fr] gap-10">
+                <div>
+                    <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">Pertanyaan yang sering diajukan</h2>
+                    <p class="text-[16px] text-gray-600">Jawaban operasional yang jelas untuk profesional keuangan dan CFO.</p>
+                </div>
+                <div class="space-y-4">
+                    <details class="border-b border-gray-200 py-4 group" open>
+                        <summary class="flex items-center justify-between cursor-pointer list-none">
+                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah FluxyOS dirancang untuk CFO atau tim finance kecil?</h3>
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                        </summary>
+                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
+                            Ya. FluxyOS dirancang untuk pemilik bisnis dan tim finance yang membutuhkan sistem operasi yang lebih jelas untuk transaksi, tagihan, langganan, kwitansi, laporan, dan tanya-jawab keuangan.
+                        </p>
+                    </details>
+                    <details class="border-b border-gray-200 py-4 group">
+                        <summary class="flex items-center justify-between cursor-pointer list-none">
+                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah FluxyOS dapat membantu tutup buku akhir bulan?</h3>
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                        </summary>
+                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
+                            FluxyOS membantu tim mengidentifikasi kwitansi yang hilang, catatan transaksi yang tidak lengkap, tagihan jatuh tempo, pembaruan langganan, dan celah pelaporan sebelum mengekspor atau meninjau laporan keuangan.
+                        </p>
+                    </details>
+                    <details class="border-b border-gray-200 py-4 group">
+                        <summary class="flex items-center justify-between cursor-pointer list-none">
+                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah FluxyOS dapat melacak kwitansi yang hilang dan catatan transaksi yang belum lengkap?</h3>
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                        </summary>
+                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
+                            Ya. FluxyOS menggunakan status transaksi seperti Missing Receipt (Kwitansi Hilang) dan dapat menampilkan catatan tidak lengkap yang memerlukan perhatian tim finance sebelum ditinjau oleh akuntan.
+                        </p>
+                    </details>
+                    <details class="border-b border-gray-200 py-4 group">
+                        <summary class="flex items-center justify-between cursor-pointer list-none">
+                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah FluxyOS menggantikan software akuntansi?</h3>
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                        </summary>
+                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
+                            Tidak. FluxyOS adalah sistem operasi keuangan sebelum akuntansi. Platform ini membantu merapikan catatan operasional, menjelaskan angka keuangan, dan menyiapkan ekspor yang bersih agar Anda menghabiskan lebih sedikit waktu memperbaiki kesalahan di software akuntansi.
+                        </p>
+                    </details>
+                    <details class="border-b border-gray-200 py-4 group">
+                        <summary class="flex items-center justify-between cursor-pointer list-none">
+                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah FluxyOS bisa mengekspor laporan untuk akuntan?</h3>
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                        </summary>
+                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
+                            Ya. FluxyOS dirancang untuk mendukung data keuangan yang siap diekspor, menyediakan file CSV/Excel bersih dengan transaksi terkategori, lampiran bukti kwitansi, dan metadata audit yang jelas.
+                        </p>
+                    </details>
+                    <details class="border-b border-gray-200 py-4 group">
+                        <summary class="flex items-center justify-between cursor-pointer list-none">
+                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah Fluxy AI bisa menjawab pertanyaan keuangan dari data kami?</h3>
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                        </summary>
+                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
+                            Ya. Fluxy AI dirancang untuk menjawab pertanyaan keuangan menggunakan catatan ledger transaksi FluxyOS and ringkasan data yang dihitung di backend, memastikan jawaban tetap akurat dan dapat diverifikasi.
+                        </p>
+                    </details>
+                    <details class="border-b border-gray-200 py-4 group">
+                        <summary class="flex items-center justify-between cursor-pointer list-none">
+                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah FluxyOS dapat menyetujui pembayaran atau memindahkan uang?</h3>
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                        </summary>
+                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
+                            FluxyOS mendukung alur kerja peninjauan dan pelacakan, namun pemindahan uang atau tindakan persetujuan pembayaran memerlukan konfirmasi eksplisit dari pengguna, riwayat audit, dan konfigurasi keamanan yang lebih ketat di masa depan.
+                        </p>
+                    </details>
+                    <details class="border-b border-gray-200 py-4 group">
+                        <summary class="flex items-center justify-between cursor-pointer list-none">
+                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah data keuangan dipisahkan per pengguna atau workspace?</h3>
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                        </summary>
+                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
+                            Ya. Semua data produksi sangat dibatasi per ruang lingkup pengguna (user-scoped) dan diisolasi di bawah kredensial terautentikasi, memastikan privasi penuh, pemisahan, dan keamanan catatan keuangan Anda.
+                        </p>
+                    </details>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 11. Final CTA -->
+    <section class="bg-[#0B0F19] py-16 md:py-24 px-6 text-center">
+        <div class="max-w-[1280px] mx-auto">
+            <h2 class="text-[34px] md:text-[44px] font-bold tracking-tight text-white mb-5">
+                Tutup buku lebih cepat. Jelaskan angka keuangan lebih baik. Kendalikan pekerjaan finance lebih awal.
+            </h2>
+            <p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
+                Hubungkan input keuangan operasional Anda, lihat kesalahan validasi ledger secara real-time, dan jalankan tutup buku akhir bulan yang lebih bersih. Mulai gratis, tingkatkan saat operasi Anda berkembang.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow inline-block text-center">Coba FluxyOS gratis</a>
+                <a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">Lihat harga</a>
+            </div>
+        </div>
+    </section>
+
+    <script src="/assets/js/universe-canvas.js" defer></script>
+    <script src="/assets/js/footer-loader.js" defer></script>
+    <script src="/assets/js/fluxyos.js" defer></script>
+</body>
+</html>

@@ -171,4 +171,24 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/tech-startups-saas"/>
   </url>
 
+  <url>
+    <loc>https://fluxyos.com/use-cases/cfo-finance-teams</loc>
+    <lastmod>2026-05-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/cfo-finance-teams"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/cfo-finance-teams"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/cfo-finance-teams"/>
+  </url>
+
+  <url>
+    <loc>https://fluxyos.com/id/use-cases/cfo-finance-teams</loc>
+    <lastmod>2026-05-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/cfo-finance-teams"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/cfo-finance-teams"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/cfo-finance-teams"/>
+  </url>
+
 </urlset>
