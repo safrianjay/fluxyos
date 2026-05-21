@@ -348,6 +348,12 @@
     text-align: center;
 }
 
+.overview-section-content {
+    display: block;
+    width: 100%;
+    min-width: 0;
+}
+
 .overview-risk-pill {
     display: inline-flex;
     align-items: center;
@@ -386,6 +392,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
+    width: 100%;
+    min-width: 0;
     padding: 10px 0;
     border-bottom: 1px solid #F3F4F6;
     color: #64748B;
@@ -394,9 +402,12 @@
 }
 
 .overview-money-row strong {
+    flex-shrink: 0;
     color: #111827;
     font-family: "Fira Code", monospace;
     font-size: 13px;
+    text-align: right;
+    white-space: nowrap;
 }
 
 .overview-money-row.is-total {
@@ -405,6 +416,7 @@
 }
 
 .overview-limitation {
+    max-width: 58ch;
     margin-top: 12px;
     color: #64748B;
     font-size: 12px;
@@ -414,6 +426,7 @@
 .overview-link-row {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 14px;
     margin-top: 14px;
 }
@@ -425,6 +438,7 @@
 }
 
 .overview-mini-metrics > div {
+    min-width: 0;
     border: 1px solid #F3F4F6;
     border-radius: 10px;
     padding: 12px;
@@ -445,11 +459,15 @@
     color: #111827;
     font-family: "Fira Code", monospace;
     font-size: 14px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
 }
 
 .overview-attention-list,
 .overview-upcoming-list {
     display: grid;
+    width: 100%;
+    min-width: 0;
     gap: 10px;
 }
 
@@ -459,6 +477,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
+    width: 100%;
+    min-width: 0;
     border: 1px solid #F3F4F6;
     border-radius: 10px;
     padding: 14px;
@@ -479,6 +499,11 @@
     font-weight: 800;
 }
 
+.overview-attention-item > div,
+.overview-upcoming-item > div {
+    min-width: 0;
+}
+
 .overview-attention-item p,
 .overview-upcoming-item small {
     display: block;
@@ -490,6 +515,7 @@
 
 .overview-attention-item span,
 .overview-upcoming-item span {
+    flex-shrink: 0;
     color: #EA580C;
     font-size: 12px;
     font-weight: 800;
@@ -497,6 +523,7 @@
 }
 
 .overview-ai-note {
+    width: 100%;
     border: 1px solid #E5E7EB;
     border-left: 3px solid #EA580C;
     border-radius: 10px;
@@ -512,6 +539,7 @@
 }
 
 .overview-ai-fact {
+    width: 100%;
     border: 1px solid #F3F4F6;
     border-radius: 10px;
     padding: 12px;

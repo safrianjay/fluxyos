@@ -457,7 +457,10 @@ function updateKPI(id, value) {
 
 function setHtml(id, html) {
     const el = document.getElementById(id);
-    if (el) el.innerHTML = html;
+    if (!el) return;
+    el.classList.remove('overview-card-loading', 'overview-empty-copy');
+    el.classList.add('overview-section-content');
+    el.innerHTML = html;
 }
 
 function isPositiveTransaction(tx) {
