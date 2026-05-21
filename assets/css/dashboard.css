@@ -938,23 +938,22 @@
 }
 
 .metric-info {
-    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 15px;
-    height: 15px;
+    width: 16px;
+    height: 16px;
     border: 1px solid #CBD5E1;
     border-radius: 999px;
     background: #FFFFFF;
     color: #64748B;
     font-family: Inter, sans-serif;
-    font-size: 9px;
+    font-size: 10px;
     line-height: 1;
     font-weight: 800;
     letter-spacing: 0;
     text-transform: none;
-    cursor: help;
+    cursor: default;
     transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
 }
 
@@ -967,35 +966,30 @@
     outline: none;
 }
 
-.metric-info::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    top: calc(100% + 8px);
-    left: -6px;
-    width: 220px;
-    max-width: min(220px, calc(100vw - 48px));
-    padding: 9px 10px;
+.metric-tooltip {
+    position: fixed;
+    z-index: 80;
+    width: 240px;
+    max-width: calc(100vw - 32px);
+    padding: 10px 11px;
     border: 1px solid #E5E7EB;
     border-radius: 8px;
     background: #FFFFFF;
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.16);
     color: #334155;
-    font-size: 11px;
-    line-height: 1.35;
+    font-size: 12px;
+    line-height: 1.38;
     font-weight: 600;
     letter-spacing: 0;
     text-transform: none;
     text-align: left;
-    opacity: 0;
     pointer-events: none;
+    opacity: 0;
     transform: translateY(-3px);
     transition: opacity 120ms ease, transform 120ms ease;
-    z-index: 30;
 }
 
-.metric-info:hover::after,
-.metric-info:focus::after,
-.metric-info:focus-visible::after {
+.metric-tooltip.is-visible {
     opacity: 1;
     transform: translateY(0);
 }
