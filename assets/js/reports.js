@@ -259,11 +259,28 @@ function renderReadiness() {
         if (scoreEl) scoreEl.textContent = `${confidence.score}%`;
         if (labelEl) labelEl.textContent = `${confidence.label}. ${pack.warning_total ? 'Receipt and date coverage need review before external handoff.' : 'Data coverage looks healthy.'}`;
     }
-    setBar('bar-ledger', confidence?.ledgerCompleteness);
-    setBar('bar-receipt', confidence?.receiptCoverage);
-    setBar('bar-bills', confidence?.dueDateCompleteness);
-    setBar('bar-predict', predictabilityBarValue(pack));
-    setBar('bar-comparison', comparisonReadinessValue(pack));
+    setChip('chip-ledger', confidence?.ledgerCompleteness);
+    setChip('chip-receipt', confidence?.receiptCoverage);
+    setChip('chip-bills', confidence?.dueDateCompleteness);
+    setChip('chip-predict', predictabilityBarValue(pack));
+    setChip('chip-comparison', comparisonReadinessValue(pack));
+}
+
+function setChip(id, pct) {
+    const chip = el(id);
+    if (!chip) return;
+    const val = chip.querySelector('.val');
+    chip.classList.remove('is-good', 'is-warn', 'is-mid', 'is-none');
+    if (pct === null || pct === undefined) {
+        if (val) val.textContent = '—';
+        chip.classList.add('is-none');
+        return;
+    }
+    const rounded = Math.max(0, Math.min(100, Math.round(pct)));
+    if (val) val.textContent = `${rounded}%`;
+    if (rounded >= 85) chip.classList.add('is-good');
+    else if (rounded >= 70) chip.classList.add('is-mid');
+    else chip.classList.add('is-warn');
 }
 
 function comparisonReadinessValue(pack) {
@@ -297,24 +314,6 @@ function predictabilityBarValue(pack) {
     if (pack.profit_loss.opex > 0) { score += 20; denom += 20; }
     if (denom === 0) return null;
     return Math.round((score / 100) * 100);
-}
-
-function setBar(prefix, pct) {
-    const valueEl = el(`${prefix}-value`);
-    const fillEl = el(`${prefix}-fill`);
-    const wrapEl = el(`${prefix}-wrap`);
-    if (pct === null || pct === undefined) {
-        if (valueEl) valueEl.textContent = '—';
-        if (fillEl) fillEl.style.width = '0%';
-        if (wrapEl) wrapEl.classList.remove('bar-good', 'bar-warn');
-        return;
-    }
-    if (valueEl) valueEl.textContent = `${pct}%`;
-    if (fillEl) fillEl.style.width = `${Math.max(0, Math.min(100, pct))}%`;
-    if (wrapEl) {
-        wrapEl.classList.toggle('bar-good', pct >= 85);
-        wrapEl.classList.toggle('bar-warn', pct < 70);
-    }
 }
 
 function renderDataCoverage() {
@@ -924,6 +923,16 @@ function bindEvents() {
             }
         });
     }
+
+    // Workflow help toggle (on the compact readiness strip).
+    el('workflow-help-btn')?.addEventListener('click', () => {
+        const panel = el('workflow-help-panel');
+        const btn = el('workflow-help-btn');
+        if (!panel || !btn) return;
+        const willOpen = panel.classList.contains('hidden');
+        panel.classList.toggle('hidden', !willOpen);
+        btn.setAttribute('aria-expanded', String(willOpen));
+    });
 
     el('empty-add-transaction')?.addEventListener('click', () => {
         window.showAddTransactionModal?.({
