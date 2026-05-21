@@ -112,10 +112,19 @@ function resolveCurrentScope() {
     });
 }
 
+const LOADING_PANEL_IDS = ['panel-readiness', 'panel-recommended', 'panel-data-coverage', 'panel-needs-cleanup'];
+function setPanelsLoading(loading) {
+    LOADING_PANEL_IDS.forEach(id => {
+        const node = el(id);
+        if (node) node.classList.toggle('reports-loading', loading);
+    });
+}
+
 async function loadReportData() {
     if (!reportsState.user) return;
     reportsState.loading = true;
     reportsState.error = null;
+    setPanelsLoading(true);
     const scope = resolveCurrentScope();
     reportsState.scope = scope;
     const current = scope.current_period;
@@ -175,6 +184,7 @@ async function loadReportData() {
     } finally {
         reportsState.loading = false;
         renderAll();
+        setPanelsLoading(false);
     }
 }
 
