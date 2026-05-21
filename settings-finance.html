@@ -8,6 +8,23 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <style>
+        .recurring-category-option input:checked ~ .recurring-category-accent {
+            opacity: 1;
+        }
+
+        .recurring-category-option input:checked ~ .recurring-check-box {
+            border-color: #111827;
+        }
+
+        .recurring-category-option input:checked ~ .recurring-check-box svg {
+            opacity: 1;
+        }
+
+        .recurring-category-option input:checked ~ .recurring-category-label {
+            color: #111827;
+        }
+    </style>
 </head>
 <body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
 
@@ -190,9 +207,15 @@
             list.innerHTML = categories.map(cat => {
                 const checked = tagged.has(cat) ? 'checked' : '';
                 return `
-                <label class="flex items-center gap-3 px-3 py-2.5 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-orange-300 has-[:checked]:bg-orange-50">
-                    <input type="checkbox" data-recurring-cat="${escapeHtml(cat)}" ${checked} class="accent-orange-500 w-4 h-4">
-                    <span class="text-[13px] font-medium text-gray-800">${escapeHtml(cat)}</span>
+                <label class="recurring-category-option relative flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 cursor-pointer transition-all hover:border-gray-300 hover:bg-gray-50 has-[:checked]:border-gray-900 has-[:checked]:bg-slate-50 has-[:checked]:shadow-sm has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-orange-100 has-[:focus-visible]:ring-offset-2">
+                    <input type="checkbox" data-recurring-cat="${escapeHtml(cat)}" ${checked} class="sr-only">
+                    <span class="recurring-category-accent absolute left-0 top-2 bottom-2 w-0 rounded-full border-l-2 border-[#EA580C] opacity-0 transition-opacity"></span>
+                    <span class="recurring-check-box flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border border-gray-300 bg-white text-[#EA580C] transition-all">
+                        <svg class="h-3 w-3 opacity-0 transition-opacity" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                            <path d="M3 6.2 5.1 8.3 9 3.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    <span class="recurring-category-label text-[13px] font-semibold text-gray-700 transition-colors">${escapeHtml(cat)}</span>
                 </label>`;
             }).join('');
         }
