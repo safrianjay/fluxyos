@@ -169,7 +169,7 @@ function renderOverviewLoadingState() {
     setHtml('payables-by-category-content', '<div class="overview-card-loading">Loading payables...</div>');
     setHtml('upcoming-obligations-content', '<div class="overview-card-loading">Loading upcoming obligations...</div>');
     setHtml('report-readiness-content', '<div class="overview-card-loading">Loading report readiness...</div>');
-    setHtml('ai-business-summary-content', '<div class="overview-card-loading">Loading grounded summary...</div>');
+    setHtml('ai-business-summary-content', getAiBusinessSummaryLoadingHtml());
     aiSummaryRequestSeq += 1;
     updateKPI('attention-total-count', '0');
     updateKPI('attention-needs-review-count', '0');
@@ -552,7 +552,7 @@ async function renderAiBusinessSummary(overview) {
     const periodStart = overview.period?.startDate || dashboardRangeStart;
     const periodEnd = overview.period?.endDate || dashboardRangeEnd;
     updateKPI('ai-summary-period', overview.period?.label || 'Selected period');
-    setHtml('ai-business-summary-content', '<div class="overview-card-loading">Fluxy AI is reading this period...</div>');
+    setHtml('ai-business-summary-content', getAiBusinessSummaryLoadingHtml());
 
     try {
         const user = auth.currentUser;
@@ -585,6 +585,22 @@ async function renderAiBusinessSummary(overview) {
         if (requestSeq !== aiSummaryRequestSeq) return;
         renderAiBusinessSummaryFallback(overview);
     }
+}
+
+function getAiBusinessSummaryLoadingHtml() {
+    return `
+        <div class="brain-loading" role="status" aria-label="Fluxy AI is analyzing this period">
+            <span class="brain-loading-icon" aria-hidden="true">
+                <span class="brain-loading-core"></span>
+                <span class="brain-loading-ring"></span>
+                <span class="brain-loading-ring brain-loading-ring-alt"></span>
+                <span class="brain-loading-node brain-loading-node-one"></span>
+                <span class="brain-loading-node brain-loading-node-two"></span>
+                <span class="brain-loading-node brain-loading-node-three"></span>
+                <span class="brain-loading-scan"></span>
+            </span>
+        </div>
+    `;
 }
 
 function buildAiBusinessSummarySnapshot(overview = {}) {
