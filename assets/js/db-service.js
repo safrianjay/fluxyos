@@ -770,6 +770,16 @@ class DataService {
             const key = this._getDayKey(date);
             return key >= period.startDate && key <= period.endDate;
         });
+        const aiSnapshotBills = [...billsInPeriod, ...upcomingBills]
+            .filter((bill, index, arr) => arr.findIndex(item => item.id === bill.id) === index);
+        const aiSnapshotSubscriptions = [...subsInPeriod, ...upcomingSubscriptions]
+            .filter((sub, index, arr) => arr.findIndex(item => item.id === sub.id) === index);
+
+        overview.aiSnapshot = {
+            transactions: periodTransactions,
+            bills: aiSnapshotBills,
+            subscriptions: aiSnapshotSubscriptions
+        };
 
         overview.cashFlow = this._buildCashFlowBuckets(
             periodTransactions, billsInPeriod, subsInPeriod,

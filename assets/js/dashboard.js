@@ -549,6 +549,8 @@ function renderAttentionQueue() {
 
 async function renderAiBusinessSummary(overview) {
     const requestSeq = ++aiSummaryRequestSeq;
+    const periodStart = overview.period?.startDate || dashboardRangeStart;
+    const periodEnd = overview.period?.endDate || dashboardRangeEnd;
     updateKPI('ai-summary-period', overview.period?.label || 'Selected period');
     setHtml('ai-business-summary-content', '<div class="overview-card-loading">Fluxy AI is reading this period...</div>');
 
@@ -567,9 +569,10 @@ async function renderAiBusinessSummary(overview) {
                 page_context: 'overview_summary',
                 period: {
                     type: 'custom',
-                    start_date: dashboardRangeStart,
-                    end_date: dashboardRangeEnd,
+                    start_date: periodStart,
+                    end_date: periodEnd,
                 },
+                finance_snapshot: buildAiBusinessSummarySnapshot(overview),
             }),
         });
         const data = await response.json().catch(() => ({}));
@@ -582,6 +585,78 @@ async function renderAiBusinessSummary(overview) {
         if (requestSeq !== aiSummaryRequestSeq) return;
         renderAiBusinessSummaryFallback(overview);
     }
+}
+
+function buildAiBusinessSummarySnapshot(overview = {}) {
+    const sourceStatus = overview.sourceStatus || {};
+    const transactions = normalizeAiBusinessSummarySnapshotRecords(
+        overview.aiSnapshot?.transactions || overview.chartTransactions || [],
+        1000
+    );
+    const bills = normalizeAiBusinessSummarySnapshotRecords(
+        overview.aiSnapshot?.bills || overview.upcoming?.bills || [],
+        500
+    );
+    const subscriptions = normalizeAiBusinessSummarySnapshotRecords(
+        overview.aiSnapshot?.subscriptions || overview.upcoming?.subscriptions || [],
+        500
+    );
+    return {
+        transactions,
+        bills,
+        subscriptions,
+        meta: {
+            source: 'dashboard_overview_client_snapshot',
+            generated_at: new Date().toISOString(),
+            counts: {
+                transactions: transactions.length,
+                bills: bills.length,
+                subscriptions: subscriptions.length,
+            },
+            reads: {
+                transactions: buildAiBusinessSummarySnapshotRead(sourceStatus.transactions),
+                bills: buildAiBusinessSummarySnapshotRead(sourceStatus.bills),
+                subscriptions: buildAiBusinessSummarySnapshotRead(sourceStatus.subscriptions),
+            },
+        },
+    };
+}
+
+function buildAiBusinessSummarySnapshotRead(status) {
+    if (status === 'error') return { success: false, error: 'read_failed' };
+    return { success: true, error: null };
+}
+
+function normalizeAiBusinessSummarySnapshotRecords(records = [], limit = 1000) {
+    return records.slice(0, limit).map(record => ({
+        id: String(record.id || ''),
+        vendor_name: String(record.vendor_name || record.name || record.label || 'Unnamed record'),
+        name: record.name ? String(record.name) : undefined,
+        category: String(record.category || 'Uncategorized'),
+        type: String(record.type || 'unknown'),
+        status: String(record.status || 'Unknown'),
+        amount: Number(record.amount) || 0,
+        timestamp: serializeAiBusinessSummarySnapshotDate(record.timestamp),
+        due_date: serializeAiBusinessSummarySnapshotDate(record.due_date),
+        renewal_date: serializeAiBusinessSummarySnapshotDate(record.renewal_date),
+    }));
+}
+
+function serializeAiBusinessSummarySnapshotDate(value) {
+    if (!value) return null;
+    if (typeof value === 'string') return value;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
+    if (typeof value.toDate === 'function') {
+        try {
+            const date = value.toDate();
+            return Number.isNaN(date.getTime()) ? null : date.toISOString();
+        } catch {
+            return null;
+        }
+    }
+    if (Number.isFinite(value.seconds)) return new Date(value.seconds * 1000).toISOString();
+    if (Number.isFinite(value._seconds)) return new Date(value._seconds * 1000).toISOString();
+    return null;
 }
 
 function renderAiBusinessSummaryFallback(overview) {

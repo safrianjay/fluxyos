@@ -66,6 +66,34 @@ Only safe structured fields are sent:
 The snapshot does not include raw uploaded document contents, receipt image
 data, API keys, or unrelated user data.
 
+## Overview Dashboard Snapshot
+
+The dashboard AI Business Summary also calls:
+
+`POST /api/v1/brain/chat`
+
+Its `page_context` is `overview_summary`, and the request must include a
+`finance_snapshot` built from the already-authenticated dashboard overview data.
+This snapshot is scoped to the selected dashboard period and uses:
+
+- period transactions from `overview.chartTransactions`
+- period bills plus due-soon or overdue bills from `overview.aiSnapshot.bills`
+- period subscriptions plus upcoming renewals from
+  `overview.aiSnapshot.subscriptions`
+
+This exists because the backend Firestore REST read and the browser Firestore
+read are separate paths. The dashboard can successfully load records through
+Firebase Auth while the Netlify function cannot read the same collections through
+REST due to environment, token, rules, or transient network issues. If the
+dashboard does not send the snapshot and the backend read fails, `/brain/chat`
+correctly returns a data-unavailable answer instead of pretending missing data is
+zero. That is the failure mode where the AI Business Summary says it cannot
+access transactions, bills, or subscriptions even though KPI cards are visible.
+
+Do not remove this snapshot unless the backend read path is proven reliable for
+the dashboard request. The snapshot is not persisted and does not introduce any
+AI write action.
+
 ## Backend Selection Rule
 
 The backend still tries direct Firestore reads first.
