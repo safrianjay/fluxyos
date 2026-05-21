@@ -390,17 +390,17 @@ function renderCashFlowChart() {
             buildTooltip: barEl => `
                 <div class="chart-tooltip-header">${escapeHtml(barEl.dataset.label)}</div>
                 <div class="chart-tooltip-row">
-                    <span class="chart-tooltip-swatch" style="background:#d9efdf"></span>
+                    <span class="chart-tooltip-swatch" style="background:#16A34A"></span>
                     <span class="chart-tooltip-label">Cash In</span>
                     <span class="chart-tooltip-value">${formatIDR(Number(barEl.dataset.cashIn || 0))}</span>
                 </div>
                 <div class="chart-tooltip-row">
-                    <span class="chart-tooltip-swatch" style="background:#7f9278"></span>
+                    <span class="chart-tooltip-swatch" style="background:#EF4444"></span>
                     <span class="chart-tooltip-label">Cash Out</span>
                     <span class="chart-tooltip-value">${formatIDR(Number(barEl.dataset.cashOut || 0))}</span>
                 </div>
                 <div class="chart-tooltip-row">
-                    <span class="chart-tooltip-swatch" style="background:#84ef52"></span>
+                    <span class="chart-tooltip-swatch" style="background:#111827"></span>
                     <span class="chart-tooltip-label">Net</span>
                     <span class="chart-tooltip-value">${formatSignedIDR(Number(barEl.dataset.net || 0))}</span>
                 </div>

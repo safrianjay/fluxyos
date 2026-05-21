@@ -835,7 +835,7 @@
 /* Two-column layout */
 .overview-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 380px;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
     gap: 24px;
     align-items: start;
 }
@@ -855,14 +855,14 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     background: #FFFFFF;
     border: 1px solid #E5E7EB;
-    border-radius: 18px;
+    border-radius: 16px;
     box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 10px 22px rgba(15,23,42,0.04);
     overflow: hidden;
 }
 
 .metric-cell {
-    min-height: 138px;
-    padding: 20px;
+    min-height: 128px;
+    padding: 18px 20px;
     border-right: 1px solid #E5E7EB;
     border-bottom: 1px solid #E5E7EB;
     position: relative;
@@ -888,12 +888,14 @@
 }
 
 .metric-value {
-    font-family: "Fira Code", monospace;
+    font-family: Inter, sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
     color: #111827;
-    font-size: 24px;
+    font-size: clamp(22px, 1.65vw, 30px);
     line-height: 1.1;
-    letter-spacing: -0.05em;
-    font-weight: 700;
+    letter-spacing: -0.015em;
+    font-weight: 800;
     white-space: nowrap;
 }
 
@@ -910,7 +912,7 @@
 .metric-sub {
     margin: 10px 0 0;
     color: #6B7280;
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.45;
     font-weight: 600;
     max-width: 280px;
@@ -1006,9 +1008,9 @@
 
 .legend-dot-revenue { background: #22C55E; }
 .legend-dot-opex { background: #9CA3AF; }
-.legend-dot-cash-in { background: #D9EFDF; border: 1px solid #CFE8D6; }
-.legend-dot-cash-out { background: #7F9278; }
-.legend-dot-cash-net { background: #84EF52; }
+.legend-dot-cash-in { background: #16A34A; }
+.legend-dot-cash-out { background: #EF4444; }
+.legend-dot-cash-net { background: #111827; }
 
 .chart-footnote {
     margin: 14px 0 0;
@@ -1021,7 +1023,7 @@
 /* Cash flow chart */
 .cash-flow-chart {
     position: relative;
-    min-height: 320px;
+    min-height: 300px;
     display: flex;
     flex-direction: column;
     border-top: 1px solid #F1F5F9;
@@ -1034,7 +1036,7 @@
     display: grid;
     grid-template-columns: 60px 1fr;
     gap: 10px;
-    min-height: 260px;
+    min-height: 240px;
 }
 
 .cash-flow-axis {
@@ -1042,7 +1044,8 @@
     flex-direction: column;
     justify-content: space-between;
     color: #94A3B8;
-    font-family: "Fira Code", monospace;
+    font-family: Inter, sans-serif;
+    font-variant-numeric: tabular-nums;
     font-size: 11px;
     font-weight: 700;
     text-align: right;
@@ -1052,6 +1055,9 @@
 .cash-flow-plot {
     position: relative;
     border-left: 1px solid #E5E7EB;
+    background:
+        linear-gradient(to bottom, transparent calc(25% - 1px), #F1F5F9 25%, transparent calc(25% + 1px)),
+        linear-gradient(to bottom, transparent calc(75% - 1px), #F1F5F9 75%, transparent calc(75% + 1px));
 }
 
 .cash-flow-zero-line {
@@ -1070,46 +1076,60 @@
     display: grid;
     grid-auto-columns: 1fr;
     grid-auto-flow: column;
-    gap: 14px;
-    padding: 0 8px;
+    gap: 16px;
+    padding: 0 10px;
 }
 
 .cash-flow-month {
     position: relative;
     height: 100%;
     cursor: pointer;
+    min-width: 28px;
 }
 
 .cash-bar {
     position: absolute;
-    left: 50%;
-    width: 60%;
+    width: clamp(8px, 22%, 20px);
     transform: translateX(-50%);
-    border-radius: 3px;
-    transition: filter 120ms ease;
+    border-radius: 999px 999px 4px 4px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.36);
+    transition: filter 120ms ease, transform 120ms ease;
 }
 
 .cash-bar-in {
+    left: 30%;
     bottom: 50%;
-    background: #D9EFDF;
-    border: 1px solid #CFE8D6;
+    background: linear-gradient(180deg, #22C55E 0%, #15803D 100%);
 }
 
 .cash-bar-out {
+    left: 50%;
     top: 50%;
-    background: #7F9278;
+    background: linear-gradient(180deg, #FCA5A5 0%, #EF4444 100%);
+    border-radius: 4px 4px 999px 999px;
 }
 
 .cash-bar-net {
-    width: 28%;
-    background: #84EF52;
+    left: 70%;
+    width: clamp(5px, 14%, 12px);
+    background: #111827;
     z-index: 2;
+    opacity: 0.9;
 }
 
-.cash-bar-net-pos { bottom: 50%; }
-.cash-bar-net-neg { top: 50%; }
+.cash-bar-net-pos {
+    bottom: 50%;
+    border-radius: 999px 999px 4px 4px;
+}
+.cash-bar-net-neg {
+    top: 50%;
+    border-radius: 4px 4px 999px 999px;
+}
 
-.cash-flow-month:hover .cash-bar { filter: brightness(0.95); }
+.cash-flow-month:hover .cash-bar {
+    filter: brightness(1.04);
+    transform: translateX(-50%) scaleY(1.02);
+}
 
 .cash-flow-labels {
     display: grid;
@@ -1284,10 +1304,10 @@
 }
 
 .brain-panel {
-    padding: 20px;
+    padding: 24px;
     background:
-        radial-gradient(circle at 100% 0%, rgba(234,88,12,0.10), transparent 32%),
-        linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
+        radial-gradient(circle at 100% 0%, rgba(148,163,184,0.34), transparent 34%),
+        linear-gradient(135deg, #F8B894 0%, #FDC19C 54%, #CABCC8 100%);
 }
 
 .brain-head {
@@ -1298,9 +1318,9 @@
 }
 
 .brain-logo {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
     color: #EA580C;
     flex-shrink: 0;
 }
@@ -1314,7 +1334,7 @@
 .brain-title {
     margin: 0;
     color: #111827;
-    font-size: 16px;
+    font-size: 20px;
     line-height: 1.15;
     font-weight: 800;
     letter-spacing: -0.02em;
@@ -1323,24 +1343,24 @@
 .brain-period {
     margin: 2px 0 0;
     color: #6B7280;
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 600;
 }
 
 .brain-body {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 14px;
 }
 
 .brain-message {
     border: 1px solid #E5E7EB;
     border-left: 4px solid #EA580C;
-    border-radius: 12px;
+    border-radius: 14px;
     background: #FFFFFF;
-    padding: 14px;
+    padding: 18px 20px;
     color: #111827;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1.5;
     font-weight: 700;
     letter-spacing: -0.005em;
@@ -1348,9 +1368,9 @@
 
 .brain-block {
     border: 1px solid #E5E7EB;
-    border-radius: 12px;
+    border-radius: 14px;
     background: #FFFFFF;
-    padding: 12px 14px;
+    padding: 16px 18px;
 }
 
 .brain-block-label {
@@ -1364,20 +1384,20 @@
 
 .brain-block-copy {
     color: #111827;
-    font-size: 13px;
+    font-size: 15px;
     line-height: 1.45;
     font-weight: 700;
 }
 
 .brain-cta {
     width: 100%;
-    height: 42px;
-    border: 1px solid #111827;
+    height: 48px;
+    border: 1px solid #EA580C;
     border-radius: 12px;
-    background: #111827;
+    background: #EA580C;
     color: #FFFFFF;
     font-family: Inter, sans-serif;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 800;
     cursor: pointer;
     margin-top: 12px;
@@ -1385,8 +1405,8 @@
 }
 
 .brain-cta:hover {
-    background: #0B0F19;
-    border-color: #EA580C;
+    background: #C2410C;
+    border-color: #C2410C;
 }
 .brain-cta:active { transform: scale(0.99); }
 
@@ -1617,6 +1637,8 @@
     .cash-flow-chart { min-height: 260px; }
     .cash-flow-stage { grid-template-columns: 48px 1fr; min-height: 200px; }
     .cash-flow-labels { padding-left: 58px; gap: 8px; }
+    .cash-flow-bars { gap: 10px; padding: 0 6px; }
+    .cash-flow-month { min-width: 22px; }
 
     .attention-tabs { gap: 18px; overflow-x: auto; }
     .attention-tab { white-space: nowrap; }
@@ -1624,4 +1646,7 @@
     .queue-row { grid-template-columns: 40px minmax(0, 1fr) 18px; padding: 12px 14px; }
 
     .right-workbench { border-radius: 14px; }
+    .brain-panel { padding: 20px; }
+    .brain-title { font-size: 18px; }
+    .brain-message { font-size: 15px; }
 }
