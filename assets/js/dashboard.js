@@ -171,6 +171,7 @@ function renderOverviewLoadingState() {
     setHtml('ai-business-summary-content', '<div class="overview-card-loading">Loading grounded summary...</div>');
     updateKPI('attention-total-count', '0');
     updateKPI('attention-needs-review-count', '0');
+    clearMetricSparklines();
     const status = document.getElementById('report-readiness-status');
     if (status) {
         status.textContent = 'Loading';
@@ -197,8 +198,7 @@ function renderOverviewErrorState() {
     setHtml('upcoming-obligations-content', errorHtml);
     setHtml('report-readiness-content', errorHtml);
     setHtml('ai-business-summary-content', errorHtml);
-    const sparkline = document.getElementById('kpi-cash-pressure-sparkline');
-    if (sparkline) sparkline.innerHTML = '';
+    clearMetricSparklines();
     const status = document.getElementById('report-readiness-status');
     if (status) {
         status.textContent = 'Unavailable';
@@ -248,7 +248,21 @@ function renderSummaryBoard(overview) {
     const bar = document.getElementById('kpi-margin-bar');
     if (bar) bar.style.width = `${Math.max(0, Math.min(100, margin))}%`;
 
-    renderCashPressureSparkline(cashFlowBuckets);
+    renderMetricSparkline(
+        'kpi-revenue-sparkline',
+        cashflowBuckets.map(bucket => Number(bucket.revenue) || 0),
+        'revenue'
+    );
+    renderMetricSparkline(
+        'kpi-cash-pressure-sparkline',
+        cashFlowBuckets.map(bucket => Number(bucket.netCashFlow) || 0),
+        'pressure'
+    );
+    renderMetricSparkline(
+        'kpi-opex-sparkline',
+        cashflowBuckets.map(bucket => Number(bucket.spend) || 0),
+        'opex'
+    );
 }
 
 function renderKpiComparison(id, change, type) {
@@ -301,38 +315,57 @@ function renderMetricArrow(id, change, type) {
     el.className = `metric-arrow ${isGood ? 'is-good' : 'is-bad'}`;
 }
 
-function renderCashPressureSparkline(buckets) {
-    const svg = document.getElementById('kpi-cash-pressure-sparkline');
+function renderMetricSparkline(id, values, tone = 'revenue') {
+    const svg = document.getElementById(id);
     if (!svg) return;
-    if (!buckets || buckets.length === 0) {
+    const series = Array.isArray(values)
+        ? values.map(value => Number(value) || 0)
+        : [];
+    if (series.length === 0) {
         svg.innerHTML = '';
         return;
     }
     const width = 300;
-    const height = 60;
-    const paddingX = 4;
-    const paddingY = 6;
-    const nets = buckets.map(b => Number(b.netCashFlow) || 0);
-    const minVal = Math.min(...nets, 0);
-    const maxVal = Math.max(...nets, 0);
+    const height = 72;
+    const paddingX = 3;
+    const paddingY = 7;
+    const minVal = tone === 'pressure' ? Math.min(...series, 0) : 0;
+    const maxVal = Math.max(...series, 0);
     const range = (maxVal - minVal) || 1;
-    const stepX = nets.length > 1 ? (width - paddingX * 2) / (nets.length - 1) : 0;
+    const stepX = series.length > 1 ? (width - paddingX * 2) / (series.length - 1) : 0;
     const toY = (val) => height - paddingY - ((val - minVal) / range) * (height - paddingY * 2);
-    const points = nets.map((val, i) => ({
+    const points = series.map((val, i) => ({
         x: paddingX + i * stepX,
         y: toY(val)
     }));
     const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-    const lastNet = nets[nets.length - 1];
-    const stroke = lastNet < 0 ? '#ef4444' : '#22c55e';
-    const fill = lastNet < 0 ? 'rgba(239,68,68,0.10)' : 'rgba(34,197,94,0.10)';
+    const lastValue = series[series.length - 1];
+    const palette = {
+        revenue: { stroke: '#22C55E', fill: 'rgba(34,197,94,0.12)' },
+        pressure: lastValue < 0
+            ? { stroke: '#EF4444', fill: 'rgba(239,68,68,0.12)' }
+            : { stroke: '#22C55E', fill: 'rgba(34,197,94,0.12)' },
+        opex: { stroke: '#9CA3AF', fill: 'rgba(156,163,175,0.14)' }
+    };
+    const colors = palette[tone] || palette.revenue;
     const areaPath = points.length
-        ? `M${points[0].x.toFixed(1)},${height} ${linePath.replace('M', 'L')} L${points[points.length - 1].x.toFixed(1)},${height} Z`
+        ? `M${points[0].x.toFixed(1)},${height - paddingY} ${linePath.replace('M', 'L')} L${points[points.length - 1].x.toFixed(1)},${height - paddingY} Z`
         : '';
     svg.innerHTML = `
-        <path d="${areaPath}" fill="${fill}" stroke="none"></path>
-        <path d="${linePath}" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+        <path d="${areaPath}" fill="${colors.fill}" stroke="none"></path>
+        <path d="${linePath}" fill="none" stroke="${colors.stroke}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path>
     `;
+}
+
+function clearMetricSparklines() {
+    [
+        'kpi-revenue-sparkline',
+        'kpi-cash-pressure-sparkline',
+        'kpi-opex-sparkline'
+    ].forEach(id => {
+        const svg = document.getElementById(id);
+        if (svg) svg.innerHTML = '';
+    });
 }
 
 function renderCashFlowChart() {

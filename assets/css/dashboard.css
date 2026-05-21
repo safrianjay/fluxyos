@@ -873,6 +873,18 @@
 .metric-cell:nth-child(3n) { border-right: 0; }
 .metric-cell:nth-child(n+4) { border-bottom: 0; }
 
+.metric-cell-trend {
+    min-height: 168px;
+    padding-bottom: 76px;
+}
+
+.metric-cell-trend > .metric-label,
+.metric-cell-trend > .metric-value-row,
+.metric-cell-trend > .metric-sub {
+    position: relative;
+    z-index: 1;
+}
+
 .metric-label {
     color: #9CA3AF;
     font-size: 11px;
@@ -960,15 +972,16 @@
 
 .metric-sparkline {
     position: absolute;
-    right: 10px;
-    bottom: 8px;
-    width: 120px;
-    height: 36px;
-    opacity: 0.65;
+    left: 20px;
+    right: 20px;
+    bottom: 12px;
+    width: auto;
+    height: 58px;
+    opacity: 0.82;
     pointer-events: none;
 }
 
-.metric-cell-pressure { padding-bottom: 14px; }
+.metric-cell-pressure { padding-bottom: 76px; }
 
 /* Chart cards (shared shell) */
 .chart-card {
@@ -1652,8 +1665,9 @@
 
     .summary-board { grid-template-columns: 1fr; }
     .metric-cell { min-height: 112px; border-right: 0 !important; border-bottom: 1px solid #E5E7EB !important; }
+    .metric-cell-trend { min-height: 160px; }
     .metric-cell:last-child { border-bottom: 0 !important; }
-    .metric-sparkline { opacity: 0.4; width: 140px; height: 36px; }
+    .metric-sparkline { left: 20px; right: 20px; width: auto; height: 54px; opacity: 0.72; }
 
     .chart-card { padding: 18px; }
     .chart-card-header { flex-direction: column; align-items: flex-start; }

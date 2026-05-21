@@ -64,32 +64,34 @@
 
                         <!-- 1. Connected summary board -->
                         <section class="summary-board" aria-label="Finance summary">
-                            <article class="metric-cell" data-tour-target="dashboard-revenue-kpi">
+                            <article class="metric-cell metric-cell-trend" data-tour-target="dashboard-revenue-kpi">
                                 <div class="metric-label">Revenue</div>
                                 <div class="metric-value-row">
                                     <span id="kpi-revenue" class="metric-value tabular-nums">Rp 0</span>
                                     <span class="metric-arrow" id="kpi-revenue-arrow" aria-hidden="true"></span>
                                 </div>
                                 <p id="kpi-revenue-change" class="metric-sub">Loading...</p>
+                                <svg id="kpi-revenue-sparkline" class="metric-sparkline metric-sparkline-revenue" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true"></svg>
                             </article>
 
-                            <article class="metric-cell metric-cell-pressure">
+                            <article class="metric-cell metric-cell-pressure metric-cell-trend">
                                 <div class="metric-label">Cash pressure</div>
                                 <div class="metric-value-row">
                                     <span id="kpi-cash-pressure" class="metric-value tabular-nums">Rp 0</span>
                                     <span class="metric-arrow" id="kpi-cash-pressure-arrow" aria-hidden="true"></span>
                                 </div>
                                 <p id="kpi-cash-pressure-sub" class="metric-sub">Loading...</p>
-                                <svg id="kpi-cash-pressure-sparkline" class="metric-sparkline" viewBox="0 0 300 60" preserveAspectRatio="none" aria-hidden="true"></svg>
+                                <svg id="kpi-cash-pressure-sparkline" class="metric-sparkline metric-sparkline-pressure" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true"></svg>
                             </article>
 
-                            <article class="metric-cell" data-tour-target="dashboard-opex-kpi">
+                            <article class="metric-cell metric-cell-trend" data-tour-target="dashboard-opex-kpi">
                                 <div class="metric-label">OpEx, selected period</div>
                                 <div class="metric-value-row">
                                     <span id="kpi-opex" class="metric-value tabular-nums">Rp 0</span>
                                     <span class="metric-arrow" id="kpi-opex-arrow" aria-hidden="true"></span>
                                 </div>
                                 <p id="kpi-opex-change" class="metric-sub">Loading...</p>
+                                <svg id="kpi-opex-sparkline" class="metric-sparkline metric-sparkline-opex" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true"></svg>
                             </article>
 
                             <article class="metric-cell" data-tour-target="dashboard-margin-kpi">
