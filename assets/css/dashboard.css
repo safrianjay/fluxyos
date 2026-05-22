@@ -1408,6 +1408,12 @@
     font-weight: 800;
 }
 
+.queue-icon svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
 .queue-icon-warning {
     background: #FFF7ED;
     color: #C2410C;

@@ -459,6 +459,14 @@ function buildAttentionCache(overview) {
     updateKPI('attention-needs-review-count', String(needsReview.length));
 }
 
+const ATTENTION_ICONS = {
+    overdue: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5 1.75 16.5h16.5L10 2.5Z"/><path d="M10 8v3.5"/><path d="M10 14.25h.01"/></svg>',
+    missing_receipt: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 2.5h7.5L15.5 5.5V17a.5.5 0 0 1-.78.42l-1.47-.97-1.5 1-1.5-1-1.5 1-1.5-1-1.47.97A.5.5 0 0 1 5 17V2.5Z"/><path d="M8 8h4"/><path d="M8 11h2.5"/></svg>',
+    opex_spike: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 13.5 7 9l3 3 5-5.5"/><path d="M11.5 6.5h4v4"/></svg>',
+    bill_due_soon: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.75" y="4" width="14.5" height="13" rx="2"/><path d="M2.75 8h14.5"/><path d="M6.5 2.5v3"/><path d="M13.5 2.5v3"/><path d="M10 11v2l1.5 1"/></svg>',
+    renewal: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10a6.5 6.5 0 0 1 11.1-4.6l1.9 1.9"/><path d="M16.5 3.5v4h-4"/><path d="M16.5 10a6.5 6.5 0 0 1-11.1 4.6L3.5 12.7"/><path d="M3.5 16.5v-4h4"/></svg>'
+};
+
 function buildAttentionItems(overview) {
     const p = overview.performance || {};
     const actions = overview.actionItems || {};
@@ -467,7 +475,6 @@ function buildAttentionItems(overview) {
         items.push({
             kind: 'overdue',
             iconKind: 'danger',
-            icon: '!',
             title: `${actions.overdueBills} overdue bill${actions.overdueBills === 1 ? '' : 's'}`,
             description: 'Overdue obligations can create vendor and cash pressure.',
             action: 'Open Bills',
@@ -478,7 +485,6 @@ function buildAttentionItems(overview) {
         items.push({
             kind: 'missing_receipt',
             iconKind: 'warning',
-            icon: '!',
             title: `${actions.missingReceipts} missing receipt${actions.missingReceipts === 1 ? '' : 's'}`,
             description: 'Missing receipts reduce confidence in reports and tax-ready records.',
             action: 'Open Ledger',
@@ -489,7 +495,6 @@ function buildAttentionItems(overview) {
         items.push({
             kind: 'opex_spike',
             iconKind: 'default',
-            icon: '^',
             title: `OpEx up ${Math.abs(Number(p.opexChangePct)).toFixed(1)}%`,
             description: 'Spending rose meaningfully against the previous period.',
             action: 'Review Ledger',
@@ -500,7 +505,6 @@ function buildAttentionItems(overview) {
         items.push({
             kind: 'bill_due_soon',
             iconKind: 'default',
-            icon: 'Due',
             title: `${actions.billsDueSoon} bill${actions.billsDueSoon === 1 ? '' : 's'} due soon`,
             description: 'Upcoming bills should be checked before new spend is approved.',
             action: 'Open Bills',
@@ -511,7 +515,6 @@ function buildAttentionItems(overview) {
         items.push({
             kind: 'renewal',
             iconKind: 'default',
-            icon: 'R',
             title: `${actions.renewalsSoon} renewal${actions.renewalsSoon === 1 ? '' : 's'} soon`,
             description: 'Subscription renewals may affect recurring spend.',
             action: 'Open Subscriptions',
@@ -535,7 +538,7 @@ function renderAttentionQueue() {
         <div class="queue-list">
             ${items.slice(0, 5).map(item => `
                 <a class="queue-row" href="${item.href}">
-                    <div class="queue-icon queue-icon-${item.iconKind}">${escapeHtml(item.icon)}</div>
+                    <div class="queue-icon queue-icon-${item.iconKind}">${ATTENTION_ICONS[item.kind] || ''}</div>
                     <div class="queue-row-body">
                         <div class="queue-row-title">${escapeHtml(item.title)}</div>
                         <div class="queue-row-meta">${escapeHtml(item.description)}</div>
