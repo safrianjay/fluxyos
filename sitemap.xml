@@ -191,4 +191,24 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/cfo-finance-teams"/>
   </url>
 
+  <url>
+    <loc>https://fluxyos.com/use-cases/founder-ceo</loc>
+    <lastmod>2026-05-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/founder-ceo"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/founder-ceo"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/founder-ceo"/>
+  </url>
+
+  <url>
+    <loc>https://fluxyos.com/id/use-cases/founder-ceo</loc>
+    <lastmod>2026-05-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/founder-ceo"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/founder-ceo"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/founder-ceo"/>
+  </url>
+
 </urlset>

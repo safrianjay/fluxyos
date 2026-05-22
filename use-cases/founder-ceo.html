@@ -4,125 +4,178 @@
     <meta charset="UTF-8">
     <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Retail & Franchise Finance OS | FluxyOS</title>
-    <meta name="description" content="Compare outlet profit, reconcile POS revenue, control supplier costs, receipts, budgets, and month-end close across retail branches.">
-    <link rel="canonical" href="https://fluxyos.com/use-cases/retail-franchises">
-    <link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/retail-franchises">
-    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/retail-franchises">
-    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/retail-franchises">
+    <title>Finance OS for Founders & CEOs | FluxyOS</title>
+    <meta name="description" content="Give founders and CEOs live visibility into revenue, OpEx, margin, bills, subscriptions, vendor spend, and finance risks in one operating layer.">
+    <link rel="canonical" href="https://fluxyos.com/use-cases/founder-ceo">
+    <link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/founder-ceo">
+    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/founder-ceo">
+    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/founder-ceo">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://fluxyos.com/use-cases/retail-franchises">
-    <meta property="og:title" content="Retail & Franchise Finance OS | FluxyOS">
-    <meta property="og:description" content="See true branch profitability across POS revenue, supplier costs, expenses, budgets, receipts, and reconciliation.">
-    <meta property="og:image" content="https://fluxyos.com/assets/images/og-retail-franchises.png">
+    <meta property="og:url" content="https://fluxyos.com/use-cases/founder-ceo">
+    <meta property="og:title" content="Finance OS for Founders & CEOs | FluxyOS">
+    <meta property="og:description" content="See business economics, cash pressure, bills, subscriptions, and finance risks before month-end.">
+    <meta property="og:image" content="https://fluxyos.com/assets/images/og-founder-ceo.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:site_name" content="FluxyOS">
     <meta property="og:locale" content="en_US">
     <meta property="og:locale:alternate" content="id_ID">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Retail & Franchise Finance OS | FluxyOS">
-    <meta name="twitter:description" content="Know which outlets are making money, not just making sales.">
-    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-retail-franchises.png">
+    <meta name="twitter:title" content="Finance OS for Founders & CEOs | FluxyOS">
+    <meta name="twitter:description" content="Real-time visibility into business economics for founders and CEOs.">
+    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-founder-ceo.png">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/fluxyos.css">
     <style>
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
         .font-mono { font-family: 'Fira Code', monospace; }
-        .retail-hero {
-            background:
-                radial-gradient(circle at 12% 10%, rgba(234, 88, 12, 0.10), transparent 26%),
-                radial-gradient(circle at 84% 22%, rgba(11, 15, 25, 0.07), transparent 28%),
-                linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
-        }
-        .retail-grid {
-            background-image:
-                linear-gradient(rgba(11, 15, 25, 0.055) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(11, 15, 25, 0.055) 1px, transparent 1px);
-            background-size: 36px 36px;
-        }
-        .dashboard-shadow { box-shadow: 0 30px 100px -56px rgba(11, 15, 25, 0.76); }
-        .soft-card { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
-        .soft-card:hover { transform: translateY(-2px); border-color: rgba(234, 88, 12, 0.32); box-shadow: 0 22px 55px -38px rgba(11, 15, 25, 0.48); }
-        .status-healthy { background: #DCFCE7; color: #166534; }
-        .status-review { background: #FEF3C7; color: #92400E; }
-        .status-track { background: #DBEAFE; color: #1E40AF; }
-        .step-card { position: relative; }
-        .step-card::after { content: ""; position: absolute; top: 50%; right: -28px; width: 28px; height: 1px; background: #D1D5DB; }
-        .step-card:last-child::after { display: none; }
-        @media (max-width: 1023px) { .step-card::after { display: none; } }
+        .founder-hero { background: radial-gradient(circle at 8% 10%, rgba(234, 88, 12, 0.08), transparent 26%), linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%); }
+        .founder-grid { background-image: linear-gradient(rgba(11, 15, 25, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(11, 15, 25, 0.045) 1px, transparent 1px); background-size: 36px 36px; }
+        .founder-shadow { box-shadow: 0 30px 90px -48px rgba(11, 15, 25, 0.62); }
+        .founder-flow { position: relative; }
+        .founder-flow::before { content: ""; position: absolute; left: 24px; top: 48px; bottom: 24px; width: 1px; background: #E5E7EB; }
+        @media (min-width: 1024px) { .founder-flow::before { left: 48px; right: 48px; top: 50%; bottom: auto; height: 1px; width: auto; } }
     </style>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-ZN7J6DRD2L');
-    </script>
-    <script type="application/ld+json">
+    <script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-ZN7J6DRD2L');</script>
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "FluxyOS",
+  "url": "https://fluxyos.com",
+  "logo": "https://fluxyos.com/assets/images/favicon.svg",
+  "description": "AI-powered finance operations system for Indonesian small and medium businesses.",
+  "areaServed": {
+    "@type": "Country",
+    "name": "Indonesia"
+  },
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "customer support",
+    "email": "support@fluxyos.com",
+    "availableLanguage": [
+      "English",
+      "Indonesian"
+    ]
+  }
+}</script>
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "FluxyOS for Founders & CEOs",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Finance Operations Software",
+  "operatingSystem": "Web, iOS, Android",
+  "url": "https://fluxyos.com/use-cases/founder-ceo",
+  "inLanguage": "en-US",
+  "description": "FluxyOS gives founders and CEOs one operating view for revenue, OpEx, margin, bills, subscriptions, vendor spend, cash pressure, and finance risks before month-end.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "IDR",
+    "availability": "https://schema.org/InStock"
+  },
+  "featureList": [
+    "Revenue and OpEx visibility",
+    "Gross margin and business economics snapshot",
+    "Bills and upcoming payables tracking",
+    "Subscription and vendor spend monitoring",
+    "Missing receipt and record quality visibility",
+    "Grounded Fluxy AI finance questions",
+    "Report-ready summaries"
+  ]
+}</script>
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
     {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "FluxyOS",
-      "url": "https://fluxyos.com",
-      "logo": "https://fluxyos.com/assets/images/favicon.svg",
-      "description": "AI-powered finance operations system for Indonesian small and medium businesses.",
-      "areaServed": { "@type": "Country", "name": "Indonesia" },
-      "contactPoint": { "@type": "ContactPoint", "contactType": "customer support", "email": "support@fluxyos.com", "availableLanguage": ["English", "Indonesian"] }
-    }
-    </script>
-    <script type="application/ld+json">
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://fluxyos.com/"
+    },
     {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "FluxyOS for Retail and Franchises",
-      "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "Retail Finance Operations Software",
-      "operatingSystem": "Web, iOS, Android",
-      "url": "https://fluxyos.com/use-cases/retail-franchises",
-      "inLanguage": "en-US",
-      "description": "FluxyOS is a finance operations system for retail and franchise businesses. It consolidates POS revenue, bank settlements, supplier invoices, receipts, budgets, vendor payments, and branch-level P&L across multiple outlets.",
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "IDR", "availability": "https://schema.org/InStock" },
-      "featureList": [
-        "Branch-level P&L by outlet",
-        "POS and bank settlement reconciliation",
-        "Supplier and inventory cost tracking",
-        "Store budget control",
-        "Receipt capture via WhatsApp, email, and upload",
-        "Duplicate vendor payment detection",
-        "Franchise performance comparison",
-        "Month-end close preparation"
-      ]
-    }
-    </script>
-    <script type="application/ld+json">
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Use Cases",
+      "item": "https://fluxyos.com/use-cases/founder-ceo"
+    },
     {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://fluxyos.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Use Cases", "item": "https://fluxyos.com/use-cases/retail-franchises" },
-        { "@type": "ListItem", "position": 3, "name": "Retail & Franchises", "item": "https://fluxyos.com/use-cases/retail-franchises" }
-      ]
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Founder & CEO",
+      "item": "https://fluxyos.com/use-cases/founder-ceo"
     }
-    </script>
-    <script type="application/ld+json">
+  ]
+}</script>
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "inLanguage": "en-US",
+  "mainEntity": [
     {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "inLanguage": "en-US",
-      "mainEntity": [
-        { "@type": "Question", "name": "How does FluxyOS help retail and franchise owners?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS brings POS revenue, supplier invoices, outlet expenses, receipts, budgets, vendor payments, and bank settlements into one finance operations view so owners can compare true branch profitability." } },
-        { "@type": "Question", "name": "Can FluxyOS compare outlet profitability?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Each transaction can be tagged by outlet so owners and finance teams can compare revenue, operating cost, supplier spend, budget variance, and net margin by branch." } },
-        { "@type": "Question", "name": "Does FluxyOS track customer footfall or CCTV analytics?", "acceptedAnswer": { "@type": "Answer", "text": "No. FluxyOS is focused on finance operations: POS revenue, settlement, supplier costs, store expenses, receipts, budgets, reconciliation, and branch-level P&L." } },
-        { "@type": "Question", "name": "Can store managers submit receipts from WhatsApp?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Store teams can send receipts through WhatsApp, email, or upload. FluxyOS extracts vendor, amount, tax, and category for finance review." } }
-      ]
+      "@type": "Question",
+      "name": "Is FluxyOS for founders without a finance team?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Founder-led teams can use FluxyOS to understand revenue, OpEx, margin, bills, subscriptions, and records that need attention before building a larger finance function."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can FluxyOS show whether my business is doing well?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "FluxyOS shows operating finance signals such as revenue, expenses, gross margin, payables, subscriptions, vendor spend, and needs-action records so founders can assess business health earlier."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can FluxyOS help me understand cash pressure?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. FluxyOS can show cash pressure proxies from bills, subscriptions, pending payables, and expected revenue. Full runway accuracy depends on available data, including real bank balance and expected collections."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can FluxyOS replace my accountant?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. FluxyOS is a finance operating layer before accounting and reporting. It helps organize records and explain business activity, while accountants still handle formal accounting, tax, and compliance work."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can Fluxy AI answer founder-level finance questions?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Fluxy AI answers from FluxyOS finance data, explains backend-calculated numbers, and returns clear no-data answers when records are not available."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does FluxyOS move money or approve payments automatically?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. FluxyOS helps review, track, and organize finance records. Sensitive actions such as saving, approving, deleting, or marking bills paid require explicit confirmation."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I use FluxyOS before month-end reporting?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. The page is designed around earlier visibility, so founders can see what changed, what is risky, and what needs attention before month-end reports are finalized."
+      }
     }
-    </script>
+  ]
+}</script>
 </head>
-<body class="min-h-screen flex flex-col bg-white">
-    <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
+<body class="min-h-screen flex flex-col">
+<nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
         <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
             <div class="flex items-center gap-12 h-full">
                 <a href="/fluxyos" class="flex items-center gap-2.5 cursor-pointer group">
@@ -420,11 +473,11 @@
                         <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
                     <div class="absolute right-0 top-[100%] mt-2 w-36 bg-white border border-gray-100 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
-                        <a href="/fluxyos" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">
+                        <a href="/use-cases/founder-ceo" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">
                             English (EN)
                             <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
                         </a>
-                        <a href="/fluxyos" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">Bahasa (ID)</a>
+                        <a href="/id/use-cases/founder-ceo" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">Bahasa (ID)</a>
                     </div>
                 </div>
 
@@ -473,7 +526,7 @@
                         <a href="/use-cases/retail-franchises" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Retail & Franchises</span><span class="block text-[13px] text-gray-500">Compare outlet P&L and settlement.</span></a>
 
                         <a href="/use-cases/manufacturing" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Manufacturing</span><span class="block text-[13px] text-gray-500">Track unit economics and costs.</span></a>
-                        <a href="/use-cases/founder-ceo" class="mobile-menu-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Founder &amp; CEO</span><span class="block text-[13px] text-gray-500">Real-time business economics visibility.</span></a>
+                        <a href="/use-cases/founder-ceo" class="mobile-menu-link rounded-xl border border-[#EA580C] bg-white px-4 py-3"><span class="block text-[15px] font-bold text-[#EA580C]">Founder &amp; CEO</span><span class="block text-[13px] text-gray-500">Real-time business economics visibility.</span></a>
                     </div>
                 </div>
 
@@ -487,179 +540,64 @@
         </div>
     </nav>
 
-    <main>
-        <section class="retail-hero retail-grid pt-12 md:pt-20 pb-14 md:pb-20 px-6">
-            <div class="max-w-[1280px] mx-auto grid lg:grid-cols-[0.92fr_1.08fr] gap-12 items-center">
-                <div>
-                    <h1 class="text-[44px] md:text-[56px] leading-[1.03] font-bold tracking-tight text-gray-950 mb-6">Know which outlets are making money, not just making sales.</h1>
-                    <p class="text-[18px] md:text-[20px] text-gray-600 leading-relaxed mb-8 max-w-2xl">FluxyOS brings POS revenue, supplier invoices, store expenses, receipts, budgets, and payouts into one finance operations view, so retail and franchise owners can track real profit across every location before month-end.</p>
-                    <div class="grid sm:grid-cols-2 gap-3 mb-8 text-[15px] text-gray-700">
-                        <div class="flex items-center gap-3"><span class="h-2.5 w-2.5 rounded-full bg-[#16A34A]"></span> Compare outlet profitability</div>
-                        <div class="flex items-center gap-3"><span class="h-2.5 w-2.5 rounded-full bg-[#3B82F6]"></span> Match POS to bank settlement</div>
-                        <div class="flex items-center gap-3"><span class="h-2.5 w-2.5 rounded-full bg-gray-950"></span> Control supplier and store costs</div>
-                        <div class="flex items-center gap-3"><span class="h-2.5 w-2.5 rounded-full bg-gray-950"></span> Reduce spreadsheet close work</div>
-                    </div>
-                    <div class="flex flex-col sm:flex-row gap-4"><a href="/pricing" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[16px] px-8 py-4 rounded-md transition-all shadow-sm text-center">Try FluxyOS</a><a href="/pricing" class="bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 font-semibold text-[16px] px-8 py-4 rounded-md transition-all shadow-sm text-center">Book a demo</a></div>
-                </div>
-                <div class="dashboard-shadow rounded-[28px] border border-gray-200 bg-white p-4 md:p-5">
-                    <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-4"><div><p class="text-[12px] font-bold text-[#EA580C] uppercase tracking-wider">Multi-outlet P&L</p><h2 class="text-[22px] font-bold text-gray-950">Retail finance cockpit</h2></div><span class="rounded-full bg-gray-950 text-white text-[12px] font-semibold px-3 py-1">Live close</span></div>
-                    <div class="grid md:grid-cols-3 gap-3">
-                        <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-gray-950">Outlet A - Kemang</h3><span class="status-healthy rounded-full px-2 py-1 text-[11px] font-bold">Healthy</span></div><p class="text-[12px] text-gray-500">Revenue</p><p class="font-mono text-[22px] font-bold">Rp 128.4M</p><div class="mt-3 grid grid-cols-2 gap-2 text-[12px]"><span class="text-gray-500">Operating cost</span><strong class="text-right">Rp 82.1M</strong><span class="text-gray-500">Net margin</span><strong class="text-right text-[#16A34A]">18.6%</strong></div></div>
-                        <div class="rounded-2xl border border-[#EA580C]/35 bg-white p-4"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-gray-950">Outlet B - Senopati</h3><span class="status-review rounded-full px-2 py-1 text-[11px] font-bold">Review</span></div><p class="text-[12px] text-gray-500">Revenue</p><p class="font-mono text-[22px] font-bold">Rp 96.2M</p><div class="mt-3 grid grid-cols-2 gap-2 text-[12px]"><span class="text-gray-500">Operating cost</span><strong class="text-right">Rp 89.7M</strong><span class="text-gray-500">Net margin</span><strong class="text-right text-[#EA580C]">4.1%</strong></div></div>
-                        <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-gray-950">Outlet C - Bandung</h3><span class="status-track rounded-full px-2 py-1 text-[11px] font-bold">On track</span></div><p class="text-[12px] text-gray-500">Revenue</p><p class="font-mono text-[22px] font-bold">Rp 142.8M</p><div class="mt-3 grid grid-cols-2 gap-2 text-[12px]"><span class="text-gray-500">Operating cost</span><strong class="text-right">Rp 101.5M</strong><span class="text-gray-500">Net margin</span><strong class="text-right text-[#16A34A]">16.9%</strong></div></div>
-                    </div>
-                    <div class="mt-4 grid md:grid-cols-[1fr_1fr_1.2fr] gap-3">
-                        <div class="rounded-2xl border border-gray-200 p-4"><p class="text-[12px] text-gray-500 mb-1">Supplier cost</p><p class="font-mono text-[20px] font-bold">Rp 117.6M</p><div class="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden"><span class="block h-full w-[64%] bg-gray-950"></span></div></div>
-                        <div class="rounded-2xl border border-gray-200 p-4"><p class="text-[12px] text-gray-500 mb-1">Rent & utilities</p><p class="font-mono text-[20px] font-bold">Rp 48.3M</p><p class="mt-3 text-[12px] font-semibold text-[#92400E]">Senopati utility spend +18%</p></div>
-                        <div class="rounded-2xl bg-gray-950 p-4 text-white"><div class="flex items-center justify-between mb-3"><h3 class="font-bold">AI finance insight</h3><span class="text-[11px] rounded-full bg-white/10 px-2 py-1">Needs review</span></div><p class="text-[14px] text-gray-200 leading-relaxed">Senopati margin dropped after supplier cost increased 12% and rent was posted twice. Review duplicate payment before close.</p></div>
-                    </div>
-                    <div class="mt-4 grid md:grid-cols-3 gap-3 text-[13px]">
-                        <div class="rounded-xl border border-gray-200 bg-[#F8FAFC] p-3"><strong>POS settlement</strong><p class="text-gray-500 mt-1">BCA deposit matched for 2 of 3 outlets.</p></div>
-                        <div class="rounded-xl border border-[#F59E0B]/30 bg-[#FFFBEB] p-3"><strong>Missing receipt</strong><p class="text-gray-600 mt-1">Repairs receipt missing from Bandung.</p></div>
-                        <div class="rounded-xl border border-[#EF4444]/25 bg-[#FEF2F2] p-3"><strong>Duplicate payment</strong><p class="text-gray-600 mt-1">Rent invoice repeated in Senopati.</p></div>
-                    </div>
+    <section class="founder-hero border-b border-gray-200 px-6 py-12 md:py-16 overflow-hidden">
+        <div class="max-w-[1280px] mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-10 lg:gap-14 items-center">
+            <div class="min-w-0">
+                <h1 class="max-w-3xl text-[44px] md:text-[56px] font-bold tracking-tight leading-[1.05] text-gray-950 mb-6">See what is really happening in your business before month-end.</h1>
+                <p class="text-[18px] md:text-[20px] text-gray-700 leading-relaxed mb-8 max-w-2xl">FluxyOS gives founders and CEOs one operating view of revenue, expenses, bills, subscriptions, cash pressure, and finance risks, so you can make decisions before the numbers become a surprise.</p>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-7 py-4 rounded-md transition-all duration-200 shadow-sm hover:shadow inline-block text-center">Try FluxyOS</a>
+                    <a href="/pricing" class="border border-gray-300 bg-white text-gray-950 font-semibold text-[15px] px-7 py-4 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">View pricing</a>
                 </div>
             </div>
-        </section>
-
-        <section class="py-10 px-6 bg-white border-y border-gray-200">
-            <div class="max-w-[1180px] mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="rounded-2xl border border-gray-200 p-5"><p class="font-mono text-[28px] font-bold text-gray-950">30s</p><p class="text-[14px] text-gray-600 mt-1">Revenue sync latency placeholder</p></div>
-                <div class="rounded-2xl border border-gray-200 p-5"><p class="font-mono text-[28px] font-bold text-gray-950">98%+</p><p class="text-[14px] text-gray-600 mt-1">Auto-categorization accuracy placeholder</p></div>
-                <div class="rounded-2xl border border-gray-200 p-5"><p class="font-mono text-[28px] font-bold text-gray-950">3.1 days</p><p class="text-[14px] text-gray-600 mt-1">Faster month-end close placeholder</p></div>
-                <div class="rounded-2xl border border-gray-950 bg-gray-950 p-5 text-white"><p class="font-mono text-[28px] font-bold">P&L</p><p class="text-[14px] text-gray-300 mt-1">Multi-outlet visibility</p></div>
-            </div>
-        </section>
-
-        <section class="py-16 md:py-24 px-6 bg-[#F8FAFC]">
-            <div class="max-w-[1180px] mx-auto">
-                <div class="grid lg:grid-cols-[0.88fr_1.12fr] gap-10 items-start">
-                    <div>
-                        <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Sales reports do not tell the whole story.</h2>
-                        <p class="text-[18px] text-gray-600 leading-relaxed">POS shows revenue. Bank accounts show cash. Supplier invoices show costs. Spreadsheets try to connect everything. But owners still struggle to know which branch is actually profitable.</p>
-                        <div class="mt-8 grid sm:grid-cols-2 gap-4">
-                            <div class="soft-card rounded-2xl border border-gray-200 bg-white p-5"><h3 class="text-[17px] font-bold text-gray-950 mb-2">POS revenue is separated from settlement</h3><p class="text-[14px] text-gray-600 leading-relaxed">Sales can look healthy while fees, refunds, and payout timing hide the cash gap.</p></div>
-                            <div class="soft-card rounded-2xl border border-gray-200 bg-white p-5"><h3 class="text-[17px] font-bold text-gray-950 mb-2">Supplier costs move faster than review</h3><p class="text-[14px] text-gray-600 leading-relaxed">Inventory, packaging, and operating invoices often land after the sales report is already shared.</p></div>
-                            <div class="soft-card rounded-2xl border border-gray-200 bg-white p-5"><h3 class="text-[17px] font-bold text-gray-950 mb-2">Outlet expenses are scattered</h3><p class="text-[14px] text-gray-600 leading-relaxed">Receipts arrive through WhatsApp, email, cash boxes, and manager uploads without a clean branch tag.</p></div>
-                            <div class="soft-card rounded-2xl border border-gray-200 bg-white p-5"><h3 class="text-[17px] font-bold text-gray-950 mb-2">Month-end depends on spreadsheets</h3><p class="text-[14px] text-gray-600 leading-relaxed">Finance teams rebuild branch P&L from fragments instead of reviewing a clean operating view.</p></div>
-                        </div>
+            <div class="founder-shadow founder-grid rounded-[30px] border border-gray-200 bg-white p-4 md:p-6">
+                <div class="rounded-[24px] border border-gray-200 bg-white overflow-hidden">
+                    <div class="flex flex-col gap-3 border-b border-gray-200 bg-[#F8FAFC] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div><p class="font-mono text-[11px] uppercase tracking-[0.22em] text-gray-400">Sample founder command view</p><h2 class="mt-1 text-[22px] font-bold text-gray-950">Founder command view</h2></div>
+                        <span class="w-max rounded-full border border-[#EA580C]/35 bg-white px-3 py-1 text-[12px] font-semibold text-[#EA580C]">May 2026</span>
                     </div>
-                    <div class="dashboard-shadow rounded-[28px] border border-gray-200 bg-white p-5">
-                        <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-5"><div><p class="text-[12px] font-bold uppercase tracking-wider text-[#EA580C]">Cashflow gap</p><h3 class="text-[22px] font-bold text-gray-950">Sales vs cash after costs</h3></div><span class="rounded-full bg-[#FEF3C7] px-3 py-1 text-[12px] font-bold text-[#92400E]">Senopati review</span></div>
-                        <div class="space-y-4">
-                            <div>
-                                <div class="flex items-center justify-between text-[13px] mb-2"><span class="font-semibold text-gray-700">POS sales reported</span><span class="font-mono font-bold">Rp 96.2M</span></div>
-                                <div class="h-3 rounded-full bg-gray-100 overflow-hidden"><span class="block h-full w-[92%] bg-[#16A34A]"></span></div>
-                            </div>
-                            <div>
-                                <div class="flex items-center justify-between text-[13px] mb-2"><span class="font-semibold text-gray-700">Bank settlement received</span><span class="font-mono font-bold">Rp 88.4M</span></div>
-                                <div class="h-3 rounded-full bg-gray-100 overflow-hidden"><span class="block h-full w-[78%] bg-[#3B82F6]"></span></div>
-                            </div>
-                            <div>
-                                <div class="flex items-center justify-between text-[13px] mb-2"><span class="font-semibold text-gray-700">Supplier + outlet costs</span><span class="font-mono font-bold">Rp 89.7M</span></div>
-                                <div class="h-3 rounded-full bg-gray-100 overflow-hidden"><span class="block h-full w-[84%] bg-gray-950"></span></div>
+                    <div class="grid gap-3 p-4 sm:grid-cols-3">
+                        <div class="rounded-2xl border border-gray-200 bg-white p-4"><p class="text-[12px] text-gray-500">Revenue</p><div class="mt-2 font-mono text-[20px] font-bold text-gray-950">Rp 428M</div></div>
+                        <div class="rounded-2xl border border-gray-200 bg-white p-4"><p class="text-[12px] text-gray-500">OpEx pressure</p><div class="mt-2 font-mono text-[20px] font-bold text-[#EA580C]">Rp 216M</div></div>
+                        <div class="rounded-2xl border border-gray-200 bg-white p-4"><p class="text-[12px] text-gray-500">Gross margin</p><div class="mt-2 font-mono text-[20px] font-bold text-gray-950">49.5%</div></div>
+                    </div>
+                    <div class="grid gap-4 p-4 pt-0 lg:grid-cols-[1.1fr_0.9fr]">
+                        <div class="rounded-2xl border border-gray-200 bg-white p-5">
+                            <div class="flex items-center justify-between gap-3 mb-5"><h3 class="text-[18px] font-bold text-gray-950">What changed this month?</h3><span class="text-[12px] font-semibold text-[#EA580C]">Review</span></div>
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between gap-4 rounded-xl bg-[#F8FAFC] p-3"><span class="text-[13px] text-gray-600">Vendor spend</span><span class="font-mono text-[13px] font-bold text-[#EA580C]">+18%</span></div>
+                                <div class="flex items-center justify-between gap-4 rounded-xl bg-white border border-gray-200 p-3"><span class="text-[13px] text-gray-600">Upcoming bills</span><span class="font-mono text-[13px] font-bold">Rp 32.4M</span></div>
+                                <div class="flex items-center justify-between gap-4 rounded-xl bg-white border border-gray-200 p-3"><span class="text-[13px] text-gray-600">Needs attention</span><span class="font-mono text-[13px] font-bold">14 records</span></div>
                             </div>
                         </div>
-                        <div class="mt-6 grid grid-cols-3 gap-3 text-center">
-                            <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Cash variance</p><p class="font-mono text-[20px] font-bold text-[#EA580C]">Rp 7.8M</p></div>
-                            <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Missing proof</p><p class="font-mono text-[20px] font-bold">5</p></div>
-                            <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Budget used</p><p class="font-mono text-[20px] font-bold">91%</p></div>
-                        </div>
-                        <div class="mt-5 rounded-2xl bg-gray-950 p-4 text-white"><p class="text-[14px] leading-relaxed"><strong>Finance note:</strong> sales volume is not the issue. Settlement timing, duplicated rent, and supplier price increases explain the weak branch margin.</p></div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="py-16 md:py-24 px-6 bg-[#0B0F19] text-white">
-            <div class="max-w-[1280px] mx-auto">
-                <div class="grid lg:grid-cols-[0.78fr_1.22fr] gap-10 items-start">
-                    <div>
-                        <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight mb-5">Finance workflows built for stores, outlets, and franchise locations.</h2>
-                        <p class="text-[18px] text-gray-300 leading-relaxed">FluxyOS turns scattered retail finance activity into one review flow: money comes in, costs are assigned to the right outlet, risks are flagged, and finance closes with clean branch records.</p>
-                    </div>
-                    <div class="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                        <div class="grid md:grid-cols-4 gap-3 text-[13px]">
-                            <div class="rounded-2xl bg-white text-gray-950 p-4"><span class="font-mono text-[12px] text-[#EA580C]">01</span><h3 class="font-bold mt-2">Revenue</h3><p class="text-gray-600 mt-1">POS sales, payment gateway settlement, and bank deposits.</p></div>
-                            <div class="rounded-2xl bg-white/10 border border-white/10 p-4"><span class="font-mono text-[12px] text-orange-200">02</span><h3 class="font-bold mt-2">Costs</h3><p class="text-gray-300 mt-1">Supplier invoices, rent, payroll, utilities, repairs, and petty cash.</p></div>
-                            <div class="rounded-2xl bg-white/10 border border-white/10 p-4"><span class="font-mono text-[12px] text-orange-200">03</span><h3 class="font-bold mt-2">Controls</h3><p class="text-gray-300 mt-1">Budgets, missing receipts, duplicate payment checks, and category review.</p></div>
-                            <div class="rounded-2xl bg-white/10 border border-[#EA580C]/60 text-white p-4"><span class="font-mono text-[12px] text-orange-200">04</span><h3 class="font-bold mt-2">Branch P&L</h3><p class="text-gray-300 mt-1">Revenue, expenses, cost ratio, and net margin by outlet.</p></div>
-                        </div>
-                        <div class="mt-5 rounded-2xl bg-[#0B0F19] border border-white/10 p-4">
-                            <div class="grid md:grid-cols-[1fr_auto_1fr_auto_1fr] gap-3 items-center text-[13px]">
-                                <div class="rounded-xl bg-white/10 p-3"><strong>Store manager</strong><p class="text-gray-300 mt-1">Submits receipts via WhatsApp or upload.</p></div>
-                                <span class="hidden md:block text-gray-500">→</span>
-                                <div class="rounded-xl bg-white/10 p-3"><strong>FluxyOS</strong><p class="text-gray-300 mt-1">Extracts vendor, amount, tax, outlet, and category.</p></div>
-                                <span class="hidden md:block text-gray-500">→</span>
-                                <div class="rounded-xl bg-white/10 p-3"><strong>Finance team</strong><p class="text-gray-300 mt-1">Reviews duplicates, settlement gaps, and month-end reports.</p></div>
-                            </div>
+                        <div class="rounded-2xl bg-[#0B0F19] p-5 text-white">
+                            <div class="mb-3 flex items-center gap-2"><span class="rounded bg-[#EA580C] px-2 py-1 text-[10px] font-bold uppercase tracking-wide">Fluxy AI</span><span class="text-[12px] text-gray-400">Grounded answer</span></div>
+                            <p class="text-[14px] leading-relaxed text-gray-200">Margin is healthy, but vendor spend increased 18% and two bills are due before expected collections.</p>
+                            <p class="mt-4 text-[11px] leading-relaxed text-gray-400">Sample UI values, not customer data.</p>
                         </div>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <section class="py-16 md:py-24 px-6 bg-white">
-            <div class="max-w-[1280px] mx-auto">
-                <div class="grid lg:grid-cols-[0.8fr_1.2fr] gap-10 items-start">
-                    <div><h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">A larger dashboard for the questions owners ask every week.</h2><p class="text-[18px] text-gray-600 leading-relaxed">Outlet Senopati has healthy sales volume, but net margin is below other branches because supplier cost and utility spend increased faster than revenue.</p></div>
-                    <div class="dashboard-shadow rounded-[28px] border border-gray-200 bg-[#F8FAFC] p-5">
-                        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                            <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Total outlet revenue</p><p class="font-mono text-[22px] font-bold">Rp 367.4M</p></div>
-                            <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Outlet net margin</p><p class="font-mono text-[22px] font-bold">13.2%</p></div>
-                            <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Cost ratio</p><p class="font-mono text-[22px] font-bold">71.9%</p></div>
-                            <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Supplier spend</p><p class="font-mono text-[22px] font-bold">Rp 117.6M</p></div>
-                        </div>
-                        <div class="grid lg:grid-cols-[1.15fr_0.85fr] gap-4">
-                            <div class="rounded-2xl bg-white border border-gray-200 overflow-hidden"><div class="grid grid-cols-5 bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500 font-bold px-4 py-3"><span>Outlet</span><span>Revenue</span><span>Expenses</span><span>Margin</span><span>Status</span></div><div class="divide-y divide-gray-100 text-[13px]"><div class="grid grid-cols-5 px-4 py-3"><strong>Kemang</strong><span>Rp 128.4M</span><span>Rp 82.1M</span><span class="text-[#16A34A] font-bold">18.6%</span><span>Matched</span></div><div class="grid grid-cols-5 px-4 py-3"><strong>Senopati</strong><span>Rp 96.2M</span><span>Rp 89.7M</span><span class="text-[#EA580C] font-bold">4.1%</span><span>Review</span></div><div class="grid grid-cols-5 px-4 py-3"><strong>Bandung</strong><span>Rp 142.8M</span><span>Rp 101.5M</span><span class="text-[#16A34A] font-bold">16.9%</span><span>Matched</span></div></div></div>
-                            <div class="space-y-3"><div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Budget remaining</p><p class="font-mono text-[22px] font-bold">Rp 54.8M</p></div><div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Missing receipts</p><p class="font-mono text-[22px] font-bold text-[#EA580C]">7</p></div><div class="rounded-2xl bg-gray-950 text-white p-4"><p class="text-[12px] text-gray-400">AI finance insight</p><p class="text-[14px] leading-relaxed mt-2">Supplier cost and utility spend increased faster than revenue in Senopati. Review rent duplication before close.</p></div></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200"><div class="max-w-[1280px] mx-auto grid lg:grid-cols-[0.85fr_1.15fr] gap-10 items-start"><div><p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Founder pain</p><h2 class="text-[34px] md:text-[46px] font-bold tracking-tight text-gray-950 mb-5">Founders do not need more finance tabs. They need the real story earlier.</h2><p class="text-[17px] text-gray-600 leading-relaxed">Revenue can look fine while cash is tight. Spend rises before anyone explains why. Bills and renewals move quietly. FluxyOS brings those signals together before decisions become late.</p></div><div class="rounded-[28px] border border-gray-200 bg-[#F8FAFC] p-5 md:p-6 founder-shadow"><div class="grid md:grid-cols-2 gap-4"><div class="rounded-2xl border border-gray-200 bg-white p-5"><h3 class="font-bold text-gray-950 mb-4">Scattered signals</h3><ul class="space-y-3 text-[14px] text-gray-600"><li>Marketplace payouts</li><li>SaaS subscriptions</li><li>Vendor bills</li><li>Receipts</li><li>Cloud costs</li><li>Tax reserves</li></ul></div><div class="rounded-2xl border border-[#EA580C]/30 bg-white p-5"><h3 class="font-bold text-gray-950 mb-4">FluxyOS operating view</h3><ul class="space-y-3 text-[14px] text-gray-700 font-medium"><li>Revenue quality</li><li>OpEx pressure</li><li>Upcoming bills</li><li>Margin movement</li><li>Needs-action records</li><li>Fluxy AI answers</li></ul></div></div></div></div></section>
 
-        <section class="py-16 md:py-24 px-6 bg-white">
-            <div class="max-w-[1180px] mx-auto">
-                <div class="max-w-3xl mb-10"><h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">How it works</h2><p class="text-[18px] text-gray-600">Three steps turn scattered retail finance data into branch-level operating clarity.</p></div>
-                <div class="grid lg:grid-cols-3 gap-4">
-                    <div class="step-card rounded-2xl border border-gray-200 bg-[#F8FAFC] p-6"><span class="font-mono text-[12px] text-[#EA580C]">01</span><h3 class="text-[22px] font-bold text-gray-950 mt-3 mb-2">Connect your money sources</h3><p class="text-[15px] text-gray-600">POS, bank accounts, payment gateways, supplier invoices, receipts, and vendor payments flow into FluxyOS.</p></div>
-                    <div class="step-card rounded-2xl border border-gray-200 bg-[#F8FAFC] p-6"><span class="font-mono text-[12px] text-[#EA580C]">02</span><h3 class="text-[22px] font-bold text-gray-950 mt-3 mb-2">FluxyOS organizes transactions by outlet</h3><p class="text-[15px] text-gray-600">AI categorizes revenue, expenses, supplier costs, receipts, and budgets by location.</p></div>
-                    <div class="step-card rounded-2xl border border-gray-950 bg-gray-950 text-white p-6"><span class="font-mono text-[12px] text-orange-200">03</span><h3 class="text-[22px] font-bold mt-3 mb-2">Review real outlet performance</h3><p class="text-[15px] text-gray-300">Owners and finance teams see branch-level P&L, margin, budget variance, and reconciliation issues.</p></div>
-                </div>
-            </div>
-        </section>
+    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-b border-gray-200"><div class="max-w-[1280px] mx-auto"><div class="max-w-3xl mb-10"><p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Operating layer</p><h2 class="text-[34px] md:text-[46px] font-bold tracking-tight text-gray-950 mb-5">One operating view for the money behind every decision.</h2><p class="text-[17px] text-gray-600 leading-relaxed">FluxyOS connects revenue, expenses, bills, subscriptions, Vendor Spend, Receipt Capture, reports, and Fluxy AI into one scan-friendly business control map.</p></div><div class="grid lg:grid-cols-[1.2fr_0.8fr] gap-6"><div class="rounded-3xl border border-gray-200 bg-white p-6 md:p-8 founder-shadow"><h3 class="text-[26px] font-bold text-gray-950 mb-5">Business economics snapshot</h3><div class="grid sm:grid-cols-2 gap-4"><div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-5"><p class="text-[12px] text-gray-500">Revenue movement</p><p class="mt-2 text-[18px] font-bold text-gray-950">Quality and timing</p></div><div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-5"><p class="text-[12px] text-gray-500">OpEx and vendor spend</p><p class="mt-2 text-[18px] font-bold text-gray-950">Pressure by source</p></div><div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-5"><p class="text-[12px] text-gray-500">Bills and payables</p><p class="mt-2 text-[18px] font-bold text-gray-950">Due dates and risk</p></div><div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-5"><p class="text-[12px] text-gray-500">Records quality</p><p class="mt-2 text-[18px] font-bold text-gray-950">Receipts and reports</p></div></div></div><div class="grid gap-4"><div class="rounded-2xl border border-gray-200 bg-white p-5"><h4 class="font-bold text-gray-950">What changed?</h4><p class="mt-2 text-[14px] text-gray-600">Revenue, spend, margin, bills, and subscriptions compared with the last period.</p></div><div class="rounded-2xl border border-gray-200 bg-white p-5"><h4 class="font-bold text-gray-950">What is at risk?</h4><p class="mt-2 text-[14px] text-gray-600">Cash pressure proxies, vendor concentration, upcoming payables, and missing records.</p></div><div class="rounded-2xl border border-[#EA580C]/30 bg-white p-5"><h4 class="font-bold text-gray-950">What should we fix first?</h4><p class="mt-2 text-[14px] text-gray-600">The action queue founders can discuss with finance before month-end.</p></div></div></div></div></section>
 
-        <section class="py-12 px-6 bg-[#F8FAFC] border-y border-gray-200">
-            <div class="max-w-[1180px] mx-auto">
-                <p class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-5">Example retail finance sources and categories</p>
-                <div class="flex flex-wrap gap-3">
-                    <span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Moka POS</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Qasir</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Majoo</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Pawoon</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Tokopedia</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Shopee</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">TikTok Shop</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Midtrans</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Xendit</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Bank BCA</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Bank Mandiri</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Jurnal</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Accurate</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">WhatsApp</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Email Upload</span>
-                </div>
-                <p class="text-[13px] text-gray-500 mt-4">Shown as example source categories for retail finance workflows, not a confirmed live integration list.</p>
-            </div>
-        </section>
+    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200"><div class="max-w-[1280px] mx-auto"><div class="max-w-3xl mb-12"><p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Decision workflow</p><h2 class="text-[34px] md:text-[46px] font-bold tracking-tight text-gray-950 mb-5">From scattered finance signals to founder-level decisions.</h2></div><div class="founder-flow grid lg:grid-cols-5 gap-8"><div class="relative z-10 pl-14 lg:pl-0 lg:pt-14"><span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">1</span><h3 class="font-bold text-gray-950 mb-2">Capture</h3><p class="text-[14px] text-gray-600">Revenue, transactions, bills, subscriptions, receipts, and documents enter FluxyOS.</p></div><div class="relative z-10 pl-14 lg:pl-0 lg:pt-14"><span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">2</span><h3 class="font-bold text-gray-950 mb-2">Organize</h3><p class="text-[14px] text-gray-600">Records route into Ledger, Bills, Subscriptions, Revenue Sync, Reports, and AI review.</p></div><div class="relative z-10 pl-14 lg:pl-0 lg:pt-14"><span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">3</span><h3 class="font-bold text-gray-950 mb-2">Surface pressure</h3><p class="text-[14px] text-gray-600">OpEx increases, vendor concentration, upcoming bills, renewals, and low-margin revenue become visible.</p></div><div class="relative z-10 pl-14 lg:pl-0 lg:pt-14"><span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">4</span><h3 class="font-bold text-gray-950 mb-2">Ask Fluxy AI</h3><p class="text-[14px] text-gray-600">Ask what changed, why OpEx is high, which bills are overdue, or what needs attention first.</p></div><div class="relative z-10 pl-14 lg:pl-0 lg:pt-14"><span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">5</span><h3 class="font-bold text-gray-950 mb-2">Decide</h3><p class="text-[14px] text-gray-600">Cut, chase, pause, scale, or fix based on the real operating finance picture.</p></div></div></div></section>
 
-        <section id="faq" class="py-16 md:py-20 px-6 border-y border-gray-200 bg-[#F8FAFC]">
-            <div class="max-w-[1120px] mx-auto">
-                <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-8">Frequently asked questions</h2>
-                <div class="grid md:grid-cols-2 gap-4">
-                    <details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">How does FluxyOS help retail and franchise owners?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">FluxyOS brings POS revenue, supplier invoices, outlet expenses, receipts, budgets, vendor payments, and bank settlements into one finance operations view so owners can compare true branch profitability.</p></details>
-                    <details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can FluxyOS compare outlet profitability?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. Each transaction can be tagged by outlet so owners and finance teams can compare revenue, operating cost, supplier spend, budget variance, and net margin by branch.</p></details>
-                    <details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Does FluxyOS track footfall or CCTV analytics?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">No. FluxyOS is focused on finance operations: POS revenue, settlement, supplier costs, store expenses, receipts, budgets, reconciliation, and branch-level P&L.</p></details>
-                    <details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can store managers submit receipts from WhatsApp?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. Store teams can send receipts through WhatsApp, email, or upload. FluxyOS extracts vendor, amount, tax, and category for finance review.</p></details>
-                </div>
-            </div>
-        </section>
+    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-b border-gray-200"><div class="max-w-[1280px] mx-auto"><div class="max-w-3xl mb-10"><p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Weekly founder questions</p><h2 class="text-[34px] md:text-[46px] font-bold tracking-tight text-gray-950 mb-5">Built for the questions founders ask every week.</h2></div><div class="grid lg:grid-cols-3 gap-6"><div class="lg:col-span-2 rounded-3xl border border-gray-200 bg-white p-6 md:p-8 founder-shadow"><span class="bg-[#EA580C]/10 text-[#EA580C] text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider inline-block mb-3">Founder Command View</span><h3 class="text-[28px] font-bold text-gray-950 mb-4">Business health in one view</h3><p class="text-[16px] text-gray-600 leading-relaxed">See revenue, OpEx, margin, cash pressure proxies, bills, subscriptions, vendor spend, and needs-action records without opening another spreadsheet.</p></div><div class="rounded-2xl border border-gray-200 bg-white p-6"><h4 class="font-bold text-gray-950 mb-2">Know what changed</h4><p class="text-[14px] text-gray-600">Compare revenue, spend, margin, and bills against the previous period.</p></div><div class="rounded-2xl border border-gray-200 bg-white p-6"><h4 class="font-bold text-gray-950 mb-2">Catch spend early</h4><p class="text-[14px] text-gray-600">Spot vendor, cloud, SaaS, contractor, and operating spend before it compounds.</p></div><div class="rounded-2xl border border-gray-200 bg-white p-6"><h4 class="font-bold text-gray-950 mb-2">See upcoming pressure</h4><p class="text-[14px] text-gray-600">Track bills, subscriptions, pending payables, and expected revenue together.</p></div><div class="rounded-2xl border border-gray-200 bg-white p-6"><h4 class="font-bold text-gray-950 mb-2">Know what finance needs</h4><p class="text-[14px] text-gray-600">See missing receipts, incomplete records, and data quality issues blocking confident reporting.</p></div></div></div></section>
 
-        <section class="bg-[#0B0F19] py-16 md:py-24 px-6 text-white">
-            <div class="max-w-[1280px] mx-auto text-center">
-                <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight mb-5">See the real financial picture across every outlet.</h2>
-                <p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">FluxyOS helps retail and franchise owners connect revenue, expenses, budgets, suppliers, receipts, and reconciliation in one operating view.</p>
-                <div class="flex flex-col sm:flex-row gap-4 justify-center"><a href="/pricing" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm inline-block text-center">Try FluxyOS</a><a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">Book a demo</a></div>
-            </div>
-        </section>
-    </main>
+    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200"><div class="max-w-[1120px] mx-auto rounded-3xl border border-gray-200 bg-[#F8FAFC] p-6 md:p-8"><div class="grid lg:grid-cols-[0.85fr_1.15fr] gap-8 items-center"><div><span class="bg-[#EA580C]/10 text-[#EA580C] text-[11px] font-bold px-2 py-1 rounded uppercase tracking-wider inline-block mb-3">Fluxy AI</span><h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">Ask the finance questions you usually send to the team.</h2><p class="text-[16px] text-gray-600 leading-relaxed mb-5">Fluxy AI answers from finance data inside FluxyOS. It does not invent numbers, move money, or save, approve, delete, or mark bills paid without explicit confirmation.</p><div class="grid gap-2 text-[13px] text-gray-700"><span>How is my business doing this month?</span><span>Why is OpEx high?</span><span>What changed since last month?</span><span>Can I cover upcoming bills?</span><span>What should I fix first?</span></div></div><div class="rounded-2xl border border-gray-200 bg-white p-5 md:p-6 founder-shadow"><p class="font-mono text-[11px] uppercase tracking-[0.2em] text-gray-400 mb-3">Founder Q&A</p><div class="rounded-xl bg-gray-50 border border-gray-200 p-4 mb-4"><p class="text-[13px] font-bold text-[#EA580C]">Question</p><p class="mt-1 text-[14px] text-gray-800">How is my business doing this month?</p></div><div class="space-y-3 text-[14px] text-gray-700"><p><strong class="text-gray-950">Answer:</strong> Revenue is up, but OpEx grew faster than income. Vendor and SaaS spend are the main pressure points.</p><p><strong class="text-gray-950">Key numbers:</strong> Revenue Rp 428M, OpEx Rp 216M, gross margin 49.5%, needs action 14 records.</p><p><strong class="text-gray-950">Risks:</strong> Two bills are due before expected collections and missing receipts may delay reporting.</p><p><strong class="text-gray-950">Recommended actions:</strong> Review top vendor increases, clean missing receipts, and check bills due before collections.</p><p class="text-[12px] text-gray-500">Sample UI answer only. Fluxy AI should return no-data answers when records are unavailable.</p></div></div></div></div></section>
+
+    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-b border-gray-200"><div class="max-w-[1280px] mx-auto"><div class="max-w-3xl mx-auto text-center mb-10"><h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950">Before FluxyOS, the founder waits for answers. After FluxyOS, the business speaks sooner.</h2></div><div class="grid md:grid-cols-2 gap-6"><div class="rounded-2xl border border-gray-200 bg-white p-6"><h3 class="text-[20px] font-bold text-gray-500 mb-5">Before FluxyOS</h3><ul class="space-y-3 text-[14px] text-gray-600"><li>Spreadsheet finance snapshot</li><li>Founder waits for month-end</li><li>Spend lives across tools</li><li>Bills and renewals surprise the team</li><li>Cash pressure is guessed</li><li>Finance questions require manual checking</li></ul></div><div class="rounded-2xl border border-gray-200 bg-white p-6"><h3 class="text-[20px] font-bold text-gray-950 mb-5">After FluxyOS</h3><ul class="space-y-3 text-[14px] font-medium text-gray-700"><li>One operating finance view</li><li>Revenue and OpEx visible earlier</li><li>Bills and subscriptions tracked</li><li>AI explains what changed</li><li>Founder sees risks and next actions</li><li>Reports are easier to prepare</li></ul></div></div></div></section>
+
+    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200"><div class="max-w-[1280px] mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-10 items-start"><div><p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Decision priority</p><h2 class="text-[34px] md:text-[46px] font-bold tracking-tight text-gray-950 mb-5">Know what to cut, chase, pause, or scale.</h2><p class="text-[17px] text-gray-600 leading-relaxed">Founders get clarity without bypassing finance control. Founders see business health and risk; finance teams keep control over ledger cleanup, receipts, bills, subscriptions, reporting, exports, and confirmation gates.</p></div><div class="grid sm:grid-cols-2 gap-4"><div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5"><h3 class="font-bold text-gray-950">Cut</h3><p class="mt-2 text-[14px] text-gray-600">Wasteful subscriptions or vendor spend.</p></div><div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5"><h3 class="font-bold text-gray-950">Chase</h3><p class="mt-2 text-[14px] text-gray-600">Overdue receivables or delayed payouts.</p></div><div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5"><h3 class="font-bold text-gray-950">Pause</h3><p class="mt-2 text-[14px] text-gray-600">Spend that is outpacing margin.</p></div><div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-5"><h3 class="font-bold text-gray-950">Scale</h3><p class="mt-2 text-[14px] text-gray-600">Revenue lines with healthy margin.</p></div><div class="sm:col-span-2 rounded-2xl border border-[#EA580C]/30 bg-white p-5"><h3 class="font-bold text-gray-950">Fix</h3><p class="mt-2 text-[14px] text-gray-600">Missing receipts, uncategorized records, overdue bills, and finance data quality issues.</p></div></div></div></section>
+
+    <section id="faq" class="py-16 md:py-20 px-6 border-b border-gray-200 bg-[#F8FAFC]"><div class="max-w-[1120px] mx-auto"><div class="max-w-3xl mb-8"><h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">Frequently asked questions</h2><p class="text-[16px] text-gray-600">Short answers for founders, CEOs, and owner-operators.</p></div><div class="grid md:grid-cols-2 gap-4"><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Is FluxyOS for founders without a finance team?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. Founder-led teams can use FluxyOS to understand revenue, OpEx, margin, bills, subscriptions, and records that need attention before building a larger finance function.</p></details><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can FluxyOS show whether my business is doing well?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">FluxyOS shows operating finance signals such as revenue, expenses, gross margin, payables, subscriptions, vendor spend, and needs-action records so founders can assess business health earlier.</p></details><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can FluxyOS help me understand cash pressure?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. FluxyOS can show cash pressure proxies from bills, subscriptions, pending payables, and expected revenue. Full runway accuracy depends on available data, including real bank balance and expected collections.</p></details><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can FluxyOS replace my accountant?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">No. FluxyOS is a finance operating layer before accounting and reporting. It helps organize records and explain business activity, while accountants still handle formal accounting, tax, and compliance work.</p></details><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can Fluxy AI answer founder-level finance questions?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. Fluxy AI answers from FluxyOS finance data, explains backend-calculated numbers, and returns clear no-data answers when records are not available.</p></details><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Does FluxyOS move money or approve payments automatically?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">No. FluxyOS helps review, track, and organize finance records. Sensitive actions such as saving, approving, deleting, or marking bills paid require explicit confirmation.</p></details><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can I use FluxyOS before month-end reporting?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. The page is designed around earlier visibility, so founders can see what changed, what is risky, and what needs attention before month-end reports are finalized.</p></details></div></div></section>
+
+    <section class="bg-[#0B0F19] py-16 md:py-24 px-6"><div class="max-w-[1280px] mx-auto text-center"><h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-white mb-5">Stop waiting until month-end to understand the business.</h2><p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">Use FluxyOS to see what changed, what is risky, and what to fix next across revenue, expenses, bills, subscriptions, and finance records.</p><div class="flex flex-col sm:flex-row gap-4 justify-center"><a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow inline-block text-center">Try FluxyOS</a><a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">View pricing</a></div></div></section>
 
     <script src="/assets/js/universe-canvas.js" defer></script>
     <script src="/assets/js/footer-loader.js" defer></script>
