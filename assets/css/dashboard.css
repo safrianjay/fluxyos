@@ -2028,3 +2028,128 @@
     .brain-title { font-size: 16px; }
     .brain-message { font-size: 13px; }
 }
+
+/* ============================================================
+   KPI logic enhancement — mini-tile cells + pressure meter + budget series
+   ============================================================ */
+
+.metric-cell-mini {
+    min-height: 196px;
+    display: flex;
+    flex-direction: column;
+}
+
+.metric-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 12px;
+}
+
+.metric-mini-tile {
+    border: 1px solid #F1F5F9;
+    background: #F9FAFB;
+    border-radius: 10px;
+    padding: 8px 10px;
+}
+
+.metric-mini-tile span {
+    display: block;
+    color: #94A3B8;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+}
+
+.metric-mini-tile strong {
+    display: block;
+    font-family: "Fira Code", monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+    overflow-wrap: anywhere;
+}
+
+.metric-sub.is-warn { color: #C2410C; }
+
+.metric-progress-budget {
+    margin-top: 12px;
+    height: 4px;
+    background: #E5E7EB;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.metric-progress-fill.is-good { background: #16A34A; }
+.metric-progress-fill.is-warn { background: #F97316; }
+.metric-progress-fill.is-bad { background: #DC2626; }
+
+.metric-pressure-bar {
+    position: relative;
+    margin-top: 14px;
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #DCFCE7 0%, #FEF3C7 55%, #FEE2E2 100%);
+    overflow: hidden;
+}
+
+.metric-pressure-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.18);
+    transition: width 220ms ease, background 200ms ease;
+}
+
+.metric-pressure-fill.is-good { background: rgba(22, 163, 74, 0.55); }
+.metric-pressure-fill.is-warn { background: rgba(249, 115, 22, 0.65); }
+.metric-pressure-fill.is-bad { background: rgba(220, 38, 38, 0.7); }
+
+.metric-pressure-scale {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    color: #94A3B8;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.cashflow-line-budget {
+    fill: none;
+    stroke: #F97316;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 8 6;
+}
+
+.legend-dot-budget {
+    background: transparent;
+    border: 2px dashed #F97316;
+    height: 2px;
+    width: 18px;
+    border-radius: 0;
+}
+
+.legend-caption {
+    color: #94A3B8;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 4px;
+    font-style: italic;
+}
+
+@media (max-width: 1240px) {
+    .metric-cell-mini { min-height: 184px; }
+}
+
+@media (max-width: 760px) {
+    .metric-cell-mini { min-height: 0; }
+    .metric-mini-grid { margin-top: 12px; }
+}
+

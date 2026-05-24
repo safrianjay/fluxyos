@@ -71,34 +71,49 @@
                                 <svg id="kpi-revenue-sparkline" class="metric-sparkline metric-sparkline-revenue" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true"></svg>
                             </article>
 
-                            <article class="metric-cell metric-cell-pressure metric-cell-trend">
+                            <article class="metric-cell metric-cell-mini">
                                 <div class="metric-label">
-                                    <span>Cash pressure</span>
-                                    <button type="button" class="metric-info" aria-label="Cash pressure: net pressure between incoming cash and upcoming obligations." data-tooltip="Net pressure between incoming cash and expected obligations. Negative values mean obligations are heavier than incoming cash.">?</button>
+                                    <span>Bank cash balance</span>
+                                    <button type="button" class="metric-info" aria-label="Bank cash balance: real bank cash from connected accounts." data-tooltip="Real bank cash balance from connected accounts. Shows Rp 0 when no bank is connected.">?</button>
                                 </div>
                                 <div class="metric-value-row">
-                                    <span id="kpi-cash-pressure" class="metric-value tabular-nums">Rp 0</span>
+                                    <span id="kpi-bank-cash" class="metric-value tabular-nums">Rp 0</span>
                                 </div>
-                                <div class="metric-comparison-row">
-                                    <span class="metric-arrow" id="kpi-cash-pressure-arrow" aria-hidden="true"></span>
-                                    <p id="kpi-cash-pressure-sub" class="metric-sub">Loading...</p>
+                                <p id="kpi-bank-cash-sub" class="metric-sub">No bank data connected</p>
+                                <div class="metric-mini-grid">
+                                    <div class="metric-mini-tile">
+                                        <span>30-day outlook</span>
+                                        <strong id="kpi-bank-cash-outlook">Rp 0</strong>
+                                    </div>
+                                    <div class="metric-mini-tile">
+                                        <span>Coverage</span>
+                                        <strong id="kpi-bank-cash-coverage">Not available</strong>
+                                    </div>
                                 </div>
-                                <svg id="kpi-cash-pressure-sparkline" class="metric-sparkline metric-sparkline-pressure" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true"></svg>
                             </article>
 
-                            <article class="metric-cell metric-cell-trend" data-tour-target="dashboard-opex-kpi">
+                            <article class="metric-cell metric-cell-mini" data-tour-target="dashboard-opex-kpi">
                                 <div class="metric-label">
-                                    <span>OpEx, selected period</span>
-                                    <button type="button" class="metric-info" aria-label="OpEx: operating expenses recorded in the selected period." data-tooltip="Operating expenses recorded in the selected period. Includes expense-side activity used in the performance trend.">?</button>
+                                    <span>OpEx vs budget</span>
+                                    <button type="button" class="metric-info" aria-label="OpEx vs budget: operating spend vs the configured monthly OpEx budget." data-tooltip="Operating spend in the selected period vs the configured monthly OpEx budget.">?</button>
                                 </div>
                                 <div class="metric-value-row">
                                     <span id="kpi-opex" class="metric-value tabular-nums">Rp 0</span>
                                 </div>
-                                <div class="metric-comparison-row">
-                                    <span class="metric-arrow" id="kpi-opex-arrow" aria-hidden="true"></span>
-                                    <p id="kpi-opex-change" class="metric-sub">Loading...</p>
+                                <p id="kpi-opex-change" class="metric-sub">Budget not set</p>
+                                <div class="metric-mini-grid">
+                                    <div class="metric-mini-tile">
+                                        <span>Budget used</span>
+                                        <strong id="kpi-opex-budget-used">0%</strong>
+                                    </div>
+                                    <div class="metric-mini-tile">
+                                        <span>Budget</span>
+                                        <strong id="kpi-opex-budget-total">Rp 0</strong>
+                                    </div>
                                 </div>
-                                <svg id="kpi-opex-sparkline" class="metric-sparkline metric-sparkline-opex" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true"></svg>
+                                <div class="metric-progress metric-progress-budget">
+                                    <div id="kpi-opex-budget-bar" class="metric-progress-fill" style="width: 0%"></div>
+                                </div>
                             </article>
 
                             <article class="metric-cell" data-tour-target="dashboard-margin-kpi">
@@ -118,13 +133,17 @@
 
                             <article class="metric-cell">
                                 <div class="metric-label">
-                                    <span>Receivables</span>
-                                    <button type="button" class="metric-info" aria-label="Receivables: money expected to come in." data-tooltip="Money expected to come in from pending receivable records during the selected period.">?</button>
+                                    <span>Cash pressure</span>
+                                    <button type="button" class="metric-info" aria-label="Cash pressure: 30-day cash outlook using bank cash, receivables due soon, and payables due soon." data-tooltip="30-day cash outlook: bank cash + receivables due soon - payables due soon.">?</button>
                                 </div>
                                 <div class="metric-value-row">
-                                    <span id="kpi-receivables" class="metric-value tabular-nums">Rp 0</span>
+                                    <span id="kpi-cash-pressure" class="metric-value tabular-nums">Rp 0</span>
                                 </div>
-                                <p id="kpi-receivables-sub" class="metric-sub">Loading...</p>
+                                <p id="kpi-cash-pressure-sub" class="metric-sub">Low pressure</p>
+                                <div class="metric-pressure-bar">
+                                    <div id="kpi-cash-pressure-meter" class="metric-pressure-fill" style="width: 0%"></div>
+                                </div>
+                                <div class="metric-pressure-scale"><span>Low</span><span>High</span></div>
                             </article>
 
                             <article class="metric-cell">
@@ -149,6 +168,7 @@
                                 <div class="chart-legend">
                                     <span class="legend-item"><span class="legend-dot legend-dot-revenue"></span> Revenue</span>
                                     <span class="legend-item"><span class="legend-dot legend-dot-opex"></span> OpEx</span>
+                                    <span class="legend-item"><span class="legend-dot legend-dot-budget"></span> Budget used <span id="cashflow-budget-caption" class="legend-caption">(Budget not set)</span></span>
                                     <div class="cashflow-chart-toggle" aria-label="Cash flow chart type">
                                         <button type="button" class="cashflow-chart-toggle-btn" data-cashflow-chart-type="bar">Bar</button>
                                         <button type="button" class="cashflow-chart-toggle-btn is-active" data-cashflow-chart-type="line">Line</button>

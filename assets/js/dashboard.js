@@ -19,6 +19,7 @@ const ds = new DataService(app);
 let cashflowChartType = 'line';
 let cashflowBuckets = [];
 let cashFlowBuckets = [];
+let currentBudget = { monthly: 0, used: 0, usedPct: 0, remaining: 0 };
 let dashboardPeriodMode = 'this_month';
 let dashboardRangeStart = getMonthStartKey();
 let dashboardRangeEnd = getMonthEndKey();
@@ -47,8 +48,15 @@ window.loadDashboard = async () => {
             mode: dashboardPeriodMode
         });
 
-        cashflowBuckets = buildCashflowBuckets(overview.chartTransactions || [], dashboardRangeStart, dashboardRangeEnd);
+        currentBudget = overview.budget || { monthly: 0, used: 0, usedPct: 0, remaining: 0 };
+        cashflowBuckets = buildCashflowBuckets(
+            overview.chartTransactions || [],
+            dashboardRangeStart,
+            dashboardRangeEnd,
+            currentBudget
+        );
         cashFlowBuckets = overview.cashFlow || [];
+        updateBudgetCaption();
 
         renderSummaryBoard(overview);
         renderCashflowChart();
@@ -157,14 +165,20 @@ function renderOverviewLoadingState() {
     updateKPI('kpi-opex', 'Rp 0');
     updateKPI('kpi-margin', '0%');
     updateKPI('kpi-cash-pressure', 'Rp 0');
-    updateKPI('kpi-receivables', 'Rp 0');
+    updateKPI('kpi-bank-cash', 'Rp 0');
     updateKPI('kpi-payables', 'Rp 0');
     updateKPI('kpi-revenue-change', 'Loading...');
     updateKPI('kpi-opex-change', 'Loading...');
     updateKPI('kpi-margin-status', 'Loading...');
     updateKPI('kpi-cash-pressure-sub', 'Loading...');
-    updateKPI('kpi-receivables-sub', 'Loading...');
+    updateKPI('kpi-bank-cash-sub', 'Loading...');
+    updateKPI('kpi-bank-cash-outlook', 'Rp 0');
+    updateKPI('kpi-bank-cash-coverage', 'Not available');
+    updateKPI('kpi-opex-budget-used', '0%');
+    updateKPI('kpi-opex-budget-total', 'Rp 0');
     updateKPI('kpi-payables-sub', 'Loading...');
+    setBudgetBar(0);
+    setPressureMeter(0, 'low');
     setHtml('needs-attention-content', '<div class="overview-card-loading">Loading action items...</div>');
     setHtml('payables-by-category-content', '<div class="overview-card-loading">Loading payables...</div>');
     setHtml('upcoming-obligations-content', '<div class="overview-card-loading">Loading upcoming obligations...</div>');
@@ -186,14 +200,20 @@ function renderOverviewErrorState() {
     updateKPI('kpi-opex', 'Rp 0');
     updateKPI('kpi-margin', '0%');
     updateKPI('kpi-cash-pressure', 'Rp 0');
-    updateKPI('kpi-receivables', 'Rp 0');
+    updateKPI('kpi-bank-cash', 'Rp 0');
     updateKPI('kpi-payables', 'Rp 0');
     updateKPI('kpi-revenue-change', 'No data');
-    updateKPI('kpi-opex-change', 'No data');
+    updateKPI('kpi-opex-change', 'Budget not set');
     updateKPI('kpi-margin-status', 'No revenue data');
     updateKPI('kpi-cash-pressure-sub', 'No data');
-    updateKPI('kpi-receivables-sub', 'No records found');
+    updateKPI('kpi-bank-cash-sub', 'No bank data connected');
+    updateKPI('kpi-bank-cash-outlook', 'Rp 0');
+    updateKPI('kpi-bank-cash-coverage', 'Not available');
+    updateKPI('kpi-opex-budget-used', '0%');
+    updateKPI('kpi-opex-budget-total', 'Rp 0');
     updateKPI('kpi-payables-sub', 'No records found');
+    setBudgetBar(0);
+    setPressureMeter(0, 'low');
     const errorHtml = '<div class="overview-empty-copy">Overview data could not be loaded. Please refresh and try again.</div>';
     setHtml('needs-attention-content', errorHtml);
     setHtml('payables-by-category-content', errorHtml);
@@ -211,41 +231,19 @@ function renderOverviewErrorState() {
 function renderSummaryBoard(overview) {
     const p = overview.performance || {};
     const rp = overview.receivablesPayables || {};
-    const c = overview.cashPressure || {};
+    const actions = overview.actionItems || {};
     const margin = safeNumber(p.grossMargin);
 
     updateKPI('kpi-revenue', formatIDR(p.revenue));
-    updateKPI('kpi-opex', formatIDR(p.opex));
     updateKPI('kpi-margin', `${formatNumber(margin, 1)}%`);
-    updateKPI('kpi-cash-pressure', formatSignedIDR(c.netPressure));
-    updateKPI('kpi-receivables', formatIDR(rp.receivablesTotal));
     updateKPI('kpi-payables', formatIDR(rp.payablesTotal));
 
     renderKpiComparison('kpi-revenue-change', p.revenueChangePct, 'revenue');
-    renderKpiComparison('kpi-opex-change', p.opexChangePct, 'opex');
     renderMarginStatus(margin, p.marginChangePct);
-
     renderMetricArrow('kpi-revenue-arrow', p.revenueChangePct, 'revenue');
-    renderMetricArrow('kpi-opex-arrow', p.opexChangePct, 'opex');
     renderMetricArrow('kpi-margin-arrow', p.marginChangePct, 'revenue');
-    renderMetricArrow('kpi-cash-pressure-arrow', safeNumber(c.netPressure), 'revenue');
 
-    const cashPressureSub = document.getElementById('kpi-cash-pressure-sub');
-    if (cashPressureSub) {
-        const risk = String(c.riskLevel || 'low');
-        const riskLabel = risk === 'high' ? 'High pressure' : (risk === 'watch' ? 'Watch' : 'Low pressure');
-        cashPressureSub.textContent = `${riskLabel} - obligations vs incoming`;
-    }
-    const receivablesSub = document.getElementById('kpi-receivables-sub');
-    if (receivablesSub) {
-        const n = Number(rp.receivableCount || 0);
-        receivablesSub.textContent = n === 0 ? 'No records expected in.' : `${n} record${n === 1 ? '' : 's'} expected in.`;
-    }
-    const payablesSub = document.getElementById('kpi-payables-sub');
-    if (payablesSub) {
-        const n = Number(rp.payableCount || 0);
-        payablesSub.textContent = n === 0 ? 'No records expected out.' : `${n} record${n === 1 ? '' : 's'} expected out.`;
-    }
+    renderPayablesSub(rp, actions);
 
     const bar = document.getElementById('kpi-margin-bar');
     if (bar) bar.style.width = `${Math.max(0, Math.min(100, margin))}%`;
@@ -255,16 +253,128 @@ function renderSummaryBoard(overview) {
         cashflowBuckets.map(bucket => Number(bucket.revenue) || 0),
         'revenue'
     );
-    renderMetricSparkline(
-        'kpi-cash-pressure-sparkline',
-        cashFlowBuckets.map(bucket => Number(bucket.netCashFlow) || 0),
-        'pressure'
-    );
-    renderMetricSparkline(
-        'kpi-opex-sparkline',
-        cashflowBuckets.map(bucket => Number(bucket.spend) || 0),
-        'opex'
-    );
+
+    renderBankCashCell(overview.bankCash || {}, rp);
+    renderOpexBudgetCell(p, currentBudget);
+    renderCashPressureCell(overview.cashPressure || {});
+}
+
+function renderBankCashCell(bankCash, rp) {
+    const balance = safeNumber(bankCash.balance);
+    const accountsSynced = safeNumber(bankCash.accountsSynced);
+    const thirtyDayOutlook = safeNumber(bankCash.thirtyDayOutlook);
+    const payablesTotal = safeNumber(rp.payablesTotal);
+
+    updateKPI('kpi-bank-cash', formatIDR(balance));
+    const sub = document.getElementById('kpi-bank-cash-sub');
+    if (sub) {
+        if (accountsSynced > 0) {
+            sub.textContent = `${accountsSynced} bank account${accountsSynced === 1 ? '' : 's'} synced`;
+            sub.className = 'metric-sub is-good';
+        } else {
+            sub.textContent = 'No bank data connected';
+            sub.className = 'metric-sub';
+        }
+    }
+    updateKPI('kpi-bank-cash-outlook', formatSignedIDR(thirtyDayOutlook));
+
+    const coverageEl = document.getElementById('kpi-bank-cash-coverage');
+    if (coverageEl) {
+        if (balance > 0 && payablesTotal > 0) {
+            coverageEl.textContent = `${(balance / payablesTotal).toFixed(1)}x payables`;
+        } else {
+            coverageEl.textContent = 'Not available';
+        }
+    }
+}
+
+function renderOpexBudgetCell(performance, budget) {
+    const opex = safeNumber(performance.opex);
+    const monthly = safeNumber(budget.monthly);
+    const usedPct = safeNumber(budget.usedPct);
+    const remaining = safeNumber(budget.remaining);
+
+    updateKPI('kpi-opex', formatIDR(opex));
+
+    const sub = document.getElementById('kpi-opex-change');
+    if (sub) {
+        if (monthly > 0) {
+            sub.textContent = `${formatIDR(remaining)} remaining`;
+            sub.className = usedPct > 100 ? 'metric-sub is-bad' : (usedPct > 70 ? 'metric-sub is-warn' : 'metric-sub is-good');
+        } else {
+            sub.textContent = 'Budget not set';
+            sub.className = 'metric-sub';
+        }
+    }
+
+    updateKPI('kpi-opex-budget-used', monthly > 0 ? `${usedPct.toFixed(1)}%` : '0%');
+    updateKPI('kpi-opex-budget-total', monthly > 0 ? formatIDR(monthly) : 'Rp 0');
+    setBudgetBar(monthly > 0 ? usedPct : 0);
+}
+
+function setBudgetBar(usedPct) {
+    const bar = document.getElementById('kpi-opex-budget-bar');
+    if (!bar) return;
+    const clamped = Math.max(0, Math.min(100, safeNumber(usedPct)));
+    bar.style.width = `${clamped}%`;
+    bar.className = `metric-progress-fill ${usedPct > 100 ? 'is-bad' : (usedPct > 70 ? 'is-warn' : 'is-good')}`;
+}
+
+function renderCashPressureCell(cashPressure) {
+    const outlook = safeNumber(cashPressure.outlook);
+    const risk = String(cashPressure.riskLevel || 'low');
+    const payablesDueSoon = safeNumber(cashPressure.payablesDueSoon);
+
+    updateKPI('kpi-cash-pressure', formatSignedIDR(outlook));
+
+    const sub = document.getElementById('kpi-cash-pressure-sub');
+    if (sub) {
+        const labels = { critical: 'Critical', high: 'High pressure', watch: 'Watch', low: 'Low pressure' };
+        sub.textContent = labels[risk] || 'Low pressure';
+        const tone = risk === 'critical' || risk === 'high' ? 'is-bad' : (risk === 'watch' ? 'is-warn' : 'is-good');
+        sub.className = `metric-sub ${tone}`;
+    }
+
+    let meterPct = 0;
+    if (risk === 'critical') meterPct = 100;
+    else if (risk === 'high') meterPct = 85;
+    else if (risk === 'watch') meterPct = 55;
+    else if (payablesDueSoon > 0 && outlook < payablesDueSoon * 2) meterPct = 25;
+    setPressureMeter(meterPct, risk);
+}
+
+function setPressureMeter(pct, risk) {
+    const meter = document.getElementById('kpi-cash-pressure-meter');
+    if (!meter) return;
+    const clamped = Math.max(0, Math.min(100, safeNumber(pct)));
+    meter.style.width = `${clamped}%`;
+    const tone = risk === 'critical' || risk === 'high' ? 'is-bad' : (risk === 'watch' ? 'is-warn' : 'is-good');
+    meter.className = `metric-pressure-fill ${tone}`;
+}
+
+function renderPayablesSub(rp, actions) {
+    const sub = document.getElementById('kpi-payables-sub');
+    if (!sub) return;
+    const overdue = Number(actions.overdueBills || 0);
+    const count = Number(rp.payableCount || 0);
+    if (overdue > 0) {
+        sub.textContent = `${overdue} overdue bill${overdue === 1 ? '' : 's'}`;
+        sub.className = 'metric-sub is-bad';
+    } else if (count === 0) {
+        sub.textContent = 'No records expected out.';
+        sub.className = 'metric-sub';
+    } else {
+        sub.textContent = `${count} record${count === 1 ? '' : 's'} expected out.`;
+        sub.className = 'metric-sub';
+    }
+}
+
+function updateBudgetCaption() {
+    const caption = document.getElementById('cashflow-budget-caption');
+    if (!caption) return;
+    const monthly = safeNumber(currentBudget.monthly);
+    const usedPct = safeNumber(currentBudget.usedPct);
+    caption.textContent = monthly > 0 ? `(${usedPct.toFixed(0)}% this period)` : '(Budget not set)';
 }
 
 function renderKpiComparison(id, change, type) {
@@ -360,14 +470,8 @@ function renderMetricSparkline(id, values, tone = 'revenue') {
 }
 
 function clearMetricSparklines() {
-    [
-        'kpi-revenue-sparkline',
-        'kpi-cash-pressure-sparkline',
-        'kpi-opex-sparkline'
-    ].forEach(id => {
-        const svg = document.getElementById(id);
-        if (svg) svg.innerHTML = '';
-    });
+    const svg = document.getElementById('kpi-revenue-sparkline');
+    if (svg) svg.innerHTML = '';
 }
 
 function renderCashFlowChart() {
@@ -894,7 +998,7 @@ function formatBucketLabel(startKey, endKey, bucketType) {
     return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}-${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 }
 
-function buildCashflowBuckets(txs, startKey, endKey) {
+function buildCashflowBuckets(txs, startKey, endKey, budget = { monthly: 0 }) {
     const rangeDays = getRangeDays(startKey, endKey);
     const bucketType = rangeDays <= 14 ? 'day' : (rangeDays > 93 ? 'month' : 'week');
     const bucketStep = bucketType === 'day' ? 1 : 7;
@@ -906,7 +1010,7 @@ function buildCashflowBuckets(txs, startKey, endKey) {
             const monthEnd = getMonthEndKey(parseDayKey(cursor));
             const bucketStart = cursor < startKey ? startKey : cursor;
             const bucketEnd = monthEnd > endKey ? endKey : monthEnd;
-            buckets.push({ start: bucketStart, end: bucketEnd, label: formatBucketLabel(bucketStart, bucketEnd, bucketType), revenue: 0, spend: 0 });
+            buckets.push({ start: bucketStart, end: bucketEnd, label: formatBucketLabel(bucketStart, bucketEnd, bucketType), revenue: 0, spend: 0, budgetUsedPct: 0 });
             const next = parseDayKey(cursor);
             next.setMonth(next.getMonth() + 1);
             cursor = getMonthStartKey(next);
@@ -915,7 +1019,7 @@ function buildCashflowBuckets(txs, startKey, endKey) {
         let cursor = startKey;
         while (cursor <= endKey) {
             const bucketEnd = addDays(cursor, bucketStep - 1) > endKey ? endKey : addDays(cursor, bucketStep - 1);
-            buckets.push({ start: cursor, end: bucketEnd, label: formatBucketLabel(cursor, bucketEnd, bucketType), revenue: 0, spend: 0 });
+            buckets.push({ start: cursor, end: bucketEnd, label: formatBucketLabel(cursor, bucketEnd, bucketType), revenue: 0, spend: 0, budgetUsedPct: 0 });
             cursor = addDays(bucketEnd, 1);
         }
     }
@@ -932,8 +1036,20 @@ function buildCashflowBuckets(txs, startKey, endKey) {
         else if (isSpendTransaction(tx)) bucket.spend += amount;
     });
 
+    const monthlyBudget = safeNumber(budget?.monthly);
+    if (monthlyBudget > 0) {
+        const periodDays = rangeDays;
+        buckets.forEach(bucket => {
+            const bucketDays = getRangeDays(bucket.start, bucket.end);
+            const bucketBudget = monthlyBudget * (bucketDays / Math.max(periodDays, 1));
+            bucket.budgetUsedPct = bucketBudget > 0
+                ? Math.min((bucket.spend / bucketBudget) * 100, 150)
+                : 0;
+        });
+    }
+
     if (!buckets.length) {
-        buckets.push({ start: startKey, end: endKey, label: formatBucketLabel(startKey, endKey, 'day'), revenue: 0, spend: 0 });
+        buckets.push({ start: startKey, end: endKey, label: formatBucketLabel(startKey, endKey, 'day'), revenue: 0, spend: 0, budgetUsedPct: 0 });
     }
     return buckets;
 }
@@ -987,7 +1103,7 @@ function renderCashflowBarChart(chart) {
                     const revenueHeight = Math.max((item.revenue / maxValue) * 100, item.revenue > 0 ? 4 : 0);
                     const spendHeight = Math.max((item.spend / maxValue) * 100, item.spend > 0 ? 4 : 0);
                     return `
-                        <div class="cashflow-bar-group" data-chart-bar data-label="${escapeHtml(item.label)}" data-revenue="${item.revenue}" data-spend="${item.spend}">
+                        <div class="cashflow-bar-group" data-chart-bar data-label="${escapeHtml(item.label)}" data-revenue="${item.revenue}" data-spend="${item.spend}" data-budget-used="${safeNumber(item.budgetUsedPct)}">
                             <div class="cashflow-bar cashflow-bar-revenue" style="height: ${revenueHeight}%"></div>
                             <div class="cashflow-bar cashflow-bar-spend" style="height: ${spendHeight}%"></div>
                         </div>
@@ -1021,9 +1137,13 @@ function renderCashflowLineChart(chart) {
     const paddingY = 28;
     const revenueValues = cashflowBuckets.map(item => item.revenue);
     const spendValues = cashflowBuckets.map(item => item.spend);
+    const budgetUsedValues = cashflowBuckets.map(item => Math.min(safeNumber(item.budgetUsedPct), 100));
     const maxValue = Math.max(...revenueValues, ...spendValues, 1);
     const revenuePoints = buildLinePoints(revenueValues, maxValue, width, height, paddingX, paddingY);
     const spendPoints = buildLinePoints(spendValues, maxValue, width, height, paddingX, paddingY);
+    const budgetPoints = currentBudget.monthly > 0
+        ? buildLinePoints(budgetUsedValues, 100, width, height, paddingX, paddingY)
+        : [];
     const toPolyline = points => points.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
 
     chart.innerHTML = `
@@ -1036,12 +1156,13 @@ function renderCashflowLineChart(chart) {
             <svg class="cashflow-line-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Cash flow line chart">
                 <polyline class="cashflow-line cashflow-line-revenue" points="${toPolyline(revenuePoints)}"></polyline>
                 <polyline class="cashflow-line cashflow-line-spend" points="${toPolyline(spendPoints)}"></polyline>
+                ${budgetPoints.length ? `<polyline class="cashflow-line cashflow-line-budget" points="${toPolyline(budgetPoints)}"></polyline>` : ''}
                 ${revenuePoints.map(point => `<circle class="cashflow-point cashflow-point-revenue" cx="${point.x}" cy="${point.y}" r="4"></circle>`).join('')}
                 ${spendPoints.map(point => `<circle class="cashflow-point cashflow-point-spend" cx="${point.x}" cy="${point.y}" r="4"></circle>`).join('')}
             </svg>
             <div class="cashflow-line-hover-zones">
                 ${cashflowBuckets.map((item, index) => `
-                    <div class="cashflow-line-hover-zone" data-chart-bar data-label="${escapeHtml(item.label)}" data-revenue="${item.revenue}" data-spend="${item.spend}" style="left:${(index / Math.max(cashflowBuckets.length - 1, 1)) * 100}%"></div>
+                    <div class="cashflow-line-hover-zone" data-chart-bar data-label="${escapeHtml(item.label)}" data-revenue="${item.revenue}" data-spend="${item.spend}" data-budget-used="${safeNumber(item.budgetUsedPct)}" style="left:${(index / Math.max(cashflowBuckets.length - 1, 1)) * 100}%"></div>
                 `).join('')}
             </div>
         </div>
@@ -1057,19 +1178,30 @@ function attachCashflowHover(stage, revenueColor, spendColor) {
     window.attachChartHover(stage, {
         bars: '[data-chart-bar]',
         orientation: 'vertical',
-        buildTooltip: barEl => `
-            <div class="chart-tooltip-header">${escapeHtml(barEl.dataset.label)}</div>
-            <div class="chart-tooltip-row">
-                <span class="chart-tooltip-swatch" style="background:${revenueColor}"></span>
-                <span class="chart-tooltip-label">Revenue</span>
-                <span class="chart-tooltip-value">${formatIDR(Number(barEl.dataset.revenue || 0))}</span>
-            </div>
-            <div class="chart-tooltip-row">
-                <span class="chart-tooltip-swatch" style="background:${spendColor}"></span>
-                <span class="chart-tooltip-label">Spend</span>
-                <span class="chart-tooltip-value">${formatIDR(Number(barEl.dataset.spend || 0))}</span>
-            </div>
-        `
+        buildTooltip: barEl => {
+            const budgetUsed = Number(barEl.dataset.budgetUsed || 0);
+            const budgetRow = currentBudget.monthly > 0
+                ? `<div class="chart-tooltip-row">
+                       <span class="chart-tooltip-swatch" style="background:#F97316"></span>
+                       <span class="chart-tooltip-label">Budget used</span>
+                       <span class="chart-tooltip-value">${budgetUsed.toFixed(0)}%</span>
+                   </div>`
+                : '';
+            return `
+                <div class="chart-tooltip-header">${escapeHtml(barEl.dataset.label)}</div>
+                <div class="chart-tooltip-row">
+                    <span class="chart-tooltip-swatch" style="background:${revenueColor}"></span>
+                    <span class="chart-tooltip-label">Revenue</span>
+                    <span class="chart-tooltip-value">${formatIDR(Number(barEl.dataset.revenue || 0))}</span>
+                </div>
+                <div class="chart-tooltip-row">
+                    <span class="chart-tooltip-swatch" style="background:${spendColor}"></span>
+                    <span class="chart-tooltip-label">Spend</span>
+                    <span class="chart-tooltip-value">${formatIDR(Number(barEl.dataset.spend || 0))}</span>
+                </div>
+                ${budgetRow}
+            `;
+        }
     });
 }
 

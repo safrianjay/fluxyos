@@ -707,9 +707,10 @@ class DataService {
             + this._sumAmounts(pendingPayables);
         const expectedIncoming = this._sumAmounts(pendingReceivables);
         const netPressure = expectedIncoming - upcomingObligations;
-        const riskLevel = this._getCashPressureRisk(netPressure, upcomingObligations, expectedIncoming, overdueBills.length);
         const receivablesTotal = this._sumAmounts(pendingReceivables);
         const payablesTotal = this._sumAmounts(billsDueSoon) + this._sumAmounts(overdueBills) + this._sumAmounts(renewalsSoon) + this._sumAmounts(pendingPayables);
+        const receivablesDueSoon = expectedIncoming;
+        const payablesDueSoon = this._sumAmounts(billsDueSoon) + this._sumAmounts(pendingPayables);
 
         const actionItems = {
             total: missingReceipts.length + overdueBills.length + billsDueSoon.length + renewalsSoon.length,
@@ -736,7 +737,6 @@ class DataService {
                 upcomingObligations,
                 expectedIncoming,
                 netPressure,
-                riskLevel,
                 limitation: 'Cash pressure is estimated from FluxyOS records only. Connect bank balance later for real liquidity analysis.'
             },
             receivablesPayables: {
@@ -792,8 +792,74 @@ class DataService {
             missingReceipts, overdueBills
         );
 
+        const [bankCashRaw, monthlyBudget] = await Promise.all([
+            this._getBankCashSnapshot(userId),
+            this._getMonthlyOpexBudget(userId)
+        ]);
+        overview.bankCash = {
+            ...bankCashRaw,
+            thirtyDayOutlook: bankCashRaw.balance + receivablesDueSoon - payablesDueSoon
+        };
+        overview.budget = {
+            monthly: monthlyBudget,
+            used: performance.opex,
+            usedPct: monthlyBudget > 0 ? (performance.opex / monthlyBudget) * 100 : 0,
+            remaining: monthlyBudget > 0 ? Math.max(monthlyBudget - performance.opex, 0) : 0
+        };
+        overview.cashPressure = {
+            ...overview.cashPressure,
+            ...this._buildCashPressure({
+                bankBalance: bankCashRaw.balance,
+                receivablesDueSoon,
+                payablesDueSoon,
+                overdueCount: overdueBills.length
+            })
+        };
+
         overview.insights = this._buildOverviewInsights(overview, periodTransactions.length);
         return overview;
+    }
+
+    async _getBankCashSnapshot(_userId) {
+        // No bank integration source exists yet. Returning zeros keeps the page
+        // safe; a future task should wire reads (and Firestore rules) when
+        // bank balance lands at users/{uid}/settings/integrations.bank or similar.
+        return { balance: 0, accountsSynced: 0, syncedAt: null };
+    }
+
+    async _getMonthlyOpexBudget(userId) {
+        if (!userId) return 0;
+        try {
+            const snap = await getDoc(this._settingsDoc(userId, 'finance'));
+            if (!snap.exists()) return 0;
+            const data = snap.data() || {};
+            const raw = Number(data.monthly_opex_budget);
+            return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : 0;
+        } catch (_) {
+            return 0;
+        }
+    }
+
+    _buildCashPressure({ bankBalance = 0, receivablesDueSoon = 0, payablesDueSoon = 0, overdueCount = 0 }) {
+        const safeBank = Number.isFinite(bankBalance) ? bankBalance : 0;
+        const safeIn = Number.isFinite(receivablesDueSoon) ? receivablesDueSoon : 0;
+        const safeOut = Number.isFinite(payablesDueSoon) ? payablesDueSoon : 0;
+        const outlook = safeBank + safeIn - safeOut;
+        let riskLevel = 'low';
+        if (overdueCount > 0 && (safeBank + safeIn) < safeOut) {
+            riskLevel = 'critical';
+        } else if (outlook < 0) {
+            riskLevel = 'high';
+        } else if (safeOut > 0 && outlook < safeOut) {
+            riskLevel = 'watch';
+        }
+        return {
+            outlook,
+            bankBalance: safeBank,
+            receivablesDueSoon: safeIn,
+            payablesDueSoon: safeOut,
+            riskLevel
+        };
     }
 
     _buildCashFlowBuckets(transactions = [], bills = [], subscriptions = [], startKey, endKey) {
@@ -1207,7 +1273,8 @@ class DataService {
                 locale: 'id-ID',
                 timezone: 'Asia/Jakarta',
                 date_format: 'DD MMM YYYY',
-                categories: ['Revenue', 'Marketing', 'Infrastructure', 'Operations', 'SaaS']
+                categories: ['Revenue', 'Marketing', 'Infrastructure', 'Operations', 'SaaS'],
+                monthly_opex_budget: 0
             },
             import_rules: {
                 csv_date_behavior: 'use_row_date',
