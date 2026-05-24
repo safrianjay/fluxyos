@@ -27,6 +27,10 @@ let dashboardDatePicker = null;
 let attentionItemsCache = { all: [], needs_review: [], my_records: [] };
 let currentAttentionTab = 'all';
 let aiSummaryRequestSeq = 0;
+let bankSetupDatePicker = null;
+let bankSetupSelectedDate = null;
+let budgetSetupDatePicker = null;
+let budgetSetupSelectedDate = null;
 window.FluxyDashboardRange = { start: dashboardRangeStart, end: dashboardRangeEnd };
 
 window.loadDashboard = async () => {
@@ -1398,6 +1402,22 @@ function openBankSetupDrawer() {
     backdrop.classList.remove('hidden');
     requestAnimationFrame(() => drawer.classList.remove('translate-x-full'));
     showBankMethodStep();
+    mountBankSetupDatePicker();
+}
+
+function mountBankSetupDatePicker() {
+    if (bankSetupDatePicker || !window.FluxyDateRangePicker) return;
+    const today = getDayKey();
+    bankSetupSelectedDate = today;
+    bankSetupDatePicker = window.FluxyDateRangePicker.mount('#bank-setup-date-picker', {
+        mode: 'single',
+        start: today,
+        end: today,
+        defaultStart: today,
+        defaultEnd: today,
+        maxDate: today,
+        onChange: ({ start }) => { bankSetupSelectedDate = start; }
+    });
 }
 
 function closeSetupDrawer(name) {
@@ -1456,7 +1476,7 @@ function collectBankFormData(form) {
         account_name: String(fd.get('account_name') || '').trim(),
         last_four: lastFour || null,
         current_balance: Math.max(0, Number(balanceRaw) || 0),
-        balance_date: String(fd.get('balance_date') || '').trim() || null,
+        balance_date: bankSetupSelectedDate || null,
         notes: String(fd.get('notes') || '').trim() || null
     };
 }
@@ -1465,8 +1485,8 @@ function renderBankReview(data) {
     const container = document.getElementById('bank-setup-review-body');
     if (!container) return;
     const balanceDateLabel = data.balance_date
-        ? new Date(data.balance_date).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
-        : `Today ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+        ? new Date(data.balance_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+        : new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
     container.innerHTML = `
         <div class="bank-review-card">
             <div class="bank-review-line"><span>Bank</span><strong>${escapeHtml(data.bank_name)}</strong></div>
@@ -1521,6 +1541,21 @@ function openBudgetSetupDrawer() {
     requestAnimationFrame(() => drawer.classList.remove('translate-x-full'));
     showBudgetFormStep();
     prefillBudgetForm();
+    mountBudgetSetupDatePicker();
+}
+
+function mountBudgetSetupDatePicker() {
+    if (budgetSetupDatePicker || !window.FluxyDateRangePicker) return;
+    const monthStart = getMonthStartKey();
+    budgetSetupSelectedDate = monthStart;
+    budgetSetupDatePicker = window.FluxyDateRangePicker.mount('#budget-setup-date-picker', {
+        mode: 'single',
+        start: monthStart,
+        end: monthStart,
+        defaultStart: monthStart,
+        defaultEnd: monthStart,
+        onChange: ({ start }) => { budgetSetupSelectedDate = start; }
+    });
 }
 
 function showBudgetStep(stepName) {
@@ -1540,11 +1575,6 @@ function showBudgetReviewStep() {
 function prefillBudgetForm() {
     const form = document.getElementById('budget-setup-form');
     if (!form) return;
-    const startInput = form.querySelector('[name="start_month"]');
-    if (startInput && !startInput.value) {
-        const today = new Date();
-        startInput.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    }
     if (currentBudget?.monthly > 0) {
         const totalInput = form.querySelector('[name="total_budget"]');
         if (totalInput && !totalInput.value) totalInput.value = formatIntegerForInput(currentBudget.monthly);
@@ -1559,8 +1589,8 @@ function handleBudgetReview() {
         window.showToast?.('Enter a budget greater than Rp 0.', 'error');
         return;
     }
-    if (!data.start_month) {
-        window.showToast?.('Pick a start month.', 'error');
+    if (!data.start_day) {
+        window.showToast?.('Pick a start date.', 'error');
         return;
     }
     renderBudgetReview(data);
@@ -1572,7 +1602,7 @@ function collectBudgetFormData(form) {
     const totalRaw = String(fd.get('total_budget') || '').replace(/\./g, '').replace(/,/g, '');
     return {
         period_type: String(fd.get('period_type') || 'monthly'),
-        start_month: String(fd.get('start_month') || '').trim(),
+        start_day: budgetSetupSelectedDate || getMonthStartKey(),
         total_budget: Math.max(0, Number(totalRaw) || 0),
         name: String(fd.get('name') || '').trim() || ''
     };
@@ -1581,8 +1611,8 @@ function collectBudgetFormData(form) {
 function renderBudgetReview(data) {
     const container = document.getElementById('budget-setup-review-body');
     if (!container) return;
-    const [year, month] = (data.start_month || '').split('-').map(Number);
-    const periodStart = new Date(year || new Date().getFullYear(), (month || 1) - 1, 1);
+    const [year, month] = data.start_day.split('-').map(Number);
+    const periodStart = new Date(year, month - 1, 1);
     const periodEnd = computeBudgetPeriodEnd(periodStart, data.period_type);
     const periodLabel = formatBudgetPeriodLabel(periodStart, periodEnd, data.period_type);
     container.innerHTML = `

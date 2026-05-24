@@ -355,10 +355,10 @@
                         <input type="text" name="current_balance" inputmode="numeric" placeholder="0" autocomplete="off" required>
                     </div>
                 </label>
-                <label class="finance-field">
-                    <span class="finance-field-label">Balance as of <span class="finance-field-optional">(optional)</span></span>
-                    <input type="datetime-local" name="balance_date">
-                </label>
+                <div class="finance-field">
+                    <span class="finance-field-label">Balance as of</span>
+                    <div id="bank-setup-date-picker"></div>
+                </div>
                 <label class="finance-field">
                     <span class="finance-field-label">Notes <span class="finance-field-optional">(optional)</span></span>
                     <textarea name="notes" rows="2" maxlength="500" placeholder="Add a note about this update"></textarea>
@@ -401,10 +401,10 @@
                         <option value="yearly">Yearly</option>
                     </select>
                 </label>
-                <label class="finance-field">
+                <div class="finance-field">
                     <span class="finance-field-label">Start month</span>
-                    <input type="month" name="start_month" required>
-                </label>
+                    <div id="budget-setup-date-picker"></div>
+                </div>
                 <label class="finance-field">
                     <span class="finance-field-label">Total OpEx budget</span>
                     <div class="finance-amount-row">
