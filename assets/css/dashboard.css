@@ -2348,7 +2348,6 @@
     padding: 10px 12px;
     font-size: 13px;
     color: #0F172A;
-    text-align: right;
     font-variant-numeric: tabular-nums;
 }
 .finance-amount-row input:focus { box-shadow: none; outline: none; }
