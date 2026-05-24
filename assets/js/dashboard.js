@@ -214,6 +214,8 @@ function renderOverviewErrorState() {
     updateKPI('kpi-payables-sub', 'No records found');
     setBudgetBar(0);
     setPressureMeter(0, 'low');
+    toggleKpiCta('bank-cash-cta', true);
+    toggleKpiCta('opex-budget-cta', true);
     const errorHtml = '<div class="overview-empty-copy">Overview data could not be loaded. Please refresh and try again.</div>';
     setHtml('needs-attention-content', errorHtml);
     setHtml('payables-by-category-content', errorHtml);
@@ -264,16 +266,21 @@ function renderBankCashCell(bankCash, rp) {
     const accountsSynced = safeNumber(bankCash.accountsSynced);
     const thirtyDayOutlook = safeNumber(bankCash.thirtyDayOutlook);
     const payablesTotal = safeNumber(rp.payablesTotal);
+    const sourceType = bankCash.sourceType || null;
+    const syncedAt = bankCash.syncedAt ? new Date(bankCash.syncedAt) : null;
 
     updateKPI('kpi-bank-cash', formatIDR(balance));
     const sub = document.getElementById('kpi-bank-cash-sub');
     if (sub) {
-        if (accountsSynced > 0) {
-            sub.textContent = `${accountsSynced} bank account${accountsSynced === 1 ? '' : 's'} synced`;
-            sub.className = 'metric-sub is-good';
-        } else {
+        if (accountsSynced === 0) {
             sub.textContent = 'No bank data connected';
             sub.className = 'metric-sub';
+        } else if (sourceType === 'manual') {
+            sub.textContent = `Manual update${syncedAt ? ' · ' + formatRelativeTimestamp(syncedAt) : ''}`;
+            sub.className = 'metric-sub is-good';
+        } else {
+            sub.textContent = `${accountsSynced} bank account${accountsSynced === 1 ? '' : 's'} synced`;
+            sub.className = 'metric-sub is-good';
         }
     }
     updateKPI('kpi-bank-cash-outlook', formatSignedIDR(thirtyDayOutlook));
@@ -281,11 +288,34 @@ function renderBankCashCell(bankCash, rp) {
     const coverageEl = document.getElementById('kpi-bank-cash-coverage');
     if (coverageEl) {
         if (balance > 0 && payablesTotal > 0) {
-            coverageEl.textContent = `${(balance / payablesTotal).toFixed(1)}x payables`;
+            const ratio = balance / payablesTotal;
+            const safetyLabel = ratio >= 2 ? 'Safe' : (ratio >= 1 ? 'Watch' : 'Tight');
+            coverageEl.textContent = `${safetyLabel} · ${ratio.toFixed(1)}x payables`;
         } else {
             coverageEl.textContent = 'Not available';
         }
     }
+
+    toggleKpiCta('bank-cash-cta', accountsSynced === 0);
+}
+
+function formatRelativeTimestamp(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(date);
+    target.setHours(0, 0, 0, 0);
+    const diff = Math.round((today - target) / 86400000);
+    if (diff === 0) return `Today ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+    if (diff === 1) return 'Yesterday';
+    if (diff < 7) return `${diff} days ago`;
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function toggleKpiCta(id, visible) {
+    const cta = document.getElementById(id);
+    if (!cta) return;
+    cta.hidden = !visible;
 }
 
 function renderOpexBudgetCell(performance, budget) {
@@ -310,6 +340,7 @@ function renderOpexBudgetCell(performance, budget) {
     updateKPI('kpi-opex-budget-used', monthly > 0 ? `${usedPct.toFixed(1)}%` : '0%');
     updateKPI('kpi-opex-budget-total', monthly > 0 ? formatIDR(monthly) : 'Rp 0');
     setBudgetBar(monthly > 0 ? usedPct : 0);
+    toggleKpiCta('opex-budget-cta', monthly <= 0);
 }
 
 function setBudgetBar(usedPct) {
@@ -1285,6 +1316,358 @@ function mountMetricInfoTooltips() {
 
 mountMetricInfoTooltips();
 mountDashboardPeriodControls();
+mountFinanceSetupDrawers();
+
+function mountFinanceSetupDrawers() {
+    document.querySelectorAll('[data-finance-setup-open]').forEach(button => {
+        button.addEventListener('click', event => {
+            event.preventDefault();
+            const target = button.dataset.financeSetupOpen;
+            if (target === 'bank') openBankSetupDrawer();
+            else if (target === 'budget') openBudgetSetupDrawer();
+        });
+    });
+
+    document.querySelectorAll('[data-finance-setup-close]').forEach(button => {
+        button.addEventListener('click', () => {
+            const target = button.dataset.financeSetupClose;
+            closeSetupDrawer(target);
+        });
+    });
+
+    document.querySelectorAll('[data-finance-setup-backdrop]').forEach(backdrop => {
+        backdrop.addEventListener('click', () => {
+            closeSetupDrawer(backdrop.dataset.financeSetupBackdrop);
+        });
+    });
+
+    const bankMethodList = document.getElementById('bank-setup-method-list');
+    if (bankMethodList) {
+        bankMethodList.addEventListener('click', event => {
+            const card = event.target.closest('[data-bank-method]');
+            if (!card || card.classList.contains('is-disabled')) return;
+            const method = card.dataset.bankMethod;
+            if (method === 'manual') showBankManualForm();
+        });
+    }
+
+    const bankBackBtn = document.getElementById('bank-setup-back-btn');
+    if (bankBackBtn) {
+        bankBackBtn.addEventListener('click', () => showBankMethodStep());
+    }
+
+    const bankReviewBackBtn = document.getElementById('bank-setup-review-back-btn');
+    if (bankReviewBackBtn) {
+        bankReviewBackBtn.addEventListener('click', () => showBankManualForm());
+    }
+
+    const bankForm = document.getElementById('bank-setup-form');
+    if (bankForm) {
+        bankForm.addEventListener('submit', event => {
+            event.preventDefault();
+            handleBankManualReview();
+        });
+        const balanceInput = bankForm.querySelector('[name="current_balance"]');
+        if (balanceInput) balanceInput.addEventListener('input', () => formatAmountInput(balanceInput));
+    }
+
+    const bankConfirmBtn = document.getElementById('bank-setup-confirm-btn');
+    if (bankConfirmBtn) bankConfirmBtn.addEventListener('click', handleBankManualSave);
+
+    const budgetForm = document.getElementById('budget-setup-form');
+    if (budgetForm) {
+        budgetForm.addEventListener('submit', event => {
+            event.preventDefault();
+            handleBudgetReview();
+        });
+        const totalInput = budgetForm.querySelector('[name="total_budget"]');
+        if (totalInput) totalInput.addEventListener('input', () => formatAmountInput(totalInput));
+    }
+
+    const budgetBackBtn = document.getElementById('budget-setup-review-back-btn');
+    if (budgetBackBtn) budgetBackBtn.addEventListener('click', () => showBudgetFormStep());
+
+    const budgetConfirmBtn = document.getElementById('budget-setup-confirm-btn');
+    if (budgetConfirmBtn) budgetConfirmBtn.addEventListener('click', handleBudgetSave);
+}
+
+function openBankSetupDrawer() {
+    const drawer = document.getElementById('bank-setup-drawer');
+    const backdrop = document.getElementById('bank-setup-backdrop');
+    if (!drawer || !backdrop) return;
+    backdrop.classList.remove('hidden');
+    requestAnimationFrame(() => drawer.classList.remove('translate-x-full'));
+    showBankMethodStep();
+}
+
+function closeSetupDrawer(name) {
+    const drawer = document.getElementById(`${name}-setup-drawer`);
+    const backdrop = document.getElementById(`${name}-setup-backdrop`);
+    if (drawer) drawer.classList.add('translate-x-full');
+    if (backdrop) backdrop.classList.add('hidden');
+}
+
+function showBankSetupStep(stepName) {
+    document.querySelectorAll('#bank-setup-drawer [data-step]').forEach(el => {
+        el.classList.toggle('hidden', el.dataset.step !== stepName);
+    });
+}
+
+function showBankMethodStep() {
+    showBankSetupStep('method');
+}
+
+function showBankManualForm() {
+    showBankSetupStep('form');
+    const nameInput = document.querySelector('#bank-setup-form [name="bank_name"]');
+    if (nameInput) nameInput.focus();
+}
+
+function showBankReviewStep() {
+    showBankSetupStep('review');
+}
+
+function handleBankManualReview() {
+    const form = document.getElementById('bank-setup-form');
+    if (!form) return;
+    const data = collectBankFormData(form);
+    if (!data.bank_name) {
+        window.showToast?.('Add the bank name to continue.', 'error');
+        return;
+    }
+    if (!data.account_name) {
+        window.showToast?.('Add a nickname for this account.', 'error');
+        return;
+    }
+    if (!(data.current_balance >= 0)) {
+        window.showToast?.('Enter the current balance.', 'error');
+        return;
+    }
+    renderBankReview(data);
+    showBankReviewStep();
+}
+
+function collectBankFormData(form) {
+    const fd = new FormData(form);
+    const balanceRaw = String(fd.get('current_balance') || '').replace(/\./g, '').replace(/,/g, '');
+    const lastFour = String(fd.get('last_four') || '').replace(/\D/g, '').slice(0, 4);
+    return {
+        bank_name: String(fd.get('bank_name') || '').trim(),
+        account_name: String(fd.get('account_name') || '').trim(),
+        last_four: lastFour || null,
+        current_balance: Math.max(0, Number(balanceRaw) || 0),
+        balance_date: String(fd.get('balance_date') || '').trim() || null,
+        notes: String(fd.get('notes') || '').trim() || null
+    };
+}
+
+function renderBankReview(data) {
+    const container = document.getElementById('bank-setup-review-body');
+    if (!container) return;
+    const balanceDateLabel = data.balance_date
+        ? new Date(data.balance_date).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+        : `Today ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+    container.innerHTML = `
+        <div class="bank-review-card">
+            <div class="bank-review-line"><span>Bank</span><strong>${escapeHtml(data.bank_name)}</strong></div>
+            <div class="bank-review-line"><span>Account</span><strong>${escapeHtml(data.account_name)}${data.last_four ? ' · ••' + escapeHtml(data.last_four) : ''}</strong></div>
+            <div class="bank-review-line"><span>Balance</span><strong class="tabular-nums">${formatIDR(data.current_balance)}</strong></div>
+            <div class="bank-review-line"><span>Balance date</span><strong>${escapeHtml(balanceDateLabel)}</strong></div>
+            ${data.notes ? `<div class="bank-review-line"><span>Notes</span><strong>${escapeHtml(data.notes)}</strong></div>` : ''}
+        </div>
+        <p class="bank-review-note">This will update your Bank Cash Balance and recalculate Cash Pressure.</p>
+    `;
+    const confirmBtn = document.getElementById('bank-setup-confirm-btn');
+    if (confirmBtn) confirmBtn.dataset.payload = JSON.stringify(data);
+}
+
+async function handleBankManualSave() {
+    const confirmBtn = document.getElementById('bank-setup-confirm-btn');
+    if (!confirmBtn) return;
+    const payload = JSON.parse(confirmBtn.dataset.payload || '{}');
+    if (!payload.bank_name) return;
+    const user = auth.currentUser;
+    if (!user) {
+        window.showToast?.('Sign in to save bank balance.', 'error');
+        return;
+    }
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Saving...';
+    try {
+        await ds.addManualBankAccount(user.uid, payload);
+        window.showToast?.('Bank balance saved.', 'success');
+        closeSetupDrawer('bank');
+        resetBankSetupDrawer();
+        await window.loadDashboard?.();
+    } catch (error) {
+        window.showToast?.('Could not save bank balance. Please try again.', 'error');
+    } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Save balance';
+    }
+}
+
+function resetBankSetupDrawer() {
+    const form = document.getElementById('bank-setup-form');
+    if (form) form.reset();
+    showBankMethodStep();
+}
+
+function openBudgetSetupDrawer() {
+    const drawer = document.getElementById('budget-setup-drawer');
+    const backdrop = document.getElementById('budget-setup-backdrop');
+    if (!drawer || !backdrop) return;
+    backdrop.classList.remove('hidden');
+    requestAnimationFrame(() => drawer.classList.remove('translate-x-full'));
+    showBudgetFormStep();
+    prefillBudgetForm();
+}
+
+function showBudgetStep(stepName) {
+    document.querySelectorAll('#budget-setup-drawer [data-step]').forEach(el => {
+        el.classList.toggle('hidden', el.dataset.step !== stepName);
+    });
+}
+
+function showBudgetFormStep() {
+    showBudgetStep('form');
+}
+
+function showBudgetReviewStep() {
+    showBudgetStep('review');
+}
+
+function prefillBudgetForm() {
+    const form = document.getElementById('budget-setup-form');
+    if (!form) return;
+    const startInput = form.querySelector('[name="start_month"]');
+    if (startInput && !startInput.value) {
+        const today = new Date();
+        startInput.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    }
+    if (currentBudget?.monthly > 0) {
+        const totalInput = form.querySelector('[name="total_budget"]');
+        if (totalInput && !totalInput.value) totalInput.value = formatIntegerForInput(currentBudget.monthly);
+    }
+}
+
+function handleBudgetReview() {
+    const form = document.getElementById('budget-setup-form');
+    if (!form) return;
+    const data = collectBudgetFormData(form);
+    if (!(data.total_budget > 0)) {
+        window.showToast?.('Enter a budget greater than Rp 0.', 'error');
+        return;
+    }
+    if (!data.start_month) {
+        window.showToast?.('Pick a start month.', 'error');
+        return;
+    }
+    renderBudgetReview(data);
+    showBudgetReviewStep();
+}
+
+function collectBudgetFormData(form) {
+    const fd = new FormData(form);
+    const totalRaw = String(fd.get('total_budget') || '').replace(/\./g, '').replace(/,/g, '');
+    return {
+        period_type: String(fd.get('period_type') || 'monthly'),
+        start_month: String(fd.get('start_month') || '').trim(),
+        total_budget: Math.max(0, Number(totalRaw) || 0),
+        name: String(fd.get('name') || '').trim() || ''
+    };
+}
+
+function renderBudgetReview(data) {
+    const container = document.getElementById('budget-setup-review-body');
+    if (!container) return;
+    const [year, month] = (data.start_month || '').split('-').map(Number);
+    const periodStart = new Date(year || new Date().getFullYear(), (month || 1) - 1, 1);
+    const periodEnd = computeBudgetPeriodEnd(periodStart, data.period_type);
+    const periodLabel = formatBudgetPeriodLabel(periodStart, periodEnd, data.period_type);
+    container.innerHTML = `
+        <div class="bank-review-card">
+            <div class="bank-review-line"><span>Period</span><strong>${escapeHtml(periodLabel)}</strong></div>
+            <div class="bank-review-line"><span>Period type</span><strong>${escapeHtml(capitalize(data.period_type))}</strong></div>
+            <div class="bank-review-line"><span>Total budget</span><strong class="tabular-nums">${formatIDR(data.total_budget)}</strong></div>
+        </div>
+        <p class="bank-review-note">This will update OpEx vs Budget and the Budget Used metric on Performance Trend.</p>
+    `;
+    const confirmBtn = document.getElementById('budget-setup-confirm-btn');
+    if (confirmBtn) {
+        confirmBtn.dataset.payload = JSON.stringify({
+            ...data,
+            period_start: periodStart.toISOString(),
+            period_end: periodEnd.toISOString(),
+            display_name: data.name || `${periodLabel} budget`
+        });
+    }
+}
+
+function computeBudgetPeriodEnd(startDate, periodType) {
+    if (periodType === 'quarterly') {
+        return new Date(startDate.getFullYear(), startDate.getMonth() + 3, 0, 23, 59, 59);
+    }
+    if (periodType === 'yearly') {
+        return new Date(startDate.getFullYear() + 1, startDate.getMonth(), 0, 23, 59, 59);
+    }
+    return new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0, 23, 59, 59);
+}
+
+function formatBudgetPeriodLabel(start, end, periodType) {
+    if (periodType === 'yearly') return `${start.getFullYear()}`;
+    if (periodType === 'quarterly') {
+        return `${start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} – ${end.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+    }
+    return start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+async function handleBudgetSave() {
+    const confirmBtn = document.getElementById('budget-setup-confirm-btn');
+    if (!confirmBtn) return;
+    const payload = JSON.parse(confirmBtn.dataset.payload || '{}');
+    if (!(payload.total_budget > 0)) return;
+    const user = auth.currentUser;
+    if (!user) {
+        window.showToast?.('Sign in to save budget.', 'error');
+        return;
+    }
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Saving...';
+    try {
+        await ds.setActiveBudget(user.uid, {
+            name: payload.display_name,
+            period_type: payload.period_type,
+            period_start: payload.period_start,
+            period_end: payload.period_end,
+            total_budget: payload.total_budget
+        });
+        window.showToast?.('Budget saved.', 'success');
+        closeSetupDrawer('budget');
+        await window.loadDashboard?.();
+    } catch (error) {
+        window.showToast?.('Could not save budget. Please try again.', 'error');
+    } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Save budget';
+    }
+}
+
+function formatAmountInput(input) {
+    if (!input) return;
+    const digits = String(input.value || '').replace(/\D/g, '');
+    input.value = digits ? Number(digits).toLocaleString('id-ID') : '';
+}
+
+function formatIntegerForInput(value) {
+    const n = Math.round(Math.max(0, Number(value) || 0));
+    return n ? n.toLocaleString('id-ID') : '';
+}
+
+function capitalize(value) {
+    const text = String(value || '');
+    return text ? text[0].toUpperCase() + text.slice(1) : '';
+}
 
 // Auth state is handled by the page-level script in dashboard.html.
 // Do not add another onAuthStateChanged here; it causes loadDashboard() to run twice.

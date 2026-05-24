@@ -820,24 +820,215 @@ class DataService {
         return overview;
     }
 
-    async _getBankCashSnapshot(_userId) {
-        // No bank integration source exists yet. Returning zeros keeps the page
-        // safe; a future task should wire reads (and Firestore rules) when
-        // bank balance lands at users/{uid}/settings/integrations.bank or similar.
-        return { balance: 0, accountsSynced: 0, syncedAt: null };
+    async _getBankCashSnapshot(userId) {
+        if (!userId) return { balance: 0, accountsSynced: 0, syncedAt: null, sourceType: null };
+        try {
+            const accounts = await this.getBankAccounts(userId);
+            if (!accounts.length) {
+                return { balance: 0, accountsSynced: 0, syncedAt: null, sourceType: null };
+            }
+            let balance = 0;
+            let syncedAt = null;
+            let sourceType = null;
+            accounts.forEach(account => {
+                const raw = Number(account.latest_balance);
+                if (Number.isFinite(raw) && raw > 0) balance += raw;
+                const stamp = this._getRecordDate(account, 'latest_balance_at');
+                if (stamp && (!syncedAt || stamp > syncedAt)) syncedAt = stamp;
+                if (!sourceType) sourceType = account.source_type || null;
+            });
+            return {
+                balance: Math.round(balance),
+                accountsSynced: accounts.length,
+                syncedAt: syncedAt ? syncedAt.toISOString() : null,
+                sourceType
+            };
+        } catch (_) {
+            return { balance: 0, accountsSynced: 0, syncedAt: null, sourceType: null };
+        }
     }
 
     async _getMonthlyOpexBudget(userId) {
         if (!userId) return 0;
         try {
-            const snap = await getDoc(this._settingsDoc(userId, 'finance'));
-            if (!snap.exists()) return 0;
-            const data = snap.data() || {};
-            const raw = Number(data.monthly_opex_budget);
-            return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : 0;
+            const budget = await this.getActiveBudget(userId);
+            if (!budget) return 0;
+            const total = Number(budget.total_budget);
+            if (!Number.isFinite(total) || total <= 0) return 0;
+            const periodType = String(budget.period_type || 'monthly');
+            if (periodType === 'monthly') return Math.round(total);
+            if (periodType === 'quarterly') return Math.round(total / 3);
+            if (periodType === 'yearly') return Math.round(total / 12);
+            return Math.round(total);
         } catch (_) {
             return 0;
         }
+    }
+
+    // --- BANK ACCOUNTS (Phase 1: manual only) ---
+    async getBankAccounts(userId) {
+        const q = query(
+            collection(this.db, `users/${userId}/bank_accounts`),
+            orderBy('created_at', 'desc'),
+            limit(50)
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(account => account.status !== 'archived');
+    }
+
+    async addManualBankAccount(userId, data) {
+        const balance = Math.round(Math.max(0, Number(data.current_balance) || 0));
+        const balanceDate = this._coerceTimestampOrNow(data.balance_date);
+        const payload = {
+            account_name: this._stringOrDefault(data.account_name, 'Bank account', 120),
+            bank_name: this._stringOrDefault(data.bank_name, 'Bank', 80),
+            bank_code: this._nullableString(data.bank_code, 16),
+            currency: 'IDR',
+            last_four: this._nullableString(data.last_four, 4),
+            source_type: 'manual',
+            provider: null,
+            provider_account_id: null,
+            status: 'active',
+            latest_balance: balance,
+            latest_balance_at: balanceDate,
+            sync_status: 'manual',
+            last_sync_at: null,
+            confidence: 'user_entered',
+            notes: this._nullableString(data.notes, 500),
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        };
+        const accountRef = await addDoc(collection(this.db, `users/${userId}/bank_accounts`), payload);
+
+        await addDoc(collection(this.db, `users/${userId}/bank_balance_snapshots`), {
+            bank_account_id: accountRef.id,
+            balance,
+            currency: 'IDR',
+            source_type: 'manual',
+            snapshot_at: balanceDate,
+            confidence: 'user_entered',
+            notes: null,
+            created_at: serverTimestamp()
+        });
+
+        await this.addAuditLog(userId, {
+            action: 'bank_account.created',
+            target_collection: 'bank_accounts',
+            target_id: accountRef.id,
+            after: {
+                account_name: payload.account_name,
+                bank_name: payload.bank_name,
+                source_type: 'manual',
+                latest_balance: balance
+            },
+            source: 'dashboard'
+        });
+
+        return { id: accountRef.id, ...payload };
+    }
+
+    _coerceTimestampOrNow(value) {
+        if (!value) return Timestamp.fromDate(new Date());
+        if (value instanceof Date) return Timestamp.fromDate(value);
+        if (typeof value.toDate === 'function') {
+            try { return Timestamp.fromDate(value.toDate()); } catch { return Timestamp.fromDate(new Date()); }
+        }
+        if (typeof value === 'string' || typeof value === 'number') {
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? Timestamp.fromDate(new Date()) : Timestamp.fromDate(parsed);
+        }
+        return Timestamp.fromDate(new Date());
+    }
+
+    // --- BUDGETS ---
+    async getActiveBudget(userId) {
+        try {
+            const q = query(
+                collection(this.db, `users/${userId}/budgets`),
+                where('status', '==', 'active'),
+                orderBy('created_at', 'desc'),
+                limit(1)
+            );
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) return null;
+            const docSnap = snapshot.docs[0];
+            return { id: docSnap.id, ...docSnap.data() };
+        } catch (_) {
+            // Fallback when composite index is unavailable.
+            try {
+                const q = query(
+                    collection(this.db, `users/${userId}/budgets`),
+                    orderBy('created_at', 'desc'),
+                    limit(10)
+                );
+                const snapshot = await getDocs(q);
+                const active = snapshot.docs
+                    .map(d => ({ id: d.id, ...d.data() }))
+                    .find(b => b.status === 'active');
+                return active || null;
+            } catch {
+                return null;
+            }
+        }
+    }
+
+    async setActiveBudget(userId, data) {
+        const total = Math.round(Math.max(0, Number(data.total_budget) || 0));
+        const periodType = ['monthly', 'quarterly', 'yearly'].includes(data.period_type)
+            ? data.period_type
+            : 'monthly';
+        const startDate = this._coerceTimestampOrNow(data.period_start);
+        const endDate = this._coerceTimestampOrNow(data.period_end);
+
+        const existing = await this.getActiveBudget(userId);
+        const payload = {
+            name: this._stringOrDefault(data.name, 'OpEx budget', 120),
+            period_type: periodType,
+            period_start: startDate,
+            period_end: endDate,
+            currency: 'IDR',
+            total_budget: total,
+            status: 'active',
+            updated_at: serverTimestamp()
+        };
+        const categoryBudgets = this._normalizeCategoryBudgets(data.category_budgets);
+        if (categoryBudgets) payload.category_budgets = categoryBudgets;
+
+        let budgetId;
+        if (existing) {
+            budgetId = existing.id;
+            await updateDoc(doc(this.db, `users/${userId}/budgets/${existing.id}`), payload);
+        } else {
+            const ref = await addDoc(collection(this.db, `users/${userId}/budgets`), {
+                ...payload,
+                created_at: serverTimestamp()
+            });
+            budgetId = ref.id;
+        }
+
+        await this.addAuditLog(userId, {
+            action: existing ? 'budget.updated' : 'budget.created',
+            target_collection: 'budgets',
+            target_id: budgetId,
+            after: { total_budget: total, period_type: periodType, name: payload.name },
+            source: 'dashboard'
+        });
+
+        return { id: budgetId, ...payload };
+    }
+
+    _normalizeCategoryBudgets(input) {
+        if (!input || typeof input !== 'object') return null;
+        const allowed = new Set(['Marketing', 'Infrastructure', 'Operations', 'SaaS', 'Others']);
+        const cleaned = {};
+        Object.entries(input).forEach(([key, value]) => {
+            if (!allowed.has(key)) return;
+            const num = Math.round(Math.max(0, Number(value) || 0));
+            if (num > 0) cleaned[key] = num;
+        });
+        return Object.keys(cleaned).length ? cleaned : null;
     }
 
     _buildCashPressure({ bankBalance = 0, receivablesDueSoon = 0, payablesDueSoon = 0, overdueCount = 0 }) {

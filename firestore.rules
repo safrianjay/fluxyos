@@ -114,7 +114,9 @@ service cloud.firestore {
           'exports',
           'report_exports',
           'users',
-          'onboarding'
+          'onboarding',
+          'bank_accounts',
+          'bank_balance_snapshots'
         ]
         && data.target_id is string
         && data.target_id.size() <= 160
@@ -404,6 +406,156 @@ service cloud.firestore {
         && (!('updated_at' in data) || data.updated_at == request.time);
     }
 
+    function isValidBankAccount(data) {
+      return data.keys().hasAll([
+          'account_name',
+          'bank_name',
+          'currency',
+          'source_type',
+          'status',
+          'latest_balance',
+          'latest_balance_at',
+          'sync_status',
+          'created_at',
+          'updated_at'
+        ])
+        && data.keys().hasOnly([
+          'account_name',
+          'bank_name',
+          'bank_code',
+          'currency',
+          'last_four',
+          'source_type',
+          'provider',
+          'provider_account_id',
+          'status',
+          'latest_balance',
+          'latest_balance_at',
+          'sync_status',
+          'last_sync_at',
+          'confidence',
+          'notes',
+          'created_at',
+          'updated_at'
+        ])
+        && data.account_name is string
+        && data.account_name.size() > 0
+        && data.account_name.size() <= 120
+        && data.bank_name is string
+        && data.bank_name.size() > 0
+        && data.bank_name.size() <= 80
+        && (!('bank_code' in data) || data.bank_code == null || (data.bank_code is string && data.bank_code.size() <= 16))
+        && data.currency == 'IDR'
+        && (!('last_four' in data) || data.last_four == null || (data.last_four is string && data.last_four.size() <= 4))
+        && data.source_type in ['manual', 'statement_upload', 'auto_sync']
+        && (!('provider' in data) || data.provider == null || (data.provider is string && data.provider.size() <= 40))
+        && (!('provider_account_id' in data) || data.provider_account_id == null || (data.provider_account_id is string && data.provider_account_id.size() <= 120))
+        && data.status in ['active', 'archived']
+        && data.latest_balance is number
+        && data.latest_balance >= 0
+        && data.latest_balance <= 999999999999
+        && data.latest_balance_at is timestamp
+        && data.sync_status in ['manual', 'pending', 'connected', 'failed']
+        && (!('last_sync_at' in data) || data.last_sync_at == null || data.last_sync_at is timestamp)
+        && (!('confidence' in data) || data.confidence == null || data.confidence in ['user_entered', 'extracted', 'synced'])
+        && (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 500));
+    }
+
+    function isValidBankAccountCreate(data) {
+      return isValidBankAccount(data)
+        && data.created_at == request.time
+        && data.updated_at == request.time;
+    }
+
+    function isValidBankAccountUpdate(data, existingData) {
+      return isValidBankAccount(data)
+        && data.created_at == existingData.created_at
+        && data.updated_at == request.time;
+    }
+
+    function isValidBankBalanceSnapshot(data) {
+      return data.keys().hasAll([
+          'bank_account_id',
+          'balance',
+          'currency',
+          'source_type',
+          'snapshot_at',
+          'created_at'
+        ])
+        && data.keys().hasOnly([
+          'bank_account_id',
+          'balance',
+          'currency',
+          'source_type',
+          'snapshot_at',
+          'confidence',
+          'notes',
+          'created_at'
+        ])
+        && data.bank_account_id is string
+        && data.bank_account_id.size() > 0
+        && data.bank_account_id.size() <= 120
+        && data.balance is number
+        && data.balance >= 0
+        && data.balance <= 999999999999
+        && data.currency == 'IDR'
+        && data.source_type in ['manual', 'statement_upload', 'auto_sync']
+        && data.snapshot_at is timestamp
+        && (!('confidence' in data) || data.confidence == null || data.confidence in ['user_entered', 'extracted', 'synced'])
+        && (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 500))
+        && data.created_at == request.time;
+    }
+
+    function isValidBudget(data) {
+      return data.keys().hasAll([
+          'name',
+          'period_type',
+          'period_start',
+          'period_end',
+          'currency',
+          'total_budget',
+          'status',
+          'created_at',
+          'updated_at'
+        ])
+        && data.keys().hasOnly([
+          'name',
+          'period_type',
+          'period_start',
+          'period_end',
+          'currency',
+          'total_budget',
+          'category_budgets',
+          'status',
+          'created_at',
+          'updated_at'
+        ])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 120
+        && data.period_type in ['monthly', 'quarterly', 'yearly']
+        && data.period_start is timestamp
+        && data.period_end is timestamp
+        && data.currency == 'IDR'
+        && data.total_budget is number
+        && data.total_budget >= 0
+        && data.total_budget <= 999999999999
+        && (!('category_budgets' in data) || data.category_budgets is map)
+        && data.status in ['active', 'archived'];
+    }
+
+    function isValidBudgetCreate(data) {
+      return isValidBudget(data)
+        && data.created_at == request.time
+        && data.updated_at == request.time;
+    }
+
+    function isValidBudgetUpdate(data, existingData) {
+      return isValidBudget(data)
+        && data.created_at == existingData.created_at
+        && data.updated_at == request.time;
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create, update, delete: if false;
@@ -683,6 +835,31 @@ service cloud.firestore {
           && onboardingDoc in ['progress', 'profile', 'documents'];
         allow create, update: if isOwner(userId)
           && onboardingDoc in ['progress', 'profile', 'documents'];
+        allow delete: if false;
+      }
+
+      match /bank_accounts/{bankAccountId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidBankAccountCreate(request.resource.data);
+        allow update: if isOwner(userId)
+          && isValidBankAccountUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+
+      match /bank_balance_snapshots/{snapshotId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidBankBalanceSnapshot(request.resource.data);
+        allow update, delete: if false;
+      }
+
+      match /budgets/{budgetId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidBudgetCreate(request.resource.data);
+        allow update: if isOwner(userId)
+          && isValidBudgetUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
 

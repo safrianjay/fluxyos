@@ -90,6 +90,7 @@
                                     </div>
                                 </div>
                                 <p id="kpi-bank-cash-sub" class="metric-sub">No bank data connected</p>
+                                <button id="bank-cash-cta" type="button" class="metric-cta" data-finance-setup-open="bank" hidden>Add balance</button>
                             </article>
 
                             <article class="metric-cell metric-cell-mini" data-tour-target="dashboard-opex-kpi">
@@ -114,6 +115,7 @@
                                 <div class="metric-progress metric-progress-budget">
                                     <div id="kpi-opex-budget-bar" class="metric-progress-fill" style="width: 0%"></div>
                                 </div>
+                                <button id="opex-budget-cta" type="button" class="metric-cta" data-finance-setup-open="budget" hidden>Set budget</button>
                             </article>
 
                             <article class="metric-cell" data-tour-target="dashboard-margin-kpi">
@@ -285,6 +287,149 @@
 
         </div>
     </main>
+
+    <!-- BANK SETUP DRAWER -->
+    <div id="bank-setup-backdrop" class="fixed inset-0 bg-black/30 z-40 hidden" data-finance-setup-backdrop="bank"></div>
+    <div id="bank-setup-drawer" role="dialog" aria-modal="true" aria-labelledby="bank-setup-title" class="fixed top-0 right-0 h-full w-full max-w-[460px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="finance-setup-header">
+            <div>
+                <h2 id="bank-setup-title" class="finance-setup-title">Add bank cash balance</h2>
+                <p class="finance-setup-subtitle">Manual balance keeps Bank Cash Balance and Cash Pressure grounded in real data.</p>
+            </div>
+            <button type="button" class="finance-setup-close" data-finance-setup-close="bank" aria-label="Close">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg>
+            </button>
+        </div>
+
+        <div class="finance-setup-body">
+            <div data-step="method">
+                <div id="bank-setup-method-list" class="finance-method-list">
+                    <button type="button" class="finance-method-card" data-bank-method="manual">
+                        <div class="finance-method-icon" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.75 6 10 2.75 17.25 6"/><path d="M3.5 6v10.25h13V6"/><path d="M6 9.5v4.5"/><path d="M10 9.5v4.5"/><path d="M14 9.5v4.5"/></svg>
+                        </div>
+                        <div class="finance-method-copy">
+                            <div class="finance-method-title">Add manually</div>
+                            <div class="finance-method-desc">Enter the latest balance for one bank account.</div>
+                        </div>
+                        <span class="finance-method-arrow" aria-hidden="true">&rsaquo;</span>
+                    </button>
+                    <div class="finance-method-card is-disabled" aria-disabled="true">
+                        <div class="finance-method-icon" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.25" width="13" height="13.5" rx="1.5"/><path d="M6.5 7.5h7"/><path d="M6.5 10.5h7"/><path d="M6.5 13.5h4"/></svg>
+                        </div>
+                        <div class="finance-method-copy">
+                            <div class="finance-method-title">Upload statement <span class="finance-method-pill">Coming soon</span></div>
+                            <div class="finance-method-desc">Detect ending balance from a PDF, CSV, or screenshot.</div>
+                        </div>
+                    </div>
+                    <div class="finance-method-card is-disabled" aria-disabled="true">
+                        <div class="finance-method-icon" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.25"/><path d="M2.75 10h14.5"/><path d="M10 2.75c2.4 2.5 2.4 12 0 14.5"/><path d="M10 2.75c-2.4 2.5-2.4 12 0 14.5"/></svg>
+                        </div>
+                        <div class="finance-method-copy">
+                            <div class="finance-method-title">Connect bank <span class="finance-method-pill">Coming soon</span></div>
+                            <div class="finance-method-desc">Read-only sync via Open Finance providers.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <form id="bank-setup-form" data-step="form" class="finance-setup-form hidden">
+                <label class="finance-field">
+                    <span class="finance-field-label">Bank name</span>
+                    <input type="text" name="bank_name" placeholder="e.g. BCA" maxlength="80" autocomplete="off" required>
+                </label>
+                <label class="finance-field">
+                    <span class="finance-field-label">Account nickname</span>
+                    <input type="text" name="account_name" placeholder="e.g. BCA Business" maxlength="120" autocomplete="off" required>
+                </label>
+                <label class="finance-field">
+                    <span class="finance-field-label">Last 4 digits <span class="finance-field-optional">(optional)</span></span>
+                    <input type="text" name="last_four" inputmode="numeric" maxlength="4" placeholder="1234" autocomplete="off">
+                </label>
+                <label class="finance-field">
+                    <span class="finance-field-label">Current balance</span>
+                    <div class="finance-amount-row">
+                        <span class="finance-amount-prefix">Rp</span>
+                        <input type="text" name="current_balance" inputmode="numeric" placeholder="0" autocomplete="off" required>
+                    </div>
+                </label>
+                <label class="finance-field">
+                    <span class="finance-field-label">Balance as of <span class="finance-field-optional">(optional)</span></span>
+                    <input type="datetime-local" name="balance_date">
+                </label>
+                <label class="finance-field">
+                    <span class="finance-field-label">Notes <span class="finance-field-optional">(optional)</span></span>
+                    <textarea name="notes" rows="2" maxlength="500" placeholder="Add a note about this update"></textarea>
+                </label>
+                <div class="finance-setup-actions">
+                    <button type="button" id="bank-setup-back-btn" class="finance-btn finance-btn-ghost">Back</button>
+                    <button type="submit" class="finance-btn finance-btn-primary">Review</button>
+                </div>
+            </form>
+
+            <div data-step="review" class="hidden">
+                <div id="bank-setup-review-body"></div>
+                <div class="finance-setup-actions">
+                    <button type="button" id="bank-setup-review-back-btn" class="finance-btn finance-btn-ghost">Back</button>
+                    <button type="button" id="bank-setup-confirm-btn" class="finance-btn finance-btn-primary">Save balance</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BUDGET SETUP DRAWER -->
+    <div id="budget-setup-backdrop" class="fixed inset-0 bg-black/30 z-40 hidden" data-finance-setup-backdrop="budget"></div>
+    <div id="budget-setup-drawer" role="dialog" aria-modal="true" aria-labelledby="budget-setup-title" class="fixed top-0 right-0 h-full w-full max-w-[460px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="finance-setup-header">
+            <div>
+                <h2 id="budget-setup-title" class="finance-setup-title">Set OpEx budget</h2>
+                <p class="finance-setup-subtitle">Used by OpEx vs Budget on Overview and the Budget Used metric on Performance Trend.</p>
+            </div>
+            <button type="button" class="finance-setup-close" data-finance-setup-close="budget" aria-label="Close">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg>
+            </button>
+        </div>
+        <div class="finance-setup-body">
+            <form id="budget-setup-form" data-step="form" class="finance-setup-form">
+                <label class="finance-field">
+                    <span class="finance-field-label">Budget period</span>
+                    <select name="period_type">
+                        <option value="monthly" selected>Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="yearly">Yearly</option>
+                    </select>
+                </label>
+                <label class="finance-field">
+                    <span class="finance-field-label">Start month</span>
+                    <input type="month" name="start_month" required>
+                </label>
+                <label class="finance-field">
+                    <span class="finance-field-label">Total OpEx budget</span>
+                    <div class="finance-amount-row">
+                        <span class="finance-amount-prefix">Rp</span>
+                        <input type="text" name="total_budget" inputmode="numeric" placeholder="0" autocomplete="off" required>
+                    </div>
+                </label>
+                <label class="finance-field">
+                    <span class="finance-field-label">Budget name <span class="finance-field-optional">(optional)</span></span>
+                    <input type="text" name="name" maxlength="120" placeholder="e.g. OpEx budget">
+                </label>
+                <div class="finance-setup-actions">
+                    <button type="button" class="finance-btn finance-btn-ghost" data-finance-setup-close="budget">Cancel</button>
+                    <button type="submit" class="finance-btn finance-btn-primary">Review</button>
+                </div>
+            </form>
+            <div data-step="review" class="hidden">
+                <div id="budget-setup-review-body"></div>
+                <div class="finance-setup-actions">
+                    <button type="button" id="budget-setup-review-back-btn" class="finance-btn finance-btn-ghost">Back</button>
+                    <button type="button" id="budget-setup-confirm-btn" class="finance-btn finance-btn-primary">Save budget</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
