@@ -27,12 +27,18 @@ If you ignore the workflow, the push will fail.
 
 ---
 
-## Pre-Implementation: Read Both Files Before Every Feature (MANDATORY)
+## Pre-Implementation: Read These Files Before Every Feature (MANDATORY)
 
-Before implementing any feature, page, section, component, UI enhancement, business logic change, chart, table change, modal, AI behavior, or workflow — read both of these files first:
+Before implementing any feature, page, section, component, UI enhancement, business logic change, chart, table change, modal, AI behavior, or workflow — read these files first:
 
 1. **`docs/PROJECT_BACKGROUND.md`** — architecture, database schema, field names, function signatures, and conventions
-2. **`docs/product_ux_feature_intake_framework.md`** — product logic, feature classification, scope, and UX requirements
+2. **`docs/DESIGN_SYSTEM.md`** — component reuse rules (shared date picker, dialog, drawer, chart hover), colors, typography, anti-AI-slop standards
+3. **`docs/product_ux_feature_intake_framework.md`** — product logic, feature classification, scope, and UX requirements
+
+This is enforced by `.claude/hooks/docs-read-gate.sh`: the first Edit/Write to
+non-doc code is BLOCKED until both `PROJECT_BACKGROUND.md` and `DESIGN_SYSTEM.md`
+have appeared in Read tool calls in the current session. Exempt paths: anything
+under `docs/`, `.claude/`, `.qa/`, `.githooks/`, and any `*.md` file.
 
 If the feature request cannot answer the framework's core questions (user problem, business value, job to be done, scope), it is not ready to build.
 

@@ -16,6 +16,15 @@
             "command": ".claude/hooks/qa-gate.sh"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/docs-read-gate.sh"
+          }
+        ]
       }
     ]
   }
