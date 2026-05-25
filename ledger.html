@@ -122,6 +122,11 @@
                                 <p class="text-[12px] text-gray-500 mb-2">Distribution by transaction type</p>
                                 <div id="ledger-type-chart" class="space-y-3 max-h-[176px] overflow-y-auto pr-2"></div>
                             </div>
+                            <div id="ledger-top-vendor-spend-section" class="hidden pt-4 border-t border-gray-100 md:col-span-2 xl:col-span-1">
+                                <h3 class="text-[13px] font-bold text-gray-900">Top Vendor Spend</h3>
+                                <p class="text-[12px] text-gray-500 mb-2">Distribution by expense-side vendor</p>
+                                <div id="ledger-top-vendor-spend-list" class="space-y-2"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -129,6 +134,12 @@
                 <!-- Ledger Table Card -->
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6">
                     <div id="ledger-empty-state" class="hidden"></div>
+                    <div id="ledger-vendor-filter-chip-row" class="hidden px-6 py-3 border-b border-gray-100 bg-gray-50/50">
+                        <button id="ledger-clear-vendor-filter" type="button" class="inline-flex max-w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">
+                            <span id="ledger-vendor-filter-label" class="truncate">Vendor: —</span>
+                            <span class="text-gray-400" aria-hidden="true">×</span>
+                        </button>
+                    </div>
                     
                     <div id="ledger-table-container" data-tour-target="ledger-table" class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
@@ -310,6 +321,7 @@
         let ledgerSortDirection = 'desc';
         const linkedLedgerSearch = new URLSearchParams(window.location.search).get('search') || '';
         let ledgerSearchTerm = linkedLedgerSearch;
+        let activeLedgerVendorFilter = null;
         let ledgerRangeStart = getMonthStartKey();
         let ledgerRangeEnd = getMonthEndKey();
         const linkedLedgerRecordId = new URLSearchParams(window.location.search).get('record');
@@ -455,15 +467,83 @@
         function applyLedgerMonthFilter() {
             const downloadBtn = document.getElementById('download-csv-btn');
 
-            currentLedgerTransactions = allLedgerTransactions.filter(transaction => matchesLedgerSearch(transaction, ledgerSearchTerm));
+            currentLedgerTransactions = allLedgerTransactions.filter(transaction =>
+                matchesLedgerVendorFilter(transaction) && matchesLedgerSearch(transaction, ledgerSearchTerm)
+            );
+            renderLedgerVendorFilterChip();
             renderLedgerSummaryCards(currentLedgerTransactions);
             renderLedgerActivity(currentLedgerTransactions);
             if (downloadBtn) downloadBtn.disabled = currentLedgerTransactions.length === 0;
             renderLedgerTable();
         }
 
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
         function normalizeSearchText(value) {
             return String(value ?? '').toLowerCase().trim();
+        }
+
+        function formatCurrencyIDR(amount) {
+            const val = typeof amount === 'number' ? amount : Number(amount) || 0;
+            return 'Rp ' + Math.abs(val).toLocaleString('id-ID');
+        }
+
+        function getRecordAmount(record) {
+            return typeof record?.amount === 'number' ? record.amount : Number(record?.amount) || 0;
+        }
+
+        function getVendorDisplayName(record) {
+            const vendor = String(record?.vendor_name ?? '').trim();
+            return vendor || 'Unknown vendor';
+        }
+
+        function normalizeVendorName(value) {
+            const vendor = String(value ?? '').trim().toLowerCase();
+            return vendor || 'unknown vendor';
+        }
+
+        function getVendorKey(record) {
+            return normalizeVendorName(getVendorDisplayName(record));
+        }
+
+        function matchesLedgerVendorFilter(transaction) {
+            return !activeLedgerVendorFilter || getVendorKey(transaction) === activeLedgerVendorFilter.key;
+        }
+
+        function renderLedgerVendorFilterChip() {
+            const row = document.getElementById('ledger-vendor-filter-chip-row');
+            const label = document.getElementById('ledger-vendor-filter-label');
+            if (!row || !label) return;
+
+            if (!activeLedgerVendorFilter) {
+                row.classList.add('hidden');
+                label.textContent = 'Vendor: —';
+                return;
+            }
+
+            label.textContent = `Vendor: ${activeLedgerVendorFilter.displayName}`;
+            row.classList.remove('hidden');
+        }
+
+        function setLedgerVendorFilter(vendorName) {
+            const displayName = String(vendorName ?? '').trim() || 'Unknown vendor';
+            activeLedgerVendorFilter = {
+                key: normalizeVendorName(displayName),
+                displayName
+            };
+            applyLedgerMonthFilter();
+        }
+
+        function clearLedgerVendorFilter() {
+            activeLedgerVendorFilter = null;
+            applyLedgerMonthFilter();
         }
 
         function matchesLedgerSearch(transaction, term) {
@@ -519,6 +599,14 @@
             if (amount < 0) return 'Expense';
             if (amount > 0) return 'Income';
             return 'Unknown';
+        }
+
+        function getNormalizedRawTransactionType(transaction) {
+            return String(transaction?.type || '').trim().toLowerCase().replace(/\s+/g, '_');
+        }
+
+        function isExpenseSideVendorTransaction(transaction) {
+            return ['expense', 'fee', 'tax', 'pending_payable'].includes(getNormalizedRawTransactionType(transaction));
         }
 
         function getTypeBadgeClass(type) {
@@ -742,10 +830,56 @@
             `).join('');
         }
 
+        function getTopVendorSpend(transactions) {
+            const grouped = transactions.reduce((vendors, transaction) => {
+                if (!isExpenseSideVendorTransaction(transaction)) return vendors;
+                const key = getVendorKey(transaction);
+                const existing = vendors.get(key) || {
+                    key,
+                    displayName: getVendorDisplayName(transaction),
+                    amount: 0,
+                    count: 0
+                };
+                existing.amount += getRecordAmount(transaction);
+                existing.count += 1;
+                vendors.set(key, existing);
+                return vendors;
+            }, new Map());
+
+            return Array.from(grouped.values())
+                .sort((a, b) => b.amount - a.amount)
+                .slice(0, 3);
+        }
+
+        function renderTopVendorSpend(transactions) {
+            const section = document.getElementById('ledger-top-vendor-spend-section');
+            const list = document.getElementById('ledger-top-vendor-spend-list');
+            if (!section || !list) return;
+
+            const vendors = getTopVendorSpend(transactions);
+            if (!vendors.length) {
+                list.innerHTML = '';
+                section.classList.add('hidden');
+                return;
+            }
+
+            list.innerHTML = vendors.map(vendor => `
+                <div class="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50/70 px-3 py-2">
+                    <div class="min-w-0">
+                        <p class="truncate text-[12px] font-bold text-gray-800" title="${escapeHtml(vendor.displayName)}">${escapeHtml(vendor.displayName)}</p>
+                        <p class="text-[11px] text-gray-400">${vendor.count} record${vendor.count === 1 ? '' : 's'}</p>
+                    </div>
+                    <p class="flex-shrink-0 text-[12px] font-bold font-mono text-gray-900">${formatCurrencyIDR(vendor.amount)}</p>
+                </div>
+            `).join('');
+            section.classList.remove('hidden');
+        }
+
         function renderLedgerActivity(transactions) {
             renderVolumeChart(transactions);
             renderBreakdownChart('ledger-status-chart', getStatusBreakdown(transactions), 'Status breakdown not available.', getStatusColor);
             renderBreakdownChart('ledger-type-chart', getTransactionTypeBreakdown(transactions), 'Type breakdown not available.', getTypeColor);
+            renderTopVendorSpend(transactions);
         }
 
         function getSortedLedgerRows() {
@@ -799,8 +933,10 @@
             window.__ledgerRowMap = {};
             visibleRows.forEach(r => { window.__ledgerRowMap[r.id] = r; });
 
-            body.innerHTML = visibleRows.map(row => `
-                <tr class="hover:bg-gray-50 transition-colors cursor-pointer" data-ledger-id="${row.id}" onclick="window.__handleLedgerRowClick('${row.id}')">
+            body.innerHTML = visibleRows.map(row => {
+                const vendorName = getVendorDisplayName(row);
+                return `
+                <tr class="hover:bg-gray-50 transition-colors cursor-pointer" data-ledger-id="${escapeHtml(row.id)}">
                     <td class="px-6 py-4 text-gray-400 whitespace-nowrap text-[12px]">${row.created_at?.toDate ? row.created_at.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
                     <td class="px-6 py-4 text-gray-500">${row.timestamp?.toDate().toLocaleString() || 'Just now'}</td>
                     <td class="px-6 py-4">
@@ -808,18 +944,22 @@
                             ${getTransactionType(row)}
                         </span>
                     </td>
-                    <td class="px-6 py-4 font-bold text-gray-900">${row.vendor_name}</td>
-                    <td class="px-6 py-4 text-gray-500">${row.category}</td>
+                    <td class="px-6 py-4">
+                        <button type="button" data-action="ledger-vendor-filter" data-vendor-name="${escapeHtml(vendorName)}" class="inline-block max-w-[240px] truncate text-left align-bottom font-bold text-gray-900 hover:text-[#EA580C] hover:underline">
+                            ${escapeHtml(vendorName)}
+                        </button>
+                    </td>
+                    <td class="px-6 py-4 text-gray-500">${escapeHtml(row.category || '')}</td>
                     <td class="px-6 py-4 font-mono font-bold ${getAmountClass(row)}">
                         ${formatTransactionAmount(row)}
                     </td>
                     <td class="px-6 py-4">
                         <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${getStatusBadgeClass(row.status)}">
-                            ${row.status}
+                            ${escapeHtml(row.status || '')}
                         </span>
                     </td>
                 </tr>
-            `).join('');
+            `;}).join('');
 
             updateSortIndicators();
             highlightLinkedLedgerSearchRows();
@@ -867,6 +1007,21 @@
         document.getElementById('ledger-search-input')?.addEventListener('input', (event) => {
             ledgerSearchTerm = event.target.value;
             applyLedgerMonthFilter();
+        });
+
+        document.getElementById('ledger-clear-vendor-filter')?.addEventListener('click', clearLedgerVendorFilter);
+
+        document.getElementById('ledger-table-body')?.addEventListener('click', (event) => {
+            const vendorBtn = event.target.closest('[data-action="ledger-vendor-filter"]');
+            if (vendorBtn) {
+                event.preventDefault();
+                event.stopPropagation();
+                setLedgerVendorFilter(vendorBtn.dataset.vendorName || '');
+                return;
+            }
+
+            const rowEl = event.target.closest('[data-ledger-id]');
+            if (rowEl) window.__handleLedgerRowClick(rowEl.dataset.ledgerId);
         });
 
         document.querySelectorAll('.ledger-sort-btn').forEach(button => {
