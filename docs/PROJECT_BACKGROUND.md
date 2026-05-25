@@ -292,6 +292,47 @@ dashboard action changes from Dismiss to Completed; clicking it stores
 first. If the onboarding gate renders, clear `sessionStorage.fluxy_pending_tour`
 and do not render Quick ways to get started or start coachmarks.
 
+### 4h. Documents — `users/{userId}/documents/{documentId}`
+
+User-scoped document metadata for the shared receipt / invoice / proof
+attachment workflow. Files themselves live in Firebase Storage under
+`users/{userId}/documents/{documentId}/{fileName}` (≤5 MB, JPG/PNG/WebP/PDF
+only). Spec lives in `docs/RECEIPT_DOCUMENT_ATTACHMENT_PLAN.md`.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `file_name` | string | Sanitized filename (≤240 chars). |
+| `file_mime_type` | string | One of `image/jpeg`, `image/png`, `image/webp`, `application/pdf`. |
+| `file_size` | number | Bytes, ≤ 5 MB. |
+| `storage_path` | string | Always under `users/{uid}/documents/{documentId}/`. |
+| `document_role` | string | `receipt` \| `invoice` \| `payment_proof` \| `revenue_proof` \| `unknown_finance_document`. |
+| `source_context` | string | `transaction` \| `revenue` \| `bill` \| `subscription`. |
+| `target_collection` | string \| null | `transactions` \| `bills` \| `subscriptions` once linked. |
+| `target_id` | string | Empty until linked. |
+| `upload_status` | string | `pending` \| `uploaded` \| `failed` \| `removed`. |
+| `extraction_status` | string | Phase 1 always `not_requested`. Reserved for backend AI extraction. |
+| `review_status` | string | Phase 1 always `not_required`. |
+| `created_at` / `updated_at` | Timestamp | Server-set. |
+
+**Mutation rule:** owner read/create/update only; delete blocked. The
+`storage_path` cannot change after create.
+
+**Linked records:** transactions and bills carry an `attached_documents`
+array of `{ document_id, role, storage_path, attached_at }` references
+(≤20 entries). Bills additionally accept `invoice_status: "attached"`
+when an invoice has been attached. **Attaching never mutates a bill's
+`payment_status` and never creates a transaction.**
+
+For backward compatibility with the legacy ledger thumbnail rendering,
+image receipt uploads on **transactions** also dual-write the existing
+`receipt_url` field with the Storage download URL. New code should prefer
+`attached_documents`.
+
+`DataService` exposes `uploadDocument`, `addDocumentMetadata`,
+`linkDocumentTarget`, and `attachDocumentToRecord`. The shared UI
+component lives in `assets/js/document-attachment.js` and is exposed as
+`window.FluxyDocumentAttachment`.
+
 ---
 
 ## 5. Business Logic Rules

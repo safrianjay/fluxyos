@@ -190,7 +190,7 @@ class DataService {
         return payload;
     }
 
-    // --- RECEIPTS ---
+    // --- RECEIPTS (legacy single-image flow; new code should use the DOCUMENTS methods below) ---
     async uploadReceipt(userId, file) {
         const { getStorage, ref, uploadBytes, getDownloadURL } =
             await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
@@ -204,6 +204,87 @@ class DataService {
         await updateDoc(doc(this.db, `users/${userId}/transactions/${txId}`), {
             receipt_url: receiptUrl,
             status: 'Completed'
+        });
+    }
+
+    // --- DOCUMENTS (Phase 1 shared attachment) ---
+    // Uploads a file to users/{uid}/documents/{documentId}/{fileName}, returning
+    // the allocated documentId, storage_path, and (for images only) a public
+    // download URL for the legacy `receipt_url` dual-write on transactions.
+    async uploadDocument(userId, file) {
+        const { getStorage, ref, uploadBytes, getDownloadURL } =
+            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
+        if (!this._storage) this._storage = getStorage(this.app);
+
+        const documentRef = doc(collection(this.db, `users/${userId}/documents`));
+        const documentId = documentRef.id;
+        const safeName = String(file.name || 'document').replace(/[^\w.\-]+/g, '_').slice(0, 200) || 'document';
+        const storagePath = `users/${userId}/documents/${documentId}/${safeName}`;
+        const snap = await uploadBytes(
+            ref(this._storage, storagePath),
+            file,
+            { contentType: file.type || 'application/octet-stream' }
+        );
+
+        let downloadURL = null;
+        if (file.type && file.type.startsWith('image/')) {
+            try { downloadURL = await getDownloadURL(snap.ref); } catch (_) { downloadURL = null; }
+        }
+
+        return {
+            documentId,
+            storagePath,
+            fileName: safeName,
+            fileMimeType: file.type || 'application/octet-stream',
+            fileSize: file.size || 0,
+            downloadURL
+        };
+    }
+
+    async addDocumentMetadata(userId, documentId, payload) {
+        const docRef = doc(this.db, `users/${userId}/documents/${documentId}`);
+        await setDoc(docRef, {
+            file_name: payload.file_name,
+            file_mime_type: payload.file_mime_type,
+            file_size: payload.file_size,
+            storage_path: payload.storage_path,
+            document_role: payload.document_role,
+            source_context: payload.source_context,
+            target_collection: payload.target_collection || null,
+            target_id: payload.target_id || '',
+            upload_status: payload.upload_status || 'uploaded',
+            extraction_status: 'not_requested',
+            review_status: 'not_required',
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        });
+        return docRef;
+    }
+
+    async linkDocumentTarget(userId, documentId, targetCollection, targetId) {
+        const docMetaRef = doc(this.db, `users/${userId}/documents/${documentId}`);
+        await updateDoc(docMetaRef, {
+            target_collection: targetCollection,
+            target_id: targetId,
+            updated_at: serverTimestamp()
+        });
+    }
+
+    async attachDocumentToRecord(userId, targetCollection, targetId, attachment) {
+        if (!['transactions', 'bills', 'subscriptions'].includes(targetCollection)) {
+            throw new Error(`Cannot attach a document to '${targetCollection}'.`);
+        }
+        const recordRef = doc(this.db, `users/${userId}/${targetCollection}/${targetId}`);
+        const update = { attached_documents: arrayUnion(attachment) };
+        if (targetCollection === 'bills') update.invoice_status = 'attached';
+        await updateDoc(recordRef, update);
+
+        // Link metadata back to the record it was attached to.
+        const docMetaRef = doc(this.db, `users/${userId}/documents/${attachment.document_id}`);
+        await updateDoc(docMetaRef, {
+            target_collection: targetCollection,
+            target_id: targetId,
+            updated_at: serverTimestamp()
         });
     }
 

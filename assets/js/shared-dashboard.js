@@ -26,6 +26,21 @@ function loadFluxyDateRangePicker() {
     return window.__fluxyDateRangePickerPromise;
 }
 
+function loadFluxyDocumentAttachment() {
+    if (window.FluxyDocumentAttachment) return Promise.resolve(window.FluxyDocumentAttachment);
+    if (window.__fluxyDocumentAttachmentPromise) return window.__fluxyDocumentAttachmentPromise;
+
+    window.__fluxyDocumentAttachmentPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = '/assets/js/document-attachment.js';
+        script.onload = () => resolve(window.FluxyDocumentAttachment);
+        script.onerror = () => reject(new Error('Unable to load document attachment helper.'));
+        document.head.appendChild(script);
+    });
+
+    return window.__fluxyDocumentAttachmentPromise;
+}
+
 async function compressReceiptImage(file) {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -303,21 +318,7 @@ window.showAddTransactionModal = function(options = {}) {
                                 <option value="Cancelled">Cancelled</option>
                             </select>
                         </div>` : ''}
-                        ${context !== 'bill' ? `<div id="tx-receipt-section">
-                            <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Receipt (optional)</label>
-                            <label id="tx-receipt-label" for="tx-receipt-file" class="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 transition-colors group">
-                                <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-                                <span id="tx-receipt-filename" class="text-[13px] text-gray-500 truncate flex-1">Attach receipt image</span>
-                                <button type="button" id="tx-receipt-remove" class="hidden text-gray-400 hover:text-red-500 transition-colors" aria-label="Remove receipt">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                </button>
-                            </label>
-                            <input type="file" id="tx-receipt-file" accept="image/*" class="sr-only">
-                            <div id="tx-receipt-preview-wrapper" class="hidden mt-2">
-                                <img id="tx-receipt-preview" src="" alt="Receipt preview" class="w-full rounded-xl border border-gray-200 object-contain max-h-48">
-                            </div>
-                            <p class="mt-1.5 text-[11px] text-gray-400">JPG, PNG or WebP · Max 1 MB · Compress the image first if it's too large</p>
-                        </div>` : ''}
+                        ${context !== 'bill' ? `<div id="tx-receipt-section" data-fluxy-doc-mount></div>` : ''}
                     </div>
                     ${supportsBulkCsv ? `
                     <div id="tx-bulk-panel" class="hidden space-y-4">
@@ -805,43 +806,26 @@ window.showAddTransactionModal = function(options = {}) {
         else categoryCustomInput.value = '';
     });
 
-    // Receipt file input wiring (transaction/subscription only — bills use invoice in the review drawer)
-    const receiptFileInput = document.getElementById('tx-receipt-file');
-    if (receiptFileInput) {
-        const receiptFilename = document.getElementById('tx-receipt-filename');
-        const receiptRemoveBtn = document.getElementById('tx-receipt-remove');
-        const receiptPreviewWrapper = document.getElementById('tx-receipt-preview-wrapper');
-        const receiptPreview = document.getElementById('tx-receipt-preview');
-
-        receiptFileInput.onchange = () => {
-            const file = receiptFileInput.files?.[0];
-            if (!file) return;
-            if (!file.type.startsWith('image/')) {
-                window.showToast('Receipt must be an image file (JPG, PNG, WebP).', 'error');
-                receiptFileInput.value = '';
-                return;
-            }
-            if (file.size > 1 * 1024 * 1024) {
-                window.showToast('Receipt image must be under 1 MB. Compress it first and re-upload.', 'error');
-                receiptFileInput.value = '';
-                return;
-            }
-            receiptFilename.textContent = file.name;
-            receiptRemoveBtn.classList.remove('hidden');
-            const previewUrl = URL.createObjectURL(file);
-            receiptPreview.src = previewUrl;
-            receiptPreviewWrapper.classList.remove('hidden');
-        };
-
-        receiptRemoveBtn.onclick = (e) => {
-            e.preventDefault();
-            receiptFileInput.value = '';
-            receiptFilename.textContent = 'Attach receipt image';
-            receiptRemoveBtn.classList.add('hidden');
-            if (receiptPreview.src) URL.revokeObjectURL(receiptPreview.src);
-            receiptPreview.src = '';
-            receiptPreviewWrapper.classList.add('hidden');
-        };
+    // Shared document attachment — receipt for expense, revenue_proof for income.
+    let attachmentController = null;
+    const receiptMountEl = document.querySelector('#tx-receipt-section[data-fluxy-doc-mount]');
+    if (receiptMountEl) {
+        const isRevenueContext = defaultType === 'income' || defaultType === 'revenue' || defaultCategory === 'Revenue';
+        const attachmentRole = isRevenueContext ? 'revenue_proof' : 'receipt';
+        const attachmentSourceContext = isRevenueContext ? 'revenue' : 'transaction';
+        loadFluxyDocumentAttachment()
+            .then((api) => {
+                if (!document.body.contains(receiptMountEl)) return;
+                attachmentController = api.mount({
+                    hostEl: receiptMountEl,
+                    role: attachmentRole,
+                    sourceContext: attachmentSourceContext
+                });
+            })
+            .catch((err) => {
+                console.error('FluxyDocumentAttachment load failed:', err);
+                receiptMountEl.innerHTML = '<p class="text-[12px] text-red-500">Attachment uploader could not load. The form still saves without an attachment.</p>';
+            });
     }
 
     if (supportsBulkCsv) {
@@ -1150,32 +1134,66 @@ window.showAddTransactionModal = function(options = {}) {
                 data.timestamp = buildTransactionTimestamp(selectedEntryDate, Timestamp);
             }
 
-            // Receipt upload (transaction context only)
-            if (context === 'transaction') {
-                const receiptFile = document.getElementById('tx-receipt-file')?.files?.[0];
-                if (receiptFile) {
-                    btn.innerText = 'Compressing...';
-                    let toUpload = receiptFile;
-                    try { toUpload = await compressReceiptImage(receiptFile); } catch (_) {}
-                    btn.innerText = 'Uploading receipt...';
-                    data.receipt_url = await ds.uploadReceipt(user.uid, toUpload);
-                    data.status = 'Completed';
+            // Shared document attachment (Phase 1):
+            //   - receipt for expense transactions
+            //   - revenue_proof for income transactions
+            //   - subscriptions reuse the receipt flow
+            //   - bills attach invoices from the Bill Details drawer instead
+            if (context !== 'bill') {
+                const attachmentFile = attachmentController?.getPendingFile?.() || null;
+                if (attachmentFile) {
+                    const isRevenueContext = defaultType === 'income' || defaultType === 'revenue' || defaultCategory === 'Revenue';
+                    const role = isRevenueContext ? 'revenue_proof' : 'receipt';
+                    const sourceContextValue = isRevenueContext ? 'revenue' : (context === 'subscription' ? 'subscription' : 'transaction');
+
+                    btn.innerText = 'Uploading attachment...';
+                    let fileForUpload = attachmentFile;
+                    if (attachmentFile.type && attachmentFile.type.startsWith('image/')) {
+                        try { fileForUpload = await compressReceiptImage(attachmentFile); } catch (_) { fileForUpload = attachmentFile; }
+                    }
+
+                    const api = await loadFluxyDocumentAttachment();
+                    const prepared = await api.prepareAttachmentForNewRecord({
+                        ds,
+                        userId: user.uid,
+                        file: fileForUpload,
+                        role,
+                        sourceContext: sourceContextValue,
+                        Timestamp
+                    });
+
+                    data.attached_documents = [prepared.attachmentForArray];
+                    if (prepared.downloadURL) data.receipt_url = prepared.downloadURL;
+                    if (role === 'receipt') data.status = 'Completed';
                 }
             }
 
             if (user) {
+                const attachedDocId = Array.isArray(data.attached_documents) && data.attached_documents[0]
+                    ? data.attached_documents[0].document_id
+                    : null;
+
                 if (context === 'bill') {
-                    await ds.addBill(user.uid, data);
+                    const billRef = await ds.addBill(user.uid, data);
+                    if (attachedDocId && billRef?.id) {
+                        try { await ds.linkDocumentTarget(user.uid, attachedDocId, 'bills', billRef.id); } catch (_) {}
+                    }
                     window.closeAddTransactionModal();
                     if (window.loadBills) await window.loadBills();
                     window.showToast("Bill successfully added to your schedule!", "success");
                 } else if (context === 'subscription') {
-                    await ds.addSubscription(user.uid, data);
+                    const subRef = await ds.addSubscription(user.uid, data);
+                    if (attachedDocId && subRef?.id) {
+                        try { await ds.linkDocumentTarget(user.uid, attachedDocId, 'subscriptions', subRef.id); } catch (_) {}
+                    }
                     window.closeAddTransactionModal();
                     if (window.loadSubscriptions) await window.loadSubscriptions();
                     window.showToast("Subscription successfully activated!", "success");
                 } else {
-                    await ds.addTransaction(user.uid, data);
+                    const txRef = await ds.addTransaction(user.uid, data);
+                    if (attachedDocId && txRef?.id) {
+                        try { await ds.linkDocumentTarget(user.uid, attachedDocId, 'transactions', txRef.id); } catch (_) {}
+                    }
                     window.closeAddTransactionModal();
                     if (window.loadDashboard) await window.loadDashboard();
                     if (window.loadLedger) await window.loadLedger();
@@ -1254,6 +1272,7 @@ window.closeAddTransactionModal = function() {
     if (modal) {
         if (modal.dataset.closing === 'true') return;
         modal.dataset.closing = 'true';
+        try { window.FluxyDocumentAttachment?.reset(); } catch (_) {}
         const overlay = document.getElementById('global-tx-overlay');
         const drawer = document.getElementById('global-tx-drawer');
         overlay?.classList.remove('opacity-100');

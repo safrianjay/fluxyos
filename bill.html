@@ -119,6 +119,12 @@
                         <h2 class="text-[14px] font-bold text-gray-900">All Bills</h2>
                         <p id="bill-table-count" class="text-[12px] text-gray-400"></p>
                     </div>
+                    <div id="bill-vendor-filter-chip-row" class="hidden px-6 py-3 border-b border-gray-100 bg-gray-50/50">
+                        <button id="bill-clear-vendor-filter" type="button" class="inline-flex max-w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">
+                            <span id="bill-vendor-filter-label" class="truncate">Vendor: —</span>
+                            <span class="text-gray-400" aria-hidden="true">×</span>
+                        </button>
+                    </div>
                     <div id="bill-empty-state" class="hidden"></div>
                     <div id="bill-table-container" data-tour-target="bill-table" class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
@@ -205,6 +211,7 @@
     <script src="assets/js/shared-dashboard.js"></script>
     <script src="assets/js/date-range-picker.js"></script>
     <script src="assets/js/document-capture.js"></script>
+    <script src="assets/js/document-attachment.js"></script>
 
     <script type="module">
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -235,6 +242,7 @@
         let allBills = [];
         let filteredBills = [];
         let billPaginator = null;
+        let activeBillVendorFilter = null;
         const linkedBillSearch = new URLSearchParams(window.location.search).get('search') || '';
         const linkedBillRecordId = new URLSearchParams(window.location.search).get('record');
         let linkedBillRecordHandled = false;
@@ -310,6 +318,42 @@
         function formatCurrencyIDR(amount) {
             const val = typeof amount === 'number' ? amount : 0;
             return 'Rp ' + Math.abs(val).toLocaleString('id-ID');
+        }
+
+        function getRecordAmount(record) {
+            return typeof record?.amount === 'number' ? record.amount : Number(record?.amount) || 0;
+        }
+
+        function getVendorDisplayName(record) {
+            const vendor = String(record?.vendor_name ?? '').trim();
+            return vendor || 'Unknown vendor';
+        }
+
+        function normalizeVendorName(value) {
+            const vendor = String(value ?? '').trim().toLowerCase();
+            return vendor || 'unknown vendor';
+        }
+
+        function getVendorKey(record) {
+            return normalizeVendorName(getVendorDisplayName(record));
+        }
+
+        function getTopVendorSpend(records) {
+            const grouped = records.reduce((vendors, record) => {
+                const key = getVendorKey(record);
+                const existing = vendors.get(key) || {
+                    key,
+                    displayName: getVendorDisplayName(record),
+                    amount: 0,
+                    count: 0
+                };
+                existing.amount += getRecordAmount(record);
+                existing.count += 1;
+                vendors.set(key, existing);
+                return vendors;
+            }, new Map());
+
+            return Array.from(grouped.values()).sort((a, b) => b.amount - a.amount);
         }
 
         function getBillDueDate(bill) {
@@ -437,10 +481,20 @@
 
             container.innerHTML = bucketConfig.map(({ key, label, headerCls, badgeCls }) => {
                 const items = buckets[key];
+                const topVendor = items.length ? getTopVendorSpend(items)[0] : null;
+                const bucketAmount = items.reduce((sum, bill) => sum + getRecordAmount(bill), 0);
+                const exposureHtml = topVendor ? `
+                    <div class="mb-3 rounded-lg border border-gray-100 bg-gray-50/70 px-2.5 py-2">
+                        ${key === 'overdue' && bucketAmount > 0 ? `<p class="text-[11px] font-bold text-red-600">${formatCurrencyIDR(bucketAmount)} past due</p>` : ''}
+                        <p class="text-[11px] text-gray-500 truncate" title="Top vendor: ${escapeHtml(topVendor.displayName)} · ${formatCurrencyIDR(topVendor.amount)}">
+                            <span class="font-semibold text-gray-700">Top vendor:</span> ${escapeHtml(topVendor.displayName)} · <span class="font-mono">${formatCurrencyIDR(topVendor.amount)}</span>
+                        </p>
+                    </div>
+                ` : '';
                 const itemsHtml = items.length === 0
                     ? `<p class="text-[11px] text-gray-400 py-3 text-center">No bills</p>`
                     : items.map(bill => {
-                        const vendorName = bill.vendor_name || 'Unknown';
+                        const vendorName = getVendorDisplayName(bill);
                         return `
                         <div class="flex items-start justify-between gap-2 py-2.5 border-b border-gray-50 last:border-0 cursor-pointer hover:bg-gray-50 -mx-1 px-1 rounded transition-colors" data-action="review" data-bill-id="${escapeHtml(bill.id)}">
                             <div class="min-w-0 flex-1">
@@ -457,10 +511,42 @@
                             <h3 class="text-[11px] font-bold ${headerCls} uppercase tracking-wider">${label}</h3>
                             <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeCls}">${items.length}</span>
                         </div>
+                        ${exposureHtml}
                         <div class="overflow-y-auto overflow-x-hidden max-h-[156px]">${itemsHtml}</div>
                     </div>
                 `;
             }).join('');
+        }
+
+        function renderBillVendorFilterChip() {
+            const row = document.getElementById('bill-vendor-filter-chip-row');
+            const label = document.getElementById('bill-vendor-filter-label');
+            if (!row || !label) return;
+
+            if (!activeBillVendorFilter) {
+                row.classList.add('hidden');
+                label.textContent = 'Vendor: —';
+                return;
+            }
+
+            label.textContent = `Vendor: ${activeBillVendorFilter.displayName}`;
+            row.classList.remove('hidden');
+        }
+
+        function setBillVendorFilter(vendorName) {
+            const displayName = String(vendorName ?? '').trim() || 'Unknown vendor';
+            activeBillVendorFilter = {
+                key: normalizeVendorName(displayName),
+                displayName
+            };
+            renderBillVendorFilterChip();
+            filterBills(document.getElementById('bill-search-input')?.value || '');
+        }
+
+        function clearBillVendorFilter() {
+            activeBillVendorFilter = null;
+            renderBillVendorFilterChip();
+            filterBills(document.getElementById('bill-search-input')?.value || '');
         }
 
         // ── Render: Bills Table ───────────────────────────────────────────────
@@ -476,9 +562,14 @@
 
             body.innerHTML = visible.map(bill => {
                 const status = getBillDisplayStatus(bill);
+                const vendorName = getVendorDisplayName(bill);
                 return `
                     <tr class="hover:bg-gray-50 transition-colors cursor-pointer" data-action="review" data-bill-id="${escapeHtml(bill.id)}">
-                        <td class="px-6 py-4 font-semibold text-gray-900">${escapeHtml(bill.vendor_name || 'Unknown')}</td>
+                        <td class="px-6 py-4">
+                            <button type="button" data-action="bill-vendor-filter" data-vendor-name="${escapeHtml(vendorName)}" class="inline-block max-w-[220px] truncate text-left align-bottom font-semibold text-gray-900 hover:text-[#EA580C] hover:underline">
+                                ${escapeHtml(vendorName)}
+                            </button>
+                        </td>
                         <td class="px-6 py-4 text-gray-500">${escapeHtml(bill.category || 'Operations')}</td>
                         <td class="px-6 py-4 text-[13px]">${formatDueDateDisplay(bill)}</td>
                         <td class="px-6 py-4 font-mono font-bold text-gray-900">${formatCurrencyIDR(bill.amount)}</td>
@@ -497,6 +588,7 @@
             const tableContainer = document.getElementById('bill-table-container');
             const emptyContainer = document.getElementById('bill-empty-state');
             const countEl = document.getElementById('bill-table-count');
+            renderBillVendorFilterChip();
 
             if (allBills.length === 0) {
                 tableContainer.classList.add('hidden');
@@ -527,9 +619,11 @@
 
         function filterBills(query) {
             const q = query.trim().toLowerCase();
-            if (!q) { renderBillsTable(allBills); return; }
+            const vendorKey = activeBillVendorFilter?.key || '';
             const filtered = allBills.filter(bill => {
-                const vendor = (bill.vendor_name || '').toLowerCase();
+                if (vendorKey && getVendorKey(bill) !== vendorKey) return false;
+                if (!q) return true;
+                const vendor = getVendorDisplayName(bill).toLowerCase();
                 const category = (bill.category || '').toLowerCase();
                 const status = getBillDisplayStatus(bill).toLowerCase();
                 const rawStatus = (bill.status || '').toLowerCase();
@@ -541,7 +635,26 @@
 
         // ── Bill Detail Drawer ────────────────────────────────────────────────
 
+        let activeDrawerBillId = null;
+        let invoiceAttachInFlight = false;
+
+        function renderAttachedInvoicesList(bill) {
+            const list = Array.isArray(bill.attached_documents) ? bill.attached_documents : [];
+            const invoiceItems = list.filter(item => item && (item.role === 'invoice' || !item.role));
+            if (!invoiceItems.length) return '';
+            return `
+                <div class="rounded-lg border border-emerald-100 bg-emerald-50/40 p-3 space-y-1.5">
+                    <p class="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Invoice attached</p>
+                    ${invoiceItems.map(item => {
+                        const fileName = String(item.storage_path || '').split('/').pop() || 'invoice';
+                        return `<p class="text-[12px] text-gray-700 truncate" title="${escapeHtml(fileName)}">${escapeHtml(fileName)}</p>`;
+                    }).join('')}
+                </div>
+            `;
+        }
+
         function openBillDrawer(bill) {
+            activeDrawerBillId = bill.id;
             const dueDate = getBillDueDate(bill);
             const status = getBillDisplayStatus(bill);
             const dueDateDisplay = dueDate
@@ -550,6 +663,8 @@
             const createdAt = bill.timestamp
                 ? bill.timestamp.toDate().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
                 : null;
+            const hasInvoice = Array.isArray(bill.attached_documents) && bill.attached_documents.some(item => item && (item.role === 'invoice' || !item.role));
+            const attachLabel = hasInvoice ? 'Replace Invoice' : 'Attach Invoice';
 
             document.getElementById('bill-drawer-content').innerHTML = `
                 <div class="space-y-5">
@@ -589,11 +704,15 @@
                         </div>
                     </div>
 
+                    ${renderAttachedInvoicesList(bill)}
+
                     <div class="border-t border-gray-100 pt-4 space-y-2">
-                        <button disabled class="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 border border-gray-200 text-gray-400 rounded-lg text-[12px] cursor-not-allowed">
-                            <span>Attach Invoice</span>
-                            <span class="text-[10px] font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Coming soon</span>
+                        <button id="bill-attach-invoice-btn" type="button" class="w-full flex items-center justify-between px-3 py-2.5 bg-white border border-gray-200 hover:border-[#EA580C] hover:bg-orange-50/40 text-gray-700 rounded-lg text-[12px] font-medium transition-colors">
+                            <span>${escapeHtml(attachLabel)}</span>
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
                         </button>
+                        <input type="file" id="bill-attach-invoice-file" accept="image/jpeg,image/png,image/webp,application/pdf" class="sr-only">
+                        <p class="text-[11px] text-gray-400">JPG, PNG, WebP, or PDF · Max 5 MB. Attaching does not mark the bill as paid.</p>
                         <button disabled class="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 border border-gray-200 text-gray-400 rounded-lg text-[12px] cursor-not-allowed">
                             <span>Convert to Transaction</span>
                             <span class="text-[10px] font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Coming soon</span>
@@ -602,13 +721,83 @@
                 </div>
             `;
 
+            wireInvoiceAttachControls();
             document.getElementById('bill-drawer-backdrop').classList.remove('hidden');
             requestAnimationFrame(() => {
                 document.getElementById('bill-drawer').classList.remove('translate-x-full');
             });
         }
 
+        function wireInvoiceAttachControls() {
+            const attachBtn = document.getElementById('bill-attach-invoice-btn');
+            const fileInput = document.getElementById('bill-attach-invoice-file');
+            if (!attachBtn || !fileInput) return;
+            attachBtn.onclick = () => {
+                if (invoiceAttachInFlight) return;
+                fileInput.click();
+            };
+            fileInput.onchange = async () => {
+                const file = fileInput.files?.[0];
+                fileInput.value = '';
+                if (!file || !activeDrawerBillId || invoiceAttachInFlight) return;
+                const api = window.FluxyDocumentAttachment;
+                if (!api) {
+                    window.showToast?.('Attachment uploader is still loading. Please try again in a moment.', 'error');
+                    return;
+                }
+                const check = api.validateFile(file);
+                if (!check.ok) {
+                    window.showToast?.(check.message, 'error');
+                    return;
+                }
+                const ds = window.__fluxyBillsContext?.ds;
+                const user = window.__fluxyBillsContext?.auth?.currentUser;
+                if (!ds || !user) {
+                    window.showToast?.('You need to sign in again before uploading this document.', 'error');
+                    return;
+                }
+
+                invoiceAttachInFlight = true;
+                attachBtn.disabled = true;
+                attachBtn.classList.add('opacity-60', 'cursor-wait');
+                const originalLabel = attachBtn.querySelector('span')?.textContent || 'Attach Invoice';
+                attachBtn.querySelector('span').textContent = 'Uploading...';
+
+                try {
+                    const result = await api.attachToExistingRecord({
+                        ds,
+                        userId: user.uid,
+                        file,
+                        role: 'invoice',
+                        sourceContext: 'bill',
+                        targetCollection: 'bills',
+                        targetId: activeDrawerBillId,
+                        Timestamp
+                    });
+
+                    // Update local cache so the drawer re-render shows it without a full reload.
+                    const bill = allBills.find(b => b.id === activeDrawerBillId);
+                    if (bill) {
+                        if (!Array.isArray(bill.attached_documents)) bill.attached_documents = [];
+                        bill.attached_documents.push(result.attachment);
+                        bill.invoice_status = 'attached';
+                        openBillDrawer(bill);
+                    }
+                    window.showToast?.('Invoice attached to bill.', 'success');
+                } catch (err) {
+                    console.error('Attach invoice failed:', err);
+                    window.showToast?.(err?.message || 'We could not attach this document. Please try again.', 'error');
+                    attachBtn.querySelector('span').textContent = originalLabel;
+                } finally {
+                    invoiceAttachInFlight = false;
+                    attachBtn.disabled = false;
+                    attachBtn.classList.remove('opacity-60', 'cursor-wait');
+                }
+            };
+        }
+
         function closeBillDrawer() {
+            activeDrawerBillId = null;
             document.getElementById('bill-drawer').classList.add('translate-x-full');
             document.getElementById('bill-drawer-backdrop').classList.add('hidden');
         }
@@ -653,6 +842,14 @@
         // ── Event Delegation ──────────────────────────────────────────────────
 
         document.addEventListener('click', (e) => {
+            const vendorBtn = e.target.closest('[data-action="bill-vendor-filter"]');
+            if (vendorBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                setBillVendorFilter(vendorBtn.dataset.vendorName || '');
+                return;
+            }
+
             const btn = e.target.closest('[data-action="review"]');
             if (btn) {
                 const bill = allBills.find(b => b.id === btn.dataset.billId);
@@ -665,6 +862,7 @@
         document.getElementById('bill-drawer-close-footer').addEventListener('click', closeBillDrawer);
 
         document.getElementById('bill-search-input').addEventListener('input', (e) => filterBills(e.target.value));
+        document.getElementById('bill-clear-vendor-filter')?.addEventListener('click', clearBillVendorFilter);
 
         // ── CSV Export ────────────────────────────────────────────────────────
 

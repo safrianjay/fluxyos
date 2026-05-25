@@ -116,12 +116,67 @@ service cloud.firestore {
           'users',
           'onboarding',
           'bank_accounts',
-          'bank_balance_snapshots'
+          'bank_balance_snapshots',
+          'documents'
         ]
         && data.target_id is string
         && data.target_id.size() <= 160
         && data.source in ['dashboard', 'ai', 'integration', 'system', 'onboarding']
         && data.created_at == request.time;
+    }
+
+    function isValidDocumentMetadata(data) {
+      return data.keys().hasAll([
+          'file_name',
+          'file_mime_type',
+          'file_size',
+          'storage_path',
+          'document_role',
+          'source_context',
+          'upload_status',
+          'extraction_status',
+          'review_status',
+          'created_at',
+          'updated_at'
+        ])
+        && data.keys().hasOnly([
+          'file_name',
+          'file_mime_type',
+          'file_size',
+          'storage_path',
+          'document_role',
+          'source_context',
+          'target_collection',
+          'target_id',
+          'upload_status',
+          'extraction_status',
+          'review_status',
+          'created_at',
+          'updated_at'
+        ])
+        && data.file_name is string
+        && data.file_name.size() > 0
+        && data.file_name.size() <= 240
+        && data.file_mime_type in ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+        && data.file_size is number
+        && data.file_size > 0
+        && data.file_size <= 5 * 1024 * 1024
+        && data.storage_path is string
+        && data.storage_path.size() <= 400
+        && data.document_role in ['receipt', 'invoice', 'payment_proof', 'revenue_proof', 'unknown_finance_document']
+        && data.source_context in ['transaction', 'revenue', 'bill', 'subscription']
+        && (!('target_collection' in data) || data.target_collection == null || data.target_collection in ['transactions', 'bills', 'subscriptions'])
+        && (!('target_id' in data) || data.target_id is string)
+        && data.upload_status in ['pending', 'uploaded', 'failed', 'removed']
+        && data.extraction_status in ['not_requested', 'pending', 'completed', 'failed']
+        && data.review_status in ['not_required', 'needs_review', 'confirmed', 'rejected']
+        && data.created_at is timestamp
+        && data.updated_at is timestamp;
+    }
+
+    function isValidAttachedDocuments(data) {
+      return !('attached_documents' in data)
+        || (data.attached_documents is list && data.attached_documents.size() <= 20);
     }
 
     function isValidAIChat(data) {
@@ -573,6 +628,7 @@ service cloud.firestore {
             'timestamp',
             'created_at',
             'receipt_url',
+            'attached_documents',
             'source',
             'created_via',
             'extraction_status',
@@ -592,6 +648,7 @@ service cloud.firestore {
           && isValidBaseRecord(request.resource.data)
           && (!('created_at' in request.resource.data) || request.resource.data.created_at == request.time)
           && (!('receipt_url' in request.resource.data) || request.resource.data.receipt_url is string)
+          && isValidAttachedDocuments(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow update: if isOwner(userId)
           && request.resource.data.keys().hasOnly([
@@ -604,6 +661,7 @@ service cloud.firestore {
             'timestamp',
             'created_at',
             'receipt_url',
+            'attached_documents',
             'source',
             'created_via',
             'extraction_status',
@@ -621,6 +679,7 @@ service cloud.firestore {
             'notes'
           ])
           && isValidBaseRecordUpdate(request.resource.data, resource.data)
+          && isValidAttachedDocuments(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow delete: if false;
       }
@@ -650,11 +709,15 @@ service cloud.firestore {
             'raw_text_preview',
             'source_file_name',
             'source_file_mime_type',
-            'source_file_size_bytes'
+            'source_file_size_bytes',
+            'attached_documents',
+            'invoice_status'
           ])
           && isValidBaseRecord(request.resource.data)
           && (!('due_date' in request.resource.data) || request.resource.data.due_date is timestamp)
           && (!('payment_status' in request.resource.data) || request.resource.data.payment_status in ['unpaid', 'paid', 'overdue', 'unknown'])
+          && (!('invoice_status' in request.resource.data) || request.resource.data.invoice_status in ['attached'])
+          && isValidAttachedDocuments(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow update: if isOwner(userId)
           && request.resource.data.keys().hasOnly([
@@ -679,11 +742,15 @@ service cloud.firestore {
             'raw_text_preview',
             'source_file_name',
             'source_file_mime_type',
-            'source_file_size_bytes'
+            'source_file_size_bytes',
+            'attached_documents',
+            'invoice_status'
           ])
           && isValidBaseRecordUpdate(request.resource.data, resource.data)
           && (!('due_date' in request.resource.data) || request.resource.data.due_date is timestamp)
           && (!('payment_status' in request.resource.data) || request.resource.data.payment_status in ['unpaid', 'paid', 'overdue', 'unknown'])
+          && (!('invoice_status' in request.resource.data) || request.resource.data.invoice_status in ['attached'])
+          && isValidAttachedDocuments(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow delete: if false;
       }
@@ -714,10 +781,12 @@ service cloud.firestore {
             'source_file_name',
             'source_file_mime_type',
             'source_file_size_bytes',
-            'notes'
+            'notes',
+            'attached_documents'
           ])
           && isValidBaseRecord(request.resource.data)
           && (!('renewal_date' in request.resource.data) || request.resource.data.renewal_date is timestamp)
+          && isValidAttachedDocuments(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow update: if isOwner(userId)
           && request.resource.data.keys().hasOnly([
@@ -743,10 +812,12 @@ service cloud.firestore {
             'source_file_name',
             'source_file_mime_type',
             'source_file_size_bytes',
-            'notes'
+            'notes',
+            'attached_documents'
           ])
           && isValidBaseRecordUpdate(request.resource.data, resource.data)
           && (!('renewal_date' in request.resource.data) || request.resource.data.renewal_date is timestamp)
+          && isValidAttachedDocuments(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow delete: if false;
       }
@@ -804,6 +875,21 @@ service cloud.firestore {
           ])
           && isValidAuditLog(request.resource.data);
         allow update, delete: if false;
+      }
+
+      match /documents/{documentId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidDocumentMetadata(request.resource.data)
+          && request.resource.data.created_at == request.time
+          && request.resource.data.updated_at == request.time
+          && request.resource.data.storage_path.matches('users/' + userId + '/documents/.*');
+        allow update: if isOwner(userId)
+          && isValidDocumentMetadata(request.resource.data)
+          && request.resource.data.created_at == resource.data.created_at
+          && request.resource.data.updated_at == request.time
+          && request.resource.data.storage_path == resource.data.storage_path;
+        allow delete: if false;
       }
 
       match /ai_chats/{chatId} {

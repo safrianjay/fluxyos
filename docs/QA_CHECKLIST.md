@@ -209,6 +209,36 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 14 | Uploading an invalid CSV keeps the modal open, shows a row-specific validation error, and writes no partial rows |
 | 15 | Ledger table starts at 10 rows per page, pagination next/previous works, and Date, Amount, Category, and Status headers toggle ascending/descending sort with up/down icons |
 
+### E2. Receipt & Document Attachment (document-attachment.js, document.rules)
+
+Run this section whenever `document-attachment.js`, `db-service.js` document
+methods, `storage.rules`, the documents block in `firestore.rules`, the
+shared transaction drawer's receipt section, or the Bill Details drawer
+"Attach Invoice" wiring is touched. Spec: `docs/RECEIPT_DOCUMENT_ATTACHMENT_PLAN.md`.
+
+| # | Check |
+|---|-------|
+| 1 | Add Transaction (expense) with no file → saves; no `attached_documents` field; no doc in `users/{uid}/documents` |
+| 2 | Add Transaction (expense) with JPG <5 MB → upload progresses → row appears in ledger with thumbnail (legacy `receipt_url`) AND transaction doc has `attached_documents[0]` |
+| 3 | Add Transaction with PDF ≤5 MB → uploads; no thumbnail in ledger (PDFs are not images) but `attached_documents` is set; `receipt_url` is NOT written |
+| 4 | Add Transaction with 6 MB image → friendly "too large" error appears inline; form data preserved; no upload to Storage |
+| 5 | Add Transaction with `.exe`/`.zip` → friendly "type not supported" error; form data preserved |
+| 6 | Add Revenue (income or Revenue category) → attachment label reads "Proof / document (optional)" and helper mentions payment screenshot/payout |
+| 7 | Add Revenue with attachment → saved doc has `attached_documents[0].role == 'revenue_proof'`; `receipt_url` set only if image |
+| 8 | CSV bulk upload (5 valid rows) → imports clean, no interaction with the attachment block; refresh shows new rows |
+| 9 | Close drawer mid-attachment (X / overlay / Escape) → re-open shows empty attachment UI (no leftover filename) |
+| 10 | Bill Details drawer → Attach Invoice button is enabled and labeled "Attach Invoice" (or "Replace Invoice" if one is already attached) |
+| 11 | Bill Details → click Attach Invoice → pick PDF → toast "Invoice attached to bill"; drawer re-renders with an "Invoice attached" panel; Firestore: bill has `attached_documents[0].role == 'invoice'`, `invoice_status == 'attached'` |
+| 12 | Attaching an invoice does **NOT** change `payment_status` and does **NOT** create a transaction (verify in Firestore) |
+| 13 | Convert to Transaction button stays disabled with "Coming soon" badge; Mark as Paid stays disabled with "Soon" badge |
+| 14 | Document metadata at `users/{uid}/documents/{docId}` has all required fields; `storage_path` matches actual Storage path; `extraction_status == 'not_requested'`, `review_status == 'not_required'` |
+| 15 | Document storage path is `users/{uid}/documents/{docId}/{fileName}` (verify in Storage console); files outside this prefix are blocked by `storage.rules` |
+| 16 | Sign out → attempting to write to `users/{otherUid}/documents/{x}` is blocked by Firestore Rules (manual emulator check or rules unit test) |
+| 17 | Sidebar Receipt Capture entry still appears as a disabled `Soon` button — no new sidebar route was created |
+| 18 | Mobile width 375 px: attachment block does not overflow horizontally; filename truncates rather than wrapping past the row |
+| 19 | Desktop width 1280 px: attachment row layout matches surrounding form fields |
+| 20 | Browser console clean across the full flow (no CSP, CORS, 404, Storage, or Firestore errors) |
+
 ### F. Database & Logic Verification (db-service.js, shared-dashboard.js, dashboard.js)
 
 Run this section whenever any data write, read, calculation, or modal logic is changed.

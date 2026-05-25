@@ -31,3 +31,9 @@ Thumbs.db
 
 # Claude Code — personal/local overrides only; commit settings.json and hooks
 .claude/settings.local.json
+
+# Playwright QA harness
+test-results/
+playwright-report/
+tests/.auth/
+blob-report/
