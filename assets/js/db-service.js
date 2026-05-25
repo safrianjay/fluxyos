@@ -929,6 +929,169 @@ class DataService {
         return { id: accountRef.id, ...payload };
     }
 
+    async updateBankAccountBalance(userId, accountId, data) {
+        if (!userId || !accountId) throw new Error('userId and accountId required');
+        const balance = Math.round(Math.max(0, Number(data.balance) || 0));
+        const snapshotDate = this._coerceTimestampOrNow(data.snapshot_at);
+
+        const accountRef = doc(this.db, `users/${userId}/bank_accounts/${accountId}`);
+        const existing = await getDoc(accountRef);
+        if (!existing.exists()) throw new Error('bank account not found');
+        const existingData = existing.data() || {};
+
+        const merged = {
+            account_name: existingData.account_name,
+            bank_name: existingData.bank_name,
+            bank_code: existingData.bank_code ?? null,
+            currency: 'IDR',
+            last_four: existingData.last_four ?? null,
+            source_type: existingData.source_type || 'manual',
+            provider: existingData.provider ?? null,
+            provider_account_id: existingData.provider_account_id ?? null,
+            status: existingData.status || 'active',
+            latest_balance: balance,
+            latest_balance_at: snapshotDate,
+            sync_status: existingData.sync_status || 'manual',
+            last_sync_at: existingData.last_sync_at ?? null,
+            confidence: 'user_entered',
+            notes: this._nullableString(data.notes ?? existingData.notes ?? '', 500),
+            created_at: existingData.created_at,
+            updated_at: serverTimestamp()
+        };
+        await updateDoc(accountRef, merged);
+
+        await addDoc(collection(this.db, `users/${userId}/bank_balance_snapshots`), {
+            bank_account_id: accountId,
+            balance,
+            currency: 'IDR',
+            source_type: existingData.source_type || 'manual',
+            snapshot_at: snapshotDate,
+            confidence: 'user_entered',
+            notes: this._nullableString(data.notes, 500),
+            created_at: serverTimestamp()
+        });
+
+        await this.addAuditLog(userId, {
+            action: 'bank_account.balance_updated',
+            target_collection: 'bank_accounts',
+            target_id: accountId,
+            before: { latest_balance: Number(existingData.latest_balance) || 0 },
+            after: { latest_balance: balance },
+            source: 'dashboard'
+        });
+
+        return { id: accountId, ...merged };
+    }
+
+    async archiveBankAccount(userId, accountId, reason = null) {
+        if (!userId || !accountId) throw new Error('userId and accountId required');
+        const accountRef = doc(this.db, `users/${userId}/bank_accounts/${accountId}`);
+        const existing = await getDoc(accountRef);
+        if (!existing.exists()) throw new Error('bank account not found');
+        const existingData = existing.data() || {};
+
+        const merged = {
+            account_name: existingData.account_name,
+            bank_name: existingData.bank_name,
+            bank_code: existingData.bank_code ?? null,
+            currency: 'IDR',
+            last_four: existingData.last_four ?? null,
+            source_type: existingData.source_type || 'manual',
+            provider: existingData.provider ?? null,
+            provider_account_id: existingData.provider_account_id ?? null,
+            status: 'archived',
+            latest_balance: Number(existingData.latest_balance) || 0,
+            latest_balance_at: existingData.latest_balance_at,
+            sync_status: existingData.sync_status || 'manual',
+            last_sync_at: existingData.last_sync_at ?? null,
+            confidence: existingData.confidence ?? 'user_entered',
+            notes: existingData.notes ?? null,
+            created_at: existingData.created_at,
+            updated_at: serverTimestamp()
+        };
+        await updateDoc(accountRef, merged);
+
+        await this.addAuditLog(userId, {
+            action: 'bank_account.archived',
+            target_collection: 'bank_accounts',
+            target_id: accountId,
+            before: { status: existingData.status || 'active' },
+            after: { status: 'archived' },
+            reason: this._nullableString(reason, 200),
+            source: 'dashboard'
+        });
+    }
+
+    async getBankBalanceSnapshots(userId, options = {}) {
+        if (!userId) return [];
+        const limitCount = Math.max(1, Math.min(200, Number(options.limit) || 50));
+        try {
+            const constraints = [
+                orderBy('snapshot_at', 'desc'),
+                limit(limitCount)
+            ];
+            if (options.accountId) constraints.unshift(where('bank_account_id', '==', options.accountId));
+            const q = query(collection(this.db, `users/${userId}/bank_balance_snapshots`), ...constraints);
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (_) {
+            const q = query(
+                collection(this.db, `users/${userId}/bank_balance_snapshots`),
+                orderBy('snapshot_at', 'desc'),
+                limit(limitCount)
+            );
+            const snapshot = await getDocs(q);
+            const rows = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            return options.accountId ? rows.filter(r => r.bank_account_id === options.accountId) : rows;
+        }
+    }
+
+    async archiveBudget(userId, budgetId, reason = null) {
+        if (!userId || !budgetId) throw new Error('userId and budgetId required');
+        const ref = doc(this.db, `users/${userId}/budgets/${budgetId}`);
+        const existing = await getDoc(ref);
+        if (!existing.exists()) throw new Error('budget not found');
+        const data = existing.data() || {};
+        const payload = {
+            name: data.name,
+            period_type: data.period_type,
+            period_start: data.period_start,
+            period_end: data.period_end,
+            currency: 'IDR',
+            total_budget: Number(data.total_budget) || 0,
+            status: 'archived',
+            created_at: data.created_at,
+            updated_at: serverTimestamp()
+        };
+        if (data.category_budgets) payload.category_budgets = data.category_budgets;
+        await updateDoc(ref, payload);
+
+        await this.addAuditLog(userId, {
+            action: 'budget.archived',
+            target_collection: 'budgets',
+            target_id: budgetId,
+            before: { status: data.status || 'active' },
+            after: { status: 'archived' },
+            reason: this._nullableString(reason, 200),
+            source: 'dashboard'
+        });
+    }
+
+    async getBudgetHistory(userId, limitCount = 20) {
+        if (!userId) return [];
+        try {
+            const q = query(
+                collection(this.db, `users/${userId}/budgets`),
+                orderBy('created_at', 'desc'),
+                limit(limitCount)
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (_) {
+            return [];
+        }
+    }
+
     _coerceTimestampOrNow(value) {
         if (!value) return Timestamp.fromDate(new Date());
         if (value instanceof Date) return Timestamp.fromDate(value);

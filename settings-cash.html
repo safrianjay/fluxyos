@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Cash &amp; Bank Accounts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+    <style>
+        .cash-row { display: grid; grid-template-columns: 2fr 1.4fr 1fr 1.2fr auto; align-items: center; gap: 16px; padding: 14px 16px; border-top: 1px solid #F1F5F9; }
+        .cash-row:first-child { border-top: 0; }
+        .cash-row-head { background: #F8FAFC; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748B; padding-top: 10px; padding-bottom: 10px; }
+        .cash-snapshot-row { display: grid; grid-template-columns: 1fr 1.4fr 1.2fr 1.2fr; gap: 12px; padding: 10px 16px; border-top: 1px solid #F1F5F9; font-size: 13px; }
+        .cash-snapshot-row:first-child { border-top: 0; }
+        .cash-action-btn { font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; border: 1px solid #E2E8F0; background: #FFFFFF; color: #0F172A; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
+        .cash-action-btn:hover { background: #F8FAFC; border-color: #CBD5F5; }
+        .cash-action-btn.is-danger { color: #B91C1C; border-color: #FECACA; }
+        .cash-action-btn.is-danger:hover { background: #FEF2F2; }
+        .cash-modal-backdrop { position: fixed; inset: 0; background: rgba(11,15,25,0.5); backdrop-filter: blur(6px); z-index: 50; display: none; align-items: center; justify-content: center; }
+        .cash-modal-backdrop.is-open { display: flex; }
+        .cash-modal { width: min(440px, calc(100vw - 32px)); background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 16px; box-shadow: 0 24px 48px rgba(11,15,25,0.18); padding: 22px; }
+        .cash-modal h2 { font-size: 16px; font-weight: 700; color: #0F172A; }
+        .cash-modal p.sub { margin-top: 4px; font-size: 12px; color: #64748B; }
+        .cash-pill { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+        .cash-pill.is-active { background: #DCFCE7; color: #166534; }
+        .cash-pill.is-archived { background: #F1F5F9; color: #64748B; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <aside id="sidebar" class="hidden w-[220px] bg-white text-[#1E2F4A] flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
+            <div class="flex items-center gap-4 min-w-0 flex-1">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <h1 class="text-lg font-bold text-gray-900">Cash &amp; Bank Accounts</h1>
+            </div>
+            <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                Fluxy AI
+            </button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10">
+            <div class="max-w-5xl mx-auto space-y-6">
+
+                <section class="flex items-end justify-between gap-4">
+                    <div>
+                        <a href="/settings" class="text-[12px] font-bold text-[#EA580C] hover:underline">Settings / Finance Setup</a>
+                        <h1 class="mt-2 text-[26px] font-bold text-gray-900 tracking-tight">Cash &amp; Bank Accounts</h1>
+                        <p class="mt-1 text-[13px] text-gray-500">Manual balances power Bank Cash Balance and Cash Pressure on Overview.</p>
+                    </div>
+                    <button id="cash-add-btn" type="button" class="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-[13px] font-bold text-white hover:bg-gray-800 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+                        Add account
+                    </button>
+                </section>
+
+                <div id="cash-load-state" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-medium text-gray-500 shadow-sm" aria-live="polite">
+                    <span class="h-2 w-2 rounded-full bg-gray-300"></span>
+                    Loading bank accounts
+                </div>
+
+                <!-- Summary -->
+                <section class="bg-white border border-gray-200 rounded-xl p-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-5">
+                        <div>
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500">Total cash</p>
+                            <p id="cash-summary-total" class="mt-1 text-[22px] font-bold text-gray-900 tabular-nums">Rp 0</p>
+                        </div>
+                        <div>
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500">Active accounts</p>
+                            <p id="cash-summary-count" class="mt-1 text-[22px] font-bold text-gray-900">0</p>
+                        </div>
+                        <div>
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500">Last update</p>
+                            <p id="cash-summary-updated" class="mt-1 text-[14px] font-semibold text-gray-700">—</p>
+                        </div>
+                        <div>
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500">Data confidence</p>
+                            <p id="cash-summary-confidence" class="mt-1 text-[14px] font-semibold text-gray-700">No data</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Accounts table -->
+                <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div class="px-5 py-3 border-b border-gray-100">
+                        <h2 class="text-[14px] font-bold text-gray-900">Accounts</h2>
+                    </div>
+                    <div class="cash-row cash-row-head">
+                        <span>Account</span>
+                        <span>Balance</span>
+                        <span>Source</span>
+                        <span>Last updated</span>
+                        <span></span>
+                    </div>
+                    <div id="cash-accounts-list">
+                        <div class="px-5 py-6 text-[13px] text-gray-400">Loading accounts...</div>
+                    </div>
+                </section>
+
+                <!-- Balance history -->
+                <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h2 class="text-[14px] font-bold text-gray-900">Balance history</h2>
+                            <p class="text-[11px] text-gray-500 mt-0.5">Most recent 50 snapshots.</p>
+                        </div>
+                    </div>
+                    <div class="cash-snapshot-row cash-row-head">
+                        <span>Date</span>
+                        <span>Account</span>
+                        <span>Balance</span>
+                        <span>Source</span>
+                    </div>
+                    <div id="cash-history-list">
+                        <div class="px-5 py-6 text-[13px] text-gray-400">Loading history...</div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- ADD ACCOUNT MODAL -->
+    <div id="cash-add-backdrop" class="cash-modal-backdrop" data-modal="add">
+        <form id="cash-add-form" class="cash-modal" onsubmit="return false">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h2>Add bank account</h2>
+                    <p class="sub">Manual entry. Balance updates Bank Cash Balance and Cash Pressure.</p>
+                </div>
+                <button type="button" class="finance-setup-close" data-modal-close="add" aria-label="Close">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 5l10 10M15 5L5 15"/></svg>
+                </button>
+            </div>
+            <div class="finance-setup-form mt-4">
+                <label class="finance-field">
+                    <span class="finance-field-label">Bank name</span>
+                    <input type="text" name="bank_name" maxlength="80" required placeholder="e.g. BCA" autocomplete="off">
+                </label>
+                <label class="finance-field">
+                    <span class="finance-field-label">Account nickname</span>
+                    <input type="text" name="account_name" maxlength="120" required placeholder="e.g. BCA Business" autocomplete="off">
+                </label>
+                <label class="finance-field">
+                    <span class="finance-field-label">Last 4 digits <span class="finance-field-optional">(optional)</span></span>
+                    <input type="text" name="last_four" inputmode="numeric" maxlength="4" placeholder="1234" autocomplete="off">
+                </label>
+                <label class="finance-field">
+                    <span class="finance-field-label">Current balance</span>
+                    <div class="finance-amount-row">
+                        <span class="finance-amount-prefix">Rp</span>
+                        <input type="text" name="current_balance" inputmode="numeric" placeholder="0" autocomplete="off" required>
+                    </div>
+                </label>
+                <div class="finance-field">
+                    <span class="finance-field-label">Balance as of</span>
+                    <div id="cash-add-date-picker"></div>
+                </div>
+                <label class="finance-field">
+                    <span class="finance-field-label">Notes <span class="finance-field-optional">(optional)</span></span>
+                    <textarea name="notes" rows="2" maxlength="500" placeholder="Add a note about this account"></textarea>
+                </label>
+            </div>
+            <div class="finance-setup-actions">
+                <button type="button" class="finance-btn finance-btn-ghost" data-modal-close="add">Cancel</button>
+                <button type="submit" class="finance-btn finance-btn-primary" id="cash-add-submit">Save account</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- UPDATE BALANCE MODAL -->
+    <div id="cash-update-backdrop" class="cash-modal-backdrop" data-modal="update">
+        <form id="cash-update-form" class="cash-modal" onsubmit="return false">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h2>Update balance</h2>
+                    <p class="sub" id="cash-update-account-label">—</p>
+                </div>
+                <button type="button" class="finance-setup-close" data-modal-close="update" aria-label="Close">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 5l10 10M15 5L5 15"/></svg>
+                </button>
+            </div>
+            <div class="finance-setup-form mt-4">
+                <label class="finance-field">
+                    <span class="finance-field-label">New balance</span>
+                    <div class="finance-amount-row">
+                        <span class="finance-amount-prefix">Rp</span>
+                        <input type="text" name="balance" inputmode="numeric" placeholder="0" autocomplete="off" required>
+                    </div>
+                </label>
+                <div class="finance-field">
+                    <span class="finance-field-label">Balance as of</span>
+                    <div id="cash-update-date-picker"></div>
+                </div>
+                <label class="finance-field">
+                    <span class="finance-field-label">Notes <span class="finance-field-optional">(optional)</span></span>
+                    <textarea name="notes" rows="2" maxlength="500" placeholder="What changed since last update?"></textarea>
+                </label>
+            </div>
+            <div class="finance-setup-actions">
+                <button type="button" class="finance-btn finance-btn-ghost" data-modal-close="update">Cancel</button>
+                <button type="submit" class="finance-btn finance-btn-primary" id="cash-update-submit">Save balance</button>
+            </div>
+        </form>
+    </div>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/date-range-picker.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.firebaseapp.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
+            measurementId: "G-ZN7J6DRD2L"
+        };
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        const loadState = document.getElementById('cash-load-state');
+        const accountsList = document.getElementById('cash-accounts-list');
+        const historyList = document.getElementById('cash-history-list');
+        let accountsCache = [];
+        let addDatePicker = null;
+        let addSelectedDate = null;
+        let updateDatePicker = null;
+        let updateSelectedDate = null;
+        let updateTargetAccountId = null;
+
+        const authTimeout = setTimeout(() => window.location.replace('/login'), 2000);
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) return;
+            clearTimeout(authTimeout);
+            await loadAll(user.uid);
+            wireUI();
+        });
+
+        async function loadAll(uid) {
+            setLoadState('loading', 'Loading bank accounts');
+            try {
+                const [accounts, history] = await Promise.all([
+                    ds.getBankAccounts(uid),
+                    ds.getBankBalanceSnapshots(uid, { limit: 50 })
+                ]);
+                accountsCache = accounts;
+                renderSummary(accounts);
+                renderAccounts(accounts);
+                renderHistory(accounts, history);
+                setLoadState('ready', `${accounts.length} active account${accounts.length === 1 ? '' : 's'}`);
+            } catch (error) {
+                setLoadState('error', 'Could not load bank accounts');
+                accountsList.innerHTML = `<div class="px-5 py-6 text-[13px] text-red-600">Failed to load. Refresh to try again.</div>`;
+                historyList.innerHTML = `<div class="px-5 py-6 text-[13px] text-red-600">Failed to load history.</div>`;
+            }
+        }
+
+        function renderSummary(accounts) {
+            const total = accounts.reduce((sum, a) => sum + (Number(a.latest_balance) || 0), 0);
+            const latest = accounts.reduce((acc, a) => {
+                const stamp = toDate(a.latest_balance_at);
+                return stamp && (!acc || stamp > acc) ? stamp : acc;
+            }, null);
+            document.getElementById('cash-summary-total').textContent = formatIDR(total);
+            document.getElementById('cash-summary-count').textContent = String(accounts.length);
+            document.getElementById('cash-summary-updated').textContent = latest ? formatRelative(latest) : '—';
+            document.getElementById('cash-summary-confidence').textContent = accounts.length === 0
+                ? 'No data'
+                : (accounts.every(a => a.source_type === 'manual') ? 'Manual entry' : 'Mixed sources');
+        }
+
+        function renderAccounts(accounts) {
+            if (!accounts.length) {
+                accountsList.innerHTML = `
+                    <div class="px-5 py-8 text-center">
+                        <p class="text-[13px] text-gray-500">No active bank accounts yet.</p>
+                        <button class="cash-action-btn mt-3" data-empty-add type="button">Add your first account</button>
+                    </div>`;
+                accountsList.querySelector('[data-empty-add]')?.addEventListener('click', () => openAddModal());
+                return;
+            }
+            accountsList.innerHTML = accounts.map(account => {
+                const balance = Number(account.latest_balance) || 0;
+                const updated = toDate(account.latest_balance_at);
+                const sourceLabel = account.source_type === 'manual' ? 'Manual' : (account.source_type === 'statement_upload' ? 'Statement' : 'Sync');
+                const nameLine = `${escapeHtml(account.account_name || '')}${account.last_four ? ' · ••' + escapeHtml(account.last_four) : ''}`;
+                return `
+                    <div class="cash-row">
+                        <div>
+                            <div class="text-[13px] font-bold text-gray-900">${nameLine}</div>
+                            <div class="text-[12px] text-gray-500">${escapeHtml(account.bank_name || '')}</div>
+                        </div>
+                        <div class="text-[14px] font-bold text-gray-900 tabular-nums">${formatIDR(balance)}</div>
+                        <div class="text-[12px] text-gray-700">${escapeHtml(sourceLabel)}</div>
+                        <div class="text-[12px] text-gray-700">${updated ? escapeHtml(formatRelative(updated)) : '—'}</div>
+                        <div class="flex items-center justify-end gap-2">
+                            <button type="button" class="cash-action-btn" data-update-id="${escapeHtml(account.id)}">Update balance</button>
+                            <button type="button" class="cash-action-btn is-danger" data-archive-id="${escapeHtml(account.id)}">Archive</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            accountsList.querySelectorAll('[data-update-id]').forEach(btn => {
+                btn.addEventListener('click', () => openUpdateModal(btn.dataset.updateId));
+            });
+            accountsList.querySelectorAll('[data-archive-id]').forEach(btn => {
+                btn.addEventListener('click', () => onArchive(btn.dataset.archiveId));
+            });
+        }
+
+        function renderHistory(accounts, snapshots) {
+            if (!snapshots.length) {
+                historyList.innerHTML = `<div class="px-5 py-6 text-[13px] text-gray-400">No balance history yet.</div>`;
+                return;
+            }
+            const nameById = new Map(accounts.map(a => [a.id, `${a.account_name || ''}${a.last_four ? ' · ••' + a.last_four : ''}`]));
+            historyList.innerHTML = snapshots.map(snap => {
+                const when = toDate(snap.snapshot_at);
+                const accountLabel = nameById.get(snap.bank_account_id) || 'Archived account';
+                const sourceLabel = snap.source_type === 'manual' ? 'Manual' : (snap.source_type === 'statement_upload' ? 'Statement' : 'Sync');
+                return `
+                    <div class="cash-snapshot-row">
+                        <div class="text-gray-700">${when ? escapeHtml(formatDateTime(when)) : '—'}</div>
+                        <div class="text-gray-900 font-semibold">${escapeHtml(accountLabel)}</div>
+                        <div class="tabular-nums font-bold text-gray-900">${formatIDR(snap.balance)}</div>
+                        <div class="text-gray-600">${escapeHtml(sourceLabel)}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function wireUI() {
+            document.getElementById('cash-add-btn').addEventListener('click', () => openAddModal());
+            document.querySelectorAll('[data-modal-close]').forEach(btn => {
+                btn.addEventListener('click', () => closeModal(btn.dataset.modalClose));
+            });
+            document.querySelectorAll('.cash-modal-backdrop').forEach(b => {
+                b.addEventListener('click', event => {
+                    if (event.target === b) closeModal(b.dataset.modal);
+                });
+            });
+            const addForm = document.getElementById('cash-add-form');
+            addForm.addEventListener('submit', onAddSubmit);
+            addForm.querySelector('[name="current_balance"]').addEventListener('input', e => formatAmountInput(e.target));
+
+            const updateForm = document.getElementById('cash-update-form');
+            updateForm.addEventListener('submit', onUpdateSubmit);
+            updateForm.querySelector('[name="balance"]').addEventListener('input', e => formatAmountInput(e.target));
+        }
+
+        function openAddModal() {
+            document.getElementById('cash-add-form').reset();
+            const backdrop = document.getElementById('cash-add-backdrop');
+            backdrop.classList.add('is-open');
+            mountAddDatePicker();
+            setTimeout(() => document.querySelector('#cash-add-form [name="bank_name"]').focus(), 80);
+        }
+
+        function mountAddDatePicker() {
+            if (addDatePicker || !window.FluxyDateRangePicker) return;
+            const today = todayKey();
+            addSelectedDate = today;
+            addDatePicker = window.FluxyDateRangePicker.mount('#cash-add-date-picker', {
+                mode: 'single', start: today, end: today, defaultStart: today, defaultEnd: today, maxDate: today,
+                onChange: ({ start }) => { addSelectedDate = start; }
+            });
+        }
+
+        async function onAddSubmit(event) {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const fd = new FormData(form);
+            const balanceRaw = String(fd.get('current_balance') || '').replace(/\D/g, '');
+            const balance = Math.max(0, Number(balanceRaw) || 0);
+            if (!fd.get('bank_name') || !fd.get('account_name') || balance <= 0) {
+                window.showToast?.('Fill bank name, nickname, and a balance above Rp 0.', 'error');
+                return;
+            }
+            const btn = document.getElementById('cash-add-submit');
+            const original = btn.textContent;
+            btn.disabled = true; btn.textContent = 'Saving...';
+            try {
+                await ds.addManualBankAccount(auth.currentUser.uid, {
+                    bank_name: String(fd.get('bank_name') || '').trim(),
+                    account_name: String(fd.get('account_name') || '').trim(),
+                    last_four: String(fd.get('last_four') || '').replace(/\D/g, '').slice(0, 4) || null,
+                    current_balance: balance,
+                    balance_date: addSelectedDate,
+                    notes: String(fd.get('notes') || '').trim() || null
+                });
+                window.showToast?.('Bank account added.', 'success');
+                closeModal('add');
+                await loadAll(auth.currentUser.uid);
+            } catch (error) {
+                window.showToast?.('Could not save account. Please try again.', 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = original;
+            }
+        }
+
+        function openUpdateModal(accountId) {
+            const account = accountsCache.find(a => a.id === accountId);
+            if (!account) return;
+            updateTargetAccountId = accountId;
+            document.getElementById('cash-update-form').reset();
+            document.getElementById('cash-update-account-label').textContent =
+                `${account.account_name || ''}${account.last_four ? ' · ••' + account.last_four : ''} · ${account.bank_name || ''}`;
+            const balanceInput = document.querySelector('#cash-update-form [name="balance"]');
+            balanceInput.value = (Number(account.latest_balance) || 0).toLocaleString('id-ID');
+
+            const backdrop = document.getElementById('cash-update-backdrop');
+            backdrop.classList.add('is-open');
+            mountUpdateDatePicker();
+            setTimeout(() => balanceInput.focus(), 80);
+        }
+
+        function mountUpdateDatePicker() {
+            if (updateDatePicker || !window.FluxyDateRangePicker) return;
+            const today = todayKey();
+            updateSelectedDate = today;
+            updateDatePicker = window.FluxyDateRangePicker.mount('#cash-update-date-picker', {
+                mode: 'single', start: today, end: today, defaultStart: today, defaultEnd: today, maxDate: today,
+                onChange: ({ start }) => { updateSelectedDate = start; }
+            });
+        }
+
+        async function onUpdateSubmit(event) {
+            event.preventDefault();
+            if (!updateTargetAccountId) return;
+            const form = event.currentTarget;
+            const fd = new FormData(form);
+            const balanceRaw = String(fd.get('balance') || '').replace(/\D/g, '');
+            const balance = Math.max(0, Number(balanceRaw) || 0);
+            if (balance <= 0) {
+                window.showToast?.('Enter a balance above Rp 0.', 'error');
+                return;
+            }
+            const btn = document.getElementById('cash-update-submit');
+            const original = btn.textContent;
+            btn.disabled = true; btn.textContent = 'Saving...';
+            try {
+                await ds.updateBankAccountBalance(auth.currentUser.uid, updateTargetAccountId, {
+                    balance,
+                    snapshot_at: updateSelectedDate,
+                    notes: String(fd.get('notes') || '').trim() || null
+                });
+                window.showToast?.('Balance updated.', 'success');
+                closeModal('update');
+                await loadAll(auth.currentUser.uid);
+            } catch (error) {
+                window.showToast?.('Could not update balance. Please try again.', 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = original;
+            }
+        }
+
+        async function onArchive(accountId) {
+            const account = accountsCache.find(a => a.id === accountId);
+            if (!account) return;
+            const ok = await window.showConfirmDialog?.({
+                title: `Archive ${account.account_name || 'this account'}?`,
+                body: 'Archived accounts stop counting toward Bank Cash Balance and Cash Pressure. Balance history is preserved.',
+                confirmLabel: 'Archive account',
+                cancelLabel: 'Cancel',
+                tone: 'danger',
+                icon: 'trash'
+            });
+            if (!ok) return;
+            try {
+                await ds.archiveBankAccount(auth.currentUser.uid, accountId);
+                window.showToast?.('Account archived.', 'success');
+                await loadAll(auth.currentUser.uid);
+            } catch {
+                window.showToast?.('Could not archive account. Please try again.', 'error');
+            }
+        }
+
+        function closeModal(name) {
+            document.getElementById(`cash-${name}-backdrop`)?.classList.remove('is-open');
+        }
+
+        function setLoadState(state, text) {
+            if (!loadState) return;
+            const color = state === 'ready' ? 'bg-green-500' : state === 'error' ? 'bg-red-500' : 'bg-gray-300';
+            loadState.innerHTML = `<span class="h-2 w-2 rounded-full ${color}"></span>${escapeHtml(text)}`;
+        }
+
+        function formatAmountInput(input) {
+            const digits = String(input.value || '').replace(/\D/g, '');
+            input.value = digits ? Number(digits).toLocaleString('id-ID') : '';
+        }
+
+        function formatIDR(value) {
+            return `Rp ${Math.round(Math.abs(Number(value) || 0)).toLocaleString('id-ID')}`;
+        }
+
+        function toDate(value) {
+            if (!value) return null;
+            if (typeof value.toDate === 'function') { try { return value.toDate(); } catch { return null; } }
+            if (value instanceof Date) return value;
+            if (typeof value === 'string' || typeof value === 'number') {
+                const d = new Date(value);
+                return Number.isNaN(d.getTime()) ? null : d;
+            }
+            return null;
+        }
+
+        function formatRelative(date) {
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const t = new Date(date); t.setHours(0, 0, 0, 0);
+            const diff = Math.round((today - t) / 86400000);
+            if (diff === 0) return `Today ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+            if (diff === 1) return 'Yesterday';
+            if (diff < 7) return `${diff} days ago`;
+            return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        function formatDateTime(date) {
+            return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        function todayKey() {
+            const d = new Date();
+            return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>

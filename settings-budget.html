@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Budget Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+    <style>
+        .budget-history-row { display: grid; grid-template-columns: 1.4fr 1fr 1.4fr 1fr 0.8fr; gap: 12px; padding: 12px 16px; border-top: 1px solid #F1F5F9; font-size: 13px; align-items: center; }
+        .budget-history-row:first-child { border-top: 0; }
+        .budget-row-head { background: #F8FAFC; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748B; padding-top: 10px; padding-bottom: 10px; }
+        .budget-pill { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+        .budget-pill.is-active { background: #DCFCE7; color: #166534; }
+        .budget-pill.is-archived { background: #F1F5F9; color: #64748B; }
+        .budget-stat { padding: 12px 16px; border: 1px solid #E5E7EB; border-radius: 12px; background: #F8FAFC; }
+        .budget-stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748B; }
+        .budget-stat-value { margin-top: 6px; font-size: 18px; font-weight: 700; color: #0F172A; font-variant-numeric: tabular-nums; }
+        .budget-edit-readonly { display: grid; grid-template-columns: 140px 1fr; padding: 10px 0; border-top: 1px solid #F1F5F9; align-items: center; font-size: 13px; }
+        .budget-edit-readonly:first-child { border-top: 0; }
+        .budget-edit-readonly span { color: #64748B; font-weight: 600; }
+        .budget-edit-readonly strong { color: #0F172A; font-weight: 700; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <aside id="sidebar" class="hidden w-[220px] bg-white text-[#1E2F4A] flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
+            <div class="flex items-center gap-4 min-w-0 flex-1">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <h1 class="text-lg font-bold text-gray-900">Budget Settings</h1>
+            </div>
+            <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                Fluxy AI
+            </button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10">
+            <div class="max-w-3xl mx-auto space-y-6">
+
+                <section>
+                    <a href="/settings" class="text-[12px] font-bold text-[#EA580C] hover:underline">Settings / Finance Setup</a>
+                    <h1 class="mt-2 text-[26px] font-bold text-gray-900 tracking-tight">Budget Settings</h1>
+                    <p class="mt-1 text-[13px] text-gray-500">Budgets drive OpEx vs Budget on Overview and the Budget Used metric on Performance Trend.</p>
+                </section>
+
+                <div id="budget-load-state" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-medium text-gray-500 shadow-sm" aria-live="polite">
+                    <span class="h-2 w-2 rounded-full bg-gray-300"></span>
+                    Loading budget
+                </div>
+
+                <!-- Active budget card -->
+                <section id="budget-active-empty" class="hidden bg-white border border-gray-200 rounded-xl p-6 text-center">
+                    <p class="text-[14px] font-semibold text-gray-900">No active budget</p>
+                    <p class="mt-1 text-[12px] text-gray-500">Set a monthly budget to activate OpEx vs Budget and Budget Used metrics.</p>
+                    <button id="budget-create-btn" type="button" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-[13px] font-bold text-white hover:bg-gray-800">
+                        Set budget
+                    </button>
+                </section>
+
+                <section id="budget-active-card" class="hidden bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h2 class="text-[14px] font-bold text-gray-900">Active budget</h2>
+                            <p class="text-[11px] text-gray-500 mt-0.5">Updates Overview KPIs immediately.</p>
+                        </div>
+                        <span class="budget-pill is-active">Active</span>
+                    </div>
+
+                    <!-- Read mode -->
+                    <div id="budget-read-mode" class="p-5">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div class="budget-stat">
+                                <div class="budget-stat-label">Total budget</div>
+                                <div id="budget-read-total" class="budget-stat-value">Rp 0</div>
+                            </div>
+                            <div class="budget-stat">
+                                <div class="budget-stat-label">Period</div>
+                                <div id="budget-read-period" class="budget-stat-value" style="font-size: 14px;">—</div>
+                            </div>
+                            <div class="budget-stat">
+                                <div class="budget-stat-label">Period type</div>
+                                <div id="budget-read-type" class="budget-stat-value" style="font-size: 14px;">Monthly</div>
+                            </div>
+                        </div>
+                        <div class="budget-edit-readonly mt-5">
+                            <span>Name</span>
+                            <strong id="budget-read-name">—</strong>
+                        </div>
+                        <div class="budget-edit-readonly">
+                            <span>Created</span>
+                            <strong id="budget-read-created">—</strong>
+                        </div>
+                    </div>
+
+                    <!-- Edit mode -->
+                    <form id="budget-edit-mode" class="hidden p-5 finance-setup-form" onsubmit="return false">
+                        <label class="finance-field">
+                            <span class="finance-field-label">Budget name</span>
+                            <input type="text" name="name" maxlength="120" placeholder="e.g. OpEx budget" required>
+                        </label>
+                        <label class="finance-field">
+                            <span class="finance-field-label">Period type</span>
+                            <select name="period_type">
+                                <option value="monthly">Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                        </label>
+                        <div class="finance-field">
+                            <span class="finance-field-label">Start of period</span>
+                            <div id="budget-edit-date-picker"></div>
+                        </div>
+                        <label class="finance-field">
+                            <span class="finance-field-label">Total budget</span>
+                            <div class="finance-amount-row">
+                                <span class="finance-amount-prefix">Rp</span>
+                                <input type="text" name="total_budget" inputmode="numeric" placeholder="0" autocomplete="off" required>
+                            </div>
+                        </label>
+                    </form>
+
+                    <div class="px-5 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between gap-3 flex-wrap">
+                        <p class="text-[12px] text-gray-500" id="budget-card-hint">Editing replaces the current budget in place. Use Archive to start a fresh budget while keeping history.</p>
+                        <div class="flex items-center gap-2">
+                            <button id="budget-archive-btn" type="button" class="finance-btn finance-btn-ghost" style="color:#B91C1C; border-color:#FECACA; background:#FFFFFF;">Archive</button>
+                            <button id="budget-edit-btn" type="button" class="finance-btn finance-btn-ghost">Edit</button>
+                            <button id="budget-cancel-btn" type="button" class="finance-btn finance-btn-ghost hidden">Cancel</button>
+                            <button id="budget-save-btn" type="button" class="finance-btn finance-btn-primary hidden">Save</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- History -->
+                <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div class="px-5 py-3 border-b border-gray-100">
+                        <h2 class="text-[14px] font-bold text-gray-900">Budget history</h2>
+                        <p class="text-[11px] text-gray-500 mt-0.5">Includes archived budgets and the current active one.</p>
+                    </div>
+                    <div class="budget-history-row budget-row-head">
+                        <span>Name</span>
+                        <span>Period type</span>
+                        <span>Period</span>
+                        <span>Total</span>
+                        <span>Status</span>
+                    </div>
+                    <div id="budget-history-list">
+                        <div class="px-5 py-6 text-[13px] text-gray-400">Loading history...</div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </main>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/date-range-picker.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.firebaseapp.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
+            measurementId: "G-ZN7J6DRD2L"
+        };
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        const loadState = document.getElementById('budget-load-state');
+        const activeCard = document.getElementById('budget-active-card');
+        const emptyCard = document.getElementById('budget-active-empty');
+        const readMode = document.getElementById('budget-read-mode');
+        const editMode = document.getElementById('budget-edit-mode');
+        const historyList = document.getElementById('budget-history-list');
+        let activeBudget = null;
+        let editDatePicker = null;
+        let editSelectedDate = null;
+
+        const authTimeout = setTimeout(() => window.location.replace('/login'), 2000);
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) return;
+            clearTimeout(authTimeout);
+            await loadAll(user.uid);
+            wireUI();
+        });
+
+        async function loadAll(uid) {
+            setLoadState('loading', 'Loading budget');
+            try {
+                const [active, history] = await Promise.all([
+                    ds.getActiveBudget(uid),
+                    ds.getBudgetHistory(uid, 20)
+                ]);
+                activeBudget = active;
+                renderActive(active);
+                renderHistory(history);
+                setLoadState('ready', active ? 'Budget active' : 'No active budget');
+            } catch (error) {
+                setLoadState('error', 'Could not load budget');
+                historyList.innerHTML = `<div class="px-5 py-6 text-[13px] text-red-600">Failed to load history.</div>`;
+            }
+        }
+
+        function renderActive(budget) {
+            if (!budget) {
+                activeCard.classList.add('hidden');
+                emptyCard.classList.remove('hidden');
+                return;
+            }
+            emptyCard.classList.add('hidden');
+            activeCard.classList.remove('hidden');
+            const start = toDate(budget.period_start);
+            const end = toDate(budget.period_end);
+            const created = toDate(budget.created_at);
+            document.getElementById('budget-read-total').textContent = formatIDR(budget.total_budget);
+            document.getElementById('budget-read-period').textContent = formatPeriodRange(start, end, budget.period_type);
+            document.getElementById('budget-read-type').textContent = capitalize(budget.period_type || 'monthly');
+            document.getElementById('budget-read-name').textContent = budget.name || '—';
+            document.getElementById('budget-read-created').textContent = created ? created.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+            showReadMode();
+        }
+
+        function renderHistory(rows) {
+            if (!rows.length) {
+                historyList.innerHTML = `<div class="px-5 py-6 text-[13px] text-gray-400">No budget records yet.</div>`;
+                return;
+            }
+            historyList.innerHTML = rows.map(b => {
+                const start = toDate(b.period_start);
+                const end = toDate(b.period_end);
+                const statusClass = b.status === 'active' ? 'is-active' : 'is-archived';
+                return `
+                    <div class="budget-history-row">
+                        <div class="text-gray-900 font-bold">${escapeHtml(b.name || '—')}</div>
+                        <div class="text-gray-700">${escapeHtml(capitalize(b.period_type || 'monthly'))}</div>
+                        <div class="text-gray-700">${escapeHtml(formatPeriodRange(start, end, b.period_type))}</div>
+                        <div class="tabular-nums font-bold text-gray-900">${formatIDR(b.total_budget)}</div>
+                        <div><span class="budget-pill ${statusClass}">${escapeHtml(b.status === 'active' ? 'Active' : 'Archived')}</span></div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function wireUI() {
+            document.getElementById('budget-edit-btn').addEventListener('click', enterEditMode);
+            document.getElementById('budget-cancel-btn').addEventListener('click', () => { showReadMode(); renderActive(activeBudget); });
+            document.getElementById('budget-save-btn').addEventListener('click', onSave);
+            document.getElementById('budget-archive-btn').addEventListener('click', onArchive);
+            document.getElementById('budget-create-btn').addEventListener('click', enterCreateMode);
+            const totalInput = editMode.querySelector('[name="total_budget"]');
+            totalInput.addEventListener('input', e => formatAmountInput(e.target));
+        }
+
+        function enterEditMode() {
+            if (!activeBudget) return enterCreateMode();
+            editMode.querySelector('[name="name"]').value = activeBudget.name || '';
+            editMode.querySelector('[name="period_type"]').value = activeBudget.period_type || 'monthly';
+            editMode.querySelector('[name="total_budget"]').value = (Number(activeBudget.total_budget) || 0).toLocaleString('id-ID');
+            const start = toDate(activeBudget.period_start);
+            const startKey = start ? toDayKey(start) : monthStartKey();
+            editSelectedDate = startKey;
+            mountEditDatePicker(startKey);
+            showEditMode();
+        }
+
+        function enterCreateMode() {
+            // Activate card, switch to edit mode with empty defaults.
+            emptyCard.classList.add('hidden');
+            activeCard.classList.remove('hidden');
+            editMode.querySelector('[name="name"]').value = 'OpEx budget';
+            editMode.querySelector('[name="period_type"]').value = 'monthly';
+            editMode.querySelector('[name="total_budget"]').value = '';
+            const startKey = monthStartKey();
+            editSelectedDate = startKey;
+            mountEditDatePicker(startKey);
+            showEditMode();
+        }
+
+        function mountEditDatePicker(startKey) {
+            if (editDatePicker) {
+                editDatePicker.setRange?.(startKey, startKey);
+                return;
+            }
+            if (!window.FluxyDateRangePicker) return;
+            editDatePicker = window.FluxyDateRangePicker.mount('#budget-edit-date-picker', {
+                mode: 'single', start: startKey, end: startKey, defaultStart: startKey, defaultEnd: startKey,
+                onChange: ({ start }) => { editSelectedDate = start; }
+            });
+        }
+
+        async function onSave() {
+            const fd = new FormData(editMode);
+            const totalRaw = String(fd.get('total_budget') || '').replace(/\D/g, '');
+            const total = Math.max(0, Number(totalRaw) || 0);
+            if (total <= 0) {
+                window.showToast?.('Enter a total budget above Rp 0.', 'error');
+                return;
+            }
+            const periodType = String(fd.get('period_type') || 'monthly');
+            const startKey = editSelectedDate || monthStartKey();
+            const [year, month, day] = startKey.split('-').map(Number);
+            const start = new Date(year, month - 1, day);
+            const end = computePeriodEnd(start, periodType);
+
+            const btn = document.getElementById('budget-save-btn');
+            const original = btn.textContent;
+            btn.disabled = true; btn.textContent = 'Saving...';
+            try {
+                await ds.setActiveBudget(auth.currentUser.uid, {
+                    name: String(fd.get('name') || '').trim() || 'OpEx budget',
+                    period_type: periodType,
+                    period_start: start.toISOString(),
+                    period_end: end.toISOString(),
+                    total_budget: total
+                });
+                window.showToast?.('Budget saved.', 'success');
+                await loadAll(auth.currentUser.uid);
+            } catch (error) {
+                window.showToast?.('Could not save budget. Please try again.', 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = original;
+            }
+        }
+
+        async function onArchive() {
+            if (!activeBudget) return;
+            const ok = await window.showConfirmDialog?.({
+                title: `Archive "${activeBudget.name || 'this budget'}"?`,
+                body: 'Overview will fall back to "Budget not set" until a new active budget exists. History is preserved.',
+                confirmLabel: 'Archive budget',
+                cancelLabel: 'Cancel',
+                tone: 'danger',
+                icon: 'trash'
+            });
+            if (!ok) return;
+            try {
+                await ds.archiveBudget(auth.currentUser.uid, activeBudget.id);
+                window.showToast?.('Budget archived.', 'success');
+                await loadAll(auth.currentUser.uid);
+            } catch {
+                window.showToast?.('Could not archive budget. Please try again.', 'error');
+            }
+        }
+
+        function showReadMode() {
+            readMode.classList.remove('hidden');
+            editMode.classList.add('hidden');
+            document.getElementById('budget-edit-btn').classList.remove('hidden');
+            document.getElementById('budget-archive-btn').classList.remove('hidden');
+            document.getElementById('budget-cancel-btn').classList.add('hidden');
+            document.getElementById('budget-save-btn').classList.add('hidden');
+            document.getElementById('budget-card-hint').textContent =
+                'Editing replaces the current budget in place. Use Archive to start a fresh budget while keeping history.';
+        }
+
+        function showEditMode() {
+            readMode.classList.add('hidden');
+            editMode.classList.remove('hidden');
+            document.getElementById('budget-edit-btn').classList.add('hidden');
+            document.getElementById('budget-archive-btn').classList.add('hidden');
+            document.getElementById('budget-cancel-btn').classList.remove('hidden');
+            document.getElementById('budget-save-btn').classList.remove('hidden');
+            document.getElementById('budget-card-hint').textContent =
+                'Save replaces the active budget. Performance Trend will update on Overview.';
+        }
+
+        function setLoadState(state, text) {
+            if (!loadState) return;
+            const color = state === 'ready' ? 'bg-green-500' : state === 'error' ? 'bg-red-500' : 'bg-gray-300';
+            loadState.innerHTML = `<span class="h-2 w-2 rounded-full ${color}"></span>${escapeHtml(text)}`;
+        }
+
+        function formatAmountInput(input) {
+            const digits = String(input.value || '').replace(/\D/g, '');
+            input.value = digits ? Number(digits).toLocaleString('id-ID') : '';
+        }
+
+        function formatIDR(value) {
+            return `Rp ${Math.round(Math.abs(Number(value) || 0)).toLocaleString('id-ID')}`;
+        }
+
+        function toDate(value) {
+            if (!value) return null;
+            if (typeof value.toDate === 'function') { try { return value.toDate(); } catch { return null; } }
+            if (value instanceof Date) return value;
+            if (typeof value === 'string' || typeof value === 'number') {
+                const d = new Date(value); return Number.isNaN(d.getTime()) ? null : d;
+            }
+            return null;
+        }
+
+        function toDayKey(date) {
+            return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+        }
+
+        function monthStartKey() {
+            const d = new Date();
+            return toDayKey(new Date(d.getFullYear(), d.getMonth(), 1));
+        }
+
+        function computePeriodEnd(start, periodType) {
+            if (periodType === 'quarterly') return new Date(start.getFullYear(), start.getMonth() + 3, 0, 23, 59, 59);
+            if (periodType === 'yearly') return new Date(start.getFullYear() + 1, start.getMonth(), 0, 23, 59, 59);
+            return new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59);
+        }
+
+        function formatPeriodRange(start, end, periodType) {
+            if (!start || !end) return '—';
+            if (periodType === 'yearly') return String(start.getFullYear());
+            if (periodType === 'quarterly') {
+                return `${start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} – ${end.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+            }
+            return start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        }
+
+        function capitalize(value) {
+            const t = String(value || '');
+            return t ? t[0].toUpperCase() + t.slice(1) : '';
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>

@@ -57,6 +57,8 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Report Preview (viewer) | `report-preview.html` | App | ✅ | **No** | No |
 | Integrations | `integration.html` | App | ✅ | **No** | ✅ |
 | Settings (index) | `settings.html` | App | ✅ | **No** | ✅ |
+| Settings — Cash & Bank Accounts | `settings-cash.html` | App | ✅ | **No** | ✅ |
+| Settings — Budget Settings | `settings-budget.html` | App | ✅ | **No** | ✅ |
 | Settings — Personal details | `settings-personal.html` | App | ✅ | **No** | ✅ |
 | Settings — Business | `settings-business.html` | App | ✅ | **No** | ✅ |
 | Settings — Finance preferences | `settings-finance.html` | App | ✅ | **No** | ✅ |
@@ -149,13 +151,86 @@ blocked. WhatsApp status is configuration metadata only. Real WhatsApp API
 tokens must not be stored in Firestore.
 
 **UI surface:** Settings expose this schema through an index page
-(`settings.html`) and 7 focused detail pages (`settings-personal.html`,
+(`settings.html`) and 9 focused detail pages: `settings-personal.html`,
 `settings-business.html`, `settings-finance.html`, `settings-import-rules.html`,
-`settings-ai.html`, `settings-whatsapp.html`, `settings-security.html`). Each
-detail page reads its slice via `DataService.getUserSettings(uid)` and saves
-through the matching `save*Settings` method. `settings-personal.html` and
+`settings-ai.html`, `settings-whatsapp.html`, `settings-security.html`,
+`settings-cash.html` (Cash & Bank Accounts), and `settings-budget.html`
+(Budget Settings). Each detail page reads its slice via
+`DataService.getUserSettings(uid)` and saves through the matching
+`save*Settings` method (or, for the Finance Setup pages, the bank/budget
+DataService methods documented in §4e.1–4e.3). `settings-personal.html` and
 `settings-security.html` are display-only (Firebase Auth profile + posture
 summary); they do not write to Firestore.
+
+### 4e.1. Bank Accounts — `users/{userId}/bank_accounts/{bankAccountId}`
+
+Manual (and future synced) bank accounts that power Bank Cash Balance and
+Cash Pressure. User-scoped. Soft-archive only — `delete` is blocked.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `account_name` | string | User-chosen nickname (≤120 chars). |
+| `bank_name` | string | Free text (e.g., `"BCA"`). |
+| `bank_code` | string \| null | Optional bank identifier. |
+| `currency` | string | Locked to `"IDR"`. |
+| `last_four` | string \| null | Last four digits of account number. |
+| `source_type` | string | `"manual"`, `"statement_upload"`, or `"auto_sync"` (Phase 1 only writes `"manual"`). |
+| `provider` | string \| null | Reserved for future auto-sync. |
+| `provider_account_id` | string \| null | Reserved for future auto-sync. |
+| `status` | string | `"active"` or `"archived"`. |
+| `latest_balance` | number | Raw integer Rupiah. |
+| `latest_balance_at` | Timestamp | When the balance was reported by the user. |
+| `sync_status` | string | `"manual"`, `"pending"`, `"connected"`, or `"failed"`. |
+| `last_sync_at` | Timestamp \| null | Reserved for auto-sync. |
+| `confidence` | string \| null | `"user_entered"`, `"extracted"`, or `"synced"`. |
+| `notes` | string \| null | ≤500 chars. |
+| `created_at` | Timestamp | `serverTimestamp()`. |
+| `updated_at` | Timestamp | `serverTimestamp()` on every write. |
+
+**Audit:** `bank_account.created`, `bank_account.balance_updated`,
+`bank_account.archived`. All target_collection: `"bank_accounts"`.
+
+### 4e.2. Bank Balance Snapshots — `users/{userId}/bank_balance_snapshots/{snapshotId}`
+
+Append-only balance history. One snapshot per balance write
+(`addManualBankAccount` and `updateBankAccountBalance` both emit one).
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `bank_account_id` | string | Document ID in `bank_accounts/`. |
+| `balance` | number | Raw integer Rupiah at the time of snapshot. |
+| `currency` | string | Locked to `"IDR"`. |
+| `source_type` | string | Matches the originating account's source type. |
+| `snapshot_at` | Timestamp | User-supplied "as of" timestamp. |
+| `confidence` | string \| null | Same enum as bank_accounts. |
+| `notes` | string \| null | ≤500 chars. |
+| `created_at` | Timestamp | `serverTimestamp()`. |
+
+**Mutation rule:** create + read only — update and delete are blocked.
+
+### 4e.3. Budgets — `users/{userId}/budgets/{budgetId}`
+
+OpEx budgets that drive `OpEx vs Budget` on Overview and `Budget Used` on the
+Performance Trend chart.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `name` | string | User-chosen label. |
+| `period_type` | string | `"monthly"`, `"quarterly"`, or `"yearly"`. |
+| `period_start` | Timestamp | Start of the budget period. |
+| `period_end` | Timestamp | End of the period (inclusive). |
+| `currency` | string | Locked to `"IDR"`. |
+| `total_budget` | number | Raw integer Rupiah. |
+| `category_budgets` | map | Optional per-category split. Phase 1 does not write this. |
+| `status` | string | `"active"` or `"archived"`. |
+| `created_at` / `updated_at` | Timestamp | Server-set. |
+
+**Active budget rule:** `getActiveBudget` returns the most-recent doc where
+`status == "active"`. `setActiveBudget` updates the existing active doc in
+place (no version churn). To start fresh while keeping history, archive the
+current budget first.
+
+**Audit:** `budget.created`, `budget.updated`, `budget.archived`.
 
 ### 4f. Onboarding — `users/{userId}/onboarding/{onboardingDoc}`
 
