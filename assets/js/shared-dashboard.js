@@ -589,6 +589,10 @@ window.showAddTransactionModal = function(options = {}) {
         const date = parseLocalDateKey(dateKey);
         if (!date) throw new Error("Choose a valid transaction date.");
         if (dateKey > todayKey) throw new Error("Transaction date cannot be in the future.");
+        // For today's entries, preserve the actual moment so the ledger shows
+        // a real time of day instead of a noon placeholder. Backdated entries
+        // stay at noon (parseLocalDateKey) to dodge timezone day-flips.
+        if (dateKey === todayKey) return Timestamp.fromDate(new Date());
         return Timestamp.fromDate(date);
     }
 
