@@ -120,7 +120,10 @@
         return `
             ${errorBlock}
             <div class="space-y-5">
-                <p class="text-[14px] text-gray-700">Upload a bank statement PDF, CSV, or spreadsheet. FluxyOS will extract transactions and show a review before anything is saved.</p>
+                <div class="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[12px] text-blue-800">
+                    <svg class="mt-0.5 h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path></svg>
+                    <p>Upload a bank statement PDF, CSV, or spreadsheet. FluxyOS will extract transactions and show a review before anything is saved.</p>
+                </div>
                 <div class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5" data-bsi-dropzone>
                     <label data-bsi-file-label class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-7 text-center transition-all duration-200 hover:border-[#EA580C] hover:bg-gray-50">
                         <span class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#EA580C]">
