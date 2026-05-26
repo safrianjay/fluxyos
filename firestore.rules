@@ -29,7 +29,9 @@ service cloud.firestore {
         && data.category is string
         && data.category.size() > 0
         && data.category.size() <= 40
-        && data.type in ['revenue', 'income', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending_payable']
+        && data.type is string
+        && data.type.size() > 0
+        && data.type.size() <= 40
         && data.status in ['Completed', 'Missing Receipt', 'Pending', 'Upcoming', 'Reconciled', 'Cancelled']
         && data.icon is string
         && data.icon.size() <= 16
@@ -55,7 +57,9 @@ service cloud.firestore {
         && data.category is string
         && data.category.size() > 0
         && data.category.size() <= 40
-        && data.type in ['revenue', 'income', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending_payable']
+        && data.type is string
+        && data.type.size() > 0
+        && data.type.size() <= 40
         && data.status in ['Completed', 'Missing Receipt', 'Pending', 'Upcoming', 'Reconciled', 'Cancelled']
         && data.icon is string
         && data.icon.size() <= 16

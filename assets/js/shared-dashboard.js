@@ -304,8 +304,10 @@ window.showAddTransactionModal = function(options = {}) {
                                     <option value="tax" ${defaultType === 'tax' ? 'selected' : ''}>Tax</option>
                                     <option value="pending_receivable" ${defaultType === 'pending_receivable' ? 'selected' : ''}>Pending receivable</option>
                                     <option value="pending_payable" ${defaultType === 'pending_payable' ? 'selected' : ''}>Pending payable</option>
+                                    <option value="Others">Others</option>
                                     `}
                                 </select>
+                                ${context === 'bill' ? '' : `<input id="tx-type-custom" type="text" maxlength="20" placeholder="Type custom (max 20 chars)" class="hidden mt-2 w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]" />`}
                             </div>
                         </div>
                         ${context !== 'bill' ? `<div>
@@ -806,6 +808,18 @@ window.showAddTransactionModal = function(options = {}) {
         else categoryCustomInput.value = '';
     });
 
+    // "Others" type custom input (transaction context only)
+    const typeSelectEl = document.getElementById('tx-type');
+    const typeCustomInput = document.getElementById('tx-type-custom');
+    if (typeSelectEl && typeCustomInput) {
+        typeSelectEl.addEventListener('change', () => {
+            const isOthers = typeSelectEl.value === 'Others';
+            typeCustomInput.classList.toggle('hidden', !isOthers);
+            if (isOthers) typeCustomInput.focus();
+            else typeCustomInput.value = '';
+        });
+    }
+
     // Shared document attachment — receipt for expense, revenue_proof for income.
     let attachmentController = null;
     const receiptMountEl = document.querySelector('#tx-receipt-section[data-fluxy-doc-mount]');
@@ -1109,7 +1123,14 @@ window.showAddTransactionModal = function(options = {}) {
             }
 
             const rawAmount = document.getElementById('tx-amount').value.replace(/\./g, "");
-            const txType = document.getElementById('tx-type').value;
+            const txTypeSel = document.getElementById('tx-type').value;
+            const txType = (() => {
+                if (txTypeSel === 'Others') {
+                    const custom = document.getElementById('tx-type-custom')?.value.trim();
+                    return custom && custom.length > 0 ? custom : 'Others';
+                }
+                return txTypeSel;
+            })();
             const data = {
                 amount: parseFloat(rawAmount),
                 vendor_name: document.getElementById('tx-vendor').value,

@@ -965,7 +965,8 @@
         }
 
         function getTransactionType(transaction) {
-            const rawType = String(transaction.type || '').toLowerCase();
+            const rawTypeOriginal = String(transaction.type || '').trim();
+            const rawType = rawTypeOriginal.toLowerCase();
             const category = String(transaction.category || '').toLowerCase();
             const amount = Number(transaction.amount) || 0;
 
@@ -978,6 +979,9 @@
             if (rawType === 'tax') return 'Tax';
             if (rawType === 'pending_receivable' || rawType === 'pending receivable') return 'Pending receivable';
             if (rawType === 'pending_payable' || rawType === 'pending payable') return 'Pending payable';
+
+            // Custom type ("Others" → free text). Show the user's label as-is.
+            if (rawTypeOriginal) return rawTypeOriginal;
 
             if (['revenue', 'sales', 'income'].some(term => category.includes(term))) return 'Income';
             if (['operations', 'infrastructure', 'opex', 'ads', 'expense', 'vendor', 'saas', 'marketing'].some(term => category.includes(term))) return 'Expense';

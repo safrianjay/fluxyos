@@ -82,7 +82,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | `amount` | number | Raw integer (e.g. `1234567`). Never stored with dots. Always positive for revenue, positive for expense (type determines sign in display) |
 | `vendor_name` | string | Free text (e.g. `"AWS"`, `"Client Payment"`) |
 | `category` | string | One of the built-in labels — `"Revenue"`, `"Marketing"`, `"Infrastructure"`, `"Operations"`, `"SaaS"`, `"Others"` — or any free-text label up to 40 chars when the user picks "Others" and types their own (e.g., `"Event"`). |
-| `type` | string | Transaction type. Supported values: `"income"`, `"expense"`, `"transfer"`, `"refund"`, `"adjustment"`, `"fee"`, `"tax"`, `"pending_receivable"`, `"pending_payable"`. Legacy `"revenue"` is still accepted as income. |
+| `type` | string | Transaction type. Built-in values: `"income"`, `"expense"`, `"transfer"`, `"refund"`, `"adjustment"`, `"fee"`, `"tax"`, `"pending_receivable"`, `"pending_payable"`. Legacy `"revenue"` is still accepted as income. The Add Transaction modal also exposes an "Others" option that stores the user's free-text label (up to 40 chars) — the ledger renders it as-is and treats it as neutral for sign/colour. |
 | `status` | string | `"Completed"` \| `"Missing Receipt"` |
 | `icon` | string | `"💰"` for positive-side transaction types, `"💸"` for spend-side transaction types |
 | `timestamp` | Firestore Timestamp | Defaults to `serverTimestamp()`, but dashboard entry drawer and CSV import may set an explicit selected transaction date for today or a previous day |
