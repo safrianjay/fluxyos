@@ -310,6 +310,7 @@ window.showAddTransactionModal = function(options = {}) {
                                 ${context === 'bill' ? '' : `<input id="tx-type-custom" type="text" maxlength="20" placeholder="Type custom (max 20 chars)" class="hidden mt-2 w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]" />`}
                             </div>
                         </div>
+                        ${context === 'bill' ? `<div id="tx-budget-preview" class="hidden rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600"></div>` : ''}
                         ${context !== 'bill' ? `<div>
                             <label for="tx-status" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Status</label>
                             <select id="tx-status" name="status" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
@@ -517,6 +518,7 @@ window.showAddTransactionModal = function(options = {}) {
                 onChange: ({ start }) => {
                     selectedEntryDate = start;
                     updateSingleSubmitState();
+                    if (context === 'bill' && typeof renderBillBudgetPreview === 'function') renderBillBudgetPreview();
                 }
             });
 
@@ -822,6 +824,165 @@ window.showAddTransactionModal = function(options = {}) {
             if (isOthers) typeCustomInput.focus();
             else typeCustomInput.value = '';
         });
+    }
+
+    // Budget impact preview (Phase 1.5) — bill drawer only. Prefetches the
+    // active budget + allocations, then re-evaluates the match whenever the
+    // user changes amount, category, or due date.
+    let billBudgetContext = null; // { budget, allocations, match } | null
+    if (context === 'bill') {
+        const previewEl = document.getElementById('tx-budget-preview');
+        if (previewEl) {
+            previewEl.classList.remove('hidden');
+            previewEl.innerHTML = '<span class="text-gray-400">Loading budget impact…</span>';
+
+            (async () => {
+                try {
+                    // Firebase Auth may not have rehydrated currentUser yet when
+                    // the drawer opens immediately after page load. Wait for
+                    // authStateReady() so the prefetch doesn't false-fire
+                    // "Session expired" on the first open.
+                    const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
+                    const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+                    const firebaseConfig = {
+                        apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+                        authDomain: "fluxyos.firebaseapp.com",
+                        projectId: "fluxyos",
+                        storageBucket: "fluxyos.firebasestorage.app",
+                        messagingSenderId: "1084252368929",
+                        appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
+                        measurementId: "G-ZN7J6DRD2L"
+                    };
+                    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+                    const auth = getAuth(app);
+                    if (typeof auth.authStateReady === 'function') {
+                        await auth.authStateReady();
+                    }
+                    if (!auth.currentUser) {
+                        previewEl.innerHTML = '<span class="text-gray-400">Sign in to see budget impact.</span>';
+                        return;
+                    }
+                    const { ds, user } = await getTransactionDataService();
+                    const activeBudget = await ds.getActiveBudget(user.uid);
+                    if (!activeBudget) {
+                        billBudgetContext = {
+                            budget: null,
+                            allocations: [],
+                            match: () => ({ allocation: null, status: 'no_active_budget', exceedsBy: 0 })
+                        };
+                        renderBillBudgetPreview();
+                        return;
+                    }
+                    const usage = await ds.getBudgetUsage(user.uid, activeBudget.id);
+                    // Single source of truth: every match goes through
+                    // DataService.matchBillToAllocation. No inline duplicate.
+                    billBudgetContext = {
+                        budget: usage.budget,
+                        allocations: usage.allocations || [],
+                        match: (billData) => ds.matchBillToAllocation({
+                            billData,
+                            activeBudget: usage.budget,
+                            allocations: usage.allocations || []
+                        })
+                    };
+                    renderBillBudgetPreview();
+                } catch (err) {
+                    console.warn('Budget preview load failed:', err);
+                    previewEl.innerHTML = '<span class="text-gray-400">Budget impact unavailable.</span>';
+                }
+            })();
+
+            amountInput.addEventListener('input', renderBillBudgetPreview);
+            categorySelect.addEventListener('change', renderBillBudgetPreview);
+            if (categoryCustomInput) categoryCustomInput.addEventListener('input', renderBillBudgetPreview);
+            // The date picker doesn't expose a DOM event, but selectedEntryDate
+            // changes via its onChange callback (line ~518). updateSingleSubmitState
+            // is already called from there; piggyback on the same hook below.
+        }
+    }
+
+    function getCurrentBillCategory() {
+        const sel = categorySelect?.value || '';
+        if (sel === 'Others') {
+            const custom = categoryCustomInput?.value?.trim();
+            return custom?.length ? custom : 'Others';
+        }
+        return sel;
+    }
+
+    function renderBillBudgetPreview() {
+        if (context !== 'bill') return;
+        const previewEl = document.getElementById('tx-budget-preview');
+        if (!previewEl) return;
+        if (!billBudgetContext) return;
+
+        // No active budget at all
+        if (!billBudgetContext.budget) {
+            previewEl.className = 'rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600';
+            previewEl.innerHTML = `
+                <p class="font-bold text-gray-700">Budget impact</p>
+                <p class="mt-1">No active budget for this bill period. This bill will be saved without budget impact.</p>
+            `;
+            return;
+        }
+
+        const rawAmount = (amountInput.value || '').replace(/\./g, '');
+        const numericAmount = Number(rawAmount) || 0;
+        const billCategory = getCurrentBillCategory();
+        // Use the in-progress drawer state (date + category + amount). The
+        // matchBillToAllocation helper expects Firestore-style Timestamps or
+        // Date objects — we pass plain Dates so the helper's `?.toDate?.()`
+        // call falls through to the `instanceof Date` branch.
+        const dueDate = parseLocalDateKey(selectedEntryDate) || new Date();
+        const billData = {
+            amount: numericAmount,
+            category: billCategory,
+            due_date: dueDate
+        };
+
+        const result = billBudgetContext.match(billData);
+        billBudgetContext.lastResult = result;
+
+        const fmt = (n) => 'Rp ' + Math.abs(Number(n) || 0).toLocaleString('id-ID');
+        const label = result.allocation?.name || 'Budget';
+        if (result.status === 'out_of_period') {
+            previewEl.className = 'rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600';
+            previewEl.innerHTML = `
+                <p class="font-bold text-gray-700">Budget impact</p>
+                <p class="mt-1">Due date is outside the active budget period. This bill will be saved without budget impact.</p>
+            `;
+            return;
+        }
+        if (result.status === 'unmatched') {
+            previewEl.className = 'rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600';
+            previewEl.innerHTML = `
+                <p class="font-bold text-gray-700">Budget impact</p>
+                <p class="mt-1">No matching budget allocation found. This bill will be saved as unallocated.</p>
+            `;
+            return;
+        }
+        if (result.status === 'exceeded') {
+            previewEl.className = 'rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[12px] text-red-700';
+            previewEl.innerHTML = `
+                <p class="font-bold">Budget warning</p>
+                <p class="mt-1">This bill will exceed <strong>${escapeHtml(label)}</strong> by <span class="font-mono font-bold">${fmt(result.exceedsBy)}</span>. You can still save it, but this allocation will be marked Exceeded.</p>
+            `;
+            return;
+        }
+        if (result.status === 'needs_review') {
+            previewEl.className = 'rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-700';
+            previewEl.innerHTML = `
+                <p class="font-bold">Budget impact</p>
+                <p class="mt-1">Multiple budget allocations may match this bill. Saving as needs review under <strong>${escapeHtml(label)}</strong>.</p>
+            `;
+            return;
+        }
+        // matched
+        previewEl.className = 'rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[12px] text-emerald-700';
+        previewEl.innerHTML = `
+            <p class="font-bold">Budget impact</p>
+            <p class="mt-1">Auto matched to <strong>${escapeHtml(label)}</strong>. This bill will reserve <span class="font-mono font-bold">${fmt(numericAmount)}</span> from ${escapeHtml(label)}.</p>
+        `;
     }
 
     // Shared document attachment — receipt for expense, revenue_proof for income.
@@ -1199,6 +1360,36 @@ window.showAddTransactionModal = function(options = {}) {
                     : null;
 
                 if (context === 'bill') {
+                    // Phase 1.5 — attach optional budget fields when an active
+                    // budget exists. Omit all five when there is no active
+                    // budget so legacy/no-budget bill writes keep working.
+                    if (billBudgetContext?.budget) {
+                        const match = billBudgetContext.match({
+                            amount: data.amount,
+                            category: data.category,
+                            due_date: data.due_date
+                        });
+                        const budgetId = billBudgetContext.budget.id;
+                        if (match.allocation && (match.status === 'matched' || match.status === 'exceeded')) {
+                            data.budget_id = budgetId;
+                            data.budget_allocation_id = match.allocation.id;
+                            data.budget_match_method = 'auto';
+                            data.budget_match_status = 'matched';
+                            data.budget_impact_status = 'committed';
+                        } else if (match.allocation && match.status === 'needs_review') {
+                            data.budget_id = budgetId;
+                            data.budget_allocation_id = match.allocation.id;
+                            data.budget_match_method = 'auto';
+                            data.budget_match_status = 'needs_review';
+                            data.budget_impact_status = 'committed';
+                        } else if (match.status === 'unmatched' || match.status === 'out_of_period') {
+                            data.budget_id = budgetId;
+                            data.budget_allocation_id = null;
+                            data.budget_match_method = 'none';
+                            data.budget_match_status = 'unmatched';
+                            data.budget_impact_status = 'committed';
+                        }
+                    }
                     const billRef = await ds.addBill(user.uid, data);
                     if (attachedDocId && billRef?.id) {
                         try { await ds.linkDocumentTarget(user.uid, attachedDocId, 'bills', billRef.id); } catch (_) {}

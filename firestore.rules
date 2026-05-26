@@ -104,6 +104,7 @@ service cloud.firestore {
           'subscriptions',
           'vendors',
           'budgets',
+          'budget_allocations',
           'integrations',
           'exports',
           'report_exports',
@@ -576,6 +577,7 @@ service cloud.firestore {
           'currency',
           'total_budget',
           'category_budgets',
+          'notes',
           'status',
           'created_at',
           'updated_at'
@@ -591,7 +593,69 @@ service cloud.firestore {
         && data.total_budget >= 0
         && data.total_budget <= 999999999999
         && (!('category_budgets' in data) || data.category_budgets is map)
+        && (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 500))
         && data.status in ['active', 'archived'];
+    }
+
+    function isValidBudgetAllocation(data) {
+      return data.keys().hasAll([
+          'parent_budget_id',
+          'name',
+          'allocated_amount',
+          'scope_type',
+          'scope_values',
+          'status',
+          'created_at',
+          'updated_at'
+        ])
+        && data.keys().hasOnly([
+          'parent_budget_id',
+          'name',
+          'allocated_amount',
+          'scope_type',
+          'scope_values',
+          'alert_threshold_percent',
+          'hard_limit_enabled',
+          'status',
+          'created_at',
+          'updated_at'
+        ])
+        && data.parent_budget_id is string
+        && data.parent_budget_id.size() > 0
+        && data.parent_budget_id.size() <= 120
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 120
+        && data.allocated_amount is number
+        && data.allocated_amount >= 0
+        && data.allocated_amount <= 999999999999
+        && data.scope_type == 'category'
+        && data.scope_values is list
+        && data.scope_values.size() > 0
+        && data.scope_values.size() <= 10
+        && (!('alert_threshold_percent' in data) || data.alert_threshold_percent == null || (data.alert_threshold_percent is number && data.alert_threshold_percent >= 0 && data.alert_threshold_percent <= 100))
+        && (!('hard_limit_enabled' in data) || data.hard_limit_enabled is bool)
+        && data.status in ['active', 'archived'];
+    }
+
+    function isValidBudgetAllocationCreate(data) {
+      return isValidBudgetAllocation(data)
+        && data.created_at == request.time
+        && data.updated_at == request.time;
+    }
+
+    function isValidBudgetAllocationUpdate(data, existingData) {
+      return isValidBudgetAllocation(data)
+        && data.created_at == existingData.created_at
+        && data.updated_at == request.time;
+    }
+
+    function isValidBillBudgetFields(data) {
+      return (!('budget_id' in data) || data.budget_id == null || (data.budget_id is string && data.budget_id.size() <= 120))
+        && (!('budget_allocation_id' in data) || data.budget_allocation_id == null || (data.budget_allocation_id is string && data.budget_allocation_id.size() <= 120))
+        && (!('budget_match_method' in data) || data.budget_match_method == null || data.budget_match_method in ['auto', 'manual', 'none'])
+        && (!('budget_match_status' in data) || data.budget_match_status == null || data.budget_match_status in ['matched', 'needs_review', 'unmatched'])
+        && (!('budget_impact_status' in data) || data.budget_impact_status == null || data.budget_impact_status in ['committed', 'released', 'converted_to_actual']);
     }
 
     function isValidBudgetCreate(data) {
@@ -850,12 +914,18 @@ service cloud.firestore {
             'source_file_mime_type',
             'source_file_size_bytes',
             'attached_documents',
-            'invoice_status'
+            'invoice_status',
+            'budget_id',
+            'budget_allocation_id',
+            'budget_match_method',
+            'budget_match_status',
+            'budget_impact_status'
           ])
           && isValidBaseRecord(request.resource.data)
           && (!('due_date' in request.resource.data) || request.resource.data.due_date is timestamp)
           && (!('payment_status' in request.resource.data) || request.resource.data.payment_status in ['unpaid', 'paid', 'overdue', 'unknown'])
           && (!('invoice_status' in request.resource.data) || request.resource.data.invoice_status in ['attached'])
+          && isValidBillBudgetFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow update: if isOwner(userId)
@@ -883,12 +953,18 @@ service cloud.firestore {
             'source_file_mime_type',
             'source_file_size_bytes',
             'attached_documents',
-            'invoice_status'
+            'invoice_status',
+            'budget_id',
+            'budget_allocation_id',
+            'budget_match_method',
+            'budget_match_status',
+            'budget_impact_status'
           ])
           && isValidBaseRecordUpdate(request.resource.data, resource.data)
           && (!('due_date' in request.resource.data) || request.resource.data.due_date is timestamp)
           && (!('payment_status' in request.resource.data) || request.resource.data.payment_status in ['unpaid', 'paid', 'overdue', 'unknown'])
           && (!('invoice_status' in request.resource.data) || request.resource.data.invoice_status in ['attached'])
+          && isValidBillBudgetFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow delete: if false;
@@ -1105,6 +1181,15 @@ service cloud.firestore {
           && isValidBudgetCreate(request.resource.data);
         allow update: if isOwner(userId)
           && isValidBudgetUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+
+      match /budget_allocations/{allocationId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidBudgetAllocationCreate(request.resource.data);
+        allow update: if isOwner(userId)
+          && isValidBudgetAllocationUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
 

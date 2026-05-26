@@ -53,6 +53,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Revenue Sync | `revenue-sync.html` | App | ✅ | **No** | ✅ |
 | Bills | `bill.html` | App | ✅ | **No** | ✅ |
 | Subscriptions | `subscription.html` | App | ✅ | **No** | ✅ |
+| Budgets | `budget.html` | App | ✅ | **No** | ✅ |
 | Reports & Exports | `reports.html` | App | ✅ | **No** | ✅ |
 | Report Preview (viewer) | `report-preview.html` | App | ✅ | **No** | No |
 | Integrations | `integration.html` | App | ✅ | **No** | ✅ |
@@ -97,6 +98,15 @@ Same fields as transactions plus:
 |-------|------|-------|
 | `due_date` | Firestore Timestamp | Optional. Displayed via `.toDate().toLocaleDateString()`. Falls back to `"Next week"` if missing |
 | `category` | string | Defaults to `"Operations"` when created via modal |
+| `budget_id` | string \| null | Optional. Phase 1.5. Set by Add Bill drawer when an active budget exists. References `budgets/{id}`. |
+| `budget_allocation_id` | string \| null | Optional. Phase 1.5. Set when the bill auto-matches a `budget_allocations/{id}` doc by category. Null when no allocation matched. |
+| `budget_match_method` | string \| null | Optional. `"auto"`, `"manual"`, or `"none"`. |
+| `budget_match_status` | string \| null | Optional. `"matched"`, `"needs_review"`, or `"unmatched"`. |
+| `budget_impact_status` | string \| null | Optional. `"committed"`, `"released"`, or `"converted_to_actual"`. Drives the Budget page's committed-amount calculation; bills with `converted_to_actual` are excluded from committed totals. |
+
+All five budget fields are optional and absent on legacy bills. The Add Bill
+drawer omits the fields entirely when no active budget exists for the period,
+preserving the legacy bill schema.
 
 **Ordering:** `timestamp DESC`.
 
@@ -210,8 +220,10 @@ Append-only balance history. One snapshot per balance write
 
 ### 4e.3. Budgets — `users/{userId}/budgets/{budgetId}`
 
-OpEx budgets that drive `OpEx vs Budget` on Overview and `Budget Used` on the
-Performance Trend chart.
+Operating budgets that drive (a) `OpEx vs Budget` on Overview and `Budget Used`
+on the Performance Trend chart, and (b) the live allocation usage on
+`/budget`. The Budget page (Phase 1) and `settings-budget.html` operate on
+the same active doc so both views stay coherent.
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -221,7 +233,8 @@ Performance Trend chart.
 | `period_end` | Timestamp | End of the period (inclusive). |
 | `currency` | string | Locked to `"IDR"`. |
 | `total_budget` | number | Raw integer Rupiah. |
-| `category_budgets` | map | Optional per-category split. Phase 1 does not write this. |
+| `category_budgets` | map | Optional per-category split. The Budget page dual-writes a denormalized `{category → allocated_amount}` summary derived from `budget_allocations`, so the legacy OpEx-vs-Budget tracker stays in sync. |
+| `notes` | string \| null | Optional, ≤500 chars. Written by the Budget page's Create Budget drawer; absent on legacy docs. |
 | `status` | string | `"active"` or `"archived"`. |
 | `created_at` / `updated_at` | Timestamp | Server-set. |
 
@@ -230,7 +243,48 @@ Performance Trend chart.
 place (no version churn). To start fresh while keeping history, archive the
 current budget first.
 
-**Audit:** `budget.created`, `budget.updated`, `budget.archived`.
+**Audit:** `budget.created`, `budget.updated`, `budget.archived`,
+`budget.allocations_updated`.
+
+### 4e.4. Budget Allocations — `users/{userId}/budget_allocations/{allocationId}`
+
+Category-scoped sub-budgets that detail how the main `budgets` doc is split
+into operational areas (e.g. Marketing, Infrastructure, Operations, SaaS).
+Created via the Budget page's Create / Edit drawer.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `parent_budget_id` | string | Document ID in `budgets/`. |
+| `name` | string | Allocation label (1–120 chars). |
+| `allocated_amount` | number | Raw integer Rupiah (≤ 999,999,999,999). |
+| `scope_type` | string | Locked to `"category"` in Phase 1. |
+| `scope_values` | string[] | 1–10 category names. Phase 1 picker exposes `Marketing`, `Infrastructure`, `Operations`, `SaaS`. |
+| `alert_threshold_percent` | number \| null | Optional, 0–100. Defaults to 80. |
+| `hard_limit_enabled` | bool | Defaults to false. Phase 1 does not enforce hard limits. |
+| `status` | string | `"active"` or `"archived"`. Re-saving the budget archives the previous set in place and writes a fresh set. |
+| `created_at` / `updated_at` | Timestamp | Server-set. |
+
+**Mutation rule:** owner read/create/update only; delete is blocked.
+
+**Atomic write:** `DataService.addBudgetWithAllocations(uid, budgetData, allocations)`
+commits the budget doc (create OR partial update), the archive of any prior
+active allocations, and the new allocation set in a **single Firestore
+`writeBatch`**. If any row is rejected (rules, validation, network), nothing
+is written — the existing budget doc stays intact. Audit logs are written
+post-commit and are best-effort (failures are non-fatal). `setActiveBudget`
+remains the simpler path used by `settings-budget.html` and does not write
+allocations.
+
+**Usage calculation:** `DataService.getBudgetUsage(uid, budgetId)` returns
+allocations with `actual_used` (transactions where `type ∈ {expense, fee,
+tax}` and category matches), `committed_amount` (pending-payable transactions
++ unpaid bills with `payment_status !== 'paid'` and
+`budget_impact_status !== 'converted_to_actual'`), `remaining_amount`,
+`usage_percent`, and `status` (`healthy < 70 < watch < 85 < at_risk < 100 ≤
+exceeded`). `usage_percent` is always finite (never `NaN`/`Infinity`).
+
+**Audit:** `budget.allocations_updated` is logged on each batch write; the
+log's `target_collection` is `"budget_allocations"`.
 
 ### 4f. Onboarding — `users/{userId}/onboarding/{onboardingDoc}`
 
@@ -598,7 +652,7 @@ Sidebar is injected into every app page at `#sidebar`. Active item is detected b
 | Money Movement | Subscriptions | Link | `/subscription` | ✅ Shipped |
 | Operations | Vendor Spend | Disabled button | `Soon` | 📋 Planned |
 | Operations | Receipt Capture | Disabled button | `Soon` | 📋 Planned |
-| Operations | Budgets | Disabled button | `Soon` | 📋 Planned |
+| Operations | Budgets | Link | `/budget` | ✅ Shipped Phase 1 |
 | Operations | Approvals | Disabled button | `Soon` | 📋 Planned |
 | Reporting | Reports & Exports | Link | `/reports` | ✅ Shipped MVP |
 | Reporting | Audit Log | Disabled button | `Soon` | 📋 Planned |

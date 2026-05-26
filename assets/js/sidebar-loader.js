@@ -119,11 +119,10 @@
                 <span class="sidebar-soon-badge sidebar-hide">Soon</span>
             </button>
 
-            <button type="button" id="nav-budgets" class="nav-item nav-item-disabled flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 font-medium w-full justify-center lg:justify-start" disabled aria-disabled="true">
+            <a href="/budget" id="nav-budgets" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium transition-all w-full justify-center lg:justify-start">
                 <svg class="w-6 h-6 lg:w-5 lg:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-9-9v9z"></path></svg>
                 <span class="sidebar-text text-[13px] sidebar-hide">Budgets</span>
-                <span class="sidebar-soon-badge sidebar-hide">Soon</span>
-            </button>
+            </a>
 
             <button type="button" id="nav-approvals" class="nav-item nav-item-disabled flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 font-medium w-full justify-center lg:justify-start" disabled aria-disabled="true">
                 <svg class="w-6 h-6 lg:w-5 lg:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"></path></svg>
@@ -300,7 +299,12 @@
             'subscription': 'nav-subscriptions',
             'reports': 'nav-reports',
             'integration': 'nav-integrations',
-            'settings': 'nav-settings'
+            // 'settings' must come before 'budget' so that the existing
+            // /settings-budget.html page still highlights Settings rather
+            // than the new Budgets entry. /budget itself does not contain
+            // 'settings' as a substring, so this ordering is correct.
+            'settings': 'nav-settings',
+            'budget': 'nav-budgets'
         };
 
         const activeId = Object.keys(pageIdMap).find(p => path.includes(p));

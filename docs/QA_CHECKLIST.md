@@ -372,6 +372,85 @@ Run the **Cross-Page Regression** section below — changes to shared files affe
 | 40 | When categories tagged + matching income exists: ARR shows the rupiah value with the "(partial)" suffix and the caveat: "ARR excludes untagged revenue and may exclude valid recurring revenue if categories are not configured." |
 | 41 | ARR formula: recurring monthly revenue × 12; for YTD periods the monthly baseline is `total recurring income ÷ elapsed months` |
 
+### K. Budget Page (budget.html, budget.js, db-service.js budget methods, firestore.rules budget_allocations + bills)
+
+Run this section whenever `budget.html`, `assets/js/budget.js`, the
+budget-related methods in `assets/js/db-service.js`
+(`addBudgetWithAllocations`, `getBudgetAllocations`, `getBudgetUsage`,
+`matchBillToAllocation`), the firestore rules for `budget_allocations` or
+the bill-budget fields, or the Add Bill drawer's budget impact preview are
+touched.
+
+#### K1 — Page shell & auth guard
+| # | Check |
+|---|-------|
+| 1 | Hitting `/budget` while signed out redirects to `/login` |
+| 2 | After sign-in, `/budget` renders without footer, with the shared sidebar, and with `Budgets` highlighted in the Operations group |
+| 3 | Sidebar `Budgets` entry is a real link (not a disabled `Soon` button) and active state uses orange `#EA580C` |
+| 4 | `/settings-budget.html` still highlights `Settings` (not Budgets) in the sidebar |
+| 5 | No console errors on first load (CSP, CORS, 404, Firestore) |
+
+#### K2 — Empty state & first budget
+| # | Check |
+|---|-------|
+| 1 | Account with no `budgets/{*}` doc shows the empty state with title "Create your first operating budget" and a primary "Create Budget" button |
+| 2 | Click "Create Budget" → right-side drawer opens with 4 default allocation rows (Marketing, Infrastructure, Operations, SaaS) |
+| 3 | Drawer Submit is disabled until: name present, total > 0, period valid, every allocation has a name + amount > 0, sum(allocations) ≤ total |
+| 4 | Entering Allocations > Total shows the "Allocations exceed the main budget by Rp X" warning and keeps Submit disabled |
+| 5 | Submitting a valid budget: drawer closes, page reloads, summary card shows the new totals; allocations table lists each row with `Healthy` status |
+| 6 | Firestore: a single doc in `users/{uid}/budgets/{id}` with `total_budget`, `period_type`, `currency='IDR'`, `category_budgets` (denormalized map), optional `notes`; raw numbers, no formatted strings |
+| 7 | Firestore: N docs in `users/{uid}/budget_allocations/{id}` with `parent_budget_id = budgetId`, `scope_type='category'`, `scope_values=[<category>]`, `status='active'` |
+| 8 | Audit log written: `budget.created` (or `budget.updated`) + `budget.allocations_updated` with `target_collection='budget_allocations'` |
+
+#### K3 — Usage calculation
+| # | Check |
+|---|-------|
+| 1 | Add a transaction in-period with category `Marketing`, type `expense`, amount Rp 5.000.000 → Marketing row shows Actual Used `Rp 5.000.000` |
+| 2 | Add a `pending_payable` transaction in-period for `Infrastructure` Rp 3.000.000 → Infrastructure row shows Committed `Rp 3.000.000` (not Actual) |
+| 3 | Add an unpaid bill in-period for `Operations` Rp 12.000.000 → Operations Committed includes the bill |
+| 4 | Mark a bill `payment_status = 'paid'` (Firebase console) → Committed for that allocation drops; bill no longer counted |
+| 5 | Add a transaction with a category not in any allocation (e.g. `Travel`) → Unallocated spend card appears with the right amount |
+| 6 | An allocation that hits 92% usage shows `At Risk` badge; one over 100% shows `Exceeded` with a risk-panel line "exceeded by Rp X" |
+| 7 | `usage_percent` never displays as `NaN`, `Infinity`, or `-Infinity` (e.g. for an allocation with allocated_amount = 0) |
+
+#### K4 — Edit & resave
+| # | Check |
+|---|-------|
+| 1 | With a budget already active, primary CTA reads "Edit Budget" and the drawer prefills name, period, total, notes, and the existing allocations |
+| 2 | Saving a changed budget archives existing allocations (status flips to `archived` in Firestore) and writes the new set with `status='active'` |
+| 3 | Dashboard's `OpEx vs Budget` KPI continues to read the same `total_budget` after the new flow saves; settings-budget.html's history table still shows the same active row |
+
+#### K5 — Add Bill drawer budget impact (Phase 1.5)
+| # | Check |
+|---|-------|
+| 1 | Open Add Bill drawer with an active budget: preview loads, reads "Auto matched to <allocation>. This bill will reserve Rp 0 from <allocation>." (Rp 0 until an amount is entered) |
+| 2 | Type an amount within remaining → preview switches to green/Auto matched copy with the right amount |
+| 3 | Type an amount that exceeds remaining → preview switches to red/Budget warning copy with the over-by amount |
+| 4 | Switch category to one not in any allocation → preview becomes gray "No matching budget allocation found. This bill will be saved as unallocated." |
+| 5 | Change due date to a date outside the budget period → preview becomes "Due date is outside the active budget period." |
+| 6 | Account with no active budget: preview shows "No active budget for this bill period. This bill will be saved without budget impact." |
+| 7 | Saving a matched bill writes the 5 budget fields (`budget_id`, `budget_allocation_id`, `budget_match_method`, `budget_match_status`, `budget_impact_status`) into `users/{uid}/bills/{id}`; verify in Firestore |
+| 8 | Saving with no active budget: bill doc has none of the 5 budget fields present |
+| 9 | Add Transaction drawer (from Ledger page) does NOT show the budget preview block; `users/{uid}/transactions/{id}` is unaffected |
+| 10 | Add Subscription drawer does NOT show the budget preview block |
+
+#### K6 — Data isolation
+| # | Check |
+|---|-------|
+| 1 | All budget writes are under `users/{uid}/budgets` and `users/{uid}/budget_allocations` — no global collection appears |
+| 2 | Sign out → attempted write to `users/{otherUid}/budgets/...` is blocked by Firestore rules |
+| 3 | Bills schema accepts the 5 new optional fields without breaking the existing `hasOnly` allowlist (no permission-denied error when omitting them) |
+| 4 | Mobile 375px: summary cards stack into a single column; allocation table scrolls horizontally; drawer covers viewport |
+| 5 | Desktop 1280px: layout matches `bill.html` rhythm |
+
+#### K7 — Save atomicity (regression)
+| # | Check |
+|---|-------|
+| 1 | Note the active budget's name + total. Open Create / Edit drawer, change name + total + allocations to fresh values, click Save. If the save fails (any reason — rules undeployed, validator reject, network), the error toast appears AND a hard reload of `/budget` shows the **original** name + total — not the attempted values |
+| 2 | Inverse: when the save succeeds, the reload shows the new name + total. Allocations table reflects the new rows, archived rows are not visible |
+| 3 | Firebase console: every successful save produces one budget doc write (create OR update) plus N allocation doc creates plus K archive updates, all timestamped within the same server tick. A failed save produces zero doc writes |
+| 4 | Automated coverage: `npx playwright test tests/budget-verify.spec.js --grep "B6:"` passes — the spec asserts the budget doc is unchanged after a forced-fail save |
+
 ### I. Favicon / Meta / Head Changes
 
 | # | Check |
@@ -393,6 +472,7 @@ Open each page and confirm no visual breakage:
 | `dashboard.html` | KPIs, ledger, sidebar |
 | `bill.html` | Table, Add Bill modal, sidebar |
 | `subscription.html` | Table, Add Subscription modal, sidebar |
+| `budget.html` | Summary card, allocations table, Create/Edit drawer, sidebar |
 | `ledger.html` | Table, Add Transaction modal, sidebar |
 | `pricing.html` | Cards, toggle, footer |
 | `budgetlanding.html` | Hero, footer |

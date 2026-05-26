@@ -137,7 +137,7 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Revenue Sync | ✅ Shipped | Working app page at `/revenue-sync` (channels, reconciliation, revenue-only table) |
 | Vendor Spend | 📋 Planned | Visible as disabled `Soon`; no app page yet |
 | Receipt Capture | 📋 Planned | Visible as disabled `Soon`; no app page yet |
-| Budgets | 📋 Planned | Visible as disabled `Soon`; no app page yet |
+| Budgets | ✅ Shipped Phase 1 | `/budget` — main budget + category allocations, live actual/committed usage from transactions and unpaid bills, unallocated spend warning. Add Bill drawer shows live budget impact preview (Phase 1.5). Transaction-level budget tagging, edit/delete, and approvals remain out of scope. |
 | Approvals | 📋 Planned | Visible as disabled `Soon`; no app page yet |
 | Reports & Exports | ✅ Shipped MVP | `/reports` — period filter, readiness score, preview drawer, CSV export, `export.create` audit log |
 | Audit Log | 📋 Planned | Visible as disabled `Soon`; no app page yet |

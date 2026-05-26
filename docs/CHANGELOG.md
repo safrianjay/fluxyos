@@ -7,6 +7,29 @@ All notable changes to FluxyOS are recorded here, newest first.
 ## [Unreleased]
 > Changes in progress — not yet pushed to main
 
+### Added
+- **Budgets app page** (`/budget`) — Phase 1 operating budget control surface. Main budget summary (total / actual / committed / remaining / usage progress), allocation breakdown table with Healthy / Watch / At Risk / Exceeded status, risk panel and unallocated-spend card that only appear when there's real risk. Sidebar Budgets entry promoted from disabled `Soon` to a real link.
+- **Create / Edit Budget drawer** — name, total, period (range), monthly/quarterly/yearly type, optional notes, allocation rows (Marketing / Infrastructure / Operations / SaaS — Revenue intentionally excluded). Live "Allocated of Total / Unallocated" totals, over-allocation warning, validation that blocks submit until all fields valid.
+- **`users/{userId}/budget_allocations` Firestore collection** — category-scoped sub-budgets (`parent_budget_id`, `name`, `allocated_amount`, `scope_type: "category"`, `scope_values`, optional `alert_threshold_percent` + `hard_limit_enabled`, `status`, timestamps). Owner read/create/update only; delete blocked. Composite index expected on `(parent_budget_id ASC, created_at ASC)` with a fallback path in `DataService.getBudgetAllocations`.
+- **Add Bill drawer budget impact preview (Phase 1.5)** — when an active budget exists, the drawer prefetches it (after `auth.authStateReady()`) and reactively renders Matched / Exceeded / Unmatched / Needs-review / Out-of-period / No-active-budget copy as the user changes amount, category, or due date. On save, writes 5 new optional bill fields: `budget_id`, `budget_allocation_id`, `budget_match_method`, `budget_match_status`, `budget_impact_status`.
+- **DataService methods** — `getBudgetAllocations`, `addBudgetWithAllocations`, `getBudgetUsage`, `matchBillToAllocation` (pure-JS helper), `_normalizeAllocationInput`, `_budgetAllocationStatus`, `_emptyBudgetUsage`.
+- **`tests/budget-verify.spec.js`** — 7-probe Playwright verify spec covering sidebar active state, page render, drawer validation, bill preview reactivity, 8-page regression sweep, and save atomicity.
+- **`docs/QA_CHECKLIST.md` §K** — new K1–K7 sections covering page shell/auth, empty state, usage calculation, edit/resave, Add Bill preview, data isolation, and the save-atomicity regression.
+
+### Changed
+- **`users/{userId}/budgets` schema** — extended with optional `notes` (≤500 chars). All other fields unchanged. The new Budget page dual-writes a denormalized `category_budgets` map derived from allocations so the dashboard's `OpEx vs Budget` KPI and `settings-budget.html` history table stay coherent. Both pages now operate on the same active budget doc.
+- **`firestore.rules`** — additive only. `isValidBudget` accepts optional `notes`; new `isValidBudgetAllocation/Create/Update` validators + `match /budget_allocations/{id}` block; bills `hasOnly` allowlists (create + update) extended with the 5 new optional budget fields and `isValidBillBudgetFields` enum/string checks. Audit-log `target_collection` enum now accepts `"budget_allocations"`. **Rules must deploy before any new-flow save succeeds.**
+- **`sidebar-loader.js`** — Budgets is now `<a href="/budget">` instead of a disabled `Soon` button. Page-active-state `pageIdMap` orders `'settings'` before `'budget'` so `/settings-budget.html` still highlights Settings (not Budgets).
+- **`shared-dashboard.js`** — Add Bill drawer (only `context: 'bill'`) gains a `#tx-budget-preview` block plus reactive renderer; transaction and subscription paths are unchanged. Bill save payload attaches the 5 budget fields when an active budget exists; omits them entirely when not.
+- **`docs/ROADMAP.md`** — Budgets row moved from 📋 Planned → ✅ Shipped Phase 1.
+
+### Fixed
+- **`addBudgetWithAllocations` is now atomic.** Previously the budget doc was updated *before* the allocation batch write; if the allocation write was rejected (rules-not-deployed, validation, network), the budget doc was left half-modified. The QA harness reproduced this against live Firebase. The fix folds the budget create/update, prior-allocation archive, and new-allocation creates into a single `writeBatch`. If any row fails, none commits. Audit logs moved post-commit and made non-fatal. Verified by `tests/budget-verify.spec.js` B6.
+- **Bill drawer budget preview no longer false-fires "Session expired"** on first open. Auth was being read before Firebase rehydrated `currentUser` from IndexedDB. The preview IIFE now `await`s `auth.authStateReady()` first.
+- **Removed duplicate `matchBillToAllocation` logic.** The bill drawer's inline matcher in `shared-dashboard.js` was deleted; both the preview renderer and the bill save payload now route through `DataService.matchBillToAllocation` via a closure stored on `billBudgetContext.match`. Eliminates drift risk between preview and persisted state.
+- **`getBudgetUsage` now period-filters bills server-side** via `getBillsForPeriod` instead of `getBills` (which fetched every bill the user had ever created). The Budget page no longer scales linearly with total bill count.
+- **`getBudgetAllocations` limits bumped to tolerate edit history.** Primary query goes from `limit(50)` → `limit(500)`; fallback path from `limit(200)` → `limit(1000)`. Because `addBudgetWithAllocations` archives old rows on every save, a user who re-saves their budget many times could previously have lost active allocations if the index-missing fallback was hit. Phase 2 should hard-delete archived rows once audit-log retention covers the history.
+
 ---
 
 ## 2026-05-08

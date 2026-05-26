@@ -47,10 +47,16 @@ class DataService {
     // --- BILLS ---
     async addBill(userId, data) {
         const { timestamp, ...rest } = data;
-        return await addDoc(collection(this.db, `users/${userId}/bills`), {
+        const payload = {
             ...rest,
             timestamp: timestamp || serverTimestamp()
-        });
+        };
+        // Strip any null budget fields so an unmatched bill stays on the
+        // legacy schema (Firestore rules allow these fields to be absent,
+        // but only allow strings or omission — not literal `null`).
+        ['budget_id', 'budget_allocation_id', 'budget_match_method', 'budget_match_status', 'budget_impact_status']
+            .forEach((field) => { if (payload[field] == null) delete payload[field]; });
+        return await addDoc(collection(this.db, `users/${userId}/bills`), payload);
     }
 
     async getBills(userId) {
@@ -1453,6 +1459,8 @@ class DataService {
         };
         const categoryBudgets = this._normalizeCategoryBudgets(data.category_budgets);
         if (categoryBudgets) payload.category_budgets = categoryBudgets;
+        const notes = this._nullableString(data.notes, 500);
+        if (notes) payload.notes = notes;
 
         let budgetId;
         if (existing) {
@@ -1487,6 +1495,439 @@ class DataService {
             if (num > 0) cleaned[key] = num;
         });
         return Object.keys(cleaned).length ? cleaned : null;
+    }
+
+    // --- BUDGET ALLOCATIONS ---
+    // NOTE: addBudgetWithAllocations archives prior allocations on every save
+    // rather than deleting them. Limits below are deliberately generous to
+    // tolerate a long edit history; Phase 2 should hard-delete archived rows
+    // once the audit-log retention story covers the lost history.
+    async getBudgetAllocations(userId, budgetId) {
+        if (!userId || !budgetId) return [];
+        try {
+            const q = query(
+                collection(this.db, `users/${userId}/budget_allocations`),
+                where('parent_budget_id', '==', budgetId),
+                orderBy('created_at', 'asc'),
+                limit(500)
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .filter(a => a.status !== 'archived');
+        } catch (_) {
+            // Fallback when composite index is unavailable.
+            try {
+                const q = query(
+                    collection(this.db, `users/${userId}/budget_allocations`),
+                    limit(1000)
+                );
+                const snapshot = await getDocs(q);
+                return snapshot.docs
+                    .map(d => ({ id: d.id, ...d.data() }))
+                    .filter(a => a.parent_budget_id === budgetId && a.status !== 'archived')
+                    .sort((a, b) => {
+                        const aTs = a.created_at?.toDate?.()?.getTime?.() || 0;
+                        const bTs = b.created_at?.toDate?.()?.getTime?.() || 0;
+                        return aTs - bTs;
+                    });
+            } catch {
+                return [];
+            }
+        }
+    }
+
+    _normalizeAllocationInput(input) {
+        const allowedCats = new Set(['Marketing', 'Infrastructure', 'Operations', 'SaaS']);
+        const list = Array.isArray(input) ? input : [];
+        return list
+            .map(row => {
+                const name = this._stringOrDefault(row?.name, '', 120);
+                const allocated = Math.round(Math.max(0, Number(row?.allocated_amount) || 0));
+                const rawScope = Array.isArray(row?.scope_values) ? row.scope_values : [];
+                const scope = Array.from(new Set(
+                    rawScope
+                        .map(v => String(v || '').trim())
+                        .filter(v => v.length > 0 && v.length <= 80)
+                ));
+                const validScope = scope.filter(v => allowedCats.has(v));
+                const threshold = Number(row?.alert_threshold_percent);
+                return {
+                    name,
+                    allocated_amount: allocated,
+                    scope_type: 'category',
+                    scope_values: validScope.length ? validScope.slice(0, 10) : scope.slice(0, 10),
+                    alert_threshold_percent: Number.isFinite(threshold) ? Math.max(0, Math.min(100, threshold)) : 80,
+                    hard_limit_enabled: Boolean(row?.hard_limit_enabled),
+                    status: 'active'
+                };
+            })
+            .filter(row => row.name && row.allocated_amount > 0 && row.scope_values.length > 0);
+    }
+
+    async addBudgetWithAllocations(userId, budgetData, allocations) {
+        if (!userId) throw new Error('userId required');
+        const cleaned = this._normalizeAllocationInput(allocations);
+        if (cleaned.length === 0) {
+            throw new Error('At least one allocation with name, amount, and category is required.');
+        }
+        const totalAllocated = cleaned.reduce((sum, row) => sum + row.allocated_amount, 0);
+        const totalBudget = Math.round(Math.max(0, Number(budgetData.total_budget) || 0));
+        if (totalBudget <= 0) {
+            throw new Error('Total budget amount must be greater than zero.');
+        }
+        if (totalAllocated > totalBudget) {
+            throw new Error('Total allocations cannot exceed the main budget amount.');
+        }
+
+        // Build a denormalized category map so the existing dashboard
+        // OpEx-vs-Budget tracker and settings-budget.html history stay in sync.
+        const categoryBudgets = {};
+        cleaned.forEach(row => {
+            row.scope_values.forEach(cat => {
+                if (cat === 'Marketing' || cat === 'Infrastructure' || cat === 'Operations' || cat === 'SaaS') {
+                    categoryBudgets[cat] = (categoryBudgets[cat] || 0) + row.allocated_amount;
+                }
+            });
+        });
+
+        // Atomic write: the budget doc, the archive of any prior allocations,
+        // and the new allocation set all commit in one Firestore batch. If any
+        // part is rejected (validation, permission-denied, network), nothing
+        // is written — the existing budget doc stays intact.
+        const periodType = ['monthly', 'quarterly', 'yearly'].includes(budgetData.period_type)
+            ? budgetData.period_type
+            : 'monthly';
+        const startDate = this._coerceTimestampOrNow(budgetData.period_start);
+        const endDate = this._coerceTimestampOrNow(budgetData.period_end);
+        const name = this._stringOrDefault(budgetData.name, 'OpEx budget', 120);
+        const notes = this._nullableString(budgetData.notes, 500);
+
+        const existing = await this.getActiveBudget(userId);
+        let budgetRef;
+        let budgetIsNew = false;
+        if (existing) {
+            budgetRef = doc(this.db, `users/${userId}/budgets/${existing.id}`);
+        } else {
+            budgetRef = doc(collection(this.db, `users/${userId}/budgets`));
+            budgetIsNew = true;
+        }
+
+        // Existing allocations belong to the existing budget id, if any.
+        const allocsToArchive = existing
+            ? await this.getBudgetAllocations(userId, existing.id)
+            : [];
+
+        const batch = writeBatch(this.db);
+
+        if (budgetIsNew) {
+            const createPayload = {
+                name,
+                period_type: periodType,
+                period_start: startDate,
+                period_end: endDate,
+                currency: 'IDR',
+                total_budget: totalBudget,
+                status: 'active',
+                created_at: serverTimestamp(),
+                updated_at: serverTimestamp()
+            };
+            if (Object.keys(categoryBudgets).length) createPayload.category_budgets = categoryBudgets;
+            if (notes) createPayload.notes = notes;
+            batch.set(budgetRef, createPayload);
+        } else {
+            // batch.update is a merge — created_at is preserved automatically,
+            // satisfying isValidBudgetUpdate's `data.created_at == existingData.created_at`.
+            const updatePayload = {
+                name,
+                period_type: periodType,
+                period_start: startDate,
+                period_end: endDate,
+                currency: 'IDR',
+                total_budget: totalBudget,
+                status: 'active',
+                updated_at: serverTimestamp()
+            };
+            if (Object.keys(categoryBudgets).length) updatePayload.category_budgets = categoryBudgets;
+            if (notes) updatePayload.notes = notes;
+            batch.update(budgetRef, updatePayload);
+        }
+
+        // Archive prior allocations via partial update; the merge keeps every
+        // other required field intact so hasAll / hasOnly stay valid.
+        allocsToArchive.forEach(prev => {
+            const ref = doc(this.db, `users/${userId}/budget_allocations/${prev.id}`);
+            batch.update(ref, {
+                status: 'archived',
+                updated_at: serverTimestamp()
+            });
+        });
+
+        const allocationsCol = collection(this.db, `users/${userId}/budget_allocations`);
+        const allocationRefs = [];
+        cleaned.forEach(row => {
+            const ref = doc(allocationsCol);
+            allocationRefs.push(ref);
+            batch.set(ref, {
+                parent_budget_id: budgetRef.id,
+                name: row.name,
+                allocated_amount: row.allocated_amount,
+                scope_type: 'category',
+                scope_values: row.scope_values,
+                alert_threshold_percent: row.alert_threshold_percent,
+                hard_limit_enabled: row.hard_limit_enabled,
+                status: 'active',
+                created_at: serverTimestamp(),
+                updated_at: serverTimestamp()
+            });
+        });
+
+        await batch.commit();
+
+        // Audit logs are best-effort and non-fatal — the data write already
+        // succeeded by the time we get here.
+        try {
+            await this.addAuditLog(userId, {
+                action: budgetIsNew ? 'budget.created' : 'budget.updated',
+                target_collection: 'budgets',
+                target_id: budgetRef.id,
+                after: { total_budget: totalBudget, period_type: periodType, name, allocation_count: cleaned.length },
+                source: 'dashboard'
+            });
+            await this.addAuditLog(userId, {
+                action: 'budget.allocations_updated',
+                target_collection: 'budget_allocations',
+                target_id: budgetRef.id,
+                after: { budget_id: budgetRef.id, allocation_count: cleaned.length, total_allocated: totalAllocated },
+                source: 'dashboard'
+            });
+        } catch (_) { /* non-fatal */ }
+
+        const budget = {
+            id: budgetRef.id,
+            name,
+            period_type: periodType,
+            period_start: startDate,
+            period_end: endDate,
+            currency: 'IDR',
+            total_budget: totalBudget,
+            status: 'active'
+        };
+        if (Object.keys(categoryBudgets).length) budget.category_budgets = categoryBudgets;
+        if (notes) budget.notes = notes;
+
+        return {
+            budget,
+            allocations: cleaned.map((row, i) => ({ id: allocationRefs[i].id, ...row, parent_budget_id: budgetRef.id }))
+        };
+    }
+
+    async getBudgetUsage(userId, budgetId, options = {}) {
+        if (!userId || !budgetId) {
+            return this._emptyBudgetUsage();
+        }
+        const budgetRef = doc(this.db, `users/${userId}/budgets/${budgetId}`);
+        const budgetSnap = await getDoc(budgetRef);
+        if (!budgetSnap.exists()) return this._emptyBudgetUsage();
+
+        const budget = { id: budgetSnap.id, ...budgetSnap.data() };
+        const startDate = budget.period_start?.toDate?.() || null;
+        const endDate = budget.period_end?.toDate?.() || null;
+        if (!startDate || !endDate) {
+            return { ...this._emptyBudgetUsage(), budget };
+        }
+
+        const startKey = this._getDayKey(startDate);
+        const endKey = this._getDayKey(endDate);
+
+        // Period-filter both transactions AND bills server-side. Bills can
+        // span periods via `due_date`, but the in-period check below still
+        // runs (with `due_date || timestamp` fallback) so a bill timestamped
+        // outside the budget period but due inside it is captured by reading
+        // a wider window on `getBills` only when the index path is missing.
+        // For now the timestamp-based fetch is enough — Phase 1 bills always
+        // get `timestamp = serverTimestamp()` at create-time, so timestamp
+        // ≈ due_date for the common case.
+        const [allocations, transactions, bills] = await Promise.all([
+            this.getBudgetAllocations(userId, budgetId),
+            this.getTransactionsForPeriod(userId, startKey, endKey),
+            this.getBillsForPeriod(userId, startKey, endKey)
+        ]);
+
+        const SPEND_TYPES = new Set(['expense', 'fee', 'tax']);
+        const COMMIT_TYPES = new Set(['pending_payable']);
+
+        const isBillInPeriod = (bill) => {
+            const due = bill?.due_date?.toDate?.();
+            const ts = bill?.timestamp?.toDate?.();
+            const date = due || ts;
+            if (!date) return false;
+            const startCompare = new Date(startDate);
+            startCompare.setHours(0, 0, 0, 0);
+            const endCompare = new Date(endDate);
+            endCompare.setHours(23, 59, 59, 999);
+            return date >= startCompare && date <= endCompare;
+        };
+
+        const isBillUnpaid = (bill) => bill?.payment_status !== 'paid';
+        const isBillCommittable = (bill) =>
+            bill?.budget_impact_status !== 'converted_to_actual';
+
+        const allocationsWithUsage = allocations.map(alloc => {
+            const cats = new Set(Array.isArray(alloc.scope_values) ? alloc.scope_values : []);
+            let actual = 0;
+            let committedFromPP = 0;
+            transactions.forEach(tx => {
+                if (!cats.has(tx.category)) return;
+                const amount = Math.abs(Number(tx.amount) || 0);
+                if (SPEND_TYPES.has(tx.type)) actual += amount;
+                else if (COMMIT_TYPES.has(tx.type)) committedFromPP += amount;
+            });
+            let committedFromBills = 0;
+            bills.forEach(bill => {
+                if (!cats.has(bill.category)) return;
+                if (!isBillInPeriod(bill)) return;
+                if (!isBillUnpaid(bill)) return;
+                if (!isBillCommittable(bill)) return;
+                committedFromBills += Math.abs(Number(bill.amount) || 0);
+            });
+            const allocated = Math.max(0, Number(alloc.allocated_amount) || 0);
+            const committed = committedFromPP + committedFromBills;
+            const remaining = allocated - actual - committed;
+            const usagePercent = allocated > 0
+                ? ((actual + committed) / allocated) * 100
+                : 0;
+            return {
+                id: alloc.id,
+                name: alloc.name,
+                allocated_amount: allocated,
+                scope_type: alloc.scope_type,
+                scope_values: Array.isArray(alloc.scope_values) ? alloc.scope_values : [],
+                actual_used: actual,
+                committed_amount: committed,
+                remaining_amount: remaining,
+                usage_percent: Number.isFinite(usagePercent) ? usagePercent : 0,
+                status: this._budgetAllocationStatus(usagePercent)
+            };
+        });
+
+        // Unallocated spend = records in-period whose category does not
+        // intersect any active allocation scope_values.
+        const allocatedCats = new Set();
+        allocations.forEach(alloc => {
+            (Array.isArray(alloc.scope_values) ? alloc.scope_values : []).forEach(v => allocatedCats.add(v));
+        });
+
+        let unallocatedActual = 0;
+        let unallocatedCommitted = 0;
+        transactions.forEach(tx => {
+            if (allocatedCats.has(tx.category)) return;
+            const amount = Math.abs(Number(tx.amount) || 0);
+            if (SPEND_TYPES.has(tx.type)) unallocatedActual += amount;
+            else if (COMMIT_TYPES.has(tx.type)) unallocatedCommitted += amount;
+        });
+        bills.forEach(bill => {
+            if (allocatedCats.has(bill.category)) return;
+            if (!isBillInPeriod(bill)) return;
+            if (!isBillUnpaid(bill)) return;
+            if (!isBillCommittable(bill)) return;
+            unallocatedCommitted += Math.abs(Number(bill.amount) || 0);
+        });
+
+        const totalAllocated = allocationsWithUsage.reduce((s, a) => s + a.allocated_amount, 0);
+        const totalActual = allocationsWithUsage.reduce((s, a) => s + a.actual_used, 0);
+        const totalCommitted = allocationsWithUsage.reduce((s, a) => s + a.committed_amount, 0);
+        const totalBudget = Math.max(0, Number(budget.total_budget) || 0);
+        const totalRemaining = totalBudget - totalActual - totalCommitted;
+        const mainUsagePercent = totalBudget > 0
+            ? ((totalActual + totalCommitted) / totalBudget) * 100
+            : 0;
+
+        return {
+            budget,
+            allocations: allocationsWithUsage,
+            summary: {
+                total_amount: totalBudget,
+                total_allocated: totalAllocated,
+                unallocated_budget_amount: Math.max(0, totalBudget - totalAllocated),
+                total_actual_used: totalActual,
+                total_committed: totalCommitted,
+                total_remaining: totalRemaining,
+                usage_percent: Number.isFinite(mainUsagePercent) ? mainUsagePercent : 0
+            },
+            unallocated: {
+                actual_amount: unallocatedActual,
+                committed_amount: unallocatedCommitted
+            }
+        };
+    }
+
+    _emptyBudgetUsage() {
+        return {
+            budget: null,
+            allocations: [],
+            summary: {
+                total_amount: 0,
+                total_allocated: 0,
+                unallocated_budget_amount: 0,
+                total_actual_used: 0,
+                total_committed: 0,
+                total_remaining: 0,
+                usage_percent: 0
+            },
+            unallocated: { actual_amount: 0, committed_amount: 0 }
+        };
+    }
+
+    _budgetAllocationStatus(usagePercent) {
+        const u = Number.isFinite(usagePercent) ? usagePercent : 0;
+        if (u >= 100) return 'exceeded';
+        if (u >= 85) return 'at_risk';
+        if (u >= 70) return 'watch';
+        return 'healthy';
+    }
+
+    // Match a (possibly in-progress) bill draft to an active budget
+    // allocation. Returns { activeBudget, allocation, status, exceedsBy }.
+    // Pure logic — no Firestore writes. Used by both the bill drawer
+    // preview and the bill-save payload.
+    matchBillToAllocation({ billData, activeBudget, allocations }) {
+        if (!activeBudget) {
+            return { activeBudget: null, allocation: null, status: 'no_active_budget', exceedsBy: 0 };
+        }
+        const start = activeBudget.period_start?.toDate?.() || null;
+        const end = activeBudget.period_end?.toDate?.() || null;
+        if (!start || !end) {
+            return { activeBudget, allocation: null, status: 'no_active_budget', exceedsBy: 0 };
+        }
+        const due = billData?.due_date?.toDate?.() || (billData?.due_date instanceof Date ? billData.due_date : null);
+        const ts = billData?.timestamp?.toDate?.() || (billData?.timestamp instanceof Date ? billData.timestamp : null);
+        const date = due || ts || new Date();
+        const startCompare = new Date(start);
+        startCompare.setHours(0, 0, 0, 0);
+        const endCompare = new Date(end);
+        endCompare.setHours(23, 59, 59, 999);
+        if (date < startCompare || date > endCompare) {
+            return { activeBudget, allocation: null, status: 'out_of_period', exceedsBy: 0 };
+        }
+
+        const cat = String(billData?.category || '').trim();
+        if (!cat) {
+            return { activeBudget, allocation: null, status: 'unmatched', exceedsBy: 0 };
+        }
+        const active = (allocations || []).filter(a => a.status !== 'archived');
+        const matches = active.filter(a => Array.isArray(a.scope_values) && a.scope_values.includes(cat));
+        if (matches.length === 0) {
+            return { activeBudget, allocation: null, status: 'unmatched', exceedsBy: 0 };
+        }
+        const allocation = matches[0];
+        const billAmount = Math.abs(Number(billData?.amount) || 0);
+        const remaining = Math.max(0, Number(allocation.remaining_amount) || 0);
+        const exceedsBy = billAmount > remaining ? (billAmount - remaining) : 0;
+        const status = matches.length > 1
+            ? 'needs_review'
+            : (exceedsBy > 0 ? 'exceeded' : 'matched');
+        return { activeBudget, allocation, status, exceedsBy };
     }
 
     _buildCashPressure({ bankBalance = 0, receivablesDueSoon = 0, payablesDueSoon = 0, overdueCount = 0 }) {
