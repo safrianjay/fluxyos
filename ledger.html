@@ -51,8 +51,25 @@
                         <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Financial Ledger</h1>
                         <p class="text-[14px] text-gray-500 mt-1">Full audit trail of all transactions across your network.</p>
                     </div>
-                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
                         <div id="ledger-date-range-picker" data-tour-target="ledger-date-filter"></div>
+                        <select id="ledger-status-filter" aria-label="Filter by status" class="ledger-filter-select px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm whitespace-nowrap focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                            <option value="">All statuses</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Missing Receipt">Missing Receipt</option>
+                        </select>
+                        <select id="ledger-type-filter" aria-label="Filter by type" class="ledger-filter-select px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm whitespace-nowrap focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                            <option value="">All types</option>
+                            <option value="income">Income</option>
+                            <option value="expense">Expense</option>
+                            <option value="transfer">Transfer</option>
+                            <option value="refund">Refund</option>
+                            <option value="adjustment">Adjustment</option>
+                            <option value="fee">Fee</option>
+                            <option value="tax">Tax</option>
+                            <option value="pending_receivable">Pending Receivable</option>
+                            <option value="pending_payable">Pending Payable</option>
+                        </select>
                         <button id="download-csv-btn" type="button" data-tour-target="ledger-export" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap" disabled>
                             <svg id="download-csv-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
                             <span id="download-csv-label">Download CSV</span>
@@ -101,8 +118,8 @@
                         <h2 class="text-[16px] font-bold text-gray-900">Ledger Activity</h2>
                         <p class="text-[12px] text-gray-500 mt-1">Transaction activity, status mix, and type quality for audit review.</p>
                     </div>
-                    <div class="grid grid-cols-1 xl:grid-cols-5 divide-y xl:divide-y-0 xl:divide-x divide-gray-100 items-stretch">
-                        <div class="p-4 xl:col-span-3 flex flex-col">
+                    <div id="ledger-activity-grid" class="grid grid-cols-1 xl:grid-cols-5 divide-y xl:divide-y-0 xl:divide-x divide-gray-100 items-stretch">
+                        <div id="ledger-volume-col" class="p-4 xl:col-span-5 flex flex-col">
                             <div class="flex items-center justify-between gap-3 mb-3">
                                 <div>
                                     <h3 class="text-[13px] font-bold text-gray-900">Transaction Volume Over Time</h3>
@@ -111,22 +128,10 @@
                             </div>
                             <div id="ledger-volume-chart" class="flex-1"></div>
                         </div>
-                        <div class="p-4 xl:col-span-2 grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-                            <div>
-                                <h3 class="text-[13px] font-bold text-gray-900">Status Breakdown</h3>
-                                <p class="text-[12px] text-gray-500 mb-2">Distribution by current status</p>
-                                <div id="ledger-status-chart" class="space-y-3 max-h-[120px] overflow-y-auto pr-2"></div>
-                            </div>
-                            <div class="pt-4 border-t border-gray-100 md:border-t-0 md:pt-0 xl:border-t xl:pt-4">
-                                <h3 class="text-[13px] font-bold text-gray-900">Type Breakdown</h3>
-                                <p class="text-[12px] text-gray-500 mb-2">Distribution by transaction type</p>
-                                <div id="ledger-type-chart" class="space-y-3 max-h-[176px] overflow-y-auto pr-2"></div>
-                            </div>
-                            <div id="ledger-top-vendor-spend-section" class="hidden pt-4 border-t border-gray-100 md:col-span-2 xl:col-span-1">
-                                <h3 class="text-[13px] font-bold text-gray-900">Top Vendor Spend</h3>
-                                <p class="text-[12px] text-gray-500 mb-2">Distribution by expense-side vendor</p>
-                                <div id="ledger-top-vendor-spend-list" class="space-y-2"></div>
-                            </div>
+                        <div id="ledger-top-vendor-spend-section" class="hidden p-4 xl:col-span-2">
+                            <h3 class="text-[13px] font-bold text-gray-900">Top Vendor Spend</h3>
+                            <p class="text-[12px] text-gray-500 mb-2">Distribution by expense-side vendor</p>
+                            <div id="ledger-top-vendor-spend-list" class="space-y-2"></div>
                         </div>
                     </div>
                 </div>
@@ -134,12 +139,7 @@
                 <!-- Ledger Table Card -->
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6">
                     <div id="ledger-empty-state" class="hidden"></div>
-                    <div id="ledger-vendor-filter-chip-row" class="hidden px-6 py-3 border-b border-gray-100 bg-gray-50/50">
-                        <button id="ledger-clear-vendor-filter" type="button" class="inline-flex max-w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">
-                            <span id="ledger-vendor-filter-label" class="truncate">Vendor: —</span>
-                            <span class="text-gray-400" aria-hidden="true">×</span>
-                        </button>
-                    </div>
+                    <div id="ledger-filter-chip-row" class="hidden px-6 py-3 border-b border-gray-100 bg-gray-50/50 flex flex-wrap items-center gap-2"></div>
                     
                     <div id="ledger-table-container" data-tour-target="ledger-table" class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
@@ -333,6 +333,8 @@
         const linkedLedgerSearch = new URLSearchParams(window.location.search).get('search') || '';
         let ledgerSearchTerm = linkedLedgerSearch;
         let activeLedgerVendorFilter = null;
+        let ledgerStatusFilter = '';
+        let ledgerTypeFilter = '';
         let ledgerRangeStart = getMonthStartKey();
         let ledgerRangeEnd = getMonthEndKey();
         const linkedLedgerRecordId = new URLSearchParams(window.location.search).get('record');
@@ -557,13 +559,28 @@
             const downloadBtn = document.getElementById('download-csv-btn');
 
             currentLedgerTransactions = allLedgerTransactions.filter(transaction =>
-                matchesLedgerVendorFilter(transaction) && matchesLedgerSearch(transaction, ledgerSearchTerm)
+                matchesLedgerVendorFilter(transaction)
+                && matchesLedgerSearch(transaction, ledgerSearchTerm)
+                && matchesLedgerStatusFilter(transaction)
+                && matchesLedgerTypeFilter(transaction)
             );
-            renderLedgerVendorFilterChip();
+            renderLedgerFilterChips();
             renderLedgerSummaryCards(currentLedgerTransactions);
             renderLedgerActivity(currentLedgerTransactions);
             if (downloadBtn) downloadBtn.disabled = currentLedgerTransactions.length === 0;
             renderLedgerTable();
+        }
+
+        function matchesLedgerStatusFilter(transaction) {
+            if (!ledgerStatusFilter) return true;
+            return String(transaction?.status || '').trim() === ledgerStatusFilter;
+        }
+
+        function matchesLedgerTypeFilter(transaction) {
+            if (!ledgerTypeFilter) return true;
+            const raw = getNormalizedRawTransactionType(transaction);
+            const normalized = raw === 'revenue' ? 'income' : raw;
+            return normalized === ledgerTypeFilter;
         }
 
         function escapeHtml(str) {
@@ -606,19 +623,72 @@
             return !activeLedgerVendorFilter || getVendorKey(transaction) === activeLedgerVendorFilter.key;
         }
 
-        function renderLedgerVendorFilterChip() {
-            const row = document.getElementById('ledger-vendor-filter-chip-row');
-            const label = document.getElementById('ledger-vendor-filter-label');
-            if (!row || !label) return;
+        function getTypeFilterLabel(value) {
+            const map = {
+                income: 'Income',
+                expense: 'Expense',
+                transfer: 'Transfer',
+                refund: 'Refund',
+                adjustment: 'Adjustment',
+                fee: 'Fee',
+                tax: 'Tax',
+                pending_receivable: 'Pending Receivable',
+                pending_payable: 'Pending Payable'
+            };
+            return map[value] || value;
+        }
 
-            if (!activeLedgerVendorFilter) {
-                row.classList.add('hidden');
-                label.textContent = 'Vendor: —';
-                return;
+        function renderFilterChip({ label, kind }) {
+            return `
+                <button type="button" data-filter-clear="${kind}" class="inline-flex max-w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">
+                    <span class="truncate">${escapeHtml(label)}</span>
+                    <span class="text-gray-400" aria-hidden="true">×</span>
+                </button>
+            `;
+        }
+
+        function setSelectActiveState(selectEl, isActive) {
+            if (!selectEl) return;
+            selectEl.classList.toggle('border-[#EA580C]', isActive);
+            selectEl.classList.toggle('text-[#EA580C]', isActive);
+            selectEl.classList.toggle('border-gray-200', !isActive);
+            selectEl.classList.toggle('text-gray-700', !isActive);
+        }
+
+        function renderLedgerFilterChips() {
+            const row = document.getElementById('ledger-filter-chip-row');
+            if (!row) return;
+
+            const chips = [];
+            if (activeLedgerVendorFilter) {
+                chips.push(renderFilterChip({
+                    kind: 'vendor',
+                    label: `Vendor: ${activeLedgerVendorFilter.displayName}`
+                }));
+            }
+            if (ledgerStatusFilter) {
+                chips.push(renderFilterChip({
+                    kind: 'status',
+                    label: `Status: ${ledgerStatusFilter}`
+                }));
+            }
+            if (ledgerTypeFilter) {
+                chips.push(renderFilterChip({
+                    kind: 'type',
+                    label: `Type: ${getTypeFilterLabel(ledgerTypeFilter)}`
+                }));
             }
 
-            label.textContent = `Vendor: ${activeLedgerVendorFilter.displayName}`;
-            row.classList.remove('hidden');
+            if (!chips.length) {
+                row.classList.add('hidden');
+                row.innerHTML = '';
+            } else {
+                row.classList.remove('hidden');
+                row.innerHTML = chips.join('');
+            }
+
+            setSelectActiveState(document.getElementById('ledger-status-filter'), Boolean(ledgerStatusFilter));
+            setSelectActiveState(document.getElementById('ledger-type-filter'), Boolean(ledgerTypeFilter));
         }
 
         function setLedgerVendorFilter(vendorName) {
@@ -787,23 +857,6 @@
                 .map(([, value]) => value);
         }
 
-        function getStatusBreakdown(transactions) {
-            return transactions.reduce((counts, transaction) => {
-                const status = String(transaction.status || '').trim();
-                if (!status) return counts;
-                counts.set(status, (counts.get(status) || 0) + 1);
-                return counts;
-            }, new Map());
-        }
-
-        function getTransactionTypeBreakdown(transactions) {
-            return transactions.reduce((counts, transaction) => {
-                const type = getTransactionType(transaction);
-                counts.set(type, (counts.get(type) || 0) + 1);
-                return counts;
-            }, new Map());
-        }
-
         function renderEmptyChart(containerId, message) {
             const container = document.getElementById(containerId);
             if (!container) return;
@@ -873,52 +926,6 @@
             return 'bg-slate-100 text-slate-700';
         }
 
-        function getStatusColor(status) {
-            const normalized = String(status || '').toLowerCase();
-            if (normalized === 'completed') return 'bg-green-500';
-            if (normalized === 'reconciled') return 'bg-blue-500';
-            if (normalized === 'pending') return 'bg-amber-500';
-            if (normalized.includes('missing')) return 'bg-orange-500';
-            if (normalized === 'cancelled') return 'bg-gray-400';
-            return 'bg-slate-400';
-        }
-
-        function getTypeColor(type) {
-            if (type === 'Income') return 'bg-green-500';
-            if (type === 'Expense') return 'bg-orange-500';
-            if (type === 'Refund') return 'bg-emerald-500';
-            if (type === 'Pending receivable') return 'bg-blue-500';
-            if (type === 'Pending payable') return 'bg-amber-500';
-            if (type === 'Fee' || type === 'Tax') return 'bg-rose-500';
-            if (type === 'Transfer' || type === 'Adjustment') return 'bg-violet-500';
-            return 'bg-slate-400';
-        }
-
-        function renderBreakdownChart(containerId, breakdown, emptyMessage, colorResolver = () => 'bg-slate-400') {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-
-            const rows = Array.from(breakdown.entries()).sort((a, b) => b[1] - a[1]);
-            if (rows.length === 0) {
-                renderEmptyChart(containerId, emptyMessage);
-                return;
-            }
-
-            const maxCount = Math.max(...rows.map(([, count]) => count), 1);
-            const totalCount = rows.reduce((sum, [, count]) => sum + count, 0);
-            container.innerHTML = rows.map(([label, count]) => `
-                <div>
-                    <div class="flex items-center justify-between gap-3 text-[12px]">
-                        <span class="font-bold text-gray-700 truncate">${label}</span>
-                        <span class="font-mono font-bold text-gray-500">${count} · ${Math.round((count / totalCount) * 100)}%</span>
-                    </div>
-                    <div class="mt-1.5 h-2 rounded-full bg-gray-100 overflow-hidden">
-                        <div class="h-full rounded-full ${colorResolver(label)}" style="width: ${Math.max((count / maxCount) * 100, 10)}%"></div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
         function getTopVendorSpend(transactions) {
             const grouped = transactions.reduce((vendors, transaction) => {
                 if (!isExpenseSideVendorTransaction(transaction)) return vendors;
@@ -943,14 +950,20 @@
         function renderTopVendorSpend(transactions) {
             const section = document.getElementById('ledger-top-vendor-spend-section');
             const list = document.getElementById('ledger-top-vendor-spend-list');
+            const volumeCol = document.getElementById('ledger-volume-col');
             if (!section || !list) return;
 
             const vendors = getTopVendorSpend(transactions);
             if (!vendors.length) {
                 list.innerHTML = '';
                 section.classList.add('hidden');
+                volumeCol?.classList.remove('xl:col-span-3');
+                volumeCol?.classList.add('xl:col-span-5');
                 return;
             }
+
+            volumeCol?.classList.remove('xl:col-span-5');
+            volumeCol?.classList.add('xl:col-span-3');
 
             list.innerHTML = vendors.map(vendor => `
                 <div class="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50/70 px-3 py-2">
@@ -966,8 +979,6 @@
 
         function renderLedgerActivity(transactions) {
             renderVolumeChart(transactions);
-            renderBreakdownChart('ledger-status-chart', getStatusBreakdown(transactions), 'Status breakdown not available.', getStatusColor);
-            renderBreakdownChart('ledger-type-chart', getTransactionTypeBreakdown(transactions), 'Type breakdown not available.', getTypeColor);
             renderTopVendorSpend(transactions);
         }
 
@@ -1098,7 +1109,34 @@
             applyLedgerMonthFilter();
         });
 
-        document.getElementById('ledger-clear-vendor-filter')?.addEventListener('click', clearLedgerVendorFilter);
+        document.getElementById('ledger-status-filter')?.addEventListener('change', (event) => {
+            ledgerStatusFilter = event.target.value;
+            applyLedgerMonthFilter();
+        });
+
+        document.getElementById('ledger-type-filter')?.addEventListener('change', (event) => {
+            ledgerTypeFilter = event.target.value;
+            applyLedgerMonthFilter();
+        });
+
+        document.getElementById('ledger-filter-chip-row')?.addEventListener('click', (event) => {
+            const btn = event.target.closest('[data-filter-clear]');
+            if (!btn) return;
+            const kind = btn.dataset.filterClear;
+            if (kind === 'vendor') {
+                clearLedgerVendorFilter();
+            } else if (kind === 'status') {
+                ledgerStatusFilter = '';
+                const sel = document.getElementById('ledger-status-filter');
+                if (sel) sel.value = '';
+                applyLedgerMonthFilter();
+            } else if (kind === 'type') {
+                ledgerTypeFilter = '';
+                const sel = document.getElementById('ledger-type-filter');
+                if (sel) sel.value = '';
+                applyLedgerMonthFilter();
+            }
+        });
 
         document.getElementById('ledger-table-body')?.addEventListener('click', (event) => {
             const vendorBtn = event.target.closest('[data-action="ledger-vendor-filter"]');
