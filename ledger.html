@@ -10,6 +10,87 @@
     
     <link rel="stylesheet" href="assets/css/shared-dashboard.css">
     <link rel="stylesheet" href="assets/css/platform-learning.css">
+    <style>
+        .fluxy-select { position: relative; display: inline-block; }
+        .fluxy-select-trigger {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #ffffff;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #374151;
+            white-space: nowrap;
+            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+        }
+        .fluxy-select-trigger:hover { background: #F9FAFB; }
+        .fluxy-select-trigger:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(234,88,12,0.25);
+            border-color: #EA580C;
+        }
+        .fluxy-select-trigger[data-active="true"] {
+            border-color: #EA580C;
+            color: #EA580C;
+        }
+        .fluxy-select-chevron {
+            width: 14px;
+            height: 14px;
+            color: #9CA3AF;
+            flex-shrink: 0;
+            transition: transform 150ms ease;
+        }
+        .fluxy-select[data-open="true"] .fluxy-select-chevron { transform: rotate(180deg); }
+        .fluxy-select-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            min-width: 100%;
+            max-height: 320px;
+            overflow-y: auto;
+            background: #ffffff;
+            border: 1px solid #E5E7EB;
+            border-radius: 10px;
+            box-shadow: 0 12px 28px rgba(11,15,25,0.12);
+            padding: 4px;
+            z-index: 50;
+            display: none;
+        }
+        .fluxy-select[data-open="true"] .fluxy-select-menu { display: block; }
+        .fluxy-select-option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            width: 100%;
+            padding: 8px 10px;
+            background: transparent;
+            border: 0;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            text-align: left;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .fluxy-select-option:hover { background: #F9FAFB; color: #0B0F19; }
+        .fluxy-select-option[aria-selected="true"] {
+            color: #EA580C;
+            background: #FFF7ED;
+        }
+        .fluxy-select-option-check {
+            width: 14px;
+            height: 14px;
+            opacity: 0;
+        }
+        .fluxy-select-option[aria-selected="true"] .fluxy-select-option-check { opacity: 1; }
+    </style>
 </head>
 <body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
 
@@ -53,23 +134,8 @@
                     </div>
                     <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-end gap-3">
                         <div id="ledger-date-range-picker" data-tour-target="ledger-date-filter"></div>
-                        <select id="ledger-status-filter" aria-label="Filter by status" class="ledger-filter-select px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm whitespace-nowrap focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
-                            <option value="">All statuses</option>
-                            <option value="Completed">Completed</option>
-                            <option value="Missing Receipt">Missing Receipt</option>
-                        </select>
-                        <select id="ledger-type-filter" aria-label="Filter by type" class="ledger-filter-select px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm whitespace-nowrap focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
-                            <option value="">All types</option>
-                            <option value="income">Income</option>
-                            <option value="expense">Expense</option>
-                            <option value="transfer">Transfer</option>
-                            <option value="refund">Refund</option>
-                            <option value="adjustment">Adjustment</option>
-                            <option value="fee">Fee</option>
-                            <option value="tax">Tax</option>
-                            <option value="pending_receivable">Pending Receivable</option>
-                            <option value="pending_payable">Pending Payable</option>
-                        </select>
+                        <div id="ledger-status-filter" class="fluxy-select" data-default-label="All statuses" data-aria-label="Filter by status"></div>
+                        <div id="ledger-type-filter" class="fluxy-select" data-default-label="All types" data-aria-label="Filter by type"></div>
                         <button id="download-csv-btn" type="button" data-tour-target="ledger-export" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap" disabled>
                             <svg id="download-csv-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
                             <span id="download-csv-label">Download CSV</span>
@@ -364,6 +430,170 @@
             }
         });
 
+        const fluxySelectInstances = new Map();
+        let fluxyOpenSelect = null;
+
+        function mountFluxySelect(rootSelector, { options, value = '', onChange }) {
+            const root = typeof rootSelector === 'string' ? document.querySelector(rootSelector) : rootSelector;
+            if (!root) return null;
+            const defaultLabel = root.dataset.defaultLabel || options[0]?.label || 'Select';
+            const ariaLabel = root.dataset.ariaLabel || defaultLabel;
+
+            root.innerHTML = `
+                <button type="button" class="fluxy-select-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="${ariaLabel}">
+                    <span class="fluxy-select-label"></span>
+                    <svg class="fluxy-select-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 8l4 4 4-4"/>
+                    </svg>
+                </button>
+                <div class="fluxy-select-menu" role="listbox" tabindex="-1"></div>
+            `;
+
+            const trigger = root.querySelector('.fluxy-select-trigger');
+            const labelEl = root.querySelector('.fluxy-select-label');
+            const menu = root.querySelector('.fluxy-select-menu');
+
+            menu.innerHTML = options.map(opt => `
+                <button type="button" role="option" class="fluxy-select-option" data-value="${escapeHtml(opt.value)}">
+                    <span>${escapeHtml(opt.label)}</span>
+                    <svg class="fluxy-select-option-check" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M5 10l4 4 7-8"/>
+                    </svg>
+                </button>
+            `).join('');
+
+            function findOption(v) {
+                return options.find(o => o.value === v) || options.find(o => o.value === '') || options[0];
+            }
+
+            function renderSelected() {
+                const opt = findOption(instance.value);
+                labelEl.textContent = (opt && opt.value) ? opt.label : defaultLabel;
+                menu.querySelectorAll('.fluxy-select-option').forEach(el => {
+                    el.setAttribute('aria-selected', el.dataset.value === (instance.value || '') ? 'true' : 'false');
+                });
+            }
+
+            function open() {
+                if (fluxyOpenSelect && fluxyOpenSelect !== instance) fluxyOpenSelect.close();
+                root.dataset.open = 'true';
+                trigger.setAttribute('aria-expanded', 'true');
+                fluxyOpenSelect = instance;
+                const selected = menu.querySelector('[aria-selected="true"]') || menu.querySelector('.fluxy-select-option');
+                selected?.focus();
+            }
+
+            function close() {
+                root.dataset.open = 'false';
+                trigger.setAttribute('aria-expanded', 'false');
+                if (fluxyOpenSelect === instance) fluxyOpenSelect = null;
+            }
+
+            function toggle() {
+                if (root.dataset.open === 'true') { close(); } else { open(); }
+            }
+
+            trigger.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
+            trigger.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    open();
+                }
+            });
+
+            menu.addEventListener('click', (e) => {
+                const optEl = e.target.closest('.fluxy-select-option');
+                if (!optEl) return;
+                e.stopPropagation();
+                const newValue = optEl.dataset.value;
+                instance.setValue(newValue, { emit: true });
+                close();
+                trigger.focus();
+            });
+
+            menu.addEventListener('keydown', (e) => {
+                const items = Array.from(menu.querySelectorAll('.fluxy-select-option'));
+                const idx = items.indexOf(document.activeElement);
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    items[Math.min(idx + 1, items.length - 1)]?.focus();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    items[Math.max(idx - 1, 0)]?.focus();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    close();
+                    trigger.focus();
+                } else if (e.key === 'Home') {
+                    e.preventDefault();
+                    items[0]?.focus();
+                } else if (e.key === 'End') {
+                    e.preventDefault();
+                    items[items.length - 1]?.focus();
+                }
+            });
+
+            const instance = {
+                root,
+                value,
+                setValue(v, { emit = false } = {}) {
+                    instance.value = v || '';
+                    renderSelected();
+                    if (emit && typeof onChange === 'function') onChange(instance.value);
+                },
+                setActive(isActive) {
+                    trigger.dataset.active = isActive ? 'true' : 'false';
+                },
+                close,
+            };
+
+            fluxySelectInstances.set(root.id || root, instance);
+            renderSelected();
+            return instance;
+        }
+
+        document.addEventListener('click', (event) => {
+            if (!fluxyOpenSelect) return;
+            if (fluxyOpenSelect.root.contains(event.target)) return;
+            fluxyOpenSelect.close();
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && fluxyOpenSelect) {
+                fluxyOpenSelect.close();
+            }
+        });
+
+        const statusSelect = mountFluxySelect('#ledger-status-filter', {
+            options: [
+                { value: '', label: 'All statuses' },
+                { value: 'Completed', label: 'Completed' },
+                { value: 'Missing Receipt', label: 'Missing Receipt' },
+            ],
+            onChange: (v) => {
+                ledgerStatusFilter = v;
+                applyLedgerMonthFilter();
+            }
+        });
+
+        const typeSelect = mountFluxySelect('#ledger-type-filter', {
+            options: [
+                { value: '', label: 'All types' },
+                { value: 'income', label: 'Income' },
+                { value: 'expense', label: 'Expense' },
+                { value: 'transfer', label: 'Transfer' },
+                { value: 'refund', label: 'Refund' },
+                { value: 'adjustment', label: 'Adjustment' },
+                { value: 'fee', label: 'Fee' },
+                { value: 'tax', label: 'Tax' },
+                { value: 'pending_receivable', label: 'Pending Receivable' },
+                { value: 'pending_payable', label: 'Pending Payable' },
+            ],
+            onChange: (v) => {
+                ledgerTypeFilter = v;
+                applyLedgerMonthFilter();
+            }
+        });
+
         function getMonthKey(date = new Date()) {
             return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         }
@@ -647,12 +877,8 @@
             `;
         }
 
-        function setSelectActiveState(selectEl, isActive) {
-            if (!selectEl) return;
-            selectEl.classList.toggle('border-[#EA580C]', isActive);
-            selectEl.classList.toggle('text-[#EA580C]', isActive);
-            selectEl.classList.toggle('border-gray-200', !isActive);
-            selectEl.classList.toggle('text-gray-700', !isActive);
+        function setSelectActiveState(instance, isActive) {
+            instance?.setActive(isActive);
         }
 
         function renderLedgerFilterChips() {
@@ -687,8 +913,8 @@
                 row.innerHTML = chips.join('');
             }
 
-            setSelectActiveState(document.getElementById('ledger-status-filter'), Boolean(ledgerStatusFilter));
-            setSelectActiveState(document.getElementById('ledger-type-filter'), Boolean(ledgerTypeFilter));
+            setSelectActiveState(statusSelect, Boolean(ledgerStatusFilter));
+            setSelectActiveState(typeSelect, Boolean(ledgerTypeFilter));
         }
 
         function setLedgerVendorFilter(vendorName) {
@@ -1109,16 +1335,6 @@
             applyLedgerMonthFilter();
         });
 
-        document.getElementById('ledger-status-filter')?.addEventListener('change', (event) => {
-            ledgerStatusFilter = event.target.value;
-            applyLedgerMonthFilter();
-        });
-
-        document.getElementById('ledger-type-filter')?.addEventListener('change', (event) => {
-            ledgerTypeFilter = event.target.value;
-            applyLedgerMonthFilter();
-        });
-
         document.getElementById('ledger-filter-chip-row')?.addEventListener('click', (event) => {
             const btn = event.target.closest('[data-filter-clear]');
             if (!btn) return;
@@ -1127,13 +1343,11 @@
                 clearLedgerVendorFilter();
             } else if (kind === 'status') {
                 ledgerStatusFilter = '';
-                const sel = document.getElementById('ledger-status-filter');
-                if (sel) sel.value = '';
+                statusSelect?.setValue('');
                 applyLedgerMonthFilter();
             } else if (kind === 'type') {
                 ledgerTypeFilter = '';
-                const sel = document.getElementById('ledger-type-filter');
-                if (sel) sel.value = '';
+                typeSelect?.setValue('');
                 applyLedgerMonthFilter();
             }
         });
