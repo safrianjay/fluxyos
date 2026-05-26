@@ -60,46 +60,70 @@
                 <!-- Content (rendered when a budget exists) -->
                 <div id="budget-content" class="hidden space-y-6">
 
-                    <!-- Main Budget Summary -->
+                    <!-- Active Operating Budget -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Active operating budget</p>
-                                <h2 id="budget-name" class="text-xl font-bold text-gray-900 mt-1">—</h2>
-                                <p id="budget-period" class="text-[12px] text-gray-500 mt-1">—</p>
-                            </div>
-                            <span id="budget-period-type" class="self-start rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-bold text-gray-600 uppercase tracking-wider">Monthly</span>
+                        <div>
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Active Operating Budget</p>
+                            <h2 id="budget-name" class="text-xl font-bold text-gray-900 mt-1">—</h2>
+                            <p id="budget-period" class="text-[12px] text-gray-500 mt-1">—</p>
                         </div>
 
-                        <div class="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div class="bg-gray-50 rounded-lg p-4">
+                        <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <!-- Main Budget -->
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
                                 <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Main Budget</p>
-                                <p id="budget-total" class="mt-1 text-2xl font-bold font-mono text-gray-900">—</p>
+                                <p id="budget-total" class="mt-2 text-xl font-bold font-mono text-gray-900 truncate">—</p>
+                                <p class="mt-1 text-[11px] text-gray-500">Total spending envelope for this period.</p>
                             </div>
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Actual Used</p>
-                                <p id="budget-actual" class="mt-1 text-2xl font-bold font-mono text-gray-900">—</p>
+
+                            <!-- Allocated -->
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Allocated</p>
+                                <p id="budget-allocated" class="mt-2 text-xl font-bold font-mono text-gray-900 truncate">—</p>
+                                <p id="budget-allocated-hint" class="mt-1 text-[11px] text-gray-500">—</p>
                             </div>
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Committed</p>
-                                <p id="budget-committed" class="mt-1 text-2xl font-bold font-mono text-gray-900">—</p>
+
+                            <!-- Spent + Reserved -->
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Spent + Reserved</p>
+                                <p id="budget-spent" class="mt-2 text-xl font-bold font-mono text-gray-900 truncate">—</p>
+                                <p id="budget-spent-hint" class="mt-1 text-[11px] text-gray-500">—</p>
                             </div>
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Remaining</p>
-                                <p id="budget-remaining" class="mt-1 text-2xl font-bold font-mono text-gray-900">—</p>
+
+                            <!-- Unassigned (gains orange accent when > 0) -->
+                            <div id="budget-unassigned-card" class="bg-gray-50 rounded-lg p-4 border border-gray-100 transition-colors">
+                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Unassigned</p>
+                                <p id="budget-unassigned" class="mt-2 text-xl font-bold font-mono text-gray-900 truncate">—</p>
+                                <p id="budget-unassigned-hint" class="mt-1 text-[11px] text-gray-500">—</p>
                             </div>
                         </div>
 
-                        <div class="mt-5">
+                        <div class="mt-6">
                             <div class="flex items-center justify-between text-[12px] text-gray-500 mb-2">
-                                <span>Total usage</span>
-                                <span id="budget-usage-percent" class="font-mono font-bold text-gray-700">0%</span>
+                                <span>Allocation coverage</span>
+                                <span id="budget-coverage-percent" class="font-mono font-bold text-gray-700">0%</span>
                             </div>
                             <div class="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                                <div id="budget-usage-bar" class="h-full rounded-full bg-gray-300 transition-all" style="width: 0%"></div>
+                                <div id="budget-coverage-bar" class="h-full rounded-full bg-gray-900 transition-all" style="width: 0%"></div>
                             </div>
-                            <p id="budget-unallocated-note" class="hidden mt-3 text-[12px] text-amber-600"></p>
                         </div>
+
+                        <!-- Unassigned callout — visible only when unassigned > 0 -->
+                        <div id="budget-unassigned-callout" class="hidden mt-5 rounded-lg border border-orange-200 bg-orange-50/50 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="flex items-start gap-3 flex-1 min-w-0">
+                                <svg class="w-5 h-5 text-[#EA580C] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.74-3L13.74 4a2 2 0 00-3.48 0L3.33 16a2 2 0 001.74 3z"></path>
+                                </svg>
+                                <div class="min-w-0">
+                                    <p class="text-[13px] font-bold text-gray-900"><span id="budget-callout-amount" class="font-mono">Rp 0</span> is still not assigned to any allocation.</p>
+                                    <p class="mt-1 text-[12px] text-gray-500">Unassigned budget is still part of your main budget, but it is not tracked by purpose yet.</p>
+                                </div>
+                            </div>
+                            <button id="budget-assign-remaining-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 hover:border-[#EA580C] hover:text-[#EA580C] rounded-lg text-[12px] font-bold text-gray-700 transition-colors whitespace-nowrap active:scale-95">Assign Remaining Budget</button>
+                        </div>
+
+                        <!-- Positive neutral state when nothing is unassigned -->
+                        <p id="budget-all-assigned-note" class="hidden mt-5 text-[12px] text-gray-500">All budget has been assigned to allocations.</p>
                     </div>
 
                     <!-- Risk Panel -->

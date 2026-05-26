@@ -126,29 +126,61 @@ function renderBudget(usage) {
 
     el('budget-name').textContent = budget.name || 'Operating Budget';
     el('budget-period').textContent = formatPeriod(budget);
-    el('budget-period-type').textContent = (budget.period_type || 'monthly').replace(/^\w/, c => c.toUpperCase());
-    el('budget-total').textContent = formatRp(summary.total_amount);
-    el('budget-actual').textContent = formatRp(summary.total_actual_used);
-    el('budget-committed').textContent = formatRp(summary.total_committed);
 
-    const remaining = summary.total_remaining;
-    const remainingEl = el('budget-remaining');
-    remainingEl.textContent = formatRp(remaining);
-    remainingEl.className = `mt-1 text-2xl font-bold font-mono ${remaining < 0 ? 'text-red-600' : 'text-gray-900'}`;
+    // ── Summary cards ───────────────────────────────────────────────
+    const total = summary.total_amount;
+    const allocated = summary.total_allocated;
+    const unassigned = summary.unallocated_budget_amount;
+    const spentReserved = summary.total_actual_used + summary.total_committed;
+    const coveragePercent = total > 0 ? (allocated / total) * 100 : 0;
+    const unassignedPercent = total > 0 ? (unassigned / total) * 100 : 0;
 
-    const percent = Math.max(0, Math.min(100, summary.usage_percent));
-    el('budget-usage-percent').textContent = formatPercent(summary.usage_percent);
-    const bar = el('budget-usage-bar');
-    bar.style.width = percent + '%';
-    const mainStatus = classifyStatus(summary.usage_percent);
-    bar.className = `h-full rounded-full transition-all ${USAGE_BAR_CLASS[mainStatus] || 'bg-gray-300'}`;
+    el('budget-total').textContent = formatRp(total);
 
-    const unallocatedNote = el('budget-unallocated-note');
-    if (summary.unallocated_budget_amount > 0) {
-        unallocatedNote.classList.remove('hidden');
-        unallocatedNote.textContent = `${formatRp(summary.unallocated_budget_amount)} of the main budget is not assigned to any allocation.`;
+    el('budget-allocated').textContent = formatRp(allocated);
+    el('budget-allocated-hint').textContent = total > 0
+        ? `${formatPercent(coveragePercent)} of main budget has a purpose.`
+        : 'Set a main budget to start allocating.';
+
+    el('budget-spent').textContent = formatRp(spentReserved);
+    if (spentReserved === 0) {
+        el('budget-spent-hint').textContent = 'No actual or committed spend yet.';
     } else {
-        unallocatedNote.classList.add('hidden');
+        el('budget-spent-hint').textContent =
+            `${formatRp(summary.total_actual_used)} spent · ${formatRp(summary.total_committed)} reserved.`;
+    }
+
+    el('budget-unassigned').textContent = formatRp(unassigned);
+    el('budget-unassigned-hint').textContent = total > 0
+        ? `${formatPercent(unassignedPercent)} still needs allocation.`
+        : '—';
+
+    // Orange accent on the Unassigned card only when there's something to act on.
+    const unassignedCard = el('budget-unassigned-card');
+    if (unassigned > 0) {
+        unassignedCard.className = 'rounded-lg p-4 border border-[#EA580C]/40 bg-orange-50/40 transition-colors';
+    } else {
+        unassignedCard.className = 'bg-gray-50 rounded-lg p-4 border border-gray-100 transition-colors';
+    }
+
+    // ── Allocation coverage bar ─────────────────────────────────────
+    const coverageClamped = Math.max(0, Math.min(100, coveragePercent));
+    el('budget-coverage-percent').textContent = formatPercent(coveragePercent);
+    el('budget-coverage-bar').style.width = coverageClamped + '%';
+
+    // ── Unassigned callout / all-assigned note ──────────────────────
+    const callout = el('budget-unassigned-callout');
+    const allAssignedNote = el('budget-all-assigned-note');
+    if (unassigned > 0) {
+        el('budget-callout-amount').textContent = formatRp(unassigned);
+        callout.classList.remove('hidden');
+        allAssignedNote.classList.add('hidden');
+    } else {
+        callout.classList.add('hidden');
+        // Only show the "all assigned" line if the user actually has a budget
+        // with allocations; an empty period reads as "—" not as a success.
+        if (allocated > 0) allAssignedNote.classList.remove('hidden');
+        else allAssignedNote.classList.add('hidden');
     }
 
     renderAllocationsTable(allocations);
@@ -251,6 +283,11 @@ function renderUnallocatedCard(unallocated) {
 
 function wireDrawerControls() {
     el('budget-create-btn').addEventListener('click', () => openDrawer());
+    // The Assign Remaining Budget CTA lives inside the unassigned callout;
+    // it's always in the DOM (hidden until needed) so we can wire it once.
+    // Reuses the Edit Budget flow — opening the drawer prefills allocation
+    // rows and shows the remaining-unallocated amount inline.
+    el('budget-assign-remaining-btn')?.addEventListener('click', () => openDrawer());
     el('budget-drawer-close-btn').addEventListener('click', closeDrawer);
     el('budget-drawer-cancel').addEventListener('click', closeDrawer);
     el('budget-drawer-backdrop').addEventListener('click', closeDrawer);
