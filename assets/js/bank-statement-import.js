@@ -1,18 +1,23 @@
-// FluxyOS — Bank Statement Import drawer (Phase 1)
+// FluxyOS — Bank Statement Import drawer/panel (Phase 1)
 // Spec: docs/BANK_STATEMENT_IMPORT_AUTOMATION_PLAN.md
 //
-// Phase 1 scope (this file):
-//   • Render a right-side drawer titled "Import Bank Statement".
+// Phase 1 scope:
 //   • Accept PDF, CSV, XLS, XLSX (validated by mime + extension + size).
 //   • Upload the file to users/{uid}/bank_statement_imports/{importId}/{fileName}
 //     and create a review draft in Firestore with review_status: "draft".
 //   • Show detection summary and review table only when extraction data exists.
-//     Until the backend parser is connected, the drawer shows a clear
+//     Until the backend parser is connected, the panel shows a clear
 //     "Extraction not connected" state — it never fabricates bank data.
 //   • Provide a "Reject draft" action that flips review_status to "rejected".
 //   • Never create transactions. Never update a bank account balance.
 //
-// Callers attach via: window.FluxyBankStatementImport.open({ app, auth, ds })
+// Two ways to use this module:
+//   window.FluxyBankStatementImport.open({ app, auth, ds, user })
+//     → opens a standalone right-side drawer.
+//   window.FluxyBankStatementImport.mount({ contentEl, footerEl, app, auth, ds, user })
+//     → renders the upload/review UI into caller-owned content + footer
+//     containers (used by the unified Scan / Import drawer on the Ledger
+//     page). Returns { destroy(), getState() }.
 
 (function () {
     if (window.FluxyBankStatementImport) return;
@@ -24,16 +29,16 @@
         'application/csv',
         'application/vnd.ms-excel',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        '' // empty when browser cannot infer mime — fall back to extension check
+        ''
     ]);
-    const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+    const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
     const STATE_DEFAULT = 'default';
     const STATE_UPLOADING = 'uploading';
     const STATE_UPLOADED = 'uploaded';
     const STATE_ERROR = 'error';
 
-    let mounted = null;
+    let standaloneMounted = null;
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -76,7 +81,6 @@
             };
         }
         if (file.type && !ACCEPTED_MIME_TYPES.has(file.type)) {
-            // Some Excel files come through with quirky mimes; trust the extension if present.
             const looksLikeExcelMime = file.type.includes('excel') || file.type.includes('spreadsheet');
             const looksLikeCsvMime = file.type.includes('csv') || file.type === 'text/plain';
             if (!looksLikeExcelMime && !looksLikeCsvMime && file.type !== 'application/pdf') {
@@ -98,25 +102,6 @@
         return { ok: true };
     }
 
-    function drawerMarkup() {
-        return `
-        <div id="bsi-overlay" class="absolute inset-0 bg-black/55 opacity-0 transition-opacity duration-300 ease-out" data-bsi-close></div>
-        <div id="bsi-drawer" role="dialog" aria-modal="true" aria-labelledby="bsi-title" class="relative z-10 ml-auto flex h-full w-full max-w-[520px] translate-x-full flex-col overflow-hidden bg-white shadow-2xl transition-transform duration-300 ease-out">
-            <div class="flex items-start justify-between gap-4 border-b border-gray-100 bg-gray-50/50 px-6 py-5">
-                <div class="min-w-0">
-                    <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Bank statement</p>
-                    <h3 id="bsi-title" class="mt-1 text-lg font-bold text-gray-900">Import Bank Statement</h3>
-                    <p class="mt-1 text-[12px] text-gray-500">Phase 1 · draft &amp; review only. Nothing is saved to your ledger or bank balance without explicit confirmation.</p>
-                </div>
-                <button type="button" data-bsi-close class="flex-shrink-0 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600" aria-label="Close">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
-            <div id="bsi-content" class="flex-1 overflow-y-auto px-6 py-5"></div>
-            <div id="bsi-footer" class="flex flex-shrink-0 items-center gap-3 border-t border-gray-100 bg-white/95 px-6 py-4 shadow-[0_-12px_24px_rgba(15,23,42,0.06)]"></div>
-        </div>`;
-    }
-
     function uploadStepMarkup(ctx) {
         const errorBlock = ctx.errorMessage
             ? `<div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[12px] font-medium text-rose-700">${escapeHtml(ctx.errorMessage)}</div>`
@@ -136,15 +121,15 @@
             ${errorBlock}
             <div class="space-y-5">
                 <p class="text-[14px] text-gray-700">Upload a bank statement PDF, CSV, or spreadsheet. FluxyOS will extract transactions and show a review before anything is saved.</p>
-                <div class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5" id="bsi-dropzone">
-                    <label for="bsi-file-input" class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-7 text-center transition-all duration-200 hover:border-[#EA580C] hover:bg-gray-50">
+                <div class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5" data-bsi-dropzone>
+                    <label data-bsi-file-label class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-7 text-center transition-all duration-200 hover:border-[#EA580C] hover:bg-gray-50">
                         <span class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#EA580C]">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
                         </span>
                         <span class="text-[13px] font-bold text-gray-900">${ctx.file ? 'Replace file' : 'Choose or drop a statement file'}</span>
                         <span class="mt-1 text-[12px] text-gray-500">PDF, CSV, XLS, or XLSX · up to 10 MB</span>
                     </label>
-                    <input type="file" id="bsi-file-input" accept=".pdf,.csv,.xls,.xlsx,application/pdf,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="sr-only">
+                    <input type="file" data-bsi-file-input accept=".pdf,.csv,.xls,.xlsx,application/pdf,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="sr-only">
                     ${fileBlock}
                 </div>
                 <div class="rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3 text-[12px] text-gray-600">
@@ -278,6 +263,7 @@
     }
 
     function footerMarkup(ctx) {
+        const showStandaloneClose = !!ctx.closable;
         if (ctx.state === STATE_UPLOADING) {
             return `<button type="button" disabled class="ml-auto rounded-xl bg-gray-200 px-5 py-3 text-[13px] font-bold text-gray-500">Uploading…</button>`;
         }
@@ -285,15 +271,21 @@
             const rejectBtn = ctx.draft?.review_status === 'rejected'
                 ? `<span class="text-[12px] font-bold text-gray-500">Draft rejected</span>`
                 : `<button type="button" data-bsi-reject class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-[13px] font-bold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95">Reject draft</button>`;
+            const closeBtn = showStandaloneClose
+                ? `<button type="button" data-bsi-close class="ml-auto rounded-xl border border-gray-200 bg-white px-4 py-2 text-[13px] font-bold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95">Close</button>`
+                : '';
             return `
                 ${rejectBtn}
-                <button type="button" data-bsi-close class="ml-auto rounded-xl border border-gray-200 bg-white px-4 py-2 text-[13px] font-bold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95">Close</button>
+                ${closeBtn || '<span class="ml-auto"></span>'}
                 <button type="button" disabled class="rounded-xl bg-gray-200 px-5 py-3 text-[13px] font-bold text-gray-500" title="Phase 2 — coming soon">Confirm Import (Phase 2)</button>
             `;
         }
         if (ctx.state === STATE_ERROR) {
+            const closeBtn = showStandaloneClose
+                ? `<button type="button" data-bsi-close class="ml-auto rounded-xl border border-gray-200 bg-white px-4 py-2 text-[13px] font-bold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95">Close</button>`
+                : `<span class="ml-auto"></span>`;
             return `
-                <button type="button" data-bsi-close class="ml-auto rounded-xl border border-gray-200 bg-white px-4 py-2 text-[13px] font-bold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95">Close</button>
+                ${closeBtn}
                 <button type="button" data-bsi-retry class="rounded-xl bg-[#EA580C] px-5 py-3 text-[13px] font-bold text-white transition-colors hover:bg-[#D44400] active:scale-95">Try again</button>
             `;
         }
@@ -301,27 +293,31 @@
         const stageClass = ctx.file
             ? 'bg-[#EA580C] text-white hover:bg-[#D44400]'
             : 'bg-gray-200 text-gray-500 cursor-not-allowed';
+        const cancelBtn = showStandaloneClose
+            ? `<button type="button" data-bsi-close class="ml-auto rounded-xl border border-gray-200 bg-white px-4 py-2 text-[13px] font-bold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95">Cancel</button>`
+            : `<span class="ml-auto"></span>`;
         return `
-            <button type="button" data-bsi-close class="ml-auto rounded-xl border border-gray-200 bg-white px-4 py-2 text-[13px] font-bold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95">Cancel</button>
+            ${cancelBtn}
             <button type="button" data-bsi-stage ${stageDisabled} class="rounded-xl px-5 py-3 text-[13px] font-bold transition-colors active:scale-95 ${stageClass}">Stage statement</button>
         `;
     }
 
     function renderContent(ctx) {
-        const content = document.getElementById('bsi-content');
-        const footer = document.getElementById('bsi-footer');
-        if (!content || !footer) return;
-        if (ctx.state === STATE_UPLOADING) content.innerHTML = uploadingStepMarkup(ctx);
-        else if (ctx.state === STATE_UPLOADED) content.innerHTML = uploadedStepMarkup(ctx);
-        else if (ctx.state === STATE_ERROR) content.innerHTML = errorStepMarkup(ctx);
-        else content.innerHTML = uploadStepMarkup(ctx);
-        footer.innerHTML = footerMarkup(ctx);
+        if (!ctx.contentEl || !ctx.footerEl) return;
+        if (ctx.state === STATE_UPLOADING) ctx.contentEl.innerHTML = uploadingStepMarkup(ctx);
+        else if (ctx.state === STATE_UPLOADED) ctx.contentEl.innerHTML = uploadedStepMarkup(ctx);
+        else if (ctx.state === STATE_ERROR) ctx.contentEl.innerHTML = errorStepMarkup(ctx);
+        else ctx.contentEl.innerHTML = uploadStepMarkup(ctx);
+        ctx.footerEl.innerHTML = footerMarkup(ctx);
         attachStepHandlers(ctx);
     }
 
     function attachStepHandlers(ctx) {
-        const fileInput = document.getElementById('bsi-file-input');
+        const fileInput = ctx.contentEl.querySelector('[data-bsi-file-input]');
         if (fileInput) {
+            // Wire the visible label to the hidden file input (id-free so multiple instances can coexist).
+            const labelEl = ctx.contentEl.querySelector('[data-bsi-file-label]');
+            if (labelEl) labelEl.onclick = (e) => { e.preventDefault(); fileInput.click(); };
             fileInput.onchange = (event) => {
                 const file = event.target.files && event.target.files[0];
                 if (!file) return;
@@ -338,26 +334,30 @@
                 renderContent(ctx);
             };
         }
-        document.querySelectorAll('[data-bsi-clear-file]').forEach(btn => {
+        ctx.contentEl.querySelectorAll('[data-bsi-clear-file]').forEach(btn => {
             btn.onclick = () => {
                 ctx.file = null;
                 ctx.errorMessage = '';
                 renderContent(ctx);
             };
         });
-        document.querySelectorAll('[data-bsi-stage]').forEach(btn => {
+        ctx.footerEl.querySelectorAll('[data-bsi-stage]').forEach(btn => {
             btn.onclick = () => stageImport(ctx);
         });
-        document.querySelectorAll('[data-bsi-reject]').forEach(btn => {
+        ctx.footerEl.querySelectorAll('[data-bsi-reject]').forEach(btn => {
             btn.onclick = () => rejectDraft(ctx);
         });
-        document.querySelectorAll('[data-bsi-retry]').forEach(btn => {
+        ctx.footerEl.querySelectorAll('[data-bsi-retry]').forEach(btn => {
             btn.onclick = () => {
                 ctx.state = STATE_DEFAULT;
                 ctx.errorMessage = '';
                 renderContent(ctx);
             };
         });
+    }
+
+    function resolveUser(ctx) {
+        return ctx.user || ctx.auth?.currentUser || null;
     }
 
     async function stageImport(ctx) {
@@ -367,18 +367,20 @@
             renderContent(ctx);
             return;
         }
-        if (!ctx.user || !ctx.ds) {
+        const user = resolveUser(ctx);
+        if (!user || !ctx.ds) {
             ctx.state = STATE_ERROR;
             ctx.errorMessage = 'You need to be signed in to import a bank statement.';
             renderContent(ctx);
             return;
         }
+        ctx.user = user;
 
         ctx.state = STATE_UPLOADING;
         renderContent(ctx);
 
         try {
-            const draft = await ctx.ds.createBankStatementImport(ctx.user.uid, {
+            const draft = await ctx.ds.createBankStatementImport(user.uid, {
                 file_name: ctx.file.name,
                 file_mime_type: ctx.file.type || 'application/octet-stream',
                 file_size: ctx.file.size,
@@ -386,21 +388,19 @@
                 review_status: 'draft'
             });
 
-            const uploadResult = await ctx.ds.uploadBankStatementFile(ctx.user.uid, draft.id, ctx.file);
+            const uploadResult = await ctx.ds.uploadBankStatementFile(user.uid, draft.id, ctx.file);
 
-            await ctx.ds.updateBankStatementImport(ctx.user.uid, draft.id, {
+            await ctx.ds.updateBankStatementImport(user.uid, draft.id, {
                 storage_path: uploadResult.storagePath
             });
 
-            // Re-read the draft so we have the persisted storage_path-aware copy.
-            const refreshed = await ctx.ds.getBankStatementImport(ctx.user.uid, draft.id);
+            const refreshed = await ctx.ds.getBankStatementImport(user.uid, draft.id);
             ctx.draft = refreshed || { ...draft, storage_path: uploadResult.storagePath };
-            ctx.rows = await ctx.ds.getBankStatementRows(ctx.user.uid, draft.id);
+            ctx.rows = await ctx.ds.getBankStatementRows(user.uid, draft.id);
             ctx.state = STATE_UPLOADED;
             renderContent(ctx);
             window.showToast?.('Bank statement uploaded as a draft. Nothing has been saved to your ledger.', 'success');
         } catch (error) {
-            // Avoid printing the file contents or sensitive payload.
             console.warn('Bank statement import failed:', error?.message || error);
             ctx.state = STATE_ERROR;
             ctx.errorMessage = error?.code === 'permission-denied'
@@ -411,9 +411,10 @@
     }
 
     async function rejectDraft(ctx) {
-        if (!ctx.draft?.id || !ctx.user || !ctx.ds) return;
+        const user = resolveUser(ctx);
+        if (!ctx.draft?.id || !user || !ctx.ds) return;
         try {
-            await ctx.ds.updateBankStatementImport(ctx.user.uid, ctx.draft.id, {
+            await ctx.ds.updateBankStatementImport(user.uid, ctx.draft.id, {
                 review_status: 'rejected'
             });
             ctx.draft = { ...ctx.draft, review_status: 'rejected' };
@@ -424,54 +425,104 @@
         }
     }
 
-    function openDrawer(options = {}) {
-        if (mounted) return;
+    function mount(options = {}) {
+        const { contentEl, footerEl } = options;
+        if (!contentEl || !footerEl) {
+            throw new Error('FluxyBankStatementImport.mount requires { contentEl, footerEl }.');
+        }
         const ctx = {
-            user: options.user || options.auth?.currentUser || null,
+            app: options.app || null,
+            auth: options.auth || null,
             ds: options.ds || null,
+            user: options.user || options.auth?.currentUser || null,
+            contentEl,
+            footerEl,
+            closable: !!options.closable,
             file: null,
             draft: null,
             rows: [],
             state: STATE_DEFAULT,
             errorMessage: ''
         };
+        if (options.onClose && ctx.closable) {
+            contentEl.__bsiOnClose = options.onClose;
+        }
+        renderContent(ctx);
+        // Close button (only present when ctx.closable) routes through the
+        // optional onClose callback.
+        ctx.footerEl.addEventListener('click', (event) => {
+            if (event.target.closest?.('[data-bsi-close]')) {
+                options.onClose?.();
+            }
+        });
+        return {
+            destroy: () => {
+                contentEl.innerHTML = '';
+                footerEl.innerHTML = '';
+            },
+            getState: () => ctx.state,
+            getDraftId: () => ctx.draft?.id || null
+        };
+    }
 
+    // Standalone right-side drawer (kept for callers that want a self-contained launcher).
+    function openDrawer(options = {}) {
+        if (standaloneMounted) return;
         const wrapper = document.createElement('div');
         wrapper.id = 'bsi-modal';
         wrapper.className = 'fixed inset-0 z-[100] flex justify-end overflow-hidden';
-        wrapper.innerHTML = drawerMarkup();
+        wrapper.innerHTML = `
+            <div id="bsi-overlay" class="absolute inset-0 bg-black/55 opacity-0 transition-opacity duration-300 ease-out" data-bsi-close></div>
+            <div id="bsi-drawer" role="dialog" aria-modal="true" aria-labelledby="bsi-title" class="relative z-10 ml-auto flex h-full w-full max-w-[520px] translate-x-full flex-col overflow-hidden bg-white shadow-2xl transition-transform duration-300 ease-out">
+                <div class="flex items-start justify-between gap-4 border-b border-gray-100 bg-gray-50/50 px-6 py-5">
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Bank statement</p>
+                        <h3 id="bsi-title" class="mt-1 text-lg font-bold text-gray-900">Import Bank Statement</h3>
+                        <p class="mt-1 text-[12px] text-gray-500">Phase 1 · draft &amp; review only. Nothing is saved to your ledger or bank balance without explicit confirmation.</p>
+                    </div>
+                    <button type="button" data-bsi-close class="flex-shrink-0 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600" aria-label="Close">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div id="bsi-content" class="flex-1 overflow-y-auto px-6 py-5"></div>
+                <div id="bsi-footer" class="flex flex-shrink-0 items-center gap-3 border-t border-gray-100 bg-white/95 px-6 py-4 shadow-[0_-12px_24px_rgba(15,23,42,0.06)]"></div>
+            </div>`;
         document.body.appendChild(wrapper);
         document.body.classList.add('overflow-hidden');
-        mounted = wrapper;
-
+        standaloneMounted = wrapper;
         window.requestAnimationFrame(() => {
-            document.getElementById('bsi-overlay')?.classList.remove('opacity-0');
-            document.getElementById('bsi-overlay')?.classList.add('opacity-100');
-            document.getElementById('bsi-drawer')?.classList.remove('translate-x-full');
+            wrapper.querySelector('#bsi-overlay')?.classList.remove('opacity-0');
+            wrapper.querySelector('#bsi-overlay')?.classList.add('opacity-100');
+            wrapper.querySelector('#bsi-drawer')?.classList.remove('translate-x-full');
         });
 
-        const escapeHandler = (event) => {
-            if (event.key === 'Escape') closeDrawer();
-        };
+        const escapeHandler = (event) => { if (event.key === 'Escape') closeDrawer(); };
         document.addEventListener('keydown', escapeHandler);
         wrapper.__bsiEscapeHandler = escapeHandler;
 
         wrapper.addEventListener('click', (event) => {
-            const closeEl = event.target.closest('[data-bsi-close]');
-            if (closeEl) closeDrawer();
+            if (event.target.closest?.('[data-bsi-close]')) closeDrawer();
         });
 
-        renderContent(ctx);
+        mount({
+            contentEl: wrapper.querySelector('#bsi-content'),
+            footerEl: wrapper.querySelector('#bsi-footer'),
+            app: options.app,
+            auth: options.auth,
+            ds: options.ds,
+            user: options.user,
+            closable: false
+        });
     }
 
     function closeDrawer() {
-        if (!mounted) return;
-        const wrapper = mounted;
-        mounted = null;
+        if (!standaloneMounted) return;
+        const wrapper = standaloneMounted;
+        standaloneMounted = null;
         document.body.classList.remove('overflow-hidden');
-        document.getElementById('bsi-overlay')?.classList.remove('opacity-100');
-        document.getElementById('bsi-overlay')?.classList.add('opacity-0');
-        document.getElementById('bsi-drawer')?.classList.add('translate-x-full');
+        wrapper.querySelector('#bsi-overlay')?.classList.remove('opacity-100');
+        wrapper.querySelector('#bsi-overlay')?.classList.add('opacity-0');
+        wrapper.querySelector('#bsi-drawer')?.classList.add('translate-x-full');
         if (wrapper.__bsiEscapeHandler) {
             document.removeEventListener('keydown', wrapper.__bsiEscapeHandler);
         }
@@ -481,30 +532,8 @@
     }
 
     window.FluxyBankStatementImport = {
+        mount,
         open: openDrawer,
         close: closeDrawer
     };
-
-    // Delegated trigger: any element with id `import-bank-statement-btn` opens
-    // the drawer regardless of when the click happens vs page auth. The drawer
-    // reads auth + DataService from `window.__fluxyTxContext` when available.
-    function delegatedClick(event) {
-        const trigger = event.target && event.target.closest && event.target.closest('#import-bank-statement-btn');
-        if (!trigger) return;
-        event.preventDefault();
-        const ctx = window.__fluxyTxContext || {};
-        openDrawer({
-            app: ctx.app || null,
-            auth: ctx.auth || null,
-            ds: ctx.ds || null,
-            user: ctx.auth?.currentUser || null
-        });
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            document.addEventListener('click', delegatedClick);
-        });
-    } else {
-        document.addEventListener('click', delegatedClick);
-    }
 })();

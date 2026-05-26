@@ -9,10 +9,13 @@ const os = require('os');
  *
  * Spec: docs/BANK_STATEMENT_IMPORT_AUTOMATION_PLAN.md
  *
+ * The Ledger header has a unified "Scan / Import" button. Inside the drawer
+ * a tab strip switches between Receipt / Invoice (legacy document-capture)
+ * and Bank Statement (the new Phase 1 flow).
+ *
  * Static + interaction checks run against the local static server. The
- * "@storage" tests need the new firestore.rules + storage.rules deployed and
- * are gated behind STORAGE_RULES_DEPLOYED=1 (same pattern as
- * document-attachment.spec.js).
+ * "@storage" tests need Firebase Storage enabled on the project (currently
+ * blocked at the project level — same status as document-attachment.spec).
  */
 
 const STORAGE_READY = !!process.env.STORAGE_RULES_DEPLOYED;
@@ -43,7 +46,6 @@ function tempExe() {
 
 function tempOversizedPdf() {
     const file = path.join(os.tmpdir(), `fluxy-qa-bank-big-${Date.now()}.pdf`);
-    // 11 MB → above the 10 MB drawer ceiling.
     fs.writeFileSync(file, Buffer.alloc(11 * 1024 * 1024, 0));
     return file;
 }
@@ -56,98 +58,110 @@ async function dismissOnboardingIfPresent(page) {
     }
 }
 
-test.describe('Ledger header — Import Bank Statement entry point', () => {
+/** Open the Scan / Import drawer and switch to the Bank Statement tab. */
+async function openBankTab(page) {
+    await page.locator('#scan-tx-btn').click();
+    await expect(page.locator('#scan-drawer')).not.toHaveClass(/translate-x-full/);
+    await page.locator('#scan-tab-bank').click();
+    await expect(page.locator('#scan-drawer-bsi-content')).toBeVisible();
+}
+
+test.describe('Ledger header — Scan / Import entry point', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/ledger.html');
         await dismissOnboardingIfPresent(page);
         await page.waitForFunction(() => !!window.FluxyBankStatementImport, null, { timeout: 10_000 });
     });
 
-    test('Import Bank Statement button is rendered next to existing actions', async ({ page }) => {
-        const btn = page.locator('#import-bank-statement-btn');
-        await expect(btn).toBeVisible();
-        await expect(btn).toHaveText(/Import Bank Statement/);
-
-        // Existing header actions must still exist.
+    test('Header shows one Scan / Import button (no separate Import Bank Statement)', async ({ page }) => {
+        await expect(page.locator('#scan-tx-btn')).toHaveText(/Scan \/ Import/);
+        await expect(page.locator('#import-bank-statement-btn')).toHaveCount(0);
         await expect(page.locator('#download-csv-btn')).toBeVisible();
-        await expect(page.locator('#scan-tx-btn')).toBeVisible();
         await expect(page.getByRole('button', { name: /Add Transaction/ }).first()).toBeVisible();
     });
 
-    test('Clicking the button opens the drawer with Phase 1 guidance copy', async ({ page }) => {
-        await page.locator('#import-bank-statement-btn').click();
-        const drawer = page.locator('#bsi-drawer');
-        await expect(drawer).toBeVisible();
-        await expect(drawer.locator('#bsi-title')).toHaveText(/Import Bank Statement/);
-        await expect(drawer).toContainText(/Phase 1.*draft.*review/i);
-        await expect(drawer).toContainText(/PDF, CSV, or spreadsheet/i);
+    test('Drawer opens with both tabs and Receipt / Invoice selected by default', async ({ page }) => {
+        await page.locator('#scan-tx-btn').click();
+        await expect(page.locator('#scan-drawer')).not.toHaveClass(/translate-x-full/);
+        await expect(page.locator('#scan-tab-document')).toHaveAttribute('aria-selected', 'true');
+        await expect(page.locator('#scan-tab-bank')).toHaveAttribute('aria-selected', 'false');
+        await expect(page.locator('#scan-drawer-content')).toBeVisible();
+        await expect(page.locator('#scan-drawer-bsi-content')).toBeHidden();
     });
 
-    test('Drawer closes via the close button', async ({ page }) => {
-        await page.locator('#import-bank-statement-btn').click();
-        await expect(page.locator('#bsi-drawer')).toBeVisible();
-        await page.locator('#bsi-drawer button[aria-label="Close"]').click();
-        await expect(page.locator('#bsi-modal')).toHaveCount(0, { timeout: 5_000 });
+    test('Switching to Bank Statement tab mounts the upload UI', async ({ page }) => {
+        await openBankTab(page);
+        await expect(page.locator('#scan-tab-bank')).toHaveAttribute('aria-selected', 'true');
+        await expect(page.locator('#scan-drawer-bsi-content [data-bsi-file-input]')).toHaveCount(1);
+        await expect(page.locator('#scan-drawer-bsi-content')).toContainText(/Upload a bank statement/i);
+        await expect(page.locator('#scan-drawer-content')).toBeHidden();
     });
 
-    test('Drawer closes via Escape key', async ({ page }) => {
-        await page.locator('#import-bank-statement-btn').click();
-        await expect(page.locator('#bsi-drawer')).toBeVisible();
-        await page.keyboard.press('Escape');
-        await expect(page.locator('#bsi-modal')).toHaveCount(0, { timeout: 5_000 });
+    test('Switching back to Receipt / Invoice hides the BSI panel', async ({ page }) => {
+        await openBankTab(page);
+        await page.locator('#scan-tab-document').click();
+        await expect(page.locator('#scan-drawer-bsi-content')).toBeHidden();
+        await expect(page.locator('#scan-drawer-content')).toBeVisible();
+    });
+
+    test('Closing the drawer resets to the default tab', async ({ page }) => {
+        await openBankTab(page);
+        await page.locator('#scan-drawer-close-btn').click();
+        // The drawer slides out; opening again should land on the default tab.
+        await page.waitForTimeout(400);
+        await page.locator('#scan-tx-btn').click();
+        await expect(page.locator('#scan-tab-document')).toHaveAttribute('aria-selected', 'true');
+        await expect(page.locator('#scan-drawer-content')).toBeVisible();
     });
 });
 
-test.describe('Bank statement upload — file validation', () => {
+test.describe('Bank Statement tab — file validation', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/ledger.html');
         await dismissOnboardingIfPresent(page);
         await page.waitForFunction(() => !!window.FluxyBankStatementImport, null, { timeout: 10_000 });
-        await page.locator('#import-bank-statement-btn').click();
-        await expect(page.locator('#bsi-drawer')).toBeVisible();
+        await openBankTab(page);
     });
 
     test('Stage button is disabled until a file is chosen', async ({ page }) => {
-        const stageBtn = page.locator('[data-bsi-stage]');
-        await expect(stageBtn).toBeDisabled();
+        await expect(page.locator('[data-bsi-stage]')).toBeDisabled();
     });
 
     test('Rejects unsupported file type with friendly message', async ({ page }) => {
-        const fileInput = page.locator('#bsi-file-input');
+        const fileInput = page.locator('#scan-drawer-bsi-content [data-bsi-file-input]');
         await fileInput.setInputFiles(tempExe());
-        await expect(page.locator('#bsi-content')).toContainText(/Unsupported file type|wrong format/i);
+        await expect(page.locator('#scan-drawer-bsi-content')).toContainText(/Unsupported file type|wrong format/i);
         await expect(page.locator('[data-bsi-stage]')).toBeDisabled();
     });
 
     test('Rejects oversized PDF (>10 MB)', async ({ page }) => {
-        const fileInput = page.locator('#bsi-file-input');
+        const fileInput = page.locator('#scan-drawer-bsi-content [data-bsi-file-input]');
         await fileInput.setInputFiles(tempOversizedPdf());
-        await expect(page.locator('#bsi-content')).toContainText(/10 MB|larger/i);
+        await expect(page.locator('#scan-drawer-bsi-content')).toContainText(/10 MB|larger/i);
         await expect(page.locator('[data-bsi-stage]')).toBeDisabled();
     });
 
     test('Accepts valid CSV and enables Stage button', async ({ page }) => {
-        const fileInput = page.locator('#bsi-file-input');
+        const fileInput = page.locator('#scan-drawer-bsi-content [data-bsi-file-input]');
         const csv = tempCsv();
         await fileInput.setInputFiles(csv);
-        await expect(page.locator('#bsi-content')).toContainText(path.basename(csv));
+        await expect(page.locator('#scan-drawer-bsi-content')).toContainText(path.basename(csv));
         await expect(page.locator('[data-bsi-stage]')).toBeEnabled();
     });
 
     test('Accepts valid PDF and enables Stage button', async ({ page }) => {
-        const fileInput = page.locator('#bsi-file-input');
+        const fileInput = page.locator('#scan-drawer-bsi-content [data-bsi-file-input]');
         const pdf = tempPdf();
         await fileInput.setInputFiles(pdf);
-        await expect(page.locator('#bsi-content')).toContainText(path.basename(pdf));
+        await expect(page.locator('#scan-drawer-bsi-content')).toContainText(path.basename(pdf));
         await expect(page.locator('[data-bsi-stage]')).toBeEnabled();
     });
 
     test('Remove button clears the staged file', async ({ page }) => {
-        const fileInput = page.locator('#bsi-file-input');
-        const csv = tempCsv();
-        await fileInput.setInputFiles(csv);
+        const fileInput = page.locator('#scan-drawer-bsi-content [data-bsi-file-input]');
+        await fileInput.setInputFiles(tempCsv());
         await expect(page.locator('[data-bsi-stage]')).toBeEnabled();
-        await page.locator('[data-bsi-clear-file]').click();
+        await page.locator('#scan-drawer-bsi-content [data-bsi-clear-file]').click();
         await expect(page.locator('[data-bsi-stage]')).toBeDisabled();
     });
 });
@@ -173,6 +187,15 @@ test.describe('Ledger regression — existing features untouched', () => {
         await expect(page.locator('button.ledger-sort-btn[data-sort-key="date"]')).toBeVisible();
         await expect(page.locator('button.ledger-sort-btn[data-sort-key="amount"]')).toBeVisible();
     });
+
+    test('Receipt / Invoice scan flow still renders its upload step', async ({ page }) => {
+        await page.locator('#scan-tx-btn').click();
+        await expect(page.locator('#scan-drawer-content')).toBeVisible();
+        // document-capture.js drives a data-step attribute on the content
+        // container. Phase 1 default is "upload" online or "offline" offline;
+        // either is fine — we only care that the legacy renderer is active.
+        await expect(page.locator('#scan-drawer-content')).toHaveAttribute('data-step', /upload|offline/, { timeout: 5_000 });
+    });
 });
 
 test.describe('Bank statement import — end-to-end @storage', () => {
@@ -186,22 +209,19 @@ test.describe('Bank statement import — end-to-end @storage', () => {
         await page.goto('/ledger.html');
         await dismissOnboardingIfPresent(page);
         await page.waitForFunction(() => !!window.FluxyBankStatementImport);
-        await page.locator('#import-bank-statement-btn').click();
-        await page.locator('#bsi-file-input').setInputFiles(tempCsv());
+        await openBankTab(page);
+        await page.locator('#scan-drawer-bsi-content [data-bsi-file-input]').setInputFiles(tempCsv());
         await page.locator('[data-bsi-stage]').click();
 
-        // Detection summary + extraction-not-connected notice + read-only review table.
-        await expect(page.locator('#bsi-content')).toContainText(/Import draft/i, { timeout: 30_000 });
-        await expect(page.locator('#bsi-content')).toContainText(/Automated extraction is not connected yet/i);
-        await expect(page.locator('#bsi-content')).toContainText(/Review table/i);
+        await expect(page.locator('#scan-drawer-bsi-content')).toContainText(/Import draft/i, { timeout: 30_000 });
+        await expect(page.locator('#scan-drawer-bsi-content')).toContainText(/Automated extraction is not connected yet/i);
+        await expect(page.locator('#scan-drawer-bsi-content')).toContainText(/Review table/i);
 
-        // Confirm Import is visibly disabled.
         const confirmBtn = page.locator('button:has-text("Confirm Import")');
         await expect(confirmBtn).toBeDisabled();
 
-        // Reject draft works.
         await page.locator('[data-bsi-reject]').click();
-        await expect(page.locator('#bsi-content')).toContainText(/rejected/i, { timeout: 10_000 });
+        await expect(page.locator('#scan-drawer-bsi-content')).toContainText(/rejected/i, { timeout: 10_000 });
 
         if (consoleErrors.length) {
             console.log('BSI_E2E_CONSOLE_ERRORS:', JSON.stringify(consoleErrors, null, 2));

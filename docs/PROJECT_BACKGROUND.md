@@ -337,8 +337,11 @@ component lives in `assets/js/document-attachment.js` and is exposed as
 
 Phase 1 review-drafts for an uploaded bank statement. Spec lives in
 `docs/BANK_STATEMENT_IMPORT_AUTOMATION_PLAN.md`. The Phase 1 entry point is
-the Ledger page header button "Import Bank Statement"; the secondary entry
-point on the Overview Bank Cash Balance card is reserved for a later phase.
+the unified **Scan / Import** button in the Ledger page header — the
+drawer that opens hosts a tab strip with **Receipt / Invoice** (the
+legacy `document-capture.js` flow) and **Bank Statement** (this draft
+flow). The secondary entry point on the Overview Bank Cash Balance card
+is reserved for Phase 3.
 
 The draft is never auto-converted into ledger transactions and never
 updates a `bank_accounts.latest_balance`. Confirm and reject flows are
