@@ -165,6 +165,16 @@
     background: #D1D5DB;
 }
 
+.cashflow-bar-budget {
+    background: transparent;
+    border: 2px dashed #F97316;
+    border-bottom: 0;
+}
+
+.cashflow-bar-budget.is-empty {
+    border-color: transparent;
+}
+
 .cashflow-line-svg {
     position: relative;
     z-index: 1;
@@ -2405,4 +2415,3 @@
     color: #64748B;
     line-height: 1.5;
 }
-

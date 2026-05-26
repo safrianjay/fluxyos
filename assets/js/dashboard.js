@@ -1126,6 +1126,7 @@ function renderCashflowChart() {
 
 function renderCashflowBarChart(chart) {
     const maxValue = Math.max(...cashflowBuckets.map(item => Math.max(item.revenue, item.spend)), 1);
+    const hasBudget = safeNumber(currentBudget.monthly) > 0;
     chart.innerHTML = `
         <div class="cashflow-chart-stage" data-cashflow-bar-stage>
             <div class="cashflow-axis">
@@ -1137,10 +1138,13 @@ function renderCashflowBarChart(chart) {
                 ${cashflowBuckets.map(item => {
                     const revenueHeight = Math.max((item.revenue / maxValue) * 100, item.revenue > 0 ? 4 : 0);
                     const spendHeight = Math.max((item.spend / maxValue) * 100, item.spend > 0 ? 4 : 0);
+                    const budgetUsedPct = Math.min(safeNumber(item.budgetUsedPct), 100);
+                    const budgetHeight = Math.max(budgetUsedPct, budgetUsedPct > 0 ? 4 : 0);
                     return `
                         <div class="cashflow-bar-group" data-chart-bar data-label="${escapeHtml(item.label)}" data-revenue="${item.revenue}" data-spend="${item.spend}" data-budget-used="${safeNumber(item.budgetUsedPct)}">
                             <div class="cashflow-bar cashflow-bar-revenue" style="height: ${revenueHeight}%"></div>
                             <div class="cashflow-bar cashflow-bar-spend" style="height: ${spendHeight}%"></div>
+                            ${hasBudget ? `<div class="cashflow-bar cashflow-bar-budget${budgetUsedPct > 0 ? '' : ' is-empty'}" style="height: ${budgetHeight}%"></div>` : ''}
                         </div>
                     `;
                 }).join('')}
