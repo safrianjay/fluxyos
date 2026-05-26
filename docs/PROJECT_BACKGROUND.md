@@ -333,6 +333,61 @@ image receipt uploads on **transactions** also dual-write the existing
 component lives in `assets/js/document-attachment.js` and is exposed as
 `window.FluxyDocumentAttachment`.
 
+### 4i. Bank Statement Imports — `users/{userId}/bank_statement_imports/{importId}`
+
+Phase 1 review-drafts for an uploaded bank statement. Spec lives in
+`docs/BANK_STATEMENT_IMPORT_AUTOMATION_PLAN.md`. The Phase 1 entry point is
+the Ledger page header button "Import Bank Statement"; the secondary entry
+point on the Overview Bank Cash Balance card is reserved for a later phase.
+
+The draft is never auto-converted into ledger transactions and never
+updates a `bank_accounts.latest_balance`. Confirm and reject flows are
+deferred to Phase 2 (transactions) and Phase 3 (balance).
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `bank_account_id` | string \| null | Reserved for Phase 3 reconciliation. Always null in Phase 1. |
+| `file_name` | string | Sanitized uploaded file name (≤240 chars). |
+| `file_mime_type` | string | One of `application/pdf`, `text/csv`, `application/vnd.ms-excel`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`. |
+| `file_size` | number | Bytes, ≤ 10 MB. |
+| `storage_path` | string \| null | Always under `users/{userId}/bank_statement_imports/{importId}/`. Null between draft creation and file upload. |
+| `document_type` | string | Locked to `"bank_statement"`. |
+| `extraction_status` | string | `pending` \| `processing` \| `completed` \| `failed`. Phase 1 always writes `pending`. |
+| `review_status` | string | `draft` \| `needs_review` \| `ready_to_import` \| `imported` \| `rejected`. Phase 1 creates as `draft`; updates allow flipping to `rejected`. |
+| `bank_name`, `account_holder`, `account_number_masked` | string \| null | Masked identity only (e.g., `"****1234"`). Never store full account numbers. |
+| `currency` | string | Locked to `"IDR"`. |
+| `statement_start_date`, `statement_end_date` | Timestamp \| null | Detected statement period. |
+| `opening_balance`, `closing_balance`, `total_debit`, `total_credit` | number \| null | Raw integer Rupiah. Never formatted strings. |
+| `row_count`, `duplicate_count`, `needs_review_count` | number | Non-negative integers. |
+| `balance_check_status`, `running_balance_check_status` | string | `passed` \| `failed` \| `unavailable`. |
+| `created_at`, `updated_at` | Timestamp | `serverTimestamp()`. |
+| `confirmed_at`, `imported_at` | Timestamp \| null | Set by Phase 2/3 only. |
+
+**Mutation rule:** owner read/create/update only; delete is blocked. File
+name, mime type, and size are immutable after create.
+
+**Rows subcollection:** `users/{userId}/bank_statement_imports/{importId}/rows/{rowId}`
+holds extracted lines with `row_index`, `transaction_date`, `posting_date`,
+`description_raw`, `debit`, `credit`, `running_balance`, `suggested_*`,
+`match_status`, `confidence`, `selected_for_import`, `review_status`, and
+`created_transaction_id` (always null in Phase 1).
+
+**Storage:** uploaded statement files live under
+`users/{userId}/bank_statement_imports/{importId}/{fileName}` with a 10 MB
+ceiling. Allowed content types: PDF, CSV, XLS, XLSX.
+
+**Audit:** `bank_statement.import_created` is written on draft creation
+(`target_collection: "bank_statement_imports"`). Phase 2/3 add
+`bank_statement.import_confirmed`, `transaction.create_from_bank_statement`,
+and `bank_account.balance_updated`.
+
+`DataService` exposes `createBankStatementImport`, `getBankStatementImport`,
+`listBankStatementImports`, `updateBankStatementImport`,
+`addBankStatementRows`, `getBankStatementRows`, and
+`uploadBankStatementFile`. The shared UI lives in
+`assets/js/bank-statement-import.js` and is exposed as
+`window.FluxyBankStatementImport`.
+
 ---
 
 ## 5. Business Logic Rules

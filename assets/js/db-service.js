@@ -1127,6 +1127,220 @@ class DataService {
         }
     }
 
+    // --- BANK STATEMENT IMPORTS (Phase 1: draft + review only) ---
+    // Creates a review draft for an uploaded bank statement. Phase 1 never
+    // creates ledger transactions and never updates a bank account balance.
+    // Confirm/reject is implemented later; the draft sits in `review_status:
+    // "draft"` (or "needs_review" / "rejected") until then.
+    async createBankStatementImport(userId, data = {}) {
+        if (!userId) throw new Error('userId required');
+        const payload = this._cleanDefined({
+            bank_account_id: this._nullableString(data.bank_account_id, 120),
+            file_name: this._stringOrDefault(data.file_name, 'bank_statement', 240),
+            file_mime_type: this._stringOrDefault(data.file_mime_type, 'application/octet-stream', 120),
+            file_size: Math.max(0, Math.floor(Number(data.file_size) || 0)),
+            storage_path: this._nullableString(data.storage_path, 400),
+
+            document_type: 'bank_statement',
+            extraction_status: this._allowedValue(data.extraction_status,
+                ['pending', 'processing', 'completed', 'failed'], 'pending'),
+            review_status: this._allowedValue(data.review_status,
+                ['draft', 'needs_review', 'ready_to_import', 'imported', 'rejected'], 'draft'),
+
+            bank_name: this._nullableString(data.bank_name, 80),
+            account_holder: this._nullableString(data.account_holder, 160),
+            account_number_masked: this._nullableString(data.account_number_masked, 32),
+            currency: 'IDR',
+
+            statement_start_date: data.statement_start_date ? this._coerceTimestampOrNow(data.statement_start_date) : null,
+            statement_end_date: data.statement_end_date ? this._coerceTimestampOrNow(data.statement_end_date) : null,
+            opening_balance: data.opening_balance == null ? null : Math.round(Number(data.opening_balance) || 0),
+            closing_balance: data.closing_balance == null ? null : Math.round(Number(data.closing_balance) || 0),
+            total_debit: data.total_debit == null ? null : Math.round(Number(data.total_debit) || 0),
+            total_credit: data.total_credit == null ? null : Math.round(Number(data.total_credit) || 0),
+            row_count: data.row_count == null ? 0 : Math.max(0, Math.floor(Number(data.row_count) || 0)),
+
+            balance_check_status: this._allowedValue(data.balance_check_status,
+                ['passed', 'failed', 'unavailable'], 'unavailable'),
+            running_balance_check_status: this._allowedValue(data.running_balance_check_status,
+                ['passed', 'failed', 'unavailable'], 'unavailable'),
+            duplicate_count: Math.max(0, Math.floor(Number(data.duplicate_count) || 0)),
+            needs_review_count: Math.max(0, Math.floor(Number(data.needs_review_count) || 0)),
+
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp(),
+            confirmed_at: null,
+            imported_at: null
+        });
+        const ref = await addDoc(collection(this.db, `users/${userId}/bank_statement_imports`), payload);
+
+        await this.addAuditLog(userId, {
+            action: 'bank_statement.import_created',
+            target_collection: 'bank_statement_imports',
+            target_id: ref.id,
+            after: {
+                file_name: payload.file_name,
+                file_mime_type: payload.file_mime_type,
+                file_size: payload.file_size,
+                review_status: payload.review_status,
+                extraction_status: payload.extraction_status
+            },
+            source: 'dashboard'
+        });
+
+        return { id: ref.id, ...payload };
+    }
+
+    async getBankStatementImport(userId, importId) {
+        if (!userId || !importId) return null;
+        const snap = await getDoc(doc(this.db, `users/${userId}/bank_statement_imports/${importId}`));
+        return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    }
+
+    async listBankStatementImports(userId, limitCount = 25) {
+        if (!userId) return [];
+        try {
+            const q = query(
+                collection(this.db, `users/${userId}/bank_statement_imports`),
+                orderBy('created_at', 'desc'),
+                limit(Math.max(1, Math.min(100, Number(limitCount) || 25)))
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (_) {
+            return [];
+        }
+    }
+
+    async updateBankStatementImport(userId, importId, data = {}) {
+        if (!userId || !importId) throw new Error('userId and importId required');
+        const ref = doc(this.db, `users/${userId}/bank_statement_imports/${importId}`);
+        const existing = await getDoc(ref);
+        if (!existing.exists()) throw new Error('bank statement import not found');
+        const allowed = {};
+        const stringFields = ['bank_name', 'account_holder', 'account_number_masked'];
+        stringFields.forEach(k => {
+            if (k in data) allowed[k] = this._nullableString(data[k], 200);
+        });
+        if ('storage_path' in data) {
+            allowed.storage_path = this._nullableString(data.storage_path, 400);
+        }
+        if ('review_status' in data) {
+            allowed.review_status = this._allowedValue(data.review_status,
+                ['draft', 'needs_review', 'ready_to_import', 'imported', 'rejected'], 'draft');
+        }
+        if ('extraction_status' in data) {
+            allowed.extraction_status = this._allowedValue(data.extraction_status,
+                ['pending', 'processing', 'completed', 'failed'], 'pending');
+        }
+        if ('balance_check_status' in data) {
+            allowed.balance_check_status = this._allowedValue(data.balance_check_status,
+                ['passed', 'failed', 'unavailable'], 'unavailable');
+        }
+        if ('running_balance_check_status' in data) {
+            allowed.running_balance_check_status = this._allowedValue(data.running_balance_check_status,
+                ['passed', 'failed', 'unavailable'], 'unavailable');
+        }
+        const intFields = ['row_count', 'duplicate_count', 'needs_review_count'];
+        intFields.forEach(k => {
+            if (k in data) allowed[k] = Math.max(0, Math.floor(Number(data[k]) || 0));
+        });
+        const numberFields = ['opening_balance', 'closing_balance', 'total_debit', 'total_credit'];
+        numberFields.forEach(k => {
+            if (k in data) allowed[k] = data[k] == null ? null : Math.round(Number(data[k]) || 0);
+        });
+        if ('statement_start_date' in data) {
+            allowed.statement_start_date = data.statement_start_date
+                ? this._coerceTimestampOrNow(data.statement_start_date) : null;
+        }
+        if ('statement_end_date' in data) {
+            allowed.statement_end_date = data.statement_end_date
+                ? this._coerceTimestampOrNow(data.statement_end_date) : null;
+        }
+        allowed.updated_at = serverTimestamp();
+        await updateDoc(ref, allowed);
+        return { id: importId, ...allowed };
+    }
+
+    async addBankStatementRows(userId, importId, rows = []) {
+        if (!userId || !importId) throw new Error('userId and importId required');
+        if (!Array.isArray(rows) || rows.length === 0) return [];
+        const safeRows = rows.slice(0, 1000);
+        const rowsCol = collection(this.db, `users/${userId}/bank_statement_imports/${importId}/rows`);
+        const batch = writeBatch(this.db);
+        const created = [];
+        safeRows.forEach((row, idx) => {
+            const rowRef = doc(rowsCol);
+            const payload = this._cleanDefined({
+                row_index: Number.isFinite(Number(row.row_index)) ? Number(row.row_index) : idx,
+                transaction_date: row.transaction_date ? this._coerceTimestampOrNow(row.transaction_date) : null,
+                posting_date: row.posting_date ? this._coerceTimestampOrNow(row.posting_date) : null,
+                description_raw: this._nullableString(row.description_raw, 500),
+                debit: row.debit == null ? null : Math.round(Number(row.debit) || 0),
+                credit: row.credit == null ? null : Math.round(Number(row.credit) || 0),
+                running_balance: row.running_balance == null ? null : Math.round(Number(row.running_balance) || 0),
+
+                suggested_vendor_name: this._nullableString(row.suggested_vendor_name, 160),
+                suggested_category: this._nullableString(row.suggested_category, 80),
+                suggested_type: this._nullableString(row.suggested_type, 40),
+
+                match_status: this._allowedValue(row.match_status,
+                    ['new', 'possible_duplicate', 'matched_existing', 'ignored', 'needs_review'], 'new'),
+                matched_transaction_id: this._nullableString(row.matched_transaction_id, 120),
+                confidence: row.confidence == null ? null : Math.max(0, Math.min(1, Number(row.confidence) || 0)),
+
+                selected_for_import: row.selected_for_import !== false,
+                review_status: this._allowedValue(row.review_status,
+                    ['pending', 'confirmed', 'ignored'], 'pending'),
+                created_transaction_id: null,
+                created_at: serverTimestamp()
+            });
+            batch.set(rowRef, payload);
+            created.push({ id: rowRef.id });
+        });
+        await batch.commit();
+        return created;
+    }
+
+    async getBankStatementRows(userId, importId, limitCount = 1000) {
+        if (!userId || !importId) return [];
+        try {
+            const q = query(
+                collection(this.db, `users/${userId}/bank_statement_imports/${importId}/rows`),
+                orderBy('row_index', 'asc'),
+                limit(Math.max(1, Math.min(1000, Number(limitCount) || 1000)))
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (_) {
+            return [];
+        }
+    }
+
+    async uploadBankStatementFile(userId, importId, file) {
+        if (!userId || !importId) throw new Error('userId and importId required');
+        if (!file) throw new Error('file required');
+        const { getStorage, ref, uploadBytes } =
+            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
+        if (!this._storage) this._storage = getStorage(this.app);
+
+        const safeName = String(file.name || 'bank_statement')
+            .replace(/[^\w.\-]+/g, '_')
+            .slice(0, 200) || 'bank_statement';
+        const storagePath = `users/${userId}/bank_statement_imports/${importId}/${safeName}`;
+        await uploadBytes(
+            ref(this._storage, storagePath),
+            file,
+            { contentType: file.type || 'application/octet-stream' }
+        );
+        return {
+            storagePath,
+            fileName: safeName,
+            fileMimeType: file.type || 'application/octet-stream',
+            fileSize: file.size || 0
+        };
+    }
+
     async archiveBudget(userId, budgetId, reason = null) {
         if (!userId || !budgetId) throw new Error('userId and budgetId required');
         const ref = doc(this.db, `users/${userId}/budgets/${budgetId}`);

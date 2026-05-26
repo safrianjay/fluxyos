@@ -117,6 +117,7 @@ service cloud.firestore {
           'onboarding',
           'bank_accounts',
           'bank_balance_snapshots',
+          'bank_statement_imports',
           'documents'
         ]
         && data.target_id is string
@@ -611,6 +612,150 @@ service cloud.firestore {
         && data.updated_at == request.time;
     }
 
+    function isValidBankStatementImport(data) {
+      return data.keys().hasAll([
+          'file_name',
+          'file_mime_type',
+          'file_size',
+          'document_type',
+          'extraction_status',
+          'review_status',
+          'currency',
+          'row_count',
+          'balance_check_status',
+          'running_balance_check_status',
+          'duplicate_count',
+          'needs_review_count',
+          'created_at',
+          'updated_at'
+        ])
+        && data.keys().hasOnly([
+          'bank_account_id',
+          'file_name',
+          'file_mime_type',
+          'file_size',
+          'storage_path',
+          'document_type',
+          'extraction_status',
+          'review_status',
+          'bank_name',
+          'account_holder',
+          'account_number_masked',
+          'currency',
+          'statement_start_date',
+          'statement_end_date',
+          'opening_balance',
+          'closing_balance',
+          'total_debit',
+          'total_credit',
+          'row_count',
+          'balance_check_status',
+          'running_balance_check_status',
+          'duplicate_count',
+          'needs_review_count',
+          'created_at',
+          'updated_at',
+          'confirmed_at',
+          'imported_at'
+        ])
+        && data.file_name is string
+        && data.file_name.size() > 0
+        && data.file_name.size() <= 240
+        && data.file_mime_type is string
+        && data.file_mime_type.size() <= 160
+        && data.file_size is number
+        && data.file_size >= 0
+        && data.file_size <= 10 * 1024 * 1024
+        && (!('storage_path' in data) || data.storage_path == null || (data.storage_path is string && data.storage_path.size() <= 400))
+        && data.document_type == 'bank_statement'
+        && data.extraction_status in ['pending', 'processing', 'completed', 'failed']
+        && data.review_status in ['draft', 'needs_review', 'ready_to_import', 'imported', 'rejected']
+        && (!('bank_account_id' in data) || data.bank_account_id == null || (data.bank_account_id is string && data.bank_account_id.size() <= 120))
+        && (!('bank_name' in data) || data.bank_name == null || (data.bank_name is string && data.bank_name.size() <= 80))
+        && (!('account_holder' in data) || data.account_holder == null || (data.account_holder is string && data.account_holder.size() <= 160))
+        && (!('account_number_masked' in data) || data.account_number_masked == null || (data.account_number_masked is string && data.account_number_masked.size() <= 32))
+        && data.currency == 'IDR'
+        && (!('statement_start_date' in data) || data.statement_start_date == null || data.statement_start_date is timestamp)
+        && (!('statement_end_date' in data) || data.statement_end_date == null || data.statement_end_date is timestamp)
+        && (!('opening_balance' in data) || data.opening_balance == null || data.opening_balance is number)
+        && (!('closing_balance' in data) || data.closing_balance == null || data.closing_balance is number)
+        && (!('total_debit' in data) || data.total_debit == null || data.total_debit is number)
+        && (!('total_credit' in data) || data.total_credit == null || data.total_credit is number)
+        && data.row_count is number
+        && data.row_count >= 0
+        && data.balance_check_status in ['passed', 'failed', 'unavailable']
+        && data.running_balance_check_status in ['passed', 'failed', 'unavailable']
+        && data.duplicate_count is number
+        && data.duplicate_count >= 0
+        && data.needs_review_count is number
+        && data.needs_review_count >= 0
+        && data.created_at is timestamp
+        && data.updated_at is timestamp
+        && (!('confirmed_at' in data) || data.confirmed_at == null || data.confirmed_at is timestamp)
+        && (!('imported_at' in data) || data.imported_at == null || data.imported_at is timestamp);
+    }
+
+    function isValidBankStatementImportCreate(userId, data) {
+      return isValidBankStatementImport(data)
+        && data.created_at == request.time
+        && data.updated_at == request.time
+        && data.review_status == 'draft'
+        && data.extraction_status == 'pending'
+        && (!('storage_path' in data) || data.storage_path == null
+              || data.storage_path.matches('users/' + userId + '/bank_statement_imports/.*'));
+    }
+
+    function isValidBankStatementImportUpdate(userId, data, existingData) {
+      return isValidBankStatementImport(data)
+        && data.created_at == existingData.created_at
+        && data.updated_at == request.time
+        && data.file_name == existingData.file_name
+        && data.file_mime_type == existingData.file_mime_type
+        && data.file_size == existingData.file_size
+        && (!('storage_path' in data) || data.storage_path == null
+              || data.storage_path.matches('users/' + userId + '/bank_statement_imports/.*'));
+    }
+
+    function isValidBankStatementRow(data) {
+      return data.keys().hasOnly([
+          'row_index',
+          'transaction_date',
+          'posting_date',
+          'description_raw',
+          'debit',
+          'credit',
+          'running_balance',
+          'suggested_vendor_name',
+          'suggested_category',
+          'suggested_type',
+          'match_status',
+          'matched_transaction_id',
+          'confidence',
+          'selected_for_import',
+          'review_status',
+          'created_transaction_id',
+          'created_at'
+        ])
+        && data.row_index is number
+        && data.row_index >= 0
+        && (!('transaction_date' in data) || data.transaction_date == null || data.transaction_date is timestamp)
+        && (!('posting_date' in data) || data.posting_date == null || data.posting_date is timestamp)
+        && (!('description_raw' in data) || data.description_raw == null || (data.description_raw is string && data.description_raw.size() <= 500))
+        && (!('debit' in data) || data.debit == null || data.debit is number)
+        && (!('credit' in data) || data.credit == null || data.credit is number)
+        && (!('running_balance' in data) || data.running_balance == null || data.running_balance is number)
+        && (!('suggested_vendor_name' in data) || data.suggested_vendor_name == null || (data.suggested_vendor_name is string && data.suggested_vendor_name.size() <= 160))
+        && (!('suggested_category' in data) || data.suggested_category == null || (data.suggested_category is string && data.suggested_category.size() <= 80))
+        && (!('suggested_type' in data) || data.suggested_type == null || (data.suggested_type is string && data.suggested_type.size() <= 40))
+        && (!('match_status' in data) || data.match_status in ['new', 'possible_duplicate', 'matched_existing', 'ignored', 'needs_review'])
+        && (!('matched_transaction_id' in data) || data.matched_transaction_id == null || (data.matched_transaction_id is string && data.matched_transaction_id.size() <= 120))
+        && (!('confidence' in data) || data.confidence == null || data.confidence is number)
+        && (!('selected_for_import' in data) || data.selected_for_import is bool)
+        && (!('review_status' in data) || data.review_status in ['pending', 'confirmed', 'ignored'])
+        && (!('created_transaction_id' in data) || data.created_transaction_id == null || (data.created_transaction_id is string && data.created_transaction_id.size() <= 120))
+        && data.created_at is timestamp;
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create, update, delete: if false;
@@ -938,6 +1083,26 @@ service cloud.firestore {
         allow create: if isOwner(userId)
           && isValidBankBalanceSnapshot(request.resource.data);
         allow update, delete: if false;
+      }
+
+      match /bank_statement_imports/{importId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidBankStatementImportCreate(userId, request.resource.data);
+        allow update: if isOwner(userId)
+          && isValidBankStatementImportUpdate(userId, request.resource.data, resource.data);
+        allow delete: if false;
+
+        match /rows/{rowId} {
+          allow read: if isOwner(userId);
+          allow create: if isOwner(userId)
+            && isValidBankStatementRow(request.resource.data)
+            && request.resource.data.created_at == request.time;
+          allow update: if isOwner(userId)
+            && isValidBankStatementRow(request.resource.data)
+            && request.resource.data.created_at == resource.data.created_at;
+          allow delete: if false;
+        }
       }
 
       match /budgets/{budgetId} {
