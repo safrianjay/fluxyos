@@ -26,14 +26,9 @@ service cloud.firestore {
         && data.vendor_name is string
         && data.vendor_name.size() > 0
         && data.vendor_name.size() <= 160
-        && data.category in [
-          'Revenue',
-          'Marketing',
-          'Infrastructure',
-          'Operations',
-          'SaaS',
-          'Others'
-        ]
+        && data.category is string
+        && data.category.size() > 0
+        && data.category.size() <= 40
         && data.type in ['revenue', 'income', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending_payable']
         && data.status in ['Completed', 'Missing Receipt', 'Pending', 'Upcoming', 'Reconciled', 'Cancelled']
         && data.icon is string
@@ -57,14 +52,9 @@ service cloud.firestore {
         && data.vendor_name is string
         && data.vendor_name.size() > 0
         && data.vendor_name.size() <= 160
-        && data.category in [
-          'Revenue',
-          'Marketing',
-          'Infrastructure',
-          'Operations',
-          'SaaS',
-          'Others'
-        ]
+        && data.category is string
+        && data.category.size() > 0
+        && data.category.size() <= 40
         && data.type in ['revenue', 'income', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending_payable']
         && data.status in ['Completed', 'Missing Receipt', 'Pending', 'Upcoming', 'Reconciled', 'Cancelled']
         && data.icon is string
