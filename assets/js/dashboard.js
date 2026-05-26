@@ -520,6 +520,10 @@ function renderCashFlowChart() {
     const maxIn = Math.max(...cashFlowBuckets.map(b => Number(b.cashIn) || 0), 1);
     const maxOut = Math.max(...cashFlowBuckets.map(b => Number(b.cashOut) || 0), 1);
     const maxAxis = Math.max(maxIn, maxOut);
+    const scaledCashFlowHeight = value => {
+        const amount = Math.abs(Number(value) || 0);
+        return amount > 0 ? Math.max((amount / maxAxis) * 50, 4) : 0;
+    };
 
     chart.innerHTML = `
         <div class="cash-flow-stage" data-cashflow-stage>
@@ -534,11 +538,11 @@ function renderCashFlowChart() {
                 <div class="cash-flow-zero-line"></div>
                 <div class="cash-flow-bars">
                     ${cashFlowBuckets.map(item => {
-                        const inHeight = (Number(item.cashIn) || 0) / maxAxis * 50;
-                        const outHeight = (Number(item.cashOut) || 0) / maxAxis * 50;
+                        const inHeight = scaledCashFlowHeight(item.cashIn);
+                        const outHeight = scaledCashFlowHeight(item.cashOut);
                         const net = Number(item.netCashFlow) || 0;
                         const netSide = net >= 0 ? 'pos' : 'neg';
-                        const netHeight = Math.abs(net) / maxAxis * 50;
+                        const netHeight = scaledCashFlowHeight(net);
                         return `
                             <div class="cash-flow-month" data-chart-bar
                                 data-label="${escapeHtml(item.label)}"
