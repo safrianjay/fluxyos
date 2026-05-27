@@ -1677,6 +1677,254 @@ class DataService {
         }
     }
 
+    async getBudgetAllocation(userId, allocationId) {
+        if (!userId || !allocationId) return null;
+        const snap = await getDoc(doc(this.db, `users/${userId}/budget_allocations/${allocationId}`));
+        if (!snap.exists()) return null;
+        const allocation = { id: snap.id, ...snap.data() };
+        return allocation.status === 'archived' ? null : allocation;
+    }
+
+    _normalizeBudgetMatchValue(value) {
+        return String(value || '').trim().toLowerCase();
+    }
+
+    _allocationMatchesRecord(record, allocation) {
+        if (!record || !allocation?.id) return { matched: false, source: 'none' };
+        const explicitAllocationId = String(record.budget_allocation_id || '').trim();
+        if (explicitAllocationId) {
+            return explicitAllocationId === allocation.id
+                ? { matched: true, source: 'explicit' }
+                : { matched: false, source: 'explicit_other' };
+        }
+
+        const scopeType = this._normalizeBudgetMatchValue(allocation.scope_type);
+        if (scopeType !== 'category') return { matched: false, source: 'unsafe_scope' };
+        const scopeValues = Array.isArray(allocation.scope_values)
+            ? allocation.scope_values.map(v => this._normalizeBudgetMatchValue(v)).filter(Boolean)
+            : [];
+        const category = this._normalizeBudgetMatchValue(record.category);
+        if (!category || scopeValues.length === 0) return { matched: false, source: 'unsafe_scope' };
+        return scopeValues.includes(category)
+            ? { matched: true, source: 'category' }
+            : { matched: false, source: 'category_other' };
+    }
+
+    _allocationRecordDate(record, fields) {
+        return this._firstRecordDate(record, fields);
+    }
+
+    _recordGroupName(record) {
+        return String(
+            record.vendor_name
+            || record.merchant_name
+            || record.vendor
+            || record.category
+            || 'Unspecified'
+        ).trim() || 'Unspecified';
+    }
+
+    _allocationUsageStatus(allocated, spentReserved) {
+        const base = Math.max(0, Number(allocated) || 0);
+        if (base <= 0) return 'not_allocated';
+        const pct = (Number(spentReserved) || 0) / base * 100;
+        if (pct >= 100) return 'exceeded';
+        if (pct >= 85) return 'at_risk';
+        if (pct >= 70) return 'watch';
+        return 'healthy';
+    }
+
+    _normalizeAllocationRecord(record, { source, bucket, date, matchSource }) {
+        const amount = Math.abs(Number(record?.amount) || 0);
+        const type = source === 'bill'
+            ? 'bill'
+            : String(record?.type || '').toLowerCase().replace(/\s+/g, '_');
+        const groupName = this._recordGroupName(record);
+        return {
+            id: record.id,
+            source,
+            kind: source === 'bill' ? 'bill' : (type === 'pending_payable' ? 'pending_payable' : 'transaction'),
+            bucket,
+            amount,
+            date,
+            day_key: date ? this._getDayKey(date) : '',
+            group_name: groupName,
+            counterparty: String(record.vendor_name || record.merchant_name || record.vendor || groupName || 'Unspecified'),
+            category: String(record.category || 'Unspecified'),
+            status: String(record.payment_status || record.status || record.budget_impact_status || (bucket === 'reserved' ? 'Pending' : 'Posted')),
+            type,
+            memo: String(record.memo || record.description || record.notes || ''),
+            match_source: matchSource,
+            raw: record
+        };
+    }
+
+    _buildAllocationGroups(records, allocatedAmount) {
+        const groups = new Map();
+        records.forEach(record => {
+            const key = record.group_name || 'Unspecified';
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    id: key,
+                    name: key,
+                    record_count: 0,
+                    actual_total: 0,
+                    reserved_total: 0,
+                    spent_reserved_total: 0,
+                    latest_record_date: null,
+                    status: 'healthy'
+                });
+            }
+            const group = groups.get(key);
+            group.record_count += 1;
+            if (record.bucket === 'actual') group.actual_total += record.amount;
+            else group.reserved_total += record.amount;
+            group.spent_reserved_total += record.amount;
+            if (!group.latest_record_date || (record.date && record.date > group.latest_record_date)) {
+                group.latest_record_date = record.date || group.latest_record_date;
+            }
+        });
+        return Array.from(groups.values())
+            .map(group => {
+                const usagePercent = allocatedAmount > 0
+                    ? (group.spent_reserved_total / allocatedAmount) * 100
+                    : 0;
+                return {
+                    ...group,
+                    usage_percent: Number.isFinite(usagePercent) ? usagePercent : 0,
+                    status: this._allocationUsageStatus(allocatedAmount, group.spent_reserved_total)
+                };
+            })
+            .sort((a, b) => b.spent_reserved_total - a.spent_reserved_total);
+    }
+
+    _buildAllocationTrend(records, startDate, endDate) {
+        const buckets = new Map();
+        let cursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+        const endCursor = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+        while (cursor <= endCursor) {
+            const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+            buckets.set(key, {
+                key,
+                label: cursor.toLocaleDateString('en-US', { month: 'short' }),
+                actual: 0
+            });
+            cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+        }
+        records
+            .filter(record => record.bucket === 'actual' && record.date)
+            .forEach(record => {
+                const key = `${record.date.getFullYear()}-${String(record.date.getMonth() + 1).padStart(2, '0')}`;
+                if (buckets.has(key)) buckets.get(key).actual += record.amount;
+            });
+        return Array.from(buckets.values());
+    }
+
+    async getMatchedAllocationRecords(userId, budget, allocation) {
+        if (!userId || !budget?.id || !allocation?.id) {
+            return {
+                transactions: [],
+                bills: [],
+                records: [],
+                groups: [],
+                trend: [],
+                totals: { actual: 0, reserved: 0, spentReserved: 0, recordCount: 0 }
+            };
+        }
+
+        const startDate = this._budgetDate(budget.period_start);
+        const endDate = this._budgetDate(budget.period_end);
+        if (!startDate || !endDate) {
+            return {
+                transactions: [],
+                bills: [],
+                records: [],
+                groups: [],
+                trend: [],
+                totals: { actual: 0, reserved: 0, spentReserved: 0, recordCount: 0 }
+            };
+        }
+
+        const startKey = this._getDayKey(startDate);
+        const endKey = this._getDayKey(endDate);
+        const [transactionsRaw, billsRaw] = await Promise.all([
+            this.getTransactions(userId, 1000),
+            this.getBills(userId)
+        ]);
+
+        const actualTypes = new Set(['expense', 'fee', 'tax']);
+        const records = [];
+        const transactions = [];
+        const bills = [];
+
+        transactionsRaw.forEach(tx => {
+            if (tx.budget_match_status === 'excluded') return;
+            if (tx.budget_id && tx.budget_id !== budget.id) return;
+            const type = String(tx.type || '').toLowerCase().replace(/\s+/g, '_');
+            const bucket = actualTypes.has(type) ? 'actual' : (type === 'pending_payable' ? 'reserved' : null);
+            if (!bucket) return;
+            const date = this._allocationRecordDate(tx, ['timestamp', 'date', 'created_at']);
+            if (!date || !this._isRecordInPeriod(tx, startKey, endKey, ['timestamp', 'date', 'created_at'])) return;
+            const match = this._allocationMatchesRecord(tx, allocation);
+            if (!match.matched) return;
+            const normalized = this._normalizeAllocationRecord(tx, {
+                source: 'transaction',
+                bucket,
+                date,
+                matchSource: match.source
+            });
+            transactions.push({ ...tx, _allocationRecord: normalized, _matchSource: match.source });
+            records.push(normalized);
+        });
+
+        const includeBillStatuses = new Set(['unpaid', 'open', 'pending', 'overdue']);
+        billsRaw.forEach(bill => {
+            if (bill.budget_match_status === 'excluded') return;
+            if (bill.budget_id && bill.budget_id !== budget.id) return;
+            const status = String(bill.payment_status || bill.status || 'unpaid').toLowerCase().replace(/\s+/g, '_');
+            if (!includeBillStatuses.has(status)) return;
+            if (bill.budget_impact_status === 'converted_to_actual') return;
+            if (bill.linked_transaction_id) return;
+            const date = this._allocationRecordDate(bill, ['due_date', 'timestamp', 'date', 'created_at']);
+            if (!date || !this._isRecordInPeriod(bill, startKey, endKey, ['due_date', 'timestamp', 'date', 'created_at'])) return;
+            const match = this._allocationMatchesRecord(bill, allocation);
+            if (!match.matched) return;
+            const normalized = this._normalizeAllocationRecord(bill, {
+                source: 'bill',
+                bucket: 'reserved',
+                date,
+                matchSource: match.source
+            });
+            bills.push({ ...bill, _allocationRecord: normalized, _matchSource: match.source });
+            records.push(normalized);
+        });
+
+        records.sort((a, b) => (b.date?.getTime?.() || 0) - (a.date?.getTime?.() || 0));
+        const actual = records
+            .filter(record => record.bucket === 'actual')
+            .reduce((sum, record) => sum + record.amount, 0);
+        const reserved = records
+            .filter(record => record.bucket === 'reserved')
+            .reduce((sum, record) => sum + record.amount, 0);
+        const allocated = Math.max(0, Number(allocation.allocated_amount) || 0);
+        const groups = this._buildAllocationGroups(records, allocated);
+        const trend = this._buildAllocationTrend(records, startDate, endDate);
+
+        return {
+            transactions,
+            bills,
+            records,
+            groups,
+            trend,
+            totals: {
+                actual,
+                reserved,
+                spentReserved: actual + reserved,
+                recordCount: records.length
+            }
+        };
+    }
+
     _normalizeAllocationInput(input) {
         const allowedCats = new Set(['Marketing', 'Infrastructure', 'Operations', 'SaaS']);
         const list = Array.isArray(input) ? input : [];

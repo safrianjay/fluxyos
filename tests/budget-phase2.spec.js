@@ -5,7 +5,7 @@ const { test, expect } = require('@playwright/test');
  * Phase 2 verify spec. Drives the actual UI against the live fluxyos project.
  *
  * Probes:
- *   P1 — open allocation detail drawer + verify header + tables render
+ *   P1 — allocation row opens the Phase C full-page drill-in
  *   P2 — Phase 2 sections render on /budget (unallocated, excluded, activity)
  *   P3 — ledger row shows a budget chip
  *   P4 — bills row shows a budget chip
@@ -22,7 +22,7 @@ function attachLog(page, log) {
     page.on('pageerror', e => log.push({ t: 'pageerror', text: e.message }));
 }
 
-test('P1: allocation detail drawer opens and renders related records', async ({ page }) => {
+test('P1: allocation row opens the full-page allocation drill-in', async ({ page }) => {
     const log = [];
     attachLog(page, log);
     await page.goto('/budget.html');
@@ -31,23 +31,38 @@ test('P1: allocation detail drawer opens and renders related records', async ({ 
         return c && !c.classList.contains('hidden');
     }, { timeout: 15000 });
     // First allocation row (variance text means we need to wait for render)
-    const firstRow = page.locator('#budget-alloc-body tr[data-action="open-allocation"]').first();
+    const firstRow = page.locator('#budget-alloc-body tr[data-action="open-allocation-drill-in"]').first();
     await expect(firstRow).toBeVisible();
     await firstRow.click();
-    await expect(page.locator('#budget-detail-drawer')).not.toHaveClass(/translate-x-full/);
-    // Wait for detail content to finish loading (skeleton → full).
-    // The "Related transactions" header is css-uppercased, so checking
-    // innerText would match "RELATED TRANSACTIONS" — use textContent to read
-    // the underlying source text instead.
+    await expect(page).toHaveURL(/budget-allocation\.html\?budgetId=.*allocationId=/);
+    await expect(page.locator('#budget-detail-drawer')).toHaveCount(0);
     await page.waitForFunction(() => {
-        const c = document.getElementById('budget-detail-content');
-        return c && c.textContent && c.textContent.includes('Related transactions');
+        const c = document.getElementById('allocation-content');
+        return c && !c.classList.contains('hidden');
     }, { timeout: 10000 });
-    const heading = await page.locator('#budget-detail-name').textContent();
-    console.log('[P1] drawer for allocation:', heading?.trim());
-    await page.screenshot({ path: `${SHOTS}/P1-detail-drawer.png`, fullPage: true });
-    await expect(page.locator('#budget-detail-content')).toContainText(/Related transactions/i);
-    await expect(page.locator('#budget-detail-content')).toContainText(/Related bills/i);
+    const heading = await page.locator('#allocation-title').textContent();
+    console.log('[P1] drill-in for allocation:', heading?.trim());
+    await page.screenshot({ path: `${SHOTS}/P1-allocation-drill-in.png`, fullPage: true });
+    await expect(page.locator('#allocation-content')).toContainText(/Spending groups/i);
+    await expect(page.locator('#allocation-record-title')).toContainText(/Related Records/i);
+    await expect(page.locator('#allocation-back-link')).toBeVisible();
+});
+
+test('P1b: allocation stacked-bar segment opens the full-page drill-in', async ({ page }) => {
+    await page.goto('/budget.html');
+    await page.waitForFunction(() => {
+        const c = document.getElementById('budget-content');
+        return c && !c.classList.contains('hidden');
+    }, { timeout: 15000 });
+    const firstSegment = page.locator('#budget-allocation-bar [data-action="open-allocation-drill-in"]').first();
+    await expect(firstSegment).toBeVisible();
+    await firstSegment.click();
+    await expect(page).toHaveURL(/budget-allocation\.html\?budgetId=.*allocationId=/);
+    await page.waitForFunction(() => {
+        const c = document.getElementById('allocation-content');
+        return c && !c.classList.contains('hidden');
+    }, { timeout: 10000 });
+    await expect(page.locator('#allocation-record-title')).toContainText(/Related Records/i);
 });
 
 test('P2: Phase 2 sections present (unallocated / excluded / activity) when applicable', async ({ page }) => {
@@ -124,7 +139,7 @@ test('P6: calculation invariant — totals reconcile against allocation+unalloca
     }, { timeout: 15000 });
     // Sum the allocation table's Spent + Reserved cells.
     const rowTotals = await page.evaluate(() => {
-        const rows = document.querySelectorAll('#budget-alloc-body tr[data-action="open-allocation"]');
+        const rows = document.querySelectorAll('#budget-alloc-body tr[data-action="open-allocation-drill-in"]');
         const parseRp = (s) => parseInt((s.match(/Rp\s*([\d.]+)/)?.[1] || '0').replace(/\./g, ''), 10);
         let spentReserved = 0;
         rows.forEach(row => {

@@ -91,6 +91,8 @@ function el(id) { return document.getElementById(id); }
 export function initBudgetPage({ ds, user }) {
     state.ds = ds;
     state.user = user;
+    const initialBudgetId = new URLSearchParams(window.location.search).get('budgetId');
+    if (initialBudgetId) state.selectedBudgetId = initialBudgetId;
     wireDrawerControls();
     loadAndRender();
 }
@@ -530,13 +532,18 @@ function renderAllocationMap(allocations, summary) {
         const safePct = Math.max(0, seg.percent);
         const label = safePct >= 10 ? escapeHtml(seg.label) : '';
         const textColor = seg.unassigned ? 'text-gray-500' : 'text-white';
+        const actionAttrs = seg.unassigned
+            ? ''
+            : ` data-action="open-allocation-drill-in" data-allocation-id="${escapeHtml(seg.id)}"`;
+        const cursor = seg.unassigned ? '' : ' cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#EA580C] focus:ring-offset-1';
         return `
-            <div class="group relative flex h-full items-center overflow-hidden px-2 transition-opacity hover:opacity-90 ${textColor}"
+            <button type="button" class="group relative flex h-full items-center overflow-hidden border-0 px-2 transition-opacity hover:opacity-90 ${textColor}${cursor}"
                 style="flex: 0 0 ${safePct}%; background: ${seg.color};"
+                ${actionAttrs}
                 role="img"
                 aria-label="${escapeHtml(seg.label)} ${escapeHtml(formatPercent(seg.percent))} of main budget">
                 <span class="truncate text-[11px] font-bold">${label}</span>
-            </div>
+            </button>
         `;
     }).join('');
 
@@ -573,7 +580,7 @@ function renderAllocationsTable(allocations) {
         // Variance line goes inside the inner text block so it indents under
         // the name + category instead of running flush-left below the swatch.
         return `
-            <tr class="hover:bg-gray-50 transition-colors cursor-pointer align-top" data-allocation-id="${escapeHtml(alloc.id)}" data-action="open-allocation">
+            <tr class="hover:bg-gray-50 transition-colors cursor-pointer align-top" data-allocation-id="${escapeHtml(alloc.id)}" data-action="open-allocation-drill-in">
                 <td class="px-5 py-4">
                     <div class="flex items-start gap-3">
                         <span class="mt-1.5 h-2.5 w-2.5 rounded-sm flex-shrink-0" style="background: ${allocationColor(index)};"></span>
@@ -614,7 +621,7 @@ function renderAllocationMobileCard(alloc, index) {
     const spentReserved = (Number(alloc.actual_used) || 0) + (Number(alloc.committed_amount) || 0);
     const remainingCls = alloc.remaining_amount < 0 ? 'text-red-600' : 'text-gray-900';
     return `
-        <button type="button" class="w-full text-left px-5 py-4 hover:bg-gray-50 transition-colors" data-allocation-id="${escapeHtml(alloc.id)}" data-action="open-allocation">
+        <button type="button" class="w-full text-left px-5 py-4 hover:bg-gray-50 transition-colors" data-allocation-id="${escapeHtml(alloc.id)}" data-action="open-allocation-drill-in">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <div class="flex items-center gap-2">
@@ -704,12 +711,14 @@ function renderBudgetAttention(allocations, summary) {
         if (alloc.status === 'exceeded') {
             alerts.push({
                 tone: 'danger',
+                allocationId: alloc.id,
                 title: `${alloc.name} exceeded allocation`,
                 body: `${formatRp(Math.max(0, used - alloc.allocated_amount))} over allocation at ${formatPercent(alloc.usage_percent)} usage.`
             });
         } else if (alloc.usage_percent >= 85) {
             alerts.push({
                 tone: 'warning',
+                allocationId: alloc.id,
                 title: `${alloc.name} is at ${formatPercent(alloc.usage_percent)} usage`,
                 body: 'Review reserved bills before approving new spend.'
             });
@@ -749,7 +758,7 @@ function renderAttentionItem(alert) {
         neutral: 'border-gray-200 text-gray-500'
     }[alert.tone] || 'border-gray-200 text-gray-500';
     return `
-        <li class="px-5 py-4">
+        <li class="px-5 py-4 ${alert.allocationId ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}" ${alert.allocationId ? `data-action="open-allocation-drill-in" data-allocation-id="${escapeHtml(alert.allocationId)}"` : ''}>
             <div class="flex items-start gap-3">
                 <span class="mt-1 h-2.5 w-2.5 rounded-full border ${tone} flex-shrink-0"></span>
                 <div class="min-w-0">
@@ -759,6 +768,13 @@ function renderAttentionItem(alert) {
             </div>
         </li>
     `;
+}
+
+function openAllocationDrillIn(allocationId) {
+    const budgetId = state.usage?.budget?.id || state.selectedBudgetId;
+    if (!allocationId || !budgetId) return;
+    const params = new URLSearchParams({ budgetId, allocationId });
+    window.location.href = `budget-allocation.html?${params.toString()}`;
 }
 
 function renderUnallocatedCard(unallocated) {
@@ -817,9 +833,10 @@ function wireDrawerControls() {
     el('budget-activity-toggle')?.addEventListener('click', () => toggleCollapsible('budget-activity-body', 'budget-activity-caret'));
 
     document.addEventListener('click', (e) => {
-        const allocRow = e.target.closest('[data-action="open-allocation"]');
+        const allocRow = e.target.closest('[data-action="open-allocation-drill-in"]');
         if (allocRow) {
-            openAllocationDetail(allocRow.dataset.allocationId);
+            e.preventDefault();
+            openAllocationDrillIn(allocRow.dataset.allocationId);
             return;
         }
         const queueAct = e.target.closest('[data-phase2-action]');

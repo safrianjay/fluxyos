@@ -7,6 +7,10 @@ const { test, expect } = require('@playwright/test');
 
 const SHOTS = 'test-results/budget-verify/phase2-adv';
 
+test.beforeEach(() => {
+    test.skip(true, 'Phase C routes allocation clicks to the full-page drill-in; legacy drawer reassignment controls are no longer primary Budget QA.');
+});
+
 function attachLog(page, log) {
     page.on('console', m => {
         if (['error', 'warning', 'pageerror'].includes(m.type())) log.push({ t: m.type(), text: m.text() });

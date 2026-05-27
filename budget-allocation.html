@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Budget Allocation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="assets/css/platform-learning.css">
+    <style>
+        body { font-family: Inter, sans-serif; }
+        .allocation-kpi-cell {
+            min-height: 120px;
+            padding: 22px 24px;
+            background: #fff;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        .allocation-kpi-label {
+            color: #6B7280;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .allocation-kpi-value {
+            margin-top: 8px;
+            font-family: Inter, sans-serif;
+            font-size: clamp(22px, 1.7vw, 30px);
+            line-height: 1.15;
+            font-weight: 800;
+            letter-spacing: 0;
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum";
+            white-space: nowrap;
+        }
+        .allocation-kpi-sub {
+            margin-top: 8px;
+            color: #9CA3AF;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+        .allocation-summary-group {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 8px 12px;
+            width: 100%;
+            padding: 8px 0;
+            text-align: left;
+        }
+        .allocation-group-row {
+            width: 100%;
+            padding: 20px 24px;
+            text-align: left;
+            border-left: 3px solid transparent;
+            border-bottom: 1px solid #F3F4F6;
+            transition: background-color 160ms ease, border-color 160ms ease;
+        }
+        .allocation-group-row:hover,
+        .allocation-group-row.is-selected {
+            background: #F9FAFB;
+            border-left-color: #EA580C;
+        }
+        .allocation-record-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 16px;
+            padding: 18px 20px;
+            border-bottom: 1px solid #F3F4F6;
+        }
+        @media (min-width: 1280px) {
+            .allocation-kpi-cell {
+                border-bottom: 0;
+                border-right: 1px solid #E5E7EB;
+            }
+            .allocation-kpi-cell:last-child { border-right: 0; }
+        }
+        @media (max-width: 520px) {
+            .allocation-kpi-cell { padding: 18px; min-height: 104px; }
+            .allocation-kpi-value { font-size: 20px; }
+            .allocation-record-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
+            <div class="flex items-center gap-4 flex-1">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="window.toggleFluxyAI()" data-tour-target="fluxy-ai-entry" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Fluxy AI
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            <div class="max-w-[1480px] mx-auto">
+
+                <div id="allocation-loading" class="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center text-[13px] text-gray-400">
+                    Loading allocation detail...
+                </div>
+
+                <div id="allocation-error" class="hidden"></div>
+
+                <div id="allocation-content" class="hidden space-y-6">
+                    <section class="space-y-6">
+                        <a id="allocation-back-link" href="/budget" class="inline-flex items-center gap-2 text-[13px] font-bold text-gray-500 hover:text-gray-900">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                            Back to Budget Overview
+                        </a>
+
+                        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <span id="allocation-color" class="h-3 w-3 rounded-sm bg-[#EA580C]"></span>
+                                    <h1 id="allocation-title" class="text-[28px] sm:text-[32px] leading-tight font-bold tracking-tight text-gray-900">Allocation</h1>
+                                    <span id="allocation-status" class="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-1 text-[12px] font-bold text-gray-600">Loading</span>
+                                </div>
+                                <div id="allocation-meta" class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-gray-500"></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="allocation-kpis" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"></section>
+
+                    <section class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.9fr)]">
+                            <div class="p-5 sm:p-6 xl:border-r border-gray-100 min-w-0">
+                                <div class="flex items-center justify-between gap-3">
+                                    <h2 class="text-[13px] font-bold uppercase tracking-wide text-gray-600">Spend trend · Monthly</h2>
+                                    <p class="text-[12px] text-gray-400">Actual spend only</p>
+                                </div>
+                                <div id="allocation-trend" class="mt-5 min-w-0"></div>
+                            </div>
+                            <div class="p-5 sm:p-6">
+                                <h2 class="text-[13px] font-bold uppercase tracking-wide text-gray-600">Spending groups</h2>
+                                <div id="allocation-group-summary" class="mt-4"></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.43fr)] gap-6">
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-w-0">
+                            <div class="px-5 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+                                <div>
+                                    <h2 class="text-[14px] font-bold text-gray-900">Spending groups</h2>
+                                    <p class="text-[12px] text-gray-400 mt-0.5">Grouped from matched records only.</p>
+                                </div>
+                                <p id="allocation-group-count" class="text-[12px] text-gray-400"></p>
+                            </div>
+                            <div id="allocation-groups" class="divide-y divide-gray-100"></div>
+                        </div>
+
+                        <aside class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-w-0">
+                            <div class="px-5 sm:px-6 py-4 border-b border-gray-100">
+                                <h2 id="allocation-record-title" class="text-[14px] font-bold text-gray-900">Related Records</h2>
+                                <p id="allocation-record-subtitle" class="text-[12px] text-gray-400 mt-0.5">Showing all matched records</p>
+                            </div>
+                            <div id="allocation-records" class="max-h-[560px] overflow-y-auto"></div>
+                            <p id="allocation-record-cap" class="px-5 sm:px-6 py-3 text-[12px] text-gray-400"></p>
+                        </aside>
+                    </section>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+        import { applyToPage } from './assets/js/onboarding-gate.js';
+        import { initBudgetAllocationPage } from './assets/js/budget-allocation.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.firebaseapp.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.replace('/login');
+                return;
+            }
+            const gated = await applyToPage(user, { pageKey: 'budgets' });
+            if (gated) return;
+            initBudgetAllocationPage({ ds, user });
+        });
+    </script>
+</body>
+</html>
