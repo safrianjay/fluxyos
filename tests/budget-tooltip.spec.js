@@ -18,7 +18,7 @@ test('budget KPI tooltips: 5 cards, hover surfaces the right copy', async ({ pag
         ['Allocated',        /split into category allocations/i],
         ['Spent \\+ Reserved', /reduce what is remaining/i],
         ['Remaining',        /Budget left after recorded spend/i],
-        ['Unassigned',       /not yet split into any allocation/i]
+        ['EOY Forecast',     /current plan baseline/i]
     ];
     for (let i = 0; i < expectedKeywords.length; i++) {
         const [label, expectedCopy] = expectedKeywords[i];

@@ -107,6 +107,7 @@ function renderEmpty() {
     state.usage = null;
     el('budget-loading').classList.add('hidden');
     el('budget-content').classList.add('hidden');
+    el('budget-page-title')?.classList.remove('hidden');
     const container = el('budget-empty-state');
     container.classList.remove('hidden');
     container.innerHTML = `
@@ -132,6 +133,7 @@ function renderBudget(usage) {
     el('budget-loading').classList.add('hidden');
     el('budget-empty-state').classList.add('hidden');
     el('budget-content').classList.remove('hidden');
+    el('budget-page-title')?.classList.add('hidden');
     el('budget-create-btn-label').textContent = 'Edit Budget';
 
     const { budget, allocations, summary, unallocated } = usage;
@@ -146,8 +148,8 @@ function renderBudget(usage) {
     const unassigned = Number(summary.unallocated_budget_amount) || 0;
     const spentReserved = (Number(summary.total_actual_used) || 0) + (Number(summary.total_committed) || 0);
     const remaining = Number(summary.total_remaining) || 0;
+    const eoyForecast = total;
     const coveragePercent = total > 0 ? (allocated / total) * 100 : 0;
-    const unassignedPercent = total > 0 ? (unassigned / total) * 100 : 0;
     const usagePercent = Number(summary.usage_percent) || 0;
 
     el('budget-total').textContent = formatRp(total);
@@ -176,7 +178,7 @@ function renderBudget(usage) {
 
     const remainingEl = el('budget-remaining');
     remainingEl.textContent = formatRp(remaining);
-    remainingEl.className = `mt-2 text-2xl font-bold font-mono truncate ${remaining < 0 ? 'text-red-600' : 'text-gray-900'}`;
+    remainingEl.className = `mt-3 text-[11px] sm:text-[18px] leading-none font-bold font-mono truncate ${remaining < 0 ? 'text-red-600' : 'text-gray-900'}`;
     el('budget-remaining-hint').textContent = remaining < 0
         ? `${formatRp(remaining)} over budget after spent and reserved.`
         : 'Budget left after spent and reserved.';
@@ -186,15 +188,13 @@ function renderBudget(usage) {
         : ' of main budget used';
     remainingTextEl.className = remaining < 0 ? 'text-red-600' : '';
 
-    el('budget-unassigned').textContent = formatRp(unassigned);
+    el('budget-unassigned').textContent = formatRp(eoyForecast);
     el('budget-unassigned-hint').textContent = total > 0
-        ? `${formatPercent(unassignedPercent)} still needs allocation.`
-        : '—';
+        ? 'Current plan baseline.'
+        : 'Set a main budget to build a baseline.';
 
-    const unassignedCard = el('budget-unassigned-card');
-    unassignedCard.className = unassigned > 0
-        ? 'p-4 sm:p-5 border-t sm:border-t-0 xl:border-t-0 border-gray-200 transition-colors bg-white shadow-[inset_3px_0_0_#EA580C]'
-        : 'p-4 sm:p-5 border-t sm:border-t-0 xl:border-t-0 border-gray-200 transition-colors bg-white';
+    const forecastCard = el('budget-unassigned-card');
+    forecastCard.className = 'p-4 sm:p-5 xl:min-h-[132px] border-t sm:border-t-0 xl:border-t-0 border-gray-200 transition-colors bg-white';
 
     const callout = el('budget-unassigned-callout');
     const allAssignedNote = el('budget-all-assigned-note');
@@ -268,13 +268,11 @@ function renderWorkspaceHeader(budget, allocations) {
     el('budget-workspace-allocation-count').textContent = allocationText;
 
     const updatedEl = el('budget-workspace-updated');
-    const updatedCard = updatedEl.closest('div');
     updatedEl.textContent = updatedText || '—';
-    updatedCard?.classList.toggle('hidden', !updatedText);
-
-    const metaParts = [period, allocationText];
-    if (updatedText) metaParts.push(updatedText);
-    el('budget-workspace-meta').textContent = metaParts.filter(Boolean).join(' · ');
+    const updatedWrap = el('budget-workspace-updated-wrap');
+    if (updatedWrap) updatedWrap.style.display = updatedText ? '' : 'none';
+    const periodTypeWrap = el('budget-period-type-wrap');
+    if (periodTypeWrap) periodTypeWrap.style.display = budget.period_type ? '' : 'none';
 }
 
 function allocationColor(index) {
@@ -377,7 +375,7 @@ function renderAllocationsTable(allocations) {
         const variance = explainAllocationVariance(alloc);
         return `
             <tr class="hover:bg-gray-50 transition-colors cursor-pointer" data-allocation-id="${escapeHtml(alloc.id)}" data-action="open-allocation">
-                <td class="px-6 py-4">
+                <td class="px-4 py-4">
                     <div class="flex items-start gap-3">
                         <span class="mt-1.5 h-2.5 w-2.5 rounded-sm flex-shrink-0" style="background: ${allocationColor(index)};"></span>
                         <div class="min-w-0">
@@ -387,10 +385,10 @@ function renderAllocationsTable(allocations) {
                     </div>
                     ${variance ? `<p class="mt-1 text-[11px] text-gray-500 max-w-[360px]">${variance}</p>` : ''}
                 </td>
-                <td class="px-6 py-4 text-right font-mono text-gray-900">${formatRp(alloc.allocated_amount)}</td>
-                <td class="px-6 py-4 text-right font-mono text-gray-700">${formatRp(spentReserved)}</td>
-                <td class="px-6 py-4 text-right font-mono ${remainingCls}">${formatRp(alloc.remaining_amount)}</td>
-                <td class="px-6 py-4">
+                <td class="px-4 py-4 text-right font-mono text-gray-900">${formatRp(alloc.allocated_amount)}</td>
+                <td class="px-4 py-4 text-right font-mono text-gray-700">${formatRp(spentReserved)}</td>
+                <td class="px-4 py-4 text-right font-mono ${remainingCls}">${formatRp(alloc.remaining_amount)}</td>
+                <td class="px-4 py-4">
                     <div class="flex items-center justify-end gap-2">
                         <div class="hidden sm:block w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                             <div class="h-full ${barCls} rounded-full" style="width: ${usagePercent}%"></div>
@@ -398,7 +396,7 @@ function renderAllocationsTable(allocations) {
                         <span class="font-mono text-[12px] font-bold text-gray-700">${formatPercent(alloc.usage_percent)}</span>
                     </div>
                 </td>
-                <td class="px-6 py-4">
+                <td class="px-4 py-4">
                     <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${status.cls}">${status.label}</span>
                 </td>
             </tr>
@@ -575,6 +573,11 @@ function renderUnallocatedCard(unallocated) {
 
 function wireDrawerControls() {
     el('budget-create-btn').addEventListener('click', () => openDrawer());
+    el('budget-refresh-btn')?.addEventListener('click', handleBudgetRefresh);
+    el('budget-export-btn')?.addEventListener('click', handleBudgetExport);
+    document.querySelectorAll('[data-budget-period-tab]').forEach(btn => {
+        btn.addEventListener('click', () => setBudgetPeriodTab(btn));
+    });
     // The Assign Remaining Budget CTA lives inside the unassigned callout;
     // it's always in the DOM (hidden until needed) so we can wire it once.
     // Reuses the Edit Budget flow — opening the drawer prefills allocation
@@ -636,6 +639,84 @@ function wireDrawerControls() {
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && state.drawerOpen) closeDrawer();
+    });
+}
+
+async function handleBudgetRefresh() {
+    const btn = el('budget-refresh-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-70');
+    }
+    try {
+        await loadAndRender();
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-70');
+        }
+    }
+}
+
+function handleBudgetExport() {
+    if (!state.usage) {
+        window.showToast?.('No budget data to export yet.', 'error');
+        return;
+    }
+
+    const { budget, allocations, summary } = state.usage;
+    const spentReserved = (Number(summary.total_actual_used) || 0) + (Number(summary.total_committed) || 0);
+    const rows = [
+        ['Budget', budget.name || 'Operating Budget'],
+        ['Period', formatPeriod(budget)],
+        [],
+        ['Metric', 'Amount'],
+        ['Main Budget', Number(summary.total_amount) || 0],
+        ['Allocated', Number(summary.total_allocated) || 0],
+        ['Spent + Reserved', spentReserved],
+        ['Remaining', Number(summary.total_remaining) || 0],
+        ['EOY Forecast', Number(summary.total_amount) || 0],
+        [],
+        ['Allocation', 'Allocated', 'Spent + Reserved', 'Remaining', 'Usage %', 'Status'],
+        ...(allocations || []).map(alloc => [
+            alloc.name || 'Allocation',
+            Number(alloc.allocated_amount) || 0,
+            (Number(alloc.actual_used) || 0) + (Number(alloc.committed_amount) || 0),
+            Number(alloc.remaining_amount) || 0,
+            Number(alloc.usage_percent) || 0,
+            (STATUS_BADGE[alloc.status] || STATUS_BADGE.healthy).label
+        ])
+    ];
+    const csv = rows.map(row => row.map(csvCell).join(',')).join('\n');
+    const date = new Date().toISOString().slice(0, 10);
+    const name = String(budget.name || 'budget').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'budget';
+    downloadTextFile(`fluxyos-${name}-${date}.csv`, csv);
+}
+
+function csvCell(value) {
+    if (value == null) return '';
+    const text = String(value);
+    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function downloadTextFile(filename, text) {
+    const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function setBudgetPeriodTab(activeBtn) {
+    document.querySelectorAll('[data-budget-period-tab]').forEach(btn => {
+        const active = btn === activeBtn;
+        btn.className = active
+            ? 'budget-period-tab rounded-md px-3 py-1.5 transition-colors bg-orange-50 text-[#EA580C]'
+            : 'budget-period-tab rounded-md px-3 py-1.5 transition-colors hover:text-gray-900';
     });
 }
 
