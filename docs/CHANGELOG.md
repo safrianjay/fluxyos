@@ -7,6 +7,23 @@ All notable changes to FluxyOS are recorded here, newest first.
 ## [Unreleased]
 > Changes in progress — not yet pushed to main
 
+### Added (Budget Phase 2 — record-level control)
+- **Allocation detail drawer** on `/budget` — click any allocation row to open a right-side drawer showing the allocation's stat strip, deterministic variance explanation, related transactions, and related bills. Each related-record row carries Change/Exclude actions.
+- **Unallocated records queue** — new section on `/budget` lists every in-period spend record with no matching allocation. Per-row Assign and Exclude actions.
+- **Excluded records section** — collapsible card listing records the user manually excluded from this budget, with the exclusion reason and a Restore action.
+- **Budget activity timeline** — collapsible audit log of `budget_assignment.update` / `.exclude` / `.restore` actions scoped to the current budget (filtered by `after.budget_id`).
+- **Shared `FluxyBudgetAssignment` drawer** (assets/js/shared-dashboard.js) — lazy-injected mini-form drives all three actions (assign / exclude / restore) with a required-reason field. Reused by `/budget`, `/ledger`, and `/bill`.
+- **Budget chip + Assign action on every Ledger and Bills row** — small badge under the Category cell shows `Marketing Budget` / `Auto · Marketing` / `Unallocated` / `Excluded` for in-period spend records. Clicking the link opens the shared assignment drawer.
+- **9 new optional transaction fields**: `budget_id`, `budget_allocation_id`, `budget_match_method`, `budget_match_status`, `budget_match_confidence`, `budget_assignment_reason`, `budget_assignment_updated_at`, `budget_assignment_updated_by`, `budget_exclusion_reason`. All optional; legacy transactions keep working via category fallback.
+- **4 new optional bill fields**: `budget_assignment_reason`, `budget_assignment_updated_at`, `budget_assignment_updated_by`, `budget_exclusion_reason`. Phase 1.5's 5 bill fields gain `'rule'` and `'excluded'` enum values.
+- **DataService methods**: `resolveRecordAssignment`, `getBudgetRelatedRecords`, `getUnallocatedBudgetRecords`, `getBudgetActivityLogs`, `updateTransactionBudgetAssignment`, `updateBillBudgetAssignment`, `excludeTransactionFromBudget`, `excludeBillFromBudget`, `restoreBudgetAssignment`. Every Phase 2 writer commits the record update + audit log in one Firestore `writeBatch`.
+- **`docs/QA_CHECKLIST.md` §L** — 15 Phase 2 probes.
+
+### Changed (Budget Phase 2)
+- **`firestore.rules`** — additive: `isValidTransactionBudgetFields` validator added and wired into transactions create + update; `isValidBillBudgetFields` extended with 4 new fields and enum expansion; bills/transactions `hasOnly` allowlists extended. All Phase 2 writers must set `budget_assignment_updated_by == request.auth.uid` (rule-pinned).
+- **`getBudgetUsage` resolver-based refactor** — totals now route through `resolveRecordAssignment` so manual assignment / exclusion override category matching. Return shape unchanged; existing callers (the Phase 1 Budget page summary) keep working.
+- **Allocation rows on `/budget` are clickable** — each row gets an `:hover:bg-orange-50/30` + `cursor-pointer` plus a deterministic variance explanation line under the allocation name.
+
 ### Added
 - **Budgets app page** (`/budget`) — Phase 1 operating budget control surface. Main budget summary (total / actual / committed / remaining / usage progress), allocation breakdown table with Healthy / Watch / At Risk / Exceeded status, risk panel and unallocated-spend card that only appear when there's real risk. Sidebar Budgets entry promoted from disabled `Soon` to a real link.
 - **Create / Edit Budget drawer** — name, total, period (range), monthly/quarterly/yearly type, optional notes, allocation rows (Marketing / Infrastructure / Operations / SaaS — Revenue intentionally excluded). Live "Allocated of Total / Unallocated" totals, over-allocation warning, validation that blocks submit until all fields valid.

@@ -443,6 +443,30 @@ touched.
 | 4 | Mobile 375px: summary cards stack into a single column; allocation table scrolls horizontally; drawer covers viewport |
 | 5 | Desktop 1280px: layout matches `bill.html` rhythm |
 
+#### L — Budget Phase 2 — Record-level control
+
+Run when `assets/js/db-service.js` budget methods, the `budget_allocations`
+Firestore rules, the transaction or bill budget fields, `budget.html` /
+`budget.js` Phase 2 sections, or the ledger/bills row chips are touched.
+
+| # | Check |
+|---|-------|
+| 1 | Allocation detail drawer opens when an allocation row on `/budget` is clicked. Header shows name + status badge + stat strip + variance explanation. Related Transactions and Related Bills sections list rows from the current period. |
+| 2 | Unallocated records section renders only when records exist. Each row shows date / type / vendor / category / amount / suggested allocation / Assign + Exclude actions. |
+| 3 | Excluded records section is collapsed by default; toggling expands it. Each row shows the exclusion reason and a Restore action. |
+| 4 | Budget activity section renders only when audit logs exist for this budget. Each row shows timestamp, action label, target collection, and the user-entered reason. |
+| 5 | Assign action on a transaction: opens the shared `FluxyBudgetAssignment` drawer with title "Change allocation"; allocation dropdown is populated; submit disabled until reason + allocation; on submit, transaction's `budget_allocation_id` updates AND an audit log with action `budget_assignment.update` is written under `users/{uid}/audit_logs`; Budget page totals refresh. |
+| 6 | Exclude action on a bill: requires reason; on submit, bill gains `budget_match_status='excluded'` + `budget_impact_status='released'`; Marketing Committed amount drops by exactly the bill amount; audit action = `budget_assignment.exclude`. |
+| 7 | Restore action on an excluded record: requires reason; clears excluded state; record returns to category-match; audit action = `budget_assignment.restore`. |
+| 8 | Legacy transactions/bills without the budget fields still render in the allocation detail drawer (via category fallback) and still count in totals. |
+| 9 | Add Transaction drawer is unchanged — no budget UI, no auto-tag on save. |
+| 10 | Add Bill drawer keeps the Phase 1.5 budget impact preview. New saves continue to write the 5 Phase 1.5 fields. |
+| 11 | Ledger page: every in-period spend transaction shows a small budget chip under the Category cell (`Marketing Budget` / `Auto · Marketing` / `Unallocated` / `Excluded`) plus an Assign / Restore link. Clicking the link opens the shared assignment drawer; clicking elsewhere on the row still opens the existing transaction detail drawer. |
+| 12 | Bills page: same chip + action pattern. Paid bills and `converted_to_actual` bills don't show a chip. |
+| 13 | Firestore writes for assignment / exclusion / restore commit the record update AND audit log atomically (verify in Firebase console: one new bill/transaction revision + one new audit log per action). |
+| 14 | `budget_assignment_updated_by` on every Phase 2 write equals `request.auth.uid` (Firestore rule pins it; mismatched UIDs are rejected). |
+| 15 | No console errors on `/budget`, `/ledger`, `/bill` after the new sections + chips render. |
+
 #### K7 — Save atomicity (regression)
 | # | Check |
 |---|-------|

@@ -197,6 +197,56 @@
                         </div>
                     </div>
 
+                    <!-- Phase 2: Unallocated records queue (per-record actions) -->
+                    <div id="budget-unallocated-queue" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-[14px] font-bold text-gray-900">Unallocated records</h3>
+                                <p class="text-[12px] text-gray-400 mt-0.5">Assign each record to an allocation, or exclude it from this budget with a reason.</p>
+                            </div>
+                            <p id="budget-unalloc-count" class="text-[12px] text-gray-400"></p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse min-w-[760px]">
+                                <thead>
+                                    <tr class="bg-gray-50 border-b border-gray-200">
+                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Type</th>
+                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Vendor / Category</th>
+                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Amount</th>
+                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Suggested</th>
+                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="budget-unalloc-body" class="divide-y divide-gray-100 text-[13px]"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Phase 2: Excluded records — collapsed by default -->
+                    <div id="budget-excluded-card" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <button id="budget-excluded-toggle" type="button" class="w-full px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3 text-left hover:bg-gray-50/60 transition-colors">
+                            <div>
+                                <h3 class="text-[14px] font-bold text-gray-900">Excluded records</h3>
+                                <p class="text-[12px] text-gray-400 mt-0.5"><span id="budget-excluded-count">0</span> record(s) intentionally excluded from this budget.</p>
+                            </div>
+                            <svg id="budget-excluded-caret" class="w-4 h-4 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div id="budget-excluded-body" class="hidden divide-y divide-gray-100 text-[13px]"></div>
+                    </div>
+
+                    <!-- Phase 2: Budget activity timeline — collapsed by default -->
+                    <div id="budget-activity-card" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <button id="budget-activity-toggle" type="button" class="w-full px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3 text-left hover:bg-gray-50/60 transition-colors">
+                            <div>
+                                <h3 class="text-[14px] font-bold text-gray-900">Budget activity</h3>
+                                <p class="text-[12px] text-gray-400 mt-0.5">Manual assignments, exclusions, and restores for this budget.</p>
+                            </div>
+                            <svg id="budget-activity-caret" class="w-4 h-4 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <ul id="budget-activity-body" class="hidden divide-y divide-gray-100"></ul>
+                    </div>
+
                 </div>
 
             </div>
@@ -273,6 +323,28 @@
             </div>
         </form>
     </div>
+
+    <!-- Phase 2: Allocation detail drawer (right side, opens from a row click) -->
+    <div id="budget-detail-backdrop" class="fixed inset-0 bg-black/40 z-40 hidden"></div>
+    <div id="budget-detail-drawer" class="fixed top-0 right-0 h-full w-full max-w-[560px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div class="min-w-0">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Allocation detail</p>
+                <h2 id="budget-detail-name" class="mt-1 text-[15px] font-bold text-gray-900 truncate">—</h2>
+            </div>
+            <button id="budget-detail-close-btn" type="button" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div id="budget-detail-content" class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+            <!-- Injected by budget.js -->
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
+            <button id="budget-detail-close-footer" type="button" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Close</button>
+        </div>
+    </div>
+
+    <!-- Phase 2: Shared assignment drawer is injected by shared-dashboard.js (FluxyBudgetAssignment) -->
 
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>

@@ -1839,3 +1839,250 @@ window.attachChartHover = function attachChartHover(container, options) {
     // is required, but existing callers still resolve cleanly.
     window.mountMetricInfoTooltips = function () {};
 })();
+
+/**
+ * Shared budget assignment drawer (Phase 2).
+ *
+ * Lazy-injected on first call so any app page can trigger it without
+ * carrying the markup. Drives all three actions through one drawer:
+ *
+ *   window.FluxyBudgetAssignment.open({
+ *       action: 'assign' | 'exclude' | 'restore',
+ *       recordType: 'transactions' | 'bills',
+ *       recordId: 'docId',
+ *       vendor: 'AWS',
+ *       amountText: 'Rp 5.000.000',
+ *       currentAllocationId: 'abc' | null,
+ *       budgetId: 'budgetDocId',
+ *       allocations: [{ id, name, scope_values }],
+ *       onDone: () => {}
+ *   })
+ *
+ * Loads DataService lazily and writes the record + audit log atomically.
+ */
+(function () {
+    let ds = null;
+    let mounted = false;
+    let activeCtx = null;
+
+    function ensureMounted() {
+        if (mounted) return;
+        const html = `
+            <div id="fbx-assignment-backdrop" class="fixed inset-0 bg-black/50 z-[60] hidden"></div>
+            <div id="fbx-assignment-drawer" class="fixed top-0 right-0 h-full w-full max-w-[420px] bg-white shadow-2xl z-[70] transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Budget</p>
+                        <h2 id="fbx-assignment-title" class="mt-1 text-[15px] font-bold text-gray-900">Change allocation</h2>
+                    </div>
+                    <button id="fbx-assignment-close" type="button" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <form id="fbx-assignment-form" class="flex-1 flex flex-col overflow-hidden">
+                    <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                        <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+                            <p id="fbx-assignment-vendor" class="text-[13px] font-bold text-gray-900 truncate">—</p>
+                            <p id="fbx-assignment-meta" class="mt-0.5 text-[12px] text-gray-500">—</p>
+                        </div>
+                        <div id="fbx-assignment-allocation-row">
+                            <label for="fbx-assignment-allocation" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Allocation</label>
+                            <select id="fbx-assignment-allocation" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]"></select>
+                        </div>
+                        <div>
+                            <label for="fbx-assignment-reason" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reason <span class="text-[#EA580C]">*</span></label>
+                            <textarea id="fbx-assignment-reason" rows="3" maxlength="500" required placeholder="Why is this record being updated?" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px] resize-none"></textarea>
+                            <p class="mt-1 text-[11px] text-gray-400">Recorded in the audit log for traceability.</p>
+                        </div>
+                    </div>
+                    <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
+                        <button id="fbx-assignment-cancel" type="button" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                        <button id="fbx-assignment-submit" type="submit" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed" disabled>Save</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = html;
+        while (wrapper.firstChild) document.body.appendChild(wrapper.firstChild);
+
+        const back = document.getElementById('fbx-assignment-backdrop');
+        const closeBtn = document.getElementById('fbx-assignment-close');
+        const cancelBtn = document.getElementById('fbx-assignment-cancel');
+        const reasonEl = document.getElementById('fbx-assignment-reason');
+        const allocEl = document.getElementById('fbx-assignment-allocation');
+        const submitBtn = document.getElementById('fbx-assignment-submit');
+        const form = document.getElementById('fbx-assignment-form');
+
+        const close = () => closeDrawer();
+        back.addEventListener('click', close);
+        closeBtn.addEventListener('click', close);
+        cancelBtn.addEventListener('click', close);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !document.getElementById('fbx-assignment-drawer').classList.contains('translate-x-full')) {
+                close();
+            }
+        });
+
+        const validate = () => {
+            const reason = reasonEl.value.trim();
+            const needsAllocation = activeCtx && activeCtx.action === 'assign';
+            const allocOk = !needsAllocation || (allocEl.value && allocEl.value.length > 0);
+            submitBtn.disabled = !(reason.length > 0 && allocOk);
+        };
+        reasonEl.addEventListener('input', validate);
+        allocEl.addEventListener('change', validate);
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (submitBtn.disabled || !activeCtx) return;
+            submitBtn.disabled = true;
+            const originalLabel = submitBtn.textContent;
+            submitBtn.textContent = 'Saving…';
+            try {
+                await commitAssignment(activeCtx, reasonEl.value.trim(), allocEl.value);
+                window.showToast?.(actionToastMessage(activeCtx.action), 'success');
+                const onDone = activeCtx.onDone;
+                close();
+                if (typeof onDone === 'function') onDone();
+            } catch (err) {
+                console.error('Budget assignment failed:', err);
+                const friendly = String(err?.message || '').includes('permission-denied')
+                    ? 'Permission denied. Try again or contact support.'
+                    : (err?.message || 'Could not update the budget assignment.');
+                window.showToast?.(friendly, 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalLabel;
+            }
+        });
+
+        mounted = true;
+    }
+
+    function actionToastMessage(action) {
+        if (action === 'exclude') return 'Record excluded from budget.';
+        if (action === 'restore') return 'Record restored to budget.';
+        return 'Budget assignment updated.';
+    }
+
+    function closeDrawer() {
+        const drawer = document.getElementById('fbx-assignment-drawer');
+        const back = document.getElementById('fbx-assignment-backdrop');
+        drawer?.classList.add('translate-x-full');
+        back?.classList.add('hidden');
+        activeCtx = null;
+        // Release scroll lock only if no other drawer or modal still needs it.
+        // The Budget detail drawer is the typical co-resident; checking its
+        // open state by looking for its visible backdrop avoids a coupling
+        // import. Other drawers (`#budget-drawer-backdrop`, `#bill-drawer-backdrop`)
+        // get the same defensive check.
+        const lockHolders = ['budget-drawer-backdrop', 'budget-detail-backdrop', 'bill-drawer-backdrop'];
+        const anyOpen = lockHolders.some(id => {
+            const el = document.getElementById(id);
+            return el && !el.classList.contains('hidden');
+        });
+        if (!anyOpen) document.body.classList.remove('overflow-hidden');
+    }
+
+    async function loadDataService() {
+        if (ds) return ds;
+        const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
+        const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.firebaseapp.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
+            measurementId: "G-ZN7J6DRD2L"
+        };
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        if (typeof auth.authStateReady === 'function') await auth.authStateReady();
+        if (!auth.currentUser) throw new Error('Sign in required.');
+        const { default: DataService } = await import('/assets/js/db-service.js');
+        ds = new DataService(app);
+        ds._authUserId = auth.currentUser.uid;
+        return ds;
+    }
+
+    async function commitAssignment(ctx, reason, allocationIdFromSelect) {
+        const dataService = await loadDataService();
+        const userId = dataService._authUserId;
+        const payload = { reason, budgetId: ctx.budgetId };
+        if (ctx.action === 'assign') {
+            payload.allocationId = allocationIdFromSelect;
+            if (ctx.recordType === 'transactions') {
+                await dataService.updateTransactionBudgetAssignment(userId, ctx.recordId, payload);
+            } else {
+                await dataService.updateBillBudgetAssignment(userId, ctx.recordId, payload);
+            }
+        } else if (ctx.action === 'exclude') {
+            if (ctx.recordType === 'transactions') {
+                await dataService.excludeTransactionFromBudget(userId, ctx.recordId, payload);
+            } else {
+                await dataService.excludeBillFromBudget(userId, ctx.recordId, payload);
+            }
+        } else if (ctx.action === 'restore') {
+            await dataService.restoreBudgetAssignment(userId, ctx.recordType, ctx.recordId, payload);
+        } else {
+            throw new Error('Unknown action: ' + ctx.action);
+        }
+    }
+
+    window.FluxyBudgetAssignment = {
+        open(ctx) {
+            if (!ctx || !ctx.recordType || !ctx.recordId) {
+                console.warn('FluxyBudgetAssignment.open requires recordType + recordId');
+                return;
+            }
+            ensureMounted();
+            activeCtx = ctx;
+
+            const titleEl = document.getElementById('fbx-assignment-title');
+            const vendorEl = document.getElementById('fbx-assignment-vendor');
+            const metaEl = document.getElementById('fbx-assignment-meta');
+            const allocRow = document.getElementById('fbx-assignment-allocation-row');
+            const allocEl = document.getElementById('fbx-assignment-allocation');
+            const reasonEl = document.getElementById('fbx-assignment-reason');
+            const submitBtn = document.getElementById('fbx-assignment-submit');
+
+            const titleMap = {
+                assign: 'Change allocation',
+                exclude: 'Exclude from budget',
+                restore: 'Restore to budget'
+            };
+            titleEl.textContent = titleMap[ctx.action] || 'Update budget assignment';
+            vendorEl.textContent = ctx.vendor || 'Record';
+            metaEl.textContent = [ctx.recordType === 'bills' ? 'Bill' : 'Transaction', ctx.amountText || '']
+                .filter(Boolean).join(' · ');
+
+            // Allocation select is only meaningful for assign.
+            allocRow.style.display = ctx.action === 'assign' ? '' : 'none';
+            if (ctx.action === 'assign') {
+                const opts = (ctx.allocations || [])
+                    .filter(a => a.status !== 'archived')
+                    .map(a => `<option value="${a.id}" ${a.id === ctx.currentAllocationId ? 'selected' : ''}>${a.name}</option>`);
+                allocEl.innerHTML = `<option value="">Select an allocation…</option>` + opts.join('');
+                if (ctx.currentAllocationId) allocEl.value = ctx.currentAllocationId;
+            } else {
+                allocEl.innerHTML = '';
+            }
+
+            reasonEl.value = '';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Save';
+
+            document.getElementById('fbx-assignment-backdrop').classList.remove('hidden');
+            requestAnimationFrame(() => {
+                document.getElementById('fbx-assignment-drawer').classList.remove('translate-x-full');
+                reasonEl.focus();
+            });
+            // Lock background scroll so the page underneath doesn't drift
+            // while the user is filling out the assignment form.
+            document.body.classList.add('overflow-hidden');
+        },
+        close: closeDrawer
+    };
+})();

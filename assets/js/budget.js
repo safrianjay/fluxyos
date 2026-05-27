@@ -28,7 +28,8 @@ const state = {
     periodType: 'monthly',
     periodStart: null,   // 'YYYY-MM-DD'
     periodEnd: null,
-    allocRows: []        // [{ name, category, amount }]
+    allocRows: [],       // [{ name, category, amount }]
+    activeAllocationId: null  // Phase 2: id of allocation currently shown in the detail drawer
 };
 
 function getDayKey(date = new Date()) {
@@ -211,6 +212,11 @@ function renderBudget(usage) {
     renderAllocationsTable(allocations);
     renderRiskPanel(allocations, unallocated);
     renderUnallocatedCard(unallocated);
+
+    // Phase 2 sections (each is async; they don't block the main render).
+    renderUnallocatedQueue();
+    renderExcludedRecords();
+    renderActivityTimeline();
 }
 
 function classifyStatus(percent) {
@@ -244,11 +250,13 @@ function renderAllocationsTable(allocations) {
         const usagePercent = Math.max(0, Math.min(100, alloc.usage_percent));
         const scope = (alloc.scope_values || []).join(', ');
         const remainingCls = alloc.remaining_amount < 0 ? 'text-red-600' : 'text-gray-900';
+        const variance = explainAllocationVariance(alloc);
         return `
-            <tr class="hover:bg-gray-50/60 transition-colors">
+            <tr class="hover:bg-orange-50/30 transition-colors cursor-pointer" data-allocation-id="${escapeHtml(alloc.id)}" data-action="open-allocation">
                 <td class="px-6 py-4">
                     <p class="font-semibold text-gray-900">${escapeHtml(alloc.name)}</p>
                     <p class="text-[11px] text-gray-400 mt-0.5">Category: ${escapeHtml(scope || '—')}</p>
+                    ${variance ? `<p class="mt-1 text-[11px] text-gray-500 max-w-[360px]">${variance}</p>` : ''}
                 </td>
                 <td class="px-6 py-4 text-right font-mono text-gray-900">${formatRp(alloc.allocated_amount)}</td>
                 <td class="px-6 py-4 text-right font-mono text-gray-700">${formatRp(alloc.actual_used)}</td>
@@ -268,6 +276,32 @@ function renderAllocationsTable(allocations) {
             </tr>
         `;
     }).join('');
+}
+
+function explainAllocationVariance(alloc) {
+    const allocated = alloc.allocated_amount;
+    const actual = alloc.actual_used;
+    const committed = alloc.committed_amount;
+    const remaining = alloc.remaining_amount;
+    if (allocated <= 0) return '';
+    if (alloc.status === 'exceeded') {
+        const over = (actual + committed) - allocated;
+        return `Exceeded by <span class="font-mono font-bold text-red-600">${escapeHtml(formatRp(over))}</span>.`;
+    }
+    if (alloc.status === 'at_risk') {
+        return `Actual + committed has reached ${escapeHtml(formatPercent(alloc.usage_percent))} of the allocation.`;
+    }
+    if (alloc.status === 'watch') {
+        return `${escapeHtml(formatPercent(alloc.usage_percent))} used. <span class="font-mono font-bold">${escapeHtml(formatRp(remaining))}</span> remaining.`;
+    }
+    // Healthy
+    if (committed === 0 && actual === 0) {
+        return `No spend yet. <span class="font-mono font-bold">${escapeHtml(formatRp(remaining))}</span> remaining.`;
+    }
+    if (committed === 0) {
+        return `<span class="font-mono font-bold">${escapeHtml(formatRp(remaining))}</span> remaining and no committed bills.`;
+    }
+    return `<span class="font-mono font-bold">${escapeHtml(formatRp(remaining))}</span> remaining after actual and committed spend.`;
 }
 
 function renderRiskPanel(allocations, unallocated) {
@@ -316,6 +350,27 @@ function wireDrawerControls() {
     el('budget-drawer-close-btn').addEventListener('click', closeDrawer);
     el('budget-drawer-cancel').addEventListener('click', closeDrawer);
     el('budget-drawer-backdrop').addEventListener('click', closeDrawer);
+
+    // Phase 2: allocation detail drawer + collapsible sections + queue actions.
+    el('budget-detail-close-btn')?.addEventListener('click', closeDetailDrawer);
+    el('budget-detail-close-footer')?.addEventListener('click', closeDetailDrawer);
+    el('budget-detail-backdrop')?.addEventListener('click', closeDetailDrawer);
+    el('budget-excluded-toggle')?.addEventListener('click', () => toggleCollapsible('budget-excluded-body', 'budget-excluded-caret'));
+    el('budget-activity-toggle')?.addEventListener('click', () => toggleCollapsible('budget-activity-body', 'budget-activity-caret'));
+
+    document.addEventListener('click', (e) => {
+        const allocRow = e.target.closest('[data-action="open-allocation"]');
+        if (allocRow) {
+            openAllocationDetail(allocRow.dataset.allocationId);
+            return;
+        }
+        const queueAct = e.target.closest('[data-phase2-action]');
+        if (queueAct) {
+            e.preventDefault();
+            e.stopPropagation();
+            handlePhase2Action(queueAct.dataset);
+        }
+    });
 
     el('budget-form-name').addEventListener('input', updateDrawerValidity);
     el('budget-form-amount').addEventListener('input', (e) => {
@@ -576,4 +631,279 @@ function parsePeriodDate(dayKey, endOfDay = false) {
     if (endOfDay) d.setHours(23, 59, 59, 999);
     else d.setHours(0, 0, 0, 0);
     return d;
+}
+
+// ── Phase 2: allocation detail drawer ─────────────────────────────────
+
+function toggleCollapsible(bodyId, caretId) {
+    const body = el(bodyId);
+    const caret = el(caretId);
+    if (!body) return;
+    const hidden = body.classList.toggle('hidden');
+    if (caret) caret.style.transform = hidden ? '' : 'rotate(180deg)';
+}
+
+async function openAllocationDetail(allocationId) {
+    if (!allocationId || !state.usage) return;
+    const alloc = (state.usage.allocations || []).find(a => a.id === allocationId);
+    if (!alloc) return;
+
+    state.activeAllocationId = allocationId;
+    el('budget-detail-name').textContent = alloc.name;
+    el('budget-detail-content').innerHTML = renderAllocationDetailSkeleton(alloc);
+    el('budget-detail-backdrop').classList.remove('hidden');
+    requestAnimationFrame(() => el('budget-detail-drawer').classList.remove('translate-x-full'));
+    document.body.classList.add('overflow-hidden');
+
+    try {
+        const data = await state.ds.getBudgetRelatedRecords(state.user.uid, state.usage.budget.id, allocationId);
+        el('budget-detail-content').innerHTML = renderAllocationDetailFull(alloc, data, state.usage);
+    } catch (err) {
+        console.error('Detail load failed:', err);
+        el('budget-detail-content').innerHTML = `<p class="text-[13px] text-red-600">Could not load related records. ${escapeHtml(err?.message || '')}</p>`;
+    }
+}
+
+function closeDetailDrawer() {
+    state.activeAllocationId = null;
+    el('budget-detail-drawer').classList.add('translate-x-full');
+    el('budget-detail-backdrop').classList.add('hidden');
+    // Only release the scroll lock if the create-budget drawer isn't also open
+    // (unlikely but safe — that drawer manages its own lock).
+    if (!state.drawerOpen) document.body.classList.remove('overflow-hidden');
+}
+
+function renderAllocationDetailSkeleton(alloc) {
+    return `
+        ${renderAllocationDetailHeader(alloc)}
+        <p class="text-[13px] text-gray-400">Loading related records…</p>
+    `;
+}
+
+function renderAllocationDetailHeader(alloc) {
+    const status = STATUS_BADGE[alloc.status] || STATUS_BADGE.healthy;
+    const variance = explainAllocationVariance(alloc);
+    return `
+        <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div class="flex items-center justify-between gap-3">
+                <p class="text-[12px] text-gray-500">${escapeHtml((alloc.scope_values || []).join(', ') || 'No category')}</p>
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${status.cls}">${status.label}</span>
+            </div>
+            <div class="mt-3 grid grid-cols-2 gap-3 text-[12px]">
+                <div><p class="text-gray-400 uppercase tracking-wider text-[10px] font-bold">Allocated</p><p class="font-mono font-bold text-gray-900 mt-1">${formatRp(alloc.allocated_amount)}</p></div>
+                <div><p class="text-gray-400 uppercase tracking-wider text-[10px] font-bold">Remaining</p><p class="font-mono font-bold ${alloc.remaining_amount < 0 ? 'text-red-600' : 'text-gray-900'} mt-1">${formatRp(alloc.remaining_amount)}</p></div>
+                <div><p class="text-gray-400 uppercase tracking-wider text-[10px] font-bold">Actual</p><p class="font-mono text-gray-700 mt-1">${formatRp(alloc.actual_used)}</p></div>
+                <div><p class="text-gray-400 uppercase tracking-wider text-[10px] font-bold">Committed</p><p class="font-mono text-gray-700 mt-1">${formatRp(alloc.committed_amount)}</p></div>
+            </div>
+            ${variance ? `<p class="mt-3 text-[12px] text-gray-600">${variance}</p>` : ''}
+        </div>
+    `;
+}
+
+function renderAllocationDetailFull(alloc, data, usage) {
+    const txRows = data.transactions
+        .map(tx => renderDetailRecordRow(tx, 'transactions', alloc))
+        .join('') || `<p class="px-4 py-6 text-[12px] text-gray-400 text-center">No related transactions in this period.</p>`;
+    const billRows = data.bills
+        .map(b => renderDetailRecordRow(b, 'bills', alloc))
+        .join('') || `<p class="px-4 py-6 text-[12px] text-gray-400 text-center">No related unpaid bills in this period.</p>`;
+    return `
+        ${renderAllocationDetailHeader(alloc)}
+        <div>
+            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Related transactions · ${data.transactions.length}</p>
+            <div class="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
+                ${txRows}
+            </div>
+        </div>
+        <div>
+            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Related bills · ${data.bills.length}</p>
+            <div class="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
+                ${billRows}
+            </div>
+        </div>
+    `;
+}
+
+function renderDetailRecordRow(record, type, alloc) {
+    const date = (type === 'bills' && record.due_date?.toDate?.()) || record.timestamp?.toDate?.();
+    const dateText = date ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '—';
+    const vendor = record.vendor_name || 'Unknown';
+    const amount = formatRp(record.amount);
+    const source = record._matchSource === 'manual' ? 'Manual' : record._matchSource === 'explicit' ? 'Explicit' : 'Auto by category';
+    return `
+        <div class="flex items-start justify-between gap-3 px-3 py-2.5">
+            <div class="min-w-0">
+                <p class="text-[12px] font-semibold text-gray-900 truncate">${escapeHtml(vendor)}</p>
+                <p class="text-[11px] text-gray-400 mt-0.5">${escapeHtml(dateText)} · ${escapeHtml(record.category || '—')} · ${escapeHtml(source)}</p>
+            </div>
+            <div class="flex items-center gap-3 flex-shrink-0">
+                <p class="text-[12px] font-mono font-bold text-gray-900">${amount}</p>
+                <button type="button" class="text-[11px] font-bold text-[#EA580C] hover:underline" data-phase2-action data-action-type="assign" data-record-type="${type}" data-record-id="${escapeHtml(record.id)}" data-vendor="${escapeHtml(vendor)}" data-amount-text="${escapeHtml(amount)}" data-current-allocation-id="${escapeHtml(record.budget_allocation_id || '')}">Change</button>
+                <button type="button" class="text-[11px] font-bold text-gray-500 hover:text-red-600" data-phase2-action data-action-type="exclude" data-record-type="${type}" data-record-id="${escapeHtml(record.id)}" data-vendor="${escapeHtml(vendor)}" data-amount-text="${escapeHtml(amount)}">Exclude</button>
+            </div>
+        </div>
+    `;
+}
+
+// ── Phase 2: unallocated queue + excluded list + activity timeline ────
+
+async function renderUnallocatedQueue() {
+    if (!state.usage?.budget) return;
+    const card = el('budget-unallocated-queue');
+    const body = el('budget-unalloc-body');
+    const count = el('budget-unalloc-count');
+    try {
+        const { transactions, bills } = await state.ds.getUnallocatedBudgetRecords(state.user.uid, state.usage.budget.id);
+        const rows = [
+            ...transactions.map(r => ({ ...r, _type: 'transactions' })),
+            ...bills.map(r => ({ ...r, _type: 'bills' }))
+        ];
+        if (rows.length === 0) {
+            card.classList.add('hidden');
+            return;
+        }
+        card.classList.remove('hidden');
+        count.textContent = `${rows.length} record${rows.length === 1 ? '' : 's'}`;
+        body.innerHTML = rows.map(renderUnallocRow).join('');
+    } catch (err) {
+        console.warn('Unallocated queue failed:', err);
+        card.classList.add('hidden');
+    }
+}
+
+function renderUnallocRow(record) {
+    const date = (record._type === 'bills' && record.due_date?.toDate?.()) || record.timestamp?.toDate?.();
+    const dateText = date ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '—';
+    const vendor = record.vendor_name || 'Unknown';
+    const amount = formatRp(record.amount);
+    const typeLabel = record._type === 'bills' ? 'Bill' : (record.type || 'transaction').replace(/_/g, ' ');
+    // Suggested allocation: any allocation whose scope_values match the record category.
+    const cat = String(record.category || '').trim();
+    const suggested = (state.usage?.allocations || []).find(a => Array.isArray(a.scope_values) && a.scope_values.includes(cat));
+    const suggestedText = suggested ? suggested.name : '—';
+    return `
+        <tr class="hover:bg-gray-50/60">
+            <td class="px-6 py-3 text-gray-500 text-[12px]">${escapeHtml(dateText)}</td>
+            <td class="px-6 py-3 text-gray-500 text-[12px]">${escapeHtml(typeLabel)}</td>
+            <td class="px-6 py-3">
+                <p class="font-semibold text-gray-900 truncate max-w-[220px]">${escapeHtml(vendor)}</p>
+                <p class="text-[11px] text-gray-400">${escapeHtml(record.category || '—')}</p>
+            </td>
+            <td class="px-6 py-3 text-right font-mono font-bold text-gray-900">${amount}</td>
+            <td class="px-6 py-3 text-gray-500 text-[12px]">${escapeHtml(suggestedText)}</td>
+            <td class="px-6 py-3 text-right">
+                <button type="button" class="text-[12px] font-bold text-[#EA580C] hover:underline mr-3" data-phase2-action data-action-type="assign" data-record-type="${record._type}" data-record-id="${escapeHtml(record.id)}" data-vendor="${escapeHtml(vendor)}" data-amount-text="${escapeHtml(amount)}" data-current-allocation-id="${escapeHtml(suggested?.id || '')}">Assign</button>
+                <button type="button" class="text-[12px] font-bold text-gray-500 hover:text-red-600" data-phase2-action data-action-type="exclude" data-record-type="${record._type}" data-record-id="${escapeHtml(record.id)}" data-vendor="${escapeHtml(vendor)}" data-amount-text="${escapeHtml(amount)}">Exclude</button>
+            </td>
+        </tr>
+    `;
+}
+
+async function renderExcludedRecords() {
+    if (!state.usage?.budget) return;
+    const card = el('budget-excluded-card');
+    const body = el('budget-excluded-body');
+    const countEl = el('budget-excluded-count');
+    try {
+        // Fetch excluded via getBudgetRelatedRecords on any allocation (the excluded
+        // set is allocation-agnostic — same list returns from every call).
+        const firstAlloc = state.usage.allocations?.[0];
+        if (!firstAlloc) { card.classList.add('hidden'); return; }
+        const { excluded } = await state.ds.getBudgetRelatedRecords(state.user.uid, state.usage.budget.id, firstAlloc.id);
+        const rows = [
+            ...excluded.transactions.map(r => ({ ...r, _type: 'transactions' })),
+            ...excluded.bills.map(r => ({ ...r, _type: 'bills' }))
+        ];
+        if (rows.length === 0) { card.classList.add('hidden'); return; }
+        card.classList.remove('hidden');
+        countEl.textContent = String(rows.length);
+        body.innerHTML = rows.map(renderExcludedRow).join('');
+    } catch (err) {
+        console.warn('Excluded records load failed:', err);
+        card.classList.add('hidden');
+    }
+}
+
+function renderExcludedRow(record) {
+    const date = (record._type === 'bills' && record.due_date?.toDate?.()) || record.timestamp?.toDate?.();
+    const dateText = date ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '—';
+    const vendor = record.vendor_name || 'Unknown';
+    const amount = formatRp(record.amount);
+    const reason = record.budget_exclusion_reason || 'No reason recorded.';
+    return `
+        <div class="px-6 py-3 flex items-start justify-between gap-3">
+            <div class="min-w-0">
+                <p class="text-[13px] font-semibold text-gray-900 truncate">${escapeHtml(vendor)} <span class="text-gray-400 font-normal">· ${escapeHtml(record.category || '—')} · ${escapeHtml(dateText)}</span></p>
+                <p class="text-[11px] text-gray-500 mt-0.5">Reason: ${escapeHtml(reason)}</p>
+            </div>
+            <div class="flex items-center gap-3 flex-shrink-0">
+                <p class="text-[12px] font-mono font-bold text-gray-700">${amount}</p>
+                <button type="button" class="text-[12px] font-bold text-[#EA580C] hover:underline" data-phase2-action data-action-type="restore" data-record-type="${record._type}" data-record-id="${escapeHtml(record.id)}" data-vendor="${escapeHtml(vendor)}" data-amount-text="${escapeHtml(amount)}">Restore</button>
+            </div>
+        </div>
+    `;
+}
+
+async function renderActivityTimeline() {
+    if (!state.usage?.budget) return;
+    const card = el('budget-activity-card');
+    const body = el('budget-activity-body');
+    try {
+        const logs = await state.ds.getBudgetActivityLogs(state.user.uid, state.usage.budget.id, 50);
+        if (logs.length === 0) { card.classList.add('hidden'); return; }
+        card.classList.remove('hidden');
+        body.innerHTML = logs.map(renderActivityRow).join('');
+    } catch (err) {
+        console.warn('Activity timeline failed:', err);
+        card.classList.add('hidden');
+    }
+}
+
+function renderActivityRow(log) {
+    const when = log.created_at?.toDate?.();
+    const whenText = when ? when.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+    const actionMap = {
+        'budget_assignment.update': 'Assignment updated',
+        'budget_assignment.exclude': 'Excluded from budget',
+        'budget_assignment.restore': 'Restored to budget'
+    };
+    const label = actionMap[log.action] || log.action;
+    return `
+        <li class="px-6 py-3">
+            <p class="text-[11px] text-gray-400">${escapeHtml(whenText)}</p>
+            <p class="text-[13px] font-semibold text-gray-900 mt-0.5">${escapeHtml(label)} · ${escapeHtml(log.target_collection)}</p>
+            ${log.reason ? `<p class="text-[12px] text-gray-500 mt-0.5">Reason: ${escapeHtml(log.reason)}</p>` : ''}
+        </li>
+    `;
+}
+
+// ── Phase 2: action delegation handler ────────────────────────────────
+
+function handlePhase2Action(dataset) {
+    const action = dataset.actionType;
+    if (!action) return;
+    if (!state.usage?.budget) return;
+    if (!window.FluxyBudgetAssignment?.open) {
+        window.showToast?.('Assignment drawer is still loading. Please try again.', 'error');
+        return;
+    }
+    window.FluxyBudgetAssignment.open({
+        action,
+        recordType: dataset.recordType,
+        recordId: dataset.recordId,
+        vendor: dataset.vendor,
+        amountText: dataset.amountText,
+        currentAllocationId: dataset.currentAllocationId || null,
+        budgetId: state.usage.budget.id,
+        allocations: state.usage.allocations || [],
+        onDone: async () => {
+            // Reload the usage + dependent sections so totals reflect the change.
+            await loadAndRender();
+            // If the detail drawer is open, refresh it too.
+            if (state.activeAllocationId) {
+                const alloc = state.usage?.allocations?.find(a => a.id === state.activeAllocationId);
+                if (alloc) openAllocationDetail(state.activeAllocationId);
+            }
+        }
+    });
 }

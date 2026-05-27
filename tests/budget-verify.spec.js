@@ -306,12 +306,13 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
             return c && !c.classList.contains('hidden');
         }, { timeout: 15000 });
         await page.waitForTimeout(800);
-        const marketingRow = await page.locator('#budget-alloc-body tr').filter({ hasText: 'Marketing' }).first().innerText().catch(() => '');
+        const marketingRow = page.locator('#budget-alloc-body tr').filter({ hasText: 'Marketing' }).first();
+        // Read the Committed cell by column index — 4th cell (0-based 3).
         // Row columns: Allocation · Allocated · Actual · Committed · Remaining · Usage · Status.
-        // The Rp values appear in order (Allocated, Actual, Committed, Remaining).
-        const rpValues = [...marketingRow.matchAll(/Rp\s*([\d.]+)/g)].map(m => parseInt(m[1].replace(/\./g, ''), 10));
-        const committedAmount = rpValues[2] || 0;
-        console.log('[B7] Marketing allocation row after save:', marketingRow.replace(/\s+/g, ' '));
+        const committedCellText = await marketingRow.locator('td').nth(3).innerText().catch(() => '');
+        const m = committedCellText.match(/Rp\s*([\d.]+)/);
+        const committedAmount = m ? parseInt(m[1].replace(/\./g, ''), 10) : 0;
+        console.log('[B7] committed cell text:', committedCellText.replace(/\s+/g, ' '));
         console.log('[B7] Parsed Marketing committed amount:', committedAmount);
         console.log('[B7] console errors:', JSON.stringify(log.filter(e => e.type === 'error' || e.type === 'pageerror'), null, 2));
         await page.screenshot({ path: `${SHOTS_DIR}/B7c-budget-after.png`, fullPage: true });

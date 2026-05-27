@@ -653,9 +653,25 @@ service cloud.firestore {
     function isValidBillBudgetFields(data) {
       return (!('budget_id' in data) || data.budget_id == null || (data.budget_id is string && data.budget_id.size() <= 120))
         && (!('budget_allocation_id' in data) || data.budget_allocation_id == null || (data.budget_allocation_id is string && data.budget_allocation_id.size() <= 120))
-        && (!('budget_match_method' in data) || data.budget_match_method == null || data.budget_match_method in ['auto', 'manual', 'none'])
-        && (!('budget_match_status' in data) || data.budget_match_status == null || data.budget_match_status in ['matched', 'needs_review', 'unmatched'])
-        && (!('budget_impact_status' in data) || data.budget_impact_status == null || data.budget_impact_status in ['committed', 'released', 'converted_to_actual']);
+        && (!('budget_match_method' in data) || data.budget_match_method == null || data.budget_match_method in ['auto', 'manual', 'rule', 'excluded', 'none'])
+        && (!('budget_match_status' in data) || data.budget_match_status == null || data.budget_match_status in ['matched', 'needs_review', 'unmatched', 'excluded'])
+        && (!('budget_impact_status' in data) || data.budget_impact_status == null || data.budget_impact_status in ['committed', 'released', 'converted_to_actual'])
+        && (!('budget_assignment_reason' in data) || data.budget_assignment_reason == null || (data.budget_assignment_reason is string && data.budget_assignment_reason.size() <= 500))
+        && (!('budget_assignment_updated_at' in data) || data.budget_assignment_updated_at == null || data.budget_assignment_updated_at is timestamp)
+        && (!('budget_assignment_updated_by' in data) || data.budget_assignment_updated_by == null || (data.budget_assignment_updated_by is string && data.budget_assignment_updated_by == request.auth.uid))
+        && (!('budget_exclusion_reason' in data) || data.budget_exclusion_reason == null || (data.budget_exclusion_reason is string && data.budget_exclusion_reason.size() <= 500));
+    }
+
+    function isValidTransactionBudgetFields(data) {
+      return (!('budget_id' in data) || data.budget_id == null || (data.budget_id is string && data.budget_id.size() <= 120))
+        && (!('budget_allocation_id' in data) || data.budget_allocation_id == null || (data.budget_allocation_id is string && data.budget_allocation_id.size() <= 120))
+        && (!('budget_match_method' in data) || data.budget_match_method == null || data.budget_match_method in ['auto', 'manual', 'rule', 'excluded', 'none'])
+        && (!('budget_match_status' in data) || data.budget_match_status == null || data.budget_match_status in ['matched', 'needs_review', 'unmatched', 'excluded'])
+        && (!('budget_match_confidence' in data) || data.budget_match_confidence == null || (data.budget_match_confidence is number && data.budget_match_confidence >= 0 && data.budget_match_confidence <= 1))
+        && (!('budget_assignment_reason' in data) || data.budget_assignment_reason == null || (data.budget_assignment_reason is string && data.budget_assignment_reason.size() <= 500))
+        && (!('budget_assignment_updated_at' in data) || data.budget_assignment_updated_at == null || data.budget_assignment_updated_at is timestamp)
+        && (!('budget_assignment_updated_by' in data) || data.budget_assignment_updated_by == null || (data.budget_assignment_updated_by is string && data.budget_assignment_updated_by == request.auth.uid))
+        && (!('budget_exclusion_reason' in data) || data.budget_exclusion_reason == null || (data.budget_exclusion_reason is string && data.budget_exclusion_reason.size() <= 500));
     }
 
     function isValidBudgetCreate(data) {
@@ -846,11 +862,21 @@ service cloud.firestore {
             'source_file_mime_type',
             'source_file_size_bytes',
             'payment_reference',
-            'notes'
+            'notes',
+            'budget_id',
+            'budget_allocation_id',
+            'budget_match_method',
+            'budget_match_status',
+            'budget_match_confidence',
+            'budget_assignment_reason',
+            'budget_assignment_updated_at',
+            'budget_assignment_updated_by',
+            'budget_exclusion_reason'
           ])
           && isValidBaseRecord(request.resource.data)
           && (!('created_at' in request.resource.data) || request.resource.data.created_at == request.time)
           && (!('receipt_url' in request.resource.data) || request.resource.data.receipt_url is string)
+          && isValidTransactionBudgetFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow update: if isOwner(userId)
@@ -879,9 +905,19 @@ service cloud.firestore {
             'source_file_mime_type',
             'source_file_size_bytes',
             'payment_reference',
-            'notes'
+            'notes',
+            'budget_id',
+            'budget_allocation_id',
+            'budget_match_method',
+            'budget_match_status',
+            'budget_match_confidence',
+            'budget_assignment_reason',
+            'budget_assignment_updated_at',
+            'budget_assignment_updated_by',
+            'budget_exclusion_reason'
           ])
           && isValidBaseRecordUpdate(request.resource.data, resource.data)
+          && isValidTransactionBudgetFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow delete: if false;
@@ -919,7 +955,11 @@ service cloud.firestore {
             'budget_allocation_id',
             'budget_match_method',
             'budget_match_status',
-            'budget_impact_status'
+            'budget_impact_status',
+            'budget_assignment_reason',
+            'budget_assignment_updated_at',
+            'budget_assignment_updated_by',
+            'budget_exclusion_reason'
           ])
           && isValidBaseRecord(request.resource.data)
           && (!('due_date' in request.resource.data) || request.resource.data.due_date is timestamp)
@@ -958,7 +998,11 @@ service cloud.firestore {
             'budget_allocation_id',
             'budget_match_method',
             'budget_match_status',
-            'budget_impact_status'
+            'budget_impact_status',
+            'budget_assignment_reason',
+            'budget_assignment_updated_at',
+            'budget_assignment_updated_by',
+            'budget_exclusion_reason'
           ])
           && isValidBaseRecordUpdate(request.resource.data, resource.data)
           && (!('due_date' in request.resource.data) || request.resource.data.due_date is timestamp)

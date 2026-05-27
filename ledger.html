@@ -750,6 +750,45 @@
             }
         }
 
+        // Phase 2: cache the active budget + allocations once so each row
+        // can render a small budget badge without N extra Firestore reads.
+        let ledgerBudgetCtx = { activeBudget: null, allocations: [] };
+        async function refreshLedgerBudgetCtx() {
+            const user = auth.currentUser;
+            if (!user) { ledgerBudgetCtx = { activeBudget: null, allocations: [] }; return; }
+            try {
+                const activeBudget = await ds.getActiveBudget(user.uid);
+                if (!activeBudget) { ledgerBudgetCtx = { activeBudget: null, allocations: [] }; return; }
+                const allocations = await ds.getBudgetAllocations(user.uid, activeBudget.id);
+                ledgerBudgetCtx = { activeBudget, allocations };
+            } catch (_) {
+                ledgerBudgetCtx = { activeBudget: null, allocations: [] };
+            }
+        }
+        function resolveLedgerBudgetBadge(tx) {
+            const ctx = ledgerBudgetCtx;
+            if (!ctx?.activeBudget) return null;
+            const startDate = ctx.activeBudget.period_start?.toDate?.();
+            const endDate = ctx.activeBudget.period_end?.toDate?.();
+            const txDate = tx.timestamp?.toDate?.();
+            if (!startDate || !endDate || !txDate) return null;
+            const startCompare = new Date(startDate); startCompare.setHours(0,0,0,0);
+            const endCompare = new Date(endDate); endCompare.setHours(23,59,59,999);
+            if (txDate < startCompare || txDate > endCompare) return null;
+            const SPEND_TYPES = new Set(['expense', 'fee', 'tax', 'pending_payable']);
+            if (!SPEND_TYPES.has(tx.type)) return null;
+            const { allocationId, source } = ds.resolveRecordAssignment(tx, ctx.activeBudget, ctx.allocations);
+            const allocName = allocationId
+                ? (ctx.allocations.find(a => a.id === allocationId)?.name || '—')
+                : null;
+            if (source === 'excluded') return { label: 'Excluded', cls: 'border-gray-200 bg-gray-50 text-gray-500', allocationId: null, action: 'restore' };
+            if (source === 'manual')   return { label: `${allocName} Budget`, cls: 'border-emerald-200 bg-emerald-50 text-emerald-700', allocationId, action: 'assign' };
+            if (source === 'explicit') return { label: `${allocName} Budget`, cls: 'border-emerald-200 bg-emerald-50 text-emerald-700', allocationId, action: 'assign' };
+            if (source === 'category') return { label: `Auto · ${allocName}`, cls: 'border-blue-200 bg-blue-50 text-blue-700', allocationId, action: 'assign' };
+            return { label: 'Unallocated', cls: 'border-orange-200 bg-orange-50 text-orange-700', allocationId: null, action: 'assign' };
+        }
+        window.__resolveLedgerBudgetBadge = resolveLedgerBudgetBadge;
+
         window.loadLedger = async function() {
             const user = auth.currentUser;
             if (!user) return;
@@ -759,9 +798,10 @@
             const emptyContainer = document.getElementById('ledger-empty-state');
             const pagination = document.getElementById('ledger-pagination');
             const downloadBtn = document.getElementById('download-csv-btn');
-            
+
             if (!body) return;
-            
+
+            await refreshLedgerBudgetCtx();
             const transactions = await getLedgerTransactionsForRange(user.uid);
             allLedgerTransactions = transactions;
             if (downloadBtn) downloadBtn.disabled = transactions.length === 0;
@@ -1265,6 +1305,13 @@
 
             body.innerHTML = visibleRows.map(row => {
                 const vendorName = getVendorDisplayName(row);
+                const badge = window.__resolveLedgerBudgetBadge?.(row) || null;
+                const amountText = 'Rp ' + Math.abs(Number(row.amount) || 0).toLocaleString('id-ID');
+                const budgetChip = badge ? `
+                    <div class="mt-1.5 flex items-center gap-2 flex-wrap">
+                        <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${badge.cls}">${escapeHtml(badge.label)}</span>
+                        <button type="button" class="text-[10px] font-bold text-[#EA580C] hover:underline" data-fluxy-budget-action="${badge.action}" data-record-type="transactions" data-record-id="${escapeHtml(row.id)}" data-vendor="${escapeHtml(vendorName)}" data-amount-text="${escapeHtml(amountText)}" data-current-allocation-id="${escapeHtml(badge.allocationId || '')}">${badge.action === 'restore' ? 'Restore' : 'Assign'}</button>
+                    </div>` : '';
                 return `
                 <tr class="hover:bg-gray-50 transition-colors cursor-pointer" data-ledger-id="${escapeHtml(row.id)}">
                     <td class="px-6 py-4 text-gray-400 whitespace-nowrap text-[12px]">${row.created_at?.toDate ? row.created_at.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
@@ -1279,7 +1326,10 @@
                             ${escapeHtml(vendorName)}
                         </button>
                     </td>
-                    <td class="px-6 py-4 text-gray-500">${escapeHtml(row.category || '')}</td>
+                    <td class="px-6 py-4 text-gray-500 align-top">
+                        <p>${escapeHtml(row.category || '')}</p>
+                        ${budgetChip}
+                    </td>
                     <td class="px-6 py-4 font-mono font-bold ${getAmountClass(row)}">
                         ${formatTransactionAmount(row)}
                     </td>
@@ -1362,6 +1412,28 @@
                 event.preventDefault();
                 event.stopPropagation();
                 setLedgerVendorFilter(vendorBtn.dataset.vendorName || '');
+                return;
+            }
+
+            const budgetBtn = event.target.closest('[data-fluxy-budget-action]');
+            if (budgetBtn) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (!ledgerBudgetCtx?.activeBudget || !window.FluxyBudgetAssignment?.open) {
+                    window.showToast?.('Create a budget first to assign records.', 'info');
+                    return;
+                }
+                window.FluxyBudgetAssignment.open({
+                    action: budgetBtn.dataset.fluxyBudgetAction,
+                    recordType: budgetBtn.dataset.recordType,
+                    recordId: budgetBtn.dataset.recordId,
+                    vendor: budgetBtn.dataset.vendor,
+                    amountText: budgetBtn.dataset.amountText,
+                    currentAllocationId: budgetBtn.dataset.currentAllocationId || null,
+                    budgetId: ledgerBudgetCtx.activeBudget.id,
+                    allocations: ledgerBudgetCtx.allocations || [],
+                    onDone: () => window.loadLedger()
+                });
                 return;
             }
 

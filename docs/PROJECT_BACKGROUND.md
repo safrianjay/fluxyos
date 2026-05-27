@@ -87,6 +87,18 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | `status` | string | `"Completed"` \| `"Missing Receipt"` |
 | `icon` | string | `"💰"` for positive-side transaction types, `"💸"` for spend-side transaction types |
 | `timestamp` | Firestore Timestamp | Defaults to `serverTimestamp()`, but dashboard entry drawer and CSV import may set an explicit selected transaction date for today or a previous day |
+| `budget_id` | string \| null | Optional. Phase 2. References the active `budgets/{id}` at assignment time. |
+| `budget_allocation_id` | string \| null | Optional. Phase 2. References `budget_allocations/{id}`. Null when excluded or unmatched. |
+| `budget_match_method` | string \| null | Optional. Phase 2. `"auto"` \| `"manual"` \| `"rule"` \| `"excluded"` \| `"none"`. |
+| `budget_match_status` | string \| null | Optional. Phase 2. `"matched"` \| `"needs_review"` \| `"unmatched"` \| `"excluded"`. |
+| `budget_match_confidence` | number \| null | Optional. Phase 2. 0–1, reserved for future rule/AI matching. |
+| `budget_assignment_reason` | string \| null | Optional. Phase 2. ≤500 chars. Required by UI for manual/exclude/restore writes. |
+| `budget_assignment_updated_at` | Timestamp \| null | Optional. Phase 2. Server-set on each assignment write. |
+| `budget_assignment_updated_by` | string \| null | Optional. Phase 2. Pinned by Firestore rule to `request.auth.uid`. |
+| `budget_exclusion_reason` | string \| null | Optional. Phase 2. ≤500 chars. |
+
+All 9 budget fields are optional. Legacy transactions without them keep
+working — `DataService.resolveRecordAssignment` falls back to category match.
 
 **Ordering:** `timestamp DESC` (newest first). Default limit: 50. Dashboard preview: 5.
 
@@ -102,11 +114,38 @@ Same fields as transactions plus:
 | `budget_allocation_id` | string \| null | Optional. Phase 1.5. Set when the bill auto-matches a `budget_allocations/{id}` doc by category. Null when no allocation matched. |
 | `budget_match_method` | string \| null | Optional. `"auto"`, `"manual"`, or `"none"`. |
 | `budget_match_status` | string \| null | Optional. `"matched"`, `"needs_review"`, or `"unmatched"`. |
-| `budget_impact_status` | string \| null | Optional. `"committed"`, `"released"`, or `"converted_to_actual"`. Drives the Budget page's committed-amount calculation; bills with `converted_to_actual` are excluded from committed totals. |
+| `budget_impact_status` | string \| null | Optional. `"committed"`, `"released"`, or `"converted_to_actual"`. Drives the Budget page's committed-amount calculation; bills with `converted_to_actual` are excluded from committed totals. Exclusion flips this to `"released"`. |
+| `budget_assignment_reason` | string \| null | Optional. Phase 2. ≤500 chars. Required for manual reassignment / restore writes. |
+| `budget_assignment_updated_at` | Timestamp \| null | Optional. Phase 2. Server-set on each assignment write. |
+| `budget_assignment_updated_by` | string \| null | Optional. Phase 2. Pinned by Firestore rule to `request.auth.uid`. |
+| `budget_exclusion_reason` | string \| null | Optional. Phase 2. ≤500 chars. |
 
-All five budget fields are optional and absent on legacy bills. The Add Bill
+Enum extension (Phase 2): `budget_match_method` also accepts `"rule"` and
+`"excluded"`; `budget_match_status` also accepts `"excluded"`.
+
+All bill budget fields are optional and absent on legacy bills. The Add Bill
 drawer omits the fields entirely when no active budget exists for the period,
 preserving the legacy bill schema.
+
+**Phase 2 budget assignment priority** (used by `DataService.resolveRecordAssignment`
+for both transactions and bills, applied in `getBudgetUsage`):
+
+1. `record.budget_match_status === 'excluded'` → record drops out of totals entirely.
+2. `record.budget_allocation_id` set and the allocation is still active → counts against that allocation (source `'manual'` or `'explicit'`).
+3. Category match — first active allocation whose `scope_values` contains `record.category` → counts against that allocation (source `'category'`).
+4. Otherwise → unallocated bucket.
+
+**Audit actions** (Phase 2, written to `users/{uid}/audit_logs`):
+`budget_assignment.update`, `budget_assignment.exclude`,
+`budget_assignment.restore`. Each manual write commits the record update +
+the audit log in a single Firestore `writeBatch` so they succeed or fail
+together. `after.budget_id` is set so the budget activity timeline can
+filter logs to the current budget without a composite index.
+
+**Double-counting guard**: a bill with `budget_impact_status ===
+'converted_to_actual'` OR with `linked_transaction_id` set is skipped by the
+committed-amount calculation (Phase 2 doesn't yet write `linked_transaction_id`,
+but the resolver is ready).
 
 **Ordering:** `timestamp DESC`.
 

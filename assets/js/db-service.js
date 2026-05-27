@@ -1771,28 +1771,53 @@ class DataService {
 
         const isBillUnpaid = (bill) => bill?.payment_status !== 'paid';
         const isBillCommittable = (bill) =>
-            bill?.budget_impact_status !== 'converted_to_actual';
+            bill?.budget_impact_status !== 'converted_to_actual' && !bill?.linked_transaction_id;
+
+        // Phase 2 resolver — single source of truth for "which allocation
+        // does this record count against?". See resolveRecordAssignment for
+        // the priority chain.
+        const totals = new Map();
+        allocations.forEach(a => totals.set(a.id, { actual: 0, committed: 0 }));
+        let unallocatedActual = 0;
+        let unallocatedCommitted = 0;
+
+        const allocateActual = (allocationId, amount) => {
+            if (allocationId) totals.get(allocationId).actual += amount;
+            else unallocatedActual += amount;
+        };
+        const allocateCommitted = (allocationId, amount) => {
+            if (allocationId) totals.get(allocationId).committed += amount;
+            else unallocatedCommitted += amount;
+        };
+
+        transactions.forEach(tx => {
+            const amount = Math.abs(Number(tx.amount) || 0);
+            if (amount === 0) return;
+            const isSpend = SPEND_TYPES.has(tx.type);
+            const isCommit = COMMIT_TYPES.has(tx.type);
+            if (!isSpend && !isCommit) return;
+            const { allocationId, source } = this.resolveRecordAssignment(tx, budget, allocations);
+            if (source === 'excluded') return;
+            if (isSpend) allocateActual(allocationId, amount);
+            else allocateCommitted(allocationId, amount);
+        });
+
+        bills.forEach(bill => {
+            const amount = Math.abs(Number(bill.amount) || 0);
+            if (amount === 0) return;
+            if (!isBillInPeriod(bill)) return;
+            if (!isBillUnpaid(bill)) return;
+            if (!isBillCommittable(bill)) return;
+            const { allocationId, source } = this.resolveRecordAssignment(bill, budget, allocations);
+            if (source === 'excluded') return;
+            allocateCommitted(allocationId, amount);
+        });
 
         const allocationsWithUsage = allocations.map(alloc => {
-            const cats = new Set(Array.isArray(alloc.scope_values) ? alloc.scope_values : []);
-            let actual = 0;
-            let committedFromPP = 0;
-            transactions.forEach(tx => {
-                if (!cats.has(tx.category)) return;
-                const amount = Math.abs(Number(tx.amount) || 0);
-                if (SPEND_TYPES.has(tx.type)) actual += amount;
-                else if (COMMIT_TYPES.has(tx.type)) committedFromPP += amount;
-            });
-            let committedFromBills = 0;
-            bills.forEach(bill => {
-                if (!cats.has(bill.category)) return;
-                if (!isBillInPeriod(bill)) return;
-                if (!isBillUnpaid(bill)) return;
-                if (!isBillCommittable(bill)) return;
-                committedFromBills += Math.abs(Number(bill.amount) || 0);
-            });
+            const bucket = totals.get(alloc.id) || { actual: 0, committed: 0 };
             const allocated = Math.max(0, Number(alloc.allocated_amount) || 0);
-            const committed = committedFromPP + committedFromBills;
+            const actual = bucket.actual;
+            const committed = bucket.committed;
             const remaining = allocated - actual - committed;
             const usagePercent = allocated > 0
                 ? ((actual + committed) / allocated) * 100
@@ -1809,29 +1834,6 @@ class DataService {
                 usage_percent: Number.isFinite(usagePercent) ? usagePercent : 0,
                 status: this._budgetAllocationStatus(usagePercent)
             };
-        });
-
-        // Unallocated spend = records in-period whose category does not
-        // intersect any active allocation scope_values.
-        const allocatedCats = new Set();
-        allocations.forEach(alloc => {
-            (Array.isArray(alloc.scope_values) ? alloc.scope_values : []).forEach(v => allocatedCats.add(v));
-        });
-
-        let unallocatedActual = 0;
-        let unallocatedCommitted = 0;
-        transactions.forEach(tx => {
-            if (allocatedCats.has(tx.category)) return;
-            const amount = Math.abs(Number(tx.amount) || 0);
-            if (SPEND_TYPES.has(tx.type)) unallocatedActual += amount;
-            else if (COMMIT_TYPES.has(tx.type)) unallocatedCommitted += amount;
-        });
-        bills.forEach(bill => {
-            if (allocatedCats.has(bill.category)) return;
-            if (!isBillInPeriod(bill)) return;
-            if (!isBillUnpaid(bill)) return;
-            if (!isBillCommittable(bill)) return;
-            unallocatedCommitted += Math.abs(Number(bill.amount) || 0);
         });
 
         const totalAllocated = allocationsWithUsage.reduce((s, a) => s + a.allocated_amount, 0);
@@ -1928,6 +1930,245 @@ class DataService {
             ? 'needs_review'
             : (exceedsBy > 0 ? 'exceeded' : 'matched');
         return { activeBudget, allocation, status, exceedsBy };
+    }
+
+    // ── Phase 2: assignment priority resolver ──────────────────────────
+    // Pure logic. Decides which allocation a record counts against:
+    //   1. Excluded → null (record drops out of totals entirely)
+    //   2. Explicit budget_allocation_id pointing at an active allocation
+    //   3. Category match (legacy fallback for records without budget fields)
+    //   4. None → unallocated bucket
+    resolveRecordAssignment(record, activeBudget, allocations) {
+        if (!record) return { allocationId: null, source: 'none' };
+
+        if (record.budget_match_status === 'excluded') {
+            return { allocationId: null, source: 'excluded' };
+        }
+
+        const activeAllocs = (allocations || []).filter(a => a.status !== 'archived');
+        const activeIds = new Set(activeAllocs.map(a => a.id));
+
+        if (record.budget_allocation_id && activeIds.has(record.budget_allocation_id)) {
+            const source = record.budget_match_method === 'manual' ? 'manual' : 'explicit';
+            return { allocationId: record.budget_allocation_id, source };
+        }
+
+        const cat = String(record.category || '').trim();
+        if (cat) {
+            const hit = activeAllocs.find(a => Array.isArray(a.scope_values) && a.scope_values.includes(cat));
+            if (hit) return { allocationId: hit.id, source: 'category' };
+        }
+
+        return { allocationId: null, source: 'none' };
+    }
+
+    // ── Phase 2: related-record reads ──────────────────────────────────
+    async getBudgetRelatedRecords(userId, budgetId, allocationId) {
+        const usage = await this.getBudgetUsage(userId, budgetId);
+        if (!usage.budget) return { transactions: [], bills: [], excluded: { transactions: [], bills: [] } };
+
+        const startDate = usage.budget.period_start?.toDate?.();
+        const endDate = usage.budget.period_end?.toDate?.();
+        if (!startDate || !endDate) return { transactions: [], bills: [], excluded: { transactions: [], bills: [] } };
+
+        const startKey = this._getDayKey(startDate);
+        const endKey = this._getDayKey(endDate);
+        const [transactions, bills] = await Promise.all([
+            this.getTransactionsForPeriod(userId, startKey, endKey),
+            this.getBillsForPeriod(userId, startKey, endKey)
+        ]);
+
+        const SPEND_TYPES = new Set(['expense', 'fee', 'tax', 'pending_payable']);
+        const matchedTx = [];
+        const matchedBills = [];
+        const excludedTx = [];
+        const excludedBills = [];
+
+        transactions.forEach(tx => {
+            if (!SPEND_TYPES.has(tx.type)) return;
+            const { allocationId: rid, source } = this.resolveRecordAssignment(tx, usage.budget, usage.allocations);
+            if (source === 'excluded') excludedTx.push({ ...tx, _matchSource: source, _allocationId: null });
+            else if (rid === allocationId) matchedTx.push({ ...tx, _matchSource: source, _allocationId: rid });
+        });
+
+        bills.forEach(bill => {
+            if (bill.payment_status === 'paid') return;
+            if (bill.budget_impact_status === 'converted_to_actual' || bill.linked_transaction_id) return;
+            const { allocationId: rid, source } = this.resolveRecordAssignment(bill, usage.budget, usage.allocations);
+            if (source === 'excluded') excludedBills.push({ ...bill, _matchSource: source, _allocationId: null });
+            else if (rid === allocationId) matchedBills.push({ ...bill, _matchSource: source, _allocationId: rid });
+        });
+
+        return { transactions: matchedTx, bills: matchedBills, excluded: { transactions: excludedTx, bills: excludedBills } };
+    }
+
+    async getUnallocatedBudgetRecords(userId, budgetId) {
+        const usage = await this.getBudgetUsage(userId, budgetId);
+        if (!usage.budget) return { transactions: [], bills: [] };
+
+        const startDate = usage.budget.period_start?.toDate?.();
+        const endDate = usage.budget.period_end?.toDate?.();
+        if (!startDate || !endDate) return { transactions: [], bills: [] };
+
+        const startKey = this._getDayKey(startDate);
+        const endKey = this._getDayKey(endDate);
+        const [transactions, bills] = await Promise.all([
+            this.getTransactionsForPeriod(userId, startKey, endKey),
+            this.getBillsForPeriod(userId, startKey, endKey)
+        ]);
+
+        const SPEND_TYPES = new Set(['expense', 'fee', 'tax', 'pending_payable']);
+        const unallocTx = [];
+        const unallocBills = [];
+
+        transactions.forEach(tx => {
+            if (!SPEND_TYPES.has(tx.type)) return;
+            const { allocationId, source } = this.resolveRecordAssignment(tx, usage.budget, usage.allocations);
+            if (source === 'none') unallocTx.push({ ...tx, _matchSource: source });
+        });
+        bills.forEach(bill => {
+            if (bill.payment_status === 'paid') return;
+            if (bill.budget_impact_status === 'converted_to_actual' || bill.linked_transaction_id) return;
+            const { allocationId, source } = this.resolveRecordAssignment(bill, usage.budget, usage.allocations);
+            if (source === 'none') unallocBills.push({ ...bill, _matchSource: source });
+        });
+
+        return { transactions: unallocTx, bills: unallocBills };
+    }
+
+    async getBudgetActivityLogs(userId, budgetId, limitCount = 100) {
+        if (!userId || !budgetId) return [];
+        try {
+            const q = query(
+                collection(this.db, `users/${userId}/audit_logs`),
+                orderBy('created_at', 'desc'),
+                limit(500)
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .filter(log => typeof log.action === 'string'
+                    && log.action.startsWith('budget_')
+                    && log.after?.budget_id === budgetId)
+                .slice(0, limitCount);
+        } catch (_) {
+            return [];
+        }
+    }
+
+    // ── Phase 2: assignment writers (atomic record-update + audit log) ─
+    _budgetSnapshot(record) {
+        const keys = [
+            'budget_id', 'budget_allocation_id', 'budget_match_method',
+            'budget_match_status', 'budget_match_confidence',
+            'budget_assignment_reason', 'budget_exclusion_reason',
+            'budget_impact_status'
+        ];
+        const out = {};
+        keys.forEach(k => {
+            if (record && record[k] !== undefined) out[k] = record[k] ?? null;
+        });
+        return out;
+    }
+
+    async _commitBudgetUpdate(userId, targetCollection, recordId, updateFields, auditAction, reason, activeBudgetId) {
+        if (!userId) throw new Error('userId required');
+        if (!recordId) throw new Error('recordId required');
+        const cleanReason = this._stringOrDefault(reason, '', 500);
+        if (!cleanReason) throw new Error('Reason is required.');
+
+        const ref = doc(this.db, `users/${userId}/${targetCollection}/${recordId}`);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('Record not found.');
+        const existing = snap.data() || {};
+        const before = this._budgetSnapshot(existing);
+
+        // Always set the assignment trace fields.
+        const payload = {
+            ...updateFields,
+            budget_assignment_reason: cleanReason,
+            budget_assignment_updated_at: serverTimestamp(),
+            budget_assignment_updated_by: userId
+        };
+
+        const batch = writeBatch(this.db);
+        batch.update(ref, payload);
+        const auditRef = doc(collection(this.db, `users/${userId}/audit_logs`));
+        batch.set(auditRef, {
+            actor_uid: userId,
+            actor_role: null,
+            action: auditAction,
+            target_collection: targetCollection,
+            target_id: recordId,
+            before,
+            after: {
+                ...this._budgetSnapshot({ ...existing, ...payload }),
+                budget_id: activeBudgetId || payload.budget_id || existing.budget_id || null
+            },
+            reason: cleanReason,
+            source: 'dashboard',
+            created_at: serverTimestamp()
+        });
+        await batch.commit();
+        return { ok: true };
+    }
+
+    async updateTransactionBudgetAssignment(userId, transactionId, { budgetId, allocationId, reason }) {
+        if (!allocationId) throw new Error('allocationId required.');
+        return this._commitBudgetUpdate(userId, 'transactions', transactionId, {
+            budget_id: budgetId,
+            budget_allocation_id: allocationId,
+            budget_match_method: 'manual',
+            budget_match_status: 'matched',
+            budget_match_confidence: 1,
+            budget_exclusion_reason: null
+        }, 'budget_assignment.update', reason, budgetId);
+    }
+
+    async updateBillBudgetAssignment(userId, billId, { budgetId, allocationId, reason }) {
+        if (!allocationId) throw new Error('allocationId required.');
+        return this._commitBudgetUpdate(userId, 'bills', billId, {
+            budget_id: budgetId,
+            budget_allocation_id: allocationId,
+            budget_match_method: 'manual',
+            budget_match_status: 'matched',
+            budget_impact_status: 'committed',
+            budget_exclusion_reason: null
+        }, 'budget_assignment.update', reason, budgetId);
+    }
+
+    async excludeTransactionFromBudget(userId, transactionId, { budgetId, reason }) {
+        return this._commitBudgetUpdate(userId, 'transactions', transactionId, {
+            budget_id: budgetId,
+            budget_allocation_id: null,
+            budget_match_method: 'excluded',
+            budget_match_status: 'excluded',
+            budget_exclusion_reason: this._stringOrDefault(reason, '', 500)
+        }, 'budget_assignment.exclude', reason, budgetId);
+    }
+
+    async excludeBillFromBudget(userId, billId, { budgetId, reason }) {
+        return this._commitBudgetUpdate(userId, 'bills', billId, {
+            budget_id: budgetId,
+            budget_allocation_id: null,
+            budget_match_method: 'excluded',
+            budget_match_status: 'excluded',
+            budget_impact_status: 'released',
+            budget_exclusion_reason: this._stringOrDefault(reason, '', 500)
+        }, 'budget_assignment.exclude', reason, budgetId);
+    }
+
+    async restoreBudgetAssignment(userId, targetCollection, recordId, { reason, budgetId }) {
+        const updates = {
+            budget_id: budgetId || null,
+            budget_allocation_id: null,
+            budget_match_method: 'auto',
+            budget_match_status: 'matched',
+            budget_exclusion_reason: null
+        };
+        if (targetCollection === 'bills') updates.budget_impact_status = 'committed';
+        return this._commitBudgetUpdate(userId, targetCollection, recordId, updates,
+            'budget_assignment.restore', reason, budgetId);
     }
 
     _buildCashPressure({ bankBalance = 0, receivablesDueSoon = 0, payablesDueSoon = 0, overdueCount = 0 }) {
