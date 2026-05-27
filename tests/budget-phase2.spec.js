@@ -73,8 +73,9 @@ test('P2: Phase 2 sections present (unallocated / excluded / activity) when appl
     await expect(page.locator('#budget-unallocated-queue')).toHaveCount(0);
     await expect(page.locator('#budget-unallocated-card')).toHaveCount(0);
     await expect(page.locator('#budget-activity-card')).toHaveCount(0);
+    await expect(page.locator('#budget-recent-activity-card')).toHaveCount(0);
+    await expect(page.locator('#budget-attention-card')).toHaveCount(0);
     await expect(page.locator('#budget-excluded-card')).toHaveCount(1);
-    await expect(page.locator('#budget-recent-activity-list')).toHaveCount(1);
     console.log('[P2] console issues:', JSON.stringify(log.filter(e => e.t === 'error' || e.t === 'pageerror')));
 });
 

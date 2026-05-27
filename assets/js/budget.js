@@ -525,7 +525,11 @@ function renderBudgetAttention(allocations, summary) {
         });
     }
 
+    // The Variance attention card was removed; the bell in the topbar now
+    // surfaces the same alerts under its Variance attention tab. Guard the
+    // DOM write so renderBudget() callers don't have to change.
     const list = el('budget-attention-list');
+    if (!list) return;
     if (alerts.length === 0) {
         list.innerHTML = `
             <li class="px-5 py-4">
