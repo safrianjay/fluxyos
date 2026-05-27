@@ -218,7 +218,7 @@ function renderKpis() {
             <p class="allocation-kpi-value ${item.negative ? 'text-red-600' : 'text-gray-900'}">${escapeHtml(item.value)}</p>
             <p class="allocation-kpi-sub">${escapeHtml(item.sub)}</p>
             ${item.progress != null ? `
-                <div class="mt-4 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                <div class="mt-3 h-1 rounded-full bg-gray-100 overflow-hidden">
                     <div class="h-full rounded-full ${item.barCls}" style="width: ${item.progress}%"></div>
                 </div>
             ` : ''}
