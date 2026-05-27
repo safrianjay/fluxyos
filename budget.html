@@ -99,12 +99,15 @@
                         </div>
 
                         <div class="mt-6">
-                            <div class="flex items-center justify-between text-[12px] text-gray-500 mb-2">
-                                <span>Allocation coverage</span>
-                                <span id="budget-coverage-percent" class="font-mono font-bold text-gray-700">0%</span>
+                            <div class="flex items-center justify-between text-[12px] mb-2 gap-3 flex-wrap">
+                                <span class="text-gray-500">Budget used</span>
+                                <span class="font-mono">
+                                    <span id="budget-usage-percent" class="font-bold text-gray-700">0%</span>
+                                    <span id="budget-remaining-text" class="text-gray-500"> · Rp 0 remaining</span>
+                                </span>
                             </div>
                             <div class="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                                <div id="budget-coverage-bar" class="h-full rounded-full bg-gray-900 transition-all" style="width: 0%"></div>
+                                <div id="budget-usage-bar" class="h-full rounded-full bg-emerald-500 transition-all" style="width: 0%"></div>
                             </div>
                         </div>
 

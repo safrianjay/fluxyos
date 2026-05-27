@@ -163,10 +163,35 @@ function renderBudget(usage) {
         unassignedCard.className = 'bg-gray-50 rounded-lg p-4 border border-gray-100 transition-colors';
     }
 
-    // ── Allocation coverage bar ─────────────────────────────────────
-    const coverageClamped = Math.max(0, Math.min(100, coveragePercent));
-    el('budget-coverage-percent').textContent = formatPercent(coveragePercent);
-    el('budget-coverage-bar').style.width = coverageClamped + '%';
+    // ── Spending usage bar ──────────────────────────────────────────
+    // Coverage % is already surfaced via the Allocated + Unassigned card
+    // subtitles. The bar's job here is the more actionable signal:
+    // how much of the main budget is already spent or reserved, and how
+    // much is genuinely left for new commitments.
+    const usagePercent = summary.usage_percent;
+    const usageClamped = Math.max(0, Math.min(100, usagePercent));
+    const usageStatus = classifyStatus(usagePercent);
+    const usageEl = el('budget-usage-percent');
+    usageEl.textContent = formatPercent(usagePercent);
+    const usageBar = el('budget-usage-bar');
+    usageBar.style.width = usageClamped + '%';
+    usageBar.className = `h-full rounded-full transition-all ${USAGE_BAR_CLASS[usageStatus] || 'bg-emerald-500'}`;
+
+    const remaining = summary.total_remaining;
+    const remainingTextEl = el('budget-remaining-text');
+    if (remaining < 0) {
+        remainingTextEl.textContent = ` · ${formatRp(remaining)} over budget`;
+        remainingTextEl.className = 'text-red-600 font-bold';
+        usageEl.className = 'font-bold text-red-600';
+    } else if (remaining === 0 && total > 0) {
+        remainingTextEl.textContent = ` · fully spent`;
+        remainingTextEl.className = 'text-gray-500';
+        usageEl.className = 'font-bold text-gray-700';
+    } else {
+        remainingTextEl.textContent = ` · ${formatRp(remaining)} remaining`;
+        remainingTextEl.className = 'text-gray-500';
+        usageEl.className = 'font-bold text-gray-700';
+    }
 
     // ── Unassigned callout / all-assigned note ──────────────────────
     const callout = el('budget-unassigned-callout');
