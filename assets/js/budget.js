@@ -373,31 +373,33 @@ function renderAllocationsTable(allocations) {
         const remainingCls = alloc.remaining_amount < 0 ? 'text-red-600' : 'text-gray-900';
         const spentReserved = (Number(alloc.actual_used) || 0) + (Number(alloc.committed_amount) || 0);
         const variance = explainAllocationVariance(alloc);
+        // Variance line goes inside the inner text block so it indents under
+        // the name + category instead of running flush-left below the swatch.
         return `
-            <tr class="hover:bg-gray-50 transition-colors cursor-pointer" data-allocation-id="${escapeHtml(alloc.id)}" data-action="open-allocation">
-                <td class="px-4 py-4">
+            <tr class="hover:bg-gray-50 transition-colors cursor-pointer align-top" data-allocation-id="${escapeHtml(alloc.id)}" data-action="open-allocation">
+                <td class="px-5 py-4">
                     <div class="flex items-start gap-3">
                         <span class="mt-1.5 h-2.5 w-2.5 rounded-sm flex-shrink-0" style="background: ${allocationColor(index)};"></span>
                         <div class="min-w-0">
-                            <p class="font-semibold text-gray-900">${escapeHtml(alloc.name)}</p>
-                            <p class="text-[11px] text-gray-400 mt-0.5">Category: ${escapeHtml(scope || '—')}</p>
+                            <p class="font-semibold text-gray-900 truncate">${escapeHtml(alloc.name)}</p>
+                            <p class="text-[11px] text-gray-400 mt-0.5 truncate">${escapeHtml(scope || '—')}</p>
+                            ${variance ? `<p class="mt-1 text-[11px] text-gray-500 leading-snug">${variance}</p>` : ''}
                         </div>
                     </div>
-                    ${variance ? `<p class="mt-1 text-[11px] text-gray-500 max-w-[360px]">${variance}</p>` : ''}
                 </td>
-                <td class="px-4 py-4 text-right font-mono text-gray-900">${formatRp(alloc.allocated_amount)}</td>
-                <td class="px-4 py-4 text-right font-mono text-gray-700">${formatRp(spentReserved)}</td>
-                <td class="px-4 py-4 text-right font-mono ${remainingCls}">${formatRp(alloc.remaining_amount)}</td>
-                <td class="px-4 py-4">
+                <td class="px-5 py-4 text-right font-mono text-gray-900 whitespace-nowrap">${formatRp(alloc.allocated_amount)}</td>
+                <td class="px-5 py-4 text-right font-mono text-gray-700 whitespace-nowrap">${formatRp(spentReserved)}</td>
+                <td class="px-5 py-4 text-right font-mono ${remainingCls} whitespace-nowrap">${formatRp(alloc.remaining_amount)}</td>
+                <td class="px-5 py-4">
                     <div class="flex items-center justify-end gap-2">
-                        <div class="hidden sm:block w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div class="hidden sm:block w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
                             <div class="h-full ${barCls} rounded-full" style="width: ${usagePercent}%"></div>
                         </div>
-                        <span class="font-mono text-[12px] font-bold text-gray-700">${formatPercent(alloc.usage_percent)}</span>
+                        <span class="font-mono text-[12px] font-bold text-gray-700 whitespace-nowrap">${formatPercent(alloc.usage_percent)}</span>
                     </div>
                 </td>
-                <td class="px-4 py-4">
-                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${status.cls}">${status.label}</span>
+                <td class="px-5 py-4">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap ${status.cls}">${status.label}</span>
                 </td>
             </tr>
         `;
@@ -422,7 +424,7 @@ function renderAllocationMobileCard(alloc, index) {
                         <span class="h-2.5 w-2.5 rounded-sm flex-shrink-0" style="background: ${allocationColor(index)};"></span>
                         <p class="font-semibold text-[13px] text-gray-900 truncate">${escapeHtml(alloc.name)}</p>
                     </div>
-                    <p class="mt-1 text-[11px] text-gray-400">Category: ${escapeHtml(scope || '—')}</p>
+                    <p class="mt-1 text-[11px] text-gray-400 truncate">${escapeHtml(scope || '—')}</p>
                 </div>
                 <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${status.cls} flex-shrink-0">${status.label}</span>
             </div>
