@@ -61,15 +61,16 @@ test('P2: Phase 2 sections present (unallocated / excluded / activity) when appl
     await page.waitForTimeout(1200);
     const presentSections = await page.evaluate(() => {
         return {
-            queue: !document.getElementById('budget-unallocated-queue')?.classList.contains('hidden'),
             excluded: !document.getElementById('budget-excluded-card')?.classList.contains('hidden'),
             activity: !document.getElementById('budget-activity-card')?.classList.contains('hidden')
         };
     });
     console.log('[P2] phase-2 section visibility:', presentSections);
-    // Each section is OPTIONAL (visible only when there are records). What matters
-    // is the page loaded without console errors and the markup exists.
-    await expect(page.locator('#budget-unallocated-queue')).toHaveCount(1);
+    // The Unallocated records queue was removed; assignment now happens from
+    // the Allocation detail drawer or the Ledger / Bills row chips. Excluded
+    // and Activity sections are still expected on the page (hidden until
+    // there are records).
+    await expect(page.locator('#budget-unallocated-queue')).toHaveCount(0);
     await expect(page.locator('#budget-excluded-card')).toHaveCount(1);
     await expect(page.locator('#budget-activity-card')).toHaveCount(1);
     console.log('[P2] console issues:', JSON.stringify(log.filter(e => e.t === 'error' || e.t === 'pageerror')));

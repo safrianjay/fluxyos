@@ -1062,27 +1062,12 @@ function renderDetailRecordRow(record, type, alloc) {
 // ── Phase 2: unallocated queue + excluded list + activity timeline ────
 
 async function renderUnallocatedQueue() {
-    if (!state.usage?.budget) return;
-    const card = el('budget-unallocated-queue');
-    const body = el('budget-unalloc-body');
-    const count = el('budget-unalloc-count');
-    try {
-        const { transactions, bills } = await state.ds.getUnallocatedBudgetRecords(state.user.uid, state.usage.budget.id);
-        const rows = [
-            ...transactions.map(r => ({ ...r, _type: 'transactions' })),
-            ...bills.map(r => ({ ...r, _type: 'bills' }))
-        ];
-        if (rows.length === 0) {
-            card.classList.add('hidden');
-            return;
-        }
-        card.classList.remove('hidden');
-        count.textContent = `${rows.length} record${rows.length === 1 ? '' : 's'}`;
-        body.innerHTML = rows.map(renderUnallocRow).join('');
-    } catch (err) {
-        console.warn('Unallocated queue failed:', err);
-        card.classList.add('hidden');
-    }
+    // The per-record Unallocated records queue + Advanced budget controls
+    // header were removed from budget.html. Users assign records from the
+    // Allocation detail drawer's Related sections and from the Ledger /
+    // Bills row chips, so the standalone queue card is redundant.
+    // The function stays defined as a no-op so renderBudget() still calls
+    // it without throwing — wire-up cost is zero.
 }
 
 function renderUnallocRow(record) {

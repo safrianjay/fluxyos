@@ -86,14 +86,14 @@
             </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8">
-            <div class="max-w-7xl mx-auto space-y-6">
+        <div class="flex-1 overflow-y-auto p-3 sm:p-5 lg:px-8 lg:pt-5 lg:pb-8">
+            <div class="max-w-7xl mx-auto space-y-4">
 
                 <!-- Page Title & Actions -->
-                <div id="budget-page-title" class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div id="budget-page-title" class="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
                     <div>
-                        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Budgets</h1>
-                        <p class="text-[14px] text-gray-500 mt-1">Plan spending, track committed bills, and see what remains before you overspend.</p>
+                        <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Budgets</h1>
+                        <p class="text-[13px] text-gray-500 mt-0.5">Plan spending, track committed bills, and see what remains before you overspend.</p>
                     </div>
                 </div>
 
@@ -296,16 +296,14 @@
                         </aside>
                     </div>
 
-                    <!-- Advanced Budget Controls -->
+                    <!-- Excluded records + Budget activity live in this wrapper.
+                         The "Advanced budget controls" header and the per-record
+                         Unallocated records queue were removed because the same
+                         info is reachable from the Allocation detail drawer
+                         (Related records) and the Ledger / Bills row chips. -->
                     <div id="budget-advanced-sections" class="space-y-4 pt-2">
-                        <div class="flex items-center justify-between gap-3">
-                            <div>
-                                <h3 class="text-[13px] font-bold text-gray-900">Advanced budget controls</h3>
-                                <p class="text-[12px] text-gray-400 mt-0.5">Record-level assignment surfaces stay available below the workspace.</p>
-                            </div>
-                        </div>
 
-                        <!-- Unallocated Spend Card -->
+                        <!-- Unallocated Spend Card (summary; the per-record queue is gone) -->
                         <div id="budget-unallocated-card" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm p-5 sm:p-6">
                             <h3 class="text-[14px] font-bold text-gray-900">Unallocated spend</h3>
                             <p class="text-[12px] text-gray-500 mt-1">Records inside the budget period whose category does not match any active allocation.</p>
@@ -320,32 +318,6 @@
                                 </div>
                             </div>
                         </div>
-
-                    <!-- Phase 2: Unallocated records queue (per-record actions) -->
-                    <div id="budget-unallocated-queue" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
-                            <div>
-                                <h3 class="text-[14px] font-bold text-gray-900">Unallocated records</h3>
-                                <p class="text-[12px] text-gray-400 mt-0.5">Assign each record to an allocation, or exclude it from this budget with a reason.</p>
-                            </div>
-                            <p id="budget-unalloc-count" class="text-[12px] text-gray-400"></p>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse min-w-[760px]">
-                                <thead>
-                                    <tr class="bg-gray-50 border-b border-gray-200">
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Type</th>
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Vendor / Category</th>
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Amount</th>
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Suggested</th>
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="budget-unalloc-body" class="divide-y divide-gray-100 text-[13px]"></tbody>
-                            </table>
-                        </div>
-                    </div>
 
                     <!-- Phase 2: Excluded records — collapsed by default -->
                     <div id="budget-excluded-card" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
