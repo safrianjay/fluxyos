@@ -25,11 +25,11 @@
                 </button>
                 <div class="hidden sm:flex relative w-full max-w-lg">
                     <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    <input id="bill-search-input" type="text" placeholder="Search vendor, category, or status..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[13px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
+                    <input id="bill-search-input" type="text" placeholder="Search vendor, category, or status..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[14px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
                 </div>
             </div>
             <div class="flex items-center gap-4">
-                <button onclick="window.toggleFluxyAI()" data-tour-target="fluxy-ai-entry" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                <button onclick="window.toggleFluxyAI()" data-tour-target="fluxy-ai-entry" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
                     <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     Fluxy AI
                 </button>
@@ -42,20 +42,20 @@
                 <!-- Page Title & Actions -->
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Bills & Payments</h1>
+                        <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Bills & Payments</h1>
                         <p class="text-[14px] text-gray-500 mt-1">Track upcoming bills, vendor invoices, and payable obligations before they become transactions.</p>
                     </div>
                     <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                         <div id="bill-date-range-picker"></div>
-                        <button id="download-csv-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap" disabled>
+                        <button id="download-csv-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap" disabled>
                             <svg id="download-csv-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
                             <span id="download-csv-label">Download CSV</span>
                         </button>
-                        <button id="scan-bill-btn" type="button" data-scan-mode="bill" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
+                        <button id="scan-bill-btn" type="button" data-scan-mode="bill" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
                             <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2m4-5h10"></path></svg>
                             Scan Bill
                         </button>
-                        <button onclick="window.showAddTransactionModal({ title: 'Add New Bill', submitLabel: 'Save Bill', defaultCategory: 'Operations', context: 'bill' })" data-tour-target="bill-add" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
+                        <button onclick="window.showAddTransactionModal({ title: 'Add New Bill', submitLabel: 'Save Bill', defaultCategory: 'Operations', context: 'bill' })" data-tour-target="bill-add" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[14px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                             Add New Bill
                         </button>
@@ -67,37 +67,37 @@
 
                     <!-- Total Bills -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5" data-tour-target="bill-due-summary">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Bills</p>
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Total Bills</p>
                         <p id="card-total-bills" class="text-2xl font-bold text-gray-900 mt-1">—</p>
-                        <p class="text-[11px] text-gray-400 mt-1">Current obligations</p>
+                        <p class="text-[12px] text-gray-400 mt-1">Current obligations</p>
                     </div>
 
                     <!-- Due This Week -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Due This Week</p>
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Due This Week</p>
                         <p id="card-due-week" class="text-lg font-bold text-gray-900 mt-1 truncate">—</p>
-                        <p id="card-due-week-sub" class="text-[11px] text-gray-400 mt-1">Upcoming payments</p>
+                        <p id="card-due-week-sub" class="text-[12px] text-gray-400 mt-1">Upcoming payments</p>
                     </div>
 
                     <!-- Overdue -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Overdue</p>
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Overdue</p>
                         <p id="card-overdue-count" class="text-2xl font-bold text-gray-900 mt-1">—</p>
-                        <p id="card-overdue-sub" class="text-[11px] text-gray-400 mt-1">Past due</p>
+                        <p id="card-overdue-sub" class="text-[12px] text-gray-400 mt-1">Past due</p>
                     </div>
 
                     <!-- Scheduled Amount -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Scheduled</p>
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Scheduled</p>
                         <p id="card-scheduled" class="text-lg font-bold text-gray-900 mt-1 truncate">—</p>
-                        <p class="text-[11px] text-gray-400 mt-1">Planned outflow</p>
+                        <p class="text-[12px] text-gray-400 mt-1">Planned outflow</p>
                     </div>
 
                     <!-- Missing Due Date -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Missing Date</p>
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Missing Date</p>
                         <p id="card-missing-date" class="text-2xl font-bold text-gray-900 mt-1">—</p>
-                        <p class="text-[11px] text-gray-400 mt-1">Need scheduling</p>
+                        <p class="text-[12px] text-gray-400 mt-1">Need scheduling</p>
                     </div>
 
                 </div>
@@ -130,15 +130,15 @@
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-50 border-b border-gray-200">
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Vendor</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Category</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Due Date</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider" data-tour-target="bill-action-column">Action</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Vendor</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Category</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Due Date</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider" data-tour-target="bill-action-column">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="bill-table-body" class="divide-y divide-gray-100 text-[13px]">
+                            <tbody id="bill-table-body" class="divide-y divide-gray-100 text-[14px]">
                                 <tr>
                                     <td colspan="6" class="px-6 py-12 text-center text-gray-400">Loading your bills...</td>
                                 </tr>
@@ -166,7 +166,7 @@
     <div id="bill-drawer" class="fixed top-0 right-0 h-full w-full max-w-[420px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
             <div>
-                <h2 class="text-[15px] font-bold text-gray-900">Bill Details</h2>
+                <h2 class="text-[14px] font-bold text-gray-900">Bill Details</h2>
                 <p class="text-[12px] text-gray-400 mt-0.5">Review before payment</p>
             </div>
             <button id="bill-drawer-close-btn" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
@@ -177,8 +177,8 @@
             <!-- Injected by JS -->
         </div>
         <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
-            <button id="bill-drawer-close-footer" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Close</button>
-            <button disabled class="flex-1 px-4 py-2.5 bg-gray-50 text-gray-400 rounded-lg text-[13px] font-medium cursor-not-allowed flex items-center justify-center gap-2">
+            <button id="bill-drawer-close-footer" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[14px] font-medium hover:bg-gray-200 transition-colors">Close</button>
+            <button disabled class="flex-1 px-4 py-2.5 bg-gray-50 text-gray-400 rounded-lg text-[14px] font-medium cursor-not-allowed flex items-center justify-center gap-2">
                 Mark as Paid
                 <span class="text-[10px] font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
             </button>
@@ -192,7 +192,7 @@
     <div id="scan-drawer" class="fixed top-0 right-0 h-full w-full max-w-[480px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
             <div>
-                <h2 id="scan-drawer-title" class="text-[15px] font-bold text-gray-900">Scan Bill</h2>
+                <h2 id="scan-drawer-title" class="text-[14px] font-bold text-gray-900">Scan Bill</h2>
                 <p id="scan-drawer-subtitle" class="text-[12px] text-gray-400 mt-0.5">Upload a bill, invoice, receipt, or payment request. FluxyOS will extract the key details for review.</p>
             </div>
             <button id="scan-drawer-close-btn" type="button" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
@@ -485,21 +485,21 @@
                 const bucketAmount = items.reduce((sum, bill) => sum + getRecordAmount(bill), 0);
                 const exposureHtml = topVendor ? `
                     <div class="mb-3 rounded-lg border border-gray-100 bg-gray-50/70 px-2.5 py-2">
-                        ${key === 'overdue' && bucketAmount > 0 ? `<p class="text-[11px] font-bold text-red-600">${formatCurrencyIDR(bucketAmount)} past due</p>` : ''}
-                        <p class="text-[11px] text-gray-500 truncate" title="Top vendor: ${escapeHtml(topVendor.displayName)} · ${formatCurrencyIDR(topVendor.amount)}">
+                        ${key === 'overdue' && bucketAmount > 0 ? `<p class="text-[12px] font-bold text-red-600">${formatCurrencyIDR(bucketAmount)} past due</p>` : ''}
+                        <p class="text-[12px] text-gray-500 truncate" title="Top vendor: ${escapeHtml(topVendor.displayName)} · ${formatCurrencyIDR(topVendor.amount)}">
                             <span class="font-semibold text-gray-700">Top vendor:</span> ${escapeHtml(topVendor.displayName)} · <span class="font-mono">${formatCurrencyIDR(topVendor.amount)}</span>
                         </p>
                     </div>
                 ` : '';
                 const itemsHtml = items.length === 0
-                    ? `<p class="text-[11px] text-gray-400 py-3 text-center">No bills</p>`
+                    ? `<p class="text-[12px] text-gray-400 py-3 text-center">No bills</p>`
                     : items.map(bill => {
                         const vendorName = getVendorDisplayName(bill);
                         return `
                         <div class="flex items-start justify-between gap-2 py-2.5 border-b border-gray-50 last:border-0 cursor-pointer hover:bg-gray-50 -mx-1 px-1 rounded transition-colors" data-action="review" data-bill-id="${escapeHtml(bill.id)}">
                             <div class="min-w-0 flex-1">
                                 <p class="text-[12px] font-semibold text-gray-900 truncate" title="${escapeHtml(vendorName)}">${escapeHtml(vendorName)}</p>
-                                <p class="text-[11px] text-gray-400 mt-0.5">${getBillDueDate(bill)?.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) || '—'}</p>
+                                <p class="text-[12px] text-gray-400 mt-0.5">${getBillDueDate(bill)?.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) || '—'}</p>
                             </div>
                             <p class="text-[12px] font-bold font-mono text-gray-700 flex-shrink-0 mt-0.5">${formatCurrencyIDR(bill.amount)}</p>
                         </div>
@@ -508,7 +508,7 @@
                 return `
                     <div class="p-4 min-w-0">
                         <div class="flex items-center gap-2 mb-3">
-                            <h3 class="text-[11px] font-bold ${headerCls} uppercase tracking-wider">${label}</h3>
+                            <h3 class="text-[12px] font-bold ${headerCls} uppercase tracking-wider">${label}</h3>
                             <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeCls}">${items.length}</span>
                         </div>
                         ${exposureHtml}
@@ -556,7 +556,7 @@
             if (!body) return;
 
             if (visible.length === 0) {
-                body.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-[13px] text-gray-400">No bills match your search.</td></tr>`;
+                body.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-[14px] text-gray-400">No bills match your search.</td></tr>`;
                 return;
             }
 
@@ -581,7 +581,7 @@
                             <p>${escapeHtml(bill.category || 'Operations')}</p>
                             ${budgetChip}
                         </td>
-                        <td class="px-6 py-4 text-[13px]">${formatDueDateDisplay(bill)}</td>
+                        <td class="px-6 py-4 text-[14px]">${formatDueDateDisplay(bill)}</td>
                         <td class="px-6 py-4 font-mono font-bold text-gray-900">${formatCurrencyIDR(bill.amount)}</td>
                         <td class="px-6 py-4">${getStatusBadge(status)}</td>
                         <td class="px-6 py-4">
@@ -654,7 +654,7 @@
             if (!invoiceItems.length) return '';
             return `
                 <div class="rounded-lg border border-emerald-100 bg-emerald-50/40 p-3 space-y-1.5">
-                    <p class="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Invoice attached</p>
+                    <p class="text-[12px] font-bold text-emerald-700 uppercase tracking-wider">Invoice attached</p>
                     ${invoiceItems.map(item => {
                         const fileName = String(item.storage_path || '').split('/').pop() || 'invoice';
                         return `<p class="text-[12px] text-gray-700 truncate" title="${escapeHtml(fileName)}">${escapeHtml(fileName)}</p>`;
@@ -682,33 +682,33 @@
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Vendor</p>
-                            <p class="text-[13px] font-bold text-gray-900">${escapeHtml(bill.vendor_name || 'Unknown')}</p>
+                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">Vendor</p>
+                            <p class="text-[14px] font-bold text-gray-900">${escapeHtml(bill.vendor_name || 'Unknown')}</p>
                         </div>
                         <div>
-                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Category</p>
-                            <p class="text-[13px] text-gray-700">${escapeHtml(bill.category || 'Operations')}</p>
+                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">Category</p>
+                            <p class="text-[14px] text-gray-700">${escapeHtml(bill.category || 'Operations')}</p>
                         </div>
                     </div>
 
                     <div class="border-t border-gray-100 pt-4">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Amount</p>
-                        <p class="text-[28px] font-bold font-mono text-gray-900">${formatCurrencyIDR(bill.amount)}</p>
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">Amount</p>
+                        <p class="text-xl font-bold font-mono text-gray-900">${formatCurrencyIDR(bill.amount)}</p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Due Date</p>
-                            <p class="text-[13px] ${!dueDate ? 'text-amber-600 font-medium' : 'text-gray-700'}">${escapeHtml(dueDateDisplay || 'Not scheduled')}</p>
+                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">Due Date</p>
+                            <p class="text-[14px] ${!dueDate ? 'text-amber-600 font-medium' : 'text-gray-700'}">${escapeHtml(dueDateDisplay || 'Not scheduled')}</p>
                         </div>
                         ${createdAt ? `<div>
-                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Created</p>
-                            <p class="text-[13px] text-gray-500">${escapeHtml(createdAt)}</p>
+                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">Created</p>
+                            <p class="text-[14px] text-gray-500">${escapeHtml(createdAt)}</p>
                         </div>` : ''}
                     </div>
 
                     <div class="border-t border-gray-100 pt-4">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Payment Readiness</p>
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-2">Payment Readiness</p>
                         <div class="bg-gray-50 rounded-lg p-3 text-[12px] text-gray-500 leading-relaxed">
                             This bill has not been marked as paid. Once payment is confirmed, record it as an expense transaction in the Ledger.
                         </div>
@@ -722,7 +722,7 @@
                             <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
                         </button>
                         <input type="file" id="bill-attach-invoice-file" accept="image/jpeg,image/png,image/webp,application/pdf" class="sr-only">
-                        <p class="text-[11px] text-gray-400">JPG, PNG, WebP, or PDF · Max 5 MB. Attaching does not mark the bill as paid.</p>
+                        <p class="text-[12px] text-gray-400">JPG, PNG, WebP, or PDF · Max 5 MB. Attaching does not mark the bill as paid.</p>
                         <button disabled class="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 border border-gray-200 text-gray-400 rounded-lg text-[12px] cursor-not-allowed">
                             <span>Convert to Transaction</span>
                             <span class="text-[10px] font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Coming soon</span>

@@ -692,3 +692,61 @@ main > header {
     opacity: 1;
     transform: translateY(0);
 }
+
+/* ── Typography system ─────────────────────────────────────────────────
+   Strict 6-step scale aligned to the 4/8-px grid. Tokens live here so
+   any new component can pick the right step from the variables rather
+   than authoring `text-[11px]`-style one-offs.
+
+       --fluxy-text-xs  10px  caps labels, micro badges, kbd
+       --fluxy-text-sm  12px  meta lines, sub-text, pills, captions
+       --fluxy-text-md  14px  body default — nav, table cell names, buttons
+       --fluxy-text-lg  16px  reserved (use sparingly between body and KPI)
+       --fluxy-text-xl  20px  KPI value, modal title
+       --fluxy-text-2xl 24px  page title
+
+   Weights: 400 body, 500 buttons/labels, 600 headings/KPI, 700 page title.
+   Mono face stays Fira Code for currency / tabular numbers; sans stays Inter.
+   ──────────────────────────────────────────────────────────────────── */
+:root {
+    --fluxy-text-xs:  10px;
+    --fluxy-text-sm:  12px;
+    --fluxy-text-md:  14px;
+    --fluxy-text-lg:  16px;
+    --fluxy-text-xl:  20px;
+    --fluxy-text-2xl: 24px;
+
+    --fluxy-fw-regular:  400;
+    --fluxy-fw-medium:   500;
+    --fluxy-fw-semibold: 600;
+    --fluxy-fw-bold:     700;
+
+    --fluxy-lh-tight:   1.25;
+    --fluxy-lh-snug:    1.4;
+    --fluxy-lh-normal:  1.45;
+    --fluxy-lh-relaxed: 1.5;
+
+    --fluxy-tracking-tightest: -0.025em;
+    --fluxy-tracking-tighter:  -0.02em;
+    --fluxy-tracking-tight:    -0.01em;
+    --fluxy-tracking-snug:     -0.005em;
+    --fluxy-tracking-wide:      0.06em;
+    --fluxy-tracking-widest:    0.08em;
+}
+
+/* Role-mapped utilities. Use these in new code instead of arbitrary
+   text-[Npx] values. Tailwind continues to work alongside; these win
+   when the class is the rightmost typography rule. */
+.fluxy-page-title { font-size: var(--fluxy-text-2xl); font-weight: var(--fluxy-fw-bold); letter-spacing: var(--fluxy-tracking-tightest); line-height: 1.2; }
+.fluxy-section-title { font-size: var(--fluxy-text-xl); font-weight: var(--fluxy-fw-semibold); letter-spacing: var(--fluxy-tracking-tighter); line-height: var(--fluxy-lh-tight); }
+.fluxy-card-title { font-size: var(--fluxy-text-md); font-weight: var(--fluxy-fw-semibold); letter-spacing: var(--fluxy-tracking-snug); }
+.fluxy-body { font-size: var(--fluxy-text-md); font-weight: var(--fluxy-fw-regular); line-height: var(--fluxy-lh-normal); letter-spacing: var(--fluxy-tracking-snug); }
+.fluxy-body-strong { font-size: var(--fluxy-text-md); font-weight: var(--fluxy-fw-medium); }
+.fluxy-meta { font-size: var(--fluxy-text-sm); font-weight: var(--fluxy-fw-regular); color: #6B7280; }
+.fluxy-button-text { font-size: var(--fluxy-text-sm); font-weight: var(--fluxy-fw-medium); }
+.fluxy-pill-text { font-size: var(--fluxy-text-sm); font-weight: var(--fluxy-fw-medium); }
+.fluxy-form-label { font-size: var(--fluxy-text-sm); font-weight: var(--fluxy-fw-medium); }
+.fluxy-kpi-value { font-size: var(--fluxy-text-xl); font-weight: var(--fluxy-fw-semibold); letter-spacing: var(--fluxy-tracking-tighter); line-height: 1; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.fluxy-kpi-label { font-size: var(--fluxy-text-xs); font-weight: var(--fluxy-fw-medium); letter-spacing: var(--fluxy-tracking-wide); text-transform: uppercase; color: #6B7280; }
+.fluxy-caps-label { font-size: var(--fluxy-text-xs); font-weight: var(--fluxy-fw-medium); letter-spacing: var(--fluxy-tracking-wide); text-transform: uppercase; }
+.fluxy-eyebrow { font-size: var(--fluxy-text-xs); font-weight: var(--fluxy-fw-semibold); letter-spacing: var(--fluxy-tracking-widest); text-transform: uppercase; }

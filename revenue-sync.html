@@ -25,11 +25,11 @@
                 </button>
                 <div class="hidden sm:flex relative w-full max-w-lg">
                     <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    <input id="revenue-search-input" type="text" placeholder="Search channel, description, or amount..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[13px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
+                    <input id="revenue-search-input" type="text" placeholder="Search channel, description, or amount..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[14px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
                 </div>
             </div>
             <div class="flex items-center gap-4">
-                <button onclick="window.toggleFluxyAI()" data-tour-target="fluxy-ai-entry" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                <button onclick="window.toggleFluxyAI()" data-tour-target="fluxy-ai-entry" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
                     <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     Fluxy AI
                 </button>
@@ -42,20 +42,20 @@
                 <!-- Page Title & Actions -->
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Revenue Sync</h1>
+                        <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Revenue Sync</h1>
                         <p class="text-[14px] text-gray-500 mt-1">Connect sales channels and reconcile every revenue transaction in your ledger.</p>
                     </div>
                     <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                         <div id="revenue-date-range-picker"></div>
-                        <button id="download-csv-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60" disabled>
+                        <button id="download-csv-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60" disabled>
                             <svg id="download-csv-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
                             <span id="download-csv-label">Download CSV</span>
                         </button>
-                        <a href="/integration" data-tour-target="revenue-connect" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95">
+                        <a href="/integration" data-tour-target="revenue-connect" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l-4 4-4 4M6 16l-4-4 4-4"></path></svg>
                             Connect Channel
                         </a>
-                        <button onclick="window.showAddTransactionModal({ title: 'Add Revenue', submitLabel: 'Add Revenue', defaultType: 'income', defaultCategory: 'Revenue', context: 'transaction' })" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95">
+                        <button onclick="window.showAddTransactionModal({ title: 'Add Revenue', submitLabel: 'Add Revenue', defaultType: 'income', defaultCategory: 'Revenue', context: 'transaction' })" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[14px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                             Add Revenue
                         </button>
@@ -67,37 +67,37 @@
 
                     <!-- Total Revenue -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Revenue</p>
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Total Revenue</p>
                         <p id="card-revenue-total" class="text-lg font-bold text-gray-900 mt-1 leading-8 tabular-nums">—</p>
-                        <p id="card-revenue-total-sub" class="text-[11px] text-gray-400 mt-1">In selected period</p>
+                        <p id="card-revenue-total-sub" class="text-[12px] text-gray-400 mt-1">In selected period</p>
                     </div>
 
                     <!-- Channels Connected -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Channels</p>
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Channels</p>
                         <p id="card-channels-connected" class="text-2xl font-bold text-gray-900 mt-1">—</p>
-                        <p class="text-[11px] text-gray-400 mt-1">Detected this period</p>
+                        <p class="text-[12px] text-gray-400 mt-1">Detected this period</p>
                     </div>
 
                     <!-- Synced Today -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Synced Today</p>
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Synced Today</p>
                         <p id="card-synced-today" class="text-2xl font-bold text-gray-900 mt-1">—</p>
-                        <p id="card-synced-today-sub" class="text-[11px] text-gray-400 mt-1">Revenue rows today</p>
+                        <p id="card-synced-today-sub" class="text-[12px] text-gray-400 mt-1">Revenue rows today</p>
                     </div>
 
                     <!-- Needs Review -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Needs Review</p>
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Needs Review</p>
                         <p id="card-needs-review" class="text-2xl font-bold text-gray-900 mt-1">—</p>
-                        <p id="card-needs-review-sub" class="text-[11px] text-gray-400 mt-1">Duplicates &amp; missing receipts</p>
+                        <p id="card-needs-review-sub" class="text-[12px] text-gray-400 mt-1">Duplicates &amp; missing receipts</p>
                     </div>
 
                     <!-- Reconciliation Health -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Health</p>
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Health</p>
                         <p id="card-reconciliation-health" class="text-2xl font-bold text-gray-900 mt-1">—</p>
-                        <p class="text-[11px] text-gray-400 mt-1">Clean rows ratio</p>
+                        <p class="text-[12px] text-gray-400 mt-1">Clean rows ratio</p>
                     </div>
 
                 </div>
@@ -169,15 +169,15 @@
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-50 border-b border-gray-200">
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Channel</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Category</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Flag</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Channel</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Category</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Flag</th>
                                 </tr>
                             </thead>
-                            <tbody id="revenue-table-body" class="divide-y divide-gray-100 text-[13px]">
+                            <tbody id="revenue-table-body" class="divide-y divide-gray-100 text-[14px]">
                                 <tr>
                                     <td colspan="6" class="px-6 py-12 text-center text-gray-400">Loading your revenue...</td>
                                 </tr>
@@ -205,7 +205,7 @@
     <div id="revenue-drawer" class="fixed top-0 right-0 h-full w-full max-w-[420px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
             <div>
-                <h2 class="text-[15px] font-bold text-gray-900">Revenue Details</h2>
+                <h2 class="text-[14px] font-bold text-gray-900">Revenue Details</h2>
                 <p class="text-[12px] text-gray-400 mt-0.5">Review the source and status</p>
             </div>
             <button id="revenue-drawer-close-btn" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
@@ -216,8 +216,8 @@
             <!-- Injected by JS -->
         </div>
         <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
-            <button id="revenue-drawer-close-footer" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Close</button>
-            <button disabled class="flex-1 px-4 py-2.5 bg-gray-50 text-gray-400 rounded-lg text-[13px] font-medium cursor-not-allowed flex items-center justify-center gap-2">
+            <button id="revenue-drawer-close-footer" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[14px] font-medium hover:bg-gray-200 transition-colors">Close</button>
+            <button disabled class="flex-1 px-4 py-2.5 bg-gray-50 text-gray-400 rounded-lg text-[14px] font-medium cursor-not-allowed flex items-center justify-center gap-2">
                 Mark Reconciled
                 <span class="text-[10px] font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
             </button>
@@ -471,7 +471,7 @@
             if (rows.length === 0) {
                 container.innerHTML = `
                     <div class="p-6 col-span-4 text-center">
-                        <p class="text-[13px] text-gray-500 mb-3">No revenue rows in this period.</p>
+                        <p class="text-[14px] text-gray-500 mb-3">No revenue rows in this period.</p>
                         <a href="/integration" class="inline-block px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[12px] font-bold hover:bg-[#D94E0B] transition-colors">Connect a Channel</a>
                     </div>
                 `;
@@ -491,7 +491,7 @@
                             <h3 class="text-[12px] font-bold text-gray-900 truncate" title="${escapeHtml(ch.name)}">${escapeHtml(ch.name)}</h3>
                         </div>
                         <p class="text-[16px] font-bold font-mono text-gray-900 truncate">${formatCurrencyIDR(ch.total)}</p>
-                        <p class="text-[11px] text-gray-400 mt-1">${ch.count} row${ch.count !== 1 ? 's' : ''} · last ${escapeHtml(latestText)}</p>
+                        <p class="text-[12px] text-gray-400 mt-1">${ch.count} row${ch.count !== 1 ? 's' : ''} · last ${escapeHtml(latestText)}</p>
                     </div>
                 `;
             }).join('');
@@ -659,7 +659,7 @@
                 const emptyMsg = searchValue
                     ? 'No revenue rows match your search.'
                     : (activeTab === 'review' ? 'No flagged rows in this period.' : 'No revenue rows match this view.');
-                body.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-[13px] text-gray-400">${escapeHtml(emptyMsg)}</td></tr>`;
+                body.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-[14px] text-gray-400">${escapeHtml(emptyMsg)}</td></tr>`;
                 return;
             }
 
@@ -670,7 +670,7 @@
                 const flags = flagsById.get(row.id) || [];
                 const flagsHtml = flags.length
                     ? flags.map(f => `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">${escapeHtml(f)}</span>`).join(' ')
-                    : '<span class="text-[11px] text-gray-300">—</span>';
+                    : '<span class="text-[12px] text-gray-300">—</span>';
                 return `
                     <tr class="hover:bg-gray-50 transition-colors cursor-pointer" data-action="review" data-revenue-id="${escapeHtml(row.id)}">
                         <td class="px-6 py-4 text-gray-500">${escapeHtml(dateStr)}</td>
@@ -754,38 +754,38 @@
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Channel</p>
-                            <p class="text-[13px] font-bold text-gray-900">${escapeHtml(getChannelName(row))}</p>
+                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">Channel</p>
+                            <p class="text-[14px] font-bold text-gray-900">${escapeHtml(getChannelName(row))}</p>
                         </div>
                         <div>
-                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Category</p>
-                            <p class="text-[13px] text-gray-700">${escapeHtml(row.category || '—')}</p>
+                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">Category</p>
+                            <p class="text-[14px] text-gray-700">${escapeHtml(row.category || '—')}</p>
                         </div>
                     </div>
 
                     <div class="border-t border-gray-100 pt-4">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Amount</p>
-                        <p class="text-[28px] font-bold font-mono text-gray-900">${formatCurrencyIDR(row.amount)}</p>
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">Amount</p>
+                        <p class="text-xl font-bold font-mono text-gray-900">${formatCurrencyIDR(row.amount)}</p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Date</p>
-                            <p class="text-[13px] text-gray-700">${escapeHtml(dateStr)}</p>
+                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">Date</p>
+                            <p class="text-[14px] text-gray-700">${escapeHtml(dateStr)}</p>
                         </div>
                         <div>
-                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Type</p>
-                            <p class="text-[13px] text-gray-700">${escapeHtml(row.type || 'income')}</p>
+                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">Type</p>
+                            <p class="text-[14px] text-gray-700">${escapeHtml(row.type || 'income')}</p>
                         </div>
                     </div>
 
                     <div class="border-t border-gray-100 pt-4">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reconciliation Flags</p>
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reconciliation Flags</p>
                         ${flagsHtml}
                     </div>
 
                     <div class="border-t border-gray-100 pt-4">
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Source</p>
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-2">Source</p>
                         <div class="bg-gray-50 rounded-lg p-3 text-[12px] text-gray-500 leading-relaxed">
                             Channel is derived from the vendor name. Once an integration is connected, real connector metadata will replace this inference.
                         </div>

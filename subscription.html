@@ -25,11 +25,11 @@
                 </button>
                 <div class="hidden sm:flex relative w-full max-w-lg">
                     <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    <input id="subscription-search-input" type="text" placeholder="Search subscriptions, SaaS tools..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[13px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
+                    <input id="subscription-search-input" type="text" placeholder="Search subscriptions, SaaS tools..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[14px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
                 </div>
             </div>
             <div class="flex items-center gap-4">
-                <button onclick="window.toggleFluxyAI()" data-tour-target="fluxy-ai-entry" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                <button onclick="window.toggleFluxyAI()" data-tour-target="fluxy-ai-entry" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
                     <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     Fluxy AI
                 </button>
@@ -40,11 +40,11 @@
             <div class="max-w-7xl mx-auto space-y-6">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Active Subscriptions</h1>
+                        <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Active Subscriptions</h1>
                         <p class="text-[14px] text-gray-500 mt-1">Track your recurring SaaS spend and renewal cycles.</p>
                     </div>
                     <div class="flex items-center gap-3">
-                        <button onclick="window.showAddTransactionModal({ title: 'Add Subscription', submitLabel: 'Activate Subscription', defaultCategory: 'SaaS', context: 'subscription' })" data-tour-target="subscription-add" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95">
+                        <button onclick="window.showAddTransactionModal({ title: 'Add Subscription', submitLabel: 'Activate Subscription', defaultCategory: 'SaaS', context: 'subscription' })" data-tour-target="subscription-add" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[14px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                             Add Subscription
                         </button>
@@ -57,14 +57,14 @@
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-50 border-b border-gray-200">
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Service</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Monthly Cost</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider" data-tour-target="subscription-renewal">Renewal Date</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider" data-tour-target="subscription-manage">Action</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Service</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Monthly Cost</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider" data-tour-target="subscription-renewal">Renewal Date</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider" data-tour-target="subscription-manage">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="sub-table-body" class="divide-y divide-gray-100 text-[13px]">
+                            <tbody id="sub-table-body" class="divide-y divide-gray-100 text-[14px]">
                                 <tr>
                                     <td colspan="5" class="px-6 py-12 text-center text-gray-400">Loading your subscriptions...</td>
                                 </tr>

@@ -110,13 +110,13 @@
                 </button>
                 <div class="hidden sm:flex relative w-full max-w-lg">
                     <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    <input id="ledger-search-input" type="search" placeholder="Search transactions, tags, or vendors..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[13px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
+                    <input id="ledger-search-input" type="search" placeholder="Search transactions, tags, or vendors..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[14px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
                 </div>
             </div>
 
             <!-- Right: AI Entry Point -->
             <div class="flex items-center gap-4">
-                <button onclick="window.toggleFluxyAI()" data-tour-target="fluxy-ai-entry" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                <button onclick="window.toggleFluxyAI()" data-tour-target="fluxy-ai-entry" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
                     <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     Fluxy AI
                 </button>
@@ -129,22 +129,22 @@
                 
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div class="min-w-0">
-                        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Financial Ledger</h1>
+                        <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Financial Ledger</h1>
                         <p class="text-[14px] text-gray-500 mt-1 max-w-[260px]">Full audit trail of all transactions across your network.</p>
                     </div>
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 flex-shrink-0 overflow-x-auto">
                         <div id="ledger-status-filter" class="fluxy-select" data-default-label="All statuses" data-aria-label="Filter by status"></div>
                         <div id="ledger-type-filter" class="fluxy-select" data-default-label="All types" data-aria-label="Filter by type"></div>
                         <div id="ledger-date-range-picker" data-tour-target="ledger-date-filter"></div>
-                        <button id="download-csv-btn" type="button" data-tour-target="ledger-export" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap" disabled>
+                        <button id="download-csv-btn" type="button" data-tour-target="ledger-export" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap" disabled>
                             <svg id="download-csv-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
                             <span id="download-csv-label">Download CSV</span>
                         </button>
-                        <button id="scan-tx-btn" type="button" data-scan-mode="transaction" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
+                        <button id="scan-tx-btn" type="button" data-scan-mode="transaction" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
                             <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2m4-5h10"></path></svg>
                             Scan / Import
                         </button>
-                        <button onclick="window.showAddTransactionModal()" data-tour-target="ledger-add-transaction" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
+                        <button onclick="window.showAddTransactionModal()" data-tour-target="ledger-add-transaction" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[14px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                             Add Transaction
                         </button>
@@ -153,27 +153,27 @@
 
                 <div id="ledger-control-cards" data-tour-target="ledger-control-cards" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
                     <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Total Transactions</p>
+                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Total Transactions</p>
                         <p id="ledger-total-count" class="mt-2 text-2xl font-bold text-gray-900">0</p>
                         <p class="mt-1 text-[12px] text-gray-500">Current ledger records</p>
                     </div>
                     <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Unreconciled</p>
+                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Unreconciled</p>
                         <p id="ledger-unreconciled-count" class="mt-2 text-2xl font-bold text-gray-900">0</p>
                         <p id="ledger-unreconciled-subtitle" class="mt-1 text-[12px] text-gray-500">Not tracked yet</p>
                     </div>
                     <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Missing Receipts</p>
+                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Missing Receipts</p>
                         <p id="ledger-missing-receipts-count" class="mt-2 text-2xl font-bold text-gray-900">0</p>
                         <p class="mt-1 text-[12px] text-gray-500">Require attachment</p>
                     </div>
                     <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Pending Approval</p>
+                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Pending Approval</p>
                         <p id="ledger-pending-approval-count" class="mt-2 text-2xl font-bold text-gray-900">0</p>
                         <p class="mt-1 text-[12px] text-gray-500">Waiting for review</p>
                     </div>
                     <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Uncategorized</p>
+                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Uncategorized</p>
                         <p id="ledger-uncategorized-count" class="mt-2 text-2xl font-bold text-gray-900">0</p>
                         <p class="mt-1 text-[12px] text-gray-500">Need classification</p>
                     </div>
@@ -188,14 +188,14 @@
                         <div id="ledger-volume-col" class="p-4 xl:col-span-5 flex flex-col">
                             <div class="flex items-center justify-between gap-3 mb-3">
                                 <div>
-                                    <h3 class="text-[13px] font-bold text-gray-900">Transaction Volume Over Time</h3>
+                                    <h3 class="text-[14px] font-bold text-gray-900">Transaction Volume Over Time</h3>
                                     <p class="text-[12px] text-gray-500">Count of ledger records by transaction date</p>
                                 </div>
                             </div>
                             <div id="ledger-volume-chart" class="flex-1"></div>
                         </div>
                         <div id="ledger-top-vendor-spend-section" class="hidden p-4 xl:col-span-2">
-                            <h3 class="text-[13px] font-bold text-gray-900">Top Vendor Spend</h3>
+                            <h3 class="text-[14px] font-bold text-gray-900">Top Vendor Spend</h3>
                             <p class="text-[12px] text-gray-500 mb-2">Distribution by expense-side vendor</p>
                             <div id="ledger-top-vendor-spend-list" class="space-y-2"></div>
                         </div>
@@ -211,32 +211,32 @@
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-50 border-b border-gray-200">
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Uploaded</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Uploaded</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">
                                         <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="date">
                                             Date <span class="ledger-sort-icon text-gray-400" aria-hidden="true"></span>
                                         </button>
                                     </th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Type</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Description</th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Type</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Description</th>
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">
                                         <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="category">
                                             Category <span class="ledger-sort-icon text-gray-400" aria-hidden="true"></span>
                                         </button>
                                     </th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">
                                         <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="amount">
                                             Amount <span class="ledger-sort-icon text-gray-400" aria-hidden="true"></span>
                                         </button>
                                     </th>
-                                    <th class="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">
                                         <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="status">
                                             Status <span class="ledger-sort-icon text-gray-400" aria-hidden="true"></span>
                                         </button>
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody id="ledger-table-body" class="divide-y divide-gray-100 text-[13px]">
+                            <tbody id="ledger-table-body" class="divide-y divide-gray-100 text-[14px]">
                                 <tr>
                                     <td colspan="7" class="px-6 py-12 text-center text-gray-400">
                                         Fetching ledger data...
@@ -264,7 +264,7 @@
         <div id="tx-detail-drawer" role="dialog" aria-modal="true" class="absolute right-0 top-0 h-full w-full max-w-[440px] translate-x-full flex flex-col bg-white shadow-2xl transition-transform duration-300 ease-out sm:max-w-[480px]">
             <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 flex-shrink-0">
                 <div>
-                    <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Transaction Detail</p>
+                    <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Transaction Detail</p>
                     <h3 id="tx-detail-vendor" class="mt-1 text-lg font-bold text-gray-900">—</h3>
                 </div>
                 <button onclick="window.closeTxDetailDrawer()" class="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close">
@@ -274,13 +274,13 @@
             <div class="flex-1 overflow-y-auto p-6 space-y-6">
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Amount</p>
+                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Amount</p>
                         <p id="tx-detail-amount" class="text-xl font-bold font-mono text-gray-900">—</p>
                     </div>
                     <div class="mt-1 flex flex-col items-end gap-1">
                         <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Type</p>
                         <select id="tx-detail-type-select"
-                            class="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-[13px] text-gray-900 font-medium outline-none focus:ring-2 focus:ring-gray-900 cursor-pointer transition-colors">
+                            class="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-[14px] text-gray-900 font-medium outline-none focus:ring-2 focus:ring-gray-900 cursor-pointer transition-colors">
                             <option value="income">Income</option>
                             <option value="expense">Expense</option>
                             <option value="transfer">Transfer</option>
@@ -295,19 +295,19 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Transaction Date</p>
+                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Transaction Date</p>
                         <p id="tx-detail-date" class="text-[14px] font-bold text-gray-900">—</p>
                     </div>
                     <div>
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Category</p>
+                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Category</p>
                         <p id="tx-detail-category" class="text-[14px] font-bold text-gray-900">—</p>
                     </div>
                     <div>
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Status</p>
+                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Status</p>
                         <p id="tx-detail-status" class="text-[14px] font-bold text-gray-900">—</p>
                     </div>
                     <div>
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Uploaded</p>
+                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Uploaded</p>
                         <p id="tx-detail-uploaded" class="text-[14px] font-bold text-gray-900">—</p>
                     </div>
                 </div>
@@ -330,7 +330,7 @@
     <div id="scan-drawer" class="fixed top-0 right-0 h-full w-full max-w-[520px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
             <div>
-                <h2 id="scan-drawer-title" class="text-[15px] font-bold text-gray-900">Scan / Import</h2>
+                <h2 id="scan-drawer-title" class="text-[14px] font-bold text-gray-900">Scan / Import</h2>
                 <p id="scan-drawer-subtitle" class="text-[12px] text-gray-400 mt-0.5">Upload a receipt, invoice, payment confirmation, or bank statement. FluxyOS reviews each before anything is saved.</p>
             </div>
             <button id="scan-drawer-close-btn" type="button" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
@@ -339,8 +339,8 @@
         </div>
         <div class="px-6 pt-4 flex-shrink-0">
             <div class="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" role="tablist" aria-label="Scan or import">
-                <button type="button" id="scan-tab-document" data-scan-tab="document" class="scan-tab-btn rounded-lg px-3 py-2 text-[13px] font-bold transition-all bg-white text-gray-900 shadow-sm" role="tab" aria-selected="true" aria-controls="scan-drawer-content">Receipt / Invoice</button>
-                <button type="button" id="scan-tab-bank" data-scan-tab="bank" class="scan-tab-btn rounded-lg px-3 py-2 text-[13px] font-bold transition-all text-gray-500 hover:text-gray-900" role="tab" aria-selected="false" aria-controls="scan-drawer-bsi-content">Bank Statement</button>
+                <button type="button" id="scan-tab-document" data-scan-tab="document" class="scan-tab-btn rounded-lg px-3 py-2 text-[14px] font-bold transition-all bg-white text-gray-900 shadow-sm" role="tab" aria-selected="true" aria-controls="scan-drawer-content">Receipt / Invoice</button>
+                <button type="button" id="scan-tab-bank" data-scan-tab="bank" class="scan-tab-btn rounded-lg px-3 py-2 text-[14px] font-bold transition-all text-gray-500 hover:text-gray-900" role="tab" aria-selected="false" aria-controls="scan-drawer-bsi-content">Bank Statement</button>
             </div>
         </div>
         <!-- Tab panel: Receipt / Invoice (legacy scan flow, owned by document-capture.js) -->
@@ -1155,14 +1155,14 @@
                         <div class="flex items-end gap-2 h-full" style="min-width: max(100%, ${volume.length * 52}px)">
                             ${volume.map(item => `
                             <div data-chart-bar data-label="${item.label}" data-count="${item.count}" class="flex-shrink-0 w-11 flex flex-col items-center gap-1.5">
-                                <div class="text-[11px] font-bold text-slate-700">${item.count}</div>
+                                <div class="text-[12px] font-bold text-slate-700">${item.count}</div>
                                 <div class="w-full rounded-t-md bg-blue-500 shadow-sm" style="height: ${Math.max((item.count / maxCount) * 190, 16)}px"></div>
                                 <div class="text-[10px] font-semibold text-slate-500 whitespace-nowrap">${item.label}</div>
                             </div>
                             `).join('')}
                         </div>
                     </div>
-                    <div class="mt-2 flex items-center justify-between border-t border-slate-200 pt-2 text-[11px] font-medium text-slate-500">
+                    <div class="mt-2 flex items-center justify-between border-t border-slate-200 pt-2 text-[12px] font-medium text-slate-500">
                         <span>${volume.length} active date${volume.length === 1 ? '' : 's'}</span>
                         <span>${chartedCount.toLocaleString()} charted / ${transactions.length.toLocaleString()} loaded</span>
                     </div>
@@ -1239,7 +1239,7 @@
                 <div class="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50/70 px-3 py-2">
                     <div class="min-w-0">
                         <p class="truncate text-[12px] font-bold text-gray-800" title="${escapeHtml(vendor.displayName)}">${escapeHtml(vendor.displayName)}</p>
-                        <p class="text-[11px] text-gray-400">${vendor.count} record${vendor.count === 1 ? '' : 's'}</p>
+                        <p class="text-[12px] text-gray-400">${vendor.count} record${vendor.count === 1 ? '' : 's'}</p>
                     </div>
                     <p class="flex-shrink-0 text-[12px] font-bold font-mono text-gray-900">${formatCurrencyIDR(vendor.amount)}</p>
                 </div>
@@ -1291,7 +1291,7 @@
                 body.innerHTML = `
                     <tr>
                         <td colspan="7" class="px-6 py-12 text-center">
-                            <p class="text-[13px] font-bold text-gray-700">No matching transactions</p>
+                            <p class="text-[14px] font-bold text-gray-700">No matching transactions</p>
                             <p class="mt-1 text-[12px] text-gray-400">Try another vendor, category, type, status, amount, or date.</p>
                         </td>
                     </tr>
@@ -1604,7 +1604,7 @@
             if (row.receipt_url) {
                 receiptSection.innerHTML = `
                     <div>
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
+                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
                         <a href="${row.receipt_url}" target="_blank" rel="noopener noreferrer">
                             <img src="${row.receipt_url}" alt="Receipt" class="w-full rounded-xl border border-gray-200 object-contain max-h-72 hover:opacity-90 transition-opacity">
                         </a>
@@ -1614,17 +1614,17 @@
             } else {
                 receiptSection.innerHTML = `
                     <div>
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
+                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
                         <label id="tx-detail-receipt-label" for="tx-detail-receipt-file"
                             class="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 transition-colors">
                             <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-                            <span id="tx-detail-receipt-filename" class="text-[13px] text-gray-500 truncate flex-1">Attach receipt image</span>
+                            <span id="tx-detail-receipt-filename" class="text-[14px] text-gray-500 truncate flex-1">Attach receipt image</span>
                         </label>
                         <input type="file" id="tx-detail-receipt-file" accept="image/*" class="sr-only">
                         <div id="tx-detail-receipt-preview-wrapper" class="hidden mt-2">
                             <img id="tx-detail-receipt-preview" src="" alt="Receipt preview" class="w-full rounded-xl border border-gray-200 object-contain max-h-48">
                         </div>
-                        <p class="mt-1.5 text-[11px] text-gray-400">JPG, PNG or WebP · Max 1 MB · Compress the image first if it's too large</p>
+                        <p class="mt-1.5 text-[12px] text-gray-400">JPG, PNG or WebP · Max 1 MB · Compress the image first if it's too large</p>
                     </div>
                 `;
                 document.getElementById('tx-detail-footer').classList.remove('hidden');
@@ -1713,7 +1713,7 @@
                     const receiptSection = document.getElementById('tx-detail-receipt-section');
                     receiptSection.innerHTML = `
                         <div>
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
+                            <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
                             <a href="${receiptUrl}" target="_blank" rel="noopener noreferrer">
                                 <img src="${receiptUrl}" alt="Receipt" class="w-full rounded-xl border border-gray-200 object-contain max-h-72 hover:opacity-90 transition-opacity">
                             </a>

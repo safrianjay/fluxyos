@@ -29,18 +29,68 @@ This document defines the visual and functional standards for FluxyOS. Follow th
 - **Letter Spacing**: Body, small text, captions, buttons, and navigation use `letter-spacing: 0`. Negative letter spacing is allowed only on large headings.
 
 ### Font Sizes
+
+Marketing / landing pages use the editorial display scale below.
+**Authenticated dashboard / app pages** use the strict 6-step product
+scale (10 / 12 / 14 / 16 / 20 / 24 px) defined under "Dashboard type
+scale" so KPI strips, tables, and forms stay on the 4/8-px rhythm.
+
+#### Marketing pages
 - **Display / Hero**: `56px` desktop, `48px` tablet, `36px` mobile; weight `300`, line-height `1.08–1.12`.
 - **H1**: `48px` desktop, `40px` tablet, `32px` mobile; weight `300`, line-height `1.1–1.15`.
 - **H2**: `36px` desktop, `32px` tablet, `28px` mobile; weight `300`, line-height `1.15–1.2`.
 - **H3**: `26px` desktop, `24px` tablet, `22px` mobile; weight `300–400`, line-height `1.2–1.25`.
 - **H4**: `18px` desktop/tablet, `16px` mobile; weight `400–500`, line-height `1.3`.
-- **KPI Amounts**: `3xl` (30px), Bold, `font-mono`.
-- **Body Text**: `16px` desktop/tablet, `15px–16px` mobile, line-height `1.5–1.6`.
+- **Body Text**: `16px` desktop/tablet, `15–16px` mobile, line-height `1.5–1.6`.
 - **Body Small / Metadata**: `14px`, line-height `1.45–1.55`.
-- **Captions / Labels**: `12px`, line-height `1.4`, only for short text.
-- **Buttons**: `16px`, weight `400–500`, line-height `1`.
-- **Navigation**: `14px` desktop/tablet, `16px` mobile menu, weight `400–500`, line-height `1`.
-- **Code / Technical Values**: `13px`, line-height `1.4`.
+
+#### Dashboard type scale (authenticated app pages)
+
+Strict 6 steps. **No other sizes are permitted on app pages.**
+Tokens + utility classes live in `assets/css/shared-dashboard.css`
+(`--fluxy-text-*`, `.fluxy-*`).
+
+| Token | px | Role |
+|---|---:|---|
+| `xs`  | 10 | Caps labels, micro badges, sparkline axis, kbd |
+| `sm`  | 12 | Meta lines, sub-text, pills, captions, table sub-rows, buttons |
+| `md`  | 14 | Body default — nav items, table cell names, form inputs, line-item names |
+| `lg`  | 16 | Reserved — use only if 14 isn't loud enough between body and KPI |
+| `xl`  | 20 | KPI value, modal title |
+| `2xl` | 24 | Page title (only) |
+
+Weight scale (four weights — don't load more):
+- `400` body, descriptions, meta
+- `500` buttons, pills, form labels, table cell names
+- `600` section titles, KPI values, card titles, active nav
+- `700` page title only
+
+Letter spacing:
+- `-0.025em` 24 px page title
+- `-0.02em`  20 px KPI value
+- `-0.01em`  section titles, stack labels
+- `-0.005em` body / 14 px
+- `0.06em`   caps labels (10–12 px)
+- `0.08em`   eyebrow / sidebar caps
+
+Line height: `1.25` tight stacks · `1.4` pills + descriptions · `1.45`
+default body · `1.5` long-form prose. KPI numbers themselves use `1`.
+
+**Rules:**
+1. Never invent intermediate sizes (`text-[11px]`, `text-[13px]`,
+   `text-3xl`, etc. on app pages). If you'd reach for one, snap to the
+   nearest scale step.
+2. Pair size with weight, not just size. Louder element → +1 size AND
+   +1 weight. Don't make `14/700` your hierarchy hammer.
+3. Caps text always pairs with letter-spacing ≥ `0.06em`.
+4. Numbers always use the mono face (`Fira Code`) with
+   `font-feature-settings: "tnum"`.
+5. Marketing pages keep the display scale above. Don't apply the
+   dashboard scale to landing pages.
+
+Pre-existing `text-[11px]` / `text-[13px]` instances in the codebase
+are being migrated to `text-[12px]` / `text-[14px]` in scoped sweeps;
+new code must already be on-scale.
 
 ---
 
