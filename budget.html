@@ -155,7 +155,55 @@
                         </div>
                     </div>
 
+                    <!-- Annual envelope + period controls -->
+                    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)] gap-4">
+                        <section id="budget-annual-card" class="bg-white rounded-[10px] border border-gray-200 shadow-sm px-4 py-3">
+                            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                                <div>
+                                    <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Annual envelope</p>
+                                    <h3 id="budget-annual-title" class="mt-1 text-[15px] font-bold text-gray-900">—</h3>
+                                    <p id="budget-annual-subtitle" class="mt-0.5 text-[12px] text-gray-500">—</p>
+                                </div>
+                                <select id="budget-annual-select" class="hidden sm:w-56 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-[#EA580C]"></select>
+                            </div>
+                            <div id="budget-annual-metrics" class="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-2"></div>
+                        </section>
+
+                        <section class="bg-white rounded-[10px] border border-gray-200 shadow-sm px-4 py-3">
+                            <div class="flex flex-col gap-3">
+                                <div>
+                                    <label for="budget-period-select" class="text-[11px] font-bold uppercase tracking-wide text-gray-400">Budget period</label>
+                                    <select id="budget-period-select" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[13px] font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-[#EA580C]"></select>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
+                                    <input id="budget-target-month" type="month" class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[12px] font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-[#EA580C]">
+                                    <select id="budget-target-quarter" class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[12px] font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-[#EA580C]">
+                                        <option value="Q1">Q1</option>
+                                        <option value="Q2">Q2</option>
+                                        <option value="Q3">Q3</option>
+                                        <option value="Q4">Q4</option>
+                                    </select>
+                                    <button id="budget-select-target-btn" type="button" class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-bold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">Select</button>
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-2">
+                                    <button id="budget-duplicate-btn" type="button" class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-bold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">Duplicate Previous Budget</button>
+                                    <button id="budget-create-period-btn" type="button" class="inline-flex items-center justify-center rounded-lg bg-[#EA580C] px-3 py-2 text-[12px] font-bold text-white hover:bg-[#D94E0B] transition-colors">Create Period Budget</button>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div id="budget-no-period-state" class="hidden bg-white rounded-[10px] border border-gray-200 shadow-sm px-5 py-8 text-center">
+                        <h3 id="budget-no-period-title" class="text-[18px] font-bold text-gray-900">No budget set for this period</h3>
+                        <p id="budget-no-period-copy" class="mt-2 text-[13px] text-gray-500">Create a new operating budget or duplicate a previous period’s allocation structure.</p>
+                        <div class="mt-5 flex flex-col sm:flex-row justify-center gap-2">
+                            <button id="budget-no-period-create" type="button" class="inline-flex items-center justify-center rounded-lg bg-[#EA580C] px-4 py-2 text-[13px] font-bold text-white hover:bg-[#D94E0B] transition-colors">Create Budget</button>
+                            <button id="budget-no-period-duplicate" type="button" class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-[13px] font-bold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">Duplicate Previous Budget</button>
+                        </div>
+                    </div>
+
                     <!-- KPI strip -->
+                    <div id="budget-primary-workspace" class="space-y-6">
                     <div class="budget-summary-board bg-white rounded-[10px] border border-gray-200 shadow-sm overflow-hidden">
                         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 xl:divide-x divide-gray-200">
                             <article class="budget-metric-cell border-b xl:border-b-0 border-gray-200">
@@ -292,6 +340,8 @@
                         <div id="budget-excluded-body" class="hidden divide-y divide-gray-100 text-[13px]"></div>
                     </div>
 
+                    </div>
+
                 </div>
 
             </div>
@@ -325,6 +375,45 @@
                 </div>
 
                 <div>
+                    <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Budget type</label>
+                    <div class="grid grid-cols-2 gap-2" id="budget-form-budget-type">
+                        <button type="button" data-value="period" class="budget-type-btn px-3 py-2 rounded-lg border border-[#EA580C] bg-orange-50 text-[#EA580C] text-[12px] font-bold">Period budget</button>
+                        <button type="button" data-value="annual" class="budget-type-btn px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 text-[12px] font-bold hover:border-gray-300">Annual envelope</button>
+                    </div>
+                </div>
+
+                <div id="budget-form-parent-wrap" class="hidden">
+                    <label for="budget-form-parent-annual" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Annual envelope</label>
+                    <select id="budget-form-parent-annual" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]"></select>
+                </div>
+
+                <div id="budget-form-period-controls" class="space-y-3">
+                    <div id="budget-form-month-wrap">
+                        <label for="budget-form-month" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Month</label>
+                        <input id="budget-form-month" type="month" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]">
+                    </div>
+                    <div id="budget-form-quarter-wrap" class="hidden grid grid-cols-2 gap-2">
+                        <div>
+                            <label for="budget-form-quarter" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Quarter</label>
+                            <select id="budget-form-quarter" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]">
+                                <option value="1">Q1</option>
+                                <option value="2">Q2</option>
+                                <option value="3">Q3</option>
+                                <option value="4">Q4</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="budget-form-quarter-year" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Year</label>
+                            <input id="budget-form-quarter-year" type="number" min="2020" max="2099" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]">
+                        </div>
+                    </div>
+                    <div id="budget-form-custom-label-wrap" class="hidden">
+                        <label for="budget-form-period-label" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Custom label (optional)</label>
+                        <input id="budget-form-period-label" type="text" maxlength="120" placeholder="e.g. Campaign launch period" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]">
+                    </div>
+                </div>
+
+                <div id="budget-form-date-wrap">
                     <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Period</label>
                     <div id="budget-form-date-picker"></div>
                     <p class="mt-2 text-[12px] text-gray-500">Pick the start and end dates of this operating period.</p>
@@ -335,7 +424,7 @@
                     <div class="grid grid-cols-3 gap-2" id="budget-form-period-type">
                         <button type="button" data-value="monthly" class="period-type-btn px-3 py-2 rounded-lg border border-[#EA580C] bg-orange-50 text-[#EA580C] text-[12px] font-bold">Monthly</button>
                         <button type="button" data-value="quarterly" class="period-type-btn px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 text-[12px] font-bold hover:border-gray-300">Quarterly</button>
-                        <button type="button" data-value="yearly" class="period-type-btn px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 text-[12px] font-bold hover:border-gray-300">Yearly</button>
+                        <button type="button" data-value="custom" class="period-type-btn px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 text-[12px] font-bold hover:border-gray-300">Custom</button>
                     </div>
                 </div>
 
@@ -365,6 +454,37 @@
                 <button id="budget-drawer-submit" type="submit" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed" disabled>
                     Save Budget
                 </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Duplicate Period Budget Drawer -->
+    <div id="budget-duplicate-backdrop" class="fixed inset-0 bg-black/40 z-40 hidden"></div>
+    <div id="budget-duplicate-drawer" class="fixed top-0 right-0 h-full w-full max-w-[460px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div>
+                <h2 class="text-[15px] font-bold text-gray-900">Duplicate previous budget</h2>
+                <p class="text-[12px] text-gray-400 mt-0.5">Copy allocation structure only. Spend and bills are not copied.</p>
+            </div>
+            <button id="budget-duplicate-close-btn" type="button" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <form id="budget-duplicate-form" class="flex-1 flex flex-col overflow-hidden">
+            <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                <div>
+                    <label for="budget-duplicate-source" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Source budget</label>
+                    <select id="budget-duplicate-source" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]"></select>
+                </div>
+                <div>
+                    <label for="budget-duplicate-month" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Target month</label>
+                    <input id="budget-duplicate-month" type="month" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]">
+                </div>
+                <p class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[12px] text-gray-500">The new period gets its own budget record and allocation records. Transactions, bills, actual spend, and committed spend remain attached to their original records.</p>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
+                <button id="budget-duplicate-cancel" type="button" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                <button id="budget-duplicate-submit" type="submit" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors">Duplicate</button>
             </div>
         </form>
     </div>

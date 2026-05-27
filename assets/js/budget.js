@@ -34,7 +34,16 @@ const state = {
     ds: null,
     user: null,
     usage: null,         // { budget, allocations, summary, unallocated } or null
+    annualBudgets: [],
+    periodBudgets: [],
+    annualEnvelope: null,
+    selectedAnnualId: null,
+    selectedBudgetId: null,
+    selectedTarget: null,
+    budgetType: 'period',
     drawerOpen: false,
+    drawerMode: 'edit',
+    duplicateOpen: false,
     datePicker: null,
     periodType: 'monthly',
     periodStart: null,   // 'YYYY-MM-DD'
@@ -48,6 +57,12 @@ function getDayKey(date = new Date()) {
 }
 function getMonthStartKey(date = new Date()) { return getDayKey(new Date(date.getFullYear(), date.getMonth(), 1)); }
 function getMonthEndKey(date = new Date()) { return getDayKey(new Date(date.getFullYear(), date.getMonth() + 1, 0)); }
+function getQuarterStartKey(year, quarter) {
+    return getDayKey(new Date(year, (quarter - 1) * 3, 1));
+}
+function getQuarterEndKey(year, quarter) {
+    return getDayKey(new Date(year, quarter * 3, 0));
+}
 
 function formatRp(amount) {
     const val = Number(amount) || 0;
@@ -86,12 +101,36 @@ async function loadAndRender() {
     el('budget-content').classList.add('hidden');
 
     try {
-        const activeBudget = await state.ds.getActiveBudget(state.user.uid);
-        if (!activeBudget) {
+        const [annualBudgets, periodBudgets] = await Promise.all([
+            state.ds.getAnnualBudgets?.(state.user.uid) || [],
+            state.ds.getPeriodBudgets?.(state.user.uid) || []
+        ]);
+        state.annualBudgets = annualBudgets || [];
+        state.periodBudgets = periodBudgets || [];
+        if (!state.selectedAnnualId && state.annualBudgets.length) {
+            state.selectedAnnualId = state.annualBudgets[0].id;
+        }
+        if (!state.selectedBudgetId && !state.selectedTarget && state.periodBudgets.length) {
+            state.selectedBudgetId = state.periodBudgets[0].id;
+        }
+
+        if (state.selectedAnnualId) {
+            state.annualEnvelope = await state.ds.calculateAnnualEnvelope?.(state.user.uid, state.selectedAnnualId);
+        } else {
+            state.annualEnvelope = null;
+        }
+
+        if (state.selectedTarget && !state.selectedBudgetId) {
+            state.usage = null;
+            renderNoPeriodState();
+            return;
+        }
+
+        if (!state.selectedBudgetId) {
             renderEmpty();
             return;
         }
-        const usage = await state.ds.getBudgetUsage(state.user.uid, activeBudget.id);
+        const usage = await state.ds.getBudgetUsage(state.user.uid, state.selectedBudgetId);
         state.usage = usage;
         renderBudget(usage);
     } catch (err) {
@@ -99,6 +138,24 @@ async function loadAndRender() {
         window.showToast?.('Could not load your budget. Refresh and try again.', 'error');
         renderEmpty();
     }
+}
+
+function selectExistingBudget(budgetId) {
+    state.selectedBudgetId = budgetId || null;
+    state.selectedTarget = null;
+    loadAndRender();
+}
+
+function selectTargetPeriod(target) {
+    const existing = findBudgetForTarget(target);
+    if (existing) {
+        state.selectedBudgetId = existing.id;
+        state.selectedTarget = null;
+    } else {
+        state.selectedBudgetId = null;
+        state.selectedTarget = target;
+    }
+    loadAndRender();
 }
 
 // ── Empty state ───────────────────────────────────────────────────────
@@ -127,6 +184,69 @@ function renderEmpty() {
     el('budget-create-btn-label').textContent = 'Create Budget';
 }
 
+function makeMonthlyTarget(monthValue) {
+    const value = monthValue || getDayKey(new Date()).slice(0, 7);
+    const [year, month] = value.split('-').map(Number);
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month, 0);
+    return {
+        period_type: 'monthly',
+        period_start: getDayKey(start),
+        period_end: getDayKey(end),
+        period_label: start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    };
+}
+
+function makeQuarterTarget(year, quarter) {
+    const q = Number(quarter) || 1;
+    const y = Number(year) || new Date().getFullYear();
+    return {
+        period_type: 'quarterly',
+        period_start: getQuarterStartKey(y, q),
+        period_end: getQuarterEndKey(y, q),
+        period_label: `Q${q} ${y}`
+    };
+}
+
+function targetKey(target) {
+    if (!target) return '';
+    return `${target.period_type}|${target.period_start}|${target.period_end}`;
+}
+
+function budgetKey(budget) {
+    const start = budget.period_start?.toDate?.() || null;
+    const end = budget.period_end?.toDate?.() || null;
+    if (!start || !end) return '';
+    return `${budget.period_type}|${getDayKey(start)}|${getDayKey(end)}`;
+}
+
+function findBudgetForTarget(target) {
+    const key = targetKey(target);
+    return (state.periodBudgets || []).find(b => budgetKey(b) === key) || null;
+}
+
+function renderNoPeriodState() {
+    el('budget-loading').classList.add('hidden');
+    el('budget-empty-state').classList.add('hidden');
+    el('budget-content').classList.remove('hidden');
+    el('budget-page-title')?.classList.add('hidden');
+    el('budget-primary-workspace')?.classList.add('hidden');
+    el('budget-no-period-state')?.classList.remove('hidden');
+    el('budget-create-btn-label').textContent = 'Create Budget';
+    renderWorkspaceShell(null, []);
+    renderAnnualEnvelope();
+    renderPeriodSelector();
+    const label = state.selectedTarget?.period_label || 'this period';
+    el('budget-name').textContent = label;
+    el('budget-period').textContent = state.selectedTarget
+        ? `${state.selectedTarget.period_start} - ${state.selectedTarget.period_end}`
+        : '—';
+    el('budget-workspace-allocation-count').textContent = 'No budget';
+    el('budget-period-type').textContent = formatPeriodType(state.selectedTarget?.period_type);
+    el('budget-no-period-title').textContent = `No budget set for ${label}`;
+    el('budget-no-period-copy').textContent = 'Create a new operating budget or duplicate a previous period’s allocation structure.';
+}
+
 // ── Loaded state ──────────────────────────────────────────────────────
 
 function renderBudget(usage) {
@@ -134,11 +254,15 @@ function renderBudget(usage) {
     el('budget-empty-state').classList.add('hidden');
     el('budget-content').classList.remove('hidden');
     el('budget-page-title')?.classList.add('hidden');
+    el('budget-primary-workspace')?.classList.remove('hidden');
+    el('budget-no-period-state')?.classList.add('hidden');
     el('budget-create-btn-label').textContent = 'Edit Budget';
 
     const { budget, allocations, summary, unallocated } = usage;
 
     renderWorkspaceHeader(budget, allocations);
+    renderAnnualEnvelope();
+    renderPeriodSelector();
 
     // ── KPI strip ───────────────────────────────────────────────────
     // These mappings intentionally mirror DataService.getBudgetUsage().
@@ -221,6 +345,10 @@ function renderBudget(usage) {
     renderActivityTimeline();
 }
 
+function renderWorkspaceShell(budget, allocations) {
+    renderWorkspaceHeader(budget || {}, allocations || []);
+}
+
 function classifyStatus(percent) {
     const p = Number.isFinite(percent) ? percent : 0;
     if (p >= 100) return 'exceeded';
@@ -230,7 +358,7 @@ function classifyStatus(percent) {
 }
 
 function formatPeriodType(value) {
-    const map = { monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' };
+    const map = { monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly', custom: 'Custom' };
     return map[value] || 'Monthly';
 }
 
@@ -240,6 +368,18 @@ function formatPeriod(budget) {
     if (!start || !end) return '—';
     const fmt = { day: 'numeric', month: 'short', year: 'numeric' };
     return `${start.toLocaleDateString('id-ID', fmt)} – ${end.toLocaleDateString('id-ID', fmt)}`;
+}
+
+function derivePeriodLabel(periodType, start, end) {
+    if (periodType === 'monthly') {
+        return start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+    if (periodType === 'quarterly') {
+        return `Q${Math.floor(start.getMonth() / 3) + 1} ${start.getFullYear()}`;
+    }
+    if (periodType === 'yearly') return `FY${start.getFullYear()}`;
+    const fmt = { day: 'numeric', month: 'short', year: 'numeric' };
+    return `${start.toLocaleDateString('en-US', fmt)} - ${end.toLocaleDateString('en-US', fmt)}`;
 }
 
 function formatUpdatedAt(budget) {
@@ -273,6 +413,63 @@ function renderWorkspaceHeader(budget, allocations) {
     if (updatedWrap) updatedWrap.style.display = updatedText ? '' : 'none';
     const periodTypeWrap = el('budget-period-type-wrap');
     if (periodTypeWrap) periodTypeWrap.style.display = budget.period_type ? '' : 'none';
+}
+
+function renderAnnualEnvelope() {
+    const select = el('budget-annual-select');
+    const metrics = el('budget-annual-metrics');
+    if (!select || !metrics) return;
+
+    if (!state.annualBudgets.length) {
+        select.classList.add('hidden');
+        el('budget-annual-title').textContent = 'No annual budget set yet.';
+        el('budget-annual-subtitle').textContent = 'You can still manage monthly or quarterly budgets.';
+        metrics.innerHTML = '';
+        return;
+    }
+
+    select.classList.remove('hidden');
+    select.innerHTML = state.annualBudgets.map(b => `
+        <option value="${escapeHtml(b.id)}" ${b.id === state.selectedAnnualId ? 'selected' : ''}>${escapeHtml(b.period_label || b.name || 'Annual budget')}</option>
+    `).join('');
+
+    const envelope = state.annualEnvelope;
+    const annual = envelope?.annual_budget || state.annualBudgets.find(b => b.id === state.selectedAnnualId);
+    el('budget-annual-title').textContent = annual?.name || annual?.period_label || 'Annual Budget';
+    el('budget-annual-subtitle').textContent = formatPeriod(annual || {});
+    const items = [
+        ['Yearly Budget', envelope?.yearly_budget || 0],
+        ['Planned Periods', envelope?.planned_periods || 0],
+        ['Spent + Reserved YTD', envelope?.spent_reserved_ytd || 0],
+        ['Unplanned Capacity', envelope?.unplanned_capacity || 0]
+    ];
+    metrics.innerHTML = items.map(([label, value]) => `
+        <div class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+            <p class="text-[10px] font-bold uppercase tracking-wide text-gray-400">${escapeHtml(label)}</p>
+            <p class="mt-1 font-mono text-[13px] font-bold ${Number(value) < 0 ? 'text-red-600' : 'text-gray-900'}">${formatRp(value)}</p>
+        </div>
+    `).join('');
+}
+
+function renderPeriodSelector() {
+    const select = el('budget-period-select');
+    if (!select) return;
+    if (!state.periodBudgets.length) {
+        select.innerHTML = `<option value="">No period budgets yet</option>`;
+        select.disabled = true;
+    } else {
+        select.disabled = false;
+        select.innerHTML = state.periodBudgets.map(b => `
+            <option value="${escapeHtml(b.id)}" ${b.id === state.selectedBudgetId ? 'selected' : ''}>${escapeHtml(b.period_label || b.name || 'Period budget')} · ${escapeHtml(formatPeriodType(b.period_type))}</option>
+        `).join('');
+    }
+    const monthInput = el('budget-target-month');
+    if (monthInput && state.usage?.budget?.period_start?.toDate) {
+        const start = state.usage.budget.period_start.toDate();
+        monthInput.value = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
+    } else if (monthInput && !monthInput.value) {
+        monthInput.value = getDayKey(new Date()).slice(0, 7);
+    }
 }
 
 function allocationColor(index) {
@@ -575,7 +772,26 @@ function renderUnallocatedCard(unallocated) {
 // ── Drawer ────────────────────────────────────────────────────────────
 
 function wireDrawerControls() {
-    el('budget-create-btn').addEventListener('click', () => openDrawer());
+    el('budget-create-btn').addEventListener('click', () => openDrawer(state.usage?.budget ? 'edit' : 'create'));
+    el('budget-create-period-btn')?.addEventListener('click', () => openDrawer('create'));
+    el('budget-no-period-create')?.addEventListener('click', () => openDrawer('create'));
+    el('budget-period-select')?.addEventListener('change', (e) => selectExistingBudget(e.target.value));
+    el('budget-annual-select')?.addEventListener('change', async (e) => {
+        state.selectedAnnualId = e.target.value || null;
+        await loadAndRender();
+    });
+    el('budget-select-target-btn')?.addEventListener('click', () => {
+        const month = el('budget-target-month')?.value;
+        selectTargetPeriod(makeMonthlyTarget(month));
+    });
+    el('budget-target-quarter')?.addEventListener('change', () => {
+        const month = el('budget-target-month')?.value || getDayKey(new Date()).slice(0, 7);
+        const year = Number(month.slice(0, 4)) || new Date().getFullYear();
+        const q = Number(String(el('budget-target-quarter')?.value || 'Q1').replace('Q', '')) || 1;
+        selectTargetPeriod(makeQuarterTarget(year, q));
+    });
+    el('budget-duplicate-btn')?.addEventListener('click', openDuplicateDrawer);
+    el('budget-no-period-duplicate')?.addEventListener('click', openDuplicateDrawer);
     el('budget-refresh-btn')?.addEventListener('click', handleBudgetRefresh);
     el('budget-export-btn')?.addEventListener('click', handleBudgetExport);
     document.querySelectorAll('[data-budget-period-tab]').forEach(btn => {
@@ -585,10 +801,13 @@ function wireDrawerControls() {
     // it's always in the DOM (hidden until needed) so we can wire it once.
     // Reuses the Edit Budget flow — opening the drawer prefills allocation
     // rows and shows the remaining-unallocated amount inline.
-    el('budget-assign-remaining-btn')?.addEventListener('click', () => openDrawer());
+    el('budget-assign-remaining-btn')?.addEventListener('click', () => openDrawer('edit'));
     el('budget-drawer-close-btn').addEventListener('click', closeDrawer);
     el('budget-drawer-cancel').addEventListener('click', closeDrawer);
     el('budget-drawer-backdrop').addEventListener('click', closeDrawer);
+    el('budget-duplicate-close-btn')?.addEventListener('click', closeDuplicateDrawer);
+    el('budget-duplicate-cancel')?.addEventListener('click', closeDuplicateDrawer);
+    el('budget-duplicate-backdrop')?.addEventListener('click', closeDuplicateDrawer);
 
     // Phase 2: allocation detail drawer + collapsible sections + queue actions.
     el('budget-detail-close-btn')?.addEventListener('click', closeDetailDrawer);
@@ -626,6 +845,25 @@ function wireDrawerControls() {
         updateDrawerValidity();
     });
 
+    document.querySelectorAll('#budget-form-budget-type .budget-type-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            state.budgetType = btn.dataset.value === 'annual' ? 'annual' : 'period';
+            if (state.budgetType === 'annual') {
+                state.periodType = 'yearly';
+                const year = new Date().getFullYear();
+                state.periodStart = `${year}-01-01`;
+                state.periodEnd = `${year}-12-31`;
+                if (state.datePicker?.setRange) state.datePicker.setRange(state.periodStart, state.periodEnd);
+                if (!el('budget-form-name')?.value.trim()) el('budget-form-name').value = `FY${year} Operating Budget`;
+            }
+            else if (state.periodType === 'yearly') state.periodType = 'monthly';
+            setActiveBudgetTypeButton(state.budgetType);
+            setActivePeriodTypeButton(state.periodType === 'yearly' ? 'monthly' : state.periodType);
+            updateDrawerPeriodControls();
+            updateDrawerValidity();
+        });
+    });
+
     document.querySelectorAll('#budget-form-period-type .period-type-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             state.periodType = btn.dataset.value;
@@ -635,13 +873,22 @@ function wireDrawerControls() {
                     ? 'period-type-btn px-3 py-2 rounded-lg border border-[#EA580C] bg-orange-50 text-[#EA580C] text-[12px] font-bold'
                     : 'period-type-btn px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 text-[12px] font-bold hover:border-gray-300';
             });
+            syncPeriodControlsFromType();
+            updateDrawerPeriodControls();
+            updateDrawerValidity();
         });
     });
+    el('budget-form-month')?.addEventListener('change', () => { syncDatesFromPeriodControls(); updateDrawerValidity(); });
+    el('budget-form-quarter')?.addEventListener('change', () => { syncDatesFromPeriodControls(); updateDrawerValidity(); });
+    el('budget-form-quarter-year')?.addEventListener('input', () => { syncDatesFromPeriodControls(); updateDrawerValidity(); });
+    el('budget-form-period-label')?.addEventListener('input', updateDrawerValidity);
 
     el('budget-drawer-form').addEventListener('submit', handleSubmit);
+    el('budget-duplicate-form')?.addEventListener('submit', handleDuplicateSubmit);
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && state.drawerOpen) closeDrawer();
+        if (e.key === 'Escape' && state.duplicateOpen) closeDuplicateDrawer();
     });
 }
 
@@ -728,15 +975,17 @@ function pickNextCategory() {
     return ALLOCATION_CATEGORIES.find(c => !used.has(c)) || 'Operations';
 }
 
-function openDrawer() {
+function openDrawer(mode = 'edit') {
     state.drawerOpen = true;
+    state.drawerMode = mode;
     el('budget-drawer-backdrop').classList.remove('hidden');
     requestAnimationFrame(() => el('budget-drawer').classList.remove('translate-x-full'));
     document.body.classList.add('overflow-hidden');
-    prefillDrawerFromState();
+    prefillDrawerFromState(mode);
     mountDrawerDatePicker();
     renderAllocationRows();
     updateAllocationTotals();
+    updateDrawerPeriodControls();
     updateDrawerValidity();
 }
 
@@ -749,20 +998,24 @@ function closeDrawer() {
     el('budget-form-date-picker').innerHTML = '';
 }
 
-function prefillDrawerFromState() {
+function prefillDrawerFromState(mode = 'edit') {
     const usage = state.usage;
-    if (usage?.budget) {
+    if (mode === 'edit' && usage?.budget) {
         el('budget-drawer-title').textContent = 'Edit operating budget';
         el('budget-drawer-submit').textContent = 'Save Changes';
         el('budget-form-name').value = usage.budget.name || '';
         el('budget-form-amount').value = formatRpInput(usage.budget.total_budget);
         el('budget-form-notes').value = usage.budget.notes || '';
+        el('budget-form-period-label').value = usage.budget.period_label || '';
         const start = usage.budget.period_start?.toDate?.() || new Date();
         const end = usage.budget.period_end?.toDate?.() || new Date();
         state.periodStart = getDayKey(start);
         state.periodEnd = getDayKey(end);
         state.periodType = usage.budget.period_type || 'monthly';
+        state.budgetType = usage.budget.budget_type === 'annual' ? 'annual' : 'period';
+        setActiveBudgetTypeButton(state.budgetType);
         setActivePeriodTypeButton(state.periodType);
+        syncPeriodInputsFromDates(start);
         state.allocRows = (usage.allocations || []).map(a => ({
             name: a.name,
             category: (a.scope_values && a.scope_values[0]) || 'Operations',
@@ -777,12 +1030,18 @@ function prefillDrawerFromState() {
         el('budget-form-name').value = '';
         el('budget-form-amount').value = '';
         el('budget-form-notes').value = '';
-        state.periodStart = getMonthStartKey();
-        state.periodEnd = getMonthEndKey();
-        state.periodType = 'monthly';
+        el('budget-form-period-label').value = state.selectedTarget?.period_label || '';
+        state.budgetType = 'period';
+        state.periodType = state.selectedTarget?.period_type || 'monthly';
+        state.periodStart = state.selectedTarget?.period_start || getMonthStartKey();
+        state.periodEnd = state.selectedTarget?.period_end || getMonthEndKey();
+        setActiveBudgetTypeButton(state.budgetType);
         setActivePeriodTypeButton(state.periodType);
+        syncPeriodInputsFromDates(parsePeriodDate(state.periodStart));
         state.allocRows = DEFAULT_ALLOCATION_ROWS.map(r => ({ ...r }));
     }
+    renderParentAnnualOptions();
+    syncDatesFromPeriodControls();
 }
 
 function formatRpInput(value) {
@@ -798,6 +1057,72 @@ function setActivePeriodTypeButton(value) {
             ? 'period-type-btn px-3 py-2 rounded-lg border border-[#EA580C] bg-orange-50 text-[#EA580C] text-[12px] font-bold'
             : 'period-type-btn px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 text-[12px] font-bold hover:border-gray-300';
     });
+}
+
+function setActiveBudgetTypeButton(value) {
+    document.querySelectorAll('#budget-form-budget-type .budget-type-btn').forEach(b => {
+        const active = b.dataset.value === value;
+        b.className = active
+            ? 'budget-type-btn px-3 py-2 rounded-lg border border-[#EA580C] bg-orange-50 text-[#EA580C] text-[12px] font-bold'
+            : 'budget-type-btn px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 text-[12px] font-bold hover:border-gray-300';
+    });
+}
+
+function renderParentAnnualOptions() {
+    const select = el('budget-form-parent-annual');
+    if (!select) return;
+    select.innerHTML = `<option value="">No annual envelope</option>` + (state.annualBudgets || []).map(b => `
+        <option value="${escapeHtml(b.id)}" ${b.id === state.selectedAnnualId ? 'selected' : ''}>${escapeHtml(b.period_label || b.name || 'Annual budget')}</option>
+    `).join('');
+}
+
+function updateDrawerPeriodControls() {
+    const isAnnual = state.budgetType === 'annual';
+    el('budget-form-parent-wrap')?.classList.toggle('hidden', isAnnual || !state.annualBudgets.length);
+    el('budget-form-period-controls')?.classList.toggle('hidden', isAnnual);
+    el('budget-form-date-wrap')?.classList.toggle('hidden', state.periodType !== 'custom' && !isAnnual);
+    el('budget-form-month-wrap')?.classList.toggle('hidden', state.periodType !== 'monthly' || isAnnual);
+    el('budget-form-quarter-wrap')?.classList.toggle('hidden', state.periodType !== 'quarterly' || isAnnual);
+    el('budget-form-custom-label-wrap')?.classList.toggle('hidden', state.periodType !== 'custom' || isAnnual);
+    const allocationWrap = el('budget-form-allocation-rows')?.closest('div');
+    allocationWrap?.classList.toggle('hidden', isAnnual);
+    if (isAnnual) {
+        state.periodType = 'yearly';
+    }
+}
+
+function syncPeriodInputsFromDates(date = new Date()) {
+    const monthInput = el('budget-form-month');
+    if (monthInput) monthInput.value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const quarter = Math.floor(date.getMonth() / 3) + 1;
+    if (el('budget-form-quarter')) el('budget-form-quarter').value = String(quarter);
+    if (el('budget-form-quarter-year')) el('budget-form-quarter-year').value = String(date.getFullYear());
+}
+
+function syncPeriodControlsFromType() {
+    const base = state.periodStart ? parsePeriodDate(state.periodStart) : new Date();
+    syncPeriodInputsFromDates(base);
+    syncDatesFromPeriodControls();
+}
+
+function syncDatesFromPeriodControls() {
+    if (state.budgetType === 'annual') {
+        return;
+    }
+    if (state.periodType === 'monthly') {
+        const value = el('budget-form-month')?.value || getDayKey(new Date()).slice(0, 7);
+        const target = makeMonthlyTarget(value);
+        state.periodStart = target.period_start;
+        state.periodEnd = target.period_end;
+        if (!el('budget-form-name')?.value.trim()) el('budget-form-name').value = `${target.period_label} Operating Budget`;
+    } else if (state.periodType === 'quarterly') {
+        const year = Number(el('budget-form-quarter-year')?.value) || new Date().getFullYear();
+        const quarter = Number(el('budget-form-quarter')?.value) || 1;
+        const target = makeQuarterTarget(year, quarter);
+        state.periodStart = target.period_start;
+        state.periodEnd = target.period_end;
+        if (!el('budget-form-name')?.value.trim()) el('budget-form-name').value = `${target.period_label} Operating Budget`;
+    }
 }
 
 function mountDrawerDatePicker() {
@@ -892,8 +1217,9 @@ function updateDrawerValidity() {
     const nameOk = el('budget-form-name').value.trim().length > 0;
     const totalOk = total > 0;
     const periodOk = !!state.periodStart && !!state.periodEnd && state.periodStart <= state.periodEnd;
-    const rowsOk = state.allocRows.length > 0 && state.allocRows.every(r => r.name.trim().length > 0 && parseRp(r.amount) > 0 && r.category);
-    const allocSumOk = allocated <= total;
+    const isAnnual = state.budgetType === 'annual';
+    const rowsOk = isAnnual || state.allocRows.length === 0 || state.allocRows.every(r => r.name.trim().length > 0 && parseRp(r.amount) > 0 && r.category);
+    const allocSumOk = isAnnual || allocated <= total;
 
     const submit = el('budget-drawer-submit');
     submit.disabled = !(nameOk && totalOk && periodOk && rowsOk && allocSumOk);
@@ -908,23 +1234,38 @@ async function handleSubmit(e) {
     submit.textContent = 'Saving...';
 
     try {
+        syncDatesFromPeriodControls();
         const total = parseRp(el('budget-form-amount').value);
         const start = parsePeriodDate(state.periodStart);
         const end = parsePeriodDate(state.periodEnd, true);
-        const allocations = state.allocRows.map(r => ({
+        const isAnnual = state.budgetType === 'annual';
+        const allocations = isAnnual ? [] : state.allocRows.map(r => ({
             name: r.name.trim(),
             allocated_amount: parseRp(r.amount),
             scope_values: [r.category]
         }));
+        const periodLabel = isAnnual
+            ? (el('budget-form-period-label')?.value.trim() || `FY${start.getFullYear()}`)
+            : (el('budget-form-period-label')?.value.trim() || state.selectedTarget?.period_label || derivePeriodLabel(state.periodType, start, end));
 
-        await state.ds.addBudgetWithAllocations(state.user.uid, {
+        const result = await state.ds.addBudgetWithAllocations(state.user.uid, {
+            budget_id: state.drawerMode === 'edit' && state.usage?.budget && state.budgetType !== 'annual' ? state.usage.budget.id : null,
             name: el('budget-form-name').value.trim(),
+            budget_type: isAnnual ? 'annual' : 'period',
+            parent_budget_id: isAnnual ? null : (el('budget-form-parent-annual')?.value || state.selectedAnnualId || null),
             period_type: state.periodType,
+            period_label: periodLabel,
             period_start: start,
             period_end: end,
             total_budget: total,
             notes: el('budget-form-notes').value.trim()
         }, allocations);
+        if (result?.budget?.budget_type === 'annual') {
+            state.selectedAnnualId = result.budget.id;
+        } else if (result?.budget?.id) {
+            state.selectedBudgetId = result.budget.id;
+            state.selectedTarget = null;
+        }
 
         window.showToast?.('Budget saved.', 'success');
         closeDrawer();
@@ -948,6 +1289,64 @@ function parsePeriodDate(dayKey, endOfDay = false) {
     if (endOfDay) d.setHours(23, 59, 59, 999);
     else d.setHours(0, 0, 0, 0);
     return d;
+}
+
+function openDuplicateDrawer() {
+    state.duplicateOpen = true;
+    const source = el('budget-duplicate-source');
+    if (source) {
+        source.innerHTML = (state.periodBudgets || []).map(b => `
+            <option value="${escapeHtml(b.id)}" ${b.id === state.selectedBudgetId ? 'selected' : ''}>${escapeHtml(b.period_label || b.name || 'Period budget')}</option>
+        `).join('');
+    }
+    const month = el('budget-duplicate-month');
+    if (month) {
+        const target = state.selectedTarget || (state.usage?.budget ? null : makeMonthlyTarget());
+        month.value = target?.period_start?.slice(0, 7) || getDayKey(new Date()).slice(0, 7);
+    }
+    el('budget-duplicate-backdrop')?.classList.remove('hidden');
+    requestAnimationFrame(() => el('budget-duplicate-drawer')?.classList.remove('translate-x-full'));
+    document.body.classList.add('overflow-hidden');
+}
+
+function closeDuplicateDrawer() {
+    state.duplicateOpen = false;
+    el('budget-duplicate-drawer')?.classList.add('translate-x-full');
+    el('budget-duplicate-backdrop')?.classList.add('hidden');
+    if (!state.drawerOpen) document.body.classList.remove('overflow-hidden');
+}
+
+async function handleDuplicateSubmit(e) {
+    e.preventDefault();
+    const submit = el('budget-duplicate-submit');
+    const sourceId = el('budget-duplicate-source')?.value;
+    const target = state.selectedTarget || makeMonthlyTarget(el('budget-duplicate-month')?.value);
+    if (!sourceId || !target) return;
+    submit.disabled = true;
+    const original = submit.textContent;
+    submit.textContent = 'Duplicating...';
+    try {
+        const result = await state.ds.duplicateBudgetPeriod(state.user.uid, sourceId, {
+            budget_type: 'period',
+            parent_budget_id: state.selectedAnnualId || null,
+            period_type: target.period_type,
+            period_label: target.period_label,
+            period_start: parsePeriodDate(target.period_start),
+            period_end: parsePeriodDate(target.period_end, true),
+            name: `${target.period_label} Operating Budget`
+        });
+        state.selectedBudgetId = result?.budget?.id || null;
+        state.selectedTarget = null;
+        window.showToast?.('Budget duplicated.', 'success');
+        closeDuplicateDrawer();
+        await loadAndRender();
+    } catch (err) {
+        console.error('Duplicate budget failed:', err);
+        window.showToast?.(err?.message || 'Could not duplicate budget.', 'error');
+    } finally {
+        submit.disabled = false;
+        submit.textContent = original;
+    }
 }
 
 // ── Phase 2: allocation detail drawer ─────────────────────────────────

@@ -571,7 +571,10 @@ service cloud.firestore {
         ])
         && data.keys().hasOnly([
           'name',
+          'budget_type',
+          'parent_budget_id',
           'period_type',
+          'period_label',
           'period_start',
           'period_end',
           'currency',
@@ -579,13 +582,17 @@ service cloud.firestore {
           'category_budgets',
           'notes',
           'status',
+          'created_from_budget_id',
           'created_at',
           'updated_at'
         ])
         && data.name is string
         && data.name.size() > 0
         && data.name.size() <= 120
-        && data.period_type in ['monthly', 'quarterly', 'yearly']
+        && (!('budget_type' in data) || data.budget_type in ['annual', 'period'])
+        && (!('parent_budget_id' in data) || data.parent_budget_id == null || (data.parent_budget_id is string && data.parent_budget_id.size() <= 120))
+        && data.period_type in ['monthly', 'quarterly', 'yearly', 'custom']
+        && (!('period_label' in data) || data.period_label == null || (data.period_label is string && data.period_label.size() <= 120))
         && data.period_start is timestamp
         && data.period_end is timestamp
         && data.currency == 'IDR'
@@ -594,6 +601,7 @@ service cloud.firestore {
         && data.total_budget <= 999999999999
         && (!('category_budgets' in data) || data.category_budgets is map)
         && (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 500))
+        && (!('created_from_budget_id' in data) || data.created_from_budget_id == null || (data.created_from_budget_id is string && data.created_from_budget_id.size() <= 120))
         && data.status in ['active', 'archived'];
     }
 
@@ -616,6 +624,7 @@ service cloud.firestore {
           'scope_values',
           'alert_threshold_percent',
           'hard_limit_enabled',
+          'created_from_allocation_id',
           'status',
           'created_at',
           'updated_at'
@@ -635,6 +644,7 @@ service cloud.firestore {
         && data.scope_values.size() <= 10
         && (!('alert_threshold_percent' in data) || data.alert_threshold_percent == null || (data.alert_threshold_percent is number && data.alert_threshold_percent >= 0 && data.alert_threshold_percent <= 100))
         && (!('hard_limit_enabled' in data) || data.hard_limit_enabled is bool)
+        && (!('created_from_allocation_id' in data) || data.created_from_allocation_id == null || (data.created_from_allocation_id is string && data.created_from_allocation_id.size() <= 120))
         && data.status in ['active', 'archived'];
     }
 

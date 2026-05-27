@@ -1407,40 +1407,146 @@ class DataService {
     }
 
     // --- BUDGETS ---
-    async getActiveBudget(userId) {
-        try {
-            const q = query(
-                collection(this.db, `users/${userId}/budgets`),
-                where('status', '==', 'active'),
-                orderBy('created_at', 'desc'),
-                limit(1)
-            );
-            const snapshot = await getDocs(q);
-            if (snapshot.empty) return null;
-            const docSnap = snapshot.docs[0];
-            return { id: docSnap.id, ...docSnap.data() };
-        } catch (_) {
-            // Fallback when composite index is unavailable.
+    _budgetDate(value) {
+        if (!value) return null;
+        if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+        if (typeof value.toDate === 'function') {
             try {
-                const q = query(
-                    collection(this.db, `users/${userId}/budgets`),
-                    orderBy('created_at', 'desc'),
-                    limit(10)
-                );
-                const snapshot = await getDocs(q);
-                const active = snapshot.docs
-                    .map(d => ({ id: d.id, ...d.data() }))
-                    .find(b => b.status === 'active');
-                return active || null;
+                const date = value.toDate();
+                return Number.isNaN(date.getTime()) ? null : date;
             } catch {
                 return null;
             }
         }
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    _budgetDayKey(value) {
+        const date = this._budgetDate(value);
+        return date ? this._getDayKey(date) : null;
+    }
+
+    _normalizeBudgetType(value, periodType) {
+        if (value === 'annual') return 'annual';
+        if (value === 'period') return 'period';
+        return 'period';
+    }
+
+    _normalizePeriodType(value, budgetType = 'period') {
+        const allowed = budgetType === 'annual'
+            ? ['yearly']
+            : ['monthly', 'quarterly', 'custom', 'yearly'];
+        return allowed.includes(value) ? value : (budgetType === 'annual' ? 'yearly' : 'monthly');
+    }
+
+    _periodLabelFromDates(periodType, startValue, endValue) {
+        const start = this._budgetDate(startValue);
+        const end = this._budgetDate(endValue);
+        if (!start || !end) return 'Operating period';
+        if (periodType === 'monthly') {
+            return start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        }
+        if (periodType === 'quarterly') {
+            const quarter = Math.floor(start.getMonth() / 3) + 1;
+            return `Q${quarter} ${start.getFullYear()}`;
+        }
+        if (periodType === 'yearly') {
+            return `FY${start.getFullYear()}`;
+        }
+        const fmt = { day: 'numeric', month: 'short', year: 'numeric' };
+        return `${start.toLocaleDateString('en-US', fmt)} - ${end.toLocaleDateString('en-US', fmt)}`;
+    }
+
+    _normalizeBudgetRecord(raw = {}) {
+        if (!raw) return null;
+        const periodType = this._normalizePeriodType(raw.period_type || raw.periodType, raw.budget_type || raw.budgetType);
+        const budgetType = this._normalizeBudgetType(raw.budget_type || raw.budgetType, periodType);
+        const label = this._stringOrDefault(
+            raw.period_label || raw.periodLabel || '',
+            '',
+            120
+        ) || this._periodLabelFromDates(periodType, raw.period_start, raw.period_end);
+        return {
+            ...raw,
+            budget_type: budgetType,
+            period_type: this._normalizePeriodType(periodType, budgetType),
+            period_label: label
+        };
+    }
+
+    async getBudget(userId, budgetId) {
+        if (!userId || !budgetId) return null;
+        const snap = await getDoc(doc(this.db, `users/${userId}/budgets/${budgetId}`));
+        if (!snap.exists()) return null;
+        return this._normalizeBudgetRecord({ id: snap.id, ...snap.data() });
+    }
+
+    async getBudgets(userId, limitCount = 200) {
+        if (!userId) return [];
+        try {
+            const q = query(
+                collection(this.db, `users/${userId}/budgets`),
+                orderBy('updated_at', 'desc'),
+                limit(limitCount)
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs
+                .map(d => this._normalizeBudgetRecord({ id: d.id, ...d.data() }))
+                .filter(Boolean)
+                .filter(b => b.status !== 'archived');
+        } catch (_) {
+            try {
+                const q = query(
+                    collection(this.db, `users/${userId}/budgets`),
+                    orderBy('created_at', 'desc'),
+                    limit(limitCount)
+                );
+                const snapshot = await getDocs(q);
+                return snapshot.docs
+                    .map(d => this._normalizeBudgetRecord({ id: d.id, ...d.data() }))
+                    .filter(Boolean)
+                    .filter(b => b.status !== 'archived');
+            } catch {
+                return [];
+            }
+        }
+    }
+
+    async getAnnualBudgets(userId) {
+        const budgets = await this.getBudgets(userId, 200);
+        return budgets.filter(b => b.budget_type === 'annual');
+    }
+
+    async getPeriodBudgets(userId, parentBudgetId = null) {
+        const budgets = await this.getBudgets(userId, 300);
+        return budgets
+            .filter(b => (b.budget_type || 'period') !== 'annual')
+            .filter(b => !parentBudgetId || b.parent_budget_id === parentBudgetId)
+            .sort((a, b) => {
+                const aTime = this._budgetDate(a.updated_at)?.getTime()
+                    || this._budgetDate(a.created_at)?.getTime()
+                    || this._budgetDate(a.period_start)?.getTime()
+                    || 0;
+                const bTime = this._budgetDate(b.updated_at)?.getTime()
+                    || this._budgetDate(b.created_at)?.getTime()
+                    || this._budgetDate(b.period_start)?.getTime()
+                    || 0;
+                return bTime - aTime;
+            });
+    }
+
+    async getActiveBudget(userId) {
+        const periods = await this.getPeriodBudgets(userId, null);
+        const activePeriod = periods.find(b => b.status === 'active');
+        if (activePeriod) return activePeriod;
+        const budgets = await this.getBudgets(userId, 50);
+        return budgets.find(b => b.status === 'active') || null;
     }
 
     async setActiveBudget(userId, data) {
         const total = Math.round(Math.max(0, Number(data.total_budget) || 0));
-        const periodType = ['monthly', 'quarterly', 'yearly'].includes(data.period_type)
+        const periodType = ['monthly', 'quarterly', 'yearly', 'custom'].includes(data.period_type)
             ? data.period_type
             : 'monthly';
         const startDate = this._coerceTimestampOrNow(data.period_start);
@@ -1449,7 +1555,11 @@ class DataService {
         const existing = await this.getActiveBudget(userId);
         const payload = {
             name: this._stringOrDefault(data.name, 'OpEx budget', 120),
+            budget_type: periodType === 'yearly' ? 'annual' : 'period',
+            parent_budget_id: this._nullableString(data.parent_budget_id, 120),
             period_type: periodType,
+            period_label: this._stringOrDefault(data.period_label, '', 120)
+                || this._periodLabelFromDates(periodType, startDate, endDate),
             period_start: startDate,
             period_end: endDate,
             currency: 'IDR',
@@ -1483,6 +1593,36 @@ class DataService {
         });
 
         return { id: budgetId, ...payload };
+    }
+
+    async getBudgetByPeriod(userId, { period_type, period_start, period_end, parent_budget_id = null } = {}) {
+        const startKey = this._budgetDayKey(period_start);
+        const endKey = this._budgetDayKey(period_end);
+        if (!startKey || !endKey) return null;
+        const budgets = await this.getPeriodBudgets(userId, parent_budget_id);
+        return budgets.find(b => {
+            if (period_type && b.period_type !== period_type) return false;
+            return this._budgetDayKey(b.period_start) === startKey
+                && this._budgetDayKey(b.period_end) === endKey;
+        }) || null;
+    }
+
+    async getBudgetForDate(userId, dateValue) {
+        const date = this._budgetDate(dateValue) || new Date();
+        const day = this._getDayKey(date);
+        const budgets = await this.getPeriodBudgets(userId, null);
+        const periodHit = budgets.find(b => {
+            const start = this._budgetDayKey(b.period_start);
+            const end = this._budgetDayKey(b.period_end);
+            return start && end && start <= day && day <= end && b.status === 'active';
+        });
+        if (periodHit) return periodHit;
+        const annuals = await this.getAnnualBudgets(userId);
+        return annuals.find(b => {
+            const start = this._budgetDayKey(b.period_start);
+            const end = this._budgetDayKey(b.period_end);
+            return start && end && start <= day && day <= end && b.status === 'active';
+        }) || null;
     }
 
     _normalizeCategoryBudgets(input) {
@@ -1565,12 +1705,9 @@ class DataService {
             .filter(row => row.name && row.allocated_amount > 0 && row.scope_values.length > 0);
     }
 
-    async addBudgetWithAllocations(userId, budgetData, allocations) {
+    async addBudgetWithAllocations(userId, budgetData, allocations = []) {
         if (!userId) throw new Error('userId required');
         const cleaned = this._normalizeAllocationInput(allocations);
-        if (cleaned.length === 0) {
-            throw new Error('At least one allocation with name, amount, and category is required.');
-        }
         const totalAllocated = cleaned.reduce((sum, row) => sum + row.allocated_amount, 0);
         const totalBudget = Math.round(Math.max(0, Number(budgetData.total_budget) || 0));
         if (totalBudget <= 0) {
@@ -1595,15 +1732,20 @@ class DataService {
         // and the new allocation set all commit in one Firestore batch. If any
         // part is rejected (validation, permission-denied, network), nothing
         // is written — the existing budget doc stays intact.
-        const periodType = ['monthly', 'quarterly', 'yearly'].includes(budgetData.period_type)
-            ? budgetData.period_type
-            : 'monthly';
+        const requestedType = budgetData.budget_type === 'annual' ? 'annual' : 'period';
+        const periodType = this._normalizePeriodType(budgetData.period_type, requestedType);
         const startDate = this._coerceTimestampOrNow(budgetData.period_start);
         const endDate = this._coerceTimestampOrNow(budgetData.period_end);
         const name = this._stringOrDefault(budgetData.name, 'OpEx budget', 120);
         const notes = this._nullableString(budgetData.notes, 500);
+        const periodLabel = this._stringOrDefault(budgetData.period_label, '', 120)
+            || this._periodLabelFromDates(periodType, startDate, endDate);
+        const parentBudgetId = this._nullableString(budgetData.parent_budget_id, 120);
+        const createdFromBudgetId = this._nullableString(budgetData.created_from_budget_id, 120);
 
-        const existing = await this.getActiveBudget(userId);
+        const existing = budgetData.budget_id
+            ? await this.getBudget(userId, budgetData.budget_id)
+            : null;
         let budgetRef;
         let budgetIsNew = false;
         if (existing) {
@@ -1623,7 +1765,10 @@ class DataService {
         if (budgetIsNew) {
             const createPayload = {
                 name,
+                budget_type: requestedType,
+                parent_budget_id: parentBudgetId,
                 period_type: periodType,
+                period_label: periodLabel,
                 period_start: startDate,
                 period_end: endDate,
                 currency: 'IDR',
@@ -1632,6 +1777,7 @@ class DataService {
                 created_at: serverTimestamp(),
                 updated_at: serverTimestamp()
             };
+            if (createdFromBudgetId) createPayload.created_from_budget_id = createdFromBudgetId;
             if (Object.keys(categoryBudgets).length) createPayload.category_budgets = categoryBudgets;
             if (notes) createPayload.notes = notes;
             batch.set(budgetRef, createPayload);
@@ -1640,7 +1786,10 @@ class DataService {
             // satisfying isValidBudgetUpdate's `data.created_at == existingData.created_at`.
             const updatePayload = {
                 name,
+                budget_type: requestedType,
+                parent_budget_id: parentBudgetId,
                 period_type: periodType,
+                period_label: periodLabel,
                 period_start: startDate,
                 period_end: endDate,
                 currency: 'IDR',
@@ -1648,6 +1797,9 @@ class DataService {
                 status: 'active',
                 updated_at: serverTimestamp()
             };
+            if (existing.created_from_budget_id || createdFromBudgetId) {
+                updatePayload.created_from_budget_id = createdFromBudgetId || existing.created_from_budget_id;
+            }
             if (Object.keys(categoryBudgets).length) updatePayload.category_budgets = categoryBudgets;
             if (notes) updatePayload.notes = notes;
             batch.update(budgetRef, updatePayload);
@@ -1706,7 +1858,10 @@ class DataService {
         const budget = {
             id: budgetRef.id,
             name,
+            budget_type: requestedType,
+            parent_budget_id: parentBudgetId,
             period_type: periodType,
+            period_label: periodLabel,
             period_start: startDate,
             period_end: endDate,
             currency: 'IDR',
@@ -1719,6 +1874,99 @@ class DataService {
         return {
             budget,
             allocations: cleaned.map((row, i) => ({ id: allocationRefs[i].id, ...row, parent_budget_id: budgetRef.id }))
+        };
+    }
+
+    async duplicateBudgetPeriod(userId, sourceBudgetId, targetBudgetData = {}) {
+        if (!userId) throw new Error('userId required');
+        if (!sourceBudgetId) throw new Error('sourceBudgetId required');
+        const sourceBudget = await this.getBudget(userId, sourceBudgetId);
+        if (!sourceBudget) throw new Error('Source budget not found.');
+        if (sourceBudget.budget_type === 'annual' || sourceBudget.period_type === 'yearly') {
+            throw new Error('Only period budgets can be duplicated.');
+        }
+        const sourceAllocations = await this.getBudgetAllocations(userId, sourceBudgetId);
+        const duplicate = await this.addBudgetWithAllocations(userId, {
+            ...targetBudgetData,
+            budget_type: 'period',
+            total_budget: Number(targetBudgetData.total_budget) || Number(sourceBudget.total_budget) || 0,
+            name: targetBudgetData.name || targetBudgetData.period_label || `${sourceBudget.name || 'Budget'} copy`,
+            parent_budget_id: targetBudgetData.parent_budget_id || sourceBudget.parent_budget_id || null,
+            created_from_budget_id: sourceBudgetId
+        }, sourceAllocations.map(a => ({
+            name: a.name,
+            allocated_amount: Number(a.allocated_amount) || 0,
+            scope_values: Array.isArray(a.scope_values) ? a.scope_values : [],
+            alert_threshold_percent: Number(a.alert_threshold_percent) || 80,
+            hard_limit_enabled: Boolean(a.hard_limit_enabled),
+            created_from_allocation_id: a.id
+        })));
+
+        const batch = writeBatch(this.db);
+        duplicate.allocations.forEach((alloc, index) => {
+            const source = sourceAllocations[index];
+            if (!source?.id || !alloc?.id) return;
+            batch.update(doc(this.db, `users/${userId}/budget_allocations/${alloc.id}`), {
+                created_from_allocation_id: source.id,
+                updated_at: serverTimestamp()
+            });
+        });
+        await batch.commit();
+
+        try {
+            await this.addAuditLog(userId, {
+                action: 'budget.created',
+                target_collection: 'budgets',
+                target_id: duplicate.budget.id,
+                after: {
+                    budget_id: duplicate.budget.id,
+                    created_from_budget_id: sourceBudgetId,
+                    allocation_count: duplicate.allocations.length
+                },
+                source: 'dashboard'
+            });
+        } catch (_) { /* non-fatal */ }
+        return duplicate;
+    }
+
+    async calculateAnnualEnvelope(userId, annualBudgetId) {
+        const annual = await this.getBudget(userId, annualBudgetId);
+        if (!annual) return null;
+        const annualStart = this._budgetDayKey(annual.period_start);
+        const annualEnd = this._budgetDayKey(annual.period_end);
+        const periods = await this.getPeriodBudgets(userId, annual.id);
+        const plannedPeriods = periods.reduce((sum, budget) => sum + Math.max(0, Number(budget.total_budget) || 0), 0);
+        let spentReservedYtd = 0;
+        if (annualStart && annualEnd) {
+            const today = this._getDayKey(new Date());
+            const ytdEnd = annualEnd > today ? today : annualEnd;
+            const [transactions, bills] = await Promise.all([
+                this.getTransactions(userId, 1000),
+                this.getBills(userId)
+            ]);
+            const SPEND_TYPES = new Set(['expense', 'fee', 'tax', 'pending_payable']);
+            transactions
+                .filter(tx => this._isRecordInPeriod(tx, annualStart, ytdEnd, ['date', 'timestamp', 'created_at']))
+                .forEach(tx => {
+                    if (SPEND_TYPES.has(String(tx.type || '').toLowerCase())) {
+                        spentReservedYtd += Math.abs(Number(tx.amount) || 0);
+                    }
+                });
+            bills
+                .filter(bill => this._isRecordInPeriod(bill, annualStart, ytdEnd, ['due_date', 'date', 'timestamp', 'created_at']))
+                .forEach(bill => {
+                    if (bill.payment_status === 'paid') return;
+                    if (bill.budget_impact_status === 'converted_to_actual' || bill.linked_transaction_id) return;
+                    spentReservedYtd += Math.abs(Number(bill.amount) || 0);
+                });
+        }
+        const yearlyBudget = Math.max(0, Number(annual.total_budget) || 0);
+        return {
+            annual_budget: annual,
+            yearly_budget: yearlyBudget,
+            planned_periods: plannedPeriods,
+            spent_reserved_ytd: spentReservedYtd,
+            unplanned_capacity: yearlyBudget - plannedPeriods
         };
     }
 
@@ -1740,27 +1988,8 @@ class DataService {
         const startKey = this._getDayKey(startDate);
         const endKey = this._getDayKey(endDate);
 
-        // Period-filter both transactions AND bills server-side. Bills can
-        // span periods via `due_date`, but the in-period check below still
-        // runs (with `due_date || timestamp` fallback) so a bill timestamped
-        // outside the budget period but due inside it is captured by reading
-        // a wider window on `getBills` only when the index path is missing.
-        // For now the timestamp-based fetch is enough — Phase 1 bills always
-        // get `timestamp = serverTimestamp()` at create-time, so timestamp
-        // ≈ due_date for the common case.
-        const [allocations, transactions, bills] = await Promise.all([
-            this.getBudgetAllocations(userId, budgetId),
-            this.getTransactionsForPeriod(userId, startKey, endKey),
-            this.getBillsForPeriod(userId, startKey, endKey)
-        ]);
-
-        const SPEND_TYPES = new Set(['expense', 'fee', 'tax']);
-        const COMMIT_TYPES = new Set(['pending_payable']);
-
-        const isBillInPeriod = (bill) => {
-            const due = bill?.due_date?.toDate?.();
-            const ts = bill?.timestamp?.toDate?.();
-            const date = due || ts;
+        const inBudgetRange = (record, fields) => {
+            const date = this._firstRecordDate(record, fields);
             if (!date) return false;
             const startCompare = new Date(startDate);
             startCompare.setHours(0, 0, 0, 0);
@@ -1768,6 +1997,17 @@ class DataService {
             endCompare.setHours(23, 59, 59, 999);
             return date >= startCompare && date <= endCompare;
         };
+
+        const [allocations, allTransactions, allBills] = await Promise.all([
+            this.getBudgetAllocations(userId, budgetId),
+            this.getTransactions(userId, 1000),
+            this.getBills(userId)
+        ]);
+        const transactions = allTransactions.filter(tx => inBudgetRange(tx, ['date', 'timestamp', 'created_at']));
+        const bills = allBills.filter(bill => inBudgetRange(bill, ['due_date', 'date', 'timestamp', 'created_at']));
+
+        const SPEND_TYPES = new Set(['expense', 'fee', 'tax']);
+        const COMMIT_TYPES = new Set(['pending_payable']);
 
         const isBillUnpaid = (bill) => bill?.payment_status !== 'paid';
         const isBillCommittable = (bill) =>
@@ -1805,7 +2045,6 @@ class DataService {
         bills.forEach(bill => {
             const amount = Math.abs(Number(bill.amount) || 0);
             if (amount === 0) return;
-            if (!isBillInPeriod(bill)) return;
             if (!isBillUnpaid(bill)) return;
             if (!isBillCommittable(bill)) return;
             const { allocationId, source } = this.resolveRecordAssignment(bill, budget, allocations);
@@ -1851,7 +2090,7 @@ class DataService {
             summary: {
                 total_amount: totalBudget,
                 total_allocated: totalAllocated,
-                unallocated_budget_amount: Math.max(0, totalBudget - totalAllocated),
+                unallocated_budget_amount: totalBudget - totalAllocated,
                 total_actual_used: totalActual,
                 total_committed: totalCommitted,
                 total_remaining: totalRemaining,
@@ -1902,9 +2141,7 @@ class DataService {
         if (!start || !end) {
             return { activeBudget, allocation: null, status: 'no_active_budget', exceedsBy: 0 };
         }
-        const due = billData?.due_date?.toDate?.() || (billData?.due_date instanceof Date ? billData.due_date : null);
-        const ts = billData?.timestamp?.toDate?.() || (billData?.timestamp instanceof Date ? billData.timestamp : null);
-        const date = due || ts || new Date();
+        const date = this._firstRecordDate(billData, ['due_date', 'date', 'timestamp', 'created_at']) || new Date();
         const startCompare = new Date(start);
         startCompare.setHours(0, 0, 0, 0);
         const endCompare = new Date(end);
@@ -1973,10 +2210,12 @@ class DataService {
 
         const startKey = this._getDayKey(startDate);
         const endKey = this._getDayKey(endDate);
-        const [transactions, bills] = await Promise.all([
-            this.getTransactionsForPeriod(userId, startKey, endKey),
-            this.getBillsForPeriod(userId, startKey, endKey)
+        const [transactionsRaw, billsRaw] = await Promise.all([
+            this.getTransactions(userId, 1000),
+            this.getBills(userId)
         ]);
+        const transactions = transactionsRaw.filter(tx => this._isRecordInPeriod(tx, startKey, endKey, ['date', 'timestamp', 'created_at']));
+        const bills = billsRaw.filter(bill => this._isRecordInPeriod(bill, startKey, endKey, ['due_date', 'date', 'timestamp', 'created_at']));
 
         const SPEND_TYPES = new Set(['expense', 'fee', 'tax', 'pending_payable']);
         const matchedTx = [];
@@ -2012,10 +2251,12 @@ class DataService {
 
         const startKey = this._getDayKey(startDate);
         const endKey = this._getDayKey(endDate);
-        const [transactions, bills] = await Promise.all([
-            this.getTransactionsForPeriod(userId, startKey, endKey),
-            this.getBillsForPeriod(userId, startKey, endKey)
+        const [transactionsRaw, billsRaw] = await Promise.all([
+            this.getTransactions(userId, 1000),
+            this.getBills(userId)
         ]);
+        const transactions = transactionsRaw.filter(tx => this._isRecordInPeriod(tx, startKey, endKey, ['date', 'timestamp', 'created_at']));
+        const bills = billsRaw.filter(bill => this._isRecordInPeriod(bill, startKey, endKey, ['due_date', 'date', 'timestamp', 'created_at']));
 
         const SPEND_TYPES = new Set(['expense', 'fee', 'tax', 'pending_payable']);
         const unallocTx = [];
@@ -2370,6 +2611,8 @@ class DataService {
     }
 
     _getTransactionDate(tx) {
+        const date = this._firstRecordDate(tx, ['date', 'timestamp', 'created_at']);
+        if (date) return date;
         if (tx.timestamp && typeof tx.timestamp.toDate === 'function') return tx.timestamp.toDate();
         if (tx.timestamp instanceof Date) return tx.timestamp;
         if (typeof tx.timestamp === 'string' || typeof tx.timestamp === 'number') {
@@ -2377,6 +2620,23 @@ class DataService {
             return Number.isNaN(parsed.getTime()) ? null : parsed;
         }
         return null;
+    }
+
+    _firstRecordDate(record, fields = []) {
+        for (const field of fields) {
+            const date = this._getRecordDate(record, field);
+            if (date) return date;
+        }
+        return null;
+    }
+
+    _isRecordInPeriod(record, startKey, endKey, fields = ['timestamp']) {
+        const date = this._firstRecordDate(record, fields);
+        const start = this._parseDayKey(startKey);
+        const end = this._parseDayKey(endKey);
+        if (!date || !start || !end) return false;
+        end.setHours(23, 59, 59, 999);
+        return date >= start && date <= end;
     }
 
     _parseDayKey(dayKey) {

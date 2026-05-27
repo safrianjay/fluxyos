@@ -267,20 +267,24 @@ the same active doc so both views stay coherent.
 | Field | Type | Notes |
 |-------|------|-------|
 | `name` | string | User-chosen label. |
-| `period_type` | string | `"monthly"`, `"quarterly"`, or `"yearly"`. |
+| `budget_type` | string | Optional Phase B field: `"annual"` or `"period"`. Legacy docs omit it and are normalized at read time. |
+| `parent_budget_id` | string \| null | Optional annual envelope document ID for period budgets. |
+| `period_type` | string | `"monthly"`, `"quarterly"`, `"custom"`, or `"yearly"` for annual envelope docs. |
+| `period_label` | string \| null | Optional display label such as `"June 2026"` or `"Q3 2026"`. |
 | `period_start` | Timestamp | Start of the budget period. |
 | `period_end` | Timestamp | End of the period (inclusive). |
 | `currency` | string | Locked to `"IDR"`. |
 | `total_budget` | number | Raw integer Rupiah. |
 | `category_budgets` | map | Optional per-category split. The Budget page dual-writes a denormalized `{category → allocated_amount}` summary derived from `budget_allocations`, so the legacy OpEx-vs-Budget tracker stays in sync. |
 | `notes` | string \| null | Optional, ≤500 chars. Written by the Budget page's Create Budget drawer; absent on legacy docs. |
+| `created_from_budget_id` | string \| null | Optional source period budget ID when a period is duplicated. |
 | `status` | string | `"active"` or `"archived"`. |
 | `created_at` / `updated_at` | Timestamp | Server-set. |
 
-**Active budget rule:** `getActiveBudget` returns the most-recent doc where
-`status == "active"`. `setActiveBudget` updates the existing active doc in
-place (no version churn). To start fresh while keeping history, archive the
-current budget first.
+**Period budget rule:** the Budget page selects an explicit period budget
+instead of editing the latest active budget globally. `getActiveBudget` remains
+for compatibility and returns the latest active period budget first, then falls
+back to any active budget.
 
 **Audit:** `budget.created`, `budget.updated`, `budget.archived`,
 `budget.allocations_updated`.
@@ -300,14 +304,17 @@ Created via the Budget page's Create / Edit drawer.
 | `scope_values` | string[] | 1–10 category names. Phase 1 picker exposes `Marketing`, `Infrastructure`, `Operations`, `SaaS`. |
 | `alert_threshold_percent` | number \| null | Optional, 0–100. Defaults to 80. |
 | `hard_limit_enabled` | bool | Defaults to false. Phase 1 does not enforce hard limits. |
+| `created_from_allocation_id` | string \| null | Optional source allocation ID when duplicating a period budget. |
 | `status` | string | `"active"` or `"archived"`. Re-saving the budget archives the previous set in place and writes a fresh set. |
 | `created_at` / `updated_at` | Timestamp | Server-set. |
 
 **Mutation rule:** owner read/create/update only; delete is blocked.
 
 **Atomic write:** `DataService.addBudgetWithAllocations(uid, budgetData, allocations)`
-commits the budget doc (create OR partial update), the archive of any prior
-active allocations, and the new allocation set in a **single Firestore
+commits the explicit budget doc in `budgetData.budget_id` when editing, or a
+new budget doc when creating. It only archives allocations that belong to that
+same budget, so editing July does not change June. The budget doc, allocation
+archive, and new allocation set commit in a **single Firestore
 `writeBatch`**. If any row is rejected (rules, validation, network), nothing
 is written — the existing budget doc stays intact. Audit logs are written
 post-commit and are best-effort (failures are non-fatal). `setActiveBudget`
@@ -321,6 +328,13 @@ tax}` and category matches), `committed_amount` (pending-payable transactions
 `budget_impact_status !== 'converted_to_actual'`), `remaining_amount`,
 `usage_percent`, and `status` (`healthy < 70 < watch < 85 < at_risk < 100 ≤
 exceeded`). `usage_percent` is always finite (never `NaN`/`Infinity`).
+Bill inclusion uses `due_date`, then `date`, then `timestamp`, then
+`created_at`, so committed spend follows the selected budget period.
+
+**Duplicate period:** `DataService.duplicateBudgetPeriod(uid, sourceBudgetId,
+targetBudgetData)` creates a new period budget and new allocation docs only.
+It copies allocation structure, not transactions, bills, actual usage,
+committed usage, or activity.
 
 **Audit:** `budget.allocations_updated` is logged on each batch write; the
 log's `target_collection` is `"budget_allocations"`.

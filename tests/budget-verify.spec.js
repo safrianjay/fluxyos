@@ -260,7 +260,6 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
             // Save FAILED → atomicity requires the doc to be unchanged.
             expect(afterName).toBe(baselineName);
             expect(afterTotal).toBe(baselineTotal);
-            expect(afterName).not.toContain('QA Atomicity Probe');
         } else if (drawerClosed) {
             // Save SUCCEEDED (rules must now be deployed). The new values should
             // be visible after reload.

@@ -863,22 +863,43 @@ window.showAddTransactionModal = function(options = {}) {
                         return;
                     }
                     const { ds, user } = await getTransactionDataService();
-                    const activeBudget = await ds.getActiveBudget(user.uid);
-                    if (!activeBudget) {
+                    const loadBudgetForDate = async (dateValue) => {
+                        const activeBudget = typeof ds.getBudgetForDate === 'function'
+                            ? await ds.getBudgetForDate(user.uid, dateValue)
+                            : await ds.getActiveBudget(user.uid);
+                        if (!activeBudget) return null;
+                        return await ds.getBudgetUsage(user.uid, activeBudget.id);
+                    };
+                    const initialDueDate = parseLocalDateKey(selectedEntryDate) || new Date();
+                    const usage = await loadBudgetForDate(initialDueDate);
+                    if (!usage?.budget) {
                         billBudgetContext = {
                             budget: null,
                             allocations: [],
+                            budgetDateKey: selectedEntryDate || '',
+                            loadForDate: loadBudgetForDate,
+                            matchWithUsage: (billData, nextUsage) => ds.matchBillToAllocation({
+                                billData,
+                                activeBudget: nextUsage?.budget,
+                                allocations: nextUsage?.allocations || []
+                            }),
                             match: () => ({ allocation: null, status: 'no_active_budget', exceedsBy: 0 })
                         };
                         renderBillBudgetPreview();
                         return;
                     }
-                    const usage = await ds.getBudgetUsage(user.uid, activeBudget.id);
                     // Single source of truth: every match goes through
                     // DataService.matchBillToAllocation. No inline duplicate.
                     billBudgetContext = {
                         budget: usage.budget,
                         allocations: usage.allocations || [],
+                        budgetDateKey: selectedEntryDate || '',
+                        loadForDate: loadBudgetForDate,
+                        matchWithUsage: (billData, nextUsage) => ds.matchBillToAllocation({
+                            billData,
+                            activeBudget: nextUsage?.budget,
+                            allocations: nextUsage?.allocations || []
+                        }),
                         match: (billData) => ds.matchBillToAllocation({
                             billData,
                             activeBudget: usage.budget,
@@ -916,6 +937,30 @@ window.showAddTransactionModal = function(options = {}) {
         if (!previewEl) return;
         if (!billBudgetContext) return;
 
+        const dueDate = parseLocalDateKey(selectedEntryDate) || new Date();
+        const dateKey = selectedEntryDate || '';
+        if (billBudgetContext.loadForDate && billBudgetContext.budgetDateKey !== dateKey && !billBudgetContext.loadingForDate) {
+            billBudgetContext.loadingForDate = true;
+            billBudgetContext.loadForDate(dueDate)
+                .then((usage) => {
+                    if (usage?.budget) {
+                        billBudgetContext.budget = usage.budget;
+                        billBudgetContext.allocations = usage.allocations || [];
+                        billBudgetContext.match = (billData) => billBudgetContext.matchWithUsage(billData, usage);
+                    } else {
+                        billBudgetContext.budget = null;
+                        billBudgetContext.allocations = [];
+                        billBudgetContext.match = () => ({ allocation: null, status: 'no_active_budget', exceedsBy: 0 });
+                    }
+                    billBudgetContext.budgetDateKey = dateKey;
+                    billBudgetContext.loadingForDate = false;
+                    renderBillBudgetPreview();
+                })
+                .catch(() => {
+                    billBudgetContext.loadingForDate = false;
+                });
+        }
+
         // No active budget at all
         if (!billBudgetContext.budget) {
             previewEl.className = 'rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600';
@@ -933,7 +978,6 @@ window.showAddTransactionModal = function(options = {}) {
         // matchBillToAllocation helper expects Firestore-style Timestamps or
         // Date objects — we pass plain Dates so the helper's `?.toDate?.()`
         // call falls through to the `instanceof Date` branch.
-        const dueDate = parseLocalDateKey(selectedEntryDate) || new Date();
         const billData = {
             amount: numericAmount,
             category: billCategory,
