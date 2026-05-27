@@ -1,22 +1,23 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
-test('budget KPI tooltips: 4 cards, hover surfaces the right copy', async ({ page }) => {
+test('budget KPI tooltips: 5 cards, hover surfaces the right copy', async ({ page }) => {
     await page.goto('/budget.html');
     await page.waitForFunction(() => {
         const c = document.getElementById('budget-content');
         return c && !c.classList.contains('hidden');
     }, { timeout: 15000 });
 
-    // Each KPI card must carry a metric-info button (4 total).
+    // Each KPI card must carry a metric-info button (5 total).
     const buttons = page.locator('#budget-content .metric-info[data-tooltip]');
-    await expect(buttons).toHaveCount(4);
+    await expect(buttons).toHaveCount(5);
 
     // Hover each one in turn and read the shared .metric-tooltip text.
     const expectedKeywords = [
         ['Main Budget',      /amount you can spend during this period/i],
         ['Allocated',        /split into category allocations/i],
         ['Spent \\+ Reserved', /reduce what is remaining/i],
+        ['Remaining',        /Budget left after recorded spend/i],
         ['Unassigned',       /not yet split into any allocation/i]
     ];
     for (let i = 0; i < expectedKeywords.length; i++) {

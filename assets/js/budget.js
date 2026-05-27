@@ -19,6 +19,17 @@ const USAGE_BAR_CLASS = {
     exceeded: 'bg-red-500'
 };
 
+const ALLOCATION_COLORS = [
+    '#4F46E5',
+    '#059669',
+    '#2563EB',
+    '#D97706',
+    '#9333EA',
+    '#0F766E',
+    '#64748B',
+    '#BE123C'
+];
+
 const state = {
     ds: null,
     user: null,
@@ -125,18 +136,22 @@ function renderBudget(usage) {
 
     const { budget, allocations, summary, unallocated } = usage;
 
-    el('budget-name').textContent = budget.name || 'Operating Budget';
-    el('budget-period').textContent = formatPeriod(budget);
+    renderWorkspaceHeader(budget, allocations);
 
-    // ── Summary cards ───────────────────────────────────────────────
-    const total = summary.total_amount;
-    const allocated = summary.total_allocated;
-    const unassigned = summary.unallocated_budget_amount;
-    const spentReserved = summary.total_actual_used + summary.total_committed;
+    // ── KPI strip ───────────────────────────────────────────────────
+    // These mappings intentionally mirror DataService.getBudgetUsage().
+    // Do not recalculate actual/committed/remaining with separate rules here.
+    const total = Number(summary.total_amount) || 0;
+    const allocated = Number(summary.total_allocated) || 0;
+    const unassigned = Number(summary.unallocated_budget_amount) || 0;
+    const spentReserved = (Number(summary.total_actual_used) || 0) + (Number(summary.total_committed) || 0);
+    const remaining = Number(summary.total_remaining) || 0;
     const coveragePercent = total > 0 ? (allocated / total) * 100 : 0;
     const unassignedPercent = total > 0 ? (unassigned / total) * 100 : 0;
+    const usagePercent = Number(summary.usage_percent) || 0;
 
     el('budget-total').textContent = formatRp(total);
+    el('budget-total-hint').textContent = 'Total spending envelope for this period.';
 
     el('budget-allocated').textContent = formatRp(allocated);
     el('budget-allocated-hint').textContent = total > 0
@@ -144,57 +159,43 @@ function renderBudget(usage) {
         : 'Set a main budget to start allocating.';
 
     el('budget-spent').textContent = formatRp(spentReserved);
-    if (spentReserved === 0) {
-        el('budget-spent-hint').textContent = 'No actual or committed spend yet.';
-    } else {
-        el('budget-spent-hint').textContent =
-            `${formatRp(summary.total_actual_used)} spent · ${formatRp(summary.total_committed)} reserved.`;
-    }
+    el('budget-spent-hint').textContent = spentReserved === 0
+        ? 'No actual or committed spend yet.'
+        : `${formatRp(summary.total_actual_used)} spent · ${formatRp(summary.total_committed)} reserved.`;
+
+    const usageClamped = Math.max(0, Math.min(100, usagePercent));
+    const usageStatus = classifyStatus(usagePercent);
+    const usageEl = el('budget-usage-percent');
+    usageEl.textContent = formatPercent(usagePercent);
+    usageEl.className = usageStatus === 'exceeded'
+        ? 'font-mono font-bold text-red-600'
+        : 'font-mono font-bold text-gray-700';
+    const usageBar = el('budget-usage-bar');
+    usageBar.style.width = usageClamped + '%';
+    usageBar.className = `h-full rounded-full transition-all ${USAGE_BAR_CLASS[usageStatus] || 'bg-emerald-500'}`;
+
+    const remainingEl = el('budget-remaining');
+    remainingEl.textContent = formatRp(remaining);
+    remainingEl.className = `mt-2 text-2xl font-bold font-mono truncate ${remaining < 0 ? 'text-red-600' : 'text-gray-900'}`;
+    el('budget-remaining-hint').textContent = remaining < 0
+        ? `${formatRp(remaining)} over budget after spent and reserved.`
+        : 'Budget left after spent and reserved.';
+    const remainingTextEl = el('budget-remaining-text');
+    remainingTextEl.textContent = remaining < 0
+        ? ` of main budget used · ${formatRp(remaining)} over`
+        : ' of main budget used';
+    remainingTextEl.className = remaining < 0 ? 'text-red-600' : '';
 
     el('budget-unassigned').textContent = formatRp(unassigned);
     el('budget-unassigned-hint').textContent = total > 0
         ? `${formatPercent(unassignedPercent)} still needs allocation.`
         : '—';
 
-    // Orange accent on the Unassigned card only when there's something to act on.
     const unassignedCard = el('budget-unassigned-card');
-    if (unassigned > 0) {
-        unassignedCard.className = 'rounded-lg p-4 border border-[#EA580C]/40 bg-orange-50/40 transition-colors';
-    } else {
-        unassignedCard.className = 'bg-gray-50 rounded-lg p-4 border border-gray-100 transition-colors';
-    }
+    unassignedCard.className = unassigned > 0
+        ? 'p-4 sm:p-5 border-t sm:border-t-0 xl:border-t-0 border-gray-200 transition-colors bg-white shadow-[inset_3px_0_0_#EA580C]'
+        : 'p-4 sm:p-5 border-t sm:border-t-0 xl:border-t-0 border-gray-200 transition-colors bg-white';
 
-    // ── Spending usage bar ──────────────────────────────────────────
-    // Coverage % is already surfaced via the Allocated + Unassigned card
-    // subtitles. The bar's job here is the more actionable signal:
-    // how much of the main budget is already spent or reserved, and how
-    // much is genuinely left for new commitments.
-    const usagePercent = summary.usage_percent;
-    const usageClamped = Math.max(0, Math.min(100, usagePercent));
-    const usageStatus = classifyStatus(usagePercent);
-    const usageEl = el('budget-usage-percent');
-    usageEl.textContent = formatPercent(usagePercent);
-    const usageBar = el('budget-usage-bar');
-    usageBar.style.width = usageClamped + '%';
-    usageBar.className = `h-full rounded-full transition-all ${USAGE_BAR_CLASS[usageStatus] || 'bg-emerald-500'}`;
-
-    const remaining = summary.total_remaining;
-    const remainingTextEl = el('budget-remaining-text');
-    if (remaining < 0) {
-        remainingTextEl.textContent = ` · ${formatRp(remaining)} over budget`;
-        remainingTextEl.className = 'text-red-600 font-bold';
-        usageEl.className = 'font-bold text-red-600';
-    } else if (remaining === 0 && total > 0) {
-        remainingTextEl.textContent = ` · fully spent`;
-        remainingTextEl.className = 'text-gray-500';
-        usageEl.className = 'font-bold text-gray-700';
-    } else {
-        remainingTextEl.textContent = ` · ${formatRp(remaining)} remaining`;
-        remainingTextEl.className = 'text-gray-500';
-        usageEl.className = 'font-bold text-gray-700';
-    }
-
-    // ── Unassigned callout / all-assigned note ──────────────────────
     const callout = el('budget-unassigned-callout');
     const allAssignedNote = el('budget-all-assigned-note');
     if (unassigned > 0) {
@@ -203,14 +204,15 @@ function renderBudget(usage) {
         allAssignedNote.classList.add('hidden');
     } else {
         callout.classList.add('hidden');
-        // Only show the "all assigned" line if the user actually has a budget
-        // with allocations; an empty period reads as "—" not as a success.
         if (allocated > 0) allAssignedNote.classList.remove('hidden');
         else allAssignedNote.classList.add('hidden');
     }
 
+    renderAllocationMap(allocations, summary);
+    el('budget-name').textContent = budget.name || 'Operating Budget';
+    el('budget-period').textContent = formatPeriod(budget);
     renderAllocationsTable(allocations);
-    renderRiskPanel(allocations, unallocated);
+    renderBudgetAttention(allocations, summary, unallocated);
     renderUnallocatedCard(unallocated);
 
     // Phase 2 sections (each is async; they don't block the main render).
@@ -227,6 +229,11 @@ function classifyStatus(percent) {
     return 'healthy';
 }
 
+function formatPeriodType(value) {
+    const map = { monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' };
+    return map[value] || 'Monthly';
+}
+
 function formatPeriod(budget) {
     const start = budget.period_start?.toDate?.();
     const end = budget.period_end?.toDate?.();
@@ -235,32 +242,153 @@ function formatPeriod(budget) {
     return `${start.toLocaleDateString('id-ID', fmt)} – ${end.toLocaleDateString('id-ID', fmt)}`;
 }
 
+function formatUpdatedAt(budget) {
+    const when = budget.updated_at?.toDate?.() || budget.created_at?.toDate?.();
+    if (!when) return '';
+    const diffMs = Math.max(0, Date.now() - when.getTime());
+    const min = Math.floor(diffMs / 60000);
+    if (min < 1) return 'Updated just now';
+    if (min < 60) return `Updated ${min}m ago`;
+    const hours = Math.floor(min / 60);
+    if (hours < 24) return `Updated ${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `Updated ${days}d ago`;
+    return `Updated ${when.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+}
+
+function renderWorkspaceHeader(budget, allocations) {
+    const period = formatPeriod(budget);
+    const allocationCount = allocations.length;
+    const allocationText = `${allocationCount} allocation${allocationCount === 1 ? '' : 's'}`;
+    const updatedText = formatUpdatedAt(budget);
+
+    el('budget-name').textContent = budget.name || 'Operating Budget';
+    el('budget-period').textContent = period;
+    el('budget-period-type').textContent = formatPeriodType(budget.period_type);
+    el('budget-workspace-allocation-count').textContent = allocationText;
+
+    const updatedEl = el('budget-workspace-updated');
+    const updatedCard = updatedEl.closest('div');
+    updatedEl.textContent = updatedText || '—';
+    updatedCard?.classList.toggle('hidden', !updatedText);
+
+    const metaParts = [period, allocationText];
+    if (updatedText) metaParts.push(updatedText);
+    el('budget-workspace-meta').textContent = metaParts.filter(Boolean).join(' · ');
+}
+
+function allocationColor(index) {
+    return ALLOCATION_COLORS[index % ALLOCATION_COLORS.length];
+}
+
+function renderAllocationMap(allocations, summary) {
+    const bar = el('budget-allocation-bar');
+    const empty = el('budget-allocation-empty');
+    const legend = el('budget-allocation-legend');
+    const total = Math.max(0, Number(summary.total_amount) || 0);
+    const allocated = Math.max(0, Number(summary.total_allocated) || 0);
+    const unassigned = Math.max(0, Number(summary.unallocated_budget_amount) || 0);
+
+    el('budget-allocation-summary').textContent = total > 0
+        ? `Allocation · ${formatRp(allocated)} of ${formatRp(total)}`
+        : 'Allocation map appears after a main budget amount is set.';
+
+    if (total <= 0) {
+        bar.classList.add('hidden');
+        empty.classList.remove('hidden');
+        legend.innerHTML = '';
+        return;
+    }
+
+    bar.classList.remove('hidden');
+    empty.classList.add('hidden');
+
+    const segments = (allocations || [])
+        .filter(alloc => Number(alloc.allocated_amount) > 0)
+        .map((alloc, index) => ({
+            id: alloc.id,
+            label: alloc.name || 'Allocation',
+            amount: Number(alloc.allocated_amount) || 0,
+            percent: total > 0 ? ((Number(alloc.allocated_amount) || 0) / total) * 100 : 0,
+            color: allocationColor(index)
+        }));
+
+    if (unassigned > 0) {
+        segments.push({
+            id: 'unassigned',
+            label: 'Unassigned',
+            amount: unassigned,
+            percent: total > 0 ? (unassigned / total) * 100 : 0,
+            color: '#E5E7EB',
+            unassigned: true
+        });
+    }
+
+    if (segments.length === 0) {
+        bar.classList.add('hidden');
+        empty.classList.remove('hidden');
+        legend.innerHTML = '';
+        return;
+    }
+
+    bar.innerHTML = segments.map(seg => {
+        const safePct = Math.max(0, seg.percent);
+        const label = safePct >= 10 ? escapeHtml(seg.label) : '';
+        const textColor = seg.unassigned ? 'text-gray-500' : 'text-white';
+        return `
+            <div class="group relative flex h-full items-center overflow-hidden px-2 transition-opacity hover:opacity-90 ${textColor}"
+                style="flex: 0 0 ${safePct}%; background: ${seg.color};"
+                role="img"
+                aria-label="${escapeHtml(seg.label)} ${escapeHtml(formatPercent(seg.percent))} of main budget">
+                <span class="truncate text-[11px] font-bold">${label}</span>
+            </div>
+        `;
+    }).join('');
+
+    legend.innerHTML = segments.map(seg => `
+        <div class="flex items-center gap-2 text-[12px] min-w-0">
+            <span class="h-2.5 w-2.5 rounded-sm flex-shrink-0" style="background: ${seg.color};"></span>
+            <span class="text-gray-600 truncate">${escapeHtml(seg.label)}</span>
+            <span class="ml-auto font-mono font-bold text-gray-900">${formatPercent(seg.percent)}</span>
+        </div>
+    `).join('');
+}
+
 function renderAllocationsTable(allocations) {
     const body = el('budget-alloc-body');
+    const mobile = el('budget-alloc-mobile');
     el('budget-alloc-count').textContent = allocations.length
         ? `${allocations.length} allocation${allocations.length === 1 ? '' : 's'}`
         : '';
     if (allocations.length === 0) {
-        body.innerHTML = `<tr><td colspan="7" class="px-6 py-10 text-center text-[13px] text-gray-400">No allocations yet. Edit this budget to add Marketing, Infrastructure, Operations, or SaaS allocations.</td></tr>`;
+        body.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-[13px] text-gray-400">No allocations yet. Edit this budget to add Marketing, Infrastructure, Operations, or SaaS allocations.</td></tr>`;
+        if (mobile) {
+            mobile.innerHTML = `<div class="px-5 py-8 text-center text-[13px] text-gray-400">No allocations yet. Edit this budget to split it by purpose.</div>`;
+        }
         return;
     }
-    body.innerHTML = allocations.map(alloc => {
+    body.innerHTML = allocations.map((alloc, index) => {
         const status = STATUS_BADGE[alloc.status] || STATUS_BADGE.healthy;
         const barCls = USAGE_BAR_CLASS[alloc.status] || 'bg-gray-300';
         const usagePercent = Math.max(0, Math.min(100, alloc.usage_percent));
         const scope = (alloc.scope_values || []).join(', ');
         const remainingCls = alloc.remaining_amount < 0 ? 'text-red-600' : 'text-gray-900';
+        const spentReserved = (Number(alloc.actual_used) || 0) + (Number(alloc.committed_amount) || 0);
         const variance = explainAllocationVariance(alloc);
         return `
-            <tr class="hover:bg-orange-50/30 transition-colors cursor-pointer" data-allocation-id="${escapeHtml(alloc.id)}" data-action="open-allocation">
+            <tr class="hover:bg-gray-50 transition-colors cursor-pointer" data-allocation-id="${escapeHtml(alloc.id)}" data-action="open-allocation">
                 <td class="px-6 py-4">
-                    <p class="font-semibold text-gray-900">${escapeHtml(alloc.name)}</p>
-                    <p class="text-[11px] text-gray-400 mt-0.5">Category: ${escapeHtml(scope || '—')}</p>
+                    <div class="flex items-start gap-3">
+                        <span class="mt-1.5 h-2.5 w-2.5 rounded-sm flex-shrink-0" style="background: ${allocationColor(index)};"></span>
+                        <div class="min-w-0">
+                            <p class="font-semibold text-gray-900">${escapeHtml(alloc.name)}</p>
+                            <p class="text-[11px] text-gray-400 mt-0.5">Category: ${escapeHtml(scope || '—')}</p>
+                        </div>
+                    </div>
                     ${variance ? `<p class="mt-1 text-[11px] text-gray-500 max-w-[360px]">${variance}</p>` : ''}
                 </td>
                 <td class="px-6 py-4 text-right font-mono text-gray-900">${formatRp(alloc.allocated_amount)}</td>
-                <td class="px-6 py-4 text-right font-mono text-gray-700">${formatRp(alloc.actual_used)}</td>
-                <td class="px-6 py-4 text-right font-mono text-gray-700">${formatRp(alloc.committed_amount)}</td>
+                <td class="px-6 py-4 text-right font-mono text-gray-700">${formatRp(spentReserved)}</td>
                 <td class="px-6 py-4 text-right font-mono ${remainingCls}">${formatRp(alloc.remaining_amount)}</td>
                 <td class="px-6 py-4">
                     <div class="flex items-center justify-end gap-2">
@@ -276,6 +404,53 @@ function renderAllocationsTable(allocations) {
             </tr>
         `;
     }).join('');
+    if (mobile) {
+        mobile.innerHTML = allocations.map((alloc, index) => renderAllocationMobileCard(alloc, index)).join('');
+    }
+}
+
+function renderAllocationMobileCard(alloc, index) {
+    const status = STATUS_BADGE[alloc.status] || STATUS_BADGE.healthy;
+    const barCls = USAGE_BAR_CLASS[alloc.status] || 'bg-gray-300';
+    const usagePercent = Math.max(0, Math.min(100, alloc.usage_percent));
+    const scope = (alloc.scope_values || []).join(', ');
+    const spentReserved = (Number(alloc.actual_used) || 0) + (Number(alloc.committed_amount) || 0);
+    const remainingCls = alloc.remaining_amount < 0 ? 'text-red-600' : 'text-gray-900';
+    return `
+        <button type="button" class="w-full text-left px-5 py-4 hover:bg-gray-50 transition-colors" data-allocation-id="${escapeHtml(alloc.id)}" data-action="open-allocation">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="h-2.5 w-2.5 rounded-sm flex-shrink-0" style="background: ${allocationColor(index)};"></span>
+                        <p class="font-semibold text-[13px] text-gray-900 truncate">${escapeHtml(alloc.name)}</p>
+                    </div>
+                    <p class="mt-1 text-[11px] text-gray-400">Category: ${escapeHtml(scope || '—')}</p>
+                </div>
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${status.cls} flex-shrink-0">${status.label}</span>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-3">
+                <div>
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Allocated</p>
+                    <p class="mt-1 font-mono font-bold text-gray-900">${formatRp(alloc.allocated_amount)}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Spent + Reserved</p>
+                    <p class="mt-1 font-mono font-bold text-gray-900">${formatRp(spentReserved)}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Remaining</p>
+                    <p class="mt-1 font-mono font-bold ${remainingCls}">${formatRp(alloc.remaining_amount)}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Usage</p>
+                    <p class="mt-1 font-mono font-bold text-gray-900">${formatPercent(alloc.usage_percent)}</p>
+                </div>
+            </div>
+            <div class="mt-3 h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                <div class="h-full ${barCls} rounded-full" style="width: ${usagePercent}%"></div>
+            </div>
+        </button>
+    `;
 }
 
 function explainAllocationVariance(alloc) {
@@ -304,27 +479,85 @@ function explainAllocationVariance(alloc) {
     return `<span class="font-mono font-bold">${escapeHtml(formatRp(remaining))}</span> remaining after actual and committed spend.`;
 }
 
-function renderRiskPanel(allocations, unallocated) {
-    const risks = [];
+function renderBudgetAttention(allocations, summary) {
+    const alerts = [];
+    const total = Math.max(0, Number(summary.total_amount) || 0);
+    const allocated = Math.max(0, Number(summary.total_allocated) || 0);
+    const unassigned = Math.max(0, Number(summary.unallocated_budget_amount) || 0);
+    const spentReserved = (Number(summary.total_actual_used) || 0) + (Number(summary.total_committed) || 0);
+
+    if (total > 0 && allocated > total) {
+        alerts.push({
+            tone: 'danger',
+            title: 'Allocation total exceeds main budget',
+            body: `${formatRp(allocated - total)} is allocated beyond the main budget. Reduce allocations before using this plan for approvals.`
+        });
+    }
+
+    if (unassigned > 0) {
+        alerts.push({
+            tone: 'warning',
+            title: `${formatRp(unassigned)} is still unassigned`,
+            body: 'Assign it to allocations so this budget can be tracked by purpose.'
+        });
+    }
+
     allocations.forEach(alloc => {
+        const used = (Number(alloc.actual_used) || 0) + (Number(alloc.committed_amount) || 0);
         if (alloc.status === 'exceeded') {
-            const overage = Math.max(0, (alloc.actual_used + alloc.committed_amount) - alloc.allocated_amount);
-            risks.push(`<strong>${escapeHtml(alloc.name)}</strong> exceeded the allocation by <span class="font-mono font-bold">${formatRp(overage)}</span> (${formatPercent(alloc.usage_percent)} used).`);
-        } else if (alloc.status === 'at_risk') {
-            risks.push(`<strong>${escapeHtml(alloc.name)}</strong> is at ${formatPercent(alloc.usage_percent)} and has only <span class="font-mono font-bold">${formatRp(alloc.remaining_amount)}</span> remaining.`);
+            alerts.push({
+                tone: 'danger',
+                title: `${alloc.name} exceeded allocation`,
+                body: `${formatRp(Math.max(0, used - alloc.allocated_amount))} over allocation at ${formatPercent(alloc.usage_percent)} usage.`
+            });
+        } else if (alloc.usage_percent >= 85) {
+            alerts.push({
+                tone: 'warning',
+                title: `${alloc.name} is at ${formatPercent(alloc.usage_percent)} usage`,
+                body: 'Review reserved bills before approving new spend.'
+            });
         }
     });
-    if (unallocated.actual_amount + unallocated.committed_amount > 0) {
-        risks.push(`<span class="font-mono font-bold">${formatRp(unallocated.actual_amount + unallocated.committed_amount)}</span> of spend is not matched to any budget allocation.`);
+
+    if (spentReserved === 0) {
+        alerts.push({
+            tone: 'neutral',
+            title: 'No spend or reserved bills recorded yet',
+            body: 'Budget usage will update after in-period expense transactions, pending payables, or unpaid bills are added.'
+        });
     }
-    const panel = el('budget-risk-panel');
-    const list = el('budget-risk-list');
-    if (risks.length === 0) {
-        panel.classList.add('hidden');
+
+    const list = el('budget-attention-list');
+    if (alerts.length === 0) {
+        list.innerHTML = `
+            <li class="px-5 py-4">
+                <p class="text-[13px] font-semibold text-gray-900">No budget issues detected from current records.</p>
+                <p class="mt-1 text-[12px] text-gray-500">Allocations, spend, and reserved bills are inside the current thresholds.</p>
+            </li>
+        `;
         return;
     }
-    panel.classList.remove('hidden');
-    list.innerHTML = risks.map(r => `<li class="px-6 py-3 text-[13px] text-amber-800">${r}</li>`).join('');
+
+    list.innerHTML = alerts.map(renderAttentionItem).join('');
+}
+
+function renderAttentionItem(alert) {
+    const tone = {
+        danger: 'border-red-200 text-red-700',
+        warning: 'border-amber-200 text-amber-700',
+        neutral: 'border-gray-200 text-gray-500'
+    }[alert.tone] || 'border-gray-200 text-gray-500';
+    return `
+        <li class="px-5 py-4">
+            <div class="flex items-start gap-3">
+                <span class="mt-1 h-2.5 w-2.5 rounded-full border ${tone} flex-shrink-0"></span>
+                <div class="min-w-0">
+                    <p class="text-[13px] font-semibold text-gray-900">${escapeHtml(alert.title)}</p>
+                    <p class="mt-1 text-[12px] text-gray-500 leading-relaxed">${escapeHtml(alert.body)}</p>
+                </div>
+            </div>
+        </li>
+    `;
 }
 
 function renderUnallocatedCard(unallocated) {
@@ -848,15 +1081,51 @@ async function renderActivityTimeline() {
     if (!state.usage?.budget) return;
     const card = el('budget-activity-card');
     const body = el('budget-activity-body');
+    const recentList = el('budget-recent-activity-list');
+    if (recentList) {
+        recentList.innerHTML = `<li class="px-5 py-4 text-[13px] text-gray-400">Checking budget activity...</li>`;
+    }
     try {
         const logs = await state.ds.getBudgetActivityLogs(state.user.uid, state.usage.budget.id, 50);
-        if (logs.length === 0) { card.classList.add('hidden'); return; }
+        if (logs.length === 0) {
+            card.classList.add('hidden');
+            if (recentList) {
+                recentList.innerHTML = `<li class="px-5 py-4 text-[13px] text-gray-400">No budget activity yet.</li>`;
+            }
+            return;
+        }
+        if (recentList) {
+            recentList.innerHTML = logs.slice(0, 4).map(renderRecentActivityRow).join('');
+        }
         card.classList.remove('hidden');
         body.innerHTML = logs.map(renderActivityRow).join('');
     } catch (err) {
         console.warn('Activity timeline failed:', err);
         card.classList.add('hidden');
+        if (recentList) {
+            recentList.innerHTML = `<li class="px-5 py-4 text-[13px] text-gray-400">No budget activity yet.</li>`;
+        }
     }
+}
+
+function renderRecentActivityRow(log) {
+    const when = log.created_at?.toDate?.();
+    const whenText = when ? when.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+    const actionMap = {
+        'budget_assignment.update': 'updated an allocation assignment',
+        'budget_assignment.exclude': 'excluded a record from this budget',
+        'budget_assignment.restore': 'restored a record to this budget',
+        'budget.created': 'created this budget',
+        'budget.updated': 'updated this budget',
+        'budget.allocations_updated': 'updated budget allocations'
+    };
+    const label = actionMap[log.action] || String(log.action || 'Budget activity').replace(/_/g, ' ');
+    return `
+        <li class="px-5 py-4">
+            <p class="text-[13px] font-semibold text-gray-900">${escapeHtml(label)}</p>
+            <p class="mt-1 text-[12px] text-gray-500">${escapeHtml(whenText)}${log.reason ? ` · ${escapeHtml(log.reason)}` : ''}</p>
+        </li>
+    `;
 }
 
 function renderActivityRow(log) {

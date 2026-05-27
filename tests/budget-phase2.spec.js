@@ -118,17 +118,16 @@ test('P6: calculation invariant — totals reconcile against allocation+unalloca
         const c = document.getElementById('budget-content');
         return c && !c.classList.contains('hidden');
     }, { timeout: 15000 });
-    // Sum the allocation table's Actual + Committed cells (columns 3 + 4, 0-indexed 2 + 3).
+    // Sum the allocation table's Spent + Reserved cells.
     const rowTotals = await page.evaluate(() => {
         const rows = document.querySelectorAll('#budget-alloc-body tr[data-action="open-allocation"]');
         const parseRp = (s) => parseInt((s.match(/Rp\s*([\d.]+)/)?.[1] || '0').replace(/\./g, ''), 10);
-        let actual = 0, committed = 0;
+        let spentReserved = 0;
         rows.forEach(row => {
             const cells = row.querySelectorAll('td');
-            actual += parseRp(cells[2]?.innerText || '');
-            committed += parseRp(cells[3]?.innerText || '');
+            spentReserved += parseRp(cells[2]?.innerText || '');
         });
-        return { actual, committed };
+        return { spentReserved };
     });
     // Summary card readings.
     const summary = await page.evaluate(() => {
@@ -140,7 +139,7 @@ test('P6: calculation invariant — totals reconcile against allocation+unalloca
     });
     console.log('[P6] rowTotals:', rowTotals);
     console.log('[P6] summary:', summary);
-    // The allocation-row Actual+Committed sums should match the summary's Spent + Reserved
+    // The allocation-row Spent + Reserved sum should match the summary's Spent + Reserved
     // (they're both computed by getBudgetUsage's resolver).
-    expect(rowTotals.actual + rowTotals.committed).toBe(summary.spent);
+    expect(rowTotals.spentReserved).toBe(summary.spent);
 });

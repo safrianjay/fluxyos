@@ -60,142 +60,195 @@
                 <!-- Content (rendered when a budget exists) -->
                 <div id="budget-content" class="hidden space-y-6">
 
-                    <!-- Active Operating Budget -->
-                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                        <div>
-                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Active Operating Budget</p>
-                            <h2 id="budget-name" class="text-xl font-bold text-gray-900 mt-1">—</h2>
-                            <p id="budget-period" class="text-[12px] text-gray-500 mt-1">—</p>
+                    <!-- Budget workspace header -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 sm:p-6">
+                        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Active Operating Budget</p>
+                                    <span id="budget-status-pill" class="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-white px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                                        Active
+                                    </span>
+                                </div>
+                                <h2 id="budget-name" class="mt-2 text-2xl font-bold text-gray-900 tracking-tight">—</h2>
+                                <p id="budget-period" class="mt-1 text-[13px] text-gray-500">—</p>
+                                <p id="budget-workspace-meta" class="mt-2 text-[12px] text-gray-400">—</p>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 lg:w-[420px]">
+                                <div class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-3">
+                                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Period Type</p>
+                                    <p id="budget-period-type" class="mt-1 text-[12px] font-semibold text-gray-800">—</p>
+                                </div>
+                                <div class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-3">
+                                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Allocations</p>
+                                    <p id="budget-workspace-allocation-count" class="mt-1 text-[12px] font-semibold text-gray-800">—</p>
+                                </div>
+                                <div class="col-span-2 sm:col-span-1 rounded-lg border border-gray-100 bg-gray-50 px-3 py-3">
+                                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Updated</p>
+                                    <p id="budget-workspace-updated" class="mt-1 text-[12px] font-semibold text-gray-800">—</p>
+                                </div>
+                            </div>
                         </div>
+                    </div>
 
-                        <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <!-- Main Budget -->
-                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                    <!-- KPI strip -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 xl:divide-x divide-gray-200">
+                            <div class="p-4 sm:p-5 border-b xl:border-b-0 border-gray-200">
                                 <p class="inline-flex items-center gap-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                                     Main Budget
                                     <button type="button" class="metric-info" aria-label="Main Budget: total amount you can spend during this period." data-tooltip="The total amount you can spend during this period. Set when you create the budget; everything else on this page is measured against it.">?</button>
                                 </p>
-                                <p id="budget-total" class="mt-2 text-xl font-bold font-mono text-gray-900 truncate">—</p>
-                                <p class="mt-1 text-[11px] text-gray-500">Total spending envelope for this period.</p>
+                                <p id="budget-total" class="mt-2 text-2xl font-bold font-mono text-gray-900 truncate">—</p>
+                                <p id="budget-total-hint" class="mt-2 text-[12px] text-gray-500">Total spending envelope for this period.</p>
                             </div>
-
-                            <!-- Allocated -->
-                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                            <div class="p-4 sm:p-5 border-b xl:border-b-0 border-gray-200">
                                 <p class="inline-flex items-center gap-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                                     Allocated
                                     <button type="button" class="metric-info" aria-label="Allocated: how much of the main budget has been split into category allocations." data-tooltip="How much of your main budget has been split into category allocations like Marketing, Operations, Infrastructure, or SaaS. Each allocation tracks its own spend.">?</button>
                                 </p>
-                                <p id="budget-allocated" class="mt-2 text-xl font-bold font-mono text-gray-900 truncate">—</p>
-                                <p id="budget-allocated-hint" class="mt-1 text-[11px] text-gray-500">—</p>
+                                <p id="budget-allocated" class="mt-2 text-2xl font-bold font-mono text-gray-900 truncate">—</p>
+                                <p id="budget-allocated-hint" class="mt-2 text-[12px] text-gray-500">—</p>
                             </div>
-
-                            <!-- Spent + Reserved -->
-                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                            <div class="p-4 sm:p-5 border-b xl:border-b-0 border-gray-200">
                                 <p class="inline-flex items-center gap-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                                     Spent + Reserved
                                     <button type="button" class="metric-info" aria-label="Spent + Reserved: money already used or committed." data-tooltip="Spent is money already recorded in transactions. Reserved is money committed by unpaid bills and pending payables. Both reduce what is remaining.">?</button>
                                 </p>
-                                <p id="budget-spent" class="mt-2 text-xl font-bold font-mono text-gray-900 truncate">—</p>
-                                <p id="budget-spent-hint" class="mt-1 text-[11px] text-gray-500">—</p>
+                                <p id="budget-spent" class="mt-2 text-2xl font-bold font-mono text-gray-900 truncate">—</p>
+                                <p id="budget-spent-hint" class="mt-2 text-[12px] text-gray-500">—</p>
+                                <div class="mt-3 h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                                    <div id="budget-usage-bar" class="h-full rounded-full bg-emerald-500 transition-all" style="width: 0%"></div>
+                                </div>
+                                <p class="mt-2 text-[11px] text-gray-400">
+                                    <span id="budget-usage-percent" class="font-mono font-bold text-gray-700">0%</span>
+                                    <span id="budget-remaining-text"> of main budget used</span>
+                                </p>
                             </div>
-
-                            <!-- Unassigned (gains orange accent when > 0) -->
-                            <div id="budget-unassigned-card" class="bg-gray-50 rounded-lg p-4 border border-gray-100 transition-colors">
+                            <div class="p-4 sm:p-5 border-b sm:border-b-0 border-gray-200">
+                                <p class="inline-flex items-center gap-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                                    Remaining
+                                    <button type="button" class="metric-info" aria-label="Remaining: budget left after spent and reserved amounts." data-tooltip="Budget left after recorded spend and unpaid committed bills are subtracted from the main budget.">?</button>
+                                </p>
+                                <p id="budget-remaining" class="mt-2 text-2xl font-bold font-mono text-gray-900 truncate">—</p>
+                                <p id="budget-remaining-hint" class="mt-2 text-[12px] text-gray-500">Budget left after spent and reserved.</p>
+                            </div>
+                            <div id="budget-unassigned-card" class="p-4 sm:p-5 border-t sm:border-t-0 xl:border-t-0 border-gray-200 transition-colors">
                                 <p class="inline-flex items-center gap-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                                     Unassigned
                                     <button type="button" class="metric-info" aria-label="Unassigned: part of the main budget not yet split into any allocation." data-tooltip="Part of your main budget that is not yet split into any allocation. It is still spendable, but spend in unassigned categories will not be tracked against any allocation row.">?</button>
                                 </p>
-                                <p id="budget-unassigned" class="mt-2 text-xl font-bold font-mono text-gray-900 truncate">—</p>
-                                <p id="budget-unassigned-hint" class="mt-1 text-[11px] text-gray-500">—</p>
+                                <p id="budget-unassigned" class="mt-2 text-2xl font-bold font-mono text-gray-900 truncate">—</p>
+                                <p id="budget-unassigned-hint" class="mt-2 text-[12px] text-gray-500">—</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Allocation map -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 sm:p-6">
+                        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                            <div>
+                                <h3 class="text-[14px] font-bold text-gray-900">Allocation map</h3>
+                                <p id="budget-allocation-summary" class="mt-1 text-[12px] text-gray-500">—</p>
+                            </div>
+                            <p class="text-[11px] text-gray-400">Allocation share of main budget</p>
+                        </div>
+                        <div id="budget-allocation-map" class="mt-5">
+                            <div id="budget-allocation-bar" class="flex h-9 w-full overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-200"></div>
+                            <div id="budget-allocation-empty" class="hidden rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-[13px] text-gray-500">No allocations yet. Edit this budget to split it by purpose.</div>
+                            <div id="budget-allocation-legend" class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+                        </div>
+                    </div>
+
+                    <!-- Main workspace grid -->
+                    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+                        <!-- Allocation Breakdown table -->
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                            <div class="px-5 sm:px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <div>
+                                    <h3 class="text-[14px] font-bold text-gray-900">Allocation Breakdown</h3>
+                                    <p class="text-[12px] text-gray-400 mt-0.5">Matched by category. Recategorising a record moves it between allocations.</p>
+                                </div>
+                                <p id="budget-alloc-count" class="text-[12px] text-gray-400"></p>
+                            </div>
+                            <div class="hidden md:block overflow-x-auto">
+                                <table class="w-full text-left border-collapse min-w-[760px]">
+                                    <thead>
+                                        <tr class="bg-gray-50 border-b border-gray-200">
+                                            <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Allocation</th>
+                                            <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Allocated</th>
+                                            <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Spent + Reserved</th>
+                                            <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Remaining</th>
+                                            <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Usage</th>
+                                            <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="budget-alloc-body" class="divide-y divide-gray-100 text-[13px]">
+                                        <tr>
+                                            <td colspan="6" class="px-6 py-10 text-center text-[13px] text-gray-400">Loading allocations...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="budget-alloc-mobile" class="md:hidden divide-y divide-gray-100"></div>
+                        </div>
+
+                        <!-- Right rail -->
+                        <aside class="space-y-6">
+                            <div id="budget-attention-card" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                                <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+                                    <div>
+                                        <h3 class="text-[14px] font-bold text-gray-900">Budget Attention</h3>
+                                        <p class="text-[12px] text-gray-400 mt-0.5">Real alerts from current budget records.</p>
+                                    </div>
+                                </div>
+                                <ul id="budget-attention-list" class="divide-y divide-gray-100"></ul>
+                                <div id="budget-unassigned-callout" class="hidden border-t border-gray-100 p-4">
+                                    <div class="rounded-lg border border-[#EA580C]/30 bg-white p-4">
+                                        <p class="text-[13px] font-bold text-gray-900"><span id="budget-callout-amount" class="font-mono">Rp 0</span> is still unassigned.</p>
+                                        <p class="mt-1 text-[12px] text-gray-500">Assign it to allocations so this budget can be tracked by purpose.</p>
+                                        <button id="budget-assign-remaining-btn" type="button" class="mt-3 w-full px-4 py-2 bg-white border border-gray-200 hover:border-[#EA580C] hover:text-[#EA580C] rounded-lg text-[12px] font-bold text-gray-700 transition-colors whitespace-nowrap active:scale-95">Assign Remaining Budget</button>
+                                    </div>
+                                </div>
+                                <p id="budget-all-assigned-note" class="hidden px-5 py-4 text-[12px] text-gray-500">All budget has been assigned to allocations.</p>
+                            </div>
+
+                            <div id="budget-recent-activity-card" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                                <div class="px-5 py-4 border-b border-gray-100">
+                                    <h3 class="text-[14px] font-bold text-gray-900">Recent Activity</h3>
+                                </div>
+                                <ul id="budget-recent-activity-list" class="divide-y divide-gray-100">
+                                    <li class="px-5 py-4 text-[13px] text-gray-400">No budget activity yet.</li>
+                                </ul>
+                            </div>
+                        </aside>
+                    </div>
+
+                    <!-- Advanced Budget Controls -->
+                    <div id="budget-advanced-sections" class="space-y-4 pt-2">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-[13px] font-bold text-gray-900">Advanced budget controls</h3>
+                                <p class="text-[12px] text-gray-400 mt-0.5">Record-level assignment surfaces stay available below the workspace.</p>
                             </div>
                         </div>
 
-                        <div class="mt-6">
-                            <div class="flex items-center justify-between text-[12px] mb-2 gap-3 flex-wrap">
-                                <span class="text-gray-500">Budget used</span>
-                                <span class="font-mono">
-                                    <span id="budget-usage-percent" class="font-bold text-gray-700">0%</span>
-                                    <span id="budget-remaining-text" class="text-gray-500"> · Rp 0 remaining</span>
-                                </span>
-                            </div>
-                            <div class="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                                <div id="budget-usage-bar" class="h-full rounded-full bg-emerald-500 transition-all" style="width: 0%"></div>
-                            </div>
-                        </div>
-
-                        <!-- Unassigned callout — visible only when unassigned > 0 -->
-                        <div id="budget-unassigned-callout" class="hidden mt-5 rounded-lg border border-orange-200 bg-orange-50/50 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div class="flex items-start gap-3 flex-1 min-w-0">
-                                <svg class="w-5 h-5 text-[#EA580C] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.74-3L13.74 4a2 2 0 00-3.48 0L3.33 16a2 2 0 001.74 3z"></path>
-                                </svg>
-                                <div class="min-w-0">
-                                    <p class="text-[13px] font-bold text-gray-900"><span id="budget-callout-amount" class="font-mono">Rp 0</span> is still not assigned to any allocation.</p>
-                                    <p class="mt-1 text-[12px] text-gray-500">Unassigned budget is still part of your main budget, but it is not tracked by purpose yet.</p>
+                        <!-- Unallocated Spend Card -->
+                        <div id="budget-unallocated-card" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm p-5 sm:p-6">
+                            <h3 class="text-[14px] font-bold text-gray-900">Unallocated spend</h3>
+                            <p class="text-[12px] text-gray-500 mt-1">Records inside the budget period whose category does not match any active allocation.</p>
+                            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Actual (unallocated)</p>
+                                    <p id="budget-unallocated-actual" class="mt-1 text-xl font-bold font-mono text-gray-900">—</p>
+                                </div>
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Committed (unallocated)</p>
+                                    <p id="budget-unallocated-committed" class="mt-1 text-xl font-bold font-mono text-gray-900">—</p>
                                 </div>
                             </div>
-                            <button id="budget-assign-remaining-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 hover:border-[#EA580C] hover:text-[#EA580C] rounded-lg text-[12px] font-bold text-gray-700 transition-colors whitespace-nowrap active:scale-95">Assign Remaining Budget</button>
                         </div>
-
-                        <!-- Positive neutral state when nothing is unassigned -->
-                        <p id="budget-all-assigned-note" class="hidden mt-5 text-[12px] text-gray-500">All budget has been assigned to allocations.</p>
-                    </div>
-
-                    <!-- Risk Panel -->
-                    <div id="budget-risk-panel" class="hidden bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden">
-                        <div class="px-6 py-4 border-b border-amber-100 bg-amber-50/40">
-                            <h3 class="text-[14px] font-bold text-amber-700">Budget risks</h3>
-                            <p class="text-[12px] text-amber-600 mt-0.5">Allocations that need attention based on actual and committed spend.</p>
-                        </div>
-                        <ul id="budget-risk-list" class="divide-y divide-amber-100"></ul>
-                    </div>
-
-                    <!-- Allocations Table -->
-                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                            <div>
-                                <h3 class="text-[14px] font-bold text-gray-900">Allocation breakdown</h3>
-                                <p class="text-[12px] text-gray-400 mt-0.5">Matched by category. Recategorising a record moves it between allocations.</p>
-                            </div>
-                            <p id="budget-alloc-count" class="text-[12px] text-gray-400"></p>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse min-w-[820px]">
-                                <thead>
-                                    <tr class="bg-gray-50 border-b border-gray-200">
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Allocation</th>
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Allocated</th>
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Actual</th>
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Committed</th>
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Remaining</th>
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Usage</th>
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="budget-alloc-body" class="divide-y divide-gray-100 text-[13px]">
-                                    <tr>
-                                        <td colspan="7" class="px-6 py-10 text-center text-[13px] text-gray-400">Loading allocations...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Unallocated Spend Card -->
-                    <div id="budget-unallocated-card" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                        <h3 class="text-[14px] font-bold text-gray-900">Unallocated spend</h3>
-                        <p class="text-[12px] text-gray-500 mt-1">Records inside the budget period whose category does not match any active allocation.</p>
-                        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Actual (unallocated)</p>
-                                <p id="budget-unallocated-actual" class="mt-1 text-xl font-bold font-mono text-gray-900">—</p>
-                            </div>
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Committed (unallocated)</p>
-                                <p id="budget-unallocated-committed" class="mt-1 text-xl font-bold font-mono text-gray-900">—</p>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Phase 2: Unallocated records queue (per-record actions) -->
                     <div id="budget-unallocated-queue" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -245,6 +298,8 @@
                             <svg id="budget-activity-caret" class="w-4 h-4 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
                         <ul id="budget-activity-body" class="hidden divide-y divide-gray-100"></ul>
+                    </div>
+
                     </div>
 
                 </div>

@@ -288,8 +288,6 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
         console.log('[B7] preview before save:', previewBeforeSave.replace(/\s+/g, ' ').trim().slice(0, 200));
         await page.screenshot({ path: `${SHOTS_DIR}/B7a-prefilled.png`, fullPage: false });
 
-        // Capture the Marketing row's Committed amount BEFORE save so we can
-        // assert it grew by exactly the bill amount.
         await page.click('#tx-submit-btn');
         const toast = await page.waitForSelector('#toast-container .text-white', { timeout: 8000 }).then(el => el.textContent()).catch(() => null);
         console.log('[B7] save toast:', toast?.trim());
@@ -297,7 +295,7 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
         await page.screenshot({ path: `${SHOTS_DIR}/B7b-after-save.png`, fullPage: false });
 
         // Strongest end-to-end proof: re-read the Budget page. The bill's 3M
-        // must show up in Marketing's Committed column — that only happens if
+        // must show up in Marketing's Spent + Reserved column — that only happens if
         // (a) the bill write succeeded with `budget_allocation_id` matching
         // Marketing AND (b) getBudgetUsage's bill scan picked it up.
         await page.goto('/budget.html');
@@ -307,18 +305,17 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
         }, { timeout: 15000 });
         await page.waitForTimeout(800);
         const marketingRow = page.locator('#budget-alloc-body tr').filter({ hasText: 'Marketing' }).first();
-        // Read the Committed cell by column index — 4th cell (0-based 3).
-        // Row columns: Allocation · Allocated · Actual · Committed · Remaining · Usage · Status.
-        const committedCellText = await marketingRow.locator('td').nth(3).innerText().catch(() => '');
-        const m = committedCellText.match(/Rp\s*([\d.]+)/);
-        const committedAmount = m ? parseInt(m[1].replace(/\./g, ''), 10) : 0;
-        console.log('[B7] committed cell text:', committedCellText.replace(/\s+/g, ' '));
-        console.log('[B7] Parsed Marketing committed amount:', committedAmount);
+        // Row columns: Allocation · Allocated · Spent + Reserved · Remaining · Usage · Status.
+        const spentReservedCellText = await marketingRow.locator('td').nth(2).innerText().catch(() => '');
+        const m = spentReservedCellText.match(/Rp\s*([\d.]+)/);
+        const spentReservedAmount = m ? parseInt(m[1].replace(/\./g, ''), 10) : 0;
+        console.log('[B7] spent+reserved cell text:', spentReservedCellText.replace(/\s+/g, ' '));
+        console.log('[B7] Parsed Marketing spent+reserved amount:', spentReservedAmount);
         console.log('[B7] console errors:', JSON.stringify(log.filter(e => e.type === 'error' || e.type === 'pageerror'), null, 2));
         await page.screenshot({ path: `${SHOTS_DIR}/B7c-budget-after.png`, fullPage: true });
 
         expect(toast).toMatch(/successfully added/i);
-        // Committed must include this bill's 3M (alongside any prior unpaid bills).
-        expect(committedAmount).toBeGreaterThanOrEqual(3000000);
+        // Spent + Reserved must include this bill's 3M (alongside any prior spend/unpaid bills).
+        expect(spentReservedAmount).toBeGreaterThanOrEqual(3000000);
     });
 });
