@@ -178,7 +178,7 @@ function renderBudget(usage) {
 
     const remainingEl = el('budget-remaining');
     remainingEl.textContent = formatRp(remaining);
-    remainingEl.className = `mt-3 text-[11px] sm:text-[18px] leading-none font-bold font-mono truncate ${remaining < 0 ? 'text-red-600' : 'text-gray-900'}`;
+    remainingEl.className = `metric-value truncate${remaining < 0 ? ' is-negative' : ''}`;
     el('budget-remaining-hint').textContent = remaining < 0
         ? `${formatRp(remaining)} over budget after spent and reserved.`
         : 'Budget left after spent and reserved.';
@@ -194,7 +194,7 @@ function renderBudget(usage) {
         : 'Set a main budget to build a baseline.';
 
     const forecastCard = el('budget-unassigned-card');
-    forecastCard.className = 'p-4 sm:p-5 xl:min-h-[132px] border-t sm:border-t-0 xl:border-t-0 border-gray-200 transition-colors bg-white';
+    forecastCard.className = 'budget-metric-cell border-t sm:border-t-0 xl:border-t-0 border-gray-200 transition-colors bg-white';
 
     const callout = el('budget-unassigned-callout');
     const allAssignedNote = el('budget-all-assigned-note');
