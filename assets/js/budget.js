@@ -387,15 +387,15 @@ function renderAllocationsTable(allocations) {
                         </div>
                     </div>
                 </td>
-                <td class="px-5 py-4 text-right font-mono text-gray-900 whitespace-nowrap">${formatRp(alloc.allocated_amount)}</td>
-                <td class="px-5 py-4 text-right font-mono text-gray-700 whitespace-nowrap">${formatRp(spentReserved)}</td>
-                <td class="px-5 py-4 text-right font-mono ${remainingCls} whitespace-nowrap">${formatRp(alloc.remaining_amount)}</td>
+                <td class="px-5 py-4 font-mono text-gray-900 whitespace-nowrap">${formatRp(alloc.allocated_amount)}</td>
+                <td class="px-5 py-4 font-mono text-gray-700 whitespace-nowrap">${formatRp(spentReserved)}</td>
+                <td class="px-5 py-4 font-mono ${remainingCls} whitespace-nowrap">${formatRp(alloc.remaining_amount)}</td>
                 <td class="px-5 py-4">
-                    <div class="flex items-center justify-end gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="font-mono text-[12px] font-bold text-gray-700 whitespace-nowrap">${formatPercent(alloc.usage_percent)}</span>
                         <div class="hidden sm:block w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
                             <div class="h-full ${barCls} rounded-full" style="width: ${usagePercent}%"></div>
                         </div>
-                        <span class="font-mono text-[12px] font-bold text-gray-700 whitespace-nowrap">${formatPercent(alloc.usage_percent)}</span>
                     </div>
                 </td>
                 <td class="px-5 py-4">
