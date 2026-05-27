@@ -333,7 +333,7 @@ function renderOpexBudgetCell(performance, budget) {
     const sub = document.getElementById('kpi-opex-change');
     if (sub) {
         if (monthly > 0) {
-            sub.textContent = `${formatIDR(remaining)} remaining`;
+            sub.textContent = `${formatIDR(remaining)} remaining this month`;
             sub.className = usedPct > 100 ? 'metric-sub is-bad' : (usedPct > 70 ? 'metric-sub is-warn' : 'metric-sub is-good');
         } else {
             sub.textContent = 'Budget not set';
