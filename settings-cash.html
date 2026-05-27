@@ -42,7 +42,7 @@
                 </button>
                 <h1 class="text-lg font-bold text-gray-900">Cash &amp; Bank Accounts</h1>
             </div>
-            <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+            <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
                 <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                 Fluxy AI
             </button>
@@ -54,10 +54,10 @@
                 <section class="flex items-end justify-between gap-4">
                     <div>
                         <a href="/settings" class="text-[12px] font-bold text-[#EA580C] hover:underline">Settings / Finance Setup</a>
-                        <h1 class="mt-2 text-[26px] font-bold text-gray-900 tracking-tight">Cash &amp; Bank Accounts</h1>
-                        <p class="mt-1 text-[13px] text-gray-500">Manual balances power Bank Cash Balance and Cash Pressure on Overview.</p>
+                        <h1 class="mt-2 text-2xl font-bold text-gray-900 tracking-tight">Cash &amp; Bank Accounts</h1>
+                        <p class="mt-1 text-[14px] text-gray-500">Manual balances power Bank Cash Balance and Cash Pressure on Overview.</p>
                     </div>
-                    <button id="cash-add-btn" type="button" class="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-[13px] font-bold text-white hover:bg-gray-800 transition-colors">
+                    <button id="cash-add-btn" type="button" class="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-[14px] font-bold text-white hover:bg-gray-800 transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
                         Add account
                     </button>
@@ -72,19 +72,19 @@
                 <section class="bg-white border border-gray-200 rounded-xl p-5">
                     <div class="grid grid-cols-1 sm:grid-cols-4 gap-5">
                         <div>
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500">Total cash</p>
+                            <p class="text-[12px] font-bold uppercase tracking-wider text-gray-500">Total cash</p>
                             <p id="cash-summary-total" class="mt-1 text-[22px] font-bold text-gray-900 tabular-nums">Rp 0</p>
                         </div>
                         <div>
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500">Active accounts</p>
+                            <p class="text-[12px] font-bold uppercase tracking-wider text-gray-500">Active accounts</p>
                             <p id="cash-summary-count" class="mt-1 text-[22px] font-bold text-gray-900">0</p>
                         </div>
                         <div>
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500">Last update</p>
+                            <p class="text-[12px] font-bold uppercase tracking-wider text-gray-500">Last update</p>
                             <p id="cash-summary-updated" class="mt-1 text-[14px] font-semibold text-gray-700">—</p>
                         </div>
                         <div>
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500">Data confidence</p>
+                            <p class="text-[12px] font-bold uppercase tracking-wider text-gray-500">Data confidence</p>
                             <p id="cash-summary-confidence" class="mt-1 text-[14px] font-semibold text-gray-700">No data</p>
                         </div>
                     </div>
@@ -103,7 +103,7 @@
                         <span></span>
                     </div>
                     <div id="cash-accounts-list">
-                        <div class="px-5 py-6 text-[13px] text-gray-400">Loading accounts...</div>
+                        <div class="px-5 py-6 text-[14px] text-gray-400">Loading accounts...</div>
                     </div>
                 </section>
 
@@ -112,7 +112,7 @@
                     <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
                         <div>
                             <h2 class="text-[14px] font-bold text-gray-900">Balance history</h2>
-                            <p class="text-[11px] text-gray-500 mt-0.5">Most recent 50 snapshots.</p>
+                            <p class="text-[12px] text-gray-500 mt-0.5">Most recent 50 snapshots.</p>
                         </div>
                     </div>
                     <div class="cash-snapshot-row cash-row-head">
@@ -122,7 +122,7 @@
                         <span>Source</span>
                     </div>
                     <div id="cash-history-list">
-                        <div class="px-5 py-6 text-[13px] text-gray-400">Loading history...</div>
+                        <div class="px-5 py-6 text-[14px] text-gray-400">Loading history...</div>
                     </div>
                 </section>
 
@@ -268,8 +268,8 @@
                 setLoadState('ready', `${accounts.length} active account${accounts.length === 1 ? '' : 's'}`);
             } catch (error) {
                 setLoadState('error', 'Could not load bank accounts');
-                accountsList.innerHTML = `<div class="px-5 py-6 text-[13px] text-red-600">Failed to load. Refresh to try again.</div>`;
-                historyList.innerHTML = `<div class="px-5 py-6 text-[13px] text-red-600">Failed to load history.</div>`;
+                accountsList.innerHTML = `<div class="px-5 py-6 text-[14px] text-red-600">Failed to load. Refresh to try again.</div>`;
+                historyList.innerHTML = `<div class="px-5 py-6 text-[14px] text-red-600">Failed to load history.</div>`;
             }
         }
 
@@ -291,7 +291,7 @@
             if (!accounts.length) {
                 accountsList.innerHTML = `
                     <div class="px-5 py-8 text-center">
-                        <p class="text-[13px] text-gray-500">No active bank accounts yet.</p>
+                        <p class="text-[14px] text-gray-500">No active bank accounts yet.</p>
                         <button class="cash-action-btn mt-3" data-empty-add type="button">Add your first account</button>
                     </div>`;
                 accountsList.querySelector('[data-empty-add]')?.addEventListener('click', () => openAddModal());
@@ -305,7 +305,7 @@
                 return `
                     <div class="cash-row">
                         <div>
-                            <div class="text-[13px] font-bold text-gray-900">${nameLine}</div>
+                            <div class="text-[14px] font-bold text-gray-900">${nameLine}</div>
                             <div class="text-[12px] text-gray-500">${escapeHtml(account.bank_name || '')}</div>
                         </div>
                         <div class="text-[14px] font-bold text-gray-900 tabular-nums">${formatIDR(balance)}</div>
@@ -328,7 +328,7 @@
 
         function renderHistory(accounts, snapshots) {
             if (!snapshots.length) {
-                historyList.innerHTML = `<div class="px-5 py-6 text-[13px] text-gray-400">No balance history yet.</div>`;
+                historyList.innerHTML = `<div class="px-5 py-6 text-[14px] text-gray-400">No balance history yet.</div>`;
                 return;
             }
             const nameById = new Map(accounts.map(a => [a.id, `${a.account_name || ''}${a.last_four ? ' · ••' + a.last_four : ''}`]));

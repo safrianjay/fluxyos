@@ -38,7 +38,7 @@
                 </button>
                 <h1 class="text-lg font-bold text-gray-900">Budget Settings</h1>
             </div>
-            <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+            <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
                 <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                 Fluxy AI
             </button>
@@ -49,8 +49,8 @@
 
                 <section>
                     <a href="/settings" class="text-[12px] font-bold text-[#EA580C] hover:underline">Settings / Finance Setup</a>
-                    <h1 class="mt-2 text-[26px] font-bold text-gray-900 tracking-tight">Budget Settings</h1>
-                    <p class="mt-1 text-[13px] text-gray-500">Budgets drive OpEx vs Budget on Overview and the Budget Used metric on Performance Trend.</p>
+                    <h1 class="mt-2 text-2xl font-bold text-gray-900 tracking-tight">Budget Settings</h1>
+                    <p class="mt-1 text-[14px] text-gray-500">Budgets drive OpEx vs Budget on Overview and the Budget Used metric on Performance Trend.</p>
                 </section>
 
                 <div id="budget-load-state" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-medium text-gray-500 shadow-sm" aria-live="polite">
@@ -62,7 +62,7 @@
                 <section id="budget-active-empty" class="hidden bg-white border border-gray-200 rounded-xl p-6 text-center">
                     <p class="text-[14px] font-semibold text-gray-900">No active budget</p>
                     <p class="mt-1 text-[12px] text-gray-500">Set a monthly budget to activate OpEx vs Budget and Budget Used metrics.</p>
-                    <button id="budget-create-btn" type="button" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-[13px] font-bold text-white hover:bg-gray-800">
+                    <button id="budget-create-btn" type="button" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-[14px] font-bold text-white hover:bg-gray-800">
                         Set budget
                     </button>
                 </section>
@@ -71,7 +71,7 @@
                     <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                         <div>
                             <h2 class="text-[14px] font-bold text-gray-900">Active budget</h2>
-                            <p class="text-[11px] text-gray-500 mt-0.5">Updates Overview KPIs immediately.</p>
+                            <p class="text-[12px] text-gray-500 mt-0.5">Updates Overview KPIs immediately.</p>
                         </div>
                         <span class="budget-pill is-active">Active</span>
                     </div>
@@ -144,7 +144,7 @@
                 <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
                     <div class="px-5 py-3 border-b border-gray-100">
                         <h2 class="text-[14px] font-bold text-gray-900">Budget history</h2>
-                        <p class="text-[11px] text-gray-500 mt-0.5">Includes archived budgets and the current active one.</p>
+                        <p class="text-[12px] text-gray-500 mt-0.5">Includes archived budgets and the current active one.</p>
                     </div>
                     <div class="budget-history-row budget-row-head">
                         <span>Name</span>
@@ -154,7 +154,7 @@
                         <span>Status</span>
                     </div>
                     <div id="budget-history-list">
-                        <div class="px-5 py-6 text-[13px] text-gray-400">Loading history...</div>
+                        <div class="px-5 py-6 text-[14px] text-gray-400">Loading history...</div>
                     </div>
                 </section>
 
@@ -215,7 +215,7 @@
                 setLoadState('ready', active ? 'Budget active' : 'No active budget');
             } catch (error) {
                 setLoadState('error', 'Could not load budget');
-                historyList.innerHTML = `<div class="px-5 py-6 text-[13px] text-red-600">Failed to load history.</div>`;
+                historyList.innerHTML = `<div class="px-5 py-6 text-[14px] text-red-600">Failed to load history.</div>`;
             }
         }
 
@@ -240,7 +240,7 @@
 
         function renderHistory(rows) {
             if (!rows.length) {
-                historyList.innerHTML = `<div class="px-5 py-6 text-[13px] text-gray-400">No budget records yet.</div>`;
+                historyList.innerHTML = `<div class="px-5 py-6 text-[14px] text-gray-400">No budget records yet.</div>`;
                 return;
             }
             historyList.innerHTML = rows.map(b => {

@@ -23,7 +23,7 @@
                 </button>
                 <h1 class="text-lg font-bold text-gray-900">Business</h1>
             </div>
-            <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[13px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+            <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
                 <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                 Fluxy AI
             </button>
@@ -35,7 +35,7 @@
                 <!-- BREADCRUMB + TITLE -->
                 <section>
                     <a href="/settings" class="text-[12px] font-bold text-[#EA580C] hover:underline">Settings</a>
-                    <h1 class="mt-2 text-[26px] font-bold text-gray-900 tracking-tight">Business</h1>
+                    <h1 class="mt-2 text-2xl font-bold text-gray-900 tracking-tight">Business</h1>
                 </section>
 
                 <!-- TABS -->
@@ -53,7 +53,7 @@
                     <span class="h-2 w-2 rounded-full bg-gray-300"></span>
                     Loading settings
                 </div>
-                <div id="settings-error-state" class="hidden rounded-lg border border-red-200 bg-red-50 p-3 text-[13px] text-red-700" aria-live="assertive">
+                <div id="settings-error-state" class="hidden rounded-lg border border-red-200 bg-red-50 p-3 text-[14px] text-red-700" aria-live="assertive">
                     Could not load business settings. Refresh the page or try again in a moment.
                 </div>
 
@@ -68,11 +68,11 @@
                             <label class="block">
                                 <span class="text-[12px] font-bold text-gray-500">Default entity label</span>
                                 <input id="company-entity-label" name="entity_label" type="text" maxlength="80" required class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] text-gray-900 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
-                                <span class="mt-1 block text-[11px] text-gray-400">Shown across FluxyOS as your default workspace label.</span>
+                                <span class="mt-1 block text-[12px] text-gray-400">Shown across FluxyOS as your default workspace label.</span>
                             </label>
                             <label class="block">
                                 <span class="text-[12px] font-bold text-gray-500">Account ID</span>
-                                <input id="account-id-display" type="text" readonly class="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] font-mono text-gray-500" value="Loading...">
+                                <input id="account-id-display" type="text" readonly class="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[14px] font-mono text-gray-500" value="Loading...">
                             </label>
                             <div>
                                 <span class="text-[12px] font-bold text-gray-500">Phone verification</span>
@@ -85,8 +85,8 @@
                         <div class="px-5 py-4 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <p id="company-settings-status" class="text-[12px] text-gray-500">Account details save to your workspace profile.</p>
                             <div class="flex items-center gap-2">
-                                <button type="reset" class="settings-cancel-btn inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-[13px] font-bold text-gray-700 hover:bg-gray-50">Cancel</button>
-                                <button type="submit" class="settings-save-btn inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-[13px] font-bold text-white shadow-sm transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60">Save</button>
+                                <button type="reset" class="settings-cancel-btn inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-[14px] font-bold text-gray-700 hover:bg-gray-50">Cancel</button>
+                                <button type="submit" class="settings-save-btn inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60">Save</button>
                             </div>
                         </div>
                     </form>
@@ -105,14 +105,14 @@
                                 <select id="company-country" name="country" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] text-gray-900 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
                                     <option value="Indonesia">Indonesia</option>
                                 </select>
-                                <span class="mt-1 block text-[11px] text-gray-400">FluxyOS MVP supports Indonesia (IDR, id-ID).</span>
+                                <span class="mt-1 block text-[12px] text-gray-400">FluxyOS MVP supports Indonesia (IDR, id-ID).</span>
                             </label>
                         </div>
                         <div class="px-5 py-4 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <p id="company-details-status" class="text-[12px] text-gray-500">Business context for reports and AI summaries.</p>
                             <div class="flex items-center gap-2">
-                                <button type="reset" class="settings-cancel-btn inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-[13px] font-bold text-gray-700 hover:bg-gray-50">Cancel</button>
-                                <button type="submit" class="settings-save-btn inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-[13px] font-bold text-white shadow-sm transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60">Save</button>
+                                <button type="reset" class="settings-cancel-btn inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-[14px] font-bold text-gray-700 hover:bg-gray-50">Cancel</button>
+                                <button type="submit" class="settings-save-btn inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60">Save</button>
                             </div>
                         </div>
                     </form>
