@@ -2086,3 +2086,296 @@ window.attachChartHover = function attachChartHover(container, options) {
         close: closeDrawer
     };
 })();
+
+/**
+ * Shared notifications bell — opens a small dropdown anchored below the
+ * button with two tabs: "Variance attention" and "Recent activity".
+ *
+ *   Variance: allocations on the active budget where status is at_risk
+ *             or exceeded.
+ *   Activity: the user's most recent budget audit logs (assignment,
+ *             exclude, restore, create, allocations_updated).
+ *
+ * Auto-mounts on every app page by inserting a bell button immediately
+ * to the LEFT of the Fluxy AI button. Lazy-loads DataService on first
+ * open. Silently no-ops on pages without a Fluxy AI entry (e.g. login).
+ *
+ *   window.FluxyBudgetNotifications.refresh() — re-fetch + re-render
+ *   window.FluxyBudgetNotifications.close()
+ */
+(function () {
+    let injected = false;
+    let activeTab = 'variance';
+    let ds = null;
+    let lastData = null;
+    let loading = false;
+
+    function whenReady(fn) {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', fn);
+        } else {
+            fn();
+        }
+    }
+
+    function findFluxyAIButton() {
+        return document.querySelector('button[onclick*="toggleFluxyAI"], [data-tour-target="fluxy-ai-entry"]');
+    }
+
+    function injectBell() {
+        if (injected) return;
+        const fluxyBtn = findFluxyAIButton();
+        if (!fluxyBtn || !fluxyBtn.parentElement) return;
+        // Don't double-mount across re-renders.
+        if (document.getElementById('fbx-notif-btn')) { injected = true; return; }
+
+        const bellHtml = `
+            <button id="fbx-notif-btn" type="button" aria-label="Open budget notifications" class="relative inline-flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors shadow-sm active:scale-95">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                </svg>
+                <span id="fbx-notif-dot" class="hidden absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#EA580C] ring-2 ring-white"></span>
+            </button>
+            <div id="fbx-notif-panel" class="hidden absolute right-0 top-full mt-2 w-[360px] max-w-[calc(100vw-32px)] bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden z-50">
+                <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <p class="text-[13px] font-bold text-gray-900">Budget notifications</p>
+                    <button id="fbx-notif-close" type="button" class="p-1 text-gray-400 hover:text-gray-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="flex border-b border-gray-100">
+                    <button id="fbx-notif-tab-variance" type="button" data-fbx-tab="variance" class="flex-1 px-3 py-2.5 text-[12px] font-bold text-[#EA580C] border-b-2 border-[#EA580C] transition-colors">
+                        Variance attention <span id="fbx-notif-variance-count" class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-orange-50 text-[10px] font-bold text-[#EA580C] px-1 hidden">0</span>
+                    </button>
+                    <button id="fbx-notif-tab-activity" type="button" data-fbx-tab="activity" class="flex-1 px-3 py-2.5 text-[12px] font-bold text-gray-500 border-b-2 border-transparent hover:text-gray-900 transition-colors">
+                        Recent activity <span id="fbx-notif-activity-count" class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-gray-100 text-[10px] font-bold text-gray-600 px-1 hidden">0</span>
+                    </button>
+                </div>
+                <div id="fbx-notif-body" class="max-h-[420px] overflow-y-auto">
+                    <p class="px-4 py-8 text-[12px] text-gray-400 text-center">Loading notifications…</p>
+                </div>
+                <div class="px-4 py-2 border-t border-gray-100 bg-gray-50">
+                    <a href="/budget" class="text-[12px] font-bold text-[#EA580C] hover:underline">Open Budgets →</a>
+                </div>
+            </div>
+        `;
+        // Wrap so the panel is positioned relative to the bell + the right
+        // edge of the header. Insert as the immediate left sibling of the
+        // Fluxy AI button.
+        const wrapper = document.createElement('div');
+        wrapper.id = 'fbx-notif-wrap';
+        wrapper.className = 'relative inline-flex';
+        wrapper.innerHTML = bellHtml;
+        fluxyBtn.parentElement.insertBefore(wrapper, fluxyBtn);
+
+        document.getElementById('fbx-notif-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            togglePanel();
+        });
+        document.getElementById('fbx-notif-close').addEventListener('click', closePanel);
+        document.getElementById('fbx-notif-tab-variance').addEventListener('click', () => switchTab('variance'));
+        document.getElementById('fbx-notif-tab-activity').addEventListener('click', () => switchTab('activity'));
+
+        // Close on outside click.
+        document.addEventListener('click', (e) => {
+            const panel = document.getElementById('fbx-notif-panel');
+            const wrap = document.getElementById('fbx-notif-wrap');
+            if (!panel || panel.classList.contains('hidden')) return;
+            if (!wrap?.contains(e.target)) closePanel();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closePanel();
+        });
+
+        injected = true;
+        // Best-effort dot refresh on mount (so users see the indicator even
+        // before opening the panel for the first time).
+        refresh().catch(() => {});
+    }
+
+    async function loadDS() {
+        if (ds) return ds;
+        const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
+        const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.firebaseapp.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
+            measurementId: "G-ZN7J6DRD2L"
+        };
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        if (typeof auth.authStateReady === 'function') await auth.authStateReady();
+        if (!auth.currentUser) throw new Error('Sign in required.');
+        const { default: DataService } = await import('/assets/js/db-service.js');
+        ds = new DataService(app);
+        ds._authUserId = auth.currentUser.uid;
+        return ds;
+    }
+
+    async function refresh() {
+        if (loading) return;
+        loading = true;
+        try {
+            const svc = await loadDS();
+            const userId = svc._authUserId;
+            const activeBudget = await svc.getActiveBudget(userId);
+            if (!activeBudget) {
+                lastData = { variance: [], activity: [], hasBudget: false };
+            } else {
+                const usage = await svc.getBudgetUsage(userId, activeBudget.id);
+                const variance = (usage.allocations || []).filter(a => a.status === 'at_risk' || a.status === 'exceeded');
+                let activity = [];
+                try {
+                    activity = await svc.getBudgetActivityLogs(userId, activeBudget.id, 20);
+                } catch (_) { activity = []; }
+                lastData = { variance, activity, hasBudget: true, usage };
+            }
+            updateBadgeAndCounts();
+            renderBody();
+        } catch (err) {
+            console.warn('Notifications refresh failed:', err);
+            lastData = { variance: [], activity: [], hasBudget: false, error: err?.message };
+            updateBadgeAndCounts();
+            renderBody();
+        } finally {
+            loading = false;
+        }
+    }
+
+    function updateBadgeAndCounts() {
+        const dot = document.getElementById('fbx-notif-dot');
+        const vCount = document.getElementById('fbx-notif-variance-count');
+        const aCount = document.getElementById('fbx-notif-activity-count');
+        const variance = lastData?.variance?.length || 0;
+        const activity = lastData?.activity?.length || 0;
+        if (dot) dot.classList.toggle('hidden', variance === 0);
+        if (vCount) {
+            vCount.textContent = String(variance);
+            vCount.classList.toggle('hidden', variance === 0);
+        }
+        if (aCount) {
+            aCount.textContent = String(activity);
+            aCount.classList.toggle('hidden', activity === 0);
+        }
+    }
+
+    function renderBody() {
+        const body = document.getElementById('fbx-notif-body');
+        if (!body) return;
+        if (!lastData) {
+            body.innerHTML = `<p class="px-4 py-8 text-[12px] text-gray-400 text-center">Loading…</p>`;
+            return;
+        }
+        if (!lastData.hasBudget) {
+            body.innerHTML = `
+                <div class="px-4 py-8 text-center">
+                    <p class="text-[12px] text-gray-500">No active budget. <a href="/budget" class="text-[#EA580C] font-bold hover:underline">Create one →</a></p>
+                </div>`;
+            return;
+        }
+        body.innerHTML = activeTab === 'variance' ? renderVarianceList(lastData.variance) : renderActivityList(lastData.activity);
+    }
+
+    function renderVarianceList(allocations) {
+        if (allocations.length === 0) {
+            return `<p class="px-4 py-8 text-[12px] text-gray-400 text-center">All allocations look healthy.</p>`;
+        }
+        const fmtRp = (n) => 'Rp ' + Math.abs(Number(n) || 0).toLocaleString('id-ID');
+        const fmtPct = (v) => Number.isFinite(v) ? (v >= 1000 ? Math.round(v) : v.toFixed(v >= 10 ? 0 : 1)) + '%' : '0%';
+        return `<ul class="divide-y divide-gray-100">${allocations.map(a => {
+            const isExceeded = a.status === 'exceeded';
+            const cls = isExceeded ? 'text-red-700 bg-red-50 border-red-100' : 'text-orange-700 bg-orange-50 border-orange-100';
+            const label = isExceeded ? 'Exceeded' : 'At risk';
+            const detail = isExceeded
+                ? `Over by ${fmtRp((a.actual_used + a.committed_amount) - a.allocated_amount)}`
+                : `${fmtPct(a.usage_percent)} used · ${fmtRp(a.remaining_amount)} left`;
+            return `
+                <li class="px-4 py-3">
+                    <div class="flex items-start justify-between gap-2">
+                        <p class="text-[13px] font-semibold text-gray-900 truncate">${escapeHtmlSafe(a.name)}</p>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${cls}">${label}</span>
+                    </div>
+                    <p class="mt-1 text-[11px] text-gray-500">${escapeHtmlSafe(detail)}</p>
+                </li>`;
+        }).join('')}</ul>`;
+    }
+
+    function renderActivityList(logs) {
+        if (logs.length === 0) {
+            return `<p class="px-4 py-8 text-[12px] text-gray-400 text-center">No budget activity yet.</p>`;
+        }
+        const map = {
+            'budget_assignment.update': 'Allocation updated',
+            'budget_assignment.exclude': 'Record excluded',
+            'budget_assignment.restore': 'Record restored',
+            'budget.created': 'Budget created',
+            'budget.updated': 'Budget updated',
+            'budget.allocations_updated': 'Allocations updated'
+        };
+        return `<ul class="divide-y divide-gray-100">${logs.map(log => {
+            const when = log.created_at?.toDate?.();
+            const whenText = when ? when.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+            const label = map[log.action] || String(log.action || '').replace(/_/g, ' ');
+            return `
+                <li class="px-4 py-3">
+                    <p class="text-[12px] font-semibold text-gray-900">${escapeHtmlSafe(label)}</p>
+                    <p class="mt-0.5 text-[11px] text-gray-500">${escapeHtmlSafe(whenText)}${log.reason ? ` · ${escapeHtmlSafe(log.reason)}` : ''}</p>
+                </li>`;
+        }).join('')}</ul>`;
+    }
+
+    function escapeHtmlSafe(s) {
+        return String(s ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
+    }
+
+    function switchTab(tab) {
+        activeTab = tab;
+        const v = document.getElementById('fbx-notif-tab-variance');
+        const a = document.getElementById('fbx-notif-tab-activity');
+        const activeCls = 'text-[#EA580C] border-[#EA580C]';
+        const inactiveCls = 'text-gray-500 border-transparent hover:text-gray-900';
+        if (v) v.className = `flex-1 px-3 py-2.5 text-[12px] font-bold border-b-2 transition-colors ${tab === 'variance' ? activeCls : inactiveCls}`;
+        if (a) a.className = `flex-1 px-3 py-2.5 text-[12px] font-bold border-b-2 transition-colors ${tab === 'activity' ? activeCls : inactiveCls}`;
+        // Counts get re-appended on every render — preserve them.
+        renderBody();
+        // Re-add the badge spans so counts stay visible after className swap.
+        updateBadgeAndCounts();
+    }
+
+    function openPanel() {
+        const panel = document.getElementById('fbx-notif-panel');
+        if (!panel) return;
+        panel.classList.remove('hidden');
+        if (!lastData) renderBody();
+        refresh().catch(() => {});
+    }
+    function closePanel() {
+        document.getElementById('fbx-notif-panel')?.classList.add('hidden');
+    }
+    function togglePanel() {
+        const panel = document.getElementById('fbx-notif-panel');
+        if (!panel) return;
+        if (panel.classList.contains('hidden')) openPanel(); else closePanel();
+    }
+
+    // Auto-mount once the DOM has the Fluxy AI button. Retry briefly for
+    // pages that build their header lazily.
+    whenReady(() => {
+        let tries = 0;
+        const tick = () => {
+            if (findFluxyAIButton()) { injectBell(); return; }
+            if (++tries < 20) setTimeout(tick, 200);
+        };
+        tick();
+    });
+
+    window.FluxyBudgetNotifications = {
+        refresh,
+        close: closePanel,
+        open: openPanel
+    };
+})();
