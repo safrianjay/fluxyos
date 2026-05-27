@@ -1280,53 +1280,11 @@ document.addEventListener('click', event => {
     }
 });
 
-function mountMetricInfoTooltips() {
-    const buttons = document.querySelectorAll('.metric-info[data-tooltip]');
-    if (!buttons.length) return;
-
-    let tooltip = document.querySelector('.metric-tooltip');
-    if (!tooltip) {
-        tooltip = document.createElement('div');
-        tooltip.className = 'metric-tooltip';
-        tooltip.setAttribute('role', 'tooltip');
-        document.body.appendChild(tooltip);
-    }
-
-    const hideTooltip = () => {
-        tooltip.classList.remove('is-visible');
-    };
-
-    const showTooltip = (button) => {
-        const copy = button.dataset.tooltip || '';
-        if (!copy) return;
-        tooltip.textContent = copy;
-        tooltip.classList.add('is-visible');
-
-        const buttonBox = button.getBoundingClientRect();
-        const tooltipBox = tooltip.getBoundingClientRect();
-        const margin = 12;
-        const preferredLeft = buttonBox.left + buttonBox.width / 2 - tooltipBox.width / 2;
-        const left = Math.max(margin, Math.min(preferredLeft, window.innerWidth - tooltipBox.width - margin));
-        let top = buttonBox.bottom + 8;
-        if (top + tooltipBox.height > window.innerHeight - margin) {
-            top = Math.max(margin, buttonBox.top - tooltipBox.height - 8);
-        }
-        tooltip.style.left = `${left}px`;
-        tooltip.style.top = `${top}px`;
-    };
-
-    buttons.forEach(button => {
-        button.addEventListener('mouseenter', () => showTooltip(button));
-        button.addEventListener('focus', () => showTooltip(button));
-        button.addEventListener('mouseleave', hideTooltip);
-        button.addEventListener('blur', hideTooltip);
-    });
-
-    window.addEventListener('scroll', hideTooltip, true);
-    window.addEventListener('resize', hideTooltip);
-}
-
-mountMetricInfoTooltips();
+// `mountMetricInfoTooltips` now lives in shared-dashboard.js and uses event
+// delegation so dynamically-rendered cards (Budget page, future KPI surfaces)
+// get tooltips without extra wiring. Keep the call here so script order doesn't
+// matter — the shared module exposes a no-op shim that resolves cleanly.
+window.mountMetricInfoTooltips?.();
 mountDashboardPeriodControls();
 mountFinanceSetupDrawers();
 

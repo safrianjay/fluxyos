@@ -1757,3 +1757,85 @@ window.attachChartHover = function attachChartHover(container, options) {
         }
     };
 };
+
+/**
+ * Shared metric-info tooltip — single delegation handler for any
+ * `<button class="metric-info" data-tooltip="...">?</button>` on the page.
+ *
+ * Reusable across the dashboard, budget page, and any future KPI surface.
+ * Uses event delegation so dynamically-rendered cards work without any
+ * wiring step from the caller. Markup contract:
+ *
+ *   <p class="metric-label">
+ *       Main Budget
+ *       <button type="button" class="metric-info"
+ *           data-tooltip="The total amount you can spend during this period.">
+ *           ?
+ *       </button>
+ *   </p>
+ *
+ * window.mountMetricInfoTooltips() is exposed as a no-op shim so existing
+ * callers (e.g. dashboard.js) keep compiling after we centralise the logic.
+ */
+(function () {
+    let tooltipNode = null;
+
+    function ensureTooltip() {
+        if (tooltipNode) return tooltipNode;
+        tooltipNode = document.createElement('div');
+        tooltipNode.className = 'metric-tooltip';
+        tooltipNode.setAttribute('role', 'tooltip');
+        document.body.appendChild(tooltipNode);
+        return tooltipNode;
+    }
+
+    function hide() {
+        if (!tooltipNode) return;
+        tooltipNode.classList.remove('is-visible');
+    }
+
+    function show(button) {
+        const copy = button.dataset.tooltip || '';
+        if (!copy) return;
+        const tip = ensureTooltip();
+        tip.textContent = copy;
+        tip.classList.add('is-visible');
+
+        const buttonBox = button.getBoundingClientRect();
+        const tipBox = tip.getBoundingClientRect();
+        const margin = 12;
+        const preferredLeft = buttonBox.left + buttonBox.width / 2 - tipBox.width / 2;
+        const left = Math.max(margin, Math.min(preferredLeft, window.innerWidth - tipBox.width - margin));
+        let top = buttonBox.bottom + 8;
+        if (top + tipBox.height > window.innerHeight - margin) {
+            top = Math.max(margin, buttonBox.top - tipBox.height - 8);
+        }
+        tip.style.left = `${left}px`;
+        tip.style.top = `${top}px`;
+    }
+
+    function matchedButton(target) {
+        return target?.closest?.('.metric-info[data-tooltip]') || null;
+    }
+
+    document.addEventListener('mouseover', (e) => {
+        const btn = matchedButton(e.target);
+        if (btn) show(btn);
+    }, true);
+    document.addEventListener('mouseout', (e) => {
+        if (matchedButton(e.target)) hide();
+    }, true);
+    document.addEventListener('focusin', (e) => {
+        const btn = matchedButton(e.target);
+        if (btn) show(btn);
+    });
+    document.addEventListener('focusout', (e) => {
+        if (matchedButton(e.target)) hide();
+    });
+    window.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
+
+    // No-op shim. The handler is global delegation, so no per-call mount
+    // is required, but existing callers still resolve cleanly.
+    window.mountMetricInfoTooltips = function () {};
+})();

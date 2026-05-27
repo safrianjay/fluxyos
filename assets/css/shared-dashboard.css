@@ -623,3 +623,72 @@ main > header {
 .chart-bar-active {
     filter: brightness(1.08);
 }
+
+/* ── Shared metric info icon + tooltip ─────────────────────────────────
+   Used on KPI / metric card labels across the app. Pair markup:
+
+       <p class="metric-label">
+           Main Budget
+           <button type="button" class="metric-info"
+               data-tooltip="The total amount you can spend during this period.">
+               ?
+           </button>
+       </p>
+
+   The .metric-tooltip floating element is created lazily by
+   shared-dashboard.js's delegation handler, so dynamically-rendered
+   cards get tooltips for free without re-wiring listeners.
+   ──────────────────────────────────────────────────────────────────── */
+.metric-info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border: 1px solid #CBD5E1;
+    border-radius: 999px;
+    background: #FFFFFF;
+    color: #64748B;
+    font-family: Inter, sans-serif;
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: none;
+    cursor: default;
+    transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+.metric-info:hover,
+.metric-info:focus,
+.metric-info:focus-visible {
+    border-color: #94A3B8;
+    background: #F8FAFC;
+    color: #111827;
+    outline: none;
+}
+.metric-tooltip {
+    position: fixed;
+    z-index: 80;
+    width: 240px;
+    max-width: calc(100vw - 32px);
+    padding: 10px 11px;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    background: #FFFFFF;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.16);
+    color: #334155;
+    font-size: 12px;
+    line-height: 1.38;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    text-align: left;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-3px);
+    transition: opacity 120ms ease, transform 120ms ease;
+}
+.metric-tooltip.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
