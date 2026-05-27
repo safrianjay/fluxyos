@@ -296,30 +296,11 @@
                         </aside>
                     </div>
 
-                    <!-- Excluded records + Budget activity live in this wrapper.
-                         The "Advanced budget controls" header and the per-record
-                         Unallocated records queue were removed because the same
-                         info is reachable from the Allocation detail drawer
-                         (Related records) and the Ledger / Bills row chips. -->
-                    <div id="budget-advanced-sections" class="space-y-4 pt-2">
-
-                        <!-- Unallocated Spend Card (summary; the per-record queue is gone) -->
-                        <div id="budget-unallocated-card" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm p-5 sm:p-6">
-                            <h3 class="text-[14px] font-bold text-gray-900">Unallocated spend</h3>
-                            <p class="text-[12px] text-gray-500 mt-1">Records inside the budget period whose category does not match any active allocation.</p>
-                            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div class="bg-gray-50 rounded-lg p-4">
-                                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Actual (unallocated)</p>
-                                    <p id="budget-unallocated-actual" class="mt-1 text-xl font-bold font-mono text-gray-900">—</p>
-                                </div>
-                                <div class="bg-gray-50 rounded-lg p-4">
-                                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Committed (unallocated)</p>
-                                    <p id="budget-unallocated-committed" class="mt-1 text-xl font-bold font-mono text-gray-900">—</p>
-                                </div>
-                            </div>
-                        </div>
-
-                    <!-- Phase 2: Excluded records — collapsed by default -->
+                    <!-- Phase 2: Excluded records — collapsed by default.
+                         The Unallocated spend summary and the Budget activity
+                         timeline used to live here too; both were removed at
+                         the user's request because the same signal already
+                         lives in the allocation cards + audit log directly. -->
                     <div id="budget-excluded-card" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                         <button id="budget-excluded-toggle" type="button" class="w-full px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3 text-left hover:bg-gray-50/60 transition-colors">
                             <div>
@@ -329,20 +310,6 @@
                             <svg id="budget-excluded-caret" class="w-4 h-4 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
                         <div id="budget-excluded-body" class="hidden divide-y divide-gray-100 text-[13px]"></div>
-                    </div>
-
-                    <!-- Phase 2: Budget activity timeline — collapsed by default -->
-                    <div id="budget-activity-card" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                        <button id="budget-activity-toggle" type="button" class="w-full px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3 text-left hover:bg-gray-50/60 transition-colors">
-                            <div>
-                                <h3 class="text-[14px] font-bold text-gray-900">Budget activity</h3>
-                                <p class="text-[12px] text-gray-400 mt-0.5">Manual assignments, exclusions, and restores for this budget.</p>
-                            </div>
-                            <svg id="budget-activity-caret" class="w-4 h-4 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </button>
-                        <ul id="budget-activity-body" class="hidden divide-y divide-gray-100"></ul>
-                    </div>
-
                     </div>
 
                 </div>

@@ -559,14 +559,11 @@ function renderAttentionItem(alert) {
 }
 
 function renderUnallocatedCard(unallocated) {
-    const card = el('budget-unallocated-card');
-    if (unallocated.actual_amount === 0 && unallocated.committed_amount === 0) {
-        card.classList.add('hidden');
-        return;
-    }
-    card.classList.remove('hidden');
-    el('budget-unallocated-actual').textContent = formatRp(unallocated.actual_amount);
-    el('budget-unallocated-committed').textContent = formatRp(unallocated.committed_amount);
+    // Unallocated spend summary card was removed from budget.html; the same
+    // signal is surfaced via the orange Unassigned KPI card and the per-row
+    // chips on /ledger and /bill. Keeping the function as a guarded no-op so
+    // renderBudget() callers don't have to change.
+    void unallocated;
 }
 
 // ── Drawer ────────────────────────────────────────────────────────────
@@ -1144,6 +1141,10 @@ function renderExcludedRow(record) {
 }
 
 async function renderActivityTimeline() {
+    // The full Budget activity card was removed from budget.html. The compact
+    // Recent activity preview inside the workspace (#budget-recent-activity-list)
+    // is the only consumer of the audit-log fetch now. Card-related branches
+    // are guarded so a future re-add doesn't require revisiting this function.
     if (!state.usage?.budget) return;
     const card = el('budget-activity-card');
     const body = el('budget-activity-body');
@@ -1154,7 +1155,7 @@ async function renderActivityTimeline() {
     try {
         const logs = await state.ds.getBudgetActivityLogs(state.user.uid, state.usage.budget.id, 50);
         if (logs.length === 0) {
-            card.classList.add('hidden');
+            card?.classList.add('hidden');
             if (recentList) {
                 recentList.innerHTML = `<li class="px-5 py-4 text-[13px] text-gray-400">No budget activity yet.</li>`;
             }
@@ -1163,11 +1164,13 @@ async function renderActivityTimeline() {
         if (recentList) {
             recentList.innerHTML = logs.slice(0, 4).map(renderRecentActivityRow).join('');
         }
-        card.classList.remove('hidden');
-        body.innerHTML = logs.map(renderActivityRow).join('');
+        if (card && body) {
+            card.classList.remove('hidden');
+            body.innerHTML = logs.map(renderActivityRow).join('');
+        }
     } catch (err) {
         console.warn('Activity timeline failed:', err);
-        card.classList.add('hidden');
+        card?.classList.add('hidden');
         if (recentList) {
             recentList.innerHTML = `<li class="px-5 py-4 text-[13px] text-gray-400">No budget activity yet.</li>`;
         }

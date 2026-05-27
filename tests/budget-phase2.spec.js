@@ -62,17 +62,19 @@ test('P2: Phase 2 sections present (unallocated / excluded / activity) when appl
     const presentSections = await page.evaluate(() => {
         return {
             excluded: !document.getElementById('budget-excluded-card')?.classList.contains('hidden'),
-            activity: !document.getElementById('budget-activity-card')?.classList.contains('hidden')
+            recentActivity: !!document.getElementById('budget-recent-activity-list')
         };
     });
     console.log('[P2] phase-2 section visibility:', presentSections);
-    // The Unallocated records queue was removed; assignment now happens from
-    // the Allocation detail drawer or the Ledger / Bills row chips. Excluded
-    // and Activity sections are still expected on the page (hidden until
-    // there are records).
+    // The Unallocated records queue, Unallocated spend summary, and full
+    // Budget activity timeline card were removed. Excluded records is the
+    // only remaining standalone Phase 2 card; the compact Recent activity
+    // preview inside the workspace still consumes the audit-log fetch.
     await expect(page.locator('#budget-unallocated-queue')).toHaveCount(0);
+    await expect(page.locator('#budget-unallocated-card')).toHaveCount(0);
+    await expect(page.locator('#budget-activity-card')).toHaveCount(0);
     await expect(page.locator('#budget-excluded-card')).toHaveCount(1);
-    await expect(page.locator('#budget-activity-card')).toHaveCount(1);
+    await expect(page.locator('#budget-recent-activity-list')).toHaveCount(1);
     console.log('[P2] console issues:', JSON.stringify(log.filter(e => e.t === 'error' || e.t === 'pageerror')));
 });
 
