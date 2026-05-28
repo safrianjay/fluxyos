@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 
 /**
- * QA: ledger Status + Type filters replace Status / Type Breakdown panels.
+ * QA: ledger trust cards, attention queue, and Status + Type filters.
  * Filters are rendered as a custom Fluxy dropdown (not native <select>).
  * Authenticates via tests/setup-auth.spec.js → tests/.auth/storageState.json.
  */
@@ -70,6 +70,63 @@ test('ledger page renders custom filter dropdowns and removes Status/Type breakd
     await expect(page.locator('#ledger-filter-chip-row')).toBeHidden();
 
     expect(consoleErrors, 'console errors on initial load').toEqual([]);
+});
+
+test('ledger trust cards and attention queue render safely above the table', async ({ page }) => {
+    const consoleErrors = [];
+    page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+    page.on('pageerror', err => { consoleErrors.push(String(err)); });
+
+    await page.goto('/ledger.html');
+    await waitForLedgerReady(page);
+
+    await expect(page.locator('#ledger-control-cards')).toBeVisible();
+    await expect(page.locator('#ledger-trust-score')).toHaveText(/^\d+%$/);
+    await expect(page.locator('#ledger-missing-receipts-count')).toBeVisible();
+    await expect(page.locator('#ledger-uncategorized-count')).toBeVisible();
+    await expect(page.locator('#ledger-pending-approval-count')).toBeVisible();
+    await expect(page.locator('#ledger-unreconciled-count')).toBeVisible();
+    await expect(page.locator('#ledger-attention-section')).toBeVisible();
+    await expect(page.locator('#ledger-attention-list')).toBeVisible();
+
+    const unsafeText = await page.locator('#ledger-control-cards, #ledger-attention-section').evaluateAll(els => els.map(el => el.textContent || '').join(' '));
+    expect(unsafeText).not.toMatch(/NaN|Infinity|undefined|null/);
+
+    const trustScore = Number(((await page.locator('#ledger-trust-score').textContent()) || '').replace('%', ''));
+    expect(trustScore).toBeGreaterThanOrEqual(0);
+    expect(trustScore).toBeLessThanOrEqual(100);
+
+    const order = await page.evaluate(() => {
+        const table = document.querySelector('#ledger-table-container');
+        const activity = document.querySelector('#ledger-activity-section');
+        if (!table || !activity) return false;
+        return Boolean(table.compareDocumentPosition(activity) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(order, 'Ledger Activity should be below the table').toBe(true);
+
+    expect(consoleErrors, 'console errors on trust cleanup render').toEqual([]);
+});
+
+test('Add Transaction and Scan / Import controls still open their existing drawers', async ({ page }) => {
+    const consoleErrors = [];
+    page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+    page.on('pageerror', err => { consoleErrors.push(String(err)); });
+
+    await page.goto('/ledger.html');
+    await waitForLedgerReady(page);
+
+    await page.locator('[data-tour-target="ledger-add-transaction"]').click();
+    await expect(page.locator('#global-tx-modal')).toBeVisible();
+    await expect(page.locator('#global-tx-title')).toContainText('Add Transaction');
+    await page.evaluate(() => window.closeAddTransactionModal?.());
+    await expect(page.locator('#global-tx-modal')).toHaveCount(0, { timeout: 5_000 });
+
+    await page.locator('#scan-tx-btn').click();
+    await expect(page.locator('#scan-drawer')).not.toHaveClass(/translate-x-full/);
+    await expect(page.locator('#scan-drawer-content')).toBeVisible();
+    await page.locator('#scan-drawer-close-btn').click();
+
+    expect(consoleErrors, 'console errors during safe drawer open checks').toEqual([]);
 });
 
 test('selecting Status narrows the table, shows a chip, and tints the trigger', async ({ page }) => {
@@ -183,14 +240,16 @@ test('opening one dropdown auto-closes the other', async ({ page }) => {
     await expect(statusRoot).toHaveAttribute('data-open', 'false');
 });
 
-test('375px mobile width has no horizontal overflow on /ledger', async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 800 });
-    await page.goto('/ledger.html');
-    await waitForLedgerReady(page);
+test('375px, 768px, and 1280px widths have no horizontal overflow on /ledger', async ({ page }) => {
+    for (const width of [375, 768, 1280]) {
+        await page.setViewportSize({ width, height: 800 });
+        await page.goto('/ledger.html');
+        await waitForLedgerReady(page);
 
-    const overflow = await page.evaluate(() => ({
-        scroll: document.documentElement.scrollWidth,
-        client: document.documentElement.clientWidth,
-    }));
-    expect(overflow.scroll, 'document scrollWidth').toBeLessThanOrEqual(overflow.client + 1);
+        const overflow = await page.evaluate(() => ({
+            scroll: document.documentElement.scrollWidth,
+            client: document.documentElement.clientWidth,
+        }));
+        expect(overflow.scroll, `document scrollWidth at ${width}px`).toBeLessThanOrEqual(overflow.client + 1);
+    }
 });

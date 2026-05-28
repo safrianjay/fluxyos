@@ -151,59 +151,83 @@
                     </div>
                 </div>
 
-                <div id="ledger-control-cards" data-tour-target="ledger-control-cards" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Total Transactions</p>
-                        <p id="ledger-total-count" class="mt-2 text-2xl font-bold text-gray-900">0</p>
-                        <p class="mt-1 text-[12px] text-gray-500">Current ledger records</p>
+                <div id="ledger-control-cards" data-tour-target="ledger-control-cards" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[1.35fr_repeat(4,minmax(0,1fr))] gap-3">
+                    <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm xl:min-h-[176px]">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">Trust Score</p>
+                                <p class="mt-1 text-[12px] text-gray-500">Can this ledger support decisions?</p>
+                            </div>
+                            <span id="ledger-trust-status" class="rounded-full border border-gray-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">No data</span>
+                        </div>
+                        <div class="mt-5 flex items-end gap-2">
+                            <p id="ledger-trust-score" class="font-mono text-[24px] font-bold leading-none text-[#0B0F19]">100%</p>
+                            <p id="ledger-trust-subtitle" class="pb-0.5 text-[12px] font-medium text-gray-500">No data yet</p>
+                        </div>
+                        <div class="mt-4 h-2 rounded-full bg-gray-100 overflow-hidden" aria-hidden="true">
+                            <div id="ledger-trust-progress" class="h-full rounded-full bg-green-500 transition-all duration-200" style="width: 100%"></div>
+                        </div>
+                        <p class="mt-4 text-[12px] text-gray-500">
+                            <span id="ledger-clean-count" class="font-semibold text-gray-900">0</span>/<span id="ledger-total-count" class="font-semibold text-gray-900">0</span> clean
+                            <span class="text-gray-300">&middot;</span>
+                            <span id="ledger-total-risk-amount" class="font-mono font-semibold text-gray-900">Rp 0</span> at risk
+                        </p>
                     </div>
-                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Unreconciled</p>
-                        <p id="ledger-unreconciled-count" class="mt-2 text-2xl font-bold text-gray-900">0</p>
-                        <p id="ledger-unreconciled-subtitle" class="mt-1 text-[12px] text-gray-500">Not tracked yet</p>
+
+                    <div class="bg-white border border-gray-200 border-t-red-400 rounded-xl p-4 shadow-sm">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">Missing Receipt</p>
+                        <p id="ledger-missing-receipts-count" class="mt-4 font-mono text-[24px] font-bold leading-none text-[#0B0F19]">0</p>
+                        <p class="mt-3 text-[12px] text-gray-500">Need proof to claim expense</p>
+                        <p id="ledger-missing-receipts-risk" class="mt-3 font-mono text-[12px] font-semibold text-red-600">Rp 0 at risk</p>
                     </div>
-                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Missing Receipts</p>
-                        <p id="ledger-missing-receipts-count" class="mt-2 text-2xl font-bold text-gray-900">0</p>
-                        <p class="mt-1 text-[12px] text-gray-500">Require attachment</p>
+
+                    <div class="bg-white border border-gray-200 border-t-amber-400 rounded-xl p-4 shadow-sm">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">Uncategorized</p>
+                        <p id="ledger-uncategorized-count" class="mt-4 font-mono text-[24px] font-bold leading-none text-[#0B0F19]">0</p>
+                        <p class="mt-3 text-[12px] text-gray-500">Won't report cleanly until tagged</p>
+                        <p id="ledger-uncategorized-risk" class="mt-3 font-mono text-[12px] font-semibold text-gray-700">Rp 0 at risk</p>
                     </div>
-                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Pending Approval</p>
-                        <p id="ledger-pending-approval-count" class="mt-2 text-2xl font-bold text-gray-900">0</p>
-                        <p class="mt-1 text-[12px] text-gray-500">Waiting for review</p>
+
+                    <div class="bg-white border border-gray-200 border-t-amber-400 rounded-xl p-4 shadow-sm">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">Pending Approval</p>
+                        <p id="ledger-pending-approval-count" class="mt-4 font-mono text-[24px] font-bold leading-none text-[#0B0F19]">0</p>
+                        <p id="ledger-pending-approval-subtitle" class="mt-3 text-[12px] text-gray-500">No pending approvals</p>
+                        <p id="ledger-pending-approval-risk" class="mt-3 font-mono text-[12px] font-semibold text-gray-700">Rp 0 at risk</p>
                     </div>
-                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Uncategorized</p>
-                        <p id="ledger-uncategorized-count" class="mt-2 text-2xl font-bold text-gray-900">0</p>
-                        <p class="mt-1 text-[12px] text-gray-500">Need classification</p>
+
+                    <div class="bg-white border border-gray-200 border-t-blue-400 rounded-xl p-4 shadow-sm">
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">Unreconciled</p>
+                        <p id="ledger-unreconciled-count" class="mt-4 font-mono text-[24px] font-bold leading-none text-[#0B0F19]">0</p>
+                        <p id="ledger-unreconciled-subtitle" class="mt-3 text-[12px] text-gray-500">No explicit gaps found</p>
+                        <p id="ledger-unreconciled-risk" class="mt-3 font-mono text-[12px] font-semibold text-gray-700">Rp 0 at risk</p>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <section id="ledger-attention-section" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                     <div class="px-5 py-4 border-b border-gray-100">
-                        <h2 class="text-[16px] font-bold text-gray-900">Ledger Activity</h2>
-                        <p class="text-[12px] text-gray-500 mt-1">Transaction activity, status mix, and type quality for audit review.</p>
-                    </div>
-                    <div id="ledger-activity-grid" class="grid grid-cols-1 xl:grid-cols-5 divide-y xl:divide-y-0 xl:divide-x divide-gray-100 items-stretch">
-                        <div id="ledger-volume-col" class="p-4 xl:col-span-5 flex flex-col">
-                            <div class="flex items-center justify-between gap-3 mb-3">
-                                <div>
-                                    <h3 class="text-[14px] font-bold text-gray-900">Transaction Volume Over Time</h3>
-                                    <p class="text-[12px] text-gray-500">Count of ledger records by transaction date</p>
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h2 class="text-[16px] font-semibold text-[#0B0F19]">Needs your attention</h2>
+                                    <span id="ledger-attention-count" class="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[12px] font-semibold text-gray-500">0</span>
                                 </div>
+                                <p class="mt-1 text-[12px] text-gray-500">Fix records that can distort exports, reports, or audit review.</p>
                             </div>
-                            <div id="ledger-volume-chart" class="flex-1"></div>
+                            <p id="ledger-attention-period-note" class="text-[12px] font-medium text-gray-500">Current filtered period</p>
                         </div>
-                        <div id="ledger-top-vendor-spend-section" class="hidden p-4 xl:col-span-2">
-                            <h3 class="text-[14px] font-bold text-gray-900">Top Vendor Spend</h3>
-                            <p class="text-[12px] text-gray-500 mb-2">Distribution by expense-side vendor</p>
-                            <div id="ledger-top-vendor-spend-list" class="space-y-2"></div>
-                        </div>
+                        <div id="ledger-attention-chip-row" class="mt-4 flex flex-wrap gap-2"></div>
                     </div>
-                </div>
+                    <div id="ledger-attention-list" class="divide-y divide-gray-100"></div>
+                    <div id="ledger-attention-footer" class="hidden border-t border-gray-100 bg-gray-50/50 px-5 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p id="ledger-attention-footer-copy" class="text-[12px] text-gray-500">Showing top 4 issues</p>
+                        <button id="ledger-attention-toggle" type="button" data-action="ledger-attention-toggle" class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                            Show more
+                        </button>
+                    </div>
+                </section>
 
                 <!-- Ledger Table Card -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                     <div id="ledger-empty-state" class="hidden"></div>
                     <div id="ledger-filter-chip-row" class="hidden px-6 py-3 border-b border-gray-100 bg-gray-50/50 flex flex-wrap items-center gap-2"></div>
                     
@@ -251,6 +275,29 @@
                             <button id="ledger-prev-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
                             <span id="ledger-page-indicator" class="min-w-16 text-center text-[12px] font-bold text-gray-600">1 / 1</span>
                             <button id="ledger-next-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="ledger-activity-section" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-100">
+                        <h2 class="text-[16px] font-semibold text-gray-900">Ledger Activity</h2>
+                        <p class="text-[12px] text-gray-500 mt-1">Secondary activity context for the currently filtered ledger.</p>
+                    </div>
+                    <div id="ledger-activity-grid" class="grid grid-cols-1 xl:grid-cols-5 divide-y xl:divide-y-0 xl:divide-x divide-gray-100 items-stretch">
+                        <div id="ledger-volume-col" class="p-4 xl:col-span-5 flex flex-col">
+                            <div class="flex items-center justify-between gap-3 mb-3">
+                                <div>
+                                    <h3 class="text-[14px] font-bold text-gray-900">Transaction Volume Over Time</h3>
+                                    <p class="text-[12px] text-gray-500">Count of ledger records by transaction date</p>
+                                </div>
+                            </div>
+                            <div id="ledger-volume-chart" class="flex-1"></div>
+                        </div>
+                        <div id="ledger-top-vendor-spend-section" class="hidden p-4 xl:col-span-2">
+                            <h3 class="text-[14px] font-bold text-gray-900">Top Vendor Spend</h3>
+                            <p class="text-[12px] text-gray-500 mb-2">Distribution by expense-side vendor</p>
+                            <div id="ledger-top-vendor-spend-list" class="space-y-2"></div>
                         </div>
                     </div>
                 </div>
@@ -394,8 +441,10 @@
         let currentLedgerTransactions = [];
         const LEDGER_LOAD_LIMIT = 1000;
         const LEDGER_PAGE_SIZE = 10;
+        const LEDGER_ATTENTION_LIMIT = 4;
         let ledgerSortKey = 'date';
         let ledgerSortDirection = 'desc';
+        let ledgerAttentionExpanded = false;
         const linkedLedgerSearch = new URLSearchParams(window.location.search).get('search') || '';
         let ledgerSearchTerm = linkedLedgerSearch;
         let activeLedgerVendorFilter = null;
@@ -836,6 +885,7 @@
             );
             renderLedgerFilterChips();
             renderLedgerSummaryCards(currentLedgerTransactions);
+            renderLedgerAttention(currentLedgerTransactions);
             renderLedgerActivity(currentLedgerTransactions);
             if (downloadBtn) downloadBtn.disabled = currentLedgerTransactions.length === 0;
             renderLedgerTable();
@@ -1068,23 +1118,153 @@
             return 'text-gray-700';
         }
 
-        function getLedgerSummary(transactions) {
-            return transactions.reduce((summary, transaction) => {
-                const category = String(transaction.category || '').trim().toLowerCase();
-                const status = String(transaction.status || '').trim().toLowerCase();
+        const LEDGER_ISSUE_DEFS = {
+            missingReceipt: {
+                label: 'Missing receipt',
+                reason: 'Receipt proof is missing for this record.',
+                badgeClass: 'border-red-200 bg-red-50 text-red-700',
+                dotClass: 'bg-red-500',
+                priority: 1
+            },
+            uncategorized: {
+                label: 'Uncategorized',
+                reason: 'Category is missing or too broad for reporting.',
+                badgeClass: 'border-amber-200 bg-amber-50 text-amber-700',
+                dotClass: 'bg-amber-500',
+                priority: 2
+            },
+            pendingApproval: {
+                label: 'Pending approval',
+                reason: 'This record is still waiting for approval or review.',
+                badgeClass: 'border-amber-200 bg-amber-50 text-amber-700',
+                dotClass: 'bg-amber-500',
+                priority: 3
+            },
+            unreconciled: {
+                label: 'Unreconciled',
+                reason: 'This record has an explicit reconciliation gap.',
+                badgeClass: 'border-blue-200 bg-blue-50 text-blue-700',
+                dotClass: 'bg-blue-500',
+                priority: 4
+            }
+        };
+        const LEDGER_ISSUE_ORDER = ['missingReceipt', 'uncategorized', 'pendingApproval', 'unreconciled'];
 
-                summary.totalTransactions += 1;
-                if (status === 'missing receipt') summary.missingReceipts += 1;
-                if (['pending approval', 'pending', 'waiting approval'].includes(status)) summary.pendingApproval += 1;
-                if (!category || ['unknown', 'uncategorized'].includes(category)) summary.uncategorized += 1;
-                return summary;
-            }, {
-                totalTransactions: 0,
-                unreconciled: 0,
-                missingReceipts: 0,
-                pendingApproval: 0,
-                uncategorized: 0
+        function normalizeLedgerValue(value) {
+            return String(value ?? '')
+                .trim()
+                .toLowerCase()
+                .replace(/[_-]+/g, ' ')
+                .replace(/\s+/g, ' ');
+        }
+
+        function hasOwnValue(record, key) {
+            return Object.prototype.hasOwnProperty.call(record || {}, key);
+        }
+
+        function isMissingReceiptIssue(record) {
+            return normalizeLedgerValue(record?.status) === 'missing receipt';
+        }
+
+        function isUncategorizedIssue(record) {
+            const category = normalizeLedgerValue(record?.category);
+            return !category || ['uncategorized', 'unknown', 'unspecified', 'others'].includes(category);
+        }
+
+        function hasApprovalSignal(record) {
+            return ['approval_status', 'approvalStatus', 'approval_state', 'approvalState', 'approved_at', 'approvedAt']
+                .some(key => hasOwnValue(record, key));
+        }
+
+        function isPendingApprovalIssue(record) {
+            const status = normalizeLedgerValue(record?.status);
+            const approvalValues = [
+                record?.approval_status,
+                record?.approvalStatus,
+                record?.approval_state,
+                record?.approvalState
+            ].map(normalizeLedgerValue);
+
+            return ['pending approval', 'pending', 'waiting approval'].includes(status)
+                || approvalValues.some(value => ['pending approval', 'pending', 'waiting approval', 'awaiting approval', 'needs approval'].includes(value));
+        }
+
+        function hasReconciliationSignal(record) {
+            return [
+                'reconciliation_status',
+                'reconciliationStatus',
+                'reconcile_status',
+                'reconcileStatus',
+                'is_reconciled',
+                'isReconciled',
+                'reconciled',
+                'reconciled_at',
+                'reconciledAt'
+            ].some(key => hasOwnValue(record, key));
+        }
+
+        function isUnreconciledIssue(record) {
+            const status = normalizeLedgerValue(record?.status);
+            const reconciliationValues = [
+                record?.reconciliation_status,
+                record?.reconciliationStatus,
+                record?.reconcile_status,
+                record?.reconcileStatus
+            ].map(normalizeLedgerValue);
+
+            return status === 'unreconciled'
+                || record?.is_reconciled === false
+                || record?.isReconciled === false
+                || record?.reconciled === false
+                || reconciliationValues.some(value => ['unreconciled', 'not reconciled', 'needs reconciliation', 'reconciliation required'].includes(value));
+        }
+
+        function getLedgerRecordIssues(record) {
+            return LEDGER_ISSUE_ORDER.filter(type => {
+                if (type === 'missingReceipt') return isMissingReceiptIssue(record);
+                if (type === 'uncategorized') return isUncategorizedIssue(record);
+                if (type === 'pendingApproval') return isPendingApprovalIssue(record);
+                if (type === 'unreconciled') return isUnreconciledIssue(record);
+                return false;
             });
+        }
+
+        function getLedgerSummary(transactions) {
+            const summary = {
+                totalTransactions: 0,
+                issueCount: 0,
+                cleanRecords: 0,
+                trustScore: 100,
+                totalRiskAmount: 0,
+                hasApprovalSupport: false,
+                hasReconciliationSupport: false,
+                missingReceipt: { count: 0, amount: 0 },
+                uncategorized: { count: 0, amount: 0 },
+                pendingApproval: { count: 0, amount: 0 },
+                unreconciled: { count: 0, amount: 0 }
+            };
+
+            transactions.forEach(transaction => {
+                const amount = Math.abs(getRecordAmount(transaction));
+                const issues = getLedgerRecordIssues(transaction);
+                summary.totalTransactions += 1;
+                if (hasApprovalSignal(transaction) || isPendingApprovalIssue(transaction)) summary.hasApprovalSupport = true;
+                if (hasReconciliationSignal(transaction) || isUnreconciledIssue(transaction)) summary.hasReconciliationSupport = true;
+                if (issues.length) summary.totalRiskAmount += amount;
+
+                issues.forEach(type => {
+                    summary[type].count += 1;
+                    summary[type].amount += amount;
+                    summary.issueCount += 1;
+                });
+            });
+
+            summary.cleanRecords = Math.max(0, summary.totalTransactions - summary.issueCount);
+            summary.trustScore = summary.totalTransactions > 0
+                ? Math.max(0, Math.round(100 - (summary.issueCount / summary.totalTransactions) * 100))
+                : 100;
+            if (!Number.isFinite(summary.trustScore)) summary.trustScore = 100;
+            return summary;
         }
 
         function setSummaryText(id, value) {
@@ -1092,13 +1272,191 @@
             if (element) element.textContent = value;
         }
 
+        function setTrustProgress(score) {
+            const progress = document.getElementById('ledger-trust-progress');
+            if (!progress) return;
+            const safeScore = Number.isFinite(score) ? Math.min(Math.max(score, 0), 100) : 100;
+            progress.style.width = `${safeScore}%`;
+            progress.className = `h-full rounded-full transition-all duration-200 ${
+                safeScore >= 90 ? 'bg-green-500' : (safeScore >= 75 ? 'bg-amber-500' : 'bg-red-500')
+            }`;
+        }
+
+        function setTrustStatus(summary) {
+            const status = document.getElementById('ledger-trust-status');
+            if (!status) return;
+
+            if (summary.totalTransactions === 0) {
+                status.textContent = 'No data';
+                status.className = 'rounded-full border border-gray-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500';
+                setSummaryText('ledger-trust-subtitle', 'No data yet');
+                return;
+            }
+
+            const score = summary.trustScore;
+            const label = score >= 90 ? 'Clean' : (score >= 75 ? 'Needs review' : 'High risk');
+            const className = score >= 90
+                ? 'rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-green-700'
+                : (score >= 75
+                    ? 'rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-amber-700'
+                    : 'rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-red-700');
+            status.textContent = label;
+            status.className = className;
+            setSummaryText('ledger-trust-subtitle', `${summary.issueCount.toLocaleString('id-ID')} issue${summary.issueCount === 1 ? '' : 's'} found`);
+        }
+
         function renderLedgerSummaryCards(transactions) {
             const summary = getLedgerSummary(transactions);
-            setSummaryText('ledger-total-count', summary.totalTransactions.toLocaleString());
-            setSummaryText('ledger-unreconciled-count', summary.unreconciled.toLocaleString());
-            setSummaryText('ledger-missing-receipts-count', summary.missingReceipts.toLocaleString());
-            setSummaryText('ledger-pending-approval-count', summary.pendingApproval.toLocaleString());
-            setSummaryText('ledger-uncategorized-count', summary.uncategorized.toLocaleString());
+            setSummaryText('ledger-trust-score', `${summary.trustScore}%`);
+            setSummaryText('ledger-total-count', summary.totalTransactions.toLocaleString('id-ID'));
+            setSummaryText('ledger-clean-count', summary.cleanRecords.toLocaleString('id-ID'));
+            setSummaryText('ledger-total-risk-amount', formatCurrencyIDR(summary.totalRiskAmount));
+            setSummaryText('ledger-unreconciled-count', summary.unreconciled.count.toLocaleString('id-ID'));
+            setSummaryText('ledger-missing-receipts-count', summary.missingReceipt.count.toLocaleString('id-ID'));
+            setSummaryText('ledger-pending-approval-count', summary.pendingApproval.count.toLocaleString('id-ID'));
+            setSummaryText('ledger-uncategorized-count', summary.uncategorized.count.toLocaleString('id-ID'));
+            setSummaryText('ledger-missing-receipts-risk', `${formatCurrencyIDR(summary.missingReceipt.amount)} at risk`);
+            setSummaryText('ledger-uncategorized-risk', `${formatCurrencyIDR(summary.uncategorized.amount)} at risk`);
+            setSummaryText('ledger-pending-approval-risk', `${formatCurrencyIDR(summary.pendingApproval.amount)} at risk`);
+            setSummaryText('ledger-unreconciled-risk', `${formatCurrencyIDR(summary.unreconciled.amount)} at risk`);
+            setSummaryText('ledger-pending-approval-subtitle', summary.pendingApproval.count > 0 ? 'Waiting for review' : (summary.hasApprovalSupport ? 'No pending approvals' : 'No approval status found'));
+            setSummaryText('ledger-unreconciled-subtitle', summary.unreconciled.count > 0 ? 'Need matching review' : (summary.hasReconciliationSupport ? 'No explicit gaps found' : 'Not tracked yet'));
+            setTrustProgress(summary.trustScore);
+            setTrustStatus(summary);
+        }
+
+        function renderAttentionChip(type, summary) {
+            const def = LEDGER_ISSUE_DEFS[type];
+            const data = summary[type] || { count: 0 };
+            return `
+                <span class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[12px] font-medium text-gray-600">
+                    <span class="h-1.5 w-1.5 rounded-full ${def.dotClass}" aria-hidden="true"></span>
+                    ${def.label}
+                    <span class="rounded-full bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-gray-600">${Number(data.count || 0).toLocaleString('id-ID')}</span>
+                </span>
+            `;
+        }
+
+        function buildLedgerAttentionItems(transactions) {
+            return transactions
+                .map(transaction => {
+                    const issues = getLedgerRecordIssues(transaction);
+                    if (!issues.length) return null;
+                    const primaryType = issues[0];
+                    return {
+                        transaction,
+                        issues,
+                        primaryType,
+                        priority: LEDGER_ISSUE_DEFS[primaryType].priority,
+                        amount: Math.abs(getRecordAmount(transaction)),
+                        timestamp: getTimestampMs(transaction)
+                    };
+                })
+                .filter(Boolean)
+                .sort((a, b) => {
+                    if (a.priority !== b.priority) return a.priority - b.priority;
+                    if (a.amount !== b.amount) return b.amount - a.amount;
+                    return b.timestamp - a.timestamp;
+                });
+        }
+
+        function formatAttentionDate(record) {
+            const date = record?.timestamp?.toDate?.();
+            return date
+                ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                : 'No date';
+        }
+
+        function renderLedgerAttentionEmpty() {
+            const list = document.getElementById('ledger-attention-list');
+            const footer = document.getElementById('ledger-attention-footer');
+            if (!list) return;
+            list.innerHTML = `
+                <div class="flex flex-col gap-3 px-5 py-6 sm:flex-row sm:items-center">
+                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-green-200 bg-green-50 text-green-700">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-[14px] font-semibold text-[#0B0F19]">Ledger looks clean</h3>
+                        <p class="mt-1 text-[12px] text-gray-500">No missing receipts, uncategorized records, pending approvals, or unreconciled items found for this period.</p>
+                    </div>
+                </div>
+            `;
+            footer?.classList.add('hidden');
+        }
+
+        function renderLedgerAttentionRow(item) {
+            const record = item.transaction;
+            const def = LEDGER_ISSUE_DEFS[item.primaryType];
+            const vendorName = getVendorDisplayName(record);
+            const category = String(record?.category ?? '').trim();
+            const actionLabel = item.primaryType === 'missingReceipt' ? 'Attach receipt' : 'Review';
+            const extraIssueCount = item.issues.length - 1;
+            const extraIssueCopy = extraIssueCount > 0
+                ? `<span class="text-[12px] font-medium text-gray-400">+${extraIssueCount} more</span>`
+                : '';
+
+            return `
+                <div class="grid grid-cols-1 gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(180px,280px)_auto] lg:items-center" data-ledger-attention-id="${escapeHtml(record.id)}">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-[12px] font-semibold ${def.badgeClass}">
+                                ${def.label}
+                            </span>
+                            ${extraIssueCopy}
+                        </div>
+                        <p class="mt-2 truncate text-[14px] font-semibold text-[#0B0F19]" title="${escapeHtml(vendorName)}">${escapeHtml(vendorName)}</p>
+                        <p class="mt-1 text-[12px] text-gray-500">${def.reason}</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 text-[12px] text-gray-500 lg:block lg:space-y-1">
+                        <span>${escapeHtml(formatAttentionDate(record))}</span>
+                        ${category ? `<span class="hidden text-gray-300 lg:inline">&middot;</span><span>${escapeHtml(category)}</span>` : ''}
+                    </div>
+                    <div class="flex items-center justify-between gap-3 sm:justify-end">
+                        <p class="font-mono text-[14px] font-semibold ${getAmountClass(record)} whitespace-nowrap">${formatTransactionAmount(record)}</p>
+                        <button type="button" data-action="ledger-attention-review" data-record-id="${escapeHtml(record.id)}" class="inline-flex flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">
+                            ${actionLabel}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderLedgerAttention(transactions) {
+            const summary = getLedgerSummary(transactions);
+            const items = buildLedgerAttentionItems(transactions);
+            const list = document.getElementById('ledger-attention-list');
+            const chipRow = document.getElementById('ledger-attention-chip-row');
+            const footer = document.getElementById('ledger-attention-footer');
+            const footerCopy = document.getElementById('ledger-attention-footer-copy');
+            const toggle = document.getElementById('ledger-attention-toggle');
+
+            setSummaryText('ledger-attention-count', items.length.toLocaleString('id-ID'));
+            setSummaryText('ledger-attention-period-note', `${summary.totalTransactions.toLocaleString('id-ID')} filtered record${summary.totalTransactions === 1 ? '' : 's'}`);
+            if (chipRow) chipRow.innerHTML = LEDGER_ISSUE_ORDER.map(type => renderAttentionChip(type, summary)).join('');
+            if (!list) return;
+
+            if (!items.length) {
+                renderLedgerAttentionEmpty();
+                return;
+            }
+
+            const visibleItems = ledgerAttentionExpanded ? items : items.slice(0, LEDGER_ATTENTION_LIMIT);
+            list.innerHTML = visibleItems.map(renderLedgerAttentionRow).join('');
+
+            if (items.length > LEDGER_ATTENTION_LIMIT) {
+                footer?.classList.remove('hidden');
+                if (footerCopy) {
+                    footerCopy.textContent = ledgerAttentionExpanded
+                        ? `Showing all ${items.length.toLocaleString('id-ID')} issue record${items.length === 1 ? '' : 's'}`
+                        : `Showing top ${LEDGER_ATTENTION_LIMIT} of ${items.length.toLocaleString('id-ID')} issue record${items.length === 1 ? '' : 's'}`;
+                }
+                if (toggle) toggle.textContent = ledgerAttentionExpanded ? 'Show less' : 'Show more';
+            } else {
+                footer?.classList.add('hidden');
+            }
         }
 
         function formatActivityDate(date) {
@@ -1404,6 +1762,32 @@
                 typeSelect?.setValue('');
                 applyLedgerMonthFilter();
             }
+        });
+
+        function findLedgerTransactionById(txId) {
+            return currentLedgerTransactions.find(transaction => transaction.id === txId)
+                || allLedgerTransactions.find(transaction => transaction.id === txId)
+                || null;
+        }
+
+        document.getElementById('ledger-attention-section')?.addEventListener('click', (event) => {
+            const toggleBtn = event.target.closest('[data-action="ledger-attention-toggle"]');
+            if (toggleBtn) {
+                ledgerAttentionExpanded = !ledgerAttentionExpanded;
+                renderLedgerAttention(currentLedgerTransactions);
+                return;
+            }
+
+            const reviewBtn = event.target.closest('[data-action="ledger-attention-review"]');
+            if (!reviewBtn) return;
+            const row = findLedgerTransactionById(reviewBtn.dataset.recordId || '');
+            if (!row) {
+                window.showToast?.('That transaction is not in the currently loaded ledger range.', 'info');
+                return;
+            }
+            highlightLedgerRow(row.id);
+            document.body.classList.add('overflow-hidden');
+            window.openTxDetailDrawer(row);
         });
 
         document.getElementById('ledger-table-body')?.addEventListener('click', (event) => {
@@ -1734,7 +2118,7 @@
                     if (txInAll) { txInAll.receipt_url = receiptUrl; txInAll.status = 'Completed'; }
                     const txInCurrent = currentLedgerTransactions.find(t => t.id === row.id);
                     if (txInCurrent) { txInCurrent.receipt_url = receiptUrl; txInCurrent.status = 'Completed'; }
-                    renderLedgerTable();
+                    applyLedgerMonthFilter();
                     window.showToast('Receipt attached successfully.', 'success');
                 } catch (err) {
                     window.showToast('Failed to upload receipt: ' + err.message, 'error');
