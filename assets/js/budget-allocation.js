@@ -15,6 +15,8 @@ const state = {
     selectedGroup: null
 };
 
+let groupPaginator = null;
+
 function el(id) {
     return document.getElementById(id);
 }
@@ -352,11 +354,38 @@ function renderGroupSummary() {
     }).join('');
 }
 
+function renderGroupRow(group, allocated) {
+    const percent = allocated > 0 ? Math.max(0, Math.min(100, group.spent_reserved_total / allocated * 100)) : 0;
+    const status = STATUS_BADGE[group.status] || STATUS_BADGE.healthy;
+    const selected = state.selectedGroup === group.name;
+    const statusColor = group.status === 'exceeded' ? 'text-red-600' : group.status === 'at_risk' ? 'text-orange-600' : group.status === 'watch' ? 'text-amber-600' : 'text-emerald-600';
+    return `
+        <button type="button" class="allocation-group-row ${selected ? 'is-selected' : ''}" data-group-name="${escapeHtml(group.name)}">
+            <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                    <p class="font-semibold text-[12px] text-gray-900 truncate">${escapeHtml(group.name)}</p>
+                    <p class="mt-0.5 text-[10px] text-gray-400">${group.record_count} record${group.record_count === 1 ? '' : 's'} · latest ${escapeHtml(formatDate(group.latest_record_date))}</p>
+                </div>
+                <p class="font-mono text-[12px] font-bold text-gray-900 flex-shrink-0">${formatRp(group.spent_reserved_total)}</p>
+            </div>
+            <div class="mt-2 h-1 rounded-full bg-gray-100 overflow-hidden">
+                <div class="h-full rounded-full ${status.bar}" style="width: ${percent}%"></div>
+            </div>
+            <div class="mt-1.5 flex items-center gap-2 text-[10px] text-gray-500">
+                <span class="font-mono">${formatPercent(percent)} of allocation</span>
+                <span class="text-gray-300">·</span>
+                <span class="${statusColor} font-semibold">${escapeHtml(status.label)}</span>
+            </div>
+        </button>
+    `;
+}
+
 function renderGroupList() {
     const groups = state.data?.groups || [];
     const allocated = Math.max(0, Number(state.allocation?.allocated_amount) || 0);
     el('allocation-group-count').textContent = groups.length ? `${groups.length} group${groups.length === 1 ? '' : 's'}` : '';
     if (!groups.length) {
+        groupPaginator?.setRows([], () => {});
         el('allocation-groups').innerHTML = `
             <div class="px-6 py-10 text-center text-[13px] text-gray-500">
                 No spending groups yet. Matched vendors or categories will appear here once records exist.
@@ -365,31 +394,9 @@ function renderGroupList() {
         return;
     }
 
-    el('allocation-groups').innerHTML = groups.map(group => {
-        const percent = allocated > 0 ? Math.max(0, Math.min(100, group.spent_reserved_total / allocated * 100)) : 0;
-        const status = STATUS_BADGE[group.status] || STATUS_BADGE.healthy;
-        const selected = state.selectedGroup === group.name;
-        const statusColor = group.status === 'exceeded' ? 'text-red-600' : group.status === 'at_risk' ? 'text-orange-600' : group.status === 'watch' ? 'text-amber-600' : 'text-emerald-600';
-        return `
-            <button type="button" class="allocation-group-row ${selected ? 'is-selected' : ''}" data-group-name="${escapeHtml(group.name)}">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="min-w-0">
-                        <p class="font-semibold text-[12px] text-gray-900 truncate">${escapeHtml(group.name)}</p>
-                        <p class="mt-0.5 text-[10px] text-gray-400">${group.record_count} record${group.record_count === 1 ? '' : 's'} · latest ${escapeHtml(formatDate(group.latest_record_date))}</p>
-                    </div>
-                    <p class="font-mono text-[12px] font-bold text-gray-900 flex-shrink-0">${formatRp(group.spent_reserved_total)}</p>
-                </div>
-                <div class="mt-2 h-1 rounded-full bg-gray-100 overflow-hidden">
-                    <div class="h-full rounded-full ${status.bar}" style="width: ${percent}%"></div>
-                </div>
-                <div class="mt-1.5 flex items-center gap-2 text-[10px] text-gray-500">
-                    <span class="font-mono">${formatPercent(percent)} of allocation</span>
-                    <span class="text-gray-300">·</span>
-                    <span class="${statusColor} font-semibold">${escapeHtml(status.label)}</span>
-                </div>
-            </button>
-        `;
-    }).join('');
+    groupPaginator.setRows(groups, visible => {
+        el('allocation-groups').innerHTML = visible.map(group => renderGroupRow(group, allocated)).join('');
+    });
 }
 
 function renderRelatedRecords() {
@@ -434,13 +441,25 @@ function renderRelatedRecords() {
 }
 
 function wireInteractions() {
+    groupPaginator = window.createTablePaginator({
+        pageSize: 5,
+        label: 'groups',
+        paginationId: 'allocation-group-pagination',
+        summaryId: 'allocation-group-page-summary',
+        indicatorId: 'allocation-group-page-indicator',
+        prevBtnId: 'allocation-group-prev',
+        nextBtnId: 'allocation-group-next'
+    });
+
     document.addEventListener('click', event => {
         const groupButton = event.target.closest('[data-group-name]');
         if (!groupButton || !el('allocation-content')?.contains(groupButton)) return;
         state.selectedGroup = groupButton.dataset.groupName === state.selectedGroup
             ? null
             : groupButton.dataset.groupName;
-        renderGroupList();
+        // Selection only toggles the is-selected class on existing rows, so
+        // refresh the current page in place instead of resetting to page 1.
+        groupPaginator.refresh();
         renderRelatedRecords();
     });
 }

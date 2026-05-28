@@ -150,8 +150,9 @@
                         </div>
                     </section>
 
-                    <section class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.43fr)] gap-6">
-                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-w-0">
+                    <section class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.43fr)] gap-6 items-stretch">
+                        <!-- Spending groups: 5 rows/page; its height drives the row -->
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-w-0 flex flex-col">
                             <div class="px-5 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
                                 <div>
                                     <h2 class="text-[14px] font-bold text-gray-900">Spending groups</h2>
@@ -159,16 +160,29 @@
                                 </div>
                                 <p id="allocation-group-count" class="text-[12px] text-gray-400"></p>
                             </div>
-                            <div id="allocation-groups" class="divide-y divide-gray-100"></div>
+                            <div id="allocation-groups" class="divide-y divide-gray-100 flex-1"></div>
+                            <div id="allocation-group-pagination" class="hidden border-t border-gray-100 bg-gray-50/50 px-5 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <p id="allocation-group-page-summary" class="text-[12px] font-medium text-gray-500">Showing 0 groups</p>
+                                <div class="flex items-center gap-2">
+                                    <button id="allocation-group-prev" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+                                    <span id="allocation-group-page-indicator" class="min-w-16 text-center text-[12px] font-bold text-gray-600">1 / 1</span>
+                                    <button id="allocation-group-next" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+                                </div>
+                            </div>
                         </div>
 
-                        <aside class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-w-0">
-                            <div class="px-5 sm:px-6 py-4 border-b border-gray-100">
+                        <!-- Related Records: matches Spending groups height; the
+                             scroll list is absolutely positioned so it can't
+                             dictate the grid row height (it follows, not leads). -->
+                        <aside class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-w-0 flex flex-col">
+                            <div class="px-5 sm:px-6 py-4 border-b border-gray-100 flex-shrink-0">
                                 <h2 id="allocation-record-title" class="text-[14px] font-bold text-gray-900">Related Records</h2>
                                 <p id="allocation-record-subtitle" class="text-[12px] text-gray-400 mt-0.5">Showing all matched records</p>
                             </div>
-                            <div id="allocation-records" class="max-h-[560px] overflow-y-auto"></div>
-                            <p id="allocation-record-cap" class="px-5 sm:px-6 py-3 text-[12px] text-gray-400"></p>
+                            <div class="relative flex-1 min-h-0">
+                                <div id="allocation-records" class="absolute inset-0 overflow-y-auto"></div>
+                            </div>
+                            <p id="allocation-record-cap" class="px-5 sm:px-6 py-3 text-[12px] text-gray-400 flex-shrink-0 border-t border-gray-100"></p>
                         </aside>
                     </section>
                 </div>
