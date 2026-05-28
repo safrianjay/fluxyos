@@ -854,6 +854,18 @@
     color: #ea580c;
 }
 
+.fluxy-tour-popover p.fluxy-learn-promoter-hint {
+    margin-top: 10px;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Match the spotlight ring to the card's own 18px radius so it hugs cleanly. */
+.platform-learning-card.fluxy-tour-highlight {
+    border-radius: 18px;
+}
+
 .fluxy-tour-highlight {
     position: relative !important;
     z-index: 95 !important;
