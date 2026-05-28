@@ -383,8 +383,8 @@ must never bypass or replace the onboarding gate.
 | `active_tour` | string \| null | Current tour intent, if any |
 | `updated_at` | Firestore Timestamp | Server timestamp for the latest mutation |
 
-Valid tour IDs: `overview`, `ledger`, `bills`, `fluxy_ai`, `revenue_sync`,
-`subscriptions`.
+Valid tour IDs: `overview`, `ledger`, `bills`, `budgets`, `fluxy_ai`,
+`revenue_sync`, `subscriptions`.
 
 `DataService` exposes `getPlatformLearningState`, `savePlatformLearningState`,
 `markPlatformTourStarted`, `markPlatformTourCompleted`,

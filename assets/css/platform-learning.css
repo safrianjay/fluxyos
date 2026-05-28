@@ -200,6 +200,23 @@
     background: #ffffff;
 }
 
+.platform-learning-card.is-next-focus {
+    animation: platformLearningNextFocus 2.4s ease-out 1;
+}
+
+@keyframes platformLearningNextFocus {
+    0%   { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); }
+    18%  { box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.45); }
+    100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .platform-learning-card.is-next-focus {
+        animation: none;
+        box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.4);
+    }
+}
+
 .platform-learning-card.is-complete .platform-learning-card-chip {
     border-color: #e5e7eb;
     color: #334155;
@@ -284,6 +301,9 @@
 .pl-mini-status-pill,
 .pl-mini-channel,
 .pl-mini-renewal-pill,
+.pl-mini-budget-bar,
+.pl-mini-budget-card,
+.pl-mini-budget-pill,
 .pl-mini-badge {
     position: absolute;
     box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
@@ -496,6 +516,61 @@
     font-weight: 800;
     line-height: 1.25;
     padding: 12px 14px;
+}
+
+.pl-mini-budget-bar {
+    left: 58px;
+    top: 40px;
+    width: 178px;
+    height: 22px;
+    display: flex;
+    gap: 3px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #eef2f7;
+}
+
+.pl-mini-budget-bar span {
+    height: 100%;
+}
+
+.pl-mini-budget-bar span:nth-child(1) { background: #fdba74; }
+.pl-mini-budget-bar span:nth-child(2) { background: #93c5fd; }
+.pl-mini-budget-bar span:nth-child(3) { background: #6ee7b7; }
+
+.pl-mini-budget-card {
+    left: 58px;
+    top: 76px;
+    width: 132px;
+    height: 52px;
+    border: 1px solid #dbe4ef;
+    border-radius: 14px;
+    background: #ffffff;
+    padding: 12px 14px;
+    display: grid;
+    gap: 8px;
+    align-content: center;
+}
+
+.pl-mini-budget-card span {
+    height: 9px;
+    border-radius: 5px;
+    background: #e2e8f0;
+}
+
+.pl-mini-budget-card span:nth-child(1) { width: 70%; }
+.pl-mini-budget-card span:nth-child(2) { width: 46%; }
+
+.pl-mini-budget-pill {
+    right: 50px;
+    bottom: 34px;
+    border: 1px solid #fdba74;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #c2410c;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 7px 12px;
 }
 
 .platform-learning-visual-fluxy-ai {

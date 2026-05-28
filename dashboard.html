@@ -442,7 +442,7 @@
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { applyToPage } from "./assets/js/onboarding-gate.js";
-        import { renderQuickStartLearning, continuePendingTourIfAny } from "./assets/js/platform-learning.js";
+        import { renderQuickStartLearning, continuePendingTourIfAny, focusLearningSection } from "./assets/js/platform-learning.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -472,6 +472,10 @@
                 }
                 if (typeof loadDashboard === 'function') await loadDashboard();
                 await renderQuickStartLearning('quick-start-container', { userId: user.uid });
+                if (sessionStorage.getItem('fluxy_learning_focus')) {
+                    sessionStorage.removeItem('fluxy_learning_focus');
+                    focusLearningSection();
+                }
                 await continuePendingTourIfAny(user.uid);
             }
         });

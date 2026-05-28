@@ -13,7 +13,8 @@ const FIREBASE_CONFIG = {
 };
 
 const PENDING_TOUR_KEY = 'fluxy_pending_tour';
-const TOUR_IDS = ['overview', 'fluxy_ai', 'ledger', 'bills', 'revenue_sync', 'subscriptions'];
+const LEARNING_FOCUS_KEY = 'fluxy_learning_focus';
+const TOUR_IDS = ['overview', 'fluxy_ai', 'ledger', 'bills', 'budgets', 'revenue_sync', 'subscriptions'];
 
 const TOUR_CONFIG = {
     overview: {
@@ -57,6 +58,20 @@ const TOUR_CONFIG = {
             { selector: '[data-tour-target="bill-timeline"]', title: 'Payment timeline', body: 'Bills are grouped by urgency so you know what to review first.' },
             { selector: '#bill-empty-state:not(.hidden), [data-tour-target="bill-table"]', title: 'Bills table', body: 'Review vendor, category, due date, amount, status, and available actions.' },
             { selector: '[data-tour-target="bill-action-column"]', title: 'Payment actions', body: 'Payment-like actions stay unavailable until a real handler exists.' }
+        ]
+    },
+    budgets: {
+        route: '/budget',
+        label: 'Plan and track your budget',
+        chip: 'Budgets',
+        description: 'Set a spending envelope, split allocations, and see what remains.',
+        icon: 'BG',
+        steps: [
+            { selector: '#budget-period-select', title: 'Pick a period', body: 'Each month or quarter has its own plan — choose which one you are viewing.' },
+            { selector: '#budget-total', title: 'Spending envelope', body: 'The total budget you set for the selected period.' },
+            { selector: '#budget-allocation-bar', title: 'Allocations', body: 'See how the envelope is split across Marketing, Infrastructure, Operations, and SaaS.' },
+            { selector: '#budget-spent', title: 'Spent and reserved', body: 'Actual spend plus committed bills, so you know how close you are to the limit.' },
+            { selector: '#budget-create-btn', title: 'Edit your budget', body: 'Open the wizard any time to change the envelope or rebalance allocations.' }
         ]
     },
     fluxy_ai: {
@@ -210,6 +225,17 @@ function renderCardVisual(tourId) {
             <span class="pl-mini-chat pl-mini-chat-user">Can I pay bills?</span>
             <span class="pl-mini-chat pl-mini-chat-ai">Check cash runway</span>
             <span class="pl-mini-ai-input"><span></span><span></span></span>
+        `,
+        budgets: `
+            <span class="pl-mini-budget-bar">
+                <span style="width: 40%;"></span>
+                <span style="width: 26%;"></span>
+                <span style="width: 18%;"></span>
+            </span>
+            <span class="pl-mini-budget-card">
+                <span></span><span></span>
+            </span>
+            <span class="pl-mini-budget-pill">Remaining</span>
         `,
         revenue_sync: `
             <span class="pl-mini-channel pl-mini-channel-a">Storefront</span>
@@ -588,7 +614,14 @@ async function finishTour(result) {
         window.showToast?.('Could not save guide progress.', 'info');
     }
     closeActiveTour(true);
-    refreshLearningSection(userId);
+
+    if (normalizePath() !== '/dashboard') {
+        sessionStorage.setItem(LEARNING_FOCUS_KEY, '1');
+        window.location.href = '/dashboard';
+        return;
+    }
+    await refreshLearningSection(userId);
+    focusLearningSection();
 }
 
 function closeActiveTour(restoreFocus = true) {
@@ -606,9 +639,20 @@ function closeActiveTour(restoreFocus = true) {
     lastFocusedElement = null;
 }
 
-function refreshLearningSection(userId) {
+async function refreshLearningSection(userId) {
     const quickStart = document.getElementById('quick-start-container');
-    if (quickStart) renderQuickStartLearning('quick-start-container', { userId });
+    if (quickStart) await renderQuickStartLearning('quick-start-container', { userId });
+}
+
+export function focusLearningSection() {
+    const container = document.getElementById('quick-start-container');
+    if (!container || container.classList.contains('hidden')) return;
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const next = container.querySelector('.platform-learning-card:not(.is-complete)');
+    if (!next) return;
+    next.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    next.classList.add('is-next-focus');
+    window.setTimeout(() => next.classList.remove('is-next-focus'), 2600);
 }
 
 function handleTourKeydown(event) {
@@ -639,5 +683,6 @@ window.FluxyPlatformLearning = {
     continuePendingTourIfAny,
     markTourCompleted,
     dismissPlatformLearning,
-    getPlatformLearningState
+    getPlatformLearningState,
+    focusLearningSection
 };

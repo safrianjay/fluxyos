@@ -408,6 +408,7 @@
         import DataService from './assets/js/db-service.js';
         import { applyToPage } from './assets/js/onboarding-gate.js';
         import { initBudgetPage } from './assets/js/budget.js';
+        import { continuePendingTourIfAny } from './assets/js/platform-learning.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -430,6 +431,7 @@
             const gated = await applyToPage(user, { pageKey: 'budgets' });
             if (gated) return;
             initBudgetPage({ ds, user });
+            await continuePendingTourIfAny(user.uid);
         });
     </script>
 </body>
