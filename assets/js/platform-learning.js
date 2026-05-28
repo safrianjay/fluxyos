@@ -718,27 +718,22 @@ function renderPromoterStep() {
 
     const tour = TOUR_CONFIG[card.dataset.platformTour] || {};
     const done = card.classList.contains('is-complete');
-    const isLast = index >= cards.length - 1;
 
+    // No forward "Next": the user advances by actually doing the spotlighted
+    // guide (the coachmark re-opens at the next one when it finishes). They can
+    // only go Back to a previous card, Skip, or click the card to start it.
     popover.innerHTML = `
         <button type="button" class="fluxy-tour-skip" data-promoter-skip>Skip</button>
         <span class="fluxy-learn-promoter-eyebrow">Getting started · ${index + 1}/${cards.length}</span>
         <h3>${tour.label || 'Quick start guide'}</h3>
         <p>${tour.description || ''}</p>
         <p class="fluxy-learn-promoter-hint">${done ? 'You already finished this guide — click it to review.' : 'Click the highlighted card to start this guide.'}</p>
-        <div class="fluxy-tour-actions">
-            <button type="button" class="fluxy-tour-secondary" data-promoter-back ${index === 0 ? 'disabled' : ''}>Back</button>
-            <button type="button" class="fluxy-tour-primary" data-promoter-next>${isLast ? 'Done' : 'Next'}</button>
-        </div>
+        ${index > 0 ? `<div class="fluxy-tour-actions"><button type="button" class="fluxy-tour-secondary" data-promoter-back>Back</button></div>` : ''}
     `;
 
     popover.querySelector('[data-promoter-skip]')?.addEventListener('click', () => closeLearningPromoter(true));
     popover.querySelector('[data-promoter-back]')?.addEventListener('click', () => {
         if (activePromoter.index > 0) { activePromoter.index -= 1; renderPromoterStep(); }
-    });
-    popover.querySelector('[data-promoter-next]')?.addEventListener('click', () => {
-        if (activePromoter.index >= activePromoter.cards.length - 1) closeLearningPromoter(false);
-        else { activePromoter.index += 1; renderPromoterStep(); }
     });
 
     // Only the spotlighted card sits above the backdrop, so a click here is a
@@ -749,7 +744,7 @@ function renderPromoterStep() {
 
     window.requestAnimationFrame(positionPromoter);
     window.setTimeout(positionPromoter, 220);
-    popover.querySelector('[data-promoter-next]')?.focus();
+    (popover.querySelector('[data-promoter-back]') || popover.querySelector('[data-promoter-skip]'))?.focus();
 }
 
 function positionPromoter() {
