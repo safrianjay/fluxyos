@@ -467,18 +467,34 @@ function renderAnnualEnvelope() {
     const annual = envelope?.annual_budget || state.annualBudgets.find(b => b.id === state.selectedAnnualId);
     el('budget-annual-title').textContent = annual?.name || annual?.period_label || 'Annual Budget';
     el('budget-annual-subtitle').textContent = formatPeriod(annual || {});
-    const items = [
-        ['Yearly Budget', envelope?.yearly_budget || 0],
-        ['Planned Periods', envelope?.planned_periods || 0],
-        ['Spent + Reserved YTD', envelope?.spent_reserved_ytd || 0],
-        ['Unplanned Capacity', envelope?.unplanned_capacity || 0]
-    ];
-    metrics.innerHTML = items.map(([label, value]) => `
-        <div class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-            <p class="text-[10px] font-bold uppercase tracking-wide text-gray-400">${escapeHtml(label)}</p>
-            <p class="mt-1 font-mono text-[13px] font-bold ${Number(value) < 0 ? 'text-red-600' : 'text-gray-900'}">${formatRp(value)}</p>
+    const yearly = Number(envelope?.yearly_budget) || 0;
+    const planned = Number(envelope?.planned_periods) || 0;
+    const open = Number(envelope?.unplanned_capacity) || 0;
+    const spent = Number(envelope?.spent_reserved_ytd) || 0;
+    const plannedPercent = yearly > 0 ? Math.max(0, Math.min(100, (planned / yearly) * 100)) : 0;
+    metrics.innerHTML = `
+        <div class="flex flex-col gap-0.5 text-[12px] sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+            <span class="inline-flex items-center gap-1.5 font-semibold text-gray-600">
+                Planned into periods
+                <button type="button" class="metric-info" aria-label="Planned into periods: total of all period budgets created under this annual envelope." data-tooltip="The total of every monthly or quarterly budget you've created under this annual envelope — how much of the yearly budget already has a period plan.">?</button>
+            </span>
+            <span class="font-mono font-bold text-gray-900 whitespace-nowrap">${formatRp(planned)} <span class="font-semibold text-gray-400">of ${formatRp(yearly)}</span></span>
         </div>
-    `).join('');
+        <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+            <div class="h-full rounded-full bg-gray-800 transition-all" style="width: ${plannedPercent}%"></div>
+        </div>
+        <div class="mt-2 flex flex-col gap-1 text-[12px] text-gray-500 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
+            <span class="inline-flex items-center gap-1.5">
+                <span class="font-mono font-bold ${open < 0 ? 'text-red-600' : 'text-gray-700'}">${formatRp(open)}</span> still open to plan
+                <button type="button" class="metric-info" aria-label="Still open to plan: yearly budget minus what is planned into periods." data-tooltip="Yearly budget minus what's already planned into periods — how much of the year you can still carve into new monthly or quarterly budgets. Negative means your period budgets exceed the annual envelope.">?</button>
+            </span>
+            <span class="hidden text-gray-300 sm:inline">·</span>
+            <span class="inline-flex items-center gap-1.5">
+                <span class="font-mono font-bold text-gray-700">${formatRp(spent)}</span> spent or reserved this year
+                <button type="button" class="metric-info" aria-label="Spent or reserved this year: actual spend plus unpaid committed bills year-to-date." data-tooltip="Money already spent (recorded transactions) plus money reserved by unpaid bills and pending payables, totalled across this year up to today.">?</button>
+            </span>
+        </div>
+    `;
 }
 
 function renderPeriodSelector() {
@@ -492,13 +508,6 @@ function renderPeriodSelector() {
         select.innerHTML = state.periodBudgets.map(b => `
             <option value="${escapeHtml(b.id)}" ${b.id === state.selectedBudgetId ? 'selected' : ''}>${escapeHtml(b.period_label || b.name || 'Period budget')} · ${escapeHtml(formatPeriodType(b.period_type))}</option>
         `).join('');
-    }
-    const monthInput = el('budget-target-month');
-    if (monthInput && state.usage?.budget?.period_start?.toDate) {
-        const start = state.usage.budget.period_start.toDate();
-        monthInput.value = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
-    } else if (monthInput && !monthInput.value) {
-        monthInput.value = getDayKey(new Date()).slice(0, 7);
     }
 }
 
@@ -827,23 +836,10 @@ function wireDrawerControls() {
         state.selectedAnnualId = e.target.value || null;
         await loadAndRender();
     });
-    el('budget-select-target-btn')?.addEventListener('click', () => {
-        const month = el('budget-target-month')?.value;
-        selectTargetPeriod(makeMonthlyTarget(month));
-    });
-    el('budget-target-quarter')?.addEventListener('change', () => {
-        const month = el('budget-target-month')?.value || getDayKey(new Date()).slice(0, 7);
-        const year = Number(month.slice(0, 4)) || new Date().getFullYear();
-        const q = Number(String(el('budget-target-quarter')?.value || 'Q1').replace('Q', '')) || 1;
-        selectTargetPeriod(makeQuarterTarget(year, q));
-    });
     el('budget-duplicate-btn')?.addEventListener('click', () => openBudgetWizard('duplicate'));
     el('budget-no-period-duplicate')?.addEventListener('click', () => openBudgetWizard('duplicate'));
     el('budget-refresh-btn')?.addEventListener('click', handleBudgetRefresh);
     el('budget-export-btn')?.addEventListener('click', handleBudgetExport);
-    document.querySelectorAll('[data-budget-period-tab]').forEach(btn => {
-        btn.addEventListener('click', () => setBudgetPeriodTab(btn));
-    });
     // The Assign Remaining Budget CTA lives inside the unassigned callout;
     // it's always in the DOM (hidden until needed) so we can wire it once.
     // Reuses the Edit Budget flow — opening the wizard prefills allocation
@@ -953,15 +949,6 @@ function downloadTextFile(filename, text) {
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 0);
-}
-
-function setBudgetPeriodTab(activeBtn) {
-    document.querySelectorAll('[data-budget-period-tab]').forEach(btn => {
-        const active = btn === activeBtn;
-        btn.className = active
-            ? 'budget-period-tab rounded-md px-3 py-1.5 transition-colors bg-orange-50 text-[#EA580C]'
-            : 'budget-period-tab rounded-md px-3 py-1.5 transition-colors hover:text-gray-900';
-    });
 }
 
 function pickNextCategory() {
@@ -1157,7 +1144,7 @@ function prefillCreateWizard(options = {}) {
     const budgetType = forcedType || (target ? 'period' : (!state.annualBudgets.length ? 'annual' : 'period'));
     const periodTarget = budgetType === 'annual'
         ? getDefaultAnnualTarget()
-        : (target || makeMonthlyTarget(el('budget-target-month')?.value));
+        : (target || makeMonthlyTarget());
     budgetWizardState = {
         ...budgetWizardState,
         budgetType,
@@ -1204,7 +1191,7 @@ function prefillWizardFromBudget(budget, allocations = []) {
 async function prefillDuplicateWizard(sourceBudgetId = null) {
     const selectedPeriodId = (state.periodBudgets || []).find(b => b.id === state.selectedBudgetId)?.id || null;
     const sourceId = sourceBudgetId || selectedPeriodId || state.periodBudgets?.[0]?.id || null;
-    const target = state.selectedTarget || makeMonthlyTarget(el('budget-target-month')?.value);
+    const target = state.selectedTarget || makeMonthlyTarget();
     budgetWizardState = {
         ...budgetWizardState,
         budgetType: 'period',
