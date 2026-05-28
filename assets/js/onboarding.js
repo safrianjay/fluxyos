@@ -417,6 +417,10 @@ function hideSubmitLoader() {
 }
 
 function routeAfterSubmit(firstAction) {
+    // Guarantee the onboarding coachmark shows the first time this just-onboarded
+    // user reaches the overview, even when their first action routes them to
+    // /ledger or /bill first. Honored + cleared by dashboard.html.
+    sessionStorage.setItem('fluxy_learning_promote_force', '1');
     const map = {
         csv_upload:     '/ledger?openCsv=1',
         add_transaction:'/ledger?openAddTx=1',

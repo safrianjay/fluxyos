@@ -666,9 +666,9 @@ let activePromoter = null;
 // tour-completion flow calls it with auto:false so it re-appears at the next
 // guide after each finished coachmark. Skip suppresses it for the session.
 // Returns true when shown.
-export function promoteLearningSection(userId, { auto = false } = {}) {
-    if (sessionStorage.getItem(PROMOTER_SKIP_KEY)) return false;
-    if (auto && sessionStorage.getItem(PROMOTER_SHOWN_KEY)) return false;
+export function promoteLearningSection(userId, { auto = false, force = false } = {}) {
+    if (!force && sessionStorage.getItem(PROMOTER_SKIP_KEY)) return false;
+    if (!force && auto && sessionStorage.getItem(PROMOTER_SHOWN_KEY)) return false;
     if (activeTour) return false;
     const container = document.getElementById('quick-start-container');
     if (!container || container.classList.contains('hidden')) return false;
@@ -741,6 +741,11 @@ function renderPromoterStep() {
     // handler launch the tour.
     activePromoter.onCardClick = () => closeLearningPromoter(false);
     card.addEventListener('click', activePromoter.onCardClick);
+
+    // Re-trigger the popover entrance animation on each step change.
+    popover.classList.remove('is-step');
+    void popover.offsetWidth;
+    popover.classList.add('is-step');
 
     window.requestAnimationFrame(positionPromoter);
     window.setTimeout(positionPromoter, 220);

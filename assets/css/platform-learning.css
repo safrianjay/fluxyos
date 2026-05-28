@@ -840,8 +840,36 @@
     -webkit-backdrop-filter: blur(3px);
 }
 
-.fluxy-learn-promoter-popover {
-    animation: fluxyCoachmarkNext 200ms ease-out;
+.fluxy-learn-promoter-popover.is-step {
+    animation: fluxyPromoterPopIn 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes fluxyPromoterPopIn {
+    from { opacity: 0; transform: translateY(6px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Microinteraction: gentle pulsing glow on the spotlighted card to draw the
+   eye, layered over the static ring from .fluxy-tour-highlight. */
+.platform-learning-card.fluxy-tour-highlight::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: 19px;
+    pointer-events: none;
+    z-index: 2;
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.55);
+    animation: fluxyPromoterPulse 1.9s ease-in-out infinite;
+}
+
+@keyframes fluxyPromoterPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.5); }
+    50% { box-shadow: 0 0 0 8px rgba(234, 88, 12, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fluxy-learn-promoter-popover.is-step { animation: none; }
+    .platform-learning-card.fluxy-tour-highlight::before { animation: none; }
 }
 
 .fluxy-learn-promoter-eyebrow {
