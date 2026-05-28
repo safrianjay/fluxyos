@@ -33,6 +33,16 @@ function formatRp(amount) {
     return 'Rp ' + Math.abs(Math.round(value)).toLocaleString('id-ID');
 }
 
+// Compact Rp for chart axis labels (Indonesian magnitudes: rb=ribu,
+// jt=juta, M=miliar). Keeps the y-axis narrow.
+function formatRpCompact(amount) {
+    const n = Math.abs(Number(amount) || 0);
+    if (n >= 1e9) return 'Rp ' + (n / 1e9).toFixed(n % 1e9 === 0 ? 0 : 1) + 'M';
+    if (n >= 1e6) return 'Rp ' + (n / 1e6).toFixed(n % 1e6 === 0 ? 0 : 1) + 'jt';
+    if (n >= 1e3) return 'Rp ' + Math.round(n / 1e3) + 'rb';
+    return 'Rp ' + Math.round(n);
+}
+
 function formatPercent(value) {
     const num = Number(value);
     if (!Number.isFinite(num)) return '0%';
@@ -240,46 +250,80 @@ function renderTrend() {
         return;
     }
 
-    // Area chart over the 4 weekly buckets. With 4 points the filled area
-    // reads as a real trend (the single-month version drew a triangle, which
-    // is why this was briefly bars — now resolved by weekly bucketing).
+    // Area chart over the 4 weekly buckets. Points sit at band centers
+    // ((i+0.5)/n) so the invisible hover columns (flex-1) line up exactly
+    // with each point — that lets the shared attachChartHover tooltip
+    // (same one Overview uses) light up the right week.
+    const n = trend.length;
     const width = 680;
-    const height = 200;
-    const padX = 24;
-    const padTop = 16;
-    const padBottom = 28;
-    const innerW = width - padX * 2;
+    const height = 180;
+    const padTop = 12;
+    const padBottom = 6;
     const innerH = height - padTop - padBottom;
     const max = Math.max(...trend.map(point => Number(point.actual) || 0), 1);
     const points = trend.map((point, index) => {
-        const x = trend.length === 1
-            ? width / 2
-            : padX + (index * (innerW / (trend.length - 1)));
-        const y = padTop + ((max - (Number(point.actual) || 0)) / max) * innerH;
-        return { ...point, value: Number(point.actual) || 0, x, y };
+        const x = ((index + 0.5) / n) * width;
+        const value = Number(point.actual) || 0;
+        const y = padTop + ((max - value) / max) * innerH;
+        return { ...point, value, x, y };
     });
     const line = points.map(p => `${p.x},${p.y}`).join(' ');
     const baseline = height - padBottom;
     const area = `${points[0].x},${baseline} ${line} ${points[points.length - 1].x},${baseline}`;
 
+    // y-axis ticks: max, 2/3, 1/3, 0.
+    const yTicks = [1, 2 / 3, 1 / 3, 0].map(f => formatRpCompact(max * f));
+
     el('allocation-trend').innerHTML = `
-        <svg class="h-[200px] w-full overflow-visible" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Weekly actual spend trend">
-            <defs>
-                <linearGradient id="allocationTrendFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#EA580C" stop-opacity="0.18"></stop>
-                    <stop offset="100%" stop-color="#EA580C" stop-opacity="0"></stop>
-                </linearGradient>
-            </defs>
-            ${[0, 1, 2, 3].map(i => {
-                const y = padTop + i * (innerH / 3);
-                return `<line x1="${padX}" x2="${width - padX}" y1="${y}" y2="${y}" stroke="#F1F5F9" stroke-width="1"></line>`;
-            }).join('')}
-            <polygon points="${area}" fill="url(#allocationTrendFill)"></polygon>
-            <polyline points="${line}" fill="none" stroke="#EA580C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
-            ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="#fff" stroke="#EA580C" stroke-width="2"></circle>`).join('')}
-            ${points.map(p => `<text x="${p.x}" y="${height - 8}" text-anchor="middle" font-size="11" fill="#9CA3AF">${escapeHtml(p.label)}</text>`).join('')}
-        </svg>
+        <div class="flex gap-2">
+            <div class="flex flex-col justify-between items-end flex-shrink-0 w-16 font-mono text-[10px] text-gray-400" style="height: ${height}px; padding-top: ${padTop}px; padding-bottom: ${padBottom}px;">
+                ${yTicks.map(t => `<span class="leading-none">${escapeHtml(t)}</span>`).join('')}
+            </div>
+            <div id="allocation-trend-plot" class="relative flex-1 min-w-0" style="height: ${height}px;">
+                <svg class="block h-full w-full overflow-visible" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Weekly actual spend trend">
+                    <defs>
+                        <linearGradient id="allocationTrendFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#EA580C" stop-opacity="0.18"></stop>
+                            <stop offset="100%" stop-color="#EA580C" stop-opacity="0"></stop>
+                        </linearGradient>
+                    </defs>
+                    ${[0, 1, 2, 3].map(i => {
+                        const y = padTop + i * (innerH / 3);
+                        return `<line x1="0" x2="${width}" y1="${y}" y2="${y}" stroke="#F1F5F9" stroke-width="1"></line>`;
+                    }).join('')}
+                    <polygon points="${area}" fill="url(#allocationTrendFill)"></polygon>
+                    <polyline points="${line}" fill="none" stroke="#EA580C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
+                    ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="#fff" stroke="#EA580C" stroke-width="2"></circle>`).join('')}
+                </svg>
+                <div class="absolute inset-0 flex">
+                    ${points.map(p => `<div class="flex-1" data-chart-bar data-week="${escapeHtml(p.label)}" data-amount="${p.value}"></div>`).join('')}
+                </div>
+            </div>
+        </div>
+        <div class="mt-1.5 flex gap-2">
+            <div class="w-16 flex-shrink-0"></div>
+            <div class="flex-1 flex">
+                ${points.map(p => `<span class="flex-1 text-center text-[10px] text-gray-400 truncate">${escapeHtml(p.label)}</span>`).join('')}
+            </div>
+        </div>
     `;
+
+    // Wire the shared Overview-style hover tooltip + crosshair.
+    const plot = document.getElementById('allocation-trend-plot');
+    if (plot && typeof window.attachChartHover === 'function') {
+        window.attachChartHover(plot, {
+            bars: '[data-chart-bar]',
+            orientation: 'vertical',
+            buildTooltip: (barEl) => `
+                <div class="chart-tooltip-header">${escapeHtml(barEl.dataset.week || '')}</div>
+                <div class="chart-tooltip-row">
+                    <span class="chart-tooltip-swatch" style="background:#EA580C"></span>
+                    <span class="chart-tooltip-label">Actual spend</span>
+                    <span class="chart-tooltip-value">${formatRp(Number(barEl.dataset.amount) || 0)}</span>
+                </div>
+            `
+        });
+    }
 }
 
 function renderGroupSummary() {
@@ -300,7 +344,7 @@ function renderGroupSummary() {
             <button type="button" class="allocation-summary-group" data-group-name="${escapeHtml(group.name)}">
                 <span class="min-w-0 truncate font-semibold text-[12px] text-gray-700">${escapeHtml(group.name)}</span>
                 <span class="font-mono text-[11px] font-bold text-gray-500">${formatPercent(percent)}</span>
-                <span class="col-span-2 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                <span class="col-span-2 h-1 rounded-full bg-gray-100 overflow-hidden">
                     <span class="block h-full rounded-full ${bar}" style="width: ${percent}%"></span>
                 </span>
             </button>
