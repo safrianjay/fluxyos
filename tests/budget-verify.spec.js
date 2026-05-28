@@ -68,7 +68,7 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
         expect(emptyVisible || contentVisible).toBe(true);
     });
 
-    test('B3: Create Budget drawer opens with 4 default rows and validates', async ({ page }) => {
+    test('B3: Create/Edit Budget wizard opens with 4 default rows and validates', async ({ page }) => {
         const log = [];
         attachConsole(page, log);
         await page.goto('/budget.html');
@@ -82,53 +82,72 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
             return (e && !e.classList.contains('hidden')) || (c && !c.classList.contains('hidden'));
         }, { timeout: 15000 });
         await page.click('#budget-create-btn');
-        await expect(page.locator('#budget-drawer')).not.toHaveClass(/translate-x-full/);
+        await expect(page.locator('#budget-wizard-shell')).toBeVisible();
         await page.waitForTimeout(500); // let date picker mount
 
-        // Capture default state — should have 4 prepopulated rows unless editing an existing budget
-        const rowCount = await page.locator('#budget-form-allocation-rows [data-row-index]').count();
-        const submitDisabled = await page.locator('#budget-drawer-submit').isDisabled();
-        await page.screenshot({ path: `${SHOTS_DIR}/B3a-drawer-default.png`, fullPage: true });
-        console.log('[B3a] default rows:', rowCount, ' submit disabled:', submitDisabled);
+        // Step 1 validation + auto-generated period dates.
+        await expect(page.locator('#budget-wizard-step-label')).toContainText(/Step 1 of 4/);
+        const initialName = await page.locator('#budget-wizard-name-input').inputValue();
+        await page.fill('#budget-wizard-name-input', '');
+        await expect(page.locator('#budget-wizard-primary')).toBeDisabled();
+        await page.fill('#budget-wizard-name-input', initialName || 'QA Wizard Budget');
+        await page.click('#budget-wizard-budget-type [data-wizard-choice="period"]');
+        await page.click('#budget-wizard-period-type [data-wizard-choice="monthly"]');
+        await page.fill('#budget-wizard-month-input', '2026-07');
+        await expect(page.locator('#budget-wizard-start-display')).toHaveText('2026-07-01');
+        await expect(page.locator('#budget-wizard-end-display')).toHaveText('2026-07-31');
+        await page.click('#budget-wizard-period-type [data-wizard-choice="quarterly"]');
+        await page.selectOption('#budget-wizard-quarter-input', '3');
+        await page.fill('#budget-wizard-quarter-year-input', '2026');
+        await expect(page.locator('#budget-wizard-start-display')).toHaveText('2026-07-01');
+        await expect(page.locator('#budget-wizard-end-display')).toHaveText('2026-09-30');
 
-        // Probe: type a name + a total that's smaller than allocations
-        await page.fill('#budget-form-name', 'QA Verify Budget');
-        await page.fill('#budget-form-amount', '1.000.000');
-        // Fill each allocation with 500.000 — sum = 2.000.000 > 1.000.000 → should block submit
-        const amountInputs = page.locator('#budget-form-allocation-rows [data-field="amount"]');
+        // Step 1 → Step 2
+        await page.click('#budget-wizard-primary');
+        await expect(page.locator('#budget-wizard-step-label')).toContainText(/Step 2 of 4/);
+
+        await page.fill('#budget-wizard-total-input', '1.000.000');
+        await page.click('#budget-wizard-primary');
+        await expect(page.locator('#budget-wizard-step-label')).toContainText(/Step 3 of 4/);
+        await page.click('[data-template="functional"]');
+
+        // Capture Functional split state — should create 4 supported category rows.
+        const rowCount = await page.locator('#budget-wizard-allocation-rows [data-allocation-row]').count();
+        await page.screenshot({ path: `${SHOTS_DIR}/B3a-wizard-default.png`, fullPage: true });
+        console.log('[B3a] default rows:', rowCount);
+
+        // Fill each allocation with 500.000 — sum = 2.000.000 > 1.000.000 → should block Continue.
+        const amountInputs = page.locator('#budget-wizard-allocation-rows [data-field="amount"]');
         const n = await amountInputs.count();
         for (let i = 0; i < n; i++) {
             await amountInputs.nth(i).fill('500.000');
-            // name might be empty for empty default rows in edit-mode prefill; fill defensively
-            const nameInput = page.locator('#budget-form-allocation-rows [data-field="name"]').nth(i);
+            const nameInput = page.locator('#budget-wizard-allocation-rows [data-field="name"]').nth(i);
             const nameVal = await nameInput.inputValue();
             if (!nameVal) await nameInput.fill(`Allocation ${i + 1}`);
         }
         await page.waitForTimeout(200);
-        const overAllocDisabled = await page.locator('#budget-drawer-submit').isDisabled();
-        const warningVisible = await page.locator('#budget-form-warning').evaluate(el => !el.classList.contains('hidden'));
-        const warningText = await page.locator('#budget-form-warning').textContent();
+        const overAllocDisabled = await page.locator('#budget-wizard-primary').isDisabled();
+        const warningVisible = await page.locator('#budget-wizard-allocation-warning').evaluate(el => !el.classList.contains('hidden'));
+        const warningText = await page.locator('#budget-wizard-allocation-warning').textContent();
         await page.screenshot({ path: `${SHOTS_DIR}/B3b-over-allocation.png`, fullPage: true });
         console.log('[B3b] over-allocation:', { submitDisabled: overAllocDisabled, warningVisible, warningText: warningText?.trim() });
 
-        // Probe: bump total so sum equals total → submit should enable
-        await page.fill('#budget-form-amount', '10.000.000');
+        // Probe: reduce rows below total → Continue should enable.
+        for (let i = 0; i < n; i++) {
+            await amountInputs.nth(i).fill('100.000');
+        }
         await page.waitForTimeout(200);
-        const fixedDisabled = await page.locator('#budget-drawer-submit').isDisabled();
+        const fixedDisabled = await page.locator('#budget-wizard-primary').isDisabled();
         await page.screenshot({ path: `${SHOTS_DIR}/B3c-fixed-allocation.png`, fullPage: true });
         console.log('[B3c] after fix:', { submitDisabled: fixedDisabled });
 
-        // Close drawer without saving
-        await page.click('#budget-drawer-cancel');
+        // Close wizard without saving.
+        await page.click('#budget-wizard-close');
         await page.waitForTimeout(400);
-        const closed = await page.locator('#budget-drawer').evaluate(el => el.classList.contains('translate-x-full'));
-        console.log('[B3] drawer closed:', closed, ' console errors:', JSON.stringify(log, null, 2));
+        const closed = await page.locator('#budget-wizard-shell').evaluate(el => el.classList.contains('hidden'));
+        console.log('[B3] wizard closed:', closed, ' console errors:', JSON.stringify(log, null, 2));
 
-        // Note: submitDisabled-on-open is context-dependent — true for create
-        // (empty form), false for edit (prefilled from an already-valid budget).
-        // The real validation contract is the next two assertions: an
-        // over-allocation must block submit + show the warning, and fixing the
-        // total must re-enable submit.
+        expect(rowCount).toBe(4);
         expect(overAllocDisabled).toBe(true);
         expect(warningVisible).toBe(true);
         expect(fixedDisabled).toBe(false);
@@ -194,7 +213,7 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
         expect(Object.keys(summary)).toHaveLength(pages.length);
     });
 
-    test('B6: failed save must not mutate the existing budget doc (atomicity)', async ({ page }) => {
+    test('B6: Budget wizard save is atomic and persists when allowed', async ({ page }) => {
         const log = [];
         attachConsole(page, log);
 
@@ -210,37 +229,45 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
         console.log('[B6] baseline:', { name: baselineName, total: baselineTotal });
         await page.screenshot({ path: `${SHOTS_DIR}/B6a-baseline.png`, fullPage: true });
 
-        // 2. Attempt to save a budget with a DIFFERENT name + total. Since rules
-        //    for budget_allocations are not deployed, the batch must fail and
-        //    leave the budget doc unchanged.
+        // 2. Attempt to save a budget with a DIFFERENT name + total.
+        //    If deployed rules reject any part of the batch, the existing doc
+        //    must stay unchanged. If rules allow the write, the new values
+        //    should survive reload.
         const attemptName = `QA Atomicity Probe ${Date.now()}`;
         const attemptTotalStr = '777.000.000';
         await page.click('#budget-create-btn');
         await page.waitForTimeout(800);
-        await page.fill('#budget-form-name', attemptName);
-        await page.fill('#budget-form-amount', attemptTotalStr);
-        const inputs = page.locator('#budget-form-allocation-rows [data-field="amount"]');
+        await expect(page.locator('#budget-wizard-shell')).toBeVisible();
+        await page.fill('#budget-wizard-name-input', attemptName);
+        await page.click('#budget-wizard-primary');
+        await expect(page.locator('#budget-wizard-step-label')).toContainText(/Step 2 of 4/);
+        await page.fill('#budget-wizard-total-input', attemptTotalStr);
+        await page.click('#budget-wizard-primary');
+        await expect(page.locator('#budget-wizard-step-label')).toContainText(/Step 3 of 4/);
+        const inputs = page.locator('#budget-wizard-allocation-rows [data-field="amount"]');
         const count = await inputs.count();
         for (let i = 0; i < count; i++) {
-            await inputs.nth(i).fill('100.000.000');
-            const nameInput = page.locator('#budget-form-allocation-rows [data-field="name"]').nth(i);
+            await inputs.nth(i).fill('1.000.000');
+            const nameInput = page.locator('#budget-wizard-allocation-rows [data-field="name"]').nth(i);
             const v = await nameInput.inputValue();
             if (!v) await nameInput.fill(`Probe ${i + 1}`);
         }
         await page.waitForTimeout(300);
-        const submitDisabled = await page.locator('#budget-drawer-submit').isDisabled();
+        const submitDisabled = await page.locator('#budget-wizard-primary').isDisabled();
         console.log('[B6] submit disabled before click:', submitDisabled);
-        await page.click('#budget-drawer-submit');
+        await page.click('#budget-wizard-primary');
+        await expect(page.locator('#budget-wizard-step-label')).toContainText(/Step 4 of 4/);
+        await page.click('#budget-wizard-primary');
 
-        // 3. Capture outcome — error toast OR drawer close.
+        // 3. Capture outcome — error toast OR wizard close.
         const outcome = await Promise.race([
             page.waitForSelector('#toast-container .text-white', { timeout: 8000 }).then(el => el.textContent()).catch(() => null),
-            page.waitForFunction(() => document.getElementById('budget-drawer')?.classList.contains('translate-x-full'), { timeout: 8000 }).then(() => 'drawer_closed').catch(() => null)
+            page.waitForFunction(() => document.getElementById('budget-wizard-shell')?.classList.contains('hidden'), { timeout: 8000 }).then(() => 'wizard_closed').catch(() => null)
         ]);
         await page.waitForTimeout(800);
         await page.screenshot({ path: `${SHOTS_DIR}/B6b-after-attempt.png`, fullPage: true });
-        const drawerClosed = await page.locator('#budget-drawer').evaluate(el => el.classList.contains('translate-x-full'));
-        console.log('[B6] save outcome:', outcome, ' drawer closed:', drawerClosed);
+        const wizardClosed = await page.locator('#budget-wizard-shell').evaluate(el => el.classList.contains('hidden'));
+        console.log('[B6] save outcome:', outcome, ' wizard closed:', wizardClosed);
 
         // 4. Hard reload and re-read the budget summary. If the batch wasn't
         //    atomic, the budget doc was overwritten and the name/total would
@@ -260,7 +287,7 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
             // Save FAILED → atomicity requires the doc to be unchanged.
             expect(afterName).toBe(baselineName);
             expect(afterTotal).toBe(baselineTotal);
-        } else if (drawerClosed) {
+        } else if (wizardClosed) {
             // Save SUCCEEDED (rules must now be deployed). The new values should
             // be visible after reload.
             expect(afterName).toContain('QA Atomicity Probe');
@@ -298,6 +325,14 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
         // (a) the bill write succeeded with `budget_allocation_id` matching
         // Marketing AND (b) getBudgetUsage's bill scan picked it up.
         await page.goto('/budget.html');
+        await page.waitForFunction(() => {
+            const c = document.getElementById('budget-content');
+            return c && !c.classList.contains('hidden');
+        }, { timeout: 15000 });
+        const now = new Date();
+        const currentBillMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        await page.fill('#budget-target-month', currentBillMonth);
+        await page.click('#budget-select-target-btn');
         await page.waitForFunction(() => {
             const c = document.getElementById('budget-content');
             return c && !c.classList.contains('hidden');

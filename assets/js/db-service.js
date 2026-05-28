@@ -1946,6 +1946,7 @@ class DataService {
                 ));
                 const validScope = scope.filter(v => allowedCats.has(v));
                 const threshold = Number(row?.alert_threshold_percent);
+                const createdFromAllocationId = this._nullableString(row?.created_from_allocation_id, 120);
                 return {
                     name,
                     allocated_amount: allocated,
@@ -1953,6 +1954,7 @@ class DataService {
                     scope_values: validScope.length ? validScope.slice(0, 10) : scope.slice(0, 10),
                     alert_threshold_percent: Number.isFinite(threshold) ? Math.max(0, Math.min(100, threshold)) : 80,
                     hard_limit_enabled: Boolean(row?.hard_limit_enabled),
+                    created_from_allocation_id: createdFromAllocationId,
                     status: 'active'
                 };
             })
@@ -2027,13 +2029,13 @@ class DataService {
                 period_end: endDate,
                 currency: 'IDR',
                 total_budget: totalBudget,
+                category_budgets: categoryBudgets,
+                notes: notes || null,
                 status: 'active',
                 created_at: serverTimestamp(),
                 updated_at: serverTimestamp()
             };
             if (createdFromBudgetId) createPayload.created_from_budget_id = createdFromBudgetId;
-            if (Object.keys(categoryBudgets).length) createPayload.category_budgets = categoryBudgets;
-            if (notes) createPayload.notes = notes;
             batch.set(budgetRef, createPayload);
         } else {
             // batch.update is a merge — created_at is preserved automatically,
@@ -2048,14 +2050,14 @@ class DataService {
                 period_end: endDate,
                 currency: 'IDR',
                 total_budget: totalBudget,
+                category_budgets: categoryBudgets,
+                notes: notes || null,
                 status: 'active',
                 updated_at: serverTimestamp()
             };
             if (existing.created_from_budget_id || createdFromBudgetId) {
                 updatePayload.created_from_budget_id = createdFromBudgetId || existing.created_from_budget_id;
             }
-            if (Object.keys(categoryBudgets).length) updatePayload.category_budgets = categoryBudgets;
-            if (notes) updatePayload.notes = notes;
             batch.update(budgetRef, updatePayload);
         }
 
@@ -2074,7 +2076,7 @@ class DataService {
         cleaned.forEach(row => {
             const ref = doc(allocationsCol);
             allocationRefs.push(ref);
-            batch.set(ref, {
+            const allocationPayload = {
                 parent_budget_id: budgetRef.id,
                 name: row.name,
                 allocated_amount: row.allocated_amount,
@@ -2085,7 +2087,11 @@ class DataService {
                 status: 'active',
                 created_at: serverTimestamp(),
                 updated_at: serverTimestamp()
-            });
+            };
+            if (row.created_from_allocation_id) {
+                allocationPayload.created_from_allocation_id = row.created_from_allocation_id;
+            }
+            batch.set(ref, allocationPayload);
         });
 
         await batch.commit();
@@ -2122,8 +2128,8 @@ class DataService {
             total_budget: totalBudget,
             status: 'active'
         };
-        if (Object.keys(categoryBudgets).length) budget.category_budgets = categoryBudgets;
-        if (notes) budget.notes = notes;
+        budget.category_budgets = categoryBudgets;
+        budget.notes = notes || null;
 
         return {
             budget,
