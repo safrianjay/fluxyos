@@ -172,11 +172,13 @@ function renderHeader() {
     const scope = Array.isArray(allocation.scope_values) ? allocation.scope_values.filter(Boolean).join(', ') : '';
 
     const back = el('allocation-back-link');
-    back.href = `/budget.html?budgetId=${encodeURIComponent(budget.id)}`;
-    back.innerHTML = `
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-        Back to ${escapeHtml(budget.name || 'Budget Overview')}
-    `;
+    if (back) {
+        back.href = `/budget.html?budgetId=${encodeURIComponent(budget.id)}`;
+        back.innerHTML = `
+            <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            <span class="truncate">Back to ${escapeHtml(budget.name || 'Budget Overview')}</span>
+        `;
+    }
 
     el('allocation-title').textContent = allocation.name || 'Budget allocation';
     el('allocation-status').className = `inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-bold ${status.cls}`;
@@ -238,39 +240,28 @@ function renderTrend() {
         return;
     }
 
-    const width = 680;
-    const height = 220;
-    const padX = 28;
-    const padTop = 20;
-    const padBottom = 34;
+    // Bars, not a line. A single month of data drawn as a line+area renders
+    // a misleading triangle; bars read correctly for 1 month or 12 and match
+    // the Ledger / Revenue Sync volume-chart language used elsewhere in the app.
     const max = Math.max(...trend.map(point => Number(point.actual) || 0), 1);
-    const points = trend.map((point, index) => {
-        const x = trend.length === 1
-            ? width / 2
-            : padX + (index * ((width - padX * 2) / (trend.length - 1)));
-        const y = padTop + ((max - (Number(point.actual) || 0)) / max) * (height - padTop - padBottom);
-        return { ...point, x, y };
+    const bars = trend.map(point => {
+        const value = Number(point.actual) || 0;
+        const heightPct = max > 0 ? Math.max(value > 0 ? 6 : 0, (value / max) * 100) : 0;
+        return { label: point.label, value, heightPct };
     });
-    const line = points.map(point => `${point.x},${point.y}`).join(' ');
-    const area = `${padX},${height - padBottom} ${line} ${width - padX},${height - padBottom}`;
 
     el('allocation-trend').innerHTML = `
-        <svg class="h-[220px] w-full overflow-visible" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Monthly actual spend trend">
-            <defs>
-                <linearGradient id="allocationTrendFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#EA580C" stop-opacity="0.16"></stop>
-                    <stop offset="100%" stop-color="#EA580C" stop-opacity="0"></stop>
-                </linearGradient>
-            </defs>
-            <path d="M ${area} Z" fill="url(#allocationTrendFill)"></path>
-            ${[0, 1, 2, 3].map(i => {
-                const y = padTop + i * ((height - padTop - padBottom) / 3);
-                return `<line x1="${padX}" x2="${width - padX}" y1="${y}" y2="${y}" stroke="#E5E7EB" stroke-dasharray="3 6"></line>`;
-            }).join('')}
-            <polyline points="${line}" fill="none" stroke="#EA580C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
-            ${points.map(point => `<circle cx="${point.x}" cy="${point.y}" r="4" fill="#EA580C"></circle>`).join('')}
-            ${points.map(point => `<text x="${point.x}" y="${height - 8}" text-anchor="middle" font-size="12" fill="#9CA3AF">${escapeHtml(point.label)}</text>`).join('')}
-        </svg>
+        <div class="flex h-[200px] items-end gap-2 sm:gap-3">
+            ${bars.map(bar => `
+                <div class="flex-1 min-w-0 flex flex-col items-center justify-end h-full">
+                    <span class="mb-2 font-mono text-[10px] text-gray-500 whitespace-nowrap">${bar.value > 0 ? formatRp(bar.value) : ''}</span>
+                    <div class="w-full max-w-[56px] rounded-t bg-[#EA580C]/85 transition-all" style="height: ${bar.heightPct}%" title="${escapeHtml(bar.label)}: ${formatRp(bar.value)}"></div>
+                </div>
+            `).join('')}
+        </div>
+        <div class="mt-2 flex gap-2 sm:gap-3 border-t border-gray-100 pt-2">
+            ${bars.map(bar => `<span class="flex-1 min-w-0 text-center text-[10px] text-gray-400 truncate">${escapeHtml(bar.label)}</span>`).join('')}
+        </div>
     `;
 }
 
@@ -317,25 +308,23 @@ function renderGroupList() {
         const percent = allocated > 0 ? Math.max(0, Math.min(100, group.spent_reserved_total / allocated * 100)) : 0;
         const status = STATUS_BADGE[group.status] || STATUS_BADGE.healthy;
         const selected = state.selectedGroup === group.name;
+        const statusColor = group.status === 'exceeded' ? 'text-red-600' : group.status === 'at_risk' ? 'text-orange-600' : group.status === 'watch' ? 'text-amber-600' : 'text-emerald-600';
         return `
             <button type="button" class="allocation-group-row ${selected ? 'is-selected' : ''}" data-group-name="${escapeHtml(group.name)}">
                 <div class="flex items-start justify-between gap-4">
                     <div class="min-w-0">
-                        <p class="font-bold text-gray-900 truncate">${escapeHtml(group.name)}</p>
-                        <p class="mt-1 text-[12px] text-gray-400">${group.record_count} matched record${group.record_count === 1 ? '' : 's'} · latest ${escapeHtml(formatDate(group.latest_record_date))}</p>
+                        <p class="font-semibold text-[14px] text-gray-900 truncate">${escapeHtml(group.name)}</p>
+                        <p class="mt-0.5 text-[12px] text-gray-400">${group.record_count} record${group.record_count === 1 ? '' : 's'} · latest ${escapeHtml(formatDate(group.latest_record_date))}</p>
                     </div>
-                    <div class="text-right flex-shrink-0">
-                        <p class="font-mono text-[14px] font-bold text-gray-900">${formatRp(group.spent_reserved_total)}</p>
-                        <p class="mt-1 font-mono text-[11px] text-gray-400">${formatPercent(percent)} of allocation</p>
-                    </div>
+                    <p class="font-mono text-[14px] font-bold text-gray-900 flex-shrink-0">${formatRp(group.spent_reserved_total)}</p>
                 </div>
-                <div class="mt-4 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                <div class="mt-2 h-1 rounded-full bg-gray-100 overflow-hidden">
                     <div class="h-full rounded-full ${status.bar}" style="width: ${percent}%"></div>
                 </div>
-                <div class="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-gray-500">
-                    <span>${formatPercent(percent)} contribution</span>
+                <div class="mt-1.5 flex items-center gap-2 text-[12px] text-gray-500">
+                    <span class="font-mono">${formatPercent(percent)} of allocation</span>
                     <span class="text-gray-300">·</span>
-                    <span class="${group.status === 'exceeded' ? 'text-red-600' : group.status === 'at_risk' ? 'text-orange-600' : group.status === 'watch' ? 'text-amber-600' : 'text-emerald-600'} font-semibold">${escapeHtml(status.label)}</span>
+                    <span class="${statusColor} font-semibold">${escapeHtml(status.label)}</span>
                 </div>
             </button>
         `;
@@ -371,19 +360,10 @@ function renderRelatedRecords() {
     el('allocation-records').innerHTML = capped.map(record => `
         <article class="allocation-record-row">
             <div class="min-w-0">
-                <p class="font-bold text-gray-900 truncate">${escapeHtml(record.counterparty || 'Unspecified')}</p>
-                <p class="mt-1 text-[12px] text-gray-500 line-clamp-2">${escapeHtml(record.memo || record.category || 'No memo')}</p>
-                <div class="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-gray-400">
-                    <span>${escapeHtml(formatDate(record.date))}</span>
-                    <span>·</span>
-                    <span>${escapeHtml(record.kind)}</span>
-                    <span>·</span>
-                    <span>${escapeHtml(record.category)}</span>
-                    <span>·</span>
-                    <span>${escapeHtml(record.status)}</span>
-                </div>
+                <p class="font-semibold text-[12px] text-gray-900 truncate">${escapeHtml(record.counterparty || 'Unspecified')}</p>
+                <p class="mt-0.5 text-[12px] text-gray-400 truncate">${escapeHtml(formatDate(record.date))} · ${escapeHtml(record.kind)} · ${escapeHtml(record.category)} · ${escapeHtml(record.status)}</p>
             </div>
-            <p class="font-mono text-[14px] font-bold ${record.bucket === 'reserved' ? 'text-amber-700' : 'text-gray-900'}">${formatRp(record.amount)}</p>
+            <p class="font-mono text-[12px] font-bold ${record.bucket === 'reserved' ? 'text-amber-700' : 'text-gray-900'}">${formatRp(record.amount)}</p>
         </article>
     `).join('');
 
