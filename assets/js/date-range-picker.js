@@ -235,18 +235,38 @@
                 draftStart = rangeStart;
                 draftEnd = isSingleDate ? rangeStart : rangeEnd;
                 calendarBaseMonth = getMonthStartKey(parseDayKey(draftStart));
-                positionPanel();
                 renderPanel();
+                positionPanel();
             }
         }
 
         function positionPanel() {
             const rect = trigger.getBoundingClientRect();
-            const panelWidth = Math.min(isSingleDate ? 360 : 720, window.innerWidth - 32);
-            const left = Math.max(16, Math.min(rect.right - panelWidth, window.innerWidth - panelWidth - 16));
+            const margin = 16;
+            const gap = 8;
+            const panelWidth = Math.min(isSingleDate ? 360 : 720, window.innerWidth - margin * 2);
             panel.style.width = `${panelWidth}px`;
+
+            // Horizontal: anchor the panel's left edge to the trigger, then clamp
+            // so it never spills past either viewport edge. (The old logic
+            // right-aligned to the trigger, which flung a wide panel off-screen
+            // left when the trigger was narrow and left-of-center — e.g. the
+            // budget wizard's Custom period row.)
+            const maxLeft = window.innerWidth - panelWidth - margin;
+            const left = Math.max(margin, Math.min(rect.left, maxLeft));
             panel.style.left = `${left}px`;
-            panel.style.top = `${rect.bottom + 8}px`;
+
+            // Vertical: open below the trigger, but flip above when the tall
+            // two-month calendar would run off the bottom of the viewport.
+            const panelHeight = panel.offsetHeight || 0;
+            const below = rect.bottom + gap;
+            const above = rect.top - gap - panelHeight;
+            let top = below;
+            if (below + panelHeight > window.innerHeight - margin && above >= margin) {
+                top = above;
+            }
+            top = Math.max(margin, Math.min(top, window.innerHeight - panelHeight - margin));
+            panel.style.top = `${top}px`;
         }
 
         trigger.addEventListener('click', event => {
