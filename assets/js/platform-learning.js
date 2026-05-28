@@ -14,6 +14,8 @@ const FIREBASE_CONFIG = {
 
 const PENDING_TOUR_KEY = 'fluxy_pending_tour';
 const LEARNING_FOCUS_KEY = 'fluxy_learning_focus';
+const PROMOTER_SKIP_KEY = 'fluxy_learning_promoter_skipped';
+const PROMOTER_SHOWN_KEY = 'fluxy_learning_promoter_shown';
 const TOUR_IDS = ['overview', 'fluxy_ai', 'ledger', 'bills', 'budgets', 'revenue_sync', 'subscriptions'];
 
 const TOUR_CONFIG = {
@@ -621,7 +623,7 @@ async function finishTour(result) {
         return;
     }
     await refreshLearningSection(userId);
-    focusLearningSection();
+    if (!promoteLearningSection(userId, { auto: false })) focusLearningSection();
 }
 
 function closeActiveTour(restoreFocus = true) {
@@ -655,6 +657,111 @@ export function focusLearningSection() {
     window.setTimeout(() => next.classList.remove('is-next-focus'), 2600);
 }
 
+let activePromoter = null;
+
+// Spotlights the whole "Quick ways to get started" card behind a blurred
+// backdrop to nudge first-time users into a guide. `auto` is the passive
+// first-load trigger (shown once per session); the tour-completion flow calls
+// it with auto:false so it re-appears after each finished coachmark. Skipping
+// suppresses it for the rest of the session. Returns true when shown.
+export function promoteLearningSection(userId, { auto = false } = {}) {
+    if (sessionStorage.getItem(PROMOTER_SKIP_KEY)) return false;
+    if (auto && sessionStorage.getItem(PROMOTER_SHOWN_KEY)) return false;
+    if (activeTour) return false;
+    const container = document.getElementById('quick-start-container');
+    if (!container || container.classList.contains('hidden')) return false;
+    if (!container.querySelector('.platform-learning-card:not(.is-complete)')) return false;
+
+    sessionStorage.setItem(PROMOTER_SHOWN_KEY, '1');
+    closeLearningPromoter();
+    container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const overlay = document.createElement('div');
+    overlay.id = 'fluxy-learn-promoter-overlay';
+    overlay.className = 'fluxy-tour-overlay fluxy-learn-promoter-overlay';
+
+    const popover = document.createElement('div');
+    popover.id = 'fluxy-learn-promoter-popover';
+    popover.className = 'fluxy-tour-popover fluxy-learn-promoter-popover';
+    popover.setAttribute('role', 'dialog');
+    popover.setAttribute('aria-modal', 'true');
+    popover.innerHTML = `
+        <button type="button" class="fluxy-tour-skip" data-promoter-skip>Skip</button>
+        <span class="fluxy-learn-promoter-eyebrow">Getting started</span>
+        <h3>Pick a quick guide to get started</h3>
+        <p>Tap any card to learn a page step by step. Do them in any order — or skip and explore on your own anytime.</p>
+        <div class="fluxy-tour-actions">
+            <button type="button" class="fluxy-tour-secondary" data-promoter-skip>Skip for now</button>
+            <button type="button" class="fluxy-tour-primary" data-promoter-dismiss>Got it</button>
+        </div>
+    `;
+
+    document.body.append(overlay, popover);
+    container.classList.add('fluxy-tour-highlight');
+    activePromoter = { container, onCardClick: null };
+
+    const skip = () => closeLearningPromoter(true);
+    const dismiss = () => closeLearningPromoter(false);
+    overlay.addEventListener('click', dismiss);
+    popover.querySelectorAll('[data-promoter-skip]').forEach(btn => btn.addEventListener('click', skip));
+    popover.querySelector('[data-promoter-dismiss]')?.addEventListener('click', dismiss);
+
+    // Clicking a card closes the promoter so the tour starts on a clean page.
+    activePromoter.onCardClick = (event) => {
+        if (event.target.closest('[data-platform-tour]')) closeLearningPromoter(false);
+    };
+    container.addEventListener('click', activePromoter.onCardClick);
+
+    document.addEventListener('keydown', handlePromoterKeydown);
+    window.addEventListener('resize', positionPromoter);
+    window.addEventListener('scroll', positionPromoter, true);
+    window.requestAnimationFrame(positionPromoter);
+    window.setTimeout(positionPromoter, 200);
+    popover.querySelector('[data-promoter-dismiss]')?.focus();
+    return true;
+}
+
+function positionPromoter() {
+    if (!activePromoter) return;
+    const popover = document.getElementById('fluxy-learn-promoter-popover');
+    if (!popover) return;
+    const rect = activePromoter.container.getBoundingClientRect();
+    const edge = 14;
+    const spacing = 16;
+    const width = Math.min(420, window.innerWidth - 24);
+    popover.style.width = `${width}px`;
+    const height = popover.offsetHeight || 160;
+
+    let top = rect.top - height - spacing;
+    if (top < edge) top = Math.min(rect.bottom + spacing, window.innerHeight - height - edge);
+    let left = rect.left + (rect.width / 2) - (width / 2);
+    left = Math.min(Math.max(left, edge), Math.max(edge, window.innerWidth - width - edge));
+    top = Math.min(Math.max(top, edge), Math.max(edge, window.innerHeight - height - edge));
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+}
+
+function handlePromoterKeydown(event) {
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        closeLearningPromoter(false);
+    }
+}
+
+function closeLearningPromoter(skip = false) {
+    if (skip) sessionStorage.setItem(PROMOTER_SKIP_KEY, '1');
+    document.removeEventListener('keydown', handlePromoterKeydown);
+    window.removeEventListener('resize', positionPromoter);
+    window.removeEventListener('scroll', positionPromoter, true);
+    if (activePromoter?.onCardClick) {
+        activePromoter.container.removeEventListener('click', activePromoter.onCardClick);
+    }
+    activePromoter?.container.classList.remove('fluxy-tour-highlight');
+    document.getElementById('fluxy-learn-promoter-overlay')?.remove();
+    document.getElementById('fluxy-learn-promoter-popover')?.remove();
+    activePromoter = null;
+}
+
 function handleTourKeydown(event) {
     if (event.key === 'Escape') {
         event.preventDefault();
@@ -684,5 +791,6 @@ window.FluxyPlatformLearning = {
     markTourCompleted,
     dismissPlatformLearning,
     getPlatformLearningState,
-    focusLearningSection
+    focusLearningSection,
+    promoteLearningSection
 };

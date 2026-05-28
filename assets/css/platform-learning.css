@@ -833,6 +833,27 @@
     -webkit-backdrop-filter: blur(1px);
 }
 
+.fluxy-learn-promoter-overlay {
+    z-index: 80;
+    background: rgba(15, 23, 42, 0.42);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+}
+
+.fluxy-learn-promoter-popover {
+    animation: fluxyCoachmarkNext 200ms ease-out;
+}
+
+.fluxy-learn-promoter-eyebrow {
+    display: inline-block;
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #ea580c;
+}
+
 .fluxy-tour-highlight {
     position: relative !important;
     z-index: 95 !important;
