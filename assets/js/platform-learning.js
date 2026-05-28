@@ -717,7 +717,6 @@ function renderPromoterStep() {
     card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
 
     const tour = TOUR_CONFIG[card.dataset.platformTour] || {};
-    const done = card.classList.contains('is-complete');
 
     // No forward "Next": the user advances by actually doing the spotlighted
     // guide (the coachmark re-opens at the next one when it finishes). They can
@@ -727,7 +726,6 @@ function renderPromoterStep() {
         <span class="fluxy-learn-promoter-eyebrow">Getting started · ${index + 1}/${cards.length}</span>
         <h3>${tour.label || 'Quick start guide'}</h3>
         <p>${tour.description || ''}</p>
-        <p class="fluxy-learn-promoter-hint">${done ? 'You already finished this guide — click it to review.' : 'Click the highlighted card to start this guide.'}</p>
         ${index > 0 ? `<div class="fluxy-tour-actions"><button type="button" class="fluxy-tour-secondary" data-promoter-back>Back</button></div>` : ''}
     `;
 
@@ -749,7 +747,8 @@ function renderPromoterStep() {
 
     window.requestAnimationFrame(positionPromoter);
     window.setTimeout(positionPromoter, 220);
-    (popover.querySelector('[data-promoter-back]') || popover.querySelector('[data-promoter-skip]'))?.focus();
+    popover.setAttribute('tabindex', '-1');
+    popover.focus({ preventScroll: true });
 }
 
 function positionPromoter() {

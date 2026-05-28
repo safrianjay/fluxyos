@@ -882,11 +882,8 @@
     color: #ea580c;
 }
 
-.fluxy-tour-popover p.fluxy-learn-promoter-hint {
-    margin-top: 10px;
-    color: #6b7280;
-    font-size: 12px;
-    font-weight: 600;
+.fluxy-learn-promoter-popover:focus {
+    outline: none;
 }
 
 /* Match the spotlight ring to the card's own 18px radius so it hugs cleanly. */
