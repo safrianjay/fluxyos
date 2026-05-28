@@ -151,55 +151,50 @@
                     </div>
                 </div>
 
-                <div id="ledger-control-cards" data-tour-target="ledger-control-cards" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[1.35fr_repeat(4,minmax(0,1fr))] gap-3">
-                    <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm xl:min-h-[176px]">
-                        <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <p class="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">Trust Score</p>
-                                <p class="mt-1 text-[12px] text-gray-500">Can this ledger support decisions?</p>
-                            </div>
-                            <span id="ledger-trust-status" class="rounded-full border border-gray-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">No data</span>
+                <div id="ledger-control-cards" data-tour-target="ledger-control-cards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <div class="flex items-start justify-between gap-2">
+                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Trust Score</p>
+                            <span id="ledger-trust-status" class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">No data</span>
                         </div>
-                        <div class="mt-5 flex items-end gap-2">
-                            <p id="ledger-trust-score" class="font-mono text-[24px] font-bold leading-none text-[#0B0F19]">100%</p>
-                            <p id="ledger-trust-subtitle" class="pb-0.5 text-[12px] font-medium text-gray-500">No data yet</p>
-                        </div>
-                        <div class="mt-4 h-2 rounded-full bg-gray-100 overflow-hidden" aria-hidden="true">
+                        <p id="ledger-trust-score" class="mt-1 font-mono text-2xl font-bold leading-none text-gray-900">100%</p>
+                        <p id="ledger-trust-subtitle" class="mt-1 text-[12px] text-gray-400">No data yet</p>
+                        <div class="mt-3 h-1.5 rounded-full bg-gray-100 overflow-hidden" aria-hidden="true">
                             <div id="ledger-trust-progress" class="h-full rounded-full bg-green-500 transition-all duration-200" style="width: 100%"></div>
                         </div>
-                        <p class="mt-4 text-[12px] text-gray-500">
+                        <p class="mt-3 text-[12px] text-gray-400">
                             <span id="ledger-clean-count" class="font-semibold text-gray-900">0</span>/<span id="ledger-total-count" class="font-semibold text-gray-900">0</span> clean
                             <span class="text-gray-300">&middot;</span>
                             <span id="ledger-total-risk-amount" class="font-mono font-semibold text-gray-900">Rp 0</span> at risk
                         </p>
                     </div>
 
-                    <div class="bg-white border border-gray-200 border-t-red-400 rounded-xl p-4 shadow-sm">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">Missing Receipt</p>
-                        <p id="ledger-missing-receipts-count" class="mt-4 font-mono text-[24px] font-bold leading-none text-[#0B0F19]">0</p>
-                        <p class="mt-3 text-[12px] text-gray-500">Need proof to claim expense</p>
-                        <p id="ledger-missing-receipts-risk" class="mt-3 font-mono text-[12px] font-semibold text-red-600">Rp 0 at risk</p>
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Missing Receipt</p>
+                        <p id="ledger-missing-receipts-count" class="mt-1 font-mono text-2xl font-bold leading-none text-gray-900">0</p>
+                        <p class="mt-1 text-[12px] text-gray-400">Need proof to claim expense</p>
+                        <p id="ledger-missing-receipts-risk" class="mt-2 font-mono text-[12px] font-semibold text-red-600">Rp 0 at risk</p>
                     </div>
 
-                    <div class="bg-white border border-gray-200 border-t-amber-400 rounded-xl p-4 shadow-sm">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">Uncategorized</p>
-                        <p id="ledger-uncategorized-count" class="mt-4 font-mono text-[24px] font-bold leading-none text-[#0B0F19]">0</p>
-                        <p class="mt-3 text-[12px] text-gray-500">Won't report cleanly until tagged</p>
-                        <p id="ledger-uncategorized-risk" class="mt-3 font-mono text-[12px] font-semibold text-gray-700">Rp 0 at risk</p>
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Uncategorized</p>
+                        <p id="ledger-uncategorized-count" class="mt-1 font-mono text-2xl font-bold leading-none text-gray-900">0</p>
+                        <p class="mt-1 text-[12px] text-gray-400">Won't report cleanly until tagged</p>
+                        <p id="ledger-uncategorized-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">Rp 0 at risk</p>
                     </div>
 
-                    <div class="bg-white border border-gray-200 border-t-amber-400 rounded-xl p-4 shadow-sm">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">Pending Approval</p>
-                        <p id="ledger-pending-approval-count" class="mt-4 font-mono text-[24px] font-bold leading-none text-[#0B0F19]">0</p>
-                        <p id="ledger-pending-approval-subtitle" class="mt-3 text-[12px] text-gray-500">No pending approvals</p>
-                        <p id="ledger-pending-approval-risk" class="mt-3 font-mono text-[12px] font-semibold text-gray-700">Rp 0 at risk</p>
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Pending Approval</p>
+                        <p id="ledger-pending-approval-count" class="mt-1 font-mono text-2xl font-bold leading-none text-gray-900">0</p>
+                        <p id="ledger-pending-approval-subtitle" class="mt-1 text-[12px] text-gray-400">No pending approvals</p>
+                        <p id="ledger-pending-approval-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">Rp 0 at risk</p>
                     </div>
 
-                    <div class="bg-white border border-gray-200 border-t-blue-400 rounded-xl p-4 shadow-sm">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">Unreconciled</p>
-                        <p id="ledger-unreconciled-count" class="mt-4 font-mono text-[24px] font-bold leading-none text-[#0B0F19]">0</p>
-                        <p id="ledger-unreconciled-subtitle" class="mt-3 text-[12px] text-gray-500">No explicit gaps found</p>
-                        <p id="ledger-unreconciled-risk" class="mt-3 font-mono text-[12px] font-semibold text-gray-700">Rp 0 at risk</p>
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Unreconciled</p>
+                        <p id="ledger-unreconciled-count" class="mt-1 font-mono text-2xl font-bold leading-none text-gray-900">0</p>
+                        <p id="ledger-unreconciled-subtitle" class="mt-1 text-[12px] text-gray-400">No explicit gaps found</p>
+                        <p id="ledger-unreconciled-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">Rp 0 at risk</p>
                     </div>
                 </div>
 
@@ -215,7 +210,7 @@
                             </div>
                             <p id="ledger-attention-period-note" class="text-[12px] font-medium text-gray-500">Current filtered period</p>
                         </div>
-                        <div id="ledger-attention-chip-row" class="mt-4 flex flex-wrap gap-2"></div>
+                        <div id="ledger-attention-chip-row" class="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Ledger issue filters"></div>
                     </div>
                     <div id="ledger-attention-list" class="divide-y divide-gray-100"></div>
                     <div id="ledger-attention-footer" class="hidden border-t border-gray-100 bg-gray-50/50 px-5 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -445,6 +440,7 @@
         let ledgerSortKey = 'date';
         let ledgerSortDirection = 'desc';
         let ledgerAttentionExpanded = false;
+        let ledgerAttentionTab = 'all';
         const linkedLedgerSearch = new URLSearchParams(window.location.search).get('search') || '';
         let ledgerSearchTerm = linkedLedgerSearch;
         let activeLedgerVendorFilter = null;
@@ -1325,15 +1321,26 @@
             setTrustStatus(summary);
         }
 
-        function renderAttentionChip(type, summary) {
-            const def = LEDGER_ISSUE_DEFS[type];
-            const data = summary[type] || { count: 0 };
+        function getLedgerAttentionTabItems(items, tab) {
+            if (tab === 'all') return items;
+            return items.filter(item => item.issues.includes(tab));
+        }
+
+        function renderAttentionTab(tab, items) {
+            const isAll = tab === 'all';
+            const def = isAll
+                ? { label: 'All issues', dotClass: 'bg-gray-400' }
+                : LEDGER_ISSUE_DEFS[tab];
+            const count = getLedgerAttentionTabItems(items, tab).length;
+            const isActive = ledgerAttentionTab === tab;
+            const activeClass = 'border-gray-900 bg-white text-gray-900 shadow-sm';
+            const inactiveClass = 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 hover:bg-white hover:text-gray-900';
             return `
-                <span class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[12px] font-medium text-gray-600">
+                <button type="button" role="tab" aria-selected="${isActive ? 'true' : 'false'}" data-action="ledger-attention-tab" data-issue-tab="${tab}" class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[12px] font-medium transition-colors ${isActive ? activeClass : inactiveClass}">
                     <span class="h-1.5 w-1.5 rounded-full ${def.dotClass}" aria-hidden="true"></span>
                     ${def.label}
-                    <span class="rounded-full bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-gray-600">${Number(data.count || 0).toLocaleString('id-ID')}</span>
-                </span>
+                    <span class="rounded-full bg-white px-1.5 py-0.5 font-mono text-[10px] font-semibold text-gray-600 ring-1 ring-gray-200">${Number(count || 0).toLocaleString('id-ID')}</span>
+                </button>
             `;
         }
 
@@ -1387,27 +1394,42 @@
             footer?.classList.add('hidden');
         }
 
-        function renderLedgerAttentionRow(item) {
+        function renderLedgerAttentionTabEmpty(activeTab) {
+            const list = document.getElementById('ledger-attention-list');
+            const footer = document.getElementById('ledger-attention-footer');
+            if (!list) return;
+            const def = LEDGER_ISSUE_DEFS[activeTab] || { label: 'selected' };
+            list.innerHTML = `
+                <div class="px-5 py-6">
+                    <h3 class="text-[14px] font-semibold text-[#0B0F19]">No ${escapeHtml(def.label.toLowerCase())} issues</h3>
+                    <p class="mt-1 text-[12px] text-gray-500">Switch tabs to review other cleanup items for this period.</p>
+                </div>
+            `;
+            footer?.classList.add('hidden');
+        }
+
+        function renderLedgerAttentionRow(item, activeTab = 'all') {
             const record = item.transaction;
-            const def = LEDGER_ISSUE_DEFS[item.primaryType];
+            const displayType = activeTab !== 'all' && item.issues.includes(activeTab) ? activeTab : item.primaryType;
+            const def = LEDGER_ISSUE_DEFS[displayType];
             const vendorName = getVendorDisplayName(record);
             const category = String(record?.category ?? '').trim();
-            const actionLabel = item.primaryType === 'missingReceipt' ? 'Attach receipt' : 'Review';
-            const extraIssueCount = item.issues.length - 1;
+            const actionLabel = displayType === 'missingReceipt' ? 'Attach receipt' : 'Review';
+            const extraIssueCount = item.issues.filter(type => type !== displayType).length;
             const extraIssueCopy = extraIssueCount > 0
                 ? `<span class="text-[12px] font-medium text-gray-400">+${extraIssueCount} more</span>`
                 : '';
 
             return `
-                <div class="grid grid-cols-1 gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(180px,280px)_auto] lg:items-center" data-ledger-attention-id="${escapeHtml(record.id)}">
+                <div class="grid grid-cols-1 gap-3 px-5 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(160px,240px)_auto] lg:items-center" data-ledger-attention-id="${escapeHtml(record.id)}">
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-[12px] font-semibold ${def.badgeClass}">
+                            <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${def.badgeClass}">
                                 ${def.label}
                             </span>
                             ${extraIssueCopy}
                         </div>
-                        <p class="mt-2 truncate text-[14px] font-semibold text-[#0B0F19]" title="${escapeHtml(vendorName)}">${escapeHtml(vendorName)}</p>
+                        <p class="mt-1.5 truncate text-[12px] font-semibold text-[#0B0F19]" title="${escapeHtml(vendorName)}">${escapeHtml(vendorName)}</p>
                         <p class="mt-1 text-[12px] text-gray-500">${def.reason}</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 text-[12px] text-gray-500 lg:block lg:space-y-1">
@@ -1415,8 +1437,8 @@
                         ${category ? `<span class="hidden text-gray-300 lg:inline">&middot;</span><span>${escapeHtml(category)}</span>` : ''}
                     </div>
                     <div class="flex items-center justify-between gap-3 sm:justify-end">
-                        <p class="font-mono text-[14px] font-semibold ${getAmountClass(record)} whitespace-nowrap">${formatTransactionAmount(record)}</p>
-                        <button type="button" data-action="ledger-attention-review" data-record-id="${escapeHtml(record.id)}" class="inline-flex flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">
+                        <p class="font-mono text-[12px] font-semibold ${getAmountClass(record)} whitespace-nowrap">${formatTransactionAmount(record)}</p>
+                        <button type="button" data-action="ledger-attention-review" data-record-id="${escapeHtml(record.id)}" class="inline-flex flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">
                             ${actionLabel}
                         </button>
                     </div>
@@ -1433,9 +1455,14 @@
             const footerCopy = document.getElementById('ledger-attention-footer-copy');
             const toggle = document.getElementById('ledger-attention-toggle');
 
-            setSummaryText('ledger-attention-count', items.length.toLocaleString('id-ID'));
+            if (ledgerAttentionTab !== 'all' && !LEDGER_ISSUE_ORDER.includes(ledgerAttentionTab)) {
+                ledgerAttentionTab = 'all';
+            }
+            const activeItems = getLedgerAttentionTabItems(items, ledgerAttentionTab);
+
+            setSummaryText('ledger-attention-count', activeItems.length.toLocaleString('id-ID'));
             setSummaryText('ledger-attention-period-note', `${summary.totalTransactions.toLocaleString('id-ID')} filtered record${summary.totalTransactions === 1 ? '' : 's'}`);
-            if (chipRow) chipRow.innerHTML = LEDGER_ISSUE_ORDER.map(type => renderAttentionChip(type, summary)).join('');
+            if (chipRow) chipRow.innerHTML = ['all', ...LEDGER_ISSUE_ORDER].map(type => renderAttentionTab(type, items)).join('');
             if (!list) return;
 
             if (!items.length) {
@@ -1443,15 +1470,20 @@
                 return;
             }
 
-            const visibleItems = ledgerAttentionExpanded ? items : items.slice(0, LEDGER_ATTENTION_LIMIT);
-            list.innerHTML = visibleItems.map(renderLedgerAttentionRow).join('');
+            if (!activeItems.length) {
+                renderLedgerAttentionTabEmpty(ledgerAttentionTab);
+                return;
+            }
 
-            if (items.length > LEDGER_ATTENTION_LIMIT) {
+            const visibleItems = ledgerAttentionExpanded ? activeItems : activeItems.slice(0, LEDGER_ATTENTION_LIMIT);
+            list.innerHTML = visibleItems.map(item => renderLedgerAttentionRow(item, ledgerAttentionTab)).join('');
+
+            if (activeItems.length > LEDGER_ATTENTION_LIMIT) {
                 footer?.classList.remove('hidden');
                 if (footerCopy) {
                     footerCopy.textContent = ledgerAttentionExpanded
-                        ? `Showing all ${items.length.toLocaleString('id-ID')} issue record${items.length === 1 ? '' : 's'}`
-                        : `Showing top ${LEDGER_ATTENTION_LIMIT} of ${items.length.toLocaleString('id-ID')} issue record${items.length === 1 ? '' : 's'}`;
+                        ? `Showing all ${activeItems.length.toLocaleString('id-ID')} issue record${activeItems.length === 1 ? '' : 's'}`
+                        : `Showing top ${LEDGER_ATTENTION_LIMIT} of ${activeItems.length.toLocaleString('id-ID')} issue record${activeItems.length === 1 ? '' : 's'}`;
                 }
                 if (toggle) toggle.textContent = ledgerAttentionExpanded ? 'Show less' : 'Show more';
             } else {
@@ -1771,6 +1803,15 @@
         }
 
         document.getElementById('ledger-attention-section')?.addEventListener('click', (event) => {
+            const tabBtn = event.target.closest('[data-action="ledger-attention-tab"]');
+            if (tabBtn) {
+                const nextTab = tabBtn.dataset.issueTab || 'all';
+                ledgerAttentionTab = nextTab === 'all' || LEDGER_ISSUE_ORDER.includes(nextTab) ? nextTab : 'all';
+                ledgerAttentionExpanded = false;
+                renderLedgerAttention(currentLedgerTransactions);
+                return;
+            }
+
             const toggleBtn = event.target.closest('[data-action="ledger-attention-toggle"]');
             if (toggleBtn) {
                 ledgerAttentionExpanded = !ledgerAttentionExpanded;
