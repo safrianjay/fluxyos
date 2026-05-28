@@ -1408,6 +1408,18 @@
             footer?.classList.add('hidden');
         }
 
+        function renderLedgerAttentionHeader() {
+            return `
+                <div class="hidden bg-gray-50 px-5 py-2.5 text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(132px,160px)_minmax(136px,0.75fr)_minmax(132px,auto)_minmax(108px,auto)] lg:items-center lg:gap-4">
+                    <span>Record</span>
+                    <span>Issue</span>
+                    <span>Date / category</span>
+                    <span class="text-right">Amount</span>
+                    <span class="text-right">Action</span>
+                </div>
+            `;
+        }
+
         function renderLedgerAttentionRow(item, activeTab = 'all') {
             const record = item.transaction;
             const displayType = activeTab !== 'all' && item.issues.includes(activeTab) ? activeTab : item.primaryType;
@@ -1421,24 +1433,24 @@
                 : '';
 
             return `
-                <div class="grid grid-cols-1 gap-3 px-5 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(136px,164px)_minmax(144px,220px)_auto] lg:items-center" data-ledger-attention-id="${escapeHtml(record.id)}">
+                <div class="grid grid-cols-1 gap-3 px-5 py-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(132px,160px)_minmax(136px,0.75fr)_minmax(132px,auto)_minmax(108px,auto)] lg:items-center lg:gap-4" data-ledger-attention-id="${escapeHtml(record.id)}">
                     <div class="min-w-0">
                         <p class="truncate text-[12px] font-semibold text-[#0B0F19]" title="${escapeHtml(vendorName)}">${escapeHtml(vendorName)}</p>
-                        <p class="mt-1 text-[12px] text-gray-500">${def.reason}</p>
+                        <p class="mt-1 text-[12px] leading-snug text-gray-500">${def.reason}</p>
                     </div>
-                    <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2 lg:justify-start">
                         <span class="inline-flex items-center rounded px-2 py-1 text-[10px] font-bold uppercase ${def.badgeClass}">
                             ${def.label}
                         </span>
                         ${extraIssueCopy}
                     </div>
-                    <div class="flex flex-wrap items-center gap-2 text-[12px] text-gray-500 lg:block lg:space-y-1">
-                        <span>${escapeHtml(formatAttentionDate(record))}</span>
-                        ${category ? `<span class="hidden text-gray-300 lg:inline">&middot;</span><span>${escapeHtml(category)}</span>` : ''}
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-gray-500 lg:block lg:space-y-0.5">
+                        <span class="block">${escapeHtml(formatAttentionDate(record))}</span>
+                        ${category ? `<span class="block truncate text-gray-400" title="${escapeHtml(category)}">${escapeHtml(category)}</span>` : ''}
                     </div>
-                    <div class="flex items-center justify-between gap-3 sm:justify-end">
-                        <p class="font-mono text-[12px] font-semibold ${getAmountClass(record)} whitespace-nowrap">${formatTransactionAmount(record)}</p>
-                        <button type="button" data-action="ledger-attention-review" data-record-id="${escapeHtml(record.id)}" class="inline-flex flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">
+                    <p class="font-mono text-[12px] font-semibold ${getAmountClass(record)} whitespace-nowrap lg:text-right">${formatTransactionAmount(record)}</p>
+                    <div class="flex justify-start lg:justify-end">
+                        <button type="button" data-action="ledger-attention-review" data-record-id="${escapeHtml(record.id)}" class="inline-flex w-full items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors sm:w-auto">
                             ${actionLabel}
                         </button>
                     </div>
@@ -1476,7 +1488,7 @@
             }
 
             const visibleItems = ledgerAttentionExpanded ? activeItems : activeItems.slice(0, LEDGER_ATTENTION_LIMIT);
-            list.innerHTML = visibleItems.map(item => renderLedgerAttentionRow(item, ledgerAttentionTab)).join('');
+            list.innerHTML = renderLedgerAttentionHeader() + visibleItems.map(item => renderLedgerAttentionRow(item, ledgerAttentionTab)).join('');
 
             if (activeItems.length > LEDGER_ATTENTION_LIMIT) {
                 footer?.classList.remove('hidden');
