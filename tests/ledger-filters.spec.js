@@ -237,13 +237,29 @@ test('opening one dropdown auto-closes the other', async ({ page }) => {
 
     const statusRoot = page.locator('#ledger-status-filter');
     const typeRoot = page.locator('#ledger-type-filter');
+    const expectMenuAnchored = async (root) => {
+        const triggerBox = await root.locator('.fluxy-select-trigger').boundingBox();
+        const menuBox = await root.locator('.fluxy-select-menu').boundingBox();
+        const viewportWidth = await page.evaluate(() => window.innerWidth);
+        if (!triggerBox || !menuBox) throw new Error('Expected dropdown trigger and menu boxes to be measurable');
+        const verticalGap = menuBox.y - triggerBox.y - triggerBox.height;
+        expect(verticalGap).toBeGreaterThanOrEqual(4);
+        expect(verticalGap).toBeLessThanOrEqual(8);
+        expect(menuBox.x).toBeGreaterThanOrEqual(0);
+        expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(viewportWidth + 1);
+    };
 
     await statusRoot.locator('.fluxy-select-trigger').click();
     await expect(statusRoot).toHaveAttribute('data-open', 'true');
+    await expect(page.locator('.fluxy-select[data-open="true"]')).toHaveCount(1);
+    await expectMenuAnchored(statusRoot);
 
     await typeRoot.locator('.fluxy-select-trigger').click();
     await expect(typeRoot).toHaveAttribute('data-open', 'true');
     await expect(statusRoot).toHaveAttribute('data-open', 'false');
+    await expect(statusRoot.locator('.fluxy-select-menu')).toBeHidden();
+    await expect(page.locator('.fluxy-select[data-open="true"]')).toHaveCount(1);
+    await expectMenuAnchored(typeRoot);
 });
 
 test('375px, 768px, and 1280px widths have no horizontal overflow on /ledger', async ({ page }) => {

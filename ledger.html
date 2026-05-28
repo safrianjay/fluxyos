@@ -47,10 +47,12 @@
         }
         .fluxy-select[data-open="true"] .fluxy-select-chevron { transform: rotate(180deg); }
         .fluxy-select-menu {
-            position: absolute;
-            top: calc(100% + 6px);
-            right: 0;
-            min-width: 100%;
+            position: fixed;
+            top: var(--fluxy-select-menu-top, 0);
+            left: var(--fluxy-select-menu-left, 0);
+            min-width: var(--fluxy-select-menu-width, 100%);
+            width: max-content;
+            max-width: calc(100vw - 24px);
             max-height: 320px;
             overflow-y: auto;
             background: #ffffff;
@@ -58,7 +60,7 @@
             border-radius: 10px;
             box-shadow: 0 12px 28px rgba(11,15,25,0.12);
             padding: 4px;
-            z-index: 50;
+            z-index: 80;
             display: none;
         }
         .fluxy-select[data-open="true"] .fluxy-select-menu { display: block; }
@@ -519,11 +521,24 @@
                 });
             }
 
+            function positionMenu() {
+                const rect = trigger.getBoundingClientRect();
+                const viewportGap = 12;
+                const menuWidth = Math.max(rect.width, menu.offsetWidth || rect.width);
+                const maxLeft = Math.max(viewportGap, window.innerWidth - menuWidth - viewportGap);
+                const left = Math.min(Math.max(viewportGap, rect.left), maxLeft);
+                menu.style.setProperty('--fluxy-select-menu-top', `${Math.round(rect.bottom + 6)}px`);
+                menu.style.setProperty('--fluxy-select-menu-left', `${Math.round(left)}px`);
+                menu.style.setProperty('--fluxy-select-menu-width', `${Math.round(rect.width)}px`);
+            }
+
             function open() {
                 if (fluxyOpenSelect && fluxyOpenSelect !== instance) fluxyOpenSelect.close();
                 root.dataset.open = 'true';
                 trigger.setAttribute('aria-expanded', 'true');
                 fluxyOpenSelect = instance;
+                positionMenu();
+                requestAnimationFrame(positionMenu);
                 const selected = menu.querySelector('[aria-selected="true"]') || menu.querySelector('.fluxy-select-option');
                 selected?.focus();
             }
@@ -589,6 +604,8 @@
                 setActive(isActive) {
                     trigger.dataset.active = isActive ? 'true' : 'false';
                 },
+                menu,
+                positionMenu,
                 close,
             };
 
@@ -606,6 +623,14 @@
             if (event.key === 'Escape' && fluxyOpenSelect) {
                 fluxyOpenSelect.close();
             }
+        });
+        document.addEventListener('scroll', (event) => {
+            if (!fluxyOpenSelect) return;
+            if (fluxyOpenSelect.menu?.contains(event.target)) return;
+            fluxyOpenSelect.close();
+        }, true);
+        window.addEventListener('resize', () => {
+            fluxyOpenSelect?.close();
         });
 
         const statusSelect = mountFluxySelect('#ledger-status-filter', {
