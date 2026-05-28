@@ -69,7 +69,7 @@ const TOUR_CONFIG = {
         steps: [
             { selector: '#budget-period-select', title: 'Pick a period', body: 'Each month or quarter has its own plan — choose which one you are viewing.' },
             { selector: '#budget-total', title: 'Spending envelope', body: 'The total budget you set for the selected period.' },
-            { selector: '#budget-allocation-bar', title: 'Allocations', body: 'See how the envelope is split across Marketing, Infrastructure, Operations, and SaaS.' },
+            { selector: '#budget-allocation-map', title: 'Allocations', body: 'See how the envelope is split across Marketing, Infrastructure, Operations, and SaaS.' },
             { selector: '#budget-spent', title: 'Spent and reserved', body: 'Actual spend plus committed bills, so you know how close you are to the limit.' },
             { selector: '#budget-create-btn', title: 'Edit your budget', body: 'Open the wizard any time to change the envelope or rebalance allocations.' }
         ]

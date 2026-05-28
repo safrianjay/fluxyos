@@ -193,25 +193,59 @@ function selectTargetPeriod(target) {
 function renderEmpty() {
     state.usage = null;
     el('budget-loading').classList.add('hidden');
-    el('budget-content').classList.add('hidden');
-    el('budget-page-title')?.classList.remove('hidden');
-    const container = el('budget-empty-state');
-    container.classList.remove('hidden');
-    container.innerHTML = `
-        <div class="p-10 text-center">
-            <div class="mx-auto w-12 h-12 rounded-xl bg-orange-50 text-[#EA580C] flex items-center justify-center mb-4">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-9-9v9z"></path></svg>
-            </div>
-            <h2 class="text-xl font-bold text-gray-900">Create your first operating budget</h2>
-            <p class="mt-2 text-[13px] text-gray-500 max-w-md mx-auto">Set one main spending limit, then split it into allocations like Marketing, Infrastructure, Operations, or SaaS.</p>
-            <button id="budget-empty-create" type="button" class="mt-5 inline-flex items-center gap-2 px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors shadow-sm active:scale-95">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
-                Create Budget
-            </button>
-        </div>
-    `;
-    el('budget-empty-create')?.addEventListener('click', () => openBudgetWizard('create', { budgetType: 'annual' }));
+    el('budget-empty-state').classList.add('hidden');
+    el('budget-content').classList.remove('hidden');
+    el('budget-page-title')?.classList.add('hidden');
+    el('budget-primary-workspace')?.classList.remove('hidden');
+    el('budget-no-period-state')?.classList.add('hidden');
     el('budget-create-btn-label').textContent = 'Create Budget';
+
+    // Workspace header — structure with no budget yet, so a new user sees the
+    // real page (and the onboarding tour can spotlight it) instead of a blank card.
+    renderWorkspaceShell(null, []);
+    el('budget-name').textContent = 'Start your first budget';
+    el('budget-period').textContent = 'No period set';
+    el('budget-workspace-allocation-count').textContent = 'No budget yet';
+    el('budget-status-pill')?.classList.add('hidden');
+    const periodTypeWrap = el('budget-period-type-wrap');
+    if (periodTypeWrap) periodTypeWrap.style.display = 'none';
+    const updatedWrap = el('budget-workspace-updated-wrap');
+    if (updatedWrap) updatedWrap.style.display = 'none';
+
+    renderAnnualEnvelope();
+    renderPeriodSelector();
+
+    // KPI strip at zero with guidance hints.
+    el('budget-total').textContent = formatRp(0);
+    el('budget-total-hint').textContent = 'Set a main budget to define your spending envelope.';
+    el('budget-allocated').textContent = formatRp(0);
+    el('budget-allocated-hint').textContent = 'Set a main budget to start allocating.';
+    el('budget-spent').textContent = formatRp(0);
+    el('budget-spent-hint').textContent = 'No actual or committed spend yet.';
+    el('budget-remaining').textContent = formatRp(0);
+    el('budget-remaining').className = 'metric-value truncate';
+    el('budget-remaining-hint').textContent = 'Budget left after spent and reserved.';
+    const remainingTextEl = el('budget-remaining-text');
+    remainingTextEl.textContent = ' of main budget used';
+    remainingTextEl.className = '';
+    el('budget-unassigned').textContent = formatRp(0);
+    el('budget-unassigned-hint').textContent = 'Set a main budget to build a baseline.';
+
+    const usageEl = el('budget-usage-percent');
+    usageEl.textContent = formatPercent(0);
+    usageEl.className = 'font-mono font-bold text-gray-700';
+    const usageBar = el('budget-usage-bar');
+    usageBar.style.width = '0%';
+    usageBar.className = 'h-full rounded-full bg-emerald-500 transition-all';
+
+    el('budget-unassigned-card').className = 'budget-metric-cell border-t sm:border-t-0 xl:border-t-0 border-gray-200 transition-colors bg-white';
+
+    // Allocation map + sub-budgets in their own empty states.
+    renderAllocationMap([], { total_amount: 0, total_allocated: 0, unallocated_budget_amount: 0 });
+    el('budget-unassigned-callout')?.classList.add('hidden');
+    el('budget-all-assigned-note')?.classList.add('hidden');
+    renderAllocationsTable([]);
+    el('budget-excluded-card')?.classList.add('hidden');
 }
 
 function makeMonthlyTarget(monthValue) {
@@ -427,6 +461,7 @@ function formatUpdatedAt(budget) {
 }
 
 function renderWorkspaceHeader(budget, allocations) {
+    el('budget-status-pill')?.classList.remove('hidden');
     const period = formatPeriod(budget);
     const allocationCount = allocations.length;
     const allocationText = `${allocationCount} allocation${allocationCount === 1 ? '' : 's'}`;
