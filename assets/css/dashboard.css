@@ -1731,6 +1731,60 @@
     }
 }
 
+.brain-idle {
+    width: 100%;
+    min-height: 138px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px dashed rgba(234,88,12,0.45);
+    border-radius: 12px;
+    background:
+        radial-gradient(circle at 50% 40%, rgba(234,88,12,0.08), transparent 42%),
+        rgba(255,255,255,0.78);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+    cursor: pointer;
+    font-family: Inter, sans-serif;
+    text-align: center;
+    transition: border-color 160ms ease, background 160ms ease, transform 120ms ease;
+}
+
+.brain-idle:hover {
+    border-color: rgba(234,88,12,0.78);
+    background:
+        radial-gradient(circle at 50% 40%, rgba(234,88,12,0.14), transparent 42%),
+        rgba(255,255,255,0.92);
+}
+
+.brain-idle:active { transform: scale(0.99); }
+
+.brain-loading-icon-idle .brain-loading-core,
+.brain-loading-icon-idle .brain-loading-ring,
+.brain-loading-icon-idle .brain-loading-node {
+    animation-play-state: paused;
+}
+
+.brain-idle:hover .brain-loading-icon-idle .brain-loading-core,
+.brain-idle:hover .brain-loading-icon-idle .brain-loading-ring,
+.brain-idle:hover .brain-loading-icon-idle .brain-loading-node {
+    animation-play-state: running;
+}
+
+.brain-idle-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #111827;
+    letter-spacing: -0.005em;
+}
+
+.brain-idle-hint {
+    font-size: 12px;
+    font-weight: 500;
+    color: #94A3B8;
+}
+
 .brain-message {
     border: 1px solid #E5E7EB;
     border-left: 4px solid #EA580C;

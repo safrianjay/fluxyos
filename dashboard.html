@@ -237,17 +237,18 @@
                                     </div>
                                 </div>
                                 <div id="ai-business-summary-content" class="brain-body">
-                                    <div class="brain-loading" role="status" aria-label="Fluxy AI is analyzing this period">
-                                        <span class="brain-loading-icon" aria-hidden="true">
+                                    <button type="button" class="brain-idle" data-generate-ai-summary aria-label="Generate AI business summary for this period">
+                                        <span class="brain-loading-icon brain-loading-icon-idle" aria-hidden="true">
                                             <span class="brain-loading-core"></span>
                                             <span class="brain-loading-ring"></span>
                                             <span class="brain-loading-ring brain-loading-ring-alt"></span>
                                             <span class="brain-loading-node brain-loading-node-one"></span>
                                             <span class="brain-loading-node brain-loading-node-two"></span>
                                             <span class="brain-loading-node brain-loading-node-three"></span>
-                                            <span class="brain-loading-scan"></span>
                                         </span>
-                                    </div>
+                                        <span class="brain-idle-label">Generate summary</span>
+                                        <span class="brain-idle-hint">Click the orb to run Fluxy AI for this period</span>
+                                    </button>
                                 </div>
                                 <button type="button" class="brain-cta" data-ask-fluxy-summary>Ask Fluxy AI about this period</button>
                             </section>
