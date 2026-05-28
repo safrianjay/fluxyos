@@ -54,11 +54,16 @@ test('budget-allocation page renders bars + compact rows + header back button', 
     console.log('[alloc] back link in header:', backInHeader);
     expect(backInHeader).toBe(true);
 
-    // Trend must never render the old line/area (triangle) markup — it's
-    // either bars (data) or the empty-state card. Assert no <polyline>.
+    // Trend is either the empty-state card (no matched records) or an area
+    // chart over weekly buckets. With data it must be an area (polygon +
+    // polyline) and the x-axis labels read "Week N".
     const trendHtml = await page.locator('#allocation-trend').innerHTML();
-    expect(trendHtml.includes('<polyline')).toBe(false);
-    console.log('[alloc] trend has no line/triangle markup:', !trendHtml.includes('<polyline'));
+    const isEmpty = trendHtml.includes('No spend trend');
+    if (!isEmpty) {
+        expect(trendHtml.includes('<polygon')).toBe(true);
+        expect(trendHtml).toContain('Week 1');
+    }
+    console.log('[alloc] trend:', isEmpty ? 'empty-state' : 'area chart with weekly axis');
 
     await page.screenshot({ path: 'test-results/budget-verify/ALLOC-page.png', fullPage: true });
     console.log('[alloc] console errors:', JSON.stringify(log));

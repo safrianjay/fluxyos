@@ -240,28 +240,45 @@ function renderTrend() {
         return;
     }
 
-    // Bars, not a line. A single month of data drawn as a line+area renders
-    // a misleading triangle; bars read correctly for 1 month or 12 and match
-    // the Ledger / Revenue Sync volume-chart language used elsewhere in the app.
+    // Area chart over the 4 weekly buckets. With 4 points the filled area
+    // reads as a real trend (the single-month version drew a triangle, which
+    // is why this was briefly bars — now resolved by weekly bucketing).
+    const width = 680;
+    const height = 200;
+    const padX = 24;
+    const padTop = 16;
+    const padBottom = 28;
+    const innerW = width - padX * 2;
+    const innerH = height - padTop - padBottom;
     const max = Math.max(...trend.map(point => Number(point.actual) || 0), 1);
-    const bars = trend.map(point => {
-        const value = Number(point.actual) || 0;
-        const heightPct = max > 0 ? Math.max(value > 0 ? 6 : 0, (value / max) * 100) : 0;
-        return { label: point.label, value, heightPct };
+    const points = trend.map((point, index) => {
+        const x = trend.length === 1
+            ? width / 2
+            : padX + (index * (innerW / (trend.length - 1)));
+        const y = padTop + ((max - (Number(point.actual) || 0)) / max) * innerH;
+        return { ...point, value: Number(point.actual) || 0, x, y };
     });
+    const line = points.map(p => `${p.x},${p.y}`).join(' ');
+    const baseline = height - padBottom;
+    const area = `${points[0].x},${baseline} ${line} ${points[points.length - 1].x},${baseline}`;
 
     el('allocation-trend').innerHTML = `
-        <div class="flex h-[200px] items-end gap-2 sm:gap-3">
-            ${bars.map(bar => `
-                <div class="flex-1 min-w-0 flex flex-col items-center justify-end h-full">
-                    <span class="mb-2 font-mono text-[10px] text-gray-500 whitespace-nowrap">${bar.value > 0 ? formatRp(bar.value) : ''}</span>
-                    <div class="w-full max-w-[56px] rounded-t bg-[#EA580C]/85 transition-all" style="height: ${bar.heightPct}%" title="${escapeHtml(bar.label)}: ${formatRp(bar.value)}"></div>
-                </div>
-            `).join('')}
-        </div>
-        <div class="mt-2 flex gap-2 sm:gap-3 border-t border-gray-100 pt-2">
-            ${bars.map(bar => `<span class="flex-1 min-w-0 text-center text-[10px] text-gray-400 truncate">${escapeHtml(bar.label)}</span>`).join('')}
-        </div>
+        <svg class="h-[200px] w-full overflow-visible" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Weekly actual spend trend">
+            <defs>
+                <linearGradient id="allocationTrendFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#EA580C" stop-opacity="0.18"></stop>
+                    <stop offset="100%" stop-color="#EA580C" stop-opacity="0"></stop>
+                </linearGradient>
+            </defs>
+            ${[0, 1, 2, 3].map(i => {
+                const y = padTop + i * (innerH / 3);
+                return `<line x1="${padX}" x2="${width - padX}" y1="${y}" y2="${y}" stroke="#F1F5F9" stroke-width="1"></line>`;
+            }).join('')}
+            <polygon points="${area}" fill="url(#allocationTrendFill)"></polygon>
+            <polyline points="${line}" fill="none" stroke="#EA580C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
+            ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="#fff" stroke="#EA580C" stroke-width="2"></circle>`).join('')}
+            ${points.map(p => `<text x="${p.x}" y="${height - 8}" text-anchor="middle" font-size="11" fill="#9CA3AF">${escapeHtml(p.label)}</text>`).join('')}
+        </svg>
     `;
 }
 
@@ -281,8 +298,8 @@ function renderGroupSummary() {
         const bar = STATUS_BADGE[group.status]?.bar || 'bg-emerald-500';
         return `
             <button type="button" class="allocation-summary-group" data-group-name="${escapeHtml(group.name)}">
-                <span class="min-w-0 truncate font-semibold text-gray-700">${escapeHtml(group.name)}</span>
-                <span class="font-mono text-[12px] font-bold text-gray-500">${formatPercent(percent)}</span>
+                <span class="min-w-0 truncate font-semibold text-[12px] text-gray-700">${escapeHtml(group.name)}</span>
+                <span class="font-mono text-[11px] font-bold text-gray-500">${formatPercent(percent)}</span>
                 <span class="col-span-2 h-1.5 rounded-full bg-gray-100 overflow-hidden">
                     <span class="block h-full rounded-full ${bar}" style="width: ${percent}%"></span>
                 </span>
@@ -313,15 +330,15 @@ function renderGroupList() {
             <button type="button" class="allocation-group-row ${selected ? 'is-selected' : ''}" data-group-name="${escapeHtml(group.name)}">
                 <div class="flex items-start justify-between gap-4">
                     <div class="min-w-0">
-                        <p class="font-semibold text-[14px] text-gray-900 truncate">${escapeHtml(group.name)}</p>
-                        <p class="mt-0.5 text-[12px] text-gray-400">${group.record_count} record${group.record_count === 1 ? '' : 's'} · latest ${escapeHtml(formatDate(group.latest_record_date))}</p>
+                        <p class="font-semibold text-[12px] text-gray-900 truncate">${escapeHtml(group.name)}</p>
+                        <p class="mt-0.5 text-[10px] text-gray-400">${group.record_count} record${group.record_count === 1 ? '' : 's'} · latest ${escapeHtml(formatDate(group.latest_record_date))}</p>
                     </div>
-                    <p class="font-mono text-[14px] font-bold text-gray-900 flex-shrink-0">${formatRp(group.spent_reserved_total)}</p>
+                    <p class="font-mono text-[12px] font-bold text-gray-900 flex-shrink-0">${formatRp(group.spent_reserved_total)}</p>
                 </div>
                 <div class="mt-2 h-1 rounded-full bg-gray-100 overflow-hidden">
                     <div class="h-full rounded-full ${status.bar}" style="width: ${percent}%"></div>
                 </div>
-                <div class="mt-1.5 flex items-center gap-2 text-[12px] text-gray-500">
+                <div class="mt-1.5 flex items-center gap-2 text-[10px] text-gray-500">
                     <span class="font-mono">${formatPercent(percent)} of allocation</span>
                     <span class="text-gray-300">·</span>
                     <span class="${statusColor} font-semibold">${escapeHtml(status.label)}</span>

@@ -1799,25 +1799,31 @@ class DataService {
     }
 
     _buildAllocationTrend(records, startDate, endDate) {
-        const buckets = new Map();
-        let cursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-        const endCursor = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
-        while (cursor <= endCursor) {
-            const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
-            buckets.set(key, {
-                key,
-                label: cursor.toLocaleDateString('en-US', { month: 'short' }),
-                actual: 0
-            });
-            cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-        }
+        // Four weekly buckets across the budget period. A budget period is
+        // typically a single month, so monthly buckets gave only one data
+        // point (a useless line). Splitting the period into 4 equal weeks
+        // gives the area chart enough points to read as a trend.
+        const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999);
+        const spanMs = Math.max(1, end.getTime() - start.getTime());
+        const WEEKS = 4;
+        const bucketMs = spanMs / WEEKS;
+
+        const buckets = Array.from({ length: WEEKS }, (_, i) => ({
+            key: `w${i + 1}`,
+            label: `Week ${i + 1}`,
+            actual: 0
+        }));
+
         records
             .filter(record => record.bucket === 'actual' && record.date)
             .forEach(record => {
-                const key = `${record.date.getFullYear()}-${String(record.date.getMonth() + 1).padStart(2, '0')}`;
-                if (buckets.has(key)) buckets.get(key).actual += record.amount;
+                const offset = record.date.getTime() - start.getTime();
+                if (offset < 0 || offset > spanMs) return;
+                const idx = Math.min(WEEKS - 1, Math.max(0, Math.floor(offset / bucketMs)));
+                buckets[idx].actual += record.amount;
             });
-        return Array.from(buckets.values());
+        return buckets;
     }
 
     async getMatchedAllocationRecords(userId, budget, allocation) {
