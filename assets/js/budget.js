@@ -126,6 +126,7 @@ async function loadAndRender() {
     el('budget-loading').classList.remove('hidden');
     el('budget-empty-state').classList.add('hidden');
     el('budget-content').classList.add('hidden');
+    el('budget-page-title')?.classList.add('hidden');
 
     try {
         const [annualBudgets, periodBudgets] = await Promise.all([
