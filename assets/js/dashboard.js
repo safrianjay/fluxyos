@@ -1324,7 +1324,7 @@ function mountFinanceSetupDrawers() {
             event.preventDefault();
             const target = button.dataset.financeSetupOpen;
             if (target === 'bank') openBankSetupDrawer();
-            else if (target === 'budget') openBudgetSetupDrawer();
+            else if (target === 'budget') window.location.href = '/budget?create=1';
         });
     });
 

@@ -116,10 +116,20 @@ function el(id) { return document.getElementById(id); }
 export function initBudgetPage({ ds, user }) {
     state.ds = ds;
     state.user = user;
-    const initialBudgetId = new URLSearchParams(window.location.search).get('budgetId');
+    const params = new URLSearchParams(window.location.search);
+    const initialBudgetId = params.get('budgetId');
     if (initialBudgetId) state.selectedBudgetId = initialBudgetId;
     wireDrawerControls();
-    loadAndRender();
+    const shouldOpenWizard = params.get('create') === '1';
+    loadAndRender().then(() => {
+        if (!shouldOpenWizard) return;
+        // Strip the param so a refresh doesn't reopen the wizard.
+        params.delete('create');
+        const query = params.toString();
+        window.history.replaceState({}, '', window.location.pathname + (query ? `?${query}` : ''));
+        if (state.usage?.budget) openBudgetWizard('edit');
+        else openBudgetWizard('create', { budgetType: 'annual' });
+    });
 }
 
 async function loadAndRender() {
