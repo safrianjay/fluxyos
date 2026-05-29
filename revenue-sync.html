@@ -67,53 +67,57 @@
 
                     <!-- Total Revenue -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Total Revenue</p>
+                        <div class="flex items-center gap-1.5">
+                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Total Revenue</p>
+                            <button type="button" class="metric-info" aria-label="Total Revenue: total amount across revenue rows in the selected period." data-tooltip="Total amount across revenue rows in the selected period. Includes income, revenue, refund, and pending receivable rows.">?</button>
+                        </div>
                         <p id="card-revenue-total" class="text-lg font-bold text-gray-900 mt-1 leading-8 tabular-nums">—</p>
                         <p id="card-revenue-total-sub" class="text-[12px] text-gray-400 mt-1">In selected period</p>
                     </div>
 
                     <!-- Channels Connected -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Channels</p>
+                        <div class="flex items-center gap-1.5">
+                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Channels</p>
+                            <button type="button" class="metric-info" aria-label="Channels: distinct revenue sources detected in this period." data-tooltip="Distinct revenue sources detected from the channel field in this period. Rows without a source count as Unknown channel.">?</button>
+                        </div>
                         <p id="card-channels-connected" class="text-2xl font-bold text-gray-900 mt-1">—</p>
                         <p class="text-[12px] text-gray-400 mt-1">Detected this period</p>
                     </div>
 
                     <!-- Synced Today -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Synced Today</p>
+                        <div class="flex items-center gap-1.5">
+                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Synced Today</p>
+                            <button type="button" class="metric-info" aria-label="Synced Today: revenue rows dated today." data-tooltip="Revenue rows dated today in the selected workspace data. Useful for checking whether today has fresh revenue activity.">?</button>
+                        </div>
                         <p id="card-synced-today" class="text-2xl font-bold text-gray-900 mt-1">—</p>
                         <p id="card-synced-today-sub" class="text-[12px] text-gray-400 mt-1">Revenue rows today</p>
                     </div>
 
                     <!-- Needs Review -->
-                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Needs Review</p>
-                        <p id="card-needs-review" class="text-2xl font-bold text-gray-900 mt-1">—</p>
-                        <p id="card-needs-review-sub" class="text-[12px] text-gray-400 mt-1">Duplicates &amp; missing receipts</p>
+                    <div class="relative bg-white rounded-xl border border-gray-200 shadow-sm p-5 text-left transition-all hover:border-amber-200 hover:shadow-md cursor-pointer">
+                        <button id="needs-review-card" type="button" class="absolute inset-0 z-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-200 focus:ring-offset-2" aria-label="Show revenue rows that need review" aria-describedby="card-needs-review-sub"></button>
+                        <div class="relative z-20 pointer-events-none">
+                            <div class="flex items-center gap-1.5">
+                                <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Needs Review</p>
+                                <button type="button" class="metric-info pointer-events-auto" aria-label="Needs Review: revenue rows that need manual attention." data-tooltip="Rows flagged for duplicate channel, duplicate amount and date, missing receipt, refund, or no channel. Click the card to jump to those rows.">?</button>
+                            </div>
+                            <p id="card-needs-review" class="text-2xl font-bold text-gray-900 mt-1">—</p>
+                            <p id="card-needs-review-sub" class="text-[12px] text-gray-400 mt-1">Duplicates &amp; missing receipts</p>
+                        </div>
                     </div>
 
                     <!-- Reconciliation Health -->
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Health</p>
+                        <div class="flex items-center gap-1.5">
+                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Health</p>
+                            <button type="button" class="metric-info" aria-label="Health: clean revenue rows ratio." data-tooltip="Clean rows ratio: revenue rows without review flags divided by all revenue rows in the selected period.">?</button>
+                        </div>
                         <p id="card-reconciliation-health" class="text-2xl font-bold text-gray-900 mt-1">—</p>
                         <p class="text-[12px] text-gray-400 mt-1">Clean rows ratio</p>
                     </div>
 
-                </div>
-
-                <!-- Connected Channels -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden" data-tour-target="revenue-channels">
-                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                        <div>
-                            <h2 class="text-[14px] font-bold text-gray-900">Connected Channels</h2>
-                            <p class="text-[12px] text-gray-400 mt-0.5">Revenue grouped by source for this period</p>
-                        </div>
-                        <a href="/integration" class="text-[12px] font-bold text-[#EA580C] hover:underline">Manage in Integrations →</a>
-                    </div>
-                    <div id="channels-strip" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
-                        <div class="p-4 col-span-4 text-center text-[12px] text-gray-400">Loading channels...</div>
-                    </div>
                 </div>
 
                 <!-- Revenue Activity -->
@@ -143,8 +147,22 @@
 
                 </div>
 
+                <!-- Connected Channels -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden" data-tour-target="revenue-channels">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h2 class="text-[14px] font-bold text-gray-900">Connected Channels</h2>
+                            <p class="text-[12px] text-gray-400 mt-0.5">Revenue grouped by source for this period</p>
+                        </div>
+                        <a href="/integration" class="text-[12px] font-bold text-[#EA580C] hover:underline">Manage in Integrations →</a>
+                    </div>
+                    <div id="channels-strip" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                        <div class="p-4 col-span-4 text-center text-[12px] text-gray-400">Loading channels...</div>
+                    </div>
+                </div>
+
                 <!-- Revenue Transactions Table -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div id="revenue-transactions-section" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                     <div class="px-6 pt-4 border-b border-gray-100">
                         <div class="flex items-center justify-between">
                             <div>
@@ -648,6 +666,27 @@
             filterRevenue(searchValue);
         }
 
+        function jumpToNeedsReviewTable() {
+            const searchInput = document.getElementById('revenue-search-input');
+            if (searchInput) searchInput.value = '';
+
+            setActiveTab('review');
+
+            const section = document.getElementById('revenue-transactions-section');
+            const scroller = section?.closest('.overflow-y-auto');
+            if (section && scroller) {
+                const sectionRect = section.getBoundingClientRect();
+                const scrollerRect = scroller.getBoundingClientRect();
+                scroller.scrollTo({
+                    top: scroller.scrollTop + sectionRect.top - scrollerRect.top - 16,
+                    behavior: 'smooth'
+                });
+            } else {
+                section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            document.getElementById('tab-review')?.focus({ preventScroll: true });
+        }
+
         // ── Revenue Table ─────────────────────────────────────────────────────
 
         function renderRevenueSlice(visible) {
@@ -855,6 +894,7 @@
 
         document.getElementById('tab-all').addEventListener('click', () => setActiveTab('all'));
         document.getElementById('tab-review').addEventListener('click', () => setActiveTab('review'));
+        document.getElementById('needs-review-card')?.addEventListener('click', jumpToNeedsReviewTable);
 
         // ── CSV Export ────────────────────────────────────────────────────────
 
