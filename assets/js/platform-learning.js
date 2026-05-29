@@ -13,6 +13,7 @@ const FIREBASE_CONFIG = {
 };
 
 const PENDING_TOUR_KEY = 'fluxy_pending_tour';
+const PENDING_TOURS_KEY = 'fluxy_pending_tours';
 const LEARNING_FOCUS_KEY = 'fluxy_learning_focus';
 const PROMOTER_SKIP_KEY = 'fluxy_learning_promoter_skipped';
 const PROMOTER_SHOWN_KEY = 'fluxy_learning_promoter_shown';
@@ -148,12 +149,39 @@ function readPendingTour() {
     }
 }
 
+function readPendingTours() {
+    const raw = sessionStorage.getItem(PENDING_TOURS_KEY);
+    if (!raw) return [];
+    try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.filter((tourId, index, arr) => TOUR_CONFIG[tourId] && arr.indexOf(tourId) === index);
+    } catch (_) {
+        return [];
+    }
+}
+
+function savePendingTours(tourIds) {
+    const clean = Array.isArray(tourIds)
+        ? tourIds.filter((tourId, index, arr) => TOUR_CONFIG[tourId] && arr.indexOf(tourId) === index)
+        : [];
+    if (clean.length) sessionStorage.setItem(PENDING_TOURS_KEY, JSON.stringify(clean));
+    else sessionStorage.removeItem(PENDING_TOURS_KEY);
+}
+
 function savePendingTour(tourId) {
     sessionStorage.setItem(PENDING_TOUR_KEY, tourId);
 }
 
 function clearPendingTour() {
     sessionStorage.removeItem(PENDING_TOUR_KEY);
+}
+
+function completeQueuedTour(tourId) {
+    const remaining = readPendingTours().filter((id) => id !== tourId);
+    savePendingTours(remaining);
+    if (remaining[0]) savePendingTour(remaining[0]);
+    else clearPendingTour();
 }
 
 function getRenderableTours() {
@@ -615,6 +643,7 @@ async function finishTour(result) {
     } catch (_) {
         window.showToast?.('Could not save guide progress.', 'info');
     }
+    completeQueuedTour(tourId);
     closeActiveTour(true);
 
     if (normalizePath() !== '/dashboard') {
@@ -674,7 +703,13 @@ export function promoteLearningSection(userId, { auto = false, force = false } =
     if (!container || container.classList.contains('hidden')) return false;
     const cards = Array.from(container.querySelectorAll('.platform-learning-card'));
     if (!cards.length) return false;
-    const firstIncomplete = cards.findIndex(card => !card.classList.contains('is-complete'));
+    const preferredTour = readPendingTour();
+    const preferredIndex = preferredTour
+        ? cards.findIndex(card => card.dataset.platformTour === preferredTour && !card.classList.contains('is-complete'))
+        : -1;
+    const firstIncomplete = preferredIndex >= 0
+        ? preferredIndex
+        : cards.findIndex(card => !card.classList.contains('is-complete'));
     if (firstIncomplete === -1) return false;
 
     sessionStorage.setItem(PROMOTER_SHOWN_KEY, '1');

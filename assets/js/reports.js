@@ -1028,6 +1028,7 @@ onAuthStateChanged(auth, async (user) => {
         const gated = await applyToPage(user, { pageKey: 'reports' });
         if (gated) {
             sessionStorage.removeItem('fluxy_pending_tour');
+            sessionStorage.removeItem('fluxy_pending_tours');
             return;
         }
         initReportsPage(user);

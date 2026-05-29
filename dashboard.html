@@ -468,6 +468,7 @@
                 const gated = await applyToPage(user, { pageKey: 'overview' });
                 if (gated) {
                     sessionStorage.removeItem('fluxy_pending_tour');
+                    sessionStorage.removeItem('fluxy_pending_tours');
                     return;
                 }
                 if (typeof loadDashboard === 'function') await loadDashboard();

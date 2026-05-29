@@ -345,6 +345,7 @@
                 const gated = await applyToPage(user, { pageKey: 'fluxy_ai' });
                 if (gated) {
                     sessionStorage.removeItem('fluxy_pending_tour');
+                    sessionStorage.removeItem('fluxy_pending_tours');
                     return;
                 }
                 window.FluxyAICommandCenter?.setUser(user);

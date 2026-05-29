@@ -57,51 +57,60 @@
                     <form id="form-business" class="onboarding-form" novalidate>
                         <label class="onboarding-field">
                             <span class="onboarding-label">Business name</span>
-                            <input type="text" name="business_name" id="f-business-name" required maxlength="120" autocomplete="organization" placeholder="e.g. Kopi Senja Digital">
+                            <input type="text" name="business_name" id="f-business-name" required maxlength="120" autocomplete="organization" placeholder="e.g. Kopi Senja Digital" aria-describedby="f-business-name-error">
+                            <span class="onboarding-error" id="f-business-name-error" aria-live="polite"></span>
                         </label>
 
                         <label class="onboarding-field">
                             <span class="onboarding-label">Your role</span>
-                            <select name="role" id="f-role" required>
+                            <select name="role" id="f-role" required aria-describedby="f-role-error">
+                                <option value="" disabled selected>Select your role</option>
                                 <option value="Owner / Founder">Owner / Founder</option>
                                 <option value="Finance admin">Finance admin</option>
                                 <option value="Accountant">Accountant</option>
                                 <option value="Operations manager">Operations manager</option>
                                 <option value="Staff">Staff</option>
                             </select>
+                            <span class="onboarding-error" id="f-role-error" aria-live="polite"></span>
                         </label>
 
                         <label class="onboarding-field">
                             <span class="onboarding-label">Main goal</span>
-                            <select name="main_goal" id="f-main-goal" required>
+                            <select name="main_goal" id="f-main-goal" required aria-describedby="f-main-goal-error">
+                                <option value="" disabled selected>Select your main goal</option>
                                 <option value="Track revenue and expenses">Track revenue and expenses</option>
                                 <option value="Manage bills and payables">Manage bills and payables</option>
                                 <option value="Monitor subscriptions">Monitor subscriptions</option>
                                 <option value="Prepare reports and exports">Prepare reports and exports</option>
                                 <option value="Ask Fluxy AI finance questions">Ask Fluxy AI finance questions</option>
                             </select>
+                            <span class="onboarding-error" id="f-main-goal-error" aria-live="polite"></span>
                         </label>
 
                         <label class="onboarding-field">
                             <span class="onboarding-label">Monthly revenue</span>
-                            <select name="monthly_revenue_range" id="f-revenue" required>
+                            <select name="monthly_revenue_range" id="f-revenue" required aria-describedby="f-revenue-error">
+                                <option value="" disabled selected>Select monthly revenue</option>
                                 <option value="Under Rp 50.000.000">Under Rp 50.000.000</option>
                                 <option value="Rp 50.000.000 - Rp 100.000.000">Rp 50.000.000 - Rp 100.000.000</option>
                                 <option value="Rp 100.000.000 - Rp 500.000.000">Rp 100.000.000 - Rp 500.000.000</option>
                                 <option value="Rp 500.000.000 - Rp 1.000.000.000">Rp 500.000.000 - Rp 1.000.000.000</option>
                                 <option value="Above Rp 1.000.000.000">Above Rp 1.000.000.000</option>
                             </select>
+                            <span class="onboarding-error" id="f-revenue-error" aria-live="polite"></span>
                         </label>
 
                         <label class="onboarding-field">
                             <span class="onboarding-label">Number of employees</span>
-                            <select name="employee_count_range" id="f-employees" required>
+                            <select name="employee_count_range" id="f-employees" required aria-describedby="f-employees-error">
+                                <option value="" disabled selected>Select employee count</option>
                                 <option value="0 - 10 employees">0 - 10 employees</option>
                                 <option value="11 - 50 employees">11 - 50 employees</option>
                                 <option value="51 - 200 employees">51 - 200 employees</option>
                                 <option value="201 - 500 employees">201 - 500 employees</option>
                                 <option value="More than 500 employees">More than 500 employees</option>
                             </select>
+                            <span class="onboarding-error" id="f-employees-error" aria-live="polite"></span>
                         </label>
                     </form>
 
@@ -115,13 +124,26 @@
 
                     <form id="form-owner" class="onboarding-form" novalidate>
                         <label class="onboarding-field">
-                            <span class="onboarding-label">Legal full name</span>
-                            <input type="text" name="legal_full_name" id="f-legal-name" required maxlength="120" autocomplete="name">
+                            <span class="onboarding-label">Full legal name</span>
+                            <input type="text" name="legal_full_name" id="f-legal-name" required maxlength="120" autocomplete="name" aria-describedby="f-legal-name-error">
+                            <span class="onboarding-error" id="f-legal-name-error" aria-live="polite"></span>
                         </label>
 
                         <label class="onboarding-field">
-                            <span class="onboarding-label">Phone number</span>
-                            <input type="tel" name="phone_number" id="f-phone" required maxlength="32" autocomplete="tel" placeholder="+62...">
+                            <span class="onboarding-label">Preferred WhatsApp number</span>
+                            <span class="onboarding-helper">We'll use this later for WhatsApp-based finance reminders and confirmations.</span>
+                            <span class="onboarding-phone-row">
+                                <select name="phone_country_code" id="f-phone-country" required aria-label="Country code">
+                                    <option value="+62" selected>Indonesia +62</option>
+                                    <option value="+65">Singapore +65</option>
+                                    <option value="+60">Malaysia +60</option>
+                                    <option value="+1">United States +1</option>
+                                    <option value="+44">United Kingdom +44</option>
+                                    <option value="+61">Australia +61</option>
+                                </select>
+                                <input type="tel" name="phone_local_number" id="f-phone-local" required maxlength="24" autocomplete="tel-national" inputmode="tel" placeholder="81234567890" aria-describedby="f-phone-error">
+                            </span>
+                            <span class="onboarding-error" id="f-phone-error" aria-live="polite"></span>
                         </label>
 
                         <div class="onboarding-field">
@@ -158,44 +180,76 @@
 
                 <!-- STEP 3 -->
                 <div class="onboarding-step" data-step="finance_setup" hidden>
-                    <h1 class="onboarding-h1">How do you want to start?</h1>
-                    <p class="onboarding-sub">Choose the first action FluxyOS opens after setup. You can change later from the dashboard.</p>
+                    <h1 class="onboarding-h1">What do you want help with first?</h1>
+                    <p class="onboarding-sub">Pick one or more. We'll use this to guide your first session inside FluxyOS.</p>
 
-                    <fieldset class="onboarding-radio-grid" id="finance-actions">
-                        <legend class="sr-only">First finance action</legend>
+                    <fieldset class="onboarding-checkbox-grid" id="finance-actions" aria-describedby="finance-actions-error">
+                        <legend class="sr-only">Selected setup focus</legend>
 
-                        <label class="onboarding-radio">
-                            <input type="radio" name="first_action" value="csv_upload" checked>
-                            <span class="onboarding-radio-body">
-                                <span class="onboarding-radio-title">Upload CSV</span>
-                                <span class="onboarding-radio-hint">Import existing transactions from a spreadsheet.</span>
+                        <label class="onboarding-checkbox">
+                            <input type="checkbox" name="first_actions" value="csv_upload">
+                            <span class="onboarding-checkbox-control" aria-hidden="true"></span>
+                            <span class="onboarding-checkbox-body">
+                                <span class="onboarding-checkbox-title">Upload CSV</span>
+                                <span class="onboarding-checkbox-hint">Import existing transaction data from a spreadsheet.</span>
                             </span>
                         </label>
 
-                        <label class="onboarding-radio">
-                            <input type="radio" name="first_action" value="add_transaction">
-                            <span class="onboarding-radio-body">
-                                <span class="onboarding-radio-title">Add transaction</span>
-                                <span class="onboarding-radio-hint">Start by recording a single revenue or expense.</span>
+                        <label class="onboarding-checkbox">
+                            <input type="checkbox" name="first_actions" value="add_transaction">
+                            <span class="onboarding-checkbox-control" aria-hidden="true"></span>
+                            <span class="onboarding-checkbox-body">
+                                <span class="onboarding-checkbox-title">Add transactions manually</span>
+                                <span class="onboarding-checkbox-hint">Record revenue, expenses, or adjustments one by one.</span>
                             </span>
                         </label>
 
-                        <label class="onboarding-radio">
-                            <input type="radio" name="first_action" value="add_bill">
-                            <span class="onboarding-radio-body">
-                                <span class="onboarding-radio-title">Add first bill</span>
-                                <span class="onboarding-radio-hint">Capture an upcoming payable to keep cash flow visible.</span>
+                        <label class="onboarding-checkbox">
+                            <input type="checkbox" name="first_actions" value="add_bill">
+                            <span class="onboarding-checkbox-control" aria-hidden="true"></span>
+                            <span class="onboarding-checkbox-body">
+                                <span class="onboarding-checkbox-title">Track upcoming bills</span>
+                                <span class="onboarding-checkbox-hint">Capture payables so you can see what needs to be paid.</span>
                             </span>
                         </label>
 
-                        <label class="onboarding-radio">
-                            <input type="radio" name="first_action" value="sample_data">
-                            <span class="onboarding-radio-body">
-                                <span class="onboarding-radio-title">Explore sample data</span>
-                                <span class="onboarding-radio-hint">Open the dashboard and decide what to do next.</span>
+                        <label class="onboarding-checkbox">
+                            <input type="checkbox" name="first_actions" value="dashboard_overview">
+                            <span class="onboarding-checkbox-control" aria-hidden="true"></span>
+                            <span class="onboarding-checkbox-body">
+                                <span class="onboarding-checkbox-title">Understand my dashboard</span>
+                                <span class="onboarding-checkbox-hint">Learn what the overview numbers mean and what to check first.</span>
+                            </span>
+                        </label>
+
+                        <label class="onboarding-checkbox">
+                            <input type="checkbox" name="first_actions" value="revenue_review">
+                            <span class="onboarding-checkbox-control" aria-hidden="true"></span>
+                            <span class="onboarding-checkbox-body">
+                                <span class="onboarding-checkbox-title">Review revenue performance</span>
+                                <span class="onboarding-checkbox-hint">See income patterns and revenue sources.</span>
+                            </span>
+                        </label>
+
+                        <label class="onboarding-checkbox">
+                            <input type="checkbox" name="first_actions" value="subscriptions">
+                            <span class="onboarding-checkbox-control" aria-hidden="true"></span>
+                            <span class="onboarding-checkbox-body">
+                                <span class="onboarding-checkbox-title">Track subscriptions</span>
+                                <span class="onboarding-checkbox-hint">Monitor recurring SaaS and renewal costs.</span>
+                            </span>
+                        </label>
+
+                        <label class="onboarding-checkbox">
+                            <input type="checkbox" name="first_actions" value="fluxy_ai">
+                            <span class="onboarding-checkbox-control" aria-hidden="true"></span>
+                            <span class="onboarding-checkbox-body">
+                                <span class="onboarding-checkbox-title">Ask Fluxy AI questions</span>
+                                <span class="onboarding-checkbox-hint">Learn how to ask about revenue, expenses, bills, and cash pressure.</span>
                             </span>
                         </label>
                     </fieldset>
+                    <span class="onboarding-error" id="finance-actions-error" aria-live="polite"></span>
                 </div>
 
                 <!-- STEP 4 -->

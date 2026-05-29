@@ -156,31 +156,33 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 2 | Firestore shows `users/{uid}/onboarding/progress.onboarding_exempt: true` for the legacy account; `profile` and `documents` docs are not created |
 | 3 | **New user redirect** — create a fresh Google account (or sign in with one created on/after the cutoff). Login lands on `/onboarding` and not `/dashboard` |
 | 4 | Onboarding page renders the left progress rail (4 steps, current step highlighted, future steps show "Next / Unlocks after this step") and the right step content |
-| 5 | Step 1 requires `business_name`, `role`, `main_goal`, `monthly_revenue_range`, `employee_count_range`. Role dropdown includes `Staff`. Continue without filling shows red invalid borders and does not advance |
-| 6 | Step 2 requires `legal_full_name` and `phone_number`. The two document upload fields are optional, render a stub `Choose file` label, and accept files without uploading (file inputs don't actually POST anywhere) |
-| 7 | Step 3 has exactly 4 radio cards: Upload CSV (default selected), Add transaction, Add first bill, Explore sample data |
-| 8 | Step 4 shows a read-only review with all values, including filenames for any documents picked and the chosen first action |
-| 9 | Submit saves `users/{uid}/onboarding/profile`, `users/{uid}/onboarding/documents` (status `not_uploaded`), flips `progress.onboarding_completed: true`, writes an `audit_logs` entry with `action: "onboarding.submit"`, and routes per first action (`?openAddTx=1` for Add transaction, `?openCsv=1` for Upload CSV, `?openAddBill=1` for Add first bill, `/dashboard` for sample data) |
-| 10 | Completed user re-logging-in lands on `/dashboard` directly with no gate |
-| 11 | **Skip flow** — reset progress doc, log in as new user, click "Save and finish later" on Step 1. `progress.skipped: true`, `current_step` is set, audit log `onboarding.skip` is written, user lands on `/dashboard` |
-| 12 | Gate card with "Secure setup required" pill renders at the top of `/dashboard`, `/ledger`, `/bill`, `/subscription`, `/revenue-sync`, `/integration`, `/ai`. Contextual title/body changes per page |
-| 13 | On each gated page, header action buttons (Add record, Export, Filter, AI submit, Connect) are dimmed and pointer-disabled; main data areas are blurred behind a "This area is locked until setup is complete" overlay |
-| 14 | Both `Continue setup` CTAs on the gate route to `/onboarding` and resume the user at their saved `current_step` |
-| 15 | "Use sample data" CTA is **not** visible in v1 |
-| 16 | Console clean across the flow: no `permission-denied`, no CSP/CORS/404, no Firebase error strings shown in alerts |
-| 17 | No global onboarding/businesses/KYC collections appear in Firestore; all writes stay under `users/{uid}/onboarding/...` |
-| 18 | Responsive — onboarding form fields are single-column at 375px; gate card readable and CTA tappable; no horizontal scroll |
+| 5 | Step 1 requires `business_name`, `role`, `main_goal`, `monthly_revenue_range`, `employee_count_range`. Role dropdown includes `Staff`; all required selects start on disabled placeholders with no preselected real value. Continue without filling shows red invalid borders/errors and does not advance |
+| 6 | Step 2 requires `legal_full_name` and normalized `phone_number`. Full legal name accepts letters/spaces only and fails under 4 trimmed characters with `Use letters only, minimum 4 characters.` The phone label is `Preferred WhatsApp number`, helper copy mentions WhatsApp reminders/confirmations, country selector defaults to Indonesia `+62`, and the prefix cannot be edited inside the local phone input |
+| 7 | Step 2 phone normalization strips spaces, dashes, non-digits, and leading local zero before saving. Example: country `+62` plus local `081234567890` saves `phone_country_code: "+62"` and `phone_number: "+6281234567890"` in `users/{uid}/onboarding/profile` |
+| 8 | The two document upload fields are optional, render a stub `Choose file` label, and accept files without uploading (file inputs don't actually POST anywhere) |
+| 9 | Step 3 is multiple checkbox cards with no default selection. Options are Upload CSV, Add transactions manually, Track upcoming bills, Understand my dashboard, Review revenue performance, Track subscriptions, and Ask Fluxy AI questions. Continue requires at least one selected card |
+| 10 | Step 4 shows a read-only review with business details, account owner details, Preferred WhatsApp number, selected onboarding preferences as chips/list items, and document upload statuses. It does not describe a first-action route |
+| 11 | Submit saves `users/{uid}/onboarding/profile`, `users/{uid}/onboarding/documents` (status `not_uploaded`), flips `progress.onboarding_completed: true`, writes an `audit_logs` entry with `action: "onboarding.submit"`, stores `selected_first_action`, `selected_first_actions`, `selected_learning_tours`, and `primary_learning_tour` under `users/{uid}/onboarding/progress`, queues platform learning in sessionStorage, and routes to `/dashboard` without opening Add Transaction, CSV upload, Add Bill, subscriptions, or sample data |
+| 12 | Completed user re-logging-in lands on `/dashboard` directly with no gate |
+| 13 | **Skip flow** — reset progress doc, log in as new user, click "Save and finish later" on Step 1. `progress.skipped: true`, `current_step` is set, audit log `onboarding.skip` is written, user lands on `/dashboard` |
+| 14 | Gate card with "Secure setup required" pill renders at the top of `/dashboard`, `/ledger`, `/bill`, `/subscription`, `/revenue-sync`, `/integration`, `/ai`. Contextual title/body changes per page |
+| 15 | On each gated page, header action buttons (Add record, Export, Filter, AI submit, Connect) are dimmed and pointer-disabled; main data areas are blurred behind a "This area is locked until setup is complete" overlay |
+| 16 | Both `Continue setup` CTAs on the gate route to `/onboarding` and resume the user at their saved `current_step` |
+| 17 | "Use sample data" CTA is **not** visible in v1 |
+| 18 | Console clean across the flow: no `permission-denied`, no CSP/CORS/404, no Firebase error strings shown in alerts |
+| 19 | No global onboarding/businesses/KYC collections appear in Firestore; all writes stay under `users/{uid}/onboarding/...` |
+| 20 | Responsive — onboarding form fields are single-column at 375px; gate card readable and CTA tappable; no horizontal scroll |
 
 ### D3. Post-KYC Platform Learning (platform-learning.js, dashboard app pages)
 
 | # | Check |
 |---|-------|
 | 1 | New user with incomplete onboarding sees the dashboard gate only; Quick ways to get started does not render |
-| 2 | Pending `sessionStorage.fluxy_pending_tour` is cleared when the onboarding gate renders |
+| 2 | Pending `sessionStorage.fluxy_pending_tour` and `sessionStorage.fluxy_pending_tours` are cleared when the onboarding gate renders |
 | 3 | Legacy/exempt users are not forced into platform learning or coachmark tours |
 | 4 | New user with `onboarding_completed: true` sees Quick ways to get started near the top of Overview |
 | 5 | Dismiss hides the section, writes `users/{uid}/platform_learning/state.dismissed: true`, and stays hidden after refresh |
-| 6 | Each card stores the pending tour, navigates to the correct page, and starts after auth, gate check, and page render |
+| 6 | Each card stores the pending tour, navigates to the correct page, and starts after auth, gate check, and page render. Onboarding-selected pending tours prioritize the matching Quick ways to get started card without opening Add Transaction, CSV, Add Bill, subscriptions, or sample data directly |
 | 7 | Coachmarks show overlay, target highlight, step count, Back, Next, Skip, and Done |
 | 8 | Next and Back animate without moving the coachmark to a disconnected corner of the viewport |
 | 9 | Completed tours show a completed mark on their card, but the card can still restart the guide |

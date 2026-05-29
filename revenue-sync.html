@@ -993,6 +993,7 @@
                 const gated = await applyToPage(user, { pageKey: 'revenue_sync' });
                 if (gated) {
                     sessionStorage.removeItem('fluxy_pending_tour');
+                    sessionStorage.removeItem('fluxy_pending_tours');
                     return;
                 }
                 await window.loadRevenue();

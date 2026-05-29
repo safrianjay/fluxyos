@@ -348,15 +348,16 @@ redirected.
 
 | Document | Fields |
 |----------|--------|
-| `progress` | `onboarding_completed` (bool), `onboarding_exempt` (bool), `eligible_for_onboarding_gate` (bool), `current_step` (`business_setup`/`account_owner`/`finance_setup`/`review`/`complete`), `completed_steps` (string[]), `selected_first_action` (`csv_upload`/`add_transaction`/`add_bill`/`sample_data`), `skipped` (bool), `source` (`onboarding_v2`/`legacy_exemption`), `created_at`, `updated_at`, `completed_at`, `skipped_at` |
-| `profile` | `business_name`, `role` (one of: `Owner / Founder`, `Finance admin`, `Accountant`, `Operations manager`, `Staff`), `main_goal`, `monthly_revenue_range`, `employee_count_range`, `legal_full_name`, `phone_number`, `created_at`, `updated_at` |
+| `progress` | `onboarding_completed` (bool), `onboarding_exempt` (bool), `eligible_for_onboarding_gate` (bool), `current_step` (`business_setup`/`account_owner`/`finance_setup`/`review`/`complete`), `completed_steps` (string[]), `selected_first_action` (first selected setup preference, backward-compatible), `selected_first_actions` (string[]), `selected_learning_tours` (string[]), `primary_learning_tour` (string \| null), `skipped` (bool), `source` (`onboarding_v2`/`legacy_exemption`), `created_at`, `updated_at`, `completed_at`, `skipped_at` |
+| `profile` | `business_name`, `role` (one of: `Owner / Founder`, `Finance admin`, `Accountant`, `Operations manager`, `Staff`), `main_goal`, `monthly_revenue_range`, `employee_count_range`, `legal_full_name`, `phone_country_code`, `phone_number` (normalized E.164-like string), `created_at`, `updated_at` |
 | `documents` | `identity_document_status` (`not_uploaded`/`uploaded`), `identity_document_storage_path` (null in v1), `business_document_status`, `business_document_storage_path` (null in v1), `created_at`, `updated_at` |
 
 **Detection logic** lives in `assets/js/onboarding-gate.js`. Imported as an ES
 module by `login.html` (for post-login routing) and by each app page's auth
 guard (for in-page gate rendering). `DataService` exposes
-`getOnboardingProgress`, `saveOnboardingProgress`, `saveOnboardingProfile`,
-`saveOnboardingDocuments`, `completeOnboarding`, `skipOnboarding`,
+`getOnboardingProgress`, `getOnboardingProfile`, `getOnboardingDocuments`,
+`saveOnboardingProgress`, `saveOnboardingProfile`, `saveOnboardingDocuments`,
+`completeOnboarding`, `skipOnboarding`,
 `markLegacyOnboardingExempt`.
 
 **Audit:** `onboarding.submit` and `onboarding.skip` actions are recorded under
@@ -365,6 +366,14 @@ guard (for in-page gate rendering). `DataService` exposes
 **Storage:** Document upload is UI-stub only in v1 — no Firebase Storage writes,
 no PII persisted beyond legal name + phone in `profile`. Storage paths remain
 null.
+
+**Setup preference values:** `selected_first_actions` may contain
+`csv_upload`, `add_transaction`, `add_bill`, `dashboard_overview`,
+`revenue_review`, `subscriptions`, and `fluxy_ai`. They map to platform
+learning tour IDs `ledger`, `bills`, `overview`, `revenue_sync`,
+`subscriptions`, and `fluxy_ai`. On completion the user always lands on
+`/dashboard`; onboarding may queue `sessionStorage.fluxy_pending_tour` and
+`sessionStorage.fluxy_pending_tours` for the post-KYC learning layer.
 
 ### 4g. Platform Learning — `users/{userId}/platform_learning/state`
 

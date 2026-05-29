@@ -311,6 +311,16 @@ class DataService {
         return snap.exists() ? snap.data() : null;
     }
 
+    async getOnboardingProfile(userId) {
+        const snap = await getDoc(this._onboardingDoc(userId, 'profile'));
+        return snap.exists() ? snap.data() : null;
+    }
+
+    async getOnboardingDocuments(userId) {
+        const snap = await getDoc(this._onboardingDoc(userId, 'documents'));
+        return snap.exists() ? snap.data() : null;
+    }
+
     async saveOnboardingProgress(userId, data) {
         const payload = this._cleanDefined({
             ...data,
@@ -324,16 +334,24 @@ class DataService {
     }
 
     async saveOnboardingProfile(userId, data) {
+        const allowedRoles = ['Owner / Founder', 'Finance admin', 'Accountant', 'Operations manager', 'Staff'];
         const payload = this._cleanDefined({
-            business_name: this._stringOrDefault(data.business_name, '', 120),
-            role: this._allowedValue(data.role,
-                ['Owner / Founder', 'Finance admin', 'Accountant', 'Operations manager', 'Staff'],
-                'Owner / Founder'),
-            main_goal: this._stringOrDefault(data.main_goal, '', 160),
-            monthly_revenue_range: this._stringOrDefault(data.monthly_revenue_range, '', 80),
-            employee_count_range: this._stringOrDefault(data.employee_count_range, '', 80),
-            legal_full_name: this._stringOrDefault(data.legal_full_name, '', 120),
-            phone_number: this._nullableString(data.phone_number, 32),
+            business_name: Object.prototype.hasOwnProperty.call(data, 'business_name')
+                ? this._stringOrDefault(data.business_name, '', 120) : undefined,
+            role: Object.prototype.hasOwnProperty.call(data, 'role')
+                ? this._allowedValue(data.role, allowedRoles, '') : undefined,
+            main_goal: Object.prototype.hasOwnProperty.call(data, 'main_goal')
+                ? this._stringOrDefault(data.main_goal, '', 160) : undefined,
+            monthly_revenue_range: Object.prototype.hasOwnProperty.call(data, 'monthly_revenue_range')
+                ? this._stringOrDefault(data.monthly_revenue_range, '', 80) : undefined,
+            employee_count_range: Object.prototype.hasOwnProperty.call(data, 'employee_count_range')
+                ? this._stringOrDefault(data.employee_count_range, '', 80) : undefined,
+            legal_full_name: Object.prototype.hasOwnProperty.call(data, 'legal_full_name')
+                ? this._stringOrDefault(data.legal_full_name, '', 120) : undefined,
+            phone_country_code: Object.prototype.hasOwnProperty.call(data, 'phone_country_code')
+                ? this._nullableString(data.phone_country_code, 8) : undefined,
+            phone_number: Object.prototype.hasOwnProperty.call(data, 'phone_number')
+                ? this._nullableString(data.phone_number, 32) : undefined,
             updated_at: serverTimestamp()
         });
         await setDoc(this._onboardingDoc(userId, 'profile'), {
@@ -359,15 +377,33 @@ class DataService {
     }
 
     async completeOnboarding(userId, payload = {}) {
-        const selectedAction = this._allowedValue(payload.selected_first_action,
-            ['csv_upload', 'add_transaction', 'add_bill', 'sample_data'],
-            'csv_upload');
+        const allowedActions = [
+            'csv_upload',
+            'add_transaction',
+            'add_bill',
+            'dashboard_overview',
+            'revenue_review',
+            'subscriptions',
+            'fluxy_ai'
+        ];
+        const allowedTours = ['overview', 'ledger', 'bills', 'budgets', 'fluxy_ai', 'revenue_sync', 'subscriptions'];
+        const selectedActions = Array.isArray(payload.selected_first_actions)
+            ? payload.selected_first_actions.filter((value, index, arr) => allowedActions.includes(value) && arr.indexOf(value) === index)
+            : [];
+        const selectedAction = this._allowedValue(payload.selected_first_action, allowedActions, selectedActions[0] || null);
+        const selectedTours = Array.isArray(payload.selected_learning_tours)
+            ? payload.selected_learning_tours.filter((value, index, arr) => allowedTours.includes(value) && arr.indexOf(value) === index)
+            : [];
+        const primaryTour = this._allowedValue(payload.primary_learning_tour, allowedTours, selectedTours[0] || null);
         await setDoc(this._onboardingDoc(userId, 'progress'), {
             onboarding_completed: true,
             onboarding_exempt: false,
             eligible_for_onboarding_gate: false,
             current_step: 'complete',
             selected_first_action: selectedAction,
+            selected_first_actions: selectedActions,
+            selected_learning_tours: selectedTours,
+            primary_learning_tour: primaryTour,
             source: 'onboarding_v2',
             completed_at: serverTimestamp(),
             updated_at: serverTimestamp()
@@ -376,7 +412,13 @@ class DataService {
             action: 'onboarding.submit',
             target_collection: 'onboarding',
             target_id: 'progress',
-            after: { onboarding_completed: true, selected_first_action: selectedAction },
+            after: {
+                onboarding_completed: true,
+                selected_first_action: selectedAction,
+                selected_first_actions: selectedActions,
+                selected_learning_tours: selectedTours,
+                primary_learning_tour: primaryTour
+            },
             source: 'onboarding'
         });
     }

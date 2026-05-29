@@ -4,7 +4,7 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import DataService from "./db-service.js";
-import { isNewUserAfterCutoff, getOnboardingProgress } from "./onboarding-gate.js";
+import { getOnboardingProgress } from "./onboarding-gate.js";
 
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -23,8 +23,20 @@ const data = new DataService(app);
 const STEPS = [
     { key: 'business_setup', shortTitle: 'Basic setup', context: 'Business setup', pillLabel: 'Business setup' },
     { key: 'account_owner',  shortTitle: 'Account owner', context: 'Account owner', pillLabel: 'Account owner' },
-    { key: 'finance_setup',  shortTitle: 'Start using FluxyOS', context: 'First action', pillLabel: 'Finance setup' },
+    { key: 'finance_setup',  shortTitle: 'Setup focus', context: 'Learning focus', pillLabel: 'Finance setup' },
     { key: 'review',         shortTitle: 'Final check', context: 'Confirm details', pillLabel: 'Review' }
+];
+
+const COUNTRY_CODES = ['+62', '+65', '+60', '+1', '+44', '+61'];
+
+const ONBOARDING_PREFERENCES = [
+    { value: 'csv_upload', label: 'Upload CSV', tourId: 'ledger' },
+    { value: 'add_transaction', label: 'Add transactions manually', tourId: 'ledger' },
+    { value: 'add_bill', label: 'Track upcoming bills', tourId: 'bills' },
+    { value: 'dashboard_overview', label: 'Understand my dashboard', tourId: 'overview' },
+    { value: 'revenue_review', label: 'Review revenue performance', tourId: 'revenue_sync' },
+    { value: 'subscriptions', label: 'Track subscriptions', tourId: 'subscriptions' },
+    { value: 'fluxy_ai', label: 'Ask Fluxy AI questions', tourId: 'fluxy_ai' }
 ];
 
 const state = {
@@ -33,15 +45,19 @@ const state = {
     completedSteps: [],
     fields: {
         business_name: '',
-        role: 'Owner / Founder',
-        main_goal: 'Track revenue and expenses',
-        monthly_revenue_range: 'Under Rp 50.000.000',
-        employee_count_range: '0 - 10 employees',
+        role: '',
+        main_goal: '',
+        monthly_revenue_range: '',
+        employee_count_range: '',
         legal_full_name: '',
+        phone_country_code: '+62',
+        phone_local_number: '',
         phone_number: '',
         id_doc_name: '',
         biz_doc_name: '',
-        first_action: 'csv_upload'
+        first_actions: [],
+        selected_learning_tours: [],
+        primary_learning_tour: null
     },
     submitting: false
 };
@@ -63,6 +79,8 @@ onAuthStateChanged(auth, async (user) => {
         return;
     }
 
+    await hydrateSavedState(user.uid, progress);
+
     // Resume from saved step if any
     if (progress?.current_step) {
         const resumeIdx = STEPS.findIndex(s => s.key === progress.current_step);
@@ -71,6 +89,51 @@ onAuthStateChanged(auth, async (user) => {
 
     initUI();
 });
+
+async function hydrateSavedState(userId, progress) {
+    try {
+        const [profile, documents] = await Promise.all([
+            data.getOnboardingProfile(userId).catch(() => null),
+            data.getOnboardingDocuments(userId).catch(() => null)
+        ]);
+        if (profile) {
+            Object.entries({
+                business_name: profile.business_name,
+                role: profile.role,
+                main_goal: profile.main_goal,
+                monthly_revenue_range: profile.monthly_revenue_range,
+                employee_count_range: profile.employee_count_range,
+                legal_full_name: profile.legal_full_name,
+                phone_country_code: COUNTRY_CODES.includes(profile.phone_country_code) ? profile.phone_country_code : '+62',
+                phone_number: profile.phone_number
+            }).forEach(([key, value]) => {
+                if (value !== undefined && value !== null) state.fields[key] = value;
+            });
+            if (state.fields.phone_number) {
+                const withoutCode = state.fields.phone_number.startsWith(state.fields.phone_country_code)
+                    ? state.fields.phone_number.slice(state.fields.phone_country_code.length)
+                    : state.fields.phone_number.replace(/^\+/, '');
+                state.fields.phone_local_number = withoutCode;
+            }
+        }
+        if (documents?.identity_document_status === 'uploaded') state.fields.id_doc_name = 'Identity document added';
+        if (documents?.business_document_status === 'uploaded') state.fields.biz_doc_name = 'Business document added';
+        if (Array.isArray(progress?.selected_first_actions)) {
+            state.fields.first_actions = progress.selected_first_actions.filter((value) =>
+                ONBOARDING_PREFERENCES.some((item) => item.value === value)
+            );
+            updateLearningTourState();
+        } else if (progress?.selected_first_action) {
+            state.fields.first_actions = ONBOARDING_PREFERENCES.some((item) => item.value === progress.selected_first_action)
+                ? [progress.selected_first_action]
+                : [];
+            updateLearningTourState();
+        }
+        if (Array.isArray(progress?.completed_steps)) state.completedSteps = progress.completed_steps;
+    } catch (_) {
+        // Resume should never block the setup page; the user can re-enter fields.
+    }
+}
 
 // ---------- UI init ----------
 function initUI() {
@@ -88,8 +151,9 @@ function initUI() {
     bindInput('#f-main-goal', 'main_goal');
     bindInput('#f-revenue', 'monthly_revenue_range');
     bindInput('#f-employees', 'employee_count_range');
-    bindInput('#f-legal-name', 'legal_full_name');
-    bindInput('#f-phone', 'phone_number');
+    bindLegalNameInput();
+    bindPhoneInputs();
+    syncFormFromState();
 
     document.getElementById('f-id-doc').addEventListener('change', (e) => {
         const file = e.target.files?.[0];
@@ -102,11 +166,24 @@ function initUI() {
         document.getElementById('f-biz-doc-name').textContent = file?.name || 'Choose file';
     });
 
-    document.querySelectorAll('input[name="first_action"]').forEach((el) => {
+    document.querySelectorAll('input[name="first_actions"]').forEach((el) => {
         el.addEventListener('change', () => {
-            const selected = document.querySelector('input[name="first_action"]:checked');
-            state.fields.first_action = selected?.value || 'csv_upload';
+            state.fields.first_actions = getSelectedFirstActions();
+            updateLearningTourState();
+            clearFieldError('#finance-actions', 'finance-actions-error');
         });
+    });
+}
+
+function syncFormFromState() {
+    const legal = document.querySelector('#f-legal-name');
+    if (legal) legal.value = state.fields.legal_full_name || '';
+    const country = document.querySelector('#f-phone-country');
+    if (country) country.value = COUNTRY_CODES.includes(state.fields.phone_country_code) ? state.fields.phone_country_code : '+62';
+    const phone = document.querySelector('#f-phone-local');
+    if (phone) phone.value = state.fields.phone_local_number || '';
+    document.querySelectorAll('input[name="first_actions"]').forEach((el) => {
+        el.checked = state.fields.first_actions.includes(el.value);
     });
 }
 
@@ -116,11 +193,52 @@ function bindInput(selector, fieldKey) {
     if (state.fields[fieldKey] !== undefined && state.fields[fieldKey] !== '') el.value = state.fields[fieldKey];
     el.addEventListener('input', () => {
         state.fields[fieldKey] = el.value;
-        el.classList.remove('is-invalid');
+        clearFieldError(selector);
     });
     el.addEventListener('change', () => {
         state.fields[fieldKey] = el.value;
+        clearFieldError(selector);
     });
+}
+
+function bindLegalNameInput() {
+    const el = document.querySelector('#f-legal-name');
+    if (!el) return;
+    el.addEventListener('input', () => {
+        const clean = el.value.replace(/[^A-Za-z\s]/g, '').replace(/\s{2,}/g, ' ');
+        if (el.value !== clean) el.value = clean;
+        state.fields.legal_full_name = clean;
+        clearFieldError('#f-legal-name', 'f-legal-name-error');
+    });
+    el.addEventListener('paste', () => {
+        window.setTimeout(() => {
+            const clean = el.value.replace(/[^A-Za-z\s]/g, '').replace(/\s{2,}/g, ' ');
+            if (el.value !== clean) el.value = clean;
+            state.fields.legal_full_name = clean;
+        }, 0);
+    });
+}
+
+function bindPhoneInputs() {
+    const country = document.querySelector('#f-phone-country');
+    const local = document.querySelector('#f-phone-local');
+    if (country) {
+        country.value = state.fields.phone_country_code;
+        country.addEventListener('change', () => {
+            state.fields.phone_country_code = COUNTRY_CODES.includes(country.value) ? country.value : '+62';
+            updateNormalizedPhone();
+            clearFieldError('#f-phone-local', 'f-phone-error');
+        });
+    }
+    if (local) {
+        local.addEventListener('input', () => {
+            const clean = local.value.replace(/[^\d\s-]/g, '');
+            if (local.value !== clean) local.value = clean;
+            state.fields.phone_local_number = clean;
+            updateNormalizedPhone();
+            clearFieldError('#f-phone-local', 'f-phone-error');
+        });
+    }
 }
 
 // ---------- Rail ----------
@@ -195,31 +313,78 @@ function showStep(direction = 'forward') {
 }
 
 // ---------- Validation ----------
+function getSelectedFirstActions() {
+    return Array.from(document.querySelectorAll('input[name="first_actions"]:checked'))
+        .map((el) => el.value)
+        .filter((value) => ONBOARDING_PREFERENCES.some((item) => item.value === value));
+}
+
+function getLearningToursForActions(actions = state.fields.first_actions) {
+    const tours = [];
+    actions.forEach((action) => {
+        const tourId = ONBOARDING_PREFERENCES.find((item) => item.value === action)?.tourId;
+        if (tourId && !tours.includes(tourId)) tours.push(tourId);
+    });
+    return tours;
+}
+
+function updateLearningTourState() {
+    state.fields.selected_learning_tours = getLearningToursForActions();
+    state.fields.primary_learning_tour = state.fields.selected_learning_tours[0] || null;
+}
+
+function normalizePhoneNumber(countryCode, localNumber) {
+    const code = COUNTRY_CODES.includes(countryCode) ? countryCode : '+62';
+    const localDigits = String(localNumber || '').replace(/\D/g, '').replace(/^0+/, '');
+    return localDigits ? `${code}${localDigits}` : '';
+}
+
+function updateNormalizedPhone() {
+    state.fields.phone_number = normalizePhoneNumber(
+        state.fields.phone_country_code,
+        state.fields.phone_local_number
+    );
+}
+
 function validateStep() {
     const step = STEPS[state.stepIndex].key;
     clearInvalidMarkers();
 
     if (step === 'business_setup') {
         const required = [
-            ['#f-business-name', state.fields.business_name?.trim()],
-            ['#f-role', state.fields.role],
-            ['#f-main-goal', state.fields.main_goal],
-            ['#f-revenue', state.fields.monthly_revenue_range],
-            ['#f-employees', state.fields.employee_count_range]
+            ['#f-business-name', state.fields.business_name?.trim(), 'f-business-name-error'],
+            ['#f-role', state.fields.role, 'f-role-error'],
+            ['#f-main-goal', state.fields.main_goal, 'f-main-goal-error'],
+            ['#f-revenue', state.fields.monthly_revenue_range, 'f-revenue-error'],
+            ['#f-employees', state.fields.employee_count_range, 'f-employees-error']
         ];
         return validateRequired(required);
     }
 
     if (step === 'account_owner') {
-        const required = [
-            ['#f-legal-name', state.fields.legal_full_name?.trim()],
-            ['#f-phone', state.fields.phone_number?.trim()]
-        ];
-        return validateRequired(required);
+        let valid = true;
+        const fullName = state.fields.legal_full_name?.trim() || '';
+        if (fullName.length < 4 || !/^[A-Za-z\s]+$/.test(fullName)) {
+            valid = false;
+            setFieldError('#f-legal-name', 'f-legal-name-error', 'Use letters only, minimum 4 characters.');
+        }
+        updateNormalizedPhone();
+        const localDigits = String(state.fields.phone_local_number || '').replace(/\D/g, '').replace(/^0+/, '');
+        if (!COUNTRY_CODES.includes(state.fields.phone_country_code) || !localDigits) {
+            valid = false;
+            setFieldError('#f-phone-local', 'f-phone-error', 'Enter a WhatsApp number after the country code.');
+        }
+        return valid;
     }
 
     if (step === 'finance_setup') {
-        return ['csv_upload', 'add_transaction', 'add_bill', 'sample_data'].includes(state.fields.first_action);
+        state.fields.first_actions = getSelectedFirstActions();
+        updateLearningTourState();
+        if (!state.fields.first_actions.length) {
+            setFieldError('#finance-actions', 'finance-actions-error', 'Pick at least one setup focus.');
+            return false;
+        }
+        return true;
     }
 
     return true;
@@ -227,11 +392,10 @@ function validateStep() {
 
 function validateRequired(pairs) {
     let valid = true;
-    pairs.forEach(([sel, val]) => {
+    pairs.forEach(([sel, val, errorId]) => {
         if (!val) {
             valid = false;
-            const el = document.querySelector(sel);
-            if (el) el.classList.add('is-invalid');
+            setFieldError(sel, errorId);
         }
     });
     return valid;
@@ -239,6 +403,27 @@ function validateRequired(pairs) {
 
 function clearInvalidMarkers() {
     document.querySelectorAll('.is-invalid').forEach((el) => el.classList.remove('is-invalid'));
+    document.querySelectorAll('.onboarding-error').forEach((el) => { el.textContent = ''; });
+}
+
+function setFieldError(selector, errorId, message = 'This field is required.') {
+    const el = document.querySelector(selector);
+    if (el) el.classList.add('is-invalid');
+    const resolvedErrorId = errorId || el?.getAttribute('aria-describedby');
+    if (resolvedErrorId) {
+        const error = document.getElementById(resolvedErrorId);
+        if (error) error.textContent = message;
+    }
+}
+
+function clearFieldError(selector, errorId) {
+    const el = document.querySelector(selector);
+    if (el) el.classList.remove('is-invalid');
+    const resolvedErrorId = errorId || el?.getAttribute('aria-describedby');
+    if (resolvedErrorId) {
+        const error = document.getElementById(resolvedErrorId);
+        if (error) error.textContent = '';
+    }
 }
 
 // ---------- Step transitions ----------
@@ -267,8 +452,10 @@ async function onContinue() {
                 console.warn('[onboarding] step1 settings/company mirror failed', e);
             }
         } else if (stepKey === 'account_owner') {
+            updateNormalizedPhone();
             await data.saveOnboardingProfile(state.user.uid, {
                 legal_full_name: state.fields.legal_full_name,
+                phone_country_code: state.fields.phone_country_code,
                 phone_number: state.fields.phone_number
             });
             await data.saveOnboardingDocuments(state.user.uid, {
@@ -276,8 +463,13 @@ async function onContinue() {
                 business_document_status: 'not_uploaded'
             });
         } else if (stepKey === 'finance_setup') {
+            state.fields.first_actions = getSelectedFirstActions();
+            updateLearningTourState();
             await data.saveOnboardingProgress(state.user.uid, {
-                selected_first_action: state.fields.first_action,
+                selected_first_action: state.fields.first_actions[0] || null,
+                selected_first_actions: state.fields.first_actions,
+                selected_learning_tours: state.fields.selected_learning_tours,
+                primary_learning_tour: state.fields.primary_learning_tour,
                 current_step: STEPS[state.stepIndex + 1]?.key || 'review'
             });
         }
@@ -320,6 +512,7 @@ async function onSaveLater() {
 
 async function onSubmit() {
     if (state.submitting) return;
+    if (!validateAllBeforeSubmit()) return;
     state.submitting = true;
     const btn = document.getElementById('btn-submit');
     btn.disabled = true;
@@ -327,6 +520,9 @@ async function onSubmit() {
     showSubmitLoader();
 
     try {
+        updateNormalizedPhone();
+        state.fields.first_actions = getSelectedFirstActions();
+        updateLearningTourState();
         await data.saveOnboardingProfile(state.user.uid, {
             business_name: state.fields.business_name,
             role: state.fields.role,
@@ -334,6 +530,7 @@ async function onSubmit() {
             monthly_revenue_range: state.fields.monthly_revenue_range,
             employee_count_range: state.fields.employee_count_range,
             legal_full_name: state.fields.legal_full_name,
+            phone_country_code: state.fields.phone_country_code,
             phone_number: state.fields.phone_number
         });
         await data.saveOnboardingDocuments(state.user.uid, {
@@ -354,7 +551,10 @@ async function onSubmit() {
             console.warn('[onboarding] settings/company mirror failed', e);
         }
         await data.completeOnboarding(state.user.uid, {
-            selected_first_action: state.fields.first_action
+            selected_first_action: state.fields.first_actions[0] || null,
+            selected_first_actions: state.fields.first_actions,
+            selected_learning_tours: state.fields.selected_learning_tours,
+            primary_learning_tour: state.fields.primary_learning_tour
         });
     } catch (err) {
         state.submitting = false;
@@ -370,7 +570,19 @@ async function onSubmit() {
         return;
     }
 
-    routeAfterSubmit(state.fields.first_action);
+    routeAfterSubmit();
+}
+
+function validateAllBeforeSubmit() {
+    const reviewIndex = STEPS.findIndex((step) => step.key === 'review');
+    for (let idx = 0; idx < reviewIndex; idx += 1) {
+        state.stepIndex = idx;
+        showStep(idx === 0 ? 'backward' : 'forward');
+        if (!validateStep()) return false;
+    }
+    state.stepIndex = reviewIndex;
+    showStep('forward');
+    return true;
 }
 
 function showSubmitLoader() {
@@ -416,42 +628,47 @@ function hideSubmitLoader() {
     if (overlay) overlay.remove();
 }
 
-function routeAfterSubmit(firstAction) {
+function routeAfterSubmit() {
     // Guarantee the onboarding coachmark shows the first time this just-onboarded
-    // user reaches the overview, even when their first action routes them to
-    // /ledger or /bill first. Honored + cleared by dashboard.html.
+    // user reaches the overview. Honored + cleared by dashboard.html.
     sessionStorage.setItem('fluxy_learning_promote_force', '1');
-    const map = {
-        csv_upload:     '/ledger?openCsv=1',
-        add_transaction:'/ledger?openAddTx=1',
-        add_bill:       '/bill?openAddBill=1',
-        sample_data:    '/dashboard'
-    };
-    window.location.href = map[firstAction] || '/dashboard';
+    if (state.fields.primary_learning_tour) {
+        sessionStorage.setItem('fluxy_pending_tour', state.fields.primary_learning_tour);
+    } else {
+        sessionStorage.removeItem('fluxy_pending_tour');
+    }
+    if (state.fields.selected_learning_tours.length) {
+        sessionStorage.setItem('fluxy_pending_tours', JSON.stringify(state.fields.selected_learning_tours));
+    } else {
+        sessionStorage.removeItem('fluxy_pending_tours');
+    }
+    window.location.href = '/dashboard';
 }
 
 // ---------- Review ----------
 function renderReview() {
     const f = state.fields;
-    const actionLabels = {
-        csv_upload: 'Upload CSV',
-        add_transaction: 'Add transaction',
-        add_bill: 'Add first bill',
-        sample_data: 'Explore sample data'
-    };
+    const preferenceLabels = f.first_actions
+        .map((value) => ONBOARDING_PREFERENCES.find((item) => item.value === value)?.label)
+        .filter(Boolean);
+    const preferenceHtml = preferenceLabels.length
+        ? `<span class="onboarding-chip-list">${preferenceLabels.map((label) => `<span class="onboarding-chip">${escapeHtml(label)}</span>`).join('')}</span>`
+        : '—';
+    const documentsHtml = [
+        f.id_doc_name ? `Identity: ${f.id_doc_name}` : 'Identity: not added',
+        f.biz_doc_name ? `Business: ${f.biz_doc_name}` : 'Business: not added'
+    ].map((label) => `<span class="onboarding-chip">${escapeHtml(label)}</span>`).join('');
     const rows = [
-        ['Business profile', `${f.business_name || '—'} · ${f.role}`],
-        ['Business size', `${f.monthly_revenue_range} · ${f.employee_count_range}`],
-        ['Account owner', `${f.legal_full_name || '—'} · ${f.phone_number || '—'}`],
-        ['Optional documents', [
-            f.id_doc_name ? `Identity: ${f.id_doc_name}` : 'Identity: not added',
-            f.biz_doc_name ? `Business: ${f.biz_doc_name}` : 'Business: not added'
-        ].join(' · ')],
-        ['First finance action', actionLabels[f.first_action] || '—']
+        ['Business details', `${f.business_name || '—'} · ${f.role || '—'}`, false],
+        ['Business size', `${f.monthly_revenue_range || '—'} · ${f.employee_count_range || '—'}`, false],
+        ['Account owner', f.legal_full_name || '—', false],
+        ['Preferred WhatsApp number', f.phone_number || '—', false],
+        ['Selected setup focus', preferenceHtml, true],
+        ['Document upload statuses', `<span class="onboarding-chip-list">${documentsHtml}</span>`, true]
     ];
     const list = document.getElementById('review-list');
-    list.innerHTML = rows.map(([k, v]) =>
-        `<div class="onboarding-review-row"><dt class="onboarding-review-key">${k}</dt><dd class="onboarding-review-val">${escapeHtml(v)}</dd></div>`
+    list.innerHTML = rows.map(([k, v, isHtml]) =>
+        `<div class="onboarding-review-row"><dt class="onboarding-review-key">${k}</dt><dd class="onboarding-review-val">${isHtml ? v : escapeHtml(v)}</dd></div>`
     ).join('');
 }
 

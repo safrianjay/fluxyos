@@ -256,6 +256,17 @@
     align-items: center;
     gap: 8px;
 }
+.onboarding-helper {
+    font-size: 12px;
+    color: #6B7280;
+    line-height: 1.45;
+}
+.onboarding-error {
+    min-height: 16px;
+    font-size: 12px;
+    color: #DC2626;
+    line-height: 1.35;
+}
 .onboarding-optional {
     font-size: 11px;
     font-weight: 600;
@@ -298,9 +309,22 @@
     box-shadow: 0 0 0 3px rgba(11,15,25,0.08);
 }
 .onboarding-field input.is-invalid,
-.onboarding-field select.is-invalid {
+.onboarding-field select.is-invalid,
+.onboarding-checkbox-grid.is-invalid {
     border-color: #DC2626;
     box-shadow: 0 0 0 3px rgba(220,38,38,0.08);
+}
+.onboarding-checkbox-grid.is-invalid .onboarding-checkbox {
+    border-color: #DC2626;
+}
+
+.onboarding-phone-row {
+    display: grid;
+    grid-template-columns: minmax(172px, 220px) minmax(0, 1fr);
+    gap: 12px;
+}
+@media (max-width: 600px) {
+    .onboarding-phone-row { grid-template-columns: 1fr; }
 }
 
 /* Optional document upload */
@@ -332,8 +356,8 @@
 .onboarding-upload-title { font-size: 13px; font-weight: 600; color: #0B0F19; }
 .onboarding-upload-hint { font-size: 12px; color: #6B7280; line-height: 1.45; }
 
-/* Radio cards (Step 3) */
-.onboarding-radio-grid {
+/* Checkbox cards (Step 3) */
+.onboarding-checkbox-grid {
     border: none;
     margin: 0 0 24px;
     padding: 0;
@@ -341,7 +365,7 @@
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 12px;
 }
-.onboarding-radio {
+.onboarding-checkbox {
     border: 1px solid #E5E7EB;
     border-radius: 12px;
     padding: 16px 18px;
@@ -351,20 +375,51 @@
     display: flex;
     align-items: flex-start;
     gap: 12px;
+    position: relative;
 }
-.onboarding-radio input {
-    margin: 4px 0 0;
-    accent-color: #0B0F19;
+.onboarding-checkbox input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
 }
-.onboarding-radio:hover { border-color: #9CA3AF; }
-.onboarding-radio:has(input:checked) {
+.onboarding-checkbox-control {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 1.5px solid #D1D5DB;
+    background: #FFFFFF;
+    flex: 0 0 auto;
+    margin-top: 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #FFFFFF;
+}
+.onboarding-checkbox:hover { border-color: #9CA3AF; }
+.onboarding-checkbox:has(input:focus-visible) {
+    border-color: #0B0F19;
+    box-shadow: 0 0 0 3px rgba(11,15,25,0.08);
+}
+.onboarding-checkbox:has(input:checked) {
     border-color: #0B0F19;
     box-shadow: 0 0 0 3px rgba(11,15,25,0.06);
     background: #F9FAFB;
 }
-.onboarding-radio-body { display: flex; flex-direction: column; gap: 4px; }
-.onboarding-radio-title { font-size: 13px; font-weight: 600; color: #0B0F19; }
-.onboarding-radio-hint { font-size: 12px; color: #6B7280; line-height: 1.45; }
+.onboarding-checkbox:has(input:checked) .onboarding-checkbox-control {
+    border-color: #EA580C;
+    background: #EA580C;
+}
+.onboarding-checkbox:has(input:checked) .onboarding-checkbox-control::after {
+    content: "";
+    width: 8px;
+    height: 5px;
+    border-left: 2px solid #FFFFFF;
+    border-bottom: 2px solid #FFFFFF;
+    transform: rotate(-45deg) translateY(-1px);
+}
+.onboarding-checkbox-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.onboarding-checkbox-title { font-size: 13px; font-weight: 600; color: #0B0F19; }
+.onboarding-checkbox-hint { font-size: 12px; color: #6B7280; line-height: 1.45; }
 
 /* Review (Step 4) */
 .onboarding-review {
@@ -384,6 +439,32 @@
 .onboarding-review-row:last-child { border-bottom: none; }
 .onboarding-review-key { font-size: 13px; color: #6B7280; }
 .onboarding-review-val { font-size: 13px; font-weight: 600; color: #0B0F19; }
+.onboarding-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.onboarding-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+@media (max-width: 600px) {
+    .onboarding-review-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 14px 16px;
+    }
+}
 
 .onboarding-foot-note {
     font-size: 12px;
