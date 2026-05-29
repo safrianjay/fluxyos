@@ -509,6 +509,75 @@ and `bank_account.balance_updated`.
 `assets/js/bank-statement-import.js` and is exposed as
 `window.FluxyBankStatementImport`.
 
+### 4j. Internal Operations Console (Phase 1 MVP)
+
+The Internal Operations Console (`internal.html` + `assets/js/internal-dashboard.js`)
+is an internal-only activation & verification tool. It is **not** a customer page:
+no marketing footer, no public nav, no customer sidebar, and it is never linked
+from public navigation, the dashboard sidebar, or `sitemap.xml`. Full spec:
+`docs/internal_operations_console_plan.md`.
+
+**Auth (temporary):** a client-side credential gate (`username "fluxyos admin"`,
+sessionStorage key `fluxy_internal_admin_session`) marked
+`MVP_INTERNAL_ONLY_TEMPORARY_AUTH`. It is **not** a Firebase identity, so the
+console is unauthenticated to Firestore. Replace with Firebase custom claims or a
+backend-verified admin session before production.
+
+These are the only **top-level (non-user-scoped)** collections in the schema, and
+their `firestore.rules` are intentionally open (field-validated). They hold
+operational metadata only — never financial ledger rows, balances, secrets, or
+formatted currency strings.
+
+#### `internal_users/{userId}` (open: read/create/update; delete blocked)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `user_id` | string | Matches the Firebase Auth UID / doc id. |
+| `email`, `display_name`, `phone_number` | string \| null | Identity, refreshed by self-sync. |
+| `business_name`, `role` | string \| null | Derived from `onboarding/profile`. |
+| `account_status` | string | See §13 of the plan (`registered`…`suspended`). |
+| `kyc_status` | string | `not_started`…`rejected`. |
+| `payment_status` | string | `not_required`…`expired`. |
+| `onboarding_completed` | bool | Mirrors `onboarding/progress`. |
+| `kyc_submitted_at`, `kyc_reviewed_at`, `payment_submitted_at`, `payment_verified_at` | Timestamp \| null | |
+| `plan_id`, `payment_method` | string \| null | Denormalized payment fields. |
+| `payment_amount` | number \| null | Raw integer Rupiah. Never a formatted string. |
+| `assigned_reviewer_id`, `last_internal_note`, `risk_level` | string \| null | Internal metadata. |
+| `created_at`, `updated_at` | Timestamp | `serverTimestamp()`. |
+
+**Population:** each user's own client upserts its own row via
+`DataService.syncSelfToInternalIndex(uid, { email, display_name })`, called from the
+`sidebar-loader.js` auth handler (every app page load) and from `onboarding.js`
+`onSubmit`. Self-sync always refreshes identity/profile fields but **only seeds
+status fields on first create** (or advances `not_started`/`in_progress` →
+`submitted` on onboarding completion), so a reviewer's decision is never clobbered.
+Covers only users who sign in after release; a backfill needs the Admin SDK.
+
+#### `internal_audit_logs/{auditLogId}` (open: read/create; update/delete blocked)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `actor_uid` | string \| null | `null` in the credential-gate MVP. |
+| `actor_username` | string | `"fluxyos admin"`. |
+| `actor_role` | string | `"internal_admin"`. |
+| `action` | string | `kyc.approve`, `kyc.request_revision`, `kyc.reject`, `payment.under_review`, `payment.verify`, `payment.reject`, `user.activate`, `user.suspend`, `internal.note.update`. |
+| `target_user_id` | string | Affected `internal_users` doc id. |
+| `before` / `after` | map \| null | Primitive status snapshots only. |
+| `reason` | string \| null | Required for revision/reject/suspend. |
+| `source` | string | Locked to `"internal_dashboard"`. |
+| `created_at` | Timestamp | `serverTimestamp()` (must equal `request.time`). |
+
+The console cannot write the owner-scoped `users/{uid}/audit_logs` (validation
+requires a real `actor_uid`), so the user-scoped audit mirror is deferred to the
+backend phase.
+
+**DataService methods:** `getInternalUsers({ limitCount })`, `getInternalUser`,
+`updateInternalUserStatus(userId, statusPayload, auditContext)` (status update +
+audit log), `addInternalAuditLog`, `getInternalAuditLogs(limitCount = 100)`,
+`syncSelfToInternalIndex`. Status-action rules (allowed-from states, resulting
+statuses, audit actions) are specified in `docs/internal_operations_console_plan.md`
+§18.
+
 ---
 
 ## 5. Business Logic Rules

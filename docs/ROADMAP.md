@@ -36,6 +36,19 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Sample-data mode after onboarding | 📋 Planned | "Explore sample data" routes to dashboard without seeding records |
 | "Use sample data" CTA on the dashboard gate | 📋 Planned | Hidden in v1 |
 
+### Internal Operations Console (internal-only)
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Internal console page `internal.html` (Overview, Users, KYC, Payment, Audit tabs) | ✅ Shipped Phase 1 | Reuses dashboard design system; no footer/sidebar; hidden from public nav + sitemap |
+| Credential gate (`fluxyos admin`, sessionStorage) | ✅ Shipped Phase 1 | `MVP_INTERNAL_ONLY_TEMPORARY_AUTH` — not production-grade; replace with Firebase custom claims / backend admin session |
+| `internal_users` index + self-upsert on login/onboarding | ✅ Shipped Phase 1 | `DataService.syncSelfToInternalIndex`; covers only users who sign in after release |
+| KYC / payment / account status actions + `internal_audit_logs` | ✅ Shipped Phase 1 | Confirmation dialogs, reviewer notes, audit log per action |
+| Open `internal_*` firestore.rules (field-validated) | ✅ Shipped Phase 1 | Must be **deployed** for the console to load data. Open by design until admin auth exists |
+| User-scoped audit mirror (`users/{uid}/audit_logs`) | 📋 Planned | Needs backend/Admin SDK (console is unauthenticated) |
+| Customer payment-proof upload + `payment_verifications` | 📋 Planned | Phase 2; Payment Review currently uses denormalized fields on `internal_users` |
+| Customer-facing access gates (pending/payment/suspended screens) | 📋 Planned | Phase 3 |
+| Real admin auth (Firebase custom claims / backend session) | 📋 Planned | Phase 5; replaces the temporary credential gate |
+
 ### Transactions (Ledger)
 | Feature | Status | Notes |
 |---------|--------|-------|

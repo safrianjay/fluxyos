@@ -362,6 +362,17 @@
                         if (nameElem) nameElem.innerText = user.displayName || user.email.split('@')[0];
                         if (avatarElem && user.photoURL) avatarElem.src = user.photoURL;
                         syncEntityProfile(app, user.uid);
+                        // Keep the internal operations index (internal_users/{uid})
+                        // in sync from the user's own session. Best-effort and
+                        // never blocks the dashboard. See db-service.js
+                        // syncSelfToInternalIndex + internal.html console.
+                        import("/assets/js/db-service.js").then(({ default: DataService }) => {
+                            const ds = new DataService(app);
+                            return ds.syncSelfToInternalIndex(user.uid, {
+                                email: user.email || null,
+                                display_name: user.displayName || null
+                            });
+                        }).catch((e) => console.warn('[sidebar] internal index sync skipped', e));
                     }
                 });
             });

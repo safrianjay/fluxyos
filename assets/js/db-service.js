@@ -684,6 +684,162 @@ class DataService {
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
 
+    // --- INTERNAL OPERATIONS CONSOLE (Phase 1 MVP) ---
+    // `internal_users` and `internal_audit_logs` are operational-metadata-only
+    // collections. They must never store financial ledger rows, bills,
+    // subscriptions, balances, secrets, or formatted currency strings.
+    //
+    // MVP_INTERNAL_ONLY_TEMPORARY_AUTH — the console that drives these methods is
+    // gated by a client-side credential, not a Firebase identity, so the matching
+    // firestore.rules are intentionally open. Replace with Firebase custom claims
+    // or a backend-verified admin session before production.
+    _internalUserDoc(userId) {
+        return doc(this.db, `internal_users/${userId}`);
+    }
+
+    async getInternalUsers({ limitCount = 200 } = {}) {
+        const q = query(
+            collection(this.db, 'internal_users'),
+            orderBy('created_at', 'desc'),
+            limit(limitCount)
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    async getInternalUser(userId) {
+        const snap = await getDoc(this._internalUserDoc(userId));
+        return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    }
+
+    async addInternalAuditLog(payload = {}) {
+        return await addDoc(collection(this.db, 'internal_audit_logs'), {
+            actor_uid: payload.actor_uid || null,
+            actor_username: this._stringOrDefault(payload.actor_username, 'fluxyos admin', 80),
+            actor_role: 'internal_admin',
+            action: this._stringOrDefault(payload.action, 'internal.note.update', 80),
+            target_user_id: this._stringOrDefault(payload.target_user_id, '', 160),
+            before: payload.before || null,
+            after: payload.after || null,
+            reason: this._nullableString(payload.reason, 500),
+            source: 'internal_dashboard',
+            created_at: serverTimestamp()
+        });
+    }
+
+    async getInternalAuditLogs(limitCount = 100) {
+        const q = query(
+            collection(this.db, 'internal_audit_logs'),
+            orderBy('created_at', 'desc'),
+            limit(limitCount)
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    // Apply a reviewer status change to internal_users/{userId} and write the
+    // matching internal audit log atomically (single writeBatch — so a status
+    // change is never left unlogged). `auditContext` must carry primitive
+    // before/after snapshots (no serverTimestamp sentinels) so the audit row
+    // stays readable.
+    async updateInternalUserStatus(userId, statusPayload = {}, auditContext = {}) {
+        const ref = this._internalUserDoc(userId);
+        const beforeSnap = await getDoc(ref);
+        if (!beforeSnap.exists()) {
+            throw new Error('internal-user-not-found');
+        }
+        const payload = this._cleanDefined({ ...statusPayload, updated_at: serverTimestamp() });
+        const batch = writeBatch(this.db);
+        batch.update(ref, payload);
+        batch.set(doc(collection(this.db, 'internal_audit_logs')), {
+            actor_uid: null,
+            actor_username: 'fluxyos admin',
+            actor_role: 'internal_admin',
+            action: this._stringOrDefault(auditContext.action, 'internal.note.update', 80),
+            target_user_id: userId,
+            before: auditContext.before || null,
+            after: auditContext.after || null,
+            reason: this._nullableString(auditContext.reason, 500),
+            source: 'internal_dashboard',
+            created_at: serverTimestamp()
+        });
+        await batch.commit();
+        return payload;
+    }
+
+    // Each user's own client upserts its own internal_users row from onboarding
+    // data. Profile/derived fields are always refreshed; reviewer-controlled
+    // status fields are only seeded on first create (or advanced from
+    // not_started/in_progress to submitted), so an admin decision is never
+    // clobbered on the user's next login.
+    async syncSelfToInternalIndex(userId, opts = {}) {
+        if (!userId) return null;
+        const ref = this._internalUserDoc(userId);
+        const [snap, profile, progress] = await Promise.all([
+            getDoc(ref),
+            this.getOnboardingProfile(userId).catch(() => null),
+            this.getOnboardingProgress(userId).catch(() => null)
+        ]);
+        const onboardingCompleted = progress?.onboarding_completed === true;
+        const phoneParts = [profile?.phone_country_code, profile?.phone_number].filter(Boolean).join(' ').trim();
+        // Always refresh identity + onboarding flag. Only write profile-derived
+        // fields when an onboarding profile actually loaded, so a transient read
+        // failure or a pre-onboarding login never wipes a stored business name.
+        const profileFields = this._cleanDefined({
+            email: this._nullableString(opts.email, 160),
+            display_name: this._nullableString(opts.display_name, 160),
+            business_name: profile ? this._nullableString(profile.business_name, 120) : undefined,
+            role: profile ? this._nullableString(profile.role, 80) : undefined,
+            phone_number: profile ? this._nullableString(phoneParts || null, 40) : undefined,
+            onboarding_completed: onboardingCompleted,
+            updated_at: serverTimestamp()
+        });
+
+        if (!snap.exists()) {
+            const kycStatus = onboardingCompleted ? 'submitted' : (profile ? 'in_progress' : 'not_started');
+            const accountStatus = onboardingCompleted ? 'kyc_submitted' : (profile ? 'kyc_incomplete' : 'registered');
+            await setDoc(ref, {
+                user_id: userId,
+                email: profileFields.email || null,
+                display_name: profileFields.display_name || null,
+                business_name: profileFields.business_name || null,
+                role: profileFields.role || null,
+                phone_number: profileFields.phone_number || null,
+                account_status: accountStatus,
+                kyc_status: kycStatus,
+                payment_status: 'pending',
+                onboarding_completed: onboardingCompleted,
+                kyc_submitted_at: onboardingCompleted ? serverTimestamp() : null,
+                kyc_reviewed_at: null,
+                payment_submitted_at: null,
+                payment_verified_at: null,
+                plan_id: null,
+                payment_amount: null,
+                payment_method: null,
+                assigned_reviewer_id: null,
+                last_internal_note: null,
+                risk_level: null,
+                created_at: serverTimestamp(),
+                updated_at: serverTimestamp()
+            });
+            return 'created';
+        }
+
+        const existing = snap.data() || {};
+        const patch = { ...profileFields };
+        // Advance KYC to submitted only while the user is still pre-submission —
+        // never overwrite a reviewer's approved/needs_revision/rejected decision.
+        if (onboardingCompleted && (existing.kyc_status === 'not_started' || existing.kyc_status === 'in_progress')) {
+            patch.kyc_status = 'submitted';
+            if (existing.account_status === 'registered' || existing.account_status === 'kyc_incomplete') {
+                patch.account_status = 'kyc_submitted';
+            }
+            if (!existing.kyc_submitted_at) patch.kyc_submitted_at = serverTimestamp();
+        }
+        await setDoc(ref, patch, { merge: true });
+        return 'updated';
+    }
+
     // --- FLUXY AI CHAT HISTORY ---
     getAIChatExpiryDate() {
         // TODO: Configure Firestore TTL or scheduled cleanup for ai_chats.expires_at.

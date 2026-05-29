@@ -747,6 +747,16 @@ async function onSubmit() {
             selected_learning_tours: state.fields.selected_learning_tours,
             primary_learning_tour: state.fields.primary_learning_tour
         });
+        // Surface this freshly-submitted user in the internal operations index so
+        // the team can review KYC. Best-effort — never blocks onboarding success.
+        try {
+            await data.syncSelfToInternalIndex(state.user.uid, {
+                email: state.user.email || null,
+                display_name: state.user.displayName || null
+            });
+        } catch (e) {
+            console.warn('[onboarding] internal index sync skipped', e);
+        }
     } catch (err) {
         state.submitting = false;
         btn.disabled = false;

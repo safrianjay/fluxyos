@@ -121,6 +121,32 @@ service cloud.firestore {
         && data.created_at == request.time;
     }
 
+    // Internal Operations Console (Phase 1 MVP). Operational metadata only —
+    // never financial ledger data. See the open `internal_*` matches below.
+    function isValidInternalUser(data) {
+      return (!('account_status' in data) || data.account_status in [
+          'registered', 'kyc_incomplete', 'kyc_submitted', 'kyc_approved',
+          'kyc_rejected', 'payment_pending', 'payment_submitted',
+          'payment_verified', 'active', 'suspended'
+        ])
+        && (!('kyc_status' in data) || data.kyc_status in [
+          'not_started', 'in_progress', 'submitted', 'needs_revision',
+          'approved', 'rejected'
+        ])
+        && (!('payment_status' in data) || data.payment_status in [
+          'not_required', 'pending', 'submitted', 'under_review',
+          'verified', 'rejected', 'expired'
+        ])
+        && (!('payment_amount' in data) || data.payment_amount == null
+          || (data.payment_amount is number && data.payment_amount >= 0 && data.payment_amount <= 999999999999))
+        && (!('last_internal_note' in data) || data.last_internal_note == null
+          || (data.last_internal_note is string && data.last_internal_note.size() <= 500))
+        && (!('email' in data) || data.email == null
+          || (data.email is string && data.email.size() <= 160))
+        && (!('business_name' in data) || data.business_name == null
+          || (data.business_name is string && data.business_name.size() <= 160));
+    }
+
     function isValidDocumentMetadata(data) {
       return data.keys().hasAll([
           'file_name',
@@ -1258,6 +1284,33 @@ service cloud.firestore {
       match /{document=**} {
         allow read, write: if false;
       }
+    }
+
+    // ===== Internal Operations Console (Phase 1 MVP) =====
+    // MVP_INTERNAL_ONLY_TEMPORARY — these top-level collections are intentionally
+    // open because the internal console authenticates with a client-side
+    // credential gate, not a Firebase identity. This exposes internal operational
+    // metadata (no financial ledger data) and MUST be replaced with Firebase
+    // custom claims or a backend-verified admin session before production.
+    // See docs/internal_operations_console_plan.md §16 and §20.
+    match /internal_users/{internalUserId} {
+      allow read: if true;
+      allow create, update: if isValidInternalUser(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /internal_audit_logs/{auditLogId} {
+      allow read: if true;
+      allow create: if request.resource.data.source == 'internal_dashboard'
+        && request.resource.data.action is string
+        && request.resource.data.action.size() > 0
+        && request.resource.data.action.size() <= 80
+        && request.resource.data.target_user_id is string
+        && request.resource.data.target_user_id.size() <= 160
+        && request.resource.data.created_at == request.time
+        && (!('reason' in request.resource.data) || request.resource.data.reason == null
+          || (request.resource.data.reason is string && request.resource.data.reason.size() <= 500));
+      allow update, delete: if false;
     }
 
     match /{document=**} {

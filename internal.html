@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Hidden internal route. Never link from public nav, sidebar, or sitemap. -->
+    <meta name="robots" content="noindex, nofollow">
+    <title>Internal Operations · FluxyOS</title>
+    <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #F9FAFB; color: #0B0F19; }
+        .mono { font-family: 'Fira Code', monospace; font-feature-settings: "tnum"; }
+
+        /* Status pills — semantic colors only (no orange backgrounds). */
+        .ibadge {
+            display: inline-flex; align-items: center; height: 20px; padding: 0 8px;
+            border-radius: 999px; font-size: 10px; font-weight: 700; line-height: 1;
+            letter-spacing: 0.02em; white-space: nowrap; text-transform: capitalize;
+            background: #F1F5F9; color: #475569;
+        }
+        .ibadge--green  { background: #DCFCE7; color: #166534; }
+        .ibadge--amber  { background: #FEF3C7; color: #92400E; }
+        .ibadge--red    { background: #FEE2E2; color: #B91C1C; }
+        .ibadge--blue   { background: #DBEAFE; color: #1D4ED8; }
+        .ibadge--neutral{ background: #F1F5F9; color: #475569; }
+
+        /* Tabs */
+        .itab {
+            position: relative; padding: 12px 4px; font-size: 14px; font-weight: 500;
+            color: #64748B; border-bottom: 2px solid transparent; cursor: pointer;
+            background: none; transition: color .15s ease;
+        }
+        .itab:hover { color: #0B0F19; }
+        .itab.is-active { color: #0B0F19; font-weight: 600; border-bottom-color: #EA580C; }
+        .itab .itab-count {
+            display: inline-flex; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 6px;
+            align-items: center; justify-content: center; border-radius: 999px;
+            background: #FEE2E2; color: #B91C1C; font-size: 10px; font-weight: 700;
+        }
+
+        /* Internal review drawer */
+        #internal-drawer-panel { transition: transform .3s ease; }
+        .idrawer-section + .idrawer-section { margin-top: 20px; }
+        .idrawer-row { display: flex; justify-content: space-between; gap: 16px; padding: 7px 0; font-size: 13px; border-bottom: 1px solid #F1F5F9; }
+        .idrawer-row .k { color: #64748B; }
+        .idrawer-row .v { color: #0B0F19; font-weight: 500; text-align: right; word-break: break-word; }
+
+        .iaction-btn {
+            width: 100%; text-align: left; padding: 9px 12px; border-radius: 8px; font-size: 13px;
+            font-weight: 500; border: 1px solid #E2E8F0; background: #fff; color: #0B0F19;
+            transition: background .15s ease, border-color .15s ease; cursor: pointer;
+        }
+        .iaction-btn:hover:not(:disabled) { background: #F8FAFC; }
+        .iaction-btn:disabled { opacity: .45; cursor: not-allowed; }
+        .iaction-btn.is-danger { color: #B91C1C; border-color: #FCA5A5; }
+        .iaction-btn.is-danger:hover:not(:disabled) { background: #FEF2F2; }
+
+        /* Reuse the canonical dialog look for the note-capture modal textarea */
+        .internal-note-input {
+            width: 100%; margin-top: 4px; border: 1px solid #E2E8F0; border-radius: 10px;
+            padding: 10px 12px; font-size: 14px; font-family: 'Inter', sans-serif; resize: vertical;
+            color: #0B0F19; box-sizing: border-box;
+        }
+        .internal-note-input:focus { outline: none; border-color: #EA580C; box-shadow: 0 0 0 3px rgba(234,88,12,.12); }
+
+        .ishimmer { background: linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 37%,#F1F5F9 63%); background-size: 400% 100%; animation: ishimmer 1.4s ease infinite; border-radius: 6px; }
+        @keyframes ishimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+    </style>
+</head>
+<body>
+
+    <!-- ============================ INTERNAL CREDENTIAL GATE ============================ -->
+    <!-- MVP_INTERNAL_ONLY_TEMPORARY_AUTH — sessionStorage-only credential gate.
+         This is NOT production-grade security. Replace with Firebase custom claims
+         or a backend-verified admin session before production use. -->
+    <div id="internal-gate" class="fixed inset-0 z-[120] flex items-center justify-center px-5" style="background:#0B0F19;">
+        <div class="w-full max-w-[380px] bg-white rounded-2xl shadow-2xl border border-gray-200 p-8">
+            <div class="flex items-center gap-3 mb-6">
+                <img src="assets/images/favicon.svg" alt="FluxyOS" class="w-9 h-9">
+                <div>
+                    <div class="text-[16px] font-bold leading-tight">Internal Operations</div>
+                    <div class="text-[12px] text-gray-500">FluxyOS team access only</div>
+                </div>
+            </div>
+            <form id="internal-gate-form" autocomplete="off" novalidate>
+                <label class="block text-[12px] font-medium text-gray-600 mb-1.5" for="internal-username">Username</label>
+                <input id="internal-username" type="text" autocomplete="off"
+                    class="w-full mb-4 border border-gray-200 rounded-lg px-3.5 py-2.5 text-[14px] focus:outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100"
+                    placeholder="fluxyos admin">
+
+                <label class="block text-[12px] font-medium text-gray-600 mb-1.5" for="internal-password">Password</label>
+                <input id="internal-password" type="password" autocomplete="off"
+                    class="w-full mb-4 border border-gray-200 rounded-lg px-3.5 py-2.5 text-[14px] focus:outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100"
+                    placeholder="••••••••">
+
+                <p id="internal-gate-error" class="hidden text-[12px] text-red-600 mb-3"></p>
+
+                <button id="internal-gate-submit" type="submit" disabled
+                    class="w-full bg-gray-900 hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-[14px] py-2.5 rounded-lg transition-colors active:scale-[.99]">
+                    Sign in
+                </button>
+            </form>
+            <p class="text-[10px] text-gray-400 mt-5 leading-relaxed">
+                Temporary internal access. Sessions are not persisted after the browser tab closes.
+            </p>
+        </div>
+    </div>
+
+    <!-- ============================ CONSOLE ============================ -->
+    <div id="internal-console" class="hidden min-h-screen flex flex-col">
+
+        <!-- Topbar -->
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30">
+            <div class="flex items-center gap-3 min-w-0">
+                <img src="assets/images/favicon.svg" alt="" class="w-7 h-7 flex-shrink-0">
+                <div class="min-w-0">
+                    <h1 class="text-[16px] sm:text-[20px] font-bold leading-tight truncate">Internal Operations</h1>
+                    <p class="text-[12px] text-gray-500 leading-tight hidden sm:block">User activation, KYC &amp; payment verification</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="internal-refresh" class="inline-flex items-center gap-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <span class="hidden sm:inline">Refresh</span>
+                </button>
+                <button id="internal-signout" class="inline-flex items-center gap-1.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    <span class="hidden sm:inline">Sign out</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <nav class="bg-white border-b border-gray-200 px-4 sm:px-6">
+            <div class="flex items-center gap-6 overflow-x-auto" role="tablist">
+                <button class="itab is-active" data-tab="overview">Overview</button>
+                <button class="itab" data-tab="users">Users</button>
+                <button class="itab" data-tab="kyc">KYC Review<span id="tab-count-kyc" class="itab-count hidden">0</span></button>
+                <button class="itab" data-tab="payment">Payment Review<span id="tab-count-payment" class="itab-count hidden">0</span></button>
+                <button class="itab" data-tab="audit">Audit</button>
+            </div>
+        </nav>
+
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1400px] w-full mx-auto">
+
+            <!-- ===== OVERVIEW ===== -->
+            <section id="panel-overview" class="itab-panel">
+                <div id="overview-kpis" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"></div>
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <div class="px-5 py-4 border-b border-gray-100">
+                        <h2 class="text-[14px] font-semibold">Latest users needing action</h2>
+                        <p class="text-[12px] text-gray-500">KYC submitted, needs revision, or payment awaiting review</p>
+                    </div>
+                    <div id="overview-action-list" class="divide-y divide-gray-100"></div>
+                </div>
+            </section>
+
+            <!-- ===== USERS ===== -->
+            <section id="panel-users" class="itab-panel hidden">
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center gap-3">
+                        <div class="relative flex-1 min-w-0">
+                            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            <input id="users-search" type="text" placeholder="Search email, business, or phone"
+                                class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-[14px] focus:outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <select id="filter-account" class="border border-gray-200 rounded-lg px-2.5 py-2 text-[13px] text-gray-700 focus:outline-none focus:border-[#EA580C]"></select>
+                            <select id="filter-kyc" class="border border-gray-200 rounded-lg px-2.5 py-2 text-[13px] text-gray-700 focus:outline-none focus:border-[#EA580C]"></select>
+                            <select id="filter-payment" class="border border-gray-200 rounded-lg px-2.5 py-2 text-[13px] text-gray-700 focus:outline-none focus:border-[#EA580C]"></select>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">User</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Business</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Phone</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">KYC</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Payment</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Account</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Created</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-tbody" class="divide-y divide-gray-100 text-[14px]"></tbody>
+                        </table>
+                    </div>
+                    <div id="users-state" class="hidden"></div>
+                    <div class="px-5 py-3 border-t border-gray-100 text-[12px] text-gray-500"><span id="users-count">—</span></div>
+                </div>
+            </section>
+
+            <!-- ===== KYC REVIEW ===== -->
+            <section id="panel-kyc" class="itab-panel hidden">
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-100">
+                        <h2 class="text-[14px] font-semibold">KYC review queue</h2>
+                        <p class="text-[12px] text-gray-500">Users with KYC submitted or needing revision</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">User</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Business</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">KYC</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Submitted</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kyc-tbody" class="divide-y divide-gray-100 text-[14px]"></tbody>
+                        </table>
+                    </div>
+                    <div id="kyc-state" class="hidden"></div>
+                </div>
+            </section>
+
+            <!-- ===== PAYMENT REVIEW ===== -->
+            <section id="panel-payment" class="itab-panel hidden">
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-100">
+                        <h2 class="text-[14px] font-semibold">Payment verification queue</h2>
+                        <p class="text-[12px] text-gray-500">Users with payment pending, submitted, or under review</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">User</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Business</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Plan</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Payment</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payment-tbody" class="divide-y divide-gray-100 text-[14px]"></tbody>
+                        </table>
+                    </div>
+                    <div id="payment-state" class="hidden"></div>
+                </div>
+            </section>
+
+            <!-- ===== AUDIT ===== -->
+            <section id="panel-audit" class="itab-panel hidden">
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-100">
+                        <h2 class="text-[14px] font-semibold">Internal audit log</h2>
+                        <p class="text-[12px] text-gray-500">Latest 100 internal operational actions</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">When</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Actor</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Target user</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Change</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Note</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-tbody" class="divide-y divide-gray-100 text-[14px]"></tbody>
+                        </table>
+                    </div>
+                    <div id="audit-state" class="hidden"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ============================ REVIEW DRAWER ============================ -->
+    <div id="internal-drawer" class="hidden fixed inset-0 z-[90]">
+        <div id="internal-drawer-overlay" class="absolute inset-0 bg-black/40"></div>
+        <div id="internal-drawer-panel" class="absolute top-0 right-0 h-full w-full max-w-[440px] bg-white shadow-2xl flex flex-col translate-x-full">
+            <div class="flex items-center justify-between px-5 h-16 border-b border-gray-200 flex-shrink-0">
+                <h2 class="text-[16px] font-bold">Review user</h2>
+                <button id="internal-drawer-close" class="text-gray-400 hover:text-gray-900 p-1 rounded-lg hover:bg-gray-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div id="internal-drawer-body" class="flex-1 overflow-y-auto p-5"></div>
+        </div>
+    </div>
+
+    <!-- Shared dialog / toast helpers (classic script, must load before the module). -->
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script type="module" src="assets/js/internal-dashboard.js"></script>
+</body>
+</html>

@@ -501,6 +501,38 @@ Firestore rules, the transaction or bill budget fields, `budget.html` /
 | 2 | Page title is correct per page (`<title>` tag) |
 | 3 | Viewport meta tag present (`width=device-width, initial-scale=1`) |
 
+### M. Internal Operations Console (internal.html, internal-dashboard.js, db-service.js internal methods, firestore.rules internal_*, sidebar-loader.js, onboarding.js)
+
+**Prereq:** the `internal_*` blocks in `firestore.rules` must be **deployed** —
+otherwise the console correctly shows the friendly "Could not load internal data"
+state and logs a handled warning (not a thrown error).
+
+| # | Check |
+|---|-------|
+| 1 | Open `/internal` with no session → credential gate shows, console hidden |
+| 2 | Sign-in button stays disabled until both username + password are filled |
+| 3 | Wrong credentials → inline `Invalid internal credential.`; no console data shown |
+| 4 | Correct credentials (`fluxyos admin` / set password) → console shows, gate hidden, sessionStorage `fluxy_internal_admin_session` = `active` |
+| 5 | Refresh after sign-in keeps the session in the same tab; new tab/window requires re-auth |
+| 6 | Sign out clears sessionStorage and returns to the gate |
+| 7 | No marketing footer, no public nav, no customer sidebar; route absent from `sitemap.xml` and all nav |
+| 8 | Tabs switch (Overview / Users / KYC Review / Payment Review / Audit); KYC + Payment tab counts reflect queue size |
+| 9 | Users table renders rows or a clear empty state; search + account/KYC/payment filters narrow rows |
+| 10 | Review drawer opens (X / overlay / Escape close); missing onboarding or payment data shows partial-data fallbacks |
+| 11 | Approve KYC / Request revision / Reject KYC update status, write an `internal_audit_logs` entry, refresh, toast; revision + reject require a reviewer note |
+| 12 | Verify payment / Reject payment update status + audit; reject requires a note and uses danger confirmation; verify never creates a transaction or marks a bill paid |
+| 13 | Activate user is disabled unless KYC approved **and** payment verified; suspend requires a note + danger confirmation |
+| 14 | Every action refreshes the visible table + drawer and shows a success/error toast; no raw Firebase error reaches the user |
+| 15 | Self-upsert: signing in as a normal user creates `internal_users/{uid}`; completing onboarding sets `kyc_status='submitted'`; a reviewer's status change is not clobbered on the user's next login |
+| 16 | Data safety: no transactions/bills/subscriptions fetched; no global financial collections; amounts stored as raw integers |
+| 17 | Responsive at 375 / 768 / 1280 — no horizontal overflow; tables scroll within their container |
+| 18 | Browser console clean once rules are deployed (no red errors) |
+
+**Regression (shared files touched):** `sidebar-loader.js` and `onboarding.js`
+were modified for self-upsert — run §3 Cross-Page Regression and confirm
+`/login`, `/dashboard`, sidebar load, entity switcher, and onboarding submit still
+work and the console stays clean.
+
 ---
 
 ## 3. Cross-Page Regression (run when shared files are touched)
@@ -527,6 +559,7 @@ Open each page and confirm no visual breakage:
 | `settings-ai.html` | Style/period/toggles save, locked confirmation row, AI safety panel, no footer |
 | `settings-whatsapp.html` | Status panel reflects saved state (no fake "Connected"), phone/name save, no footer |
 | `settings-security.html` | Read-only posture, Planned team/audit panels, no footer |
+| `internal.html` | Credential gate → console, tabs switch, no footer/sidebar/public-nav, friendly load state |
 
 ---
 
