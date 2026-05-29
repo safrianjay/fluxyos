@@ -477,10 +477,14 @@
                 if (returningFromTour) sessionStorage.removeItem('fluxy_learning_focus');
                 const forcePromote = !!sessionStorage.getItem('fluxy_learning_promote_force');
                 if (forcePromote) sessionStorage.removeItem('fluxy_learning_promote_force');
-                await continuePendingTourIfAny(user.uid);
-                if (!document.getElementById('fluxy-tour-popover')) {
-                    const promoted = promoteLearningSection(user.uid, { auto: !returningFromTour, force: forcePromote });
-                    if (!promoted && returningFromTour) focusLearningSection();
+                if (forcePromote) {
+                    promoteLearningSection(user.uid, { force: true });
+                } else {
+                    await continuePendingTourIfAny(user.uid);
+                    if (!document.getElementById('fluxy-tour-popover')) {
+                        const promoted = promoteLearningSection(user.uid, { auto: !returningFromTour });
+                        if (!promoted && returningFromTour) focusLearningSection();
+                    }
                 }
             }
         });
