@@ -133,7 +133,7 @@
                             <span class="onboarding-label">Preferred WhatsApp number</span>
                             <span class="onboarding-helper">We'll use this later for WhatsApp-based finance reminders and confirmations.</span>
                             <span class="onboarding-phone-row">
-                                <select name="phone_country_code" id="f-phone-country" required aria-label="Country code">
+                                <select name="phone_country_code" id="f-phone-country" class="onboarding-native-select" required aria-label="Country code">
                                     <option value="+62" selected>Indonesia +62</option>
                                     <option value="+65">Singapore +65</option>
                                     <option value="+60">Malaysia +60</option>
@@ -141,6 +141,7 @@
                                     <option value="+44">United Kingdom +44</option>
                                     <option value="+61">Australia +61</option>
                                 </select>
+                                <span id="f-phone-country-custom" class="onboarding-custom-select" data-source-select="f-phone-country" data-aria-label="Country code"></span>
                                 <input type="tel" name="phone_local_number" id="f-phone-local" required maxlength="24" autocomplete="tel-national" inputmode="tel" placeholder="81234567890" aria-describedby="f-phone-error">
                             </span>
                             <span class="onboarding-error" id="f-phone-error" aria-live="polite"></span>

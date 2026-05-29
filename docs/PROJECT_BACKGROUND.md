@@ -372,8 +372,10 @@ null.
 `revenue_review`, `subscriptions`, and `fluxy_ai`. They map to platform
 learning tour IDs `ledger`, `bills`, `overview`, `revenue_sync`,
 `subscriptions`, and `fluxy_ai`. On completion the user always lands on
-`/dashboard`; onboarding may queue `sessionStorage.fluxy_pending_tour` and
-`sessionStorage.fluxy_pending_tours` for the post-KYC learning layer.
+`/dashboard`; the first post-KYC coachmark must start with the `overview`
+tour, then any selected preference tours may continue after it. Onboarding
+queues this via `sessionStorage.fluxy_pending_tour = "overview"` and
+`sessionStorage.fluxy_pending_tours` with `overview` first.
 
 ### 4g. Platform Learning — `users/{userId}/platform_learning/state`
 

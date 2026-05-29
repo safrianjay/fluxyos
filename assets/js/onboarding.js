@@ -39,6 +39,9 @@ const ONBOARDING_PREFERENCES = [
     { value: 'fluxy_ai', label: 'Ask Fluxy AI questions', tourId: 'fluxy_ai' }
 ];
 
+let openCustomSelect = null;
+let customSelectGlobalHandlersBound = false;
+
 const state = {
     user: null,
     stepIndex: 0,
@@ -153,6 +156,8 @@ function initUI() {
     bindInput('#f-employees', 'employee_count_range');
     bindLegalNameInput();
     bindPhoneInputs();
+    mountOnboardingCustomSelect('#f-phone-country-custom');
+    bindCustomSelectGlobalHandlers();
     syncFormFromState();
 
     document.getElementById('f-id-doc').addEventListener('change', (e) => {
@@ -180,11 +185,167 @@ function syncFormFromState() {
     if (legal) legal.value = state.fields.legal_full_name || '';
     const country = document.querySelector('#f-phone-country');
     if (country) country.value = COUNTRY_CODES.includes(state.fields.phone_country_code) ? state.fields.phone_country_code : '+62';
+    document.querySelector('#f-phone-country-custom')?.onboardingSelect?.setValue(country?.value || '+62');
     const phone = document.querySelector('#f-phone-local');
     if (phone) phone.value = state.fields.phone_local_number || '';
     document.querySelectorAll('input[name="first_actions"]').forEach((el) => {
         el.checked = state.fields.first_actions.includes(el.value);
     });
+}
+
+function mountOnboardingCustomSelect(rootSelector) {
+    const root = typeof rootSelector === 'string' ? document.querySelector(rootSelector) : rootSelector;
+    if (!root || root.onboardingSelect) return root?.onboardingSelect || null;
+    const source = document.getElementById(root.dataset.sourceSelect || '');
+    if (!source) return null;
+    const options = Array.from(source.options).map((opt) => ({
+        value: opt.value,
+        label: opt.textContent.trim()
+    }));
+    const ariaLabel = root.dataset.ariaLabel || source.getAttribute('aria-label') || 'Select option';
+    root.innerHTML = `
+        <button type="button" class="onboarding-select-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="${escapeHtml(ariaLabel)}">
+            <span class="onboarding-select-label"></span>
+            <svg class="onboarding-select-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 8l4 4 4-4"/>
+            </svg>
+        </button>
+        <div class="onboarding-select-menu" role="listbox" tabindex="-1"></div>
+    `;
+
+    const trigger = root.querySelector('.onboarding-select-trigger');
+    const labelEl = root.querySelector('.onboarding-select-label');
+    const menu = root.querySelector('.onboarding-select-menu');
+    menu.innerHTML = options.map((opt) => `
+        <button type="button" role="option" class="onboarding-select-option" data-value="${escapeHtml(opt.value)}">
+            <span>${escapeHtml(opt.label)}</span>
+            <svg class="onboarding-select-option-check" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M5 10l4 4 7-8"/>
+            </svg>
+        </button>
+    `).join('');
+
+    function findOption(value) {
+        return options.find((opt) => opt.value === value) || options[0];
+    }
+
+    function renderSelected() {
+        const opt = findOption(instance.value);
+        labelEl.textContent = opt?.label || 'Select';
+        menu.querySelectorAll('.onboarding-select-option').forEach((optionEl) => {
+            optionEl.setAttribute('aria-selected', optionEl.dataset.value === instance.value ? 'true' : 'false');
+        });
+    }
+
+    function positionMenu() {
+        const rect = trigger.getBoundingClientRect();
+        const viewportGap = 12;
+        const width = Math.max(rect.width, menu.offsetWidth || rect.width);
+        const maxLeft = Math.max(viewportGap, window.innerWidth - width - viewportGap);
+        const left = Math.min(Math.max(viewportGap, rect.left), maxLeft);
+        menu.style.setProperty('--onboarding-select-menu-top', `${Math.round(rect.bottom + 6)}px`);
+        menu.style.setProperty('--onboarding-select-menu-left', `${Math.round(left)}px`);
+        menu.style.setProperty('--onboarding-select-menu-width', `${Math.round(rect.width)}px`);
+    }
+
+    function open() {
+        if (openCustomSelect && openCustomSelect !== instance) openCustomSelect.close();
+        root.dataset.open = 'true';
+        trigger.setAttribute('aria-expanded', 'true');
+        openCustomSelect = instance;
+        positionMenu();
+        requestAnimationFrame(positionMenu);
+        const selected = menu.querySelector('[aria-selected="true"]') || menu.querySelector('.onboarding-select-option');
+        selected?.focus();
+    }
+
+    function close() {
+        root.dataset.open = 'false';
+        trigger.setAttribute('aria-expanded', 'false');
+        if (openCustomSelect === instance) openCustomSelect = null;
+    }
+
+    function toggle() {
+        if (root.dataset.open === 'true') close();
+        else open();
+    }
+
+    trigger.addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggle();
+    });
+    trigger.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            open();
+        }
+    });
+    menu.addEventListener('click', (event) => {
+        const optionEl = event.target.closest('.onboarding-select-option');
+        if (!optionEl) return;
+        event.stopPropagation();
+        instance.setValue(optionEl.dataset.value, { emit: true });
+        close();
+        trigger.focus();
+    });
+    menu.addEventListener('keydown', (event) => {
+        const items = Array.from(menu.querySelectorAll('.onboarding-select-option'));
+        const index = items.indexOf(document.activeElement);
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            items[Math.min(index + 1, items.length - 1)]?.focus();
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            items[Math.max(index - 1, 0)]?.focus();
+        } else if (event.key === 'Home') {
+            event.preventDefault();
+            items[0]?.focus();
+        } else if (event.key === 'End') {
+            event.preventDefault();
+            items[items.length - 1]?.focus();
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            close();
+            trigger.focus();
+        }
+    });
+
+    const instance = {
+        value: source.value || options[0]?.value || '',
+        root,
+        menu,
+        setValue(value, { emit = false } = {}) {
+            instance.value = value || '';
+            source.value = instance.value;
+            renderSelected();
+            if (emit) source.dispatchEvent(new Event('change', { bubbles: true }));
+            clearFieldError('#f-phone-local', 'f-phone-error');
+        },
+        close,
+        positionMenu
+    };
+    root.onboardingSelect = instance;
+    renderSelected();
+    return instance;
+}
+
+function bindCustomSelectGlobalHandlers() {
+    if (customSelectGlobalHandlersBound) return;
+    customSelectGlobalHandlersBound = true;
+    document.addEventListener('click', (event) => {
+        if (!openCustomSelect) return;
+        if (openCustomSelect.root.contains(event.target)) return;
+        openCustomSelect.close();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && openCustomSelect) openCustomSelect.close();
+    });
+    document.addEventListener('scroll', (event) => {
+        if (!openCustomSelect) return;
+        if (openCustomSelect.menu?.contains(event.target)) return;
+        openCustomSelect.close();
+    }, true);
+    window.addEventListener('resize', () => openCustomSelect?.close());
 }
 
 function bindInput(selector, fieldKey) {
@@ -328,9 +489,17 @@ function getLearningToursForActions(actions = state.fields.first_actions) {
     return tours;
 }
 
+function getQueuedLearningTours(actions = state.fields.first_actions) {
+    const tours = ['overview'];
+    getLearningToursForActions(actions).forEach((tourId) => {
+        if (!tours.includes(tourId)) tours.push(tourId);
+    });
+    return tours;
+}
+
 function updateLearningTourState() {
-    state.fields.selected_learning_tours = getLearningToursForActions();
-    state.fields.primary_learning_tour = state.fields.selected_learning_tours[0] || null;
+    state.fields.selected_learning_tours = getQueuedLearningTours();
+    state.fields.primary_learning_tour = 'overview';
 }
 
 function normalizePhoneNumber(countryCode, localNumber) {
@@ -632,15 +801,11 @@ function routeAfterSubmit() {
     // Guarantee the onboarding coachmark shows the first time this just-onboarded
     // user reaches the overview. Honored + cleared by dashboard.html.
     sessionStorage.setItem('fluxy_learning_promote_force', '1');
-    if (state.fields.primary_learning_tour) {
-        sessionStorage.setItem('fluxy_pending_tour', state.fields.primary_learning_tour);
-    } else {
-        sessionStorage.removeItem('fluxy_pending_tour');
-    }
+    sessionStorage.setItem('fluxy_pending_tour', 'overview');
     if (state.fields.selected_learning_tours.length) {
         sessionStorage.setItem('fluxy_pending_tours', JSON.stringify(state.fields.selected_learning_tours));
     } else {
-        sessionStorage.removeItem('fluxy_pending_tours');
+        sessionStorage.setItem('fluxy_pending_tours', JSON.stringify(['overview']));
     }
     window.location.href = '/dashboard';
 }
