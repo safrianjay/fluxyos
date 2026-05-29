@@ -63,7 +63,7 @@
 
                         <label class="onboarding-field">
                             <span class="onboarding-label">Your role</span>
-                            <select name="role" id="f-role" required aria-describedby="f-role-error">
+                            <select name="role" id="f-role" class="onboarding-native-select" required aria-describedby="f-role-error">
                                 <option value="" disabled selected>Select your role</option>
                                 <option value="Owner / Founder">Owner / Founder</option>
                                 <option value="Finance admin">Finance admin</option>
@@ -71,12 +71,13 @@
                                 <option value="Operations manager">Operations manager</option>
                                 <option value="Staff">Staff</option>
                             </select>
+                            <span id="f-role-custom" class="onboarding-custom-select" data-source-select="f-role" data-aria-label="Your role"></span>
                             <span class="onboarding-error" id="f-role-error" aria-live="polite"></span>
                         </label>
 
                         <label class="onboarding-field">
                             <span class="onboarding-label">Main goal</span>
-                            <select name="main_goal" id="f-main-goal" required aria-describedby="f-main-goal-error">
+                            <select name="main_goal" id="f-main-goal" class="onboarding-native-select" required aria-describedby="f-main-goal-error">
                                 <option value="" disabled selected>Select your main goal</option>
                                 <option value="Track revenue and expenses">Track revenue and expenses</option>
                                 <option value="Manage bills and payables">Manage bills and payables</option>
@@ -84,12 +85,13 @@
                                 <option value="Prepare reports and exports">Prepare reports and exports</option>
                                 <option value="Ask Fluxy AI finance questions">Ask Fluxy AI finance questions</option>
                             </select>
+                            <span id="f-main-goal-custom" class="onboarding-custom-select" data-source-select="f-main-goal" data-aria-label="Main goal"></span>
                             <span class="onboarding-error" id="f-main-goal-error" aria-live="polite"></span>
                         </label>
 
                         <label class="onboarding-field">
                             <span class="onboarding-label">Monthly revenue</span>
-                            <select name="monthly_revenue_range" id="f-revenue" required aria-describedby="f-revenue-error">
+                            <select name="monthly_revenue_range" id="f-revenue" class="onboarding-native-select" required aria-describedby="f-revenue-error">
                                 <option value="" disabled selected>Select monthly revenue</option>
                                 <option value="Under Rp 50.000.000">Under Rp 50.000.000</option>
                                 <option value="Rp 50.000.000 - Rp 100.000.000">Rp 50.000.000 - Rp 100.000.000</option>
@@ -97,12 +99,13 @@
                                 <option value="Rp 500.000.000 - Rp 1.000.000.000">Rp 500.000.000 - Rp 1.000.000.000</option>
                                 <option value="Above Rp 1.000.000.000">Above Rp 1.000.000.000</option>
                             </select>
+                            <span id="f-revenue-custom" class="onboarding-custom-select" data-source-select="f-revenue" data-aria-label="Monthly revenue"></span>
                             <span class="onboarding-error" id="f-revenue-error" aria-live="polite"></span>
                         </label>
 
                         <label class="onboarding-field">
                             <span class="onboarding-label">Number of employees</span>
-                            <select name="employee_count_range" id="f-employees" required aria-describedby="f-employees-error">
+                            <select name="employee_count_range" id="f-employees" class="onboarding-native-select" required aria-describedby="f-employees-error">
                                 <option value="" disabled selected>Select employee count</option>
                                 <option value="0 - 10 employees">0 - 10 employees</option>
                                 <option value="11 - 50 employees">11 - 50 employees</option>
@@ -110,6 +113,7 @@
                                 <option value="201 - 500 employees">201 - 500 employees</option>
                                 <option value="More than 500 employees">More than 500 employees</option>
                             </select>
+                            <span id="f-employees-custom" class="onboarding-custom-select" data-source-select="f-employees" data-aria-label="Number of employees"></span>
                             <span class="onboarding-error" id="f-employees-error" aria-live="polite"></span>
                         </label>
                     </form>

@@ -381,11 +381,12 @@
     transform: rotate(180deg);
 }
 .onboarding-select-menu {
-    position: fixed;
-    top: var(--onboarding-select-menu-top, 0);
-    left: var(--onboarding-select-menu-left, 0);
-    min-width: var(--onboarding-select-menu-width, 100%);
-    max-width: calc(100vw - 24px);
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 100%;
+    width: 100%;
+    max-width: min(420px, calc(100vw - 32px));
     max-height: 280px;
     overflow-y: auto;
     background: #FFFFFF;
@@ -421,9 +422,18 @@
     outline: none;
     background: #F9FAFB;
 }
+.onboarding-select-option:disabled {
+    color: #9CA3AF;
+    cursor: not-allowed;
+    background: transparent;
+}
 .onboarding-select-option[aria-selected="true"] {
     color: #EA580C;
     background: #FFF7ED;
+}
+.onboarding-select-option[aria-disabled="true"][aria-selected="true"] {
+    color: #9CA3AF;
+    background: #F9FAFB;
 }
 .onboarding-select-option-check {
     width: 16px;

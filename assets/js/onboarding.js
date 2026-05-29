@@ -156,7 +156,13 @@ function initUI() {
     bindInput('#f-employees', 'employee_count_range');
     bindLegalNameInput();
     bindPhoneInputs();
-    mountOnboardingCustomSelect('#f-phone-country-custom');
+    [
+        '#f-role-custom',
+        '#f-main-goal-custom',
+        '#f-revenue-custom',
+        '#f-employees-custom',
+        '#f-phone-country-custom'
+    ].forEach((selector) => mountOnboardingCustomSelect(selector));
     bindCustomSelectGlobalHandlers();
     syncFormFromState();
 
@@ -183,6 +189,10 @@ function initUI() {
 function syncFormFromState() {
     const legal = document.querySelector('#f-legal-name');
     if (legal) legal.value = state.fields.legal_full_name || '';
+    syncCustomSelectFromState('#f-role', '#f-role-custom', state.fields.role);
+    syncCustomSelectFromState('#f-main-goal', '#f-main-goal-custom', state.fields.main_goal);
+    syncCustomSelectFromState('#f-revenue', '#f-revenue-custom', state.fields.monthly_revenue_range);
+    syncCustomSelectFromState('#f-employees', '#f-employees-custom', state.fields.employee_count_range);
     const country = document.querySelector('#f-phone-country');
     if (country) country.value = COUNTRY_CODES.includes(state.fields.phone_country_code) ? state.fields.phone_country_code : '+62';
     document.querySelector('#f-phone-country-custom')?.onboardingSelect?.setValue(country?.value || '+62');
@@ -193,6 +203,13 @@ function syncFormFromState() {
     });
 }
 
+function syncCustomSelectFromState(sourceSelector, customSelector, value) {
+    const source = document.querySelector(sourceSelector);
+    const cleanValue = value || '';
+    if (source) source.value = cleanValue;
+    document.querySelector(customSelector)?.onboardingSelect?.setValue(cleanValue);
+}
+
 function mountOnboardingCustomSelect(rootSelector) {
     const root = typeof rootSelector === 'string' ? document.querySelector(rootSelector) : rootSelector;
     if (!root || root.onboardingSelect) return root?.onboardingSelect || null;
@@ -200,7 +217,8 @@ function mountOnboardingCustomSelect(rootSelector) {
     if (!source) return null;
     const options = Array.from(source.options).map((opt) => ({
         value: opt.value,
-        label: opt.textContent.trim()
+        label: opt.textContent.trim(),
+        disabled: opt.disabled
     }));
     const ariaLabel = root.dataset.ariaLabel || source.getAttribute('aria-label') || 'Select option';
     root.innerHTML = `
@@ -217,7 +235,7 @@ function mountOnboardingCustomSelect(rootSelector) {
     const labelEl = root.querySelector('.onboarding-select-label');
     const menu = root.querySelector('.onboarding-select-menu');
     menu.innerHTML = options.map((opt) => `
-        <button type="button" role="option" class="onboarding-select-option" data-value="${escapeHtml(opt.value)}">
+        <button type="button" role="option" class="onboarding-select-option" data-value="${escapeHtml(opt.value)}" ${opt.disabled ? 'aria-disabled="true" disabled' : ''}>
             <span>${escapeHtml(opt.label)}</span>
             <svg class="onboarding-select-option-check" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M5 10l4 4 7-8"/>
@@ -238,14 +256,7 @@ function mountOnboardingCustomSelect(rootSelector) {
     }
 
     function positionMenu() {
-        const rect = trigger.getBoundingClientRect();
-        const viewportGap = 12;
-        const width = Math.max(rect.width, menu.offsetWidth || rect.width);
-        const maxLeft = Math.max(viewportGap, window.innerWidth - width - viewportGap);
-        const left = Math.min(Math.max(viewportGap, rect.left), maxLeft);
-        menu.style.setProperty('--onboarding-select-menu-top', `${Math.round(rect.bottom + 6)}px`);
-        menu.style.setProperty('--onboarding-select-menu-left', `${Math.round(left)}px`);
-        menu.style.setProperty('--onboarding-select-menu-width', `${Math.round(rect.width)}px`);
+        menu.style.maxWidth = `${Math.max(220, Math.min(root.getBoundingClientRect().width, window.innerWidth - 32))}px`;
     }
 
     function open() {
@@ -255,7 +266,7 @@ function mountOnboardingCustomSelect(rootSelector) {
         openCustomSelect = instance;
         positionMenu();
         requestAnimationFrame(positionMenu);
-        const selected = menu.querySelector('[aria-selected="true"]') || menu.querySelector('.onboarding-select-option');
+        const selected = menu.querySelector('[aria-selected="true"]:not([disabled])') || menu.querySelector('.onboarding-select-option:not([disabled])');
         selected?.focus();
     }
 
@@ -282,14 +293,14 @@ function mountOnboardingCustomSelect(rootSelector) {
     });
     menu.addEventListener('click', (event) => {
         const optionEl = event.target.closest('.onboarding-select-option');
-        if (!optionEl) return;
+        if (!optionEl || optionEl.disabled) return;
         event.stopPropagation();
         instance.setValue(optionEl.dataset.value, { emit: true });
         close();
         trigger.focus();
     });
     menu.addEventListener('keydown', (event) => {
-        const items = Array.from(menu.querySelectorAll('.onboarding-select-option'));
+        const items = Array.from(menu.querySelectorAll('.onboarding-select-option:not([disabled])'));
         const index = items.indexOf(document.activeElement);
         if (event.key === 'ArrowDown') {
             event.preventDefault();
@@ -319,7 +330,9 @@ function mountOnboardingCustomSelect(rootSelector) {
             source.value = instance.value;
             renderSelected();
             if (emit) source.dispatchEvent(new Event('change', { bubbles: true }));
-            clearFieldError('#f-phone-local', 'f-phone-error');
+            if (source.id === 'f-phone-country') {
+                clearFieldError('#f-phone-local', 'f-phone-error');
+            }
         },
         close,
         positionMenu
@@ -578,6 +591,8 @@ function clearInvalidMarkers() {
 function setFieldError(selector, errorId, message = 'This field is required.') {
     const el = document.querySelector(selector);
     if (el) el.classList.add('is-invalid');
+    const custom = getCustomSelectForSource(el);
+    if (custom) custom.classList.add('is-invalid');
     const resolvedErrorId = errorId || el?.getAttribute('aria-describedby');
     if (resolvedErrorId) {
         const error = document.getElementById(resolvedErrorId);
@@ -588,11 +603,18 @@ function setFieldError(selector, errorId, message = 'This field is required.') {
 function clearFieldError(selector, errorId) {
     const el = document.querySelector(selector);
     if (el) el.classList.remove('is-invalid');
+    const custom = getCustomSelectForSource(el);
+    if (custom) custom.classList.remove('is-invalid');
     const resolvedErrorId = errorId || el?.getAttribute('aria-describedby');
     if (resolvedErrorId) {
         const error = document.getElementById(resolvedErrorId);
         if (error) error.textContent = '';
     }
+}
+
+function getCustomSelectForSource(sourceEl) {
+    if (!sourceEl?.id) return null;
+    return document.querySelector(`.onboarding-custom-select[data-source-select="${sourceEl.id}"]`);
 }
 
 // ---------- Step transitions ----------
