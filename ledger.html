@@ -744,6 +744,11 @@
             let bsiMount = null;
 
             function setTab(tab) {
+                // Bank statement import is locked until the account is paid & active.
+                // Trial/expired users keep Receipt / Invoice upload but not bank import.
+                if (tab === 'bank' && window.FluxyAccessGuard && !window.FluxyAccessGuard.requireExportAccess()) {
+                    return;
+                }
                 const documentContent = document.getElementById('scan-drawer-content');
                 const documentFooter  = document.getElementById('scan-drawer-footer');
                 const bsiContent      = document.getElementById('scan-drawer-bsi-content');
@@ -1987,6 +1992,11 @@
 
         document.getElementById('download-csv-btn')?.addEventListener('click', () => {
             if (currentLedgerTransactions.length === 0) return;
+            // Trial/payment access guard: CSV export is locked until the account is
+            // paid & active. Fails open if access state isn't loaded.
+            if (window.FluxyAccessGuard && !window.FluxyAccessGuard.requireExportAccess()) {
+                return;
+            }
 
             setDownloadButtonState('loading');
             window.setTimeout(() => {

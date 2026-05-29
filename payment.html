@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Complete payment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <aside id="sidebar" class="hidden w-[220px] bg-white text-[#1E2F4A] flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
+            <div class="flex items-center gap-4 min-w-0 flex-1">
+                <h1 class="text-lg font-bold text-gray-900">Complete payment</h1>
+            </div>
+            <a href="/dashboard" class="text-[14px] font-bold text-gray-500 hover:text-gray-900 transition-colors">Back to dashboard</a>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10">
+            <div class="max-w-3xl mx-auto space-y-6">
+
+                <!-- ACCESS STATUS STRIP -->
+                <section id="payment-status-strip" class="rounded-xl border border-gray-200 bg-white p-5 flex items-start gap-4">
+                    <div id="payment-status-icon" class="w-10 h-10 flex-shrink-0 rounded-lg bg-orange-50 text-[#EA580C] inline-flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p id="payment-status-title" class="text-[16px] font-semibold text-gray-900">Loading your account status…</p>
+                        <p id="payment-status-body" class="text-[14px] text-gray-500 mt-1 leading-relaxed">Checking your trial and payment status.</p>
+                    </div>
+                </section>
+
+                <!-- PLAN + AMOUNT -->
+                <section class="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
+                    <div class="flex items-center justify-between gap-4 flex-wrap">
+                        <div>
+                            <h2 class="text-[16px] font-semibold text-gray-900">FluxyOS — <span id="plan-name">Starter</span></h2>
+                            <p class="text-[12px] text-gray-400 uppercase tracking-wider mt-1">Manual bank transfer</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[12px] text-gray-400 uppercase tracking-wider">Amount due</p>
+                            <p id="plan-amount" class="text-xl font-semibold text-gray-900" style="font-family: 'Fira Code', monospace;">Rp 0</p>
+                        </div>
+                    </div>
+
+                    <!-- BANK TRANSFER INSTRUCTIONS -->
+                    <div class="rounded-lg bg-gray-50 border border-gray-100 p-4 space-y-2">
+                        <p class="text-[12px] text-gray-400 uppercase tracking-wider">Transfer to</p>
+                        <dl class="text-[14px] text-gray-700 space-y-1">
+                            <div class="flex justify-between gap-4"><dt class="text-gray-500">Bank</dt><dd class="font-semibold">BCA</dd></div>
+                            <div class="flex justify-between gap-4"><dt class="text-gray-500">Account name</dt><dd class="font-semibold">PT FluxyOS Indonesia</dd></div>
+                            <div class="flex justify-between gap-4"><dt class="text-gray-500">Account number</dt><dd class="font-semibold" style="font-family: 'Fira Code', monospace;">123 456 7890</dd></div>
+                            <div class="flex justify-between gap-4"><dt class="text-gray-500">Reference</dt><dd id="transfer-reference" class="font-semibold" style="font-family: 'Fira Code', monospace;">—</dd></div>
+                        </dl>
+                        <p class="text-[12px] text-gray-400 leading-relaxed pt-1">After transferring, enter the amount you paid and upload your transfer proof below. Our team verifies payments manually — your workspace unlocks once verified.</p>
+                    </div>
+                </section>
+
+                <!-- SUBMIT PROOF -->
+                <section id="payment-form-section" class="rounded-xl border border-gray-200 bg-white p-6 space-y-5">
+                    <h2 class="text-[16px] font-semibold text-gray-900">Submit payment proof</h2>
+
+                    <div>
+                        <label for="amount-paid" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Amount paid (Rp)</label>
+                        <input type="text" id="amount-paid" inputmode="numeric" autocomplete="off" placeholder="0"
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300"
+                            style="font-family: 'Fira Code', monospace;">
+                    </div>
+
+                    <!-- proof uploader mounts here -->
+                    <div id="payment-proof-host"></div>
+
+                    <div>
+                        <label for="payment-note" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Note (optional)</label>
+                        <textarea id="payment-note" rows="2" maxlength="500" placeholder="Anything our team should know about this payment"
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300 resize-none"></textarea>
+                    </div>
+
+                    <p id="payment-form-error" class="hidden text-[13px] font-medium text-red-600"></p>
+
+                    <div class="flex items-center justify-end gap-3 pt-1">
+                        <a href="mailto:support@fluxyos.com?subject=FluxyOS%20payment%20support" class="text-[14px] font-bold text-gray-500 hover:text-gray-900 transition-colors">Contact support</a>
+                        <button type="button" id="payment-submit-btn" disabled
+                            class="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-[14px] font-bold hover:bg-gray-800 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Submit for verification
+                        </button>
+                    </div>
+                </section>
+
+                <!-- SUBMITTED / VERIFIED / REJECTED STATE (toggled by JS) -->
+                <section id="payment-result-section" class="hidden rounded-xl border border-gray-200 bg-white p-6 space-y-3">
+                    <h2 id="payment-result-title" class="text-[16px] font-semibold text-gray-900"></h2>
+                    <p id="payment-result-body" class="text-[14px] text-gray-500 leading-relaxed"></p>
+                    <dl id="payment-result-meta" class="text-[14px] text-gray-700 space-y-1 pt-1"></dl>
+                    <div class="pt-2">
+                        <a href="/dashboard" class="inline-flex px-5 py-2.5 bg-gray-900 text-white rounded-lg text-[14px] font-bold hover:bg-gray-800 transition-all active:scale-95">Back to dashboard</a>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </main>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/document-attachment.js"></script>
+    <script type="module" src="assets/js/payment.js"></script>
+</body>
+</html>

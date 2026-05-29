@@ -773,6 +773,11 @@ function serializableSourceData(source) {
 
 async function confirmExportFromDrawer() {
     if (reportsState.exportInProgress) return;
+    // Trial/payment access guard: exports are locked until the account is paid &
+    // active (trial users included). Fails open if access state isn't loaded.
+    if (window.FluxyAccessGuard && !window.FluxyAccessGuard.requireExportAccess()) {
+        return;
+    }
     const type = reportsState.previewReportType;
     const pack = reportsState.pack;
     if (!type || !reportsState.user || !pack) return;

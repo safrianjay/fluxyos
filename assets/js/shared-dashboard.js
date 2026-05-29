@@ -218,6 +218,11 @@ window.showConfirmDialog = (options = {}) => window.showFluxyDialog({ ...options
 window.showAlertDialog   = (options = {}) => window.showFluxyDialog({ confirmLabel: 'OK', ...options, singleOk: true });
 
 window.showAddTransactionModal = function(options = {}) {
+    // Trial/payment access guard: block record creation once the trial has expired
+    // or while payment is pending verification. Fails open if state isn't loaded.
+    if (window.FluxyAccessGuard && !window.FluxyAccessGuard.requireWriteAccess()) {
+        return;
+    }
     const {
         title = "Add Transaction",
         submitLabel = "Add Transaction",
@@ -1583,6 +1588,11 @@ window.renderEmptyState = function(containerId, config) {
 
 // Global toggle for Fluxy AI (Drawer)
 window.toggleFluxyAI = (state) => {
+    // Trial/payment access guard: Fluxy AI is locked for expired/payment-pending
+    // users (opening to send a message). Fails open if state isn't loaded.
+    if (state !== false && window.FluxyAccessGuard && !window.FluxyAccessGuard.requireAIUsage()) {
+        return;
+    }
     if (window.toggleAI) window.toggleAI(state);
     else console.warn("AI Chat not loaded yet");
 };

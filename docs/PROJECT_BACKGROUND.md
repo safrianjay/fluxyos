@@ -578,6 +578,79 @@ audit log), `addInternalAuditLog`, `getInternalAuditLogs(limitCount = 100)`,
 statuses, audit actions) are specified in `docs/internal_operations_console_plan.md`
 §18.
 
+**Trial mirror (added):** `internal_users/{uid}` also carries `access_status`,
+`trial_started_at`, `trial_ends_at`, `trial_days_remaining`, and
+`payment_proof_file_name` so the console can show trial/payment status (see §4k).
+These are written by `DataService.syncInternalUserAccessIndex`. Internal
+`payment_status` has no `not_started`; the trial's `not_started` is simply not
+mirrored.
+
+### 4k. Billing Access & 3-Day Trial — `users/{userId}/billing/access`
+
+User-scoped workspace access-state doc. The 3-day trial starts **after onboarding
+completion** (not registration). Full spec:
+`docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md`.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `access_status` | string | `trial_not_started`/`trial_active`/`trial_expiring`/`trial_expired`/`payment_pending`/`payment_submitted`/`payment_verified`/`active`/`suspended`. |
+| `trial_duration_days` | number | `3`. |
+| `trial_started_at` | Timestamp \| null | = onboarding `completed_at` when available, else creation time. |
+| `trial_ends_at` | Timestamp \| null | `trial_started_at + 3 days`. |
+| `trial_expired_at` | Timestamp \| null | Set when a trial flips to expired. |
+| `payment_required` | bool | |
+| `payment_status` | string | `not_started`/`pending`/`submitted`/`under_review`/`verified`/`rejected`. |
+| `plan_id` | string \| null | |
+| `account_status` | string | `trial`/`active`/`suspended`. |
+| `created_at` / `updated_at` | Timestamp | `serverTimestamp()`. |
+
+**Trial start logic:** `completeOnboarding` calls `ensureTrialAccessAfterOnboarding`
+(best-effort). It creates the doc only if missing **and** the user is app-accessible
+(onboarding completed or legacy-exempt) — retroactively granting current users a trial
+on next login. Idempotent — never resets an existing trial.
+
+**Eligibility / locks (client-side, UX only):** `assets/js/trial-access.js`
+(`window.FluxyAccessGuard`) renders a slim banner and applies write/export/AI locks
+when not active. Wired once in `sidebar-loader.js` so it runs on every app page. Real
+enforcement still needs backend/rules (usage counters, server-side expiry).
+
+**Mutation rule:** owner read/create/update only; delete blocked. No secrets, no
+formatted currency strings. **Audit:** `trial.created`, `trial.expired`,
+`access.activated` (`target_collection: "billing"`).
+
+`DataService` exposes `getBillingAccess`, `createTrialAccess`,
+`ensureTrialAccessAfterOnboarding`, `updateBillingAccess`, `expireTrialIfNeeded`,
+`syncInternalUserAccessIndex`.
+
+### 4l. Payment Verifications — `users/{userId}/payment_verifications/{paymentId}`
+
+Manual bank-transfer proof submissions feeding the internal Payment Review queue.
+Owner-scoped. Submitting **never auto-activates** the account — internal verification
+is required.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `amount` | number | Raw integer Rupiah. Never a formatted string. |
+| `currency` | string | `"IDR"`. |
+| `plan_id` | string \| null | |
+| `billing_period` | string \| null | `monthly`/`annual`/`custom`. |
+| `payment_method` | string | `bank_transfer`/`manual`/`other`. |
+| `proof_document_id` | string \| null | → `users/{uid}/documents/{id}` (role `payment_proof`, context `payment`). |
+| `proof_file_name` | string \| null | ≤240 chars. |
+| `submitted_note` | string \| null | ≤500 chars. |
+| `status` | string | `submitted`/`under_review`/`verified`/`rejected`. |
+| `reviewer_id` / `reviewer_note` | string \| null | Set by the backend admin phase. |
+| `submitted_at`/`reviewed_at`/`created_at`/`updated_at` | Timestamp | |
+
+**Mutation rule:** owner read/create/update only; delete blocked. `submitPaymentVerification`
+writes this doc + flips `billing/access` to `payment_submitted` in one batch, then
+best-effort denormalizes status metadata (no proof image) onto `internal_users`.
+**UI surface:** `payment.html` + `assets/js/payment.js`. **Audit:** `payment.submitted`
+(`target_collection: "payment_verifications"`).
+
+`DataService` exposes `getPaymentVerifications`, `getLatestPaymentVerification`,
+`submitPaymentVerification`.
+
 ---
 
 ## 5. Business Logic Rules

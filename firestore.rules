@@ -113,12 +113,45 @@ service cloud.firestore {
           'bank_accounts',
           'bank_balance_snapshots',
           'bank_statement_imports',
-          'documents'
+          'documents',
+          'billing',
+          'payment_verifications'
         ]
         && data.target_id is string
         && data.target_id.size() <= 160
         && data.source in ['dashboard', 'ai', 'integration', 'system', 'onboarding']
         && data.created_at == request.time;
+    }
+
+    // Owner-scoped 3-day trial / billing access doc (users/{uid}/billing/access).
+    // Status enums only — no secrets, no formatted currency strings.
+    function isValidBillingAccess(data) {
+      return (!('access_status' in data) || data.access_status in [
+          'trial_not_started', 'trial_active', 'trial_expiring', 'trial_expired',
+          'payment_pending', 'payment_submitted', 'payment_verified', 'active', 'suspended'
+        ])
+        && (!('payment_status' in data) || data.payment_status in [
+          'not_started', 'pending', 'submitted', 'under_review', 'verified', 'rejected'
+        ])
+        && (!('account_status' in data) || data.account_status in ['trial', 'active', 'suspended'])
+        && (!('trial_duration_days' in data) || data.trial_duration_days is number)
+        && (!('plan_id' in data) || data.plan_id == null
+          || (data.plan_id is string && data.plan_id.size() <= 40));
+    }
+
+    // Owner-scoped manual payment proof (users/{uid}/payment_verifications/{id}).
+    // Raw-integer amounts only; no card data / secrets.
+    function isValidPaymentVerification(data) {
+      return data.amount is number && data.amount >= 0 && data.amount <= 999999999999
+        && data.currency == 'IDR'
+        && data.status in ['submitted', 'under_review', 'verified', 'rejected']
+        && (!('payment_method' in data) || data.payment_method in ['bank_transfer', 'manual', 'other'])
+        && (!('billing_period' in data) || data.billing_period == null
+          || data.billing_period in ['monthly', 'annual', 'custom'])
+        && (!('proof_file_name' in data) || data.proof_file_name == null
+          || (data.proof_file_name is string && data.proof_file_name.size() <= 240))
+        && (!('submitted_note' in data) || data.submitted_note == null
+          || (data.submitted_note is string && data.submitted_note.size() <= 500));
     }
 
     // Internal Operations Console (Phase 1 MVP). Operational metadata only —
@@ -139,6 +172,14 @@ service cloud.firestore {
         ])
         && (!('payment_amount' in data) || data.payment_amount == null
           || (data.payment_amount is number && data.payment_amount >= 0 && data.payment_amount <= 999999999999))
+        && (!('access_status' in data) || data.access_status in [
+          'trial_not_started', 'trial_active', 'trial_expiring', 'trial_expired',
+          'payment_pending', 'payment_submitted', 'payment_verified', 'active', 'suspended'
+        ])
+        && (!('trial_days_remaining' in data) || data.trial_days_remaining == null
+          || (data.trial_days_remaining is number && data.trial_days_remaining >= 0))
+        && (!('payment_proof_file_name' in data) || data.payment_proof_file_name == null
+          || (data.payment_proof_file_name is string && data.payment_proof_file_name.size() <= 240))
         && (!('last_internal_note' in data) || data.last_internal_note == null
           || (data.last_internal_note is string && data.last_internal_note.size() <= 500))
         && (!('email' in data) || data.email == null
@@ -186,7 +227,7 @@ service cloud.firestore {
         && data.storage_path is string
         && data.storage_path.size() <= 400
         && data.document_role in ['receipt', 'invoice', 'payment_proof', 'revenue_proof', 'unknown_finance_document']
-        && data.source_context in ['transaction', 'revenue', 'bill', 'subscription']
+        && data.source_context in ['transaction', 'revenue', 'bill', 'subscription', 'payment']
         && (!('target_collection' in data) || data.target_collection == null || data.target_collection in ['transactions', 'bills', 'subscriptions'])
         && (!('target_id' in data) || data.target_id is string)
         && data.upload_status in ['pending', 'uploaded', 'failed', 'removed']
@@ -869,6 +910,22 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create, update, delete: if false;
+
+      // 3-day trial / billing access state (owner-scoped). Client writes are UX
+      // only; production enforcement still needs backend/Cloud Functions.
+      match /billing/{billingDoc} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidBillingAccess(request.resource.data);
+        allow delete: if false;
+      }
+
+      // Manual payment proof submissions (owner-scoped). Proof file lives in the
+      // documents collection / Storage; this doc holds metadata + status only.
+      match /payment_verifications/{paymentId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidPaymentVerification(request.resource.data);
+        allow delete: if false;
+      }
 
       match /transactions/{transactionId} {
         allow read: if isOwner(userId);

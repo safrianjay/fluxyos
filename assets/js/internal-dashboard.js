@@ -38,9 +38,13 @@ const ACCOUNT_STATUSES = ['registered', 'kyc_incomplete', 'kyc_submitted', 'kyc_
 const KYC_STATUSES = ['not_started', 'in_progress', 'submitted', 'needs_revision', 'approved', 'rejected'];
 const PAYMENT_STATUSES = ['not_required', 'pending', 'submitted', 'under_review', 'verified', 'rejected', 'expired'];
 
+// Trial / billing access status (mirrored from users/{uid}/billing/access).
+const ACCESS_STATUSES = ['trial_not_started', 'trial_active', 'trial_expiring', 'trial_expired', 'payment_pending', 'payment_submitted', 'payment_verified', 'active', 'suspended'];
+
 const KYC_TONE = { approved: 'green', rejected: 'red', needs_revision: 'amber', submitted: 'blue', in_progress: 'neutral', not_started: 'neutral' };
 const PAYMENT_TONE = { verified: 'green', rejected: 'red', expired: 'red', under_review: 'blue', submitted: 'blue', pending: 'amber', not_required: 'neutral' };
 const ACCOUNT_TONE = { active: 'green', suspended: 'red', kyc_rejected: 'red', payment_verified: 'blue', kyc_approved: 'blue', payment_submitted: 'amber', payment_pending: 'amber', kyc_submitted: 'amber', kyc_incomplete: 'neutral', registered: 'neutral' };
+const ACCESS_TONE = { active: 'green', payment_verified: 'green', trial_active: 'blue', trial_expiring: 'amber', payment_submitted: 'amber', payment_pending: 'amber', trial_expired: 'red', suspended: 'red', trial_not_started: 'neutral' };
 
 const state = {
     users: [],
@@ -49,7 +53,7 @@ const state = {
     loadError: false,
     activeTab: 'overview',
     drawerUserId: null,
-    filters: { search: '', account: '', kyc: '', payment: '' }
+    filters: { search: '', account: '', kyc: '', payment: '', access: '' }
 };
 
 // =============================================================================
@@ -94,6 +98,39 @@ function fmtMoney(amount) {
 function badge(value, toneMap) {
     const tone = toneMap[value] || 'neutral';
     return `<span class="ibadge ibadge--${tone}">${escapeHtml(labelize(value))}</span>`;
+}
+
+// Trial / payment access badge (plan §26). Prioritises payment state over trial
+// state so a paid/under-review/rejected user reads correctly regardless of the
+// stored access_status.
+function accessBadge(u) {
+    const access = u.access_status;
+    const pay = u.payment_status;
+    const days = u.trial_days_remaining;
+    if (!access && !pay) return '<span class="text-gray-400">—</span>';
+    if (access === 'active' || access === 'payment_verified' || pay === 'verified') return '<span class="ibadge ibadge--green">Active</span>';
+    if (pay === 'rejected') return '<span class="ibadge ibadge--red">Payment needs revision</span>';
+    if (access === 'payment_submitted' || pay === 'submitted' || pay === 'under_review') return '<span class="ibadge ibadge--amber">Payment under review</span>';
+    if (access === 'trial_expired') return '<span class="ibadge ibadge--red">Trial ended</span>';
+    if (access === 'trial_active' || access === 'trial_expiring') {
+        if (days != null && days <= 1) return '<span class="ibadge ibadge--amber">Trial ends today</span>';
+        return `<span class="ibadge ibadge--blue">Trial · ${days != null ? days : '—'} days left</span>`;
+    }
+    if (access === 'suspended') return '<span class="ibadge ibadge--red">Suspended</span>';
+    return badge(access, ACCESS_TONE);
+}
+
+// Plain-text trial remaining for the Users table "Trial left" column.
+function trialRemainingText(u) {
+    const access = u.access_status;
+    const days = u.trial_days_remaining;
+    if (access === 'trial_active' || access === 'trial_expiring') {
+        if (days != null && days <= 0) return 'Ends today';
+        if (days != null && days <= 1) return 'Ends today';
+        return days != null ? `${days}d left` : '—';
+    }
+    if (access === 'trial_expired') return 'Ended';
+    return '—';
 }
 
 function userDisplayName(u) {
@@ -288,6 +325,35 @@ function renderOverview() {
     }).join('');
 }
 
+// Access filter mapping (plan §26). "ending_today" is derived from the
+// remaining-days countdown since it isn't a persisted status.
+function matchesAccessFilter(x, key) {
+    switch (key) {
+        case 'trial_active': return x.access_status === 'trial_active' && !(x.trial_days_remaining != null && x.trial_days_remaining <= 1);
+        case 'ending_today': return (x.access_status === 'trial_active' || x.access_status === 'trial_expiring') && x.trial_days_remaining != null && x.trial_days_remaining <= 1;
+        case 'trial_expired': return x.access_status === 'trial_expired';
+        case 'payment_not_started': return x.access_status && x.access_status.startsWith('trial') && (x.payment_status === 'pending' || x.payment_status === 'not_required' || x.payment_status == null);
+        case 'payment_submitted': return x.payment_status === 'submitted' || x.access_status === 'payment_submitted';
+        case 'payment_under_review': return x.payment_status === 'under_review';
+        case 'payment_rejected': return x.payment_status === 'rejected';
+        case 'payment_verified': return x.payment_status === 'verified';
+        case 'active': return x.access_status === 'active' || x.account_status === 'active';
+        default: return true;
+    }
+}
+
+const ACCESS_FILTER_OPTIONS = [
+    ['trial_active', 'Trial active'],
+    ['ending_today', 'Trial ending today'],
+    ['trial_expired', 'Trial expired'],
+    ['payment_not_started', 'Payment not started'],
+    ['payment_submitted', 'Payment submitted'],
+    ['payment_under_review', 'Payment under review'],
+    ['payment_rejected', 'Payment rejected'],
+    ['payment_verified', 'Payment verified'],
+    ['active', 'Active']
+];
+
 // ----- Users tab -----
 function applyFilters(rows) {
     const f = state.filters;
@@ -296,6 +362,7 @@ function applyFilters(rows) {
         if (f.account && x.account_status !== f.account) return false;
         if (f.kyc && x.kyc_status !== f.kyc) return false;
         if (f.payment && x.payment_status !== f.payment) return false;
+        if (f.access && !matchesAccessFilter(x, f.access)) return false;
         if (q) {
             const hay = [x.email, x.business_name, x.phone_number, x.display_name].map(v => String(v || '').toLowerCase()).join(' ');
             if (!hay.includes(q)) return false;
@@ -313,6 +380,8 @@ function userRow(x) {
         </td>
         <td class="px-5 py-3.5 text-gray-700">${escapeHtml(x.business_name || '—')}</td>
         <td class="px-5 py-3.5 mono text-[13px] text-gray-600">${escapeHtml(x.phone_number || '—')}</td>
+        <td class="px-5 py-3.5">${accessBadge(x)}</td>
+        <td class="px-5 py-3.5 text-[13px] text-gray-600">${escapeHtml(trialRemainingText(x))}</td>
         <td class="px-5 py-3.5">${badge(x.kyc_status, KYC_TONE)}</td>
         <td class="px-5 py-3.5">${badge(x.payment_status, PAYMENT_TONE)}</td>
         <td class="px-5 py-3.5">${badge(x.account_status, ACCOUNT_TONE)}</td>
@@ -502,6 +571,20 @@ function renderDrawer(u) {
         ${row('Account status', badge(u.account_status, ACCOUNT_TONE))}
         ${row('Created', fmtDate(u.created_at))}
         ${row('Last updated', fmtDateTime(u.updated_at))}
+    </div>`);
+
+    // Trial & payment access (mirrored from users/{uid}/billing/access)
+    const hasTrial = !!(u.access_status || toDate(u.trial_started_at) || toDate(u.trial_ends_at));
+    sections.push(`<div class="idrawer-section">
+        <h3 class="text-[12px] font-bold uppercase tracking-wider text-gray-500 mb-1">Trial &amp; payment</h3>
+        ${hasTrial ? `
+            ${row('Access', accessBadge(u))}
+            ${row('Trial started', fmtDate(u.trial_started_at))}
+            ${row('Trial ends', fmtDate(u.trial_ends_at))}
+            ${row('Days remaining', u.trial_days_remaining != null ? String(u.trial_days_remaining) : '—')}
+            ${row('Payment status', badge(u.payment_status, PAYMENT_TONE))}
+            ${row('Account status', badge(u.account_status, ACCOUNT_TONE))}
+        ` : `<p class="text-[13px] text-gray-500 py-2">No trial/billing record yet. The trial starts after the user completes onboarding.</p>`}
     </div>`);
 
     // Onboarding profile
@@ -753,10 +836,12 @@ function initConsoleEvents() {
     });
 
     // Filters
-    const fAccount = $('filter-account'), fKyc = $('filter-kyc'), fPayment = $('filter-payment');
+    const fAccess = $('filter-access'), fAccount = $('filter-account'), fKyc = $('filter-kyc'), fPayment = $('filter-payment');
+    fAccess.innerHTML = '<option value="">All access</option>' + ACCESS_FILTER_OPTIONS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
     fAccount.innerHTML = '<option value="">All accounts</option>' + ACCOUNT_STATUSES.map(s => `<option value="${s}">${labelize(s)}</option>`).join('');
     fKyc.innerHTML = '<option value="">All KYC</option>' + KYC_STATUSES.map(s => `<option value="${s}">${labelize(s)}</option>`).join('');
     fPayment.innerHTML = '<option value="">All payments</option>' + PAYMENT_STATUSES.map(s => `<option value="${s}">${labelize(s)}</option>`).join('');
+    fAccess.addEventListener('change', () => { state.filters.access = fAccess.value; renderUsersTab(); });
     fAccount.addEventListener('change', () => { state.filters.account = fAccount.value; renderUsersTab(); });
     fKyc.addEventListener('change', () => { state.filters.kyc = fKyc.value; renderUsersTab(); });
     fPayment.addEventListener('change', () => { state.filters.payment = fPayment.value; renderUsersTab(); });

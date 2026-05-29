@@ -592,12 +592,53 @@ If no exception log is provided, anti-slop QA is considered failed.
 
 ---
 
+## Change Type — Trial Access & Payment Banner
+
+Run when touching `assets/js/trial-access.js`, `payment.html`/`assets/js/payment.js`,
+billing methods in `db-service.js`, or the internal console trial/payment surfaces.
+
+**Trial creation**
+- [ ] New user completes onboarding → `users/{uid}/billing/access` exists with
+  `trial_duration_days = 3`, `access_status = trial_active`, `trial_started_at` +
+  `trial_ends_at` set; trial did not start before onboarding completion.
+- [ ] Existing/legacy user without a billing doc gets a trial on next login (retroactive).
+
+**Banner**
+- [ ] Trial banner shows on dashboard, ledger, bill, subscription, budget, reports,
+  integration, and settings*; CTA opens `/payment.html`.
+- [ ] Active/verified user sees no banner. Banner does not appear on `payment.html`.
+- [ ] No horizontal overflow at 375px; banner CTA is the only primary action.
+
+**Expiry locks**
+- [ ] Set `trial_ends_at` in the past → reload → "Trial ended" banner.
+- [ ] Add Transaction / CSV import / report export / Fluxy AI submit / bank-statement
+  import are blocked with the canonical expired-trial dialog (no `alert`/`confirm`).
+- [ ] Existing records remain readable (not deleted/hidden).
+
+**Payment**
+- [ ] `payment.html` shows trial status, plan/amount, bank instructions; submit is
+  disabled until amount + proof present.
+- [ ] Submitting writes `users/{uid}/payment_verifications/{id}`, flips billing to
+  `payment_submitted`, and the banner becomes "Payment submitted · Under review".
+- [ ] `internal_users/{uid}` mirror shows access/trial/payment fields; console Access
+  filter + Trial & payment drawer section render.
+- [ ] Console "Verify payment" → user's next app load reconciles billing to `active`
+  and the banner disappears.
+
+**Data/security**
+- [ ] Amounts stored as raw integers; no formatted currency strings; no secrets.
+- [ ] No global/financial collections created; no ledger data in `internal_users`.
+- [ ] Browser console clean (no CSP/CORS/404/Firebase errors).
+
+---
+
 ## Critical Files Reference
 
 | File | Role |
 |------|------|
 | `assets/js/shared-dashboard.js` | Modal, toast, empty states — used on all dashboard pages |
-| `assets/js/sidebar-loader.js` | Sidebar — used on all dashboard pages |
+| `assets/js/sidebar-loader.js` | Sidebar + trial access guard wiring — used on all dashboard pages |
+| `assets/js/trial-access.js` | Trial/payment banner + access guard (`window.FluxyAccessGuard`) |
 | `assets/js/db-service.js` | All Firebase CRUD — read carefully before modifying |
 | `assets/js/footer-loader.js` | Footer injection — skip logic must stay intact |
 | `assets/js/universe-canvas.js` | Canvas animation — shared by login and footer |

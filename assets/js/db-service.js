@@ -1,5 +1,23 @@
 import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, doc, Timestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+// 3-day trial access & payment status enums (users/{uid}/billing/access).
+// See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
+const TRIAL_DURATION_DAYS = 3;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const ACCESS_STATUSES = [
+    'trial_not_started', 'trial_active', 'trial_expiring', 'trial_expired',
+    'payment_pending', 'payment_submitted', 'payment_verified', 'active', 'suspended'
+];
+const BILLING_PAYMENT_STATUSES = [
+    'not_started', 'pending', 'submitted', 'under_review', 'verified', 'rejected'
+];
+const BILLING_ACCOUNT_STATUSES = ['trial', 'active', 'suspended'];
+// The open internal_users index uses its own (KYC-centric) payment enum that has
+// no `not_started`; map/skip unsupported values when denormalizing.
+const INTERNAL_PAYMENT_STATUSES = [
+    'not_required', 'pending', 'submitted', 'under_review', 'verified', 'rejected', 'expired'
+];
+
 class DataService {
     constructor(app) {
         this.app = app;
@@ -421,6 +439,13 @@ class DataService {
             },
             source: 'onboarding'
         });
+        // Start the 3-day trial now that the user has reached the product value
+        // moment. Best-effort — a failure here must never block onboarding success.
+        try {
+            await this.ensureTrialAccessAfterOnboarding(userId);
+        } catch (e) {
+            console.warn('[onboarding] trial access creation skipped');
+        }
     }
 
     async skipOnboarding(userId, currentStep = 'business_setup') {
@@ -835,6 +860,267 @@ class DataService {
                 patch.account_status = 'kyc_submitted';
             }
             if (!existing.kyc_submitted_at) patch.kyc_submitted_at = serverTimestamp();
+        }
+        await setDoc(ref, patch, { merge: true });
+        return 'updated';
+    }
+
+    // ===== BILLING ACCESS & 3-DAY TRIAL =====
+    // Owner-scoped access-state doc at users/{uid}/billing/access. The trial starts
+    // after onboarding completion (not registration). Client-side trial/expiry logic
+    // here is UX only — production needs backend/rules enforcement. Access/payment
+    // data never leaves users/{uid}; only non-financial status fields are mirrored
+    // into the open internal_users index for the ops console.
+    _billingAccessDoc(userId) {
+        return doc(this.db, `users/${userId}/billing/access`);
+    }
+
+    _paymentVerificationsCol(userId) {
+        return collection(this.db, `users/${userId}/payment_verifications`);
+    }
+
+    async getBillingAccess(userId) {
+        if (!userId) return null;
+        const snap = await getDoc(this._billingAccessDoc(userId));
+        return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    }
+
+    // Create the access doc once. Idempotent — returns the existing doc untouched if
+    // it already exists, so a trial is never reset. Stores concrete Timestamps for
+    // trial_started_at/trial_ends_at so countdown + mirror math is consistent.
+    async createTrialAccess(userId, payload = {}) {
+        const ref = this._billingAccessDoc(userId);
+        const existing = await getDoc(ref);
+        if (existing.exists()) return { id: existing.id, ...existing.data() };
+
+        const durationDays = Number.isFinite(payload.trial_duration_days) ? payload.trial_duration_days : TRIAL_DURATION_DAYS;
+        const startMs = (payload.trial_started_at && typeof payload.trial_started_at.toMillis === 'function')
+            ? payload.trial_started_at.toMillis()
+            : Date.now();
+        const startTs = Timestamp.fromMillis(startMs);
+        const endTs = Timestamp.fromMillis(startMs + durationDays * DAY_MS);
+
+        const data = {
+            access_status: this._allowedValue(payload.access_status, ACCESS_STATUSES, 'trial_active'),
+            trial_duration_days: durationDays,
+            trial_started_at: startTs,
+            trial_ends_at: endTs,
+            trial_expired_at: null,
+            payment_required: payload.payment_required !== false,
+            payment_status: this._allowedValue(payload.payment_status, BILLING_PAYMENT_STATUSES, 'not_started'),
+            plan_id: this._nullableString(payload.plan_id, 40),
+            account_status: this._allowedValue(payload.account_status, BILLING_ACCOUNT_STATUSES, 'trial'),
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        };
+        await setDoc(ref, data);
+        return { id: 'access', ...data };
+    }
+
+    // Start the trial only after the user can access the app (onboarding completed
+    // or legacy-exempt). No-op if an access doc already exists. Best-effort audit +
+    // internal mirror — never throws into the caller's critical path.
+    async ensureTrialAccessAfterOnboarding(userId) {
+        if (!userId) return null;
+        const existing = await this.getBillingAccess(userId);
+        if (existing) return existing;
+
+        const progress = await this.getOnboardingProgress(userId).catch(() => null);
+        const eligible = !!progress && (progress.onboarding_completed === true || progress.onboarding_exempt === true);
+        if (!eligible) return null;
+
+        const startTs = (progress.completed_at && typeof progress.completed_at.toMillis === 'function')
+            ? progress.completed_at
+            : null;
+        const created = await this.createTrialAccess(userId, {
+            access_status: 'trial_active',
+            trial_duration_days: TRIAL_DURATION_DAYS,
+            trial_started_at: startTs,
+            payment_status: 'not_started',
+            account_status: 'trial'
+        });
+
+        try {
+            await this.addAuditLog(userId, {
+                action: 'trial.created',
+                target_collection: 'billing',
+                target_id: 'access',
+                after: { access_status: 'trial_active', trial_duration_days: TRIAL_DURATION_DAYS },
+                source: 'system'
+            });
+        } catch (e) { /* non-fatal */ }
+        try { await this.syncInternalUserAccessIndex(userId, created); } catch (e) { /* non-fatal */ }
+        return created;
+    }
+
+    async updateBillingAccess(userId, payload = {}) {
+        if (!userId) return null;
+        const clean = this._cleanDefined({
+            access_status: 'access_status' in payload ? this._allowedValue(payload.access_status, ACCESS_STATUSES, undefined) : undefined,
+            payment_status: 'payment_status' in payload ? this._allowedValue(payload.payment_status, BILLING_PAYMENT_STATUSES, undefined) : undefined,
+            account_status: 'account_status' in payload ? this._allowedValue(payload.account_status, BILLING_ACCOUNT_STATUSES, undefined) : undefined,
+            plan_id: 'plan_id' in payload ? this._nullableString(payload.plan_id, 40) : undefined,
+            trial_expired_at: payload.trial_expired_at instanceof Timestamp ? payload.trial_expired_at : undefined,
+            updated_at: serverTimestamp()
+        });
+        await setDoc(this._billingAccessDoc(userId), clean, { merge: true });
+        try {
+            const fresh = await this.getBillingAccess(userId);
+            if (fresh) await this.syncInternalUserAccessIndex(userId, fresh);
+        } catch (e) { /* non-fatal */ }
+        return clean;
+    }
+
+    // Flip an active trial to expired once trial_ends_at has passed. UX-only — a real
+    // server check is still required for enforcement (documented limitation).
+    async expireTrialIfNeeded(userId) {
+        const access = await this.getBillingAccess(userId);
+        if (!access) return null;
+        const endsAt = access.trial_ends_at;
+        const endMs = endsAt && typeof endsAt.toMillis === 'function' ? endsAt.toMillis() : null;
+        const inTrial = access.access_status === 'trial_active' || access.access_status === 'trial_expiring';
+        if (!inTrial || endMs === null || endMs >= Date.now()) return access;
+
+        await setDoc(this._billingAccessDoc(userId), {
+            access_status: 'trial_expired',
+            trial_expired_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        }, { merge: true });
+        try {
+            await this.addAuditLog(userId, {
+                action: 'trial.expired',
+                target_collection: 'billing',
+                target_id: 'access',
+                before: { access_status: access.access_status },
+                after: { access_status: 'trial_expired' },
+                source: 'system'
+            });
+        } catch (e) { /* non-fatal */ }
+        const updated = { ...access, access_status: 'trial_expired' };
+        try { await this.syncInternalUserAccessIndex(userId, updated); } catch (e) { /* non-fatal */ }
+        return updated;
+    }
+
+    async getPaymentVerifications(userId) {
+        if (!userId) return [];
+        const q = query(this._paymentVerificationsCol(userId), orderBy('created_at', 'desc'), limit(20));
+        const snap = await getDocs(q);
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    async getLatestPaymentVerification(userId) {
+        const list = await this.getPaymentVerifications(userId);
+        return list[0] || null;
+    }
+
+    // Manual bank-transfer proof submission. Writes the owner-scoped verification doc
+    // and flips billing access to payment_submitted in one batch, then best-effort
+    // denormalizes status metadata (no proof image) to the open internal index so the
+    // console Payment Review queue can see it. NEVER auto-activates the user.
+    async submitPaymentVerification(userId, payload = {}) {
+        if (!userId) throw new Error('missing-user');
+        const amount = Math.max(0, Math.round(Number(payload.amount) || 0));
+        const planId = this._nullableString(payload.plan_id, 40);
+        const billingPeriod = this._allowedValue(payload.billing_period, ['monthly', 'annual', 'custom'], 'monthly');
+        const paymentMethod = this._allowedValue(payload.payment_method, ['bank_transfer', 'manual', 'other'], 'bank_transfer');
+        const proofDocId = this._nullableString(payload.proof_document_id, 160);
+        const proofFileName = this._nullableString(payload.proof_file_name, 240);
+        const note = this._nullableString(payload.submitted_note, 500);
+
+        const batch = writeBatch(this.db);
+        const verRef = doc(this._paymentVerificationsCol(userId));
+        batch.set(verRef, {
+            amount,
+            currency: 'IDR',
+            plan_id: planId,
+            billing_period: billingPeriod,
+            payment_method: paymentMethod,
+            proof_document_id: proofDocId,
+            proof_file_name: proofFileName,
+            submitted_note: note,
+            status: 'submitted',
+            reviewer_id: null,
+            reviewer_note: null,
+            submitted_at: serverTimestamp(),
+            reviewed_at: null,
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        });
+        batch.set(this._billingAccessDoc(userId), {
+            access_status: 'payment_submitted',
+            payment_status: 'submitted',
+            plan_id: planId,
+            updated_at: serverTimestamp()
+        }, { merge: true });
+        await batch.commit();
+
+        try {
+            await this.syncInternalUserAccessIndex(userId, {
+                access_status: 'payment_submitted',
+                payment_status: 'submitted',
+                payment_submitted_at: serverTimestamp(),
+                plan_id: planId,
+                payment_amount: amount,
+                payment_method: paymentMethod,
+                payment_proof_file_name: proofFileName
+            });
+        } catch (e) { console.warn('[billing] internal payment sync skipped'); }
+        try {
+            await this.addAuditLog(userId, {
+                action: 'payment.submitted',
+                target_collection: 'payment_verifications',
+                target_id: verRef.id,
+                after: { amount, payment_method: paymentMethod, status: 'submitted' },
+                source: 'dashboard'
+            });
+        } catch (e) { /* non-fatal */ }
+        return { id: verRef.id, amount, status: 'submitted' };
+    }
+
+    // Mirror non-financial trial/payment status fields into internal_users/{uid}.
+    // Reuses the open index seeded by syncSelfToInternalIndex; never writes ledger
+    // data, secrets, or formatted currency, and never clobbers reviewer KYC fields.
+    async syncInternalUserAccessIndex(userId, payload = {}) {
+        if (!userId) return null;
+        const ref = this._internalUserDoc(userId);
+        const snap = await getDoc(ref);
+
+        let daysRemaining;
+        const endsAt = payload.trial_ends_at;
+        if (endsAt && typeof endsAt.toMillis === 'function') {
+            const diff = endsAt.toMillis() - Date.now();
+            daysRemaining = diff <= 0 ? 0 : Math.ceil(diff / DAY_MS);
+        }
+        const internalPaymentStatus = 'payment_status' in payload
+            ? this._allowedValue(payload.payment_status, INTERNAL_PAYMENT_STATUSES, undefined)
+            : undefined;
+
+        const patch = this._cleanDefined({
+            access_status: 'access_status' in payload ? this._allowedValue(payload.access_status, ACCESS_STATUSES, undefined) : undefined,
+            trial_started_at: payload.trial_started_at instanceof Timestamp ? payload.trial_started_at : undefined,
+            trial_ends_at: payload.trial_ends_at instanceof Timestamp ? payload.trial_ends_at : undefined,
+            trial_days_remaining: daysRemaining,
+            payment_status: internalPaymentStatus,
+            payment_submitted_at: payload.payment_submitted_at,
+            plan_id: 'plan_id' in payload ? (payload.plan_id || null) : undefined,
+            payment_amount: 'payment_amount' in payload ? (Number.isFinite(payload.payment_amount) ? payload.payment_amount : null) : undefined,
+            payment_method: 'payment_method' in payload ? (payload.payment_method || null) : undefined,
+            payment_proof_file_name: 'payment_proof_file_name' in payload ? (payload.payment_proof_file_name || null) : undefined,
+            updated_at: serverTimestamp()
+        });
+
+        if (!snap.exists()) {
+            // Normally seeded by syncSelfToInternalIndex on login; seed a minimal row
+            // if it isn't there yet so trial status is still visible to the console.
+            await setDoc(ref, this._cleanDefined({
+                user_id: userId,
+                account_status: 'registered',
+                kyc_status: 'not_started',
+                payment_status: internalPaymentStatus || 'pending',
+                created_at: serverTimestamp(),
+                ...patch
+            }));
+            return 'created';
         }
         await setDoc(ref, patch, { merge: true });
         return 'updated';

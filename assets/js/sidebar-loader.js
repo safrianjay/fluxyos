@@ -373,6 +373,15 @@
                                 display_name: user.displayName || null
                             });
                         }).catch((e) => console.warn('[sidebar] internal index sync skipped', e));
+                        // Trial/payment access guard: starts the 3-day trial for
+                        // eligible users, renders the trial/payment banner, and
+                        // applies expiry locks across authenticated app pages. This
+                        // is the single wiring point for every page that loads the
+                        // sidebar (all app pages; never landing/login/onboarding/
+                        // internal). Best-effort — never blocks the dashboard.
+                        import("/assets/js/trial-access.js").then(({ applyToPage }) => {
+                            return applyToPage(user, {});
+                        }).catch((e) => console.warn('[sidebar] trial access guard skipped', e));
                     }
                 });
             });
