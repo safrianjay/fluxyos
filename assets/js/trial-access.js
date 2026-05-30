@@ -319,13 +319,15 @@ function makeRequire(flag) {
 // actually unlocks (or shows "needs revision"). Documented backend-sync alternative
 // in the plan; this is the client-driven reconciliation.
 async function reconcileWithInternalDecision(data, uid, access) {
-    const pending = access.access_status === 'payment_submitted'
-        || access.payment_status === 'submitted' || access.payment_status === 'under_review';
-    if (!pending) return access;
+    // Already fully unlocked — nothing to reconcile.
+    if (access.access_status === 'active' || access.payment_status === 'verified') return access;
     try {
         const internal = await data.getInternalUser(uid);
         if (!internal) return access;
-        if (internal.payment_status === 'verified' || internal.account_status === 'active') {
+        const verified = internal.payment_status === 'verified'
+            || internal.account_status === 'active'
+            || internal.account_status === 'payment_verified';
+        if (verified) {
             await data.updateBillingAccess(uid, { access_status: 'active', payment_status: 'verified', account_status: 'active' });
             try {
                 await data.addAuditLog(uid, {
@@ -335,7 +337,11 @@ async function reconcileWithInternalDecision(data, uid, access) {
             } catch (e) { /* non-fatal */ }
             return await data.getBillingAccess(uid) || access;
         }
-        if (internal.payment_status === 'rejected') {
+        if (internal.account_status === 'suspended' && access.access_status !== 'suspended') {
+            await data.updateBillingAccess(uid, { access_status: 'suspended', account_status: 'suspended' });
+            return await data.getBillingAccess(uid) || access;
+        }
+        if (internal.payment_status === 'rejected' && access.payment_status !== 'rejected') {
             await data.updateBillingAccess(uid, { payment_status: 'rejected' });
             return await data.getBillingAccess(uid) || access;
         }
