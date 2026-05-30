@@ -153,46 +153,42 @@ function injectStyles() {
     const style = document.createElement('style');
     style.id = 'fluxy-trial-banner-styles';
     style.textContent = `
+        /* Full-width slim top strip — mirrors the landing-page .promo-banner:
+           cream→peach gradient, rounded orange icon square, bold copy, orange link. */
         .fluxy-trial-banner {
             display: flex;
             align-items: center;
-            gap: 14px;
-            background: #FFF7ED;
-            border: 1px solid #FFEDD5;
-            border-radius: 12px;
-            padding: 12px 16px;
-            margin-bottom: 20px;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            flex-shrink: 0;
+            padding: 10px 20px;
+            background: linear-gradient(90deg, #FFF7ED 0%, #FFF1E0 55%, #FFE6CC 100%);
+            border-bottom: 1px solid #FCDDB9;
+            flex-wrap: wrap;
         }
-        .fluxy-trial-banner.is-warn { background: #FFFBEB; border-color: #FDE68A; }
-        .fluxy-trial-banner.is-info { background: #F8FAFC; border-color: #E2E8F0; }
         .fluxy-trial-banner__icon {
-            width: 32px; height: 32px; flex-shrink: 0;
+            width: 28px; height: 28px; flex-shrink: 0;
             border-radius: 8px;
             display: inline-flex; align-items: center; justify-content: center;
-            background: #FFEDD5; color: #EA580C;
+            background: linear-gradient(135deg, #FB923C 0%, #EA580C 100%);
+            color: #fff;
+            box-shadow: 0 2px 6px rgba(234, 88, 12, 0.30);
         }
-        .fluxy-trial-banner.is-warn .fluxy-trial-banner__icon { background: #FEF3C7; color: #B45309; }
-        .fluxy-trial-banner.is-info .fluxy-trial-banner__icon { background: #E2E8F0; color: #475569; }
-        .fluxy-trial-banner__text { flex: 1; min-width: 0; }
-        .fluxy-trial-banner__title {
-            font-size: 14px; font-weight: 600; color: #0B0F19; line-height: 1.4; margin: 0;
+        .fluxy-trial-banner__text {
+            font-size: 14px; line-height: 1.4; color: #0B0F19; min-width: 0;
         }
-        .fluxy-trial-banner__body {
-            font-size: 12px; color: #6b7280; line-height: 1.4; margin: 2px 0 0;
-        }
+        .fluxy-trial-banner__title { font-weight: 700; }
+        .fluxy-trial-banner__body { font-weight: 500; color: #1f2937; }
         .fluxy-trial-banner__cta {
             flex-shrink: 0;
-            display: inline-flex; align-items: center; gap: 6px;
-            background: #EA580C; color: #fff;
-            font-size: 12px; font-weight: 600;
-            padding: 8px 14px; border-radius: 8px;
-            border: none; cursor: pointer; text-decoration: none;
-            transition: background 0.15s;
+            display: inline-flex; align-items: center; gap: 4px;
+            color: #EA580C; font-size: 14px; font-weight: 700;
+            text-decoration: none; cursor: pointer; margin-left: 4px;
         }
-        .fluxy-trial-banner__cta:hover { background: #C2410C; }
+        .fluxy-trial-banner__cta:hover { color: #C2410C; text-decoration: underline; }
         @media (max-width: 640px) {
-            .fluxy-trial-banner { flex-wrap: wrap; }
-            .fluxy-trial-banner__cta { width: 100%; justify-content: center; }
+            .fluxy-trial-banner { padding: 10px 14px; text-align: center; }
         }
         .fluxy-access-disabled {
             pointer-events: none !important;
@@ -205,13 +201,13 @@ function injectStyles() {
 
 function iconSvg(variant) {
     if (variant === 'warn') {
-        return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
+        return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
     }
     if (variant === 'info') {
-        return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+        return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
     }
     // clock (active trial)
-    return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
+    return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
 }
 
 // ----- Rendering -----
@@ -227,19 +223,28 @@ function renderBanner(state) {
     if (!cfg) return;
     injectStyles();
 
-    const anchor = findAnchor();
     const banner = document.createElement('div');
-    banner.className = `fluxy-trial-banner is-${cfg.variant}`;
+    banner.className = 'fluxy-trial-banner';
     banner.setAttribute('data-fluxy-trial-banner', '');
     banner.innerHTML = `
         <span class="fluxy-trial-banner__icon">${iconSvg(cfg.variant)}</span>
-        <div class="fluxy-trial-banner__text">
-            <p class="fluxy-trial-banner__title">${cfg.title}</p>
-            <p class="fluxy-trial-banner__body">${cfg.body}</p>
-        </div>
-        <a class="fluxy-trial-banner__cta" href="${PAYMENT_ROUTE}">${cfg.cta}</a>
+        <span class="fluxy-trial-banner__text">
+            <span class="fluxy-trial-banner__title">${cfg.title}</span>
+            <span class="fluxy-trial-banner__body">${cfg.body}</span>
+        </span>
+        <a class="fluxy-trial-banner__cta" href="${PAYMENT_ROUTE}">${cfg.cta} &rarr;</a>
     `;
-    anchor.insertBefore(banner, anchor.firstChild);
+
+    // Pin the strip at the very top of the page, above the app topbar — same
+    // placement rhythm as the landing-page promo bar. Falls back to the content
+    // anchor if a page has no <main>.
+    const main = document.querySelector('main');
+    if (main) {
+        main.insertBefore(banner, main.firstChild);
+    } else {
+        const anchor = findAnchor();
+        anchor.insertBefore(banner, anchor.firstChild);
+    }
 }
 
 // Selectors for write/export/AI actions to visually disable when locked.
