@@ -921,8 +921,9 @@
 .metric-cell:nth-child(n+4) { border-bottom: 0; }
 
 .metric-cell-trend {
-    min-height: 248px;
-    padding-bottom: 76px;
+    min-height: 272px;
+    padding: 24px;
+    padding-bottom: 84px;
 }
 
 .metric-cell-trend > .metric-label,
@@ -1069,15 +1070,15 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-top: 6px;
+    margin-top: 10px;
     min-height: 18px;
 }
 
 .metric-revenue-secondary {
     display: grid;
-    gap: 4px;
-    margin-top: 10px;
-    padding: 8px 10px;
+    gap: 6px;
+    margin-top: 14px;
+    padding: 10px 12px;
     border: 1px solid #F1F5F9;
     border-radius: 10px;
     background: #F9FAFB;
@@ -2099,7 +2100,11 @@
 
     .summary-board { grid-template-columns: 1fr; }
     .metric-cell { min-height: 112px; border-right: 0 !important; border-bottom: 1px solid #E5E7EB !important; }
-    .metric-cell-trend { min-height: 248px; }
+    .metric-cell-trend {
+        min-height: 264px;
+        padding: 20px;
+        padding-bottom: 76px;
+    }
     .metric-cell:last-child { border-bottom: 0 !important; }
     .metric-sparkline { left: 20px; right: 20px; width: auto; height: 54px; opacity: 0.72; }
 
@@ -2129,7 +2134,8 @@
    ============================================================ */
 
 .metric-cell-mini {
-    min-height: 196px;
+    min-height: 224px;
+    padding: 24px;
     display: flex;
     flex-direction: column;
 }
@@ -2137,20 +2143,20 @@
 .metric-mini-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    margin-top: 12px;
+    gap: 12px;
+    margin-top: 16px;
 }
 
 .metric-cell-mini > .metric-sub {
     margin-top: auto;
-    padding-top: 12px;
+    padding-top: 16px;
 }
 
 .metric-mini-tile {
     border: 1px solid #F1F5F9;
     background: #F9FAFB;
     border-radius: 10px;
-    padding: 8px 10px;
+    padding: 10px 12px;
 }
 
 .metric-mini-tile span {
@@ -2166,7 +2172,7 @@
 .metric-mini-tile strong {
     display: block;
     font-family: "Fira Code", monospace;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     color: #111827;
     overflow-wrap: anywhere;
@@ -2244,11 +2250,14 @@
 }
 
 @media (max-width: 1240px) {
-    .metric-cell-mini { min-height: 184px; }
+    .metric-cell-mini { min-height: 208px; }
 }
 
 @media (max-width: 760px) {
-    .metric-cell-mini { min-height: 0; }
+    .metric-cell-mini {
+        min-height: 0;
+        padding: 20px;
+    }
     .metric-mini-grid { margin-top: 12px; }
 }
 

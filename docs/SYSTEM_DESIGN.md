@@ -204,10 +204,12 @@ Calculated by `DataService.getDashboardStats(userId)`:
 - Margin: `(revenue - opex) / revenue * 100`, or `0` when revenue is zero
 - Needs Action: count of transactions where `status === 'Missing Receipt'`
 
-Overview's Revenue card also uses
-`DataService.getRevenueTransactionsForDashboardStats(userId)` for an exact
-Revenue-only `This month` / `YTD` / `All time` selector. This does not rescope
-the other Overview panels or change Ledger's default transaction limit.
+Overview's full dashboard selector supports `This Month`, `Last Month`, `YTD`,
+`All Time`, and `Custom`. Revenue also uses
+`DataService.getRevenueTransactionsForDashboardStats(userId)` for exact
+selected-period and secondary helper values. `All Time` Overview reads use
+`DataService.getTransactionsForDashboardOverview(userId, true)` so Ledger's
+default transaction limit remains unchanged.
 
 ### Settings
 

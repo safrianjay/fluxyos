@@ -20,8 +20,19 @@ async function waitForRenderedRevenue(page) {
 }
 
 async function waitForRevenue(page) {
+    await page.addInitScript(() => {
+        sessionStorage.setItem('fluxy_learning_promoter_skipped', '1');
+    });
     await page.goto('/dashboard.html');
     await waitForRenderedRevenue(page);
+}
+
+async function dismissLearningPromoter(page) {
+    const overlay = page.locator('#fluxy-learn-promoter-overlay');
+    if (await overlay.count()) {
+        await page.keyboard.press('Escape');
+        await expect(overlay).toHaveCount(0);
+    }
 }
 
 function parseIDR(value) {
@@ -29,28 +40,49 @@ function parseIDR(value) {
     return Number(digits || 0);
 }
 
-test('Overview Revenue selector changes only Revenue context', async ({ page }) => {
+test('Overview selector rescopes the dashboard and preserves Revenue context', async ({ page }) => {
     const consoleErrors = attachConsoleErrors(page);
     await waitForRevenue(page);
 
-    await expect(page.locator('#overview-period-selector [data-revenue-period]')).toHaveCount(3);
+    await expect(page.locator('#overview-period-selector [data-dashboard-period]')).toHaveCount(5);
     await expect(page.locator('#overview-period-month')).toHaveClass(/is-active/);
     await expect(page.locator('#revenue-scope-label')).toHaveText('This month');
     await expect(page.locator('#revenue-secondary-label')).toHaveText('All-time revenue');
 
     const monthRevenue = parseIDR(await page.locator('#kpi-revenue').textContent());
     const allTimeRevenue = parseIDR(await page.locator('#revenue-secondary-value').textContent());
-    const stableKpis = await page.locator('#kpi-opex, #kpi-margin, #kpi-bank-cash, #kpi-cash-pressure, #kpi-payables').allTextContents();
+    const monthRange = await page.evaluate(() => window.FluxyDashboardRange);
     expect(allTimeRevenue).toBeGreaterThanOrEqual(monthRevenue);
 
+    await dismissLearningPromoter(page);
+    await page.locator('#overview-period-last-month').click();
+    await waitForRenderedRevenue(page);
+    await expect(page.locator('#overview-period-last-month')).toHaveClass(/is-active/);
+    await expect(page.locator('#revenue-scope-label')).toHaveText('Last month');
+    await expect(page.locator('#revenue-secondary-label')).toHaveText('All-time revenue');
+    expect(await page.evaluate(() => window.FluxyDashboardRange)).not.toEqual(monthRange);
+    await expect(page.locator('#ai-summary-period')).toHaveText('Last month');
+
+    await dismissLearningPromoter(page);
     await page.locator('#overview-period-ytd').click();
+    await waitForRenderedRevenue(page);
     await expect(page.locator('#overview-period-ytd')).toHaveClass(/is-active/);
     await expect(page.locator('#revenue-scope-label')).toHaveText('Year to date');
     await expect(page.locator('#revenue-secondary-label')).toHaveText('All-time revenue');
     expect(parseIDR(await page.locator('#revenue-secondary-value').textContent())).toBe(allTimeRevenue);
     expect(parseIDR(await page.locator('#kpi-revenue').textContent())).toBeGreaterThanOrEqual(monthRevenue);
+    await expect(page.locator('#ai-summary-period')).toHaveText('Year to date');
 
+    await dismissLearningPromoter(page);
+    await page.locator('#overview-period-custom').click();
+    await waitForRenderedRevenue(page);
+    await expect(page.locator('#overview-period-custom')).toHaveClass(/is-active/);
+    await expect(page.locator('#dashboard-date-range-picker')).toBeVisible();
+    await expect(page.locator('#revenue-secondary-label')).toHaveText('All-time revenue');
+
+    await dismissLearningPromoter(page);
     await page.locator('#overview-period-all').click();
+    await waitForRenderedRevenue(page);
     await expect(page.locator('#overview-period-all')).toHaveClass(/is-active/);
     await expect(page.locator('#revenue-scope-label')).toHaveText('All time');
     await expect(page.locator('#revenue-secondary-label')).toHaveText('This month');
@@ -60,7 +92,8 @@ test('Overview Revenue selector changes only Revenue context', async ({ page }) 
 
     const revenueCardText = await page.locator('[data-tour-target="dashboard-revenue-kpi"]').textContent();
     expect(revenueCardText).not.toMatch(/NaN|Infinity|undefined/i);
-    expect(await page.locator('#kpi-opex, #kpi-margin, #kpi-bank-cash, #kpi-cash-pressure, #kpi-payables').allTextContents()).toEqual(stableKpis);
+    await expect(page.locator('#ai-summary-period')).toHaveText('All time');
+    await expect(page.locator('#kpi-opex, #kpi-margin, #kpi-bank-cash, #kpi-cash-pressure, #kpi-payables')).toHaveCount(5);
     expect(consoleErrors).toEqual([]);
 });
 
@@ -108,4 +141,5 @@ test('Overview Revenue read remains user-scoped and type allowlisted', async ({ 
     expect(source).toContain('collection(this.db, `users/${userId}/transactions`)');
     expect(source).toContain("where('type', 'in', ['income', 'revenue', 'refund', 'pending_receivable'])");
     expect(source).not.toContain("where('type', 'in', ['income', 'revenue', 'refund', 'pending_receivable', 'expense'");
+    expect(source).toContain('getTransactionsForDashboardOverview(userId, allTime = false)');
 });

@@ -45,6 +45,16 @@ class DataService {
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
 
+    async getTransactionsForDashboardOverview(userId, allTime = false) {
+        if (!allTime) return this.getTransactions(userId, 1000);
+        const q = query(
+            collection(this.db, `users/${userId}/transactions`),
+            orderBy('timestamp', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
     async addTransaction(userId, data) {
         const { timestamp, ...rest } = data;
         return await addDoc(collection(this.db, `users/${userId}/transactions`), {
@@ -1221,8 +1231,8 @@ class DataService {
 
     // --- SUMMARY STATS ---
     async getDashboardOverview(userId, options = {}) {
-        const period = this._normalizeOverviewPeriod(options);
-        const previousPeriod = this._getPreviousOverviewPeriod(period);
+        let period = this._normalizeOverviewPeriod(options);
+        let previousPeriod = this._getPreviousOverviewPeriod(period);
         const sourceStatus = {
             transactions: 'loaded',
             bills: 'loaded',
@@ -1231,7 +1241,7 @@ class DataService {
         const limitations = [];
 
         const [txResult, billsResult, subsResult] = await Promise.allSettled([
-            this.getTransactions(userId, 1000),
+            this.getTransactionsForDashboardOverview(userId, period.mode === 'all_time'),
             this.getBills(userId),
             this.getSubscriptions(userId)
         ]);
@@ -1253,11 +1263,16 @@ class DataService {
             limitations.push('Subscriptions data could not be loaded, so upcoming renewals may be incomplete.');
         }
 
+        if (period.mode === 'all_time') {
+            period = this._resolveAllTimeOverviewPeriod(period, transactions, bills, subscriptions);
+            previousPeriod = this._getPreviousOverviewPeriod(period);
+        }
+
         const periodTransactions = transactions.filter(tx => this._isTransactionInPeriod(tx, period.startDate, period.endDate));
         const previousTransactions = transactions.filter(tx => this._isTransactionInPeriod(tx, previousPeriod.startDate, previousPeriod.endDate));
         const performance = this._calculateOverviewPerformance(periodTransactions);
         const previousPerformance = this._calculateOverviewPerformance(previousTransactions);
-        const hasPreviousPeriodData = previousTransactions.length > 0;
+        const hasPreviousPeriodData = period.mode !== 'all_time' && previousTransactions.length > 0;
         performance.revenueChangePct = hasPreviousPeriodData ? this._safePercentChange(performance.revenue, previousPerformance.revenue) : null;
         performance.opexChangePct = hasPreviousPeriodData ? this._safePercentChange(performance.opex, previousPerformance.opex) : null;
         performance.marginChangePct = hasPreviousPeriodData && previousPerformance.revenue > 0
@@ -3419,10 +3434,36 @@ class DataService {
         };
     }
 
+    _resolveAllTimeOverviewPeriod(period, transactions = [], bills = [], subscriptions = []) {
+        let earliest = null;
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        const includeDate = date => {
+            if (!date || Number.isNaN(date.getTime()) || date > today) return;
+            if (!earliest || date < earliest) earliest = date;
+        };
+
+        transactions.forEach(tx => includeDate(this._getRecordDate(tx, 'timestamp') || this._getRecordDate(tx, 'created_at')));
+        bills.forEach(bill => includeDate(this._getRecordDate(bill, 'due_date') || this._getRecordDate(bill, 'timestamp') || this._getRecordDate(bill, 'created_at')));
+        subscriptions.forEach(sub => includeDate(this._getRecordDate(sub, 'renewal_date') || this._getRecordDate(sub, 'timestamp') || this._getRecordDate(sub, 'created_at')));
+
+        const todayKey = this._getDayKey(new Date());
+        return {
+            ...period,
+            label: 'All time',
+            startDate: earliest ? this._getDayKey(earliest) : todayKey,
+            endDate: todayKey
+        };
+    }
+
     _getPreviousOverviewPeriod(period) {
         const start = this._parseDayKey(period.startDate);
         const end = this._parseDayKey(period.endDate);
         if (!start || !end) return { startDate: period.startDate, endDate: period.endDate };
+
+        if (period.mode === 'all_time') {
+            return { startDate: period.startDate, endDate: period.endDate };
+        }
 
         if (period.mode === 'this_month') {
             const previousStart = new Date(start.getFullYear(), start.getMonth() - 1, 1);

@@ -34,11 +34,14 @@
                 </div>
             </div>
             <div class="overview-period-strip dashboard-topbar-period">
-                <div id="overview-period-selector" class="dashboard-period-controls" aria-label="Revenue period">
-                    <button id="overview-period-month" type="button" data-revenue-period="this_month" class="dashboard-period-btn is-active">This month</button>
-                    <button id="overview-period-ytd" type="button" data-revenue-period="year_to_date" class="dashboard-period-btn">YTD</button>
-                    <button id="overview-period-all" type="button" data-revenue-period="all_time" class="dashboard-period-btn">All time</button>
-                </div>
+            <div id="overview-period-selector" class="dashboard-period-controls" aria-label="Overview period">
+              <button id="overview-period-month" type="button" data-dashboard-period="this_month" class="dashboard-period-btn is-active">This Month</button>
+              <button id="overview-period-last-month" type="button" data-dashboard-period="last_month" class="dashboard-period-btn">Last Month</button>
+              <button id="overview-period-ytd" type="button" data-dashboard-period="year_to_date" class="dashboard-period-btn">YTD</button>
+              <button id="overview-period-all" type="button" data-dashboard-period="all_time" class="dashboard-period-btn">All Time</button>
+              <button id="overview-period-custom" type="button" data-dashboard-period="custom" class="dashboard-period-btn">Custom</button>
+            </div>
+            <div id="dashboard-date-range-picker"></div>
             </div>
         </header>
 

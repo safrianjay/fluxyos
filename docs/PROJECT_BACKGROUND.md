@@ -682,18 +682,23 @@ margin  = ((revenue - opex) / revenue) * 100
 - `action_items_count` = count of rows where `status === 'Missing Receipt'`
 - `revenue_change` is hardcoded `"0%"` (not yet calculated dynamically)
 
-### Overview Revenue Period Context
+### Overview Period Context
 
-The Overview Revenue KPI uses a Revenue-only period selector: `This month`,
-`YTD`, or `All time`. The rest of Overview remains scoped to the current month,
-including OpEx, Gross Margin, charts, attention queues, and Fluxy AI context.
+The Overview period selector scopes the full dashboard view: `This Month`,
+`Last Month`, `YTD`, `All Time`, or `Custom`. Revenue, OpEx, Gross Margin,
+charts, attention queues, and Fluxy AI context follow the selected period.
 
 `DataService.getRevenueTransactionsForDashboardStats(userId)` reads only
 revenue-side transaction types (`income`, legacy `revenue`, `refund`,
 `pending_receivable`) from `users/{userId}/transactions` without a Ledger row
-limit. The Overview controller caches that result so selector clicks do not
-reload Firestore or the full page. Missing timestamps count toward `All time`
-only.
+limit. This supports the Revenue card's selected-period scope line, record
+count, and secondary context: all-time revenue for every mode except `All
+Time`, which shows this-month revenue. Missing timestamps count toward Revenue
+`All Time` only.
+
+`DataService.getTransactionsForDashboardOverview(userId, allTime)` preserves
+the existing 1,000-row Overview read for bounded periods and removes the limit
+only for the Overview `All Time` mode. Ledger limits are unchanged.
 
 ### Modal Context Rules
 
@@ -828,7 +833,7 @@ Auto-runs on landing pages. Fetches `includes/footer.html`, appends to `<body>`,
 | ID | File | Purpose |
 |----|------|---------|
 | `kpi-revenue` | `dashboard.html` | Revenue KPI display value |
-| `overview-period-selector` | `dashboard.html` | Revenue-only period selector |
+| `overview-period-selector` | `dashboard.html` | Overview-wide period selector |
 | `revenue-scope-label` | `dashboard.html` | Visible Revenue KPI period scope |
 | `revenue-record-count` | `dashboard.html` | Visible Revenue KPI record count |
 | `revenue-secondary-label` | `dashboard.html` | All-time or this-month Revenue helper label |
