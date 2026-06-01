@@ -53,6 +53,11 @@
         return `${formatDayLabel(startKey)} - ${formatDayLabel(endKey)}`;
     }
 
+    function isFullMonthRange(startKey, endKey) {
+        return startKey === getMonthStartKey(parseDayKey(startKey))
+            && endKey === getMonthEndKey(parseDayKey(startKey));
+    }
+
     function mountDateRangePicker(target, options = {}) {
         const host = typeof target === 'string' ? document.querySelector(target) : target;
         if (!host) return null;
@@ -142,8 +147,7 @@
 
         function shiftPeriod(delta) {
             const daySpan = Math.max(1, Math.round((parseDayKey(rangeEnd) - parseDayKey(rangeStart)) / DAY_MS) + 1);
-            const isFullMonth = rangeStart === getMonthStartKey(parseDayKey(rangeStart))
-                && rangeEnd === getMonthEndKey(parseDayKey(rangeStart));
+            const isFullMonth = isFullMonthRange(rangeStart, rangeEnd);
             if (isSingleDate) {
                 rangeStart = addDays(rangeStart, delta);
                 rangeEnd = rangeStart;
@@ -156,7 +160,9 @@
                 rangeStart = addDays(rangeStart, delta * daySpan);
                 rangeEnd = addDays(rangeEnd, delta * daySpan);
             }
-            if (rangeEnd > maxDate) rangeEnd = maxDate;
+            // Month arrows retain month scope even when the current calendar
+            // month extends beyond today. Future day buttons remain disabled.
+            if (!isFullMonth && rangeEnd > maxDate) rangeEnd = maxDate;
             if (rangeStart > rangeEnd) rangeStart = rangeEnd;
             calendarBaseMonth = getMonthStartKey(parseDayKey(rangeStart));
             updateLabel();

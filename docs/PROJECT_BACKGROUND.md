@@ -752,7 +752,10 @@ ledgers do not overload the page. Reuse this shared picker for every dashboard
 calendar/date picker, including single-date entry fields; never create
 page-local calendar components or native date inputs. Its Reset action returns
 the picker to the configured default range, which is the current month for
-ledger-style views and today for single-entry dates.
+ledger-style views and today for single-entry dates. The outer previous/next
+arrows preserve full-month scope for monthly filters, including when returning
+to the current partial month. Day-level arrow navigation is reserved for an
+explicitly selected single-day range or single-date mode.
 
 Example:
 
