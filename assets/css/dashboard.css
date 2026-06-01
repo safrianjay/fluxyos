@@ -921,9 +921,9 @@
 .metric-cell:nth-child(n+4) { border-bottom: 0; }
 
 .metric-cell-trend {
-    min-height: 272px;
+    min-height: 264px;
     padding: 24px;
-    padding-bottom: 84px;
+    padding-bottom: 68px;
 }
 
 .metric-cell-trend > .metric-label,
@@ -1114,6 +1114,10 @@
     transform: none;
 }
 
+.metric-cell-trend .metric-comparison-row .metric-arrow:empty {
+    display: none;
+}
+
 .metric-progress {
     margin-top: 10px;
     height: 4px;
@@ -1136,7 +1140,7 @@
     right: 20px;
     bottom: 12px;
     width: auto;
-    height: 58px;
+    height: 48px;
     opacity: 0.82;
     pointer-events: none;
 }
@@ -2065,7 +2069,7 @@
 .status-badge.is-danger { background: #FEE2E2; color: #B91C1C; }
 
 /* Workbench responsive */
-@media (max-width: 1240px) {
+@media (max-width: 1440px) {
     .overview-layout {
         grid-template-columns: 1fr;
     }
@@ -2101,12 +2105,12 @@
     .summary-board { grid-template-columns: 1fr; }
     .metric-cell { min-height: 112px; border-right: 0 !important; border-bottom: 1px solid #E5E7EB !important; }
     .metric-cell-trend {
-        min-height: 264px;
+        min-height: 256px;
         padding: 20px;
-        padding-bottom: 76px;
+        padding-bottom: 64px;
     }
     .metric-cell:last-child { border-bottom: 0 !important; }
-    .metric-sparkline { left: 20px; right: 20px; width: auto; height: 54px; opacity: 0.72; }
+    .metric-sparkline { left: 20px; right: 20px; width: auto; height: 44px; opacity: 0.72; }
 
     .chart-card { padding: 18px; }
     .chart-card-header { flex-direction: column; align-items: flex-start; }
@@ -2148,8 +2152,9 @@
 }
 
 .metric-cell-mini > .metric-sub {
-    margin-top: auto;
-    padding-top: 16px;
+    margin-top: 16px;
+    padding-top: 0;
+    max-width: none;
 }
 
 .metric-mini-tile {
@@ -2186,6 +2191,7 @@
     background: #E5E7EB;
     border-radius: 999px;
     overflow: hidden;
+    max-width: none;
 }
 
 .metric-progress-fill.is-good { background: #16A34A; }
@@ -2249,7 +2255,7 @@
     font-style: italic;
 }
 
-@media (max-width: 1240px) {
+@media (max-width: 1440px) {
     .metric-cell-mini { min-height: 208px; }
 }
 

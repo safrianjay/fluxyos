@@ -135,6 +135,40 @@ test('Overview desktop shell and Fluxy AI drawer remain intact', async ({ page }
     expect(consoleErrors).toEqual([]);
 });
 
+test('Overview first KPI row keeps a compact vertical rhythm', async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await waitForRevenue(page);
+
+    const spacing = await page.evaluate(() => {
+        const rect = selector => document.querySelector(selector)?.getBoundingClientRect();
+        const bankTiles = rect('#kpi-bank-cash')?.width ? rect('#kpi-bank-cash') : null;
+        const bankGrid = document.querySelector('#kpi-bank-cash')?.closest('.metric-cell')?.querySelector('.metric-mini-grid')?.getBoundingClientRect();
+        const bankSub = rect('#kpi-bank-cash-sub');
+        const opexGrid = document.querySelector('#kpi-opex')?.closest('.metric-cell')?.querySelector('.metric-mini-grid')?.getBoundingClientRect();
+        const opexSub = rect('#kpi-opex-change');
+        const opexBar = document.querySelector('#kpi-opex-budget-bar')?.parentElement?.getBoundingClientRect();
+        const revenueSecondary = document.querySelector('.metric-revenue-secondary')?.getBoundingClientRect();
+        const revenueComparison = document.querySelector('.metric-comparison-row')?.getBoundingClientRect();
+        const summaryBoard = document.querySelector('.summary-board');
+        return {
+            hasBankValue: !!bankTiles,
+            summaryColumns: summaryBoard ? getComputedStyle(summaryBoard).gridTemplateColumns.split(' ').length : 0,
+            bankSubGap: bankSub && bankGrid ? bankSub.top - bankGrid.bottom : null,
+            opexSubGap: opexSub && opexGrid ? opexSub.top - opexGrid.bottom : null,
+            opexBarGap: opexBar && opexSub ? opexBar.top - opexSub.bottom : null,
+            revenueLeftOffset: revenueSecondary && revenueComparison ? revenueComparison.left - revenueSecondary.left : null
+        };
+    });
+
+    expect(spacing.hasBankValue).toBe(true);
+    expect(spacing.summaryColumns).toBe(3);
+    expect(spacing.bankSubGap).toBeLessThanOrEqual(20);
+    expect(spacing.opexSubGap).toBeLessThanOrEqual(20);
+    expect(spacing.opexBarGap).toBeLessThanOrEqual(16);
+    expect(spacing.revenueLeftOffset).toBeLessThanOrEqual(4);
+    await page.screenshot({ path: 'test-results/dashboard-revenue-period/overview-kpi-wide.png', fullPage: false });
+});
+
 test('Overview Revenue read remains user-scoped and type allowlisted', async ({ page }) => {
     await page.goto('/assets/js/db-service.js');
     const source = await page.locator('body').textContent();
