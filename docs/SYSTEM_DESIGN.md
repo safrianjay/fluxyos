@@ -211,6 +211,11 @@ selected-period and secondary helper values. `All Time` Overview reads use
 `DataService.getTransactionsForDashboardOverview(userId, true)` so Ledger's
 default transaction limit remains unchanged.
 
+The Overview Bank Cash Balance KPI reads append-only
+`users/{userId}/bank_balance_snapshots` records through
+`DataService.getBankBalanceSnapshots(userId)` and renders an aggregate
+active-account sparkline. It does not infer history from the latest balance.
+
 ### Settings
 
 Path: `users/{userId}/settings/{settingsDoc}`

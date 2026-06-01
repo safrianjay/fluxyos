@@ -935,6 +935,19 @@
     z-index: 1;
 }
 
+.metric-cell.metric-cell-bank-trend {
+    padding-bottom: 68px;
+}
+
+.metric-cell-bank-trend > .metric-label,
+.metric-cell-bank-trend > .metric-value-row,
+.metric-cell-bank-trend > .metric-sub,
+.metric-cell-bank-trend > .metric-mini-grid,
+.metric-cell-bank-trend > .metric-cta {
+    position: relative;
+    z-index: 1;
+}
+
 .metric-label {
     display: inline-flex;
     align-items: center;
@@ -2155,6 +2168,14 @@
     margin-top: 16px;
     padding-top: 0;
     max-width: none;
+}
+
+.metric-cell-bank-trend > .metric-bank-status {
+    margin-top: 8px;
+}
+
+.metric-cell-bank-trend > .metric-mini-grid {
+    margin-top: 14px;
 }
 
 .metric-mini-tile {

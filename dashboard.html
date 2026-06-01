@@ -80,7 +80,7 @@
                                 <svg id="kpi-revenue-sparkline" class="metric-sparkline metric-sparkline-revenue" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true"></svg>
                             </article>
 
-                            <article class="metric-cell metric-cell-mini">
+                            <article class="metric-cell metric-cell-mini metric-cell-bank-trend">
                                 <div class="metric-label">
                                     <span>Bank cash balance</span>
                                     <button type="button" class="metric-info" aria-label="Bank cash balance: real bank cash from connected accounts." data-tooltip="Real bank cash balance from connected accounts. Shows Rp 0 when no bank is connected.">?</button>
@@ -88,6 +88,7 @@
                                 <div class="metric-value-row">
                                     <span id="kpi-bank-cash" class="metric-value tabular-nums">Rp 0</span>
                                 </div>
+                                <p id="kpi-bank-cash-sub" class="metric-sub metric-bank-status">No bank data connected</p>
                                 <div class="metric-mini-grid">
                                     <div class="metric-mini-tile">
                                         <span>30-day outlook</span>
@@ -98,8 +99,8 @@
                                         <strong id="kpi-bank-cash-coverage">Not available</strong>
                                     </div>
                                 </div>
-                                <p id="kpi-bank-cash-sub" class="metric-sub">No bank data connected</p>
                                 <button id="bank-cash-cta" type="button" class="metric-cta" data-finance-setup-open="bank" hidden>Add balance</button>
+                                <svg id="kpi-bank-cash-sparkline" class="metric-sparkline metric-sparkline-bank" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true"></svg>
                             </article>
 
                             <article class="metric-cell metric-cell-mini" data-tour-target="dashboard-opex-kpi">

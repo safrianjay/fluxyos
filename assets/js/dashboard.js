@@ -296,6 +296,7 @@ function renderBankCashCell(bankCash, rp) {
     const payablesTotal = safeNumber(rp.payablesTotal);
     const sourceType = bankCash.sourceType || null;
     const syncedAt = bankCash.syncedAt ? new Date(bankCash.syncedAt) : null;
+    const balanceHistory = Array.isArray(bankCash.balanceHistory) ? bankCash.balanceHistory : [];
 
     updateKPI('kpi-bank-cash', formatIDR(balance));
     const sub = document.getElementById('kpi-bank-cash-sub');
@@ -325,6 +326,11 @@ function renderBankCashCell(bankCash, rp) {
     }
 
     toggleKpiCta('bank-cash-cta', accountsSynced === 0);
+    renderMetricSparkline(
+        'kpi-bank-cash-sparkline',
+        balanceHistory.map(snapshot => safeNumber(snapshot.balance)),
+        'cash'
+    );
 }
 
 function formatRelativeTimestamp(date) {
@@ -516,6 +522,7 @@ function renderMetricSparkline(id, values, tone = 'revenue') {
         pressure: lastValue < 0
             ? { stroke: '#EF4444', fill: 'rgba(239,68,68,0.12)' }
             : { stroke: '#22C55E', fill: 'rgba(34,197,94,0.12)' },
+        cash: { stroke: '#2563EB', fill: 'rgba(37,99,235,0.12)' },
         opex: { stroke: '#9CA3AF', fill: 'rgba(156,163,175,0.14)' }
     };
     const colors = palette[tone] || palette.revenue;
@@ -525,12 +532,15 @@ function renderMetricSparkline(id, values, tone = 'revenue') {
     svg.innerHTML = `
         <path d="${areaPath}" fill="${colors.fill}" stroke="none"></path>
         <path d="${linePath}" fill="none" stroke="${colors.stroke}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path>
+        ${tone === 'cash' && points.length ? `<circle cx="${points[points.length - 1].x.toFixed(1)}" cy="${points[points.length - 1].y.toFixed(1)}" r="3" fill="${colors.stroke}" stroke="#FFFFFF" stroke-width="1.5"></circle>` : ''}
     `;
 }
 
 function clearMetricSparklines() {
-    const svg = document.getElementById('kpi-revenue-sparkline');
-    if (svg) svg.innerHTML = '';
+    ['kpi-revenue-sparkline', 'kpi-bank-cash-sparkline'].forEach(id => {
+        const svg = document.getElementById(id);
+        if (svg) svg.innerHTML = '';
+    });
 }
 
 function renderCashFlowChart() {

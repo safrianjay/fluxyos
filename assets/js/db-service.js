@@ -1416,12 +1416,13 @@ class DataService {
     }
 
     async _getBankCashSnapshot(userId) {
-        if (!userId) return { balance: 0, accountsSynced: 0, syncedAt: null, sourceType: null };
+        if (!userId) return { balance: 0, accountsSynced: 0, syncedAt: null, sourceType: null, balanceHistory: [] };
         try {
             const accounts = await this.getBankAccounts(userId);
             if (!accounts.length) {
-                return { balance: 0, accountsSynced: 0, syncedAt: null, sourceType: null };
+                return { balance: 0, accountsSynced: 0, syncedAt: null, sourceType: null, balanceHistory: [] };
             }
+            const snapshots = await this.getBankBalanceSnapshots(userId, { limit: 200 }).catch(() => []);
             let balance = 0;
             let syncedAt = null;
             let sourceType = null;
@@ -1436,11 +1437,40 @@ class DataService {
                 balance: Math.round(balance),
                 accountsSynced: accounts.length,
                 syncedAt: syncedAt ? syncedAt.toISOString() : null,
-                sourceType
+                sourceType,
+                balanceHistory: this._buildBankCashHistory(accounts, snapshots)
             };
         } catch (_) {
-            return { balance: 0, accountsSynced: 0, syncedAt: null, sourceType: null };
+            return { balance: 0, accountsSynced: 0, syncedAt: null, sourceType: null, balanceHistory: [] };
         }
+    }
+
+    _buildBankCashHistory(accounts = [], snapshots = []) {
+        const activeAccountIds = new Set(accounts.map(account => account.id));
+        const balances = new Map();
+        const totalsByDay = new Map();
+
+        snapshots
+            .filter(snapshot => activeAccountIds.has(snapshot.bank_account_id))
+            .map(snapshot => {
+                const rawBalance = Number(snapshot.balance);
+                return {
+                    accountId: snapshot.bank_account_id,
+                    balance: Number.isFinite(rawBalance) ? Math.max(0, rawBalance) : 0,
+                    date: this._getRecordDate(snapshot, 'snapshot_at')
+                };
+            })
+            .filter(snapshot => snapshot.date)
+            .sort((a, b) => a.date - b.date)
+            .forEach(snapshot => {
+                balances.set(snapshot.accountId, snapshot.balance);
+                totalsByDay.set(
+                    this._getDayKey(snapshot.date),
+                    Array.from(balances.values()).reduce((total, value) => total + value, 0)
+                );
+            });
+
+        return Array.from(totalsByDay, ([day, balance]) => ({ day, balance }));
     }
 
     async _getMonthlyOpexBudget(userId) {

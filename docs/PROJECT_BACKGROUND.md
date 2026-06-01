@@ -257,6 +257,10 @@ Append-only balance history. One snapshot per balance write
 
 **Mutation rule:** create + read only — update and delete are blocked.
 
+The Overview Bank Cash Balance KPI reads these user-scoped snapshots to render
+an aggregate active-account sparkline. Its card order is balance, update source
+and timestamp, 30-day outlook and coverage, then the snapshot trend graphic.
+
 ### 4e.3. Budgets — `users/{userId}/budgets/{budgetId}`
 
 Operating budgets that drive (a) `OpEx vs Budget` on Overview and `Budget Used`

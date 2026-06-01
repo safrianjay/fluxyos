@@ -137,6 +137,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 8 | Fluxy AI sidebar/header button opens/closes the chat drawer |
 | 9 | Dashboard KPI cards load: Revenue, OpEx, Margin (with progress bar), Needs Action |
 | 9a | Overview selector defaults to `This Month`; `Last Month`, `YTD`, `All Time`, and `Custom` rescope the full Overview view without a page reload. Revenue shows all-time revenue as secondary context except in All Time mode, where it shows this-month revenue. Scope text and revenue record count stay visible; no `NaN`, `Infinity`, `undefined`, or blank KPI values |
+| 9b | Overview Bank Cash Balance card keeps the order: current balance, update source/timestamp, 30-day outlook and coverage, then a bottom sparkline rendered from user-scoped `bank_balance_snapshots`. Do not invent a trend from the latest balance when no snapshot history exists |
 | 10 | Ledger table renders rows OR shows empty state (never blank/broken) |
 | 11 | Bills table renders rows OR shows empty state |
 | 12 | Subscriptions table renders rows OR shows empty state |

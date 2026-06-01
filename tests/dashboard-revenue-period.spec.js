@@ -152,8 +152,9 @@ test('Overview first KPI row keeps a compact vertical rhythm', async ({ page }) 
         const summaryBoard = document.querySelector('.summary-board');
         return {
             hasBankValue: !!bankTiles,
+            hasBankSparkline: !!document.getElementById('kpi-bank-cash-sparkline'),
             summaryColumns: summaryBoard ? getComputedStyle(summaryBoard).gridTemplateColumns.split(' ').length : 0,
-            bankSubGap: bankSub && bankGrid ? bankSub.top - bankGrid.bottom : null,
+            bankGridGap: bankSub && bankGrid ? bankGrid.top - bankSub.bottom : null,
             opexSubGap: opexSub && opexGrid ? opexSub.top - opexGrid.bottom : null,
             opexBarGap: opexBar && opexSub ? opexBar.top - opexSub.bottom : null,
             revenueLeftOffset: revenueSecondary && revenueComparison ? revenueComparison.left - revenueSecondary.left : null
@@ -161,8 +162,10 @@ test('Overview first KPI row keeps a compact vertical rhythm', async ({ page }) 
     });
 
     expect(spacing.hasBankValue).toBe(true);
+    expect(spacing.hasBankSparkline).toBe(true);
     expect(spacing.summaryColumns).toBe(3);
-    expect(spacing.bankSubGap).toBeLessThanOrEqual(20);
+    expect(spacing.bankGridGap).toBeGreaterThanOrEqual(8);
+    expect(spacing.bankGridGap).toBeLessThanOrEqual(20);
     expect(spacing.opexSubGap).toBeLessThanOrEqual(20);
     expect(spacing.opexBarGap).toBeLessThanOrEqual(16);
     expect(spacing.revenueLeftOffset).toBeLessThanOrEqual(4);
@@ -176,4 +179,6 @@ test('Overview Revenue read remains user-scoped and type allowlisted', async ({ 
     expect(source).toContain("where('type', 'in', ['income', 'revenue', 'refund', 'pending_receivable'])");
     expect(source).not.toContain("where('type', 'in', ['income', 'revenue', 'refund', 'pending_receivable', 'expense'");
     expect(source).toContain('getTransactionsForDashboardOverview(userId, allTime = false)');
+    expect(source).toContain('collection(this.db, `users/${userId}/bank_balance_snapshots`)');
+    expect(source).toContain('balanceHistory: this._buildBankCashHistory(accounts, snapshots)');
 });
