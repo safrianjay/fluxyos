@@ -326,10 +326,12 @@ function renderBankCashCell(bankCash, rp) {
     }
 
     toggleKpiCta('bank-cash-cta', accountsSynced === 0);
+    const bankSparklineValues = balanceHistory.map(snapshot => safeNumber(snapshot.balance));
+    if (bankSparklineValues.length === 1) bankSparklineValues.push(bankSparklineValues[0]);
     renderMetricSparkline(
         'kpi-bank-cash-sparkline',
-        balanceHistory.map(snapshot => safeNumber(snapshot.balance)),
-        'cash'
+        bankSparklineValues,
+        'revenue'
     );
 }
 
@@ -522,7 +524,6 @@ function renderMetricSparkline(id, values, tone = 'revenue') {
         pressure: lastValue < 0
             ? { stroke: '#EF4444', fill: 'rgba(239,68,68,0.12)' }
             : { stroke: '#22C55E', fill: 'rgba(34,197,94,0.12)' },
-        cash: { stroke: '#2563EB', fill: 'rgba(37,99,235,0.12)' },
         opex: { stroke: '#9CA3AF', fill: 'rgba(156,163,175,0.14)' }
     };
     const colors = palette[tone] || palette.revenue;
@@ -532,7 +533,6 @@ function renderMetricSparkline(id, values, tone = 'revenue') {
     svg.innerHTML = `
         <path d="${areaPath}" fill="${colors.fill}" stroke="none"></path>
         <path d="${linePath}" fill="none" stroke="${colors.stroke}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path>
-        ${tone === 'cash' && points.length ? `<circle cx="${points[points.length - 1].x.toFixed(1)}" cy="${points[points.length - 1].y.toFixed(1)}" r="3" fill="${colors.stroke}" stroke="#FFFFFF" stroke-width="1.5"></circle>` : ''}
     `;
 }
 

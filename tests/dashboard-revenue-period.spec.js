@@ -153,6 +153,8 @@ test('Overview first KPI row keeps a compact vertical rhythm', async ({ page }) 
         return {
             hasBankValue: !!bankTiles,
             hasBankSparkline: !!document.getElementById('kpi-bank-cash-sparkline'),
+            bankSparklineHasGreenLine: !!document.querySelector('#kpi-bank-cash-sparkline path[stroke="#22C55E"]'),
+            bankSparklineHasMarker: !!document.querySelector('#kpi-bank-cash-sparkline circle'),
             summaryColumns: summaryBoard ? getComputedStyle(summaryBoard).gridTemplateColumns.split(' ').length : 0,
             bankGridGap: bankSub && bankGrid ? bankGrid.top - bankSub.bottom : null,
             opexSubGap: opexSub && opexGrid ? opexSub.top - opexGrid.bottom : null,
@@ -163,6 +165,8 @@ test('Overview first KPI row keeps a compact vertical rhythm', async ({ page }) 
 
     expect(spacing.hasBankValue).toBe(true);
     expect(spacing.hasBankSparkline).toBe(true);
+    expect(spacing.bankSparklineHasGreenLine).toBe(true);
+    expect(spacing.bankSparklineHasMarker).toBe(false);
     expect(spacing.summaryColumns).toBe(3);
     expect(spacing.bankGridGap).toBeGreaterThanOrEqual(8);
     expect(spacing.bankGridGap).toBeLessThanOrEqual(20);
@@ -181,4 +185,5 @@ test('Overview Revenue read remains user-scoped and type allowlisted', async ({ 
     expect(source).toContain('getTransactionsForDashboardOverview(userId, allTime = false)');
     expect(source).toContain('collection(this.db, `users/${userId}/bank_balance_snapshots`)');
     expect(source).toContain('balanceHistory: this._buildBankCashHistory(accounts, snapshots)');
+    expect(source).toContain('if (bankSparklineValues.length === 1) bankSparklineValues.push(bankSparklineValues[0])');
 });

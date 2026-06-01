@@ -214,7 +214,9 @@ default transaction limit remains unchanged.
 The Overview Bank Cash Balance KPI reads append-only
 `users/{userId}/bank_balance_snapshots` records through
 `DataService.getBankBalanceSnapshots(userId)` and renders an aggregate
-active-account sparkline. It does not infer history from the latest balance.
+active-account sparkline using the Revenue card's green area-line treatment.
+One real snapshot renders as a flat baseline; it does not infer movement from
+the latest balance.
 
 ### Settings
 
