@@ -34,13 +34,11 @@
                 </div>
             </div>
             <div class="overview-period-strip dashboard-topbar-period">
-                <div class="dashboard-period-controls" aria-label="Overview period">
-                    <button type="button" data-dashboard-period="this_month" class="dashboard-period-btn is-active">This Month</button>
-                    <button type="button" data-dashboard-period="last_month" class="dashboard-period-btn">Last Month</button>
-                    <button type="button" data-dashboard-period="year_to_date" class="dashboard-period-btn">YTD</button>
-                    <button type="button" data-dashboard-period="custom" class="dashboard-period-btn">Custom</button>
+                <div id="overview-period-selector" class="dashboard-period-controls" aria-label="Revenue period">
+                    <button id="overview-period-month" type="button" data-revenue-period="this_month" class="dashboard-period-btn is-active">This month</button>
+                    <button id="overview-period-ytd" type="button" data-revenue-period="year_to_date" class="dashboard-period-btn">YTD</button>
+                    <button id="overview-period-all" type="button" data-revenue-period="all_time" class="dashboard-period-btn">All time</button>
                 </div>
-                <div id="dashboard-date-range-picker"></div>
             </div>
         </header>
 
@@ -63,6 +61,14 @@
                                 </div>
                                 <div class="metric-value-row">
                                     <span id="kpi-revenue" class="metric-value tabular-nums">Rp 0</span>
+                                </div>
+                                <p class="metric-sub metric-revenue-scope">
+                                    <span id="revenue-scope-label">This month</span> &middot;
+                                    <span id="revenue-record-count">0 revenue records</span>
+                                </p>
+                                <div class="metric-revenue-secondary">
+                                    <span id="revenue-secondary-label">All-time revenue</span>
+                                    <strong id="revenue-secondary-value">Rp 0</strong>
                                 </div>
                                 <div class="metric-comparison-row">
                                     <span class="metric-arrow" id="kpi-revenue-arrow" aria-hidden="true"></span>

@@ -36,6 +36,15 @@ class DataService {
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
 
+    async getRevenueTransactionsForDashboardStats(userId) {
+        const q = query(
+            collection(this.db, `users/${userId}/transactions`),
+            where('type', 'in', ['income', 'revenue', 'refund', 'pending_receivable'])
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
     async addTransaction(userId, data) {
         const { timestamp, ...rest } = data;
         return await addDoc(collection(this.db, `users/${userId}/transactions`), {

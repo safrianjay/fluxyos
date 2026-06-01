@@ -96,6 +96,7 @@ from page controllers or shared UI.
 Current responsibilities:
 
 - `getTransactions(userId, limitCount = 50)`
+- `getRevenueTransactionsForDashboardStats(userId)`
 - `addTransaction(userId, data)`
 - `getBills(userId)`
 - `addBill(userId, data)`
@@ -202,6 +203,11 @@ Calculated by `DataService.getDashboardStats(userId)`:
 - OpEx: sum of absolute `amount` where `type` is `expense`, `fee`, `tax`, or `pending_payable`
 - Margin: `(revenue - opex) / revenue * 100`, or `0` when revenue is zero
 - Needs Action: count of transactions where `status === 'Missing Receipt'`
+
+Overview's Revenue card also uses
+`DataService.getRevenueTransactionsForDashboardStats(userId)` for an exact
+Revenue-only `This month` / `YTD` / `All time` selector. This does not rescope
+the other Overview panels or change Ledger's default transaction limit.
 
 ### Settings
 

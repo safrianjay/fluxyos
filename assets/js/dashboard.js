@@ -20,10 +20,11 @@ let cashflowChartType = 'line';
 let cashflowBuckets = [];
 let cashFlowBuckets = [];
 let currentBudget = { monthly: 0, used: 0, usedPct: 0, remaining: 0 };
-let dashboardPeriodMode = 'this_month';
 let dashboardRangeStart = getMonthStartKey();
-let dashboardRangeEnd = getMonthEndKey();
-let dashboardDatePicker = null;
+let dashboardRangeEnd = getDayKey();
+let selectedRevenuePeriod = 'this_month';
+let revenueTransactionsCache = [];
+let revenueTransactionsStatus = 'loading';
 let attentionItemsCache = { all: [], needs_review: [], my_records: [] };
 let currentAttentionTab = 'all';
 let aiSummaryRequestSeq = 0;
@@ -39,19 +40,26 @@ window.loadDashboard = async () => {
     if (!user) return;
 
     renderGreeting();
-    const period = resolveDashboardPeriod(dashboardPeriodMode);
+    const period = getOverviewBasePeriod();
     dashboardRangeStart = period.start;
     dashboardRangeEnd = period.end;
     window.FluxyDashboardRange = { start: dashboardRangeStart, end: dashboardRangeEnd };
     renderOverviewLoadingState();
 
     try {
-        const overview = await ds.getDashboardOverview(user.uid, {
-            startDate: dashboardRangeStart,
-            endDate: dashboardRangeEnd,
-            label: period.label,
-            mode: dashboardPeriodMode
-        });
+        const [overviewResult, revenueResult] = await Promise.allSettled([
+            ds.getDashboardOverview(user.uid, {
+                startDate: dashboardRangeStart,
+                endDate: dashboardRangeEnd,
+                label: period.label,
+                mode: 'this_month'
+            }),
+            ds.getRevenueTransactionsForDashboardStats(user.uid)
+        ]);
+        if (overviewResult.status !== 'fulfilled') throw overviewResult.reason;
+        const overview = overviewResult.value;
+        revenueTransactionsCache = revenueResult.status === 'fulfilled' ? revenueResult.value : [];
+        revenueTransactionsStatus = revenueResult.status === 'fulfilled' ? 'loaded' : 'error';
 
         currentBudget = overview.budget || { monthly: 0, used: 0, usedPct: 0, remaining: 0 };
         cashflowBuckets = buildCashflowBuckets(
@@ -88,29 +96,13 @@ function renderGreeting() {
     updateKPI('overview-user-name', firstName);
 }
 
-function mountDashboardPeriodControls() {
-    document.querySelectorAll('[data-dashboard-period]').forEach(button => {
+function mountRevenuePeriodControls() {
+    document.querySelectorAll('[data-revenue-period]').forEach(button => {
         button.addEventListener('click', () => {
-            dashboardPeriodMode = button.dataset.dashboardPeriod || 'this_month';
-            updatePeriodControlState();
-            const period = resolveDashboardPeriod(dashboardPeriodMode);
-            dashboardRangeStart = period.start;
-            dashboardRangeEnd = period.end;
-            dashboardDatePicker?.setRange(dashboardRangeStart, dashboardRangeEnd);
-            window.loadDashboard();
+            selectedRevenuePeriod = button.dataset.revenuePeriod || 'this_month';
+            updateRevenuePeriodControlState();
+            renderRevenueCard();
         });
-    });
-
-    dashboardDatePicker = window.FluxyDateRangePicker?.mount('#dashboard-date-range-picker', {
-        start: dashboardRangeStart,
-        end: dashboardRangeEnd,
-        onChange: ({ start, end }) => {
-            dashboardPeriodMode = 'custom';
-            dashboardRangeStart = start;
-            dashboardRangeEnd = end;
-            updatePeriodControlState();
-            window.loadDashboard();
-        }
     });
 
     document.querySelectorAll('[data-attention-tab]').forEach(button => {
@@ -123,41 +115,17 @@ function mountDashboardPeriodControls() {
         });
     });
 
-    updatePeriodControlState();
+    updateRevenuePeriodControlState();
 }
 
-function updatePeriodControlState() {
-    document.querySelectorAll('[data-dashboard-period]').forEach(button => {
-        button.classList.toggle('is-active', button.dataset.dashboardPeriod === dashboardPeriodMode);
+function updateRevenuePeriodControlState() {
+    document.querySelectorAll('[data-revenue-period]').forEach(button => {
+        button.classList.toggle('is-active', button.dataset.revenuePeriod === selectedRevenuePeriod);
     });
-    const picker = document.getElementById('dashboard-date-range-picker');
-    if (picker) picker.style.display = dashboardPeriodMode === 'custom' ? '' : 'none';
 }
 
-function resolveDashboardPeriod(mode) {
+function getOverviewBasePeriod() {
     const today = new Date();
-    if (mode === 'last_month') {
-        const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        return {
-            label: 'Last month',
-            start: getMonthStartKey(lastMonth),
-            end: getMonthEndKey(lastMonth)
-        };
-    }
-    if (mode === 'year_to_date') {
-        return {
-            label: 'Year to date',
-            start: getDayKey(new Date(today.getFullYear(), 0, 1)),
-            end: getDayKey(today)
-        };
-    }
-    if (mode === 'custom') {
-        return {
-            label: formatRangeLabel(dashboardRangeStart, dashboardRangeEnd),
-            start: dashboardRangeStart,
-            end: dashboardRangeEnd
-        };
-    }
     return {
         label: 'This month',
         start: getMonthStartKey(today),
@@ -166,6 +134,7 @@ function resolveDashboardPeriod(mode) {
 }
 
 function renderOverviewLoadingState() {
+    revenueTransactionsStatus = 'loading';
     updateKPI('kpi-revenue', 'Rp 0');
     updateKPI('kpi-opex', 'Rp 0');
     updateKPI('kpi-margin', '0%');
@@ -173,6 +142,10 @@ function renderOverviewLoadingState() {
     updateKPI('kpi-bank-cash', 'Rp 0');
     updateKPI('kpi-payables', 'Rp 0');
     updateKPI('kpi-revenue-change', 'Loading...');
+    updateKPI('revenue-scope-label', getRevenuePeriodLabel(selectedRevenuePeriod));
+    updateKPI('revenue-record-count', 'Loading...');
+    updateKPI('revenue-secondary-label', selectedRevenuePeriod === 'all_time' ? 'This month' : 'All-time revenue');
+    updateKPI('revenue-secondary-value', 'Rp 0');
     updateKPI('kpi-opex-change', 'Loading...');
     updateKPI('kpi-margin-status', 'Loading...');
     updateKPI('kpi-cash-pressure-sub', 'Loading...');
@@ -202,6 +175,7 @@ function renderOverviewLoadingState() {
 }
 
 function renderOverviewErrorState() {
+    revenueTransactionsStatus = 'error';
     updateKPI('kpi-revenue', 'Rp 0');
     updateKPI('kpi-opex', 'Rp 0');
     updateKPI('kpi-margin', '0%');
@@ -209,6 +183,8 @@ function renderOverviewErrorState() {
     updateKPI('kpi-bank-cash', 'Rp 0');
     updateKPI('kpi-payables', 'Rp 0');
     updateKPI('kpi-revenue-change', 'No data');
+    updateKPI('revenue-record-count', 'Revenue records unavailable');
+    updateKPI('revenue-secondary-value', 'Unavailable');
     updateKPI('kpi-opex-change', 'Budget not set');
     updateKPI('kpi-margin-status', 'No revenue data');
     updateKPI('kpi-cash-pressure-sub', 'No data');
@@ -242,13 +218,10 @@ function renderSummaryBoard(overview) {
     const actions = overview.actionItems || {};
     const margin = safeNumber(p.grossMargin);
 
-    updateKPI('kpi-revenue', formatIDR(p.revenue));
     updateKPI('kpi-margin', `${formatNumber(margin, 1)}%`);
     updateKPI('kpi-payables', formatIDR(rp.payablesTotal));
 
-    renderKpiComparison('kpi-revenue-change', p.revenueChangePct, 'revenue');
     renderMarginStatus(margin, p.marginChangePct);
-    renderMetricArrow('kpi-revenue-arrow', p.revenueChangePct, 'revenue');
     renderMetricArrow('kpi-margin-arrow', p.marginChangePct, 'revenue');
 
     renderPayablesSub(rp, actions);
@@ -256,11 +229,7 @@ function renderSummaryBoard(overview) {
     const bar = document.getElementById('kpi-margin-bar');
     if (bar) bar.style.width = `${Math.max(0, Math.min(100, margin))}%`;
 
-    renderMetricSparkline(
-        'kpi-revenue-sparkline',
-        cashflowBuckets.map(bucket => Number(bucket.revenue) || 0),
-        'revenue'
-    );
+    renderRevenueCard();
 
     renderBankCashCell(overview.bankCash || {}, rp);
     renderOpexBudgetCell(p, currentBudget);
@@ -989,8 +958,175 @@ function setHtml(id, html) {
     el.innerHTML = html;
 }
 
+function isRevenueType(type) {
+    return ['revenue', 'income', 'refund', 'pending_receivable'].includes(String(type || '').toLowerCase());
+}
+
+function getRevenuePeriodLabel(periodKey) {
+    if (periodKey === 'year_to_date') return 'Year to date';
+    if (periodKey === 'all_time') return 'All time';
+    return 'This month';
+}
+
+function getRevenuePeriodRange(periodKey, now = new Date()) {
+    const end = new Date(now);
+    if (periodKey === 'year_to_date') {
+        return {
+            start: new Date(end.getFullYear(), 0, 1, 0, 0, 0, 0),
+            end
+        };
+    }
+    if (periodKey === 'all_time') return null;
+    return {
+        start: new Date(end.getFullYear(), end.getMonth(), 1, 0, 0, 0, 0),
+        end
+    };
+}
+
+function getPreviousRevenuePeriodRange(periodKey, now = new Date()) {
+    const current = getRevenuePeriodRange(periodKey, now);
+    if (!current || periodKey === 'all_time') return null;
+
+    const end = current.end;
+    if (periodKey === 'year_to_date') {
+        const previousYear = end.getFullYear() - 1;
+        const maxDay = new Date(previousYear, end.getMonth() + 1, 0).getDate();
+        return {
+            start: new Date(previousYear, 0, 1, 0, 0, 0, 0),
+            end: new Date(
+                previousYear,
+                end.getMonth(),
+                Math.min(end.getDate(), maxDay),
+                end.getHours(),
+                end.getMinutes(),
+                end.getSeconds(),
+                end.getMilliseconds()
+            )
+        };
+    }
+
+    const previousStart = new Date(end.getFullYear(), end.getMonth() - 1, 1, 0, 0, 0, 0);
+    const maxDay = new Date(previousStart.getFullYear(), previousStart.getMonth() + 1, 0).getDate();
+    return {
+        start: previousStart,
+        end: new Date(
+            previousStart.getFullYear(),
+            previousStart.getMonth(),
+            Math.min(end.getDate(), maxDay),
+            end.getHours(),
+            end.getMinutes(),
+            end.getSeconds(),
+            end.getMilliseconds()
+        )
+    };
+}
+
+function getRevenueAmount(tx) {
+    const amount = Number(tx?.amount);
+    return Number.isFinite(amount) ? Math.abs(amount) : 0;
+}
+
+function calculateRevenueForRange(transactions = [], range = null) {
+    const records = transactions.filter(tx => {
+        if (!isRevenueType(tx.type)) return false;
+        if (!range) return true;
+        const date = getTxDate(tx);
+        return date instanceof Date && !Number.isNaN(date.getTime()) && date >= range.start && date <= range.end;
+    });
+    return {
+        amount: records.reduce((sum, tx) => sum + getRevenueAmount(tx), 0),
+        count: records.length,
+        records
+    };
+}
+
+function calculateRevenueForPeriod(transactions = [], periodKey = 'this_month') {
+    return calculateRevenueForRange(transactions, getRevenuePeriodRange(periodKey));
+}
+
+function calculateRevenueChange(current, previous) {
+    if (!previous || previous.count === 0 || previous.amount === 0) return null;
+    const change = ((current.amount - previous.amount) / Math.abs(previous.amount)) * 100;
+    return Number.isFinite(change) ? change : null;
+}
+
+function formatRevenueRecordCount(count) {
+    const safeCount = Math.max(0, Math.round(Number(count) || 0));
+    return `${safeCount} revenue record${safeCount === 1 ? '' : 's'}`;
+}
+
+function renderRevenueSparkline(records = [], periodKey = 'this_month') {
+    let range = getRevenuePeriodRange(periodKey);
+    if (!range) {
+        const datedRecords = records
+            .map(tx => getTxDate(tx))
+            .filter(date => date instanceof Date && !Number.isNaN(date.getTime()));
+        const today = new Date();
+        range = {
+            start: datedRecords.length
+                ? new Date(Math.min(...datedRecords.map(date => date.getTime())))
+                : new Date(today.getFullYear(), today.getMonth(), 1),
+            end: datedRecords.length
+                ? new Date(Math.max(today.getTime(), ...datedRecords.map(date => date.getTime())))
+                : today
+        };
+    }
+    const buckets = buildCashflowBuckets(records, getDayKey(range.start), getDayKey(range.end), { monthly: 0 });
+    renderMetricSparkline(
+        'kpi-revenue-sparkline',
+        buckets.map(bucket => Number(bucket.revenue) || 0),
+        'revenue'
+    );
+}
+
+function renderRevenueCard() {
+    const scopeLabel = getRevenuePeriodLabel(selectedRevenuePeriod);
+    const secondaryPeriod = selectedRevenuePeriod === 'all_time' ? 'this_month' : 'all_time';
+    const secondaryLabel = secondaryPeriod === 'this_month' ? 'This month' : 'All-time revenue';
+
+    updateKPI('revenue-scope-label', scopeLabel);
+    updateKPI('revenue-secondary-label', secondaryLabel);
+
+    if (revenueTransactionsStatus === 'loading') {
+        updateKPI('kpi-revenue', 'Rp 0');
+        updateKPI('revenue-record-count', 'Loading...');
+        updateKPI('revenue-secondary-value', 'Rp 0');
+        updateKPI('kpi-revenue-change', 'Loading...');
+        renderMetricArrow('kpi-revenue-arrow', null, 'revenue');
+        clearMetricSparklines();
+        return;
+    }
+
+    if (revenueTransactionsStatus === 'error') {
+        updateKPI('kpi-revenue', 'Unavailable');
+        updateKPI('revenue-record-count', 'Revenue records unavailable');
+        updateKPI('revenue-secondary-value', 'Unavailable');
+        updateKPI('kpi-revenue-change', 'Revenue data unavailable');
+        renderMetricArrow('kpi-revenue-arrow', null, 'revenue');
+        clearMetricSparklines();
+        return;
+    }
+
+    const selected = calculateRevenueForPeriod(revenueTransactionsCache, selectedRevenuePeriod);
+    const secondary = calculateRevenueForPeriod(revenueTransactionsCache, secondaryPeriod);
+    const previous = calculateRevenueForRange(
+        revenueTransactionsCache,
+        getPreviousRevenuePeriodRange(selectedRevenuePeriod)
+    );
+    const change = selectedRevenuePeriod === 'all_time'
+        ? null
+        : calculateRevenueChange(selected, previous);
+
+    updateKPI('kpi-revenue', formatIDR(selected.amount));
+    updateKPI('revenue-record-count', formatRevenueRecordCount(selected.count));
+    updateKPI('revenue-secondary-value', formatIDR(secondary.amount));
+    renderKpiComparison('kpi-revenue-change', change, 'revenue');
+    renderMetricArrow('kpi-revenue-arrow', change, 'revenue');
+    renderRevenueSparkline(selected.records, selectedRevenuePeriod);
+}
+
 function isPositiveTransaction(tx) {
-    return ['revenue', 'income', 'refund', 'pending_receivable'].includes(String(tx.type || '').toLowerCase());
+    return isRevenueType(tx.type);
 }
 
 function isSpendTransaction(tx) {
@@ -1041,15 +1177,6 @@ function getMonthEndKey(date = new Date()) {
 
 function getRangeDays(startKey, endKey) {
     return Math.max(1, Math.round((parseDayKey(endKey) - parseDayKey(startKey)) / 86400000) + 1);
-}
-
-function formatRangeLabel(startKey, endKey) {
-    const start = parseDayKey(startKey);
-    const end = parseDayKey(endKey);
-    if (startKey === endKey) {
-        return start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    }
-    return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 }
 
 function formatBucketLabel(startKey, endKey, bucketType) {
@@ -1315,7 +1442,7 @@ document.addEventListener('click', event => {
 // get tooltips without extra wiring. Keep the call here so script order doesn't
 // matter — the shared module exposes a no-op shim that resolves cleanly.
 window.mountMetricInfoTooltips?.();
-mountDashboardPeriodControls();
+mountRevenuePeriodControls();
 mountFinanceSetupDrawers();
 
 function mountFinanceSetupDrawers() {
