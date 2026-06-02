@@ -503,11 +503,13 @@ Firestore rules, the transaction or bill budget fields, `budget.html` /
 | 2 | Page title is correct per page (`<title>` tag) |
 | 3 | Viewport meta tag present (`width=device-width, initial-scale=1`) |
 
-### M. Internal Operations Console (internal.html, internal-dashboard.js, db-service.js internal methods, firestore.rules internal_*, sidebar-loader.js, onboarding.js)
+### M. Internal Operations Console (internal.html, internal-dashboard.js, db-service.js internal methods, firestore.rules internal_*, sidebar-loader.js, onboarding.js, functions/index.js)
 
 **Prereq:** the `internal_*` blocks in `firestore.rules` must be **deployed** —
 otherwise the console correctly shows the friendly "Could not load internal data"
-state and logs a handled warning (not a thrown error).
+state and logs a handled warning (not a thrown error). Auth deletion cleanup also
+requires a Blaze-plan Firebase project and a deployed
+`cleanupInternalUserOnAuthDelete` function.
 
 | # | Check |
 |---|-------|
@@ -529,6 +531,7 @@ state and logs a handled warning (not a thrown error).
 | 16 | Data safety: no transactions/bills/subscriptions fetched; no global financial collections; amounts stored as raw integers |
 | 17 | Responsive at 375 / 768 / 1280 — no horizontal overflow; tables scroll within their container |
 | 18 | Browser console clean once rules are deployed (no red errors) |
+| 19 | Auth deletion cleanup: delete one disposable Firebase Authentication account, refresh `/internal`, and confirm its `internal_users/{uid}` row is gone while owner-scoped finance data is untouched. Do not use Admin SDK bulk deletion for this check because it does not emit per-user Auth deletion events |
 
 **Regression (shared files touched):** `sidebar-loader.js` and `onboarding.js`
 were modified for self-upsert — run §3 Cross-Page Regression and confirm

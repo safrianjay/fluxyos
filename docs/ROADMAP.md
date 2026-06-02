@@ -44,6 +44,7 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | `internal_users` index + self-upsert on login/onboarding | ✅ Shipped Phase 1 | `DataService.syncSelfToInternalIndex`; covers only users who sign in after release |
 | KYC / payment / account status actions + `internal_audit_logs` | ✅ Shipped Phase 1 | Confirmation dialogs, reviewer notes, audit log per action |
 | Open `internal_*` firestore.rules (field-validated) | ✅ Shipped Phase 1 | Must be **deployed** for the console to load data. Open by design until admin auth exists |
+| Auth deletion cleanup for `internal_users/{uid}` | 🚧 Ready to deploy | 1st-gen Firebase Auth trigger is implemented; production deploy is blocked until the Firebase project is upgraded from Spark to Blaze |
 | User-scoped audit mirror (`users/{uid}/audit_logs`) | 📋 Planned | Needs backend/Admin SDK (console is unauthenticated) |
 | Legacy customer proof upload + `payment_verifications` | 🧊 Frozen legacy | Owner-readable migration input only; customer writes retired |
 | Trial/payment columns, filters, badges + drawer section in console | ✅ Shipped | Access status, trial remaining, trial dates; access filter |

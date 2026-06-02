@@ -538,7 +538,7 @@ their `firestore.rules` are intentionally open (field-validated). They hold
 operational metadata only — never financial ledger rows, balances, secrets, or
 formatted currency strings.
 
-#### `internal_users/{userId}` (open: read/create/update; delete blocked)
+#### `internal_users/{userId}` (open: read/create/update; client delete blocked)
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -562,6 +562,16 @@ formatted currency strings.
 status fields on first create** (or advances `not_started`/`in_progress` →
 `submitted` on onboarding completion), so a reviewer's decision is never clobbered.
 Covers only users who sign in after release; a backfill needs the Admin SDK.
+
+**Auth deletion cleanup:** `functions/index.js` exports the 1st-gen Firebase Auth
+trigger `cleanupInternalUserOnAuthDelete`. Deleting a single Firebase
+Authentication account removes its denormalized `internal_users/{uid}` row via
+the Admin SDK, so the user disappears from `/internal` after refresh. The trigger
+does not delete owner-scoped `users/{uid}/...` finance data or historical
+`internal_audit_logs`. Firebase Admin SDK bulk deletion does not emit per-user
+Auth deletion events; delete accounts one at a time when this automatic cleanup
+is required. Production activation requires a Blaze-plan Firebase project and:
+`firebase deploy --only functions:cleanupInternalUserOnAuthDelete`.
 
 #### `internal_audit_logs/{auditLogId}` (open: read/create; update/delete blocked)
 
