@@ -46,6 +46,8 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Homepage | `fluxyos.html` | Landing | No | ✅ | No |
 | Budget Feature | `budgetlanding.html` | Landing | No | ✅ | No |
 | Pricing | `pricing.html` | Landing | No | ✅ | No |
+| Checkout | `checkout.html` | Auth billing | ✅ | No | No |
+| Payment Status | `payment-pending.html` | Auth billing | ✅ | No | No |
 | Redirect | `index.html` | Redirect | No | ✅ | No |
 | Sign In | `login.html` | Auth | No | No | No |
 | Dashboard | `dashboard.html` | App | ✅ | **No** | ✅ |
@@ -593,71 +595,37 @@ These are written by `DataService.syncInternalUserAccessIndex`. Internal
 `payment_status` has no `not_started`; the trial's `not_started` is simply not
 mirrored.
 
-### 4k. Billing Access & 3-Day Trial — `users/{userId}/billing/access`
+### 4k. Billing Subscription — `users/{userId}/billing_subscription/current`
 
-User-scoped workspace access-state doc. The 3-day trial starts **after onboarding
-completion** (not registration). Full spec:
-`docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md`.
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `access_status` | string | `trial_not_started`/`trial_active`/`trial_expiring`/`trial_expired`/`payment_pending`/`payment_submitted`/`payment_verified`/`active`/`suspended`. |
-| `trial_duration_days` | number | `3`. |
-| `trial_started_at` | Timestamp \| null | = onboarding `completed_at` when available, else creation time. |
-| `trial_ends_at` | Timestamp \| null | `trial_started_at + 3 days`. |
-| `trial_expired_at` | Timestamp \| null | Set when a trial flips to expired. |
-| `payment_required` | bool | |
-| `payment_status` | string | `not_started`/`pending`/`submitted`/`under_review`/`verified`/`rejected`. |
-| `plan_id` | string \| null | |
-| `account_status` | string | `trial`/`active`/`suspended`. |
-| `created_at` / `updated_at` | Timestamp | `serverTimestamp()`. |
-
-**Trial start logic:** `completeOnboarding` calls `ensureTrialAccessAfterOnboarding`
-(best-effort). It creates the doc only if missing **and** the user is app-accessible
-(onboarding completed or legacy-exempt) — retroactively granting current users a trial
-on next login. Idempotent — never resets an existing trial.
-
-**Eligibility / locks (client-side, UX only):** `assets/js/trial-access.js`
-(`window.FluxyAccessGuard`) renders a slim banner and applies write/export/AI locks
-when not active. Wired once in `sidebar-loader.js` so it runs on every app page. Real
-enforcement still needs backend/rules (usage counters, server-side expiry).
-
-**Mutation rule:** owner read/create/update only; delete blocked. No secrets, no
-formatted currency strings. **Audit:** `trial.created`, `trial.expired`,
-`access.activated` (`target_collection: "billing"`).
-
-`DataService` exposes `getBillingAccess`, `createTrialAccess`,
-`ensureTrialAccessAfterOnboarding`, `updateBillingAccess`, `expireTrialIfNeeded`,
-`syncInternalUserAccessIndex`.
-
-### 4l. Payment Verifications — `users/{userId}/payment_verifications/{paymentId}`
-
-Manual bank-transfer proof submissions feeding the internal Payment Review queue.
-Owner-scoped. Submitting **never auto-activates** the account — internal verification
-is required.
+Canonical user-scoped package and trial state. Full spec:
+`docs/PAYMENT_CHECKOUT_AND_VERIFICATION_PLAN.md`.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `amount` | number | Raw integer Rupiah. Never a formatted string. |
-| `currency` | string | `"IDR"`. |
-| `plan_id` | string \| null | |
-| `billing_period` | string \| null | `monthly`/`annual`/`custom`. |
-| `payment_method` | string | `bank_transfer`/`manual`/`other`. |
-| `proof_document_id` | string \| null | → `users/{uid}/documents/{id}` (role `payment_proof`, context `payment`). |
-| `proof_file_name` | string \| null | ≤240 chars. |
-| `submitted_note` | string \| null | ≤500 chars. |
-| `status` | string | `submitted`/`under_review`/`verified`/`rejected`. |
-| `reviewer_id` / `reviewer_note` | string \| null | Set by the backend admin phase. |
-| `submitted_at`/`reviewed_at`/`created_at`/`updated_at` | Timestamp | |
+| `plan_id` | string | `trial`/`core`/`growth`/`enterprise`. |
+| `plan_name` | string | Display name. |
+| `status` | string | `trialing`/`pending_verification`/`active`/`past_due`/`expired`/`payment_failed`. |
+| `billing_frequency` | string \| null | `monthly`/`annually`. |
+| `current_payment_request_id` | string \| null | Latest canonical request ID. |
+| `trial_started_at`, `trial_ends_at` | Timestamp \| null | Trial timing. |
+| `current_period_start`, `current_period_end` | Timestamp \| null | Reserved for trusted provider lifecycle. |
+| `updated_at` | Timestamp | `serverTimestamp()`. |
 
-**Mutation rule:** owner read/create/update only; delete blocked. `submitPaymentVerification`
-writes this doc + flips `billing/access` to `payment_submitted` in one batch, then
-best-effort denormalizes status metadata (no proof image) onto `internal_users`.
-**UI surface:** `payment.html` + `assets/js/payment.js`. **Audit:** `payment.submitted`
-(`target_collection: "payment_verifications"`).
+`assets/js/trial-access.js` reads this doc through
+`DataService.ensureBillingSubscription`. It creates a 3-day trial after onboarding,
+migrates safe frozen legacy state on authenticated load, renders the shared banner,
+and applies the existing UX-only write/export/AI locks.
 
-`DataService` exposes `getPaymentVerifications`, `getLatestPaymentVerification`,
-`submitPaymentVerification`.
+### 4l. Billing Payment Requests — `users/{userId}/billing_payment_requests/{id}`
+
+Metadata-only manual verification request created from `/checkout`. Amounts are raw
+integers, currency is locked to `IDR`, and status starts as
+`pending_verification`. No card, bank, OTP, tax-ID, or provider-sensitive values are
+stored. `DataService.createPaymentRequest` writes the request, subscription
+transition, and audit row atomically.
+
+Legacy `users/{uid}/billing/access` and `users/{uid}/payment_verifications/{id}`
+remain owner-readable migration inputs only. Customer writes are blocked.
 
 ---
 

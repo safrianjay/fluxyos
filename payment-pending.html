@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <title>Payment status | FluxyOS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/payment-pending.css">
+</head>
+<body>
+    <main class="status-shell">
+        <div class="logo">F.</div>
+        <span class="status-pill" id="status-pill">Checking status</span>
+        <h1 id="status-title">Loading your payment request...</h1>
+        <p class="body" id="status-body">Please wait while FluxyOS checks your latest billing status.</p>
+        <p class="helper hidden" id="status-helper"></p>
+        <dl class="meta hidden" id="status-meta"></dl>
+        <div class="actions">
+            <a class="primary" id="primary-action" href="/dashboard">Go to Dashboard</a>
+            <a class="secondary" id="secondary-action" href="mailto:support@fluxyos.com?subject=FluxyOS%20payment%20support">Contact support</a>
+        </div>
+    </main>
+    <script type="module" src="assets/js/payment-pending.js"></script>
+</body>
+</html>

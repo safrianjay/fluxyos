@@ -45,17 +45,18 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | KYC / payment / account status actions + `internal_audit_logs` | ✅ Shipped Phase 1 | Confirmation dialogs, reviewer notes, audit log per action |
 | Open `internal_*` firestore.rules (field-validated) | ✅ Shipped Phase 1 | Must be **deployed** for the console to load data. Open by design until admin auth exists |
 | User-scoped audit mirror (`users/{uid}/audit_logs`) | 📋 Planned | Needs backend/Admin SDK (console is unauthenticated) |
-| Customer payment-proof upload + `payment_verifications` | ✅ Shipped | `payment.html`; reuses `FluxyDocumentAttachment`; denormalizes status to `internal_users` |
+| Legacy customer proof upload + `payment_verifications` | 🧊 Frozen legacy | Owner-readable migration input only; customer writes retired |
 | Trial/payment columns, filters, badges + drawer section in console | ✅ Shipped | Access status, trial remaining, trial dates; access filter |
 
 ### Trial Access & Payment Banner
 | Feature | Status | Notes |
 |---------|--------|-------|
-| 3-day trial doc `users/{uid}/billing/access`, started after onboarding | ✅ Shipped | `ensureTrialAccessAfterOnboarding` in `completeOnboarding`; retroactive for existing users on next login |
-| Shared access guard + slim trial/payment banner (`trial-access.js`) | ✅ Shipped | `window.FluxyAccessGuard`; wired once via `sidebar-loader.js`; shows on all app pages |
+| Canonical subscription doc `users/{uid}/billing_subscription/current` | ✅ Shipped | 3-day trial after onboarding; safe read-only migration from legacy billing access |
+| Shared access guard + slim trial/payment banner (`trial-access.js`) | ✅ Shipped | Canonical subscription states; wired once via `sidebar-loader.js` |
 | Expiry locks on add-record / CSV import / export / Fluxy AI / bank import | ✅ Shipped | Client-side (UX only) + canonical expired-trial modal |
-| Payment page `payment.html` (instructions, proof upload, submit, status states) | ✅ Shipped | Static MVP plan/amount; manual bank transfer; no gateway |
-| Console verify → client reconciles `billing/access` to active on next load | ✅ Shipped | Open console can't write owner-scoped billing; Admin-SDK sync is the production path |
+| Checkout `/checkout` + pending page `/payment-pending` | ✅ Shipped | Three packages, monthly/annual billing, metadata-only manual requests; no gateway |
+| Legacy `payment.html` | 🧊 Redirect | Routes to `/pricing`; proof-upload controller retired |
+| Trusted verification transition | 📋 Manual | Firebase Console for MVP; provider webhook/Admin SDK is the production path |
 | Server-side trial enforcement + per-feature usage counters | 📋 Planned | Hard enforcement (30 tx / 10 bills / 5 subs / 10 AI msgs / 3 uploads) needs backend/Cloud Functions |
 | Customer-facing route-level access gates (suspended screens, etc.) | 📋 Planned | Phase 3 |
 | Real admin auth (Firebase custom claims / backend session) | 📋 Planned | Phase 5; replaces the temporary credential gate |
@@ -192,9 +193,7 @@ disabled until a real authenticated app page and data contract exist.
 | Budget landing page (`budgetlanding.html`) | ✅ Shipped | |
 | Pricing page (`pricing.html`) | ✅ Shipped | Annual/monthly toggle, 3 tiers |
 | Reusable footer with starfield animation | ✅ Shipped | |
-| "Start Free Trial" button | 🔧 Stub | Pricing page, no handler |
-| "Upgrade to Growth" button | 🔧 Stub | Pricing page, no handler |
-| "Contact Sales" button | 🔧 Stub | Pricing page, no handler |
+| Pricing package CTAs | ✅ Shipped | Active billing toggle routes each package to `/checkout?plan=...&billing=...` |
 
 ---
 

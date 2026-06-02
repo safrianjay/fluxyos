@@ -1,5 +1,11 @@
 # FluxyOS — 3-Day Trial Access & Payment Banner
 
+> **Legacy reference.** The customer lifecycle in this document was replaced by
+> `docs/PAYMENT_CHECKOUT_AND_VERIFICATION_PLAN.md`. `billing/access`,
+> `payment_verifications`, and `payment.html` remain read-only compatibility
+> inputs or redirects. New work uses `billing_subscription/current`,
+> `billing_payment_requests`, `/checkout`, and `/payment-pending`.
+
 > Workspace access-status system: a 3-day trial that starts after onboarding,
 > a slim trial/payment banner across authenticated app pages, a manual payment
 > entry point, expiry locks, and internal-ops visibility. **Shipped (Phase 1+2).**

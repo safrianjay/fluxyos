@@ -1,0 +1,175 @@
+:root {
+    --checkout-navy: #0B0F19;
+    --checkout-orange: #EA580C;
+    --checkout-orange-dark: #C2410C;
+    --checkout-border: #E5E7EB;
+    --checkout-muted: #6B7280;
+    --checkout-text: #111827;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 40px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--checkout-text);
+    background:
+        radial-gradient(circle at top left, rgba(99, 102, 241, .08), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(109, 40, 217, .10), transparent 34%),
+        #F3F4F6;
+    font-family: Inter, sans-serif;
+}
+
+.checkout-shell {
+    width: 100%;
+    max-width: 1240px;
+    min-height: 760px;
+    display: grid;
+    grid-template-columns: .92fr 1.28fr;
+    overflow: hidden;
+    border: 1px solid rgba(229, 231, 235, .95);
+    border-radius: 28px;
+    background: #fff;
+    box-shadow: 0 32px 80px rgba(15, 23, 42, .16);
+}
+
+.summary-panel {
+    position: relative;
+    overflow: hidden;
+    padding: 48px;
+    color: #fff;
+    background:
+        radial-gradient(circle at 16% 12%, rgba(99, 102, 241, .30), transparent 30%),
+        radial-gradient(circle at 92% 82%, rgba(124, 58, 237, .38), transparent 34%),
+        linear-gradient(145deg, #0B0F19 0%, #111827 58%, #1F2937 100%);
+}
+
+.summary-panel::after {
+    position: absolute;
+    right: -140px;
+    bottom: -160px;
+    width: 420px;
+    height: 420px;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 50%;
+    content: "";
+}
+
+.summary-content { position: relative; z-index: 1; max-width: 500px; }
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 44px;
+    color: rgba(255, 255, 255, .82);
+    font-size: 14px;
+    text-decoration: none;
+}
+
+.back-icon {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .1);
+}
+
+.summary-label, .billing-copy, .plan-desc, .tax-note { color: rgba(255, 255, 255, .7); }
+.summary-label { margin-bottom: 8px; font-size: 14px; }
+.due-amount { margin: 0 0 14px; font: 700 40px/1.08 "Fira Code", monospace; letter-spacing: -.05em; }
+.billing-copy { max-width: 430px; margin: 0 0 32px; font-size: 14px; line-height: 1.55; }
+.plan-card { display: flex; gap: 16px; margin-bottom: 24px; }
+.plan-logo { width: 44px; height: 44px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 12px; background: #000; font-size: 20px; font-weight: 800; }
+.plan-main { flex: 1; }
+.plan-row, .breakdown-row { display: flex; justify-content: space-between; gap: 16px; }
+.plan-row { margin-bottom: 8px; }
+.plan-title { font-size: 16px; font-weight: 800; }
+.plan-price, .breakdown-row span:last-child { font-family: "Fira Code", monospace; text-align: right; white-space: nowrap; }
+.plan-price { font-size: 14px; font-weight: 700; }
+.plan-desc, .tax-note { margin: 0; font-size: 13px; line-height: 1.5; }
+
+.summary-included {
+    margin-bottom: 24px;
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .08);
+}
+
+.summary-included-title { margin: 0 0 12px; font-size: 13px; font-weight: 800; }
+.summary-included-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.summary-included-list li { display: flex; gap: 10px; color: rgba(255, 255, 255, .72); font-size: 13px; line-height: 1.45; }
+.summary-tick { color: #22C55E; font-weight: 800; }
+.price-breakdown { display: grid; gap: 14px; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, .18); }
+.breakdown-row { color: rgba(255, 255, 255, .76); font-size: 14px; }
+.breakdown-row strong { color: #fff; }
+.tax-note { margin-top: 14px; color: rgba(255, 255, 255, .56); font-size: 12px; }
+
+.form-panel { padding: 48px 64px; background: #fff; }
+.form-inner { max-width: 620px; }
+.section { margin-bottom: 30px; }
+.section-title { margin: 0 0 16px; font-size: 18px; font-weight: 800; letter-spacing: -.02em; }
+.plan-grid { display: grid; gap: 12px; }
+.billing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.payment-methods { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+.plan-option, .select-card, .method-button {
+    border: 1px solid var(--checkout-border);
+    background: #fff;
+    cursor: pointer;
+    transition: .18s ease;
+}
+
+.plan-option { padding: 18px; border-radius: 16px; }
+.select-card { position: relative; padding: 16px; border-radius: 14px; }
+.method-button { height: 48px; border-radius: 12px; font-weight: 800; }
+.plan-option:hover, .select-card:hover, .method-button:hover { border-color: #CBD5E1; background: #FAFAFA; }
+.plan-option.active, .select-card.active, .method-button.active { border-color: var(--checkout-orange); box-shadow: 0 0 0 3px rgba(234, 88, 12, .12); }
+.plan-option.active { background: #fff; }
+.method-button.active { color: var(--checkout-orange); }
+.plan-option-header { display: flex; justify-content: space-between; gap: 18px; }
+.plan-option-name { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; }
+.plan-option-price { font: 800 14px "Fira Code", monospace; white-space: nowrap; }
+.plan-option-desc, .select-card .small, .payment-copy, .fine-print { color: var(--checkout-muted); font-size: 13px; line-height: 1.5; }
+.plan-option-desc { margin: 8px 0 0; }
+.select-card .small { margin-bottom: 8px; }
+.select-card .strong { font-size: 15px; font-weight: 800; }
+.check { display: none; position: absolute; top: 16px; right: 16px; color: var(--checkout-orange); font-weight: 900; }
+.active .check { display: block; }
+.save-badge, .popular-pill { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 800; }
+.save-badge { margin-left: 8px; background: #DCFCE7; color: #15803D; }
+.popular-pill { border: 1px solid #FDBA74; background: #fff; color: #C2410C; letter-spacing: .04em; text-transform: uppercase; }
+.payment-box { padding: 20px; border: 1px solid var(--checkout-border); border-radius: 16px; background: #FAFAFA; }
+.payment-copy { margin: 0; font-size: 14px; }
+.trust-row { display: flex; justify-content: space-between; gap: 16px; margin: 24px 0 16px; color: var(--checkout-muted); font-size: 13px; }
+.trust-row strong { color: var(--checkout-text); }
+.submit-button { width: 100%; height: 50px; border: 0; border-radius: 12px; background: var(--checkout-orange); color: #fff; cursor: pointer; font-size: 15px; font-weight: 800; transition: .18s ease; }
+.submit-button:hover { background: var(--checkout-orange-dark); transform: translateY(-1px); }
+.submit-button:disabled { cursor: not-allowed; opacity: .58; transform: none; }
+.fine-print { margin: 14px 0 0; text-align: center; }
+.form-error { margin: 12px 0 0; color: #B91C1C; font-size: 13px; font-weight: 700; }
+.hidden { display: none; }
+
+@media (max-width: 1040px) {
+    body { align-items: flex-start; padding: 20px; }
+    .checkout-shell { grid-template-columns: 1fr; border-radius: 22px; }
+    .summary-panel { padding: 32px; }
+    .form-panel { padding: 36px 32px; }
+    .form-inner { max-width: none; }
+}
+
+@media (max-width: 680px) {
+    body { padding: 0; }
+    .checkout-shell { border: 0; border-radius: 0; }
+    .summary-panel, .form-panel { padding: 24px; }
+    .billing-grid, .payment-methods { grid-template-columns: 1fr; }
+    .due-amount { font-size: 30px; }
+    .plan-option-header { flex-direction: column; gap: 10px; }
+}

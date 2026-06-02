@@ -596,19 +596,19 @@ If no exception log is provided, anti-slop QA is considered failed.
 
 ## Change Type — Trial Access & Payment Banner
 
-Run when touching `assets/js/trial-access.js`, `payment.html`/`assets/js/payment.js`,
-billing methods in `db-service.js`, or the internal console trial/payment surfaces.
+Run when touching `assets/js/trial-access.js`, checkout/payment-pending pages,
+billing methods in `db-service.js`, or canonical billing Firestore rules.
 
 **Trial creation**
-- [ ] New user completes onboarding → `users/{uid}/billing/access` exists with
-  `trial_duration_days = 3`, `access_status = trial_active`, `trial_started_at` +
+- [ ] New user completes onboarding → `users/{uid}/billing_subscription/current`
+  exists with `status = trialing`, `plan_id = trial`, `trial_started_at` +
   `trial_ends_at` set; trial did not start before onboarding completion.
-- [ ] Existing/legacy user without a billing doc gets a trial on next login (retroactive).
+- [ ] Frozen legacy billing states translate safely on authenticated load.
 
 **Banner**
 - [ ] Trial banner shows on dashboard, ledger, bill, subscription, budget, reports,
-  integration, and settings*; CTA opens `/payment.html`.
-- [ ] Active/verified user sees no banner. Banner does not appear on `payment.html`.
+  integration, and settings*; CTA opens `/pricing`.
+- [ ] Pending banner CTA opens `/payment-pending`; active user sees no banner.
 - [ ] No horizontal overflow at 375px; banner CTA is the only primary action.
 
 **Expiry locks**
@@ -617,18 +617,21 @@ billing methods in `db-service.js`, or the internal console trial/payment surfac
   import are blocked with the canonical expired-trial dialog (no `alert`/`confirm`).
 - [ ] Existing records remain readable (not deleted/hidden).
 
-**Payment**
-- [ ] `payment.html` shows trial status, plan/amount, bank instructions; submit is
-  disabled until amount + proof present.
-- [ ] Submitting writes `users/{uid}/payment_verifications/{id}`, flips billing to
-  `payment_submitted`, and the banner becomes "Payment submitted · Under review".
-- [ ] `internal_users/{uid}` mirror shows access/trial/payment fields; console Access
-  filter + Trial & payment drawer section render.
-- [ ] Console "Verify payment" → user's next app load reconciles billing to `active`
-  and the banner disappears.
+**Checkout and payment status**
+- [ ] `/checkout` logged out redirects to `/login`; invalid query values fall back to
+  Growth Engine annually.
+- [ ] Plan and billing switches update URL, benefits, subtotal, 11% estimated PPN,
+  total, and CTA links from pricing.
+- [ ] QRIS, Virtual Account, Card, and Invoice show metadata-only copy; no sensitive
+  inputs are rendered.
+- [ ] Submit writes one `billing_payment_requests` row + pending subscription update
+  + audit log atomically, then redirects to `/payment-pending`.
+- [ ] Pending page renders pending, active/verified, failed/expired retry, and empty
+  states. `payment.html` redirects to `/pricing`.
 
 **Data/security**
-- [ ] Amounts stored as raw integers; no formatted currency strings; no secrets.
+- [ ] Amounts stored as raw integers; no formatted currency strings; no card number,
+  CVC, OTP, full bank account, NPWP, provider secret, or sensitive payload.
 - [ ] No global/financial collections created; no ledger data in `internal_users`.
 - [ ] Browser console clean (no CSP/CORS/404/Firebase errors).
 

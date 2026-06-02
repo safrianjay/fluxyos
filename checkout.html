@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <title>Checkout | FluxyOS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/checkout.css">
+</head>
+<body>
+    <main class="checkout-shell" aria-label="FluxyOS checkout">
+        <aside class="summary-panel">
+            <div class="summary-content">
+                <a href="/pricing" class="back-link"><span class="back-icon">&larr;</span>Back to pricing</a>
+                <div class="summary-label">Total due today</div>
+                <h1 class="due-amount" id="summary-total">Rp 0</h1>
+                <p class="billing-copy" id="summary-copy"></p>
+                <div class="plan-card">
+                    <div class="plan-logo">F.</div>
+                    <div class="plan-main">
+                        <div class="plan-row">
+                            <div class="plan-title" id="summary-plan-name"></div>
+                            <div class="plan-price" id="summary-plan-price"></div>
+                        </div>
+                        <p class="plan-desc" id="summary-plan-desc"></p>
+                    </div>
+                </div>
+                <div class="summary-included">
+                    <p class="summary-included-title">Selected package includes</p>
+                    <ul class="summary-included-list" id="summary-benefits"></ul>
+                </div>
+                <div class="price-breakdown">
+                    <div class="breakdown-row"><span>Plan subtotal</span><span id="subtotal"></span></div>
+                    <div class="breakdown-row"><span>Billing discount</span><span id="discount"></span></div>
+                    <div class="breakdown-row"><span>Estimated PPN</span><span id="tax"></span></div>
+                    <div class="breakdown-row"><strong>Total due today</strong><strong id="total-due"></strong></div>
+                </div>
+                <p class="tax-note">PPN estimate uses an effective 11% calculation for Indonesian digital service checkout. Final invoice may depend on billing details and payment provider setup.</p>
+            </div>
+        </aside>
+
+        <section class="form-panel">
+            <div class="form-inner">
+                <section class="section">
+                    <h2 class="section-title">Choose your package</h2>
+                    <div class="plan-grid" id="plan-options"></div>
+                </section>
+                <section class="section">
+                    <h2 class="section-title">Billing frequency</h2>
+                    <div class="billing-grid">
+                        <button class="select-card" type="button" data-billing="monthly">
+                            <span class="check">&#10003;</span>
+                            <div class="small">Pay monthly</div>
+                            <div class="strong" id="monthly-label"></div>
+                        </button>
+                        <button class="select-card" type="button" data-billing="annually">
+                            <span class="check">&#10003;</span>
+                            <div class="small">Pay annually</div>
+                            <div class="strong"><span id="annual-label"></span><span class="save-badge">Save 20%</span></div>
+                        </button>
+                    </div>
+                </section>
+                <section class="section">
+                    <h2 class="section-title">Payment method</h2>
+                    <div class="payment-methods">
+                        <button class="method-button active" type="button" data-method="qris">QRIS</button>
+                        <button class="method-button" type="button" data-method="va">Virtual Account</button>
+                        <button class="method-button" type="button" data-method="card">Card</button>
+                        <button class="method-button" type="button" data-method="invoice">Invoice</button>
+                    </div>
+                </section>
+                <section class="section">
+                    <h2 class="section-title">Payment information</h2>
+                    <div class="payment-box" data-payment-panel="qris"><p class="payment-copy">Submit a payment request for QRIS. FluxyOS will generate a secure provider handoff in a future integration. Your package activates only after verification.</p></div>
+                    <div class="payment-box hidden" data-payment-panel="va"><p class="payment-copy">Submit a Virtual Account payment request. A secure provider-generated account number is not available in this manual verification phase.</p></div>
+                    <div class="payment-box hidden" data-payment-panel="card"><p class="payment-copy">Submit a Card payment request without entering card details. FluxyOS never collects card number, CVC, or OTP in this manual verification phase.</p></div>
+                    <div class="payment-box hidden" data-payment-panel="invoice"><p class="payment-copy">Request manual invoice verification for your finance team. Automatic tax invoice generation is not included in this phase.</p></div>
+                </section>
+                <div class="trust-row"><span>Manual verification lifecycle</span><span><strong>IDR</strong> billing only</span></div>
+                <button class="submit-button" type="button" id="submit-button">Submit payment request</button>
+                <p id="form-error" class="form-error hidden" role="alert"></p>
+                <p class="fine-print">Submitting creates a payment request for manual verification. No package is activated until FluxyOS confirms the payment.</p>
+            </div>
+        </section>
+    </main>
+    <script type="module" src="assets/js/checkout.js"></script>
+</body>
+</html>

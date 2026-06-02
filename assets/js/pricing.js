@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const activePrices = document.querySelectorAll('.active-price');
     const slashPrices = document.querySelectorAll('.slash-price');
+    const checkoutLinks = document.querySelectorAll('[data-checkout-plan]');
     const mobileMenu = document.getElementById('pricing-mobile-menu');
     const mobileMenuToggle = document.querySelector('.pricing-mobile-menu-toggle');
 
@@ -74,6 +75,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Default State
     let isAnnual = true;
+
+    function updateCheckoutLinks() {
+        const billing = isAnnual ? 'annually' : 'monthly';
+        checkoutLinks.forEach(link => {
+            link.href = `/checkout?plan=${link.dataset.checkoutPlan}&billing=${billing}`;
+        });
+    }
 
     // Handle Toggle Click
     toggleContainer.addEventListener('click', (e) => {
@@ -127,5 +135,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 el.style.visibility = 'hidden';
             });
         }
+        updateCheckoutLinks();
     }
+
+    updateCheckoutLinks();
 });

@@ -1,4 +1,5 @@
 import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, doc, Timestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId } from "./billing-config.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
 // See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
@@ -461,7 +462,7 @@ class DataService {
         // Start the 3-day trial now that the user has reached the product value
         // moment. Best-effort — a failure here must never block onboarding success.
         try {
-            await this.ensureTrialAccessAfterOnboarding(userId);
+            await this.ensureBillingSubscription(userId);
         } catch (e) {
             console.warn('[onboarding] trial access creation skipped');
         }
@@ -896,6 +897,230 @@ class DataService {
 
     _paymentVerificationsCol(userId) {
         return collection(this.db, `users/${userId}/payment_verifications`);
+    }
+
+    _billingSubscriptionDoc(userId) {
+        return doc(this.db, `users/${userId}/billing_subscription/current`);
+    }
+
+    _billingPaymentRequestsCol(userId) {
+        return collection(this.db, `users/${userId}/billing_payment_requests`);
+    }
+
+    async getBillingSubscription(userId) {
+        if (!userId) return null;
+        const snap = await getDoc(this._billingSubscriptionDoc(userId));
+        return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    }
+
+    async upsertBillingSubscription(userId, subscriptionData = {}) {
+        if (!userId) throw new Error('missing-user');
+        const payload = this._cleanDefined({
+            ...subscriptionData,
+            updated_at: serverTimestamp()
+        });
+        await setDoc(this._billingSubscriptionDoc(userId), payload, { merge: true });
+        return payload;
+    }
+
+    async createPaymentRequest(userId, paymentData = {}) {
+        if (!userId) throw new Error('missing-user');
+        if (!BILLING_PLANS[paymentData.plan_id]) throw new Error('invalid-plan');
+        if (!['monthly', 'annually'].includes(paymentData.billing_frequency)) throw new Error('invalid-billing-frequency');
+        const planId = normalizePlanId(paymentData.plan_id);
+        const billingFrequency = normalizeBillingFrequency(paymentData.billing_frequency);
+        const paymentMethod = normalizePaymentMethod(paymentData.payment_method);
+        if (!paymentMethod) throw new Error('invalid-payment-method');
+
+        const calculation = calculateBilling(planId, billingFrequency);
+        const currentSubscription = await this.getBillingSubscription(userId);
+        const requestRef = doc(this._billingPaymentRequestsCol(userId));
+        const auditRef = doc(collection(this.db, `users/${userId}/audit_logs`));
+        const batch = writeBatch(this.db);
+        const requestPayload = {
+            plan_id: planId,
+            plan_name: calculation.plan.name,
+            billing_frequency: billingFrequency,
+            subtotal_amount: calculation.subtotalAmount,
+            estimated_tax_amount: calculation.estimatedTaxAmount,
+            total_amount: calculation.totalAmount,
+            currency: 'IDR',
+            payment_method: paymentMethod,
+            payment_status: 'pending_verification',
+            provider: 'manual',
+            provider_payment_id: null,
+            provider_invoice_url: null,
+            submitted_at: serverTimestamp(),
+            verified_at: null,
+            failed_at: null,
+            expires_at: null,
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        };
+
+        batch.set(requestRef, requestPayload);
+        batch.set(this._billingSubscriptionDoc(userId), {
+            plan_id: planId,
+            plan_name: calculation.plan.name,
+            status: 'pending_verification',
+            billing_frequency: billingFrequency,
+            current_payment_request_id: requestRef.id,
+            trial_started_at: currentSubscription?.trial_started_at || null,
+            trial_ends_at: currentSubscription?.trial_ends_at || null,
+            current_period_start: currentSubscription?.current_period_start || null,
+            current_period_end: currentSubscription?.current_period_end || null,
+            updated_at: serverTimestamp()
+        });
+        batch.set(auditRef, {
+            actor_uid: userId,
+            actor_role: null,
+            action: 'billing.payment_request_created',
+            target_collection: 'billing_payment_requests',
+            target_id: requestRef.id,
+            before: null,
+            after: {
+                plan_id: planId,
+                billing_frequency: billingFrequency,
+                total_amount: calculation.totalAmount,
+                currency: 'IDR',
+                payment_method: paymentMethod,
+                payment_status: 'pending_verification'
+            },
+            reason: null,
+            source: 'dashboard',
+            created_at: serverTimestamp()
+        });
+        await batch.commit();
+        return { id: requestRef.id, ...requestPayload };
+    }
+
+    async getLatestPaymentRequest(userId) {
+        if (!userId) return null;
+        const q = query(this._billingPaymentRequestsCol(userId), orderBy('created_at', 'desc'), limit(1));
+        const snap = await getDocs(q);
+        const row = snap.docs[0];
+        return row ? { id: row.id, ...row.data() } : null;
+    }
+
+    async getLatestPaymentRequestWithLegacyFallback(userId) {
+        const current = await this.getLatestPaymentRequest(userId);
+        if (current) return current;
+        const legacy = await this.getLatestPaymentVerification(userId);
+        if (!legacy) return null;
+        return {
+            id: legacy.id,
+            plan_id: legacy.plan_id || 'legacy',
+            plan_name: legacy.plan_id === 'starter' ? 'Starter' : (legacy.plan_id || 'Legacy plan'),
+            billing_frequency: legacy.billing_period === 'annual' ? 'annually' : (legacy.billing_period || 'monthly'),
+            total_amount: Number(legacy.amount) || 0,
+            currency: legacy.currency || 'IDR',
+            payment_method: legacy.payment_method || 'manual',
+            payment_status: legacy.status === 'verified'
+                ? 'verified'
+                : (legacy.status === 'rejected' ? 'failed' : 'pending_verification'),
+            submitted_at: legacy.submitted_at || legacy.created_at || null,
+            created_at: legacy.created_at || null,
+            is_legacy: true
+        };
+    }
+
+    _canonicalSubscriptionFromLegacy(access) {
+        if (!access) return null;
+        const knownPlan = BILLING_PLANS[access.plan_id] ? access.plan_id : null;
+        const active = access.access_status === 'active'
+            || access.access_status === 'payment_verified'
+            || access.payment_status === 'verified';
+        const pending = access.access_status === 'payment_submitted'
+            || ['submitted', 'under_review'].includes(access.payment_status);
+        const failed = access.payment_status === 'rejected';
+        const expired = access.access_status === 'trial_expired';
+        const suspended = access.access_status === 'suspended';
+        const status = suspended
+            ? 'suspended'
+            : active
+                ? 'active'
+                : pending
+                    ? 'pending_verification'
+                    : failed
+                        ? 'payment_failed'
+                        : expired
+                            ? 'expired'
+                            : 'trialing';
+
+        return {
+            plan_id: knownPlan || (status === 'trialing' || status === 'expired' ? 'trial' : null),
+            plan_name: knownPlan ? BILLING_PLANS[knownPlan].name : (status === 'trialing' || status === 'expired' ? 'Trial' : null),
+            status,
+            billing_frequency: null,
+            current_payment_request_id: null,
+            trial_started_at: access.trial_started_at || null,
+            trial_ends_at: access.trial_ends_at || null,
+            current_period_start: null,
+            current_period_end: null
+        };
+    }
+
+    async ensureBillingSubscription(userId) {
+        if (!userId) return null;
+        const current = await this.getBillingSubscription(userId);
+        if (current) return this.expireBillingSubscriptionIfNeeded(userId, current);
+
+        const legacyAccess = await this.getBillingAccess(userId).catch(() => null);
+        if (legacyAccess) {
+            const translated = this._canonicalSubscriptionFromLegacy(legacyAccess);
+            if (translated?.status === 'suspended' || !translated?.plan_id) {
+                return translated;
+            }
+            await this.upsertBillingSubscription(userId, translated);
+            return { id: 'current', ...translated };
+        }
+
+        const progress = await this.getOnboardingProgress(userId).catch(() => null);
+        const eligible = !!progress && (progress.onboarding_completed === true || progress.onboarding_exempt === true);
+        if (!eligible) return null;
+
+        const startMs = progress.completed_at?.toMillis?.() || Date.now();
+        const subscription = {
+            plan_id: 'trial',
+            plan_name: 'Trial',
+            status: 'trialing',
+            billing_frequency: null,
+            current_payment_request_id: null,
+            trial_started_at: Timestamp.fromMillis(startMs),
+            trial_ends_at: Timestamp.fromMillis(startMs + TRIAL_DURATION_DAYS * DAY_MS),
+            current_period_start: null,
+            current_period_end: null
+        };
+        await this.upsertBillingSubscription(userId, subscription);
+        try {
+            await this.addAuditLog(userId, {
+                action: 'trial.created',
+                target_collection: 'billing',
+                target_id: 'current',
+                after: { status: 'trialing', trial_duration_days: TRIAL_DURATION_DAYS },
+                source: 'system'
+            });
+        } catch (_) { /* non-fatal */ }
+        return { id: 'current', ...subscription };
+    }
+
+    async expireBillingSubscriptionIfNeeded(userId, subscription = null) {
+        const current = subscription || await this.getBillingSubscription(userId);
+        if (!current || current.status !== 'trialing') return current;
+        const endMs = current.trial_ends_at?.toMillis?.();
+        if (!endMs || endMs >= Date.now()) return current;
+        await this.upsertBillingSubscription(userId, { status: 'expired' });
+        try {
+            await this.addAuditLog(userId, {
+                action: 'trial.expired',
+                target_collection: 'billing',
+                target_id: 'current',
+                before: { status: 'trialing' },
+                after: { status: 'expired' },
+                source: 'system'
+            });
+        } catch (_) { /* non-fatal */ }
+        return { ...current, status: 'expired' };
     }
 
     async getBillingAccess(userId) {

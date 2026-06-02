@@ -112,6 +112,11 @@ Current responsibilities:
 - `saveAISettings(userId, data)`
 - `getWhatsAppSettings(userId)`
 - `saveWhatsAppSettings(userId, data)`
+- `createPaymentRequest(userId, paymentData)`
+- `getLatestPaymentRequest(userId)`
+- `getBillingSubscription(userId)`
+- `upsertBillingSubscription(userId, subscriptionData)`
+- `ensureBillingSubscription(userId)`
 
 Rules:
 
@@ -285,6 +290,15 @@ Must include:
 - Friendly failure states for invalid login
 - No footer
 - No dashboard sidebar
+
+### Auth billing page
+
+Examples: `checkout.html`, `payment-pending.html`.
+
+Must include Firebase Auth redirect to `/login`, user-scoped reads/writes through
+`DataService`, friendly error states, `noindex`, and no sidebar or marketing footer.
+Checkout stores metadata-only manual requests and never collects card, OTP, bank,
+or provider credentials.
 
 ### Dashboard app page
 
