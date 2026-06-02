@@ -610,7 +610,7 @@ billing methods in `db-service.js`, or canonical billing Firestore rules.
 
 **Banner**
 - [ ] Trial banner shows on dashboard, ledger, bill, subscription, budget, reports,
-  integration, and settings*; CTA opens `/pricing`.
+  integration, and settings*; CTA opens `/checkout?plan=growth&billing=annually`.
 - [ ] Pending banner CTA opens `/payment-pending`; active user sees no banner.
 - [ ] No horizontal overflow at 375px; banner CTA is the only primary action.
 
@@ -623,6 +623,8 @@ billing methods in `db-service.js`, or canonical billing Firestore rules.
 **Checkout and payment status**
 - [ ] `/checkout` logged out redirects to `/login`; invalid query values fall back to
   Growth Engine annually.
+- [ ] Checkout uses a full-viewport two-column desktop layout without card framing;
+  mobile width stacks cleanly without horizontal overflow.
 - [ ] Plan and billing switches update URL, benefits, subtotal, 11% estimated PPN,
   total, and CTA links from pricing.
 - [ ] QRIS, Virtual Account, Card, and Invoice show metadata-only copy; no sensitive

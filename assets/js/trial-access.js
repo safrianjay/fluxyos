@@ -133,7 +133,7 @@ function bannerConfigFor(state) {
             title: 'You are on a trial.',
             body: `Upgrade before ${fmtTrialEnd(state.trialEndsAt)} to keep using FluxyOS.`,
             cta: 'Upgrade now',
-            href: '/pricing'
+            href: state.ctaRoute
         };
     }
     return null;
@@ -148,12 +148,13 @@ function injectStyles() {
     style.textContent = `
         .fluxy-trial-banner {
             display:flex;align-items:center;justify-content:center;gap:12px;width:100%;
-            flex-shrink:0;padding:10px 20px;background:linear-gradient(90deg,#F8FAFC 0%,#FFFFFF 55%,#F3F4F6 100%);
+            flex-shrink:0;padding:10px 20px;background:linear-gradient(90deg,#FFF7ED 0%,#FFF1E0 55%,#FFE6CC 100%);
             border-bottom:1px solid #FCDDB9;flex-wrap:wrap
         }
         .fluxy-trial-banner__icon {
             width:28px;height:28px;flex-shrink:0;border-radius:8px;display:inline-flex;
-            align-items:center;justify-content:center;background:#fff;color:#EA580C;border:1px solid #FED7AA
+            align-items:center;justify-content:center;background:linear-gradient(135deg,#FB923C 0%,#EA580C 100%);
+            color:#fff;box-shadow:0 2px 6px rgba(234,88,12,.30)
         }
         .fluxy-trial-banner__text {font-size:14px;line-height:1.4;color:#0B0F19;min-width:0}
         .fluxy-trial-banner__title {font-weight:700}

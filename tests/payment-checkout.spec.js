@@ -36,6 +36,26 @@ test.describe('authenticated checkout UI', () => {
 
     test('checkout switches package, billing, and metadata-only method panels', async ({ page }, testInfo) => {
         await page.goto('/checkout?plan=growth&billing=annually');
+        const shell = await page.locator('.checkout-shell').evaluate(element => {
+            const box = element.getBoundingClientRect();
+            const style = getComputedStyle(element);
+            return {
+                left: box.left,
+                top: box.top,
+                width: box.width,
+                minHeight: style.minHeight,
+                borderRadius: style.borderRadius,
+                boxShadow: style.boxShadow
+            };
+        });
+        expect(shell).toEqual({
+            left: 0,
+            top: 0,
+            width: 1280,
+            minHeight: '720px',
+            borderRadius: '0px',
+            boxShadow: 'none'
+        });
         await expect(page.locator('#summary-plan-name')).toHaveText('Growth Engine');
         await expect(page.locator('#subtotal')).toHaveText('Rp 81.480.000');
         await expect(page.locator('#tax')).toHaveText('Rp 8.962.800');
@@ -52,6 +72,15 @@ test.describe('authenticated checkout UI', () => {
         await expect(page.locator('input')).toHaveCount(0);
         await expect(page.locator('select')).toHaveCount(0);
         await page.screenshot({ path: testInfo.outputPath('checkout-desktop.png'), fullPage: true });
+    });
+
+    test('trial banner keeps the original visual treatment and upgrades directly to checkout', async ({ page }) => {
+        await page.goto('/dashboard');
+        const banner = page.locator('[data-fluxy-trial-banner]');
+        await expect(banner).toBeVisible();
+        await expect(banner.locator('.fluxy-trial-banner__cta')).toHaveAttribute('href', '/checkout?plan=growth&billing=annually');
+        await expect(banner).toHaveCSS('background-image', 'linear-gradient(90deg, rgb(255, 247, 237) 0%, rgb(255, 241, 224) 55%, rgb(255, 230, 204) 100%)');
+        await expect(banner.locator('.fluxy-trial-banner__icon')).toHaveCSS('color', 'rgb(255, 255, 255)');
     });
 
     test('invalid query falls back safely and mobile layout does not overflow', async ({ page }, testInfo) => {
