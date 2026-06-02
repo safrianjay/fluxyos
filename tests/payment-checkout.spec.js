@@ -36,6 +36,8 @@ test.describe('authenticated checkout UI', () => {
 
     test('checkout switches package, billing, and metadata-only method panels', async ({ page }, testInfo) => {
         await page.goto('/checkout?plan=growth&billing=annually');
+        await expect(page.locator('.back-link')).toContainText('Back to dashboard');
+        await expect(page.locator('.back-link')).toHaveAttribute('href', '/dashboard');
         const shell = await page.locator('.checkout-shell').evaluate(element => {
             const box = element.getBoundingClientRect();
             const style = getComputedStyle(element);
