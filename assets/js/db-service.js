@@ -1448,7 +1448,7 @@ class DataService {
     _buildBankCashHistory(accounts = [], snapshots = []) {
         const activeAccountIds = new Set(accounts.map(account => account.id));
         const balances = new Map();
-        const totalsByDay = new Map();
+        const history = [];
 
         snapshots
             .filter(snapshot => activeAccountIds.has(snapshot.bank_account_id))
@@ -1464,13 +1464,13 @@ class DataService {
             .sort((a, b) => a.date - b.date)
             .forEach(snapshot => {
                 balances.set(snapshot.accountId, snapshot.balance);
-                totalsByDay.set(
-                    this._getDayKey(snapshot.date),
-                    Array.from(balances.values()).reduce((total, value) => total + value, 0)
-                );
+                history.push({
+                    at: snapshot.date.toISOString(),
+                    balance: Array.from(balances.values()).reduce((total, value) => total + value, 0)
+                });
             });
 
-        return Array.from(totalsByDay, ([day, balance]) => ({ day, balance }));
+        return history;
     }
 
     async _getMonthlyOpexBudget(userId) {

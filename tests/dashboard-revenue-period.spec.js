@@ -185,5 +185,10 @@ test('Overview Revenue read remains user-scoped and type allowlisted', async ({ 
     expect(source).toContain('getTransactionsForDashboardOverview(userId, allTime = false)');
     expect(source).toContain('collection(this.db, `users/${userId}/bank_balance_snapshots`)');
     expect(source).toContain('balanceHistory: this._buildBankCashHistory(accounts, snapshots)');
-    expect(source).toContain('if (bankSparklineValues.length === 1) bankSparklineValues.push(bankSparklineValues[0])');
+    expect(source).toContain('at: snapshot.date.toISOString()');
+    expect(source).not.toContain('const totalsByDay = new Map()');
+
+    await page.goto('/assets/js/dashboard.js');
+    const dashboardSource = await page.locator('body').textContent();
+    expect(dashboardSource).toContain('if (bankSparklineValues.length === 1) bankSparklineValues.push(bankSparklineValues[0])');
 });

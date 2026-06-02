@@ -260,8 +260,10 @@ Append-only balance history. One snapshot per balance write
 The Overview Bank Cash Balance KPI reads these user-scoped snapshots to render
 an aggregate active-account sparkline using the same green area-line treatment
 as Revenue. A single real snapshot renders as a flat baseline, not a fabricated
-trend. Its card order is balance, update source and timestamp, 30-day outlook
-and coverage, then the snapshot trend graphic.
+trend. Every real snapshot remains a chart point in timestamp order, including
+multiple balance updates on the same day. Its card order is balance, update
+source and timestamp, 30-day outlook and coverage, then the snapshot trend
+graphic.
 
 ### 4e.3. Budgets — `users/{userId}/budgets/{budgetId}`
 

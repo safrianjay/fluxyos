@@ -216,7 +216,8 @@ The Overview Bank Cash Balance KPI reads append-only
 `DataService.getBankBalanceSnapshots(userId)` and renders an aggregate
 active-account sparkline using the Revenue card's green area-line treatment.
 One real snapshot renders as a flat baseline; it does not infer movement from
-the latest balance.
+the latest balance. Multiple writes on the same day remain separate timestamp-
+ordered chart points so real balance changes stay visible.
 
 ### Settings
 
