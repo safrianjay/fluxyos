@@ -38,6 +38,8 @@ test.describe('authenticated checkout UI', () => {
         await page.goto('/checkout?plan=growth&billing=annually');
         await expect(page.locator('.back-link')).toContainText('Back to dashboard');
         await expect(page.locator('.back-link')).toHaveAttribute('href', '/dashboard');
+        await expect(page.locator('.plan-logo')).toHaveAttribute('src', 'assets/images/favicon.svg');
+        await expect(page.locator('.plan-logo')).toHaveAttribute('alt', 'FluxyOS');
         const shell = await page.locator('.checkout-shell').evaluate(element => {
             const box = element.getBoundingClientRect();
             const style = getComputedStyle(element);

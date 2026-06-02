@@ -75,7 +75,7 @@ body {
 .due-amount { margin: 0 0 14px; font: 700 40px/1.08 "Fira Code", monospace; letter-spacing: -.05em; }
 .billing-copy { max-width: 430px; margin: 0 0 32px; font-size: 14px; line-height: 1.55; }
 .plan-card { display: flex; gap: 16px; margin-bottom: 24px; }
-.plan-logo { width: 44px; height: 44px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 12px; background: #000; font-size: 20px; font-weight: 800; }
+.plan-logo { width: 44px; height: 44px; display: block; flex: 0 0 auto; border-radius: 12px; }
 .plan-main { flex: 1; }
 .plan-row, .breakdown-row { display: flex; justify-content: space-between; gap: 16px; }
 .plan-row { margin-bottom: 8px; }
