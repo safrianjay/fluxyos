@@ -75,6 +75,7 @@ function updateCheckout() {
     $('discount').textContent = selectedBilling === 'annually' ? 'Save 20%' : 'Not applied';
     $('tax').textContent = formatIDR(calculation.estimatedTaxAmount);
     $('total-due').textContent = formatIDR(calculation.totalAmount);
+    $('checkout-payable-total').textContent = formatIDR(calculation.totalAmount);
     $('monthly-label').textContent = `${formatIDR(plan.monthly)}/month`;
     $('annual-label').textContent = `${formatIDR(plan.annualMonthlyEquivalent)}/month`;
     renderPlanOptions();

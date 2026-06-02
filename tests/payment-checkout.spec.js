@@ -64,12 +64,15 @@ test.describe('authenticated checkout UI', () => {
         await expect(page.locator('#subtotal')).toHaveText('Rp 81.480.000');
         await expect(page.locator('#tax')).toHaveText('Rp 8.962.800');
         await expect(page.locator('#total-due')).toHaveText('Rp 90.442.800');
+        await expect(page.locator('.trust-row')).toContainText('Total amount to pay');
+        await expect(page.locator('#checkout-payable-total')).toHaveText('Rp 90.442.800');
 
         await page.locator('[data-plan="core"]').click();
         await page.locator('[data-billing="monthly"]').click();
         await expect(page).toHaveURL(/\/checkout\?plan=core&billing=monthly$/);
         await expect(page.locator('#summary-plan-name')).toHaveText('Core Ops');
         await expect(page.locator('#total-due')).toHaveText('Rp 3.885.000');
+        await expect(page.locator('#checkout-payable-total')).toHaveText('Rp 3.885.000');
 
         await page.locator('[data-method="card"]').click();
         await expect(page.locator('[data-payment-panel="card"]')).toContainText('never collects card number, CVC, or OTP');
