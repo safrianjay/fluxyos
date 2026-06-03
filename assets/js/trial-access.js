@@ -64,13 +64,14 @@ function deriveState(subscription) {
     const isActive = status === 'active';
     const isSuspended = status === 'suspended';
     const isTrialExpired = status === 'expired';
+    const isAwaitingPayment = status === 'awaiting_payment';
     const isPaymentSubmitted = status === 'pending_verification';
     const isPaymentRejected = status === 'payment_failed';
     const isTrialState = status === 'trialing';
     const isTrialExpiring = isTrialState && daysRemaining !== null && daysRemaining <= 1 && remainingMs > 0;
     const isTrialActive = isTrialState && !isTrialExpiring;
     const trialStillUsable = remainingMs !== null && remainingMs > 0;
-    const canUseTrialPermissions = isTrialState || ((isPaymentSubmitted || isPaymentRejected) && trialStillUsable);
+    const canUseTrialPermissions = isTrialState || ((isAwaitingPayment || isPaymentSubmitted || isPaymentRejected) && trialStillUsable);
     const canRead = !isSuspended;
     const canWrite = isActive || canUseTrialPermissions;
     const canExport = isActive;
@@ -83,7 +84,7 @@ function deriveState(subscription) {
         trialEndsAt: subscription.trial_ends_at || null,
         daysRemaining, hoursRemaining,
         isTrialActive, isTrialExpiring, isTrialExpired,
-        isPaymentSubmitted, isPaymentRejected, isActive, isSuspended,
+        isAwaitingPayment, isPaymentSubmitted, isPaymentRejected, isActive, isSuspended,
         canRead, canWrite, canExport, canUseAI, canUploadDocuments,
         canUsePaymentPage: !isSuspended,
         showBanner: !isActive && !isSuspended,
@@ -107,6 +108,16 @@ function bannerConfigFor(state) {
             body: 'Please retry payment to continue after your trial ends.',
             cta: 'Retry payment',
             href: state.ctaRoute
+        };
+    }
+    if (state.isAwaitingPayment) {
+        const requestId = state.subscription?.current_payment_request_id;
+        return {
+            variant: 'info',
+            title: 'QRIS payment waiting.',
+            body: 'Complete payment to activate your FluxyOS plan.',
+            cta: 'View QRIS payment',
+            href: requestId ? `/payment-pending?requestId=${encodeURIComponent(requestId)}` : '/payment-pending'
         };
     }
     if (state.isPaymentSubmitted) {

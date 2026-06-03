@@ -7,6 +7,18 @@ All notable changes to FluxyOS are recorded here, newest first.
 ## [Unreleased]
 > Changes in progress — not yet pushed to main
 
+### Added (Manual QRIS payment step)
+- **QRIS "pay the QR first" flow** — choosing QRIS at checkout now creates the payment request as `awaiting_payment` and routes to `/payment-pending?requestId=...`, which renders a premium two-column QR screen (checkout's purple/navy gradient): the merchant QR (`assets/images/qris-tanda360.png`), exact amount, plan/billing, request ID, and bank reference (Safrian Jayadi · OCBC Nisp · 6938-1098-7877). Non-QRIS methods are unchanged (direct `pending_verification`).
+- **Confirm + optional proof** — "I've completed payment" reveals an optional proof upload (JPG/PNG/WebP/PDF ≤5 MB, reusing the `documents/` + Storage flow as `payment_proof`/`payment` context) and "Submit for verification", which moves the request + subscription to `pending_verification` in one batch and shows the verification-in-progress state. Revisiting `/payment-pending` while `awaiting_payment` re-shows the QR.
+- **`awaiting_payment` banner state** (`assets/js/trial-access.js`) — "QRIS payment waiting. Complete payment to activate your FluxyOS plan." with a "View QRIS payment" CTA; trial write/AI/upload access is retained while awaiting payment.
+- **`QRIS_PAYMENT_INFO` constant** (`assets/js/billing-config.js`) — static merchant/bank display values (not persisted per user).
+- **5 new `billing_payment_requests` fields** — `user_confirmed_payment_at`, `submitted_for_verification_at`, `proof_document_id`, `proof_file_name`, `proof_uploaded_at` (all `null` at create).
+- **DataService methods** — `getPaymentRequestById` and `submitPaymentRequestForVerification(uid, requestId, { proofDocumentId, proofFileName })` (batched request update + subscription transition + `billing.payment_confirmation_submitted` audit).
+
+### Changed (Manual QRIS payment step)
+- **`firestore.rules`** — `isValidBillingPaymentRequest` allows `payment_status in [awaiting_payment, pending_verification]` at create and the 5 new fields (`null` at create); new `isValidPaymentRequestVerificationSubmit` permits the owner-driven `awaiting_payment → pending_verification` update (lifecycle + proof fields only; `verified`/`failed`/`expired` stay server-owned). Subscription `status` enum gains `awaiting_payment`; new `isCheckoutAwaitingPaymentWrite` wired into the subscription create + update branches.
+- **`payment-pending.html` / `assets/css/payment-pending.css`** — split into a QR view and the existing status card; centering moved to a `.status-view` wrapper.
+
 ### Added (Budget Phase 2 — record-level control)
 - **Allocation detail drawer** on `/budget` — click any allocation row to open a right-side drawer showing the allocation's stat strip, deterministic variance explanation, related transactions, and related bills. Each related-record row carries Change/Exclude actions.
 - **Unallocated records queue** — new section on `/budget` lists every in-period spend record with no matching allocation. Per-row Assign and Exclude actions.

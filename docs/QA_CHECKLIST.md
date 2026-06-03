@@ -629,10 +629,24 @@ billing methods in `db-service.js`, or canonical billing Firestore rules.
   total, and CTA links from pricing.
 - [ ] QRIS, Virtual Account, Card, and Invoice show metadata-only copy; no sensitive
   inputs are rendered.
-- [ ] Submit writes one `billing_payment_requests` row + pending subscription update
-  + audit log atomically, then redirects to `/payment-pending`.
+- [ ] Submit (non-QRIS) writes one `billing_payment_requests` row + pending subscription
+  update + audit log atomically, then redirects to `/payment-pending`.
 - [ ] Pending page renders pending, active/verified, failed/expired retry, and empty
   states. `payment.html` redirects to `/pricing`.
+
+**Manual QRIS payment**
+- [ ] QRIS submit creates the request as `awaiting_payment` (subscription mirrors it) and
+  redirects to `/payment-pending?requestId=...`.
+- [ ] QR screen renders the `assets/images/qris-tanda360.png` image, exact total amount,
+  plan/billing, request ID, and bank reference (Safrian Jayadi · OCBC Nisp · 6938-1098-7877).
+- [ ] Reopening `/payment-pending` while `awaiting_payment` shows the QR again (not the card).
+- [ ] "I've completed payment" reveals the optional proof upload + "Submit for verification".
+- [ ] Submit without proof → status `pending_verification`, verification-in-progress card shows.
+- [ ] Submit with a JPG/PNG/WebP/PDF (≤5 MB) proof → a `documents/` row is created and
+  `proof_document_id`/`proof_file_name` are stored on the request; oversized/wrong type rejected inline.
+- [ ] App banner shows "QRIS payment waiting" with a working "View QRIS payment" CTA while
+  `awaiting_payment`, and trial write/AI access is retained; it becomes the verification banner after submit.
+- [ ] QR view stacks cleanly at 375px with no horizontal overflow.
 
 **Data/security**
 - [ ] Amounts stored as raw integers; no formatted currency strings; no card number,

@@ -209,7 +209,7 @@ service cloud.firestore {
         ])
         && isValidBillingPlan(data.plan_id)
         && isValidBillingPlanName(data.plan_id, data.plan_name)
-        && data.status in ['trialing', 'pending_verification', 'active', 'past_due', 'expired', 'payment_failed']
+        && data.status in ['trialing', 'awaiting_payment', 'pending_verification', 'active', 'past_due', 'expired', 'payment_failed']
         && isValidBillingFrequency(data.billing_frequency)
         && (data.current_payment_request_id == null || (data.current_payment_request_id is string && data.current_payment_request_id.size() <= 160))
         && (data.trial_started_at == null || data.trial_started_at is timestamp)
@@ -237,6 +237,11 @@ service cloud.firestore {
           'verified_at',
           'failed_at',
           'expires_at',
+          'user_confirmed_payment_at',
+          'submitted_for_verification_at',
+          'proof_document_id',
+          'proof_file_name',
+          'proof_uploaded_at',
           'created_at',
           'updated_at'
         ])
@@ -257,6 +262,11 @@ service cloud.firestore {
           'verified_at',
           'failed_at',
           'expires_at',
+          'user_confirmed_payment_at',
+          'submitted_for_verification_at',
+          'proof_document_id',
+          'proof_file_name',
+          'proof_uploaded_at',
           'created_at',
           'updated_at'
         ])
@@ -272,7 +282,9 @@ service cloud.firestore {
         && isValidBillingAmounts(data)
         && data.currency == 'IDR'
         && data.payment_method in ['qris', 'va', 'card', 'invoice']
-        && data.payment_status == 'pending_verification'
+        // QRIS starts as awaiting_payment (pay the QR first); other methods submit
+        // for verification immediately. verified/failed/expired stay server-owned.
+        && data.payment_status in ['awaiting_payment', 'pending_verification']
         && data.provider == 'manual'
         && data.provider_payment_id == null
         && data.provider_invoice_url == null
@@ -280,8 +292,41 @@ service cloud.firestore {
         && data.verified_at == null
         && data.failed_at == null
         && data.expires_at == null
+        && data.user_confirmed_payment_at == null
+        && data.submitted_for_verification_at == null
+        && data.proof_document_id == null
+        && data.proof_file_name == null
+        && data.proof_uploaded_at == null
         && data.created_at == request.time
         && data.updated_at == request.time;
+    }
+
+    // Owner-driven transition: a QRIS request moves awaiting_payment ->
+    // pending_verification after the user confirms payment. Only the lifecycle
+    // + optional proof-reference fields may change; amounts/plan/method are
+    // immutable (guaranteed by the affectedKeys allow-list). The client can
+    // never write verified/failed/expired here.
+    function isValidPaymentRequestVerificationSubmit(prev, next) {
+      return prev.payment_status == 'awaiting_payment'
+        && next.payment_status == 'pending_verification'
+        && next.diff(prev).affectedKeys().hasOnly([
+          'payment_status',
+          'user_confirmed_payment_at',
+          'submitted_for_verification_at',
+          'proof_document_id',
+          'proof_file_name',
+          'proof_uploaded_at',
+          'updated_at'
+        ])
+        && next.user_confirmed_payment_at is timestamp
+        && next.submitted_for_verification_at == request.time
+        && next.updated_at == request.time
+        && (
+          (next.proof_document_id == null && next.proof_file_name == null && next.proof_uploaded_at == null)
+          || (next.proof_document_id is string && next.proof_document_id.size() <= 160
+            && next.proof_file_name is string && next.proof_file_name.size() <= 240
+            && next.proof_uploaded_at is timestamp)
+        );
     }
 
     function isCheckoutSubscriptionWrite(userId, data) {
@@ -292,6 +337,18 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(data.current_payment_request_id)).data.plan_id == data.plan_id
         && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(data.current_payment_request_id)).data.billing_frequency == data.billing_frequency
         && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(data.current_payment_request_id)).data.payment_status == 'pending_verification';
+    }
+
+    // QRIS checkout: subscription moves to awaiting_payment alongside an
+    // awaiting_payment request (cross-checked in the same commit).
+    function isCheckoutAwaitingPaymentWrite(userId, data) {
+      return data.status == 'awaiting_payment'
+        && data.plan_id in ['core', 'growth', 'enterprise']
+        && data.billing_frequency in ['monthly', 'annually']
+        && data.current_payment_request_id is string
+        && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(data.current_payment_request_id)).data.plan_id == data.plan_id
+        && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(data.current_payment_request_id)).data.billing_frequency == data.billing_frequency
+        && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(data.current_payment_request_id)).data.payment_status == 'awaiting_payment';
     }
 
     function isTrialSubscriptionCreate(data) {
@@ -1104,7 +1161,10 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId)
           && isValidBillingPaymentRequest(request.resource.data);
-        allow update, delete: if false;
+        // Owner may confirm a QRIS payment (awaiting_payment -> pending_verification).
+        allow update: if isOwner(userId)
+          && isValidPaymentRequestVerificationSubmit(resource.data, request.resource.data);
+        allow delete: if false;
       }
 
       match /billing_subscription/{subscriptionId} {
@@ -1114,12 +1174,14 @@ service cloud.firestore {
           && isValidBillingSubscription(request.resource.data)
           && (isTrialSubscriptionCreate(request.resource.data)
             || isCheckoutSubscriptionWrite(userId, request.resource.data)
+            || isCheckoutAwaitingPaymentWrite(userId, request.resource.data)
             || isLegacyBillingMigration(userId, request.resource.data));
         allow update: if isOwner(userId)
           && subscriptionId == 'current'
           && isValidBillingSubscription(request.resource.data)
           && (
             isCheckoutSubscriptionWrite(userId, request.resource.data)
+            || isCheckoutAwaitingPaymentWrite(userId, request.resource.data)
             || isLegacyBillingMigration(userId, request.resource.data)
             || (resource.data.status == 'trialing'
               && request.resource.data.status == 'expired'

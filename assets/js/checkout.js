@@ -111,12 +111,16 @@ $('submit-button').addEventListener('click', async () => {
     button.disabled = true;
     button.textContent = 'Submitting request...';
     try {
-        await data.createPaymentRequest(currentUser.uid, {
+        const created = await data.createPaymentRequest(currentUser.uid, {
             plan_id: selectedPlan,
             billing_frequency: selectedBilling,
             payment_method: selectedMethod
         });
-        window.location.replace('/payment-pending');
+        // QRIS shows the "pay this QR" screen first; other methods go straight to
+        // verification-in-progress.
+        window.location.replace(created?.payment_status === 'awaiting_payment'
+            ? `/payment-pending?requestId=${encodeURIComponent(created.id)}`
+            : '/payment-pending');
     } catch (_) {
         error.textContent = 'We could not submit your payment request. Please try again.';
         error.classList.remove('hidden');

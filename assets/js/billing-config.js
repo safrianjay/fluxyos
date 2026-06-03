@@ -5,6 +5,18 @@ export const DEFAULT_BILLING_FREQUENCY = 'annually';
 export const BILLING_FREQUENCIES = ['monthly', 'annually'];
 export const PAYMENT_METHODS = ['qris', 'va', 'card', 'invoice'];
 
+// Static manual-QRIS merchant details. The merchant QR is shared (one merchant),
+// so these are display constants rendered directly — never persisted per user and
+// never sensitive credentials. Source of truth for the number is the attached QR.
+export const QRIS_PAYMENT_INFO = {
+    imagePath: 'assets/images/qris-tanda360.png',
+    merchantName: 'Tanda360Plus-Digital',
+    recipientName: 'Safrian Jayadi',
+    bankName: 'OCBC Nisp',
+    referenceNumber: '6938-1098-7877',
+    currency: 'IDR'
+};
+
 export const BILLING_PLANS = {
     core: {
         id: 'core',

@@ -51,38 +51,70 @@ Selectable methods are `qris`, `va`, `card`, and `invoice`. They create manual
 pending requests only. No PAN, CVC, OTP, bank-account number, provider secret,
 NPWP, or sensitive provider payload is collected or stored.
 
+## Manual QRIS Payment Step
+
+QRIS uses a real "pay the QR first" step. Lifecycle:
+`awaiting_payment → pending_verification → verified | failed | expired`.
+
+```text
+checkout (QRIS) → request created awaiting_payment + subscription awaiting_payment
+  → /payment-pending?requestId={id} shows the QR screen
+  → "I've completed payment" → optional proof upload → "Submit for verification"
+  → request + subscription move to pending_verification (one batch)
+  → verification-in-progress state (manual verify later)
+```
+
+Non-QRIS methods skip `awaiting_payment` and are created directly as
+`pending_verification` (unchanged). The QR image
+(`assets/images/qris-tanda360.png`) and bank reference (Safrian Jayadi · OCBC
+Nisp · 6938-1098-7877) are static display constants
+(`QRIS_PAYMENT_INFO` in `assets/js/billing-config.js`) — never persisted per
+user, never sensitive credentials. Optional proof reuses the
+`documents/{id}` + Storage flow (`document_role: 'payment_proof'`,
+`source_context: 'payment'`); only `proof_document_id` + `proof_file_name` are
+referenced on the request. Revisiting `/payment-pending` while `awaiting_payment`
+re-shows the QR.
+
 ## DataService Contract
 
 - `createPaymentRequest(userId, paymentData)`
 - `getLatestPaymentRequest(userId)`
 - `getLatestPaymentRequestWithLegacyFallback(userId)`
+- `getPaymentRequestById(userId, paymentRequestId)`
+- `submitPaymentRequestForVerification(userId, paymentRequestId, { proofDocumentId, proofFileName })`
 - `getBillingSubscription(userId)`
 - `upsertBillingSubscription(userId, subscriptionData)`
 - `ensureBillingSubscription(userId)`
 - `expireBillingSubscriptionIfNeeded(userId, subscription?)`
 
 `createPaymentRequest` recalculates trusted amounts and commits the request,
-subscription transition to `pending_verification`, and
-`billing.payment_request_created` audit row in one Firestore batch.
+subscription transition (`awaiting_payment` for QRIS, else `pending_verification`),
+and `billing.payment_request_created` audit row in one Firestore batch.
+`submitPaymentRequestForVerification` batches the QRIS request update
+(`awaiting_payment → pending_verification` + optional proof reference +
+`user_confirmed_payment_at`/`submitted_for_verification_at`), the matching
+subscription transition, and a `billing.payment_confirmation_submitted` audit row.
 
 ## Access Banner
 
 | Subscription status | Banner | CTA |
 |---------------------|--------|-----|
 | `trialing` | Trial end-date reminder | `/pricing` |
+| `awaiting_payment` | QRIS payment waiting | `/payment-pending?requestId=...` |
 | `pending_verification` | Verification in progress | `/payment-pending` |
 | `active` | Hidden | — |
 | `payment_failed` | Retry payment | `/checkout?plan=...&billing=...` |
 | `expired` | Trial ended | `/pricing` |
 
-Pending and failed users retain trial permissions only while `trial_ends_at` is
+Awaiting-payment, pending, and failed users retain trial permissions only while `trial_ends_at` is
 still in the future. Trial enforcement remains client-side UX protection until
 a trusted backend is added.
 
 ## Security And Provider Limitations
 
-- Customer clients can create pending requests but cannot update, delete, or
-  verify them.
+- Customer clients can create pending requests and confirm a QRIS payment
+  (`awaiting_payment → pending_verification`, with an optional proof reference),
+  but cannot otherwise update, delete, or verify them.
 - Customer clients cannot set subscriptions to `active`, `past_due`, or
   `payment_failed`.
 - Firebase Console or a future trusted backend owns verification transitions.

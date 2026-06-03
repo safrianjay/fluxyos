@@ -933,6 +933,11 @@ class DataService {
         if (!paymentMethod) throw new Error('invalid-payment-method');
 
         const calculation = calculateBilling(planId, billingFrequency);
+        // QRIS uses a manual "pay the QR first" step: the request starts as
+        // awaiting_payment and only moves to pending_verification after the user
+        // confirms payment on the QR screen. Other methods submit for verification
+        // immediately (unchanged behavior).
+        const paymentStatus = paymentMethod === 'qris' ? 'awaiting_payment' : 'pending_verification';
         const currentSubscription = await this.getBillingSubscription(userId);
         const requestRef = doc(this._billingPaymentRequestsCol(userId));
         const auditRef = doc(collection(this.db, `users/${userId}/audit_logs`));
@@ -946,7 +951,7 @@ class DataService {
             total_amount: calculation.totalAmount,
             currency: 'IDR',
             payment_method: paymentMethod,
-            payment_status: 'pending_verification',
+            payment_status: paymentStatus,
             provider: 'manual',
             provider_payment_id: null,
             provider_invoice_url: null,
@@ -954,6 +959,11 @@ class DataService {
             verified_at: null,
             failed_at: null,
             expires_at: null,
+            user_confirmed_payment_at: null,
+            submitted_for_verification_at: null,
+            proof_document_id: null,
+            proof_file_name: null,
+            proof_uploaded_at: null,
             created_at: serverTimestamp(),
             updated_at: serverTimestamp()
         };
@@ -962,7 +972,7 @@ class DataService {
         batch.set(this._billingSubscriptionDoc(userId), {
             plan_id: planId,
             plan_name: calculation.plan.name,
-            status: 'pending_verification',
+            status: paymentStatus,
             billing_frequency: billingFrequency,
             current_payment_request_id: requestRef.id,
             trial_started_at: currentSubscription?.trial_started_at || null,
@@ -984,7 +994,7 @@ class DataService {
                 total_amount: calculation.totalAmount,
                 currency: 'IDR',
                 payment_method: paymentMethod,
-                payment_status: 'pending_verification'
+                payment_status: paymentStatus
             },
             reason: null,
             source: 'dashboard',
@@ -992,6 +1002,82 @@ class DataService {
         });
         await batch.commit();
         return { id: requestRef.id, ...requestPayload };
+    }
+
+    async getPaymentRequestById(userId, paymentRequestId) {
+        if (!userId || !paymentRequestId) return null;
+        const snap = await getDoc(doc(this._billingPaymentRequestsCol(userId), paymentRequestId));
+        return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    }
+
+    // Move a QRIS request from awaiting_payment to pending_verification after the
+    // user confirms they paid the QR. Optionally records a proof reference
+    // (document id + file name only — never the file bytes). Request update,
+    // subscription transition, and audit log commit together in one batch.
+    async submitPaymentRequestForVerification(userId, paymentRequestId, options = {}) {
+        if (!userId) throw new Error('missing-user');
+        if (!paymentRequestId) throw new Error('missing-request');
+        const request = await this.getPaymentRequestById(userId, paymentRequestId);
+        if (!request) throw new Error('request-not-found');
+        if (request.payment_status !== 'awaiting_payment') {
+            // Already submitted/verified/etc. — treat as a no-op success.
+            return request;
+        }
+
+        const proofDocumentId = this._nullableString(options.proofDocumentId, 160);
+        const proofFileName = this._nullableString(options.proofFileName, 240);
+        const hasProof = !!proofDocumentId && !!proofFileName;
+
+        const currentSubscription = await this.getBillingSubscription(userId);
+        const requestRef = doc(this._billingPaymentRequestsCol(userId), paymentRequestId);
+        const auditRef = doc(collection(this.db, `users/${userId}/audit_logs`));
+        const batch = writeBatch(this.db);
+
+        const requestUpdate = {
+            payment_status: 'pending_verification',
+            user_confirmed_payment_at: serverTimestamp(),
+            submitted_for_verification_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        };
+        if (hasProof) {
+            requestUpdate.proof_document_id = proofDocumentId;
+            requestUpdate.proof_file_name = proofFileName;
+            requestUpdate.proof_uploaded_at = serverTimestamp();
+        }
+        batch.update(requestRef, requestUpdate);
+
+        batch.set(this._billingSubscriptionDoc(userId), {
+            plan_id: request.plan_id,
+            plan_name: request.plan_name,
+            status: 'pending_verification',
+            billing_frequency: request.billing_frequency,
+            current_payment_request_id: paymentRequestId,
+            trial_started_at: currentSubscription?.trial_started_at || null,
+            trial_ends_at: currentSubscription?.trial_ends_at || null,
+            current_period_start: currentSubscription?.current_period_start || null,
+            current_period_end: currentSubscription?.current_period_end || null,
+            updated_at: serverTimestamp()
+        });
+
+        batch.set(auditRef, {
+            actor_uid: userId,
+            actor_role: null,
+            action: 'billing.payment_confirmation_submitted',
+            target_collection: 'billing_payment_requests',
+            target_id: paymentRequestId,
+            before: { payment_status: 'awaiting_payment' },
+            after: {
+                payment_status: 'pending_verification',
+                payment_method: request.payment_method,
+                proof_attached: hasProof
+            },
+            reason: null,
+            source: 'dashboard',
+            created_at: serverTimestamp()
+        });
+
+        await batch.commit();
+        return { ...request, ...requestUpdate, payment_status: 'pending_verification' };
     }
 
     async getLatestPaymentRequest(userId) {

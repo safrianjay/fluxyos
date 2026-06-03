@@ -12,18 +12,94 @@
     <link rel="stylesheet" href="assets/css/payment-pending.css">
 </head>
 <body>
-    <main class="status-shell">
-        <div class="logo">F.</div>
-        <span class="status-pill" id="status-pill">Checking status</span>
-        <h1 id="status-title">Loading your payment request...</h1>
-        <p class="body" id="status-body">Please wait while FluxyOS checks your latest billing status.</p>
-        <p class="helper hidden" id="status-helper"></p>
-        <dl class="meta hidden" id="status-meta"></dl>
-        <div class="actions">
-            <a class="primary" id="primary-action" href="/dashboard">Go to Dashboard</a>
-            <a class="secondary" id="secondary-action" href="mailto:support@fluxyos.com?subject=FluxyOS%20payment%20support">Contact support</a>
+    <!-- QRIS "pay the QR first" view — shown while the request is awaiting_payment -->
+    <main class="qris-shell hidden" id="qris-view" aria-label="QRIS payment">
+        <aside class="qris-summary">
+            <div class="qris-summary-content">
+                <a href="/dashboard" class="qris-back"><span class="qris-back-icon">&larr;</span>Back to dashboard</a>
+                <div class="qris-summary-label">Total due today</div>
+                <h1 class="qris-due" id="qris-amount">Rp 0</h1>
+                <p class="qris-copy" id="qris-plan-copy"></p>
+                <div class="qris-plan-card">
+                    <img class="qris-logo" src="assets/images/favicon.svg" alt="FluxyOS">
+                    <div class="qris-plan-main">
+                        <div class="qris-plan-name" id="qris-plan-name"></div>
+                        <div class="qris-plan-billing" id="qris-plan-billing"></div>
+                    </div>
+                </div>
+                <p class="qris-reassure">You can keep using FluxyOS during your trial while we verify your payment.</p>
+            </div>
+        </aside>
+
+        <section class="qris-panel">
+            <div class="qris-panel-inner">
+                <span class="qris-step-pill">Final step &middot; Payment</span>
+                <h2 class="qris-title">Complete your QRIS payment</h2>
+                <p class="qris-body">Scan the QR code using your banking app or e-wallet. Pay the exact amount shown below. After payment, click &ldquo;I&rsquo;ve completed payment&rdquo; so we can verify it manually.</p>
+
+                <div class="qris-pay-grid">
+                    <figure class="qris-code">
+                        <img id="qris-image" src="assets/images/qris-tanda360.png" alt="QRIS payment QR code">
+                        <figcaption class="qris-merchant" id="qris-merchant"></figcaption>
+                    </figure>
+                    <dl class="qris-detail">
+                        <div class="qris-detail-row"><dt>Amount</dt><dd id="qris-detail-amount" class="mono"></dd></div>
+                        <div class="qris-detail-row"><dt>Plan</dt><dd id="qris-detail-plan"></dd></div>
+                        <div class="qris-detail-row"><dt>Billing</dt><dd id="qris-detail-billing"></dd></div>
+                        <div class="qris-detail-row"><dt>Method</dt><dd>QRIS</dd></div>
+                        <div class="qris-detail-row"><dt>Request ID</dt><dd id="qris-detail-id" class="mono"></dd></div>
+                    </dl>
+                </div>
+
+                <div class="qris-bank">
+                    <p class="qris-bank-title">Bank reference (support info)</p>
+                    <div class="qris-bank-row"><span>Recipient</span><strong id="qris-bank-name"></strong></div>
+                    <div class="qris-bank-row"><span>Bank</span><strong id="qris-bank-bank"></strong></div>
+                    <div class="qris-bank-row"><span>Number</span><strong id="qris-bank-number" class="mono"></strong></div>
+                    <p class="qris-bank-note">QRIS is the main payment method. The bank details are reference/support information only.</p>
+                </div>
+
+                <p class="qris-expiry-note">Please complete the payment soon so you don&rsquo;t have to restart checkout.</p>
+
+                <div class="qris-actions" id="qris-stage-confirm">
+                    <button class="qris-primary" type="button" id="confirm-paid-btn">I&rsquo;ve completed payment</button>
+                    <a class="qris-secondary" id="qris-back-checkout" href="/checkout">Back to checkout</a>
+                </div>
+
+                <div class="qris-verify hidden" id="qris-stage-verify">
+                    <div class="qris-proof">
+                        <span class="qris-proof-label">Upload payment proof (optional)</span>
+                        <label class="qris-proof-drop" id="proof-drop" for="proof-file">
+                            <svg class="qris-proof-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            <span class="qris-proof-name" id="proof-name">Choose an image or PDF</span>
+                            <button type="button" id="proof-remove" class="qris-proof-remove hidden" aria-label="Remove file">&times;</button>
+                        </label>
+                        <input type="file" id="proof-file" accept="image/jpeg,image/png,image/webp,application/pdf" class="visually-hidden">
+                        <p class="qris-proof-help">JPG, PNG, WebP, or PDF up to 5 MB. You can submit without a proof.</p>
+                    </div>
+                    <button class="qris-primary" type="button" id="submit-verify-btn">Submit for verification</button>
+                    <p class="qris-error hidden" id="qris-error" role="alert"></p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Status view — loading by default, then pending / active / failed / empty states -->
+    <main class="status-view" id="status-view">
+        <div class="status-shell">
+            <div class="logo">F.</div>
+            <span class="status-pill" id="status-pill">Checking status</span>
+            <h1 id="status-title">Loading your payment request...</h1>
+            <p class="body" id="status-body">Please wait while FluxyOS checks your latest billing status.</p>
+            <p class="helper hidden" id="status-helper"></p>
+            <dl class="meta hidden" id="status-meta"></dl>
+            <div class="actions">
+                <a class="primary" id="primary-action" href="/dashboard">Go to Dashboard</a>
+                <a class="secondary" id="secondary-action" href="mailto:support@fluxyos.com?subject=FluxyOS%20payment%20support">Contact support</a>
+            </div>
         </div>
     </main>
+
     <script type="module" src="assets/js/payment-pending.js"></script>
 </body>
 </html>

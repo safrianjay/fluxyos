@@ -614,7 +614,7 @@ Canonical user-scoped package and trial state. Full spec:
 |-------|------|-------|
 | `plan_id` | string | `trial`/`core`/`growth`/`enterprise`. |
 | `plan_name` | string | Display name. |
-| `status` | string | `trialing`/`pending_verification`/`active`/`past_due`/`expired`/`payment_failed`. |
+| `status` | string | `trialing`/`awaiting_payment`/`pending_verification`/`active`/`past_due`/`expired`/`payment_failed`. `awaiting_payment` is the QRIS "pay the QR first" state (see §4l). |
 | `billing_frequency` | string \| null | `monthly`/`annually`. |
 | `current_payment_request_id` | string \| null | Latest canonical request ID. |
 | `trial_started_at`, `trial_ends_at` | Timestamp \| null | Trial timing. |
@@ -629,10 +629,34 @@ and applies the existing UX-only write/export/AI locks.
 ### 4l. Billing Payment Requests — `users/{userId}/billing_payment_requests/{id}`
 
 Metadata-only manual verification request created from `/checkout`. Amounts are raw
-integers, currency is locked to `IDR`, and status starts as
-`pending_verification`. No card, bank, OTP, tax-ID, or provider-sensitive values are
-stored. `DataService.createPaymentRequest` writes the request, subscription
-transition, and audit row atomically.
+integers, currency is locked to `IDR`. No card, bank, OTP, tax-ID, or
+provider-sensitive values are stored. `DataService.createPaymentRequest` writes the
+request, subscription transition, and audit row atomically.
+
+**QRIS lifecycle (manual):** `awaiting_payment → pending_verification → verified |
+failed | expired`. QRIS requests are created as `awaiting_payment` (the subscription
+mirrors this) so the user sees the QR payment screen first; all other methods
+(`va`/`card`/`invoice`) are created directly as `pending_verification` (unchanged).
+`verified`/`failed`/`expired` stay server/manual-owned — the client can never write
+them. The static merchant QR + bank reference are display constants in
+`assets/js/billing-config.js` (`QRIS_PAYMENT_INFO`) and the image at
+`assets/images/qris-tanda360.png`; they are **not** persisted per user.
+
+Fields beyond the base 18: `user_confirmed_payment_at`,
+`submitted_for_verification_at` (Timestamp|null), and the optional proof reference
+`proof_document_id`/`proof_file_name` (string|null) + `proof_uploaded_at`
+(Timestamp|null). All start `null` at create. Proof files reuse the
+`documents/{id}` + Storage flow (`document_role: 'payment_proof'`,
+`source_context: 'payment'`); only the doc id + file name are referenced here.
+
+**DataService:** `createPaymentRequest` (status by method), `getLatestPaymentRequest`,
+`getLatestPaymentRequestWithLegacyFallback`, `getPaymentRequestById`, and
+`submitPaymentRequestForVerification(uid, requestId, { proofDocumentId, proofFileName })`
+(batched request update → `pending_verification` + subscription transition + audit
+`billing.payment_confirmation_submitted`). The QRIS screen + verification-in-progress
+state both render from `/payment-pending` (`?requestId=` optional); revisiting while
+`awaiting_payment` re-shows the QR. The app banner (`assets/js/trial-access.js`) adds a
+"QRIS payment waiting" state with a "View QRIS payment" CTA.
 
 Legacy `users/{uid}/billing/access` and `users/{uid}/payment_verifications/{id}`
 remain owner-readable migration inputs only. Customer writes are blocked.
