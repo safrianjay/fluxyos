@@ -66,14 +66,16 @@ body { margin: 0; min-height: 100vh; background: #F3F4F6; color: #111827; font-f
 .qris-title { margin: 16px 0 10px; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
 .qris-body { margin: 0 0 28px; color: #6B7280; font-size: 15px; line-height: 1.6; }
 
-.qris-pay-grid { display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center; padding: 24px; border: 1px solid #E5E7EB; border-radius: 18px; background: #FAFAFA; }
-.qris-code { margin: 0; text-align: center; }
-.qris-code img { width: 240px; max-width: 100%; height: auto; display: block; border: 1px solid #E5E7EB; border-radius: 14px; background: #fff; padding: 12px; }
-.qris-merchant { margin-top: 12px; font-size: 13px; font-weight: 700; color: #374151; }
-.qris-detail { display: grid; gap: 12px; margin: 0; }
-.qris-detail-row { display: flex; justify-content: space-between; gap: 16px; font-size: 14px; }
+.qris-pay-card { padding: 28px; border: 1px solid #E5E7EB; border-radius: 20px; background: #FAFAFA; text-align: center; }
+.qris-code { margin: 0; }
+.qris-code img { width: 320px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 1px solid #E5E7EB; border-radius: 16px; background: #fff; padding: 16px; box-shadow: 0 10px 30px rgba(15, 23, 42, .08); }
+.qris-merchant { margin: 18px auto 0; max-width: 340px; font-size: 14px; font-weight: 600; line-height: 1.5; color: #4B5563; }
+.qris-detail { display: grid; gap: 0; margin: 24px 0 0; padding-top: 4px; border-top: 1px solid #E5E7EB; text-align: left; }
+.qris-detail-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 13px 0; border-bottom: 1px solid #EEF0F2; font-size: 14px; }
+.qris-detail-row:last-child { border-bottom: 0; }
 .qris-detail-row dt { color: #6B7280; }
 .qris-detail-row dd { margin: 0; font-weight: 700; text-align: right; word-break: break-word; }
+.qris-detail-amount { font-size: 16px; color: #0B0F19; }
 
 .qris-bank { margin-top: 20px; padding: 20px; border: 1px solid #E5E7EB; border-radius: 16px; }
 .qris-bank-title { margin: 0 0 14px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #6B7280; }
@@ -111,8 +113,7 @@ body { margin: 0; min-height: 100vh; background: #F3F4F6; color: #111827; font-f
 @media (max-width: 680px) {
     .qris-summary, .qris-panel { padding: 24px; }
     .qris-due { font-size: 30px; }
-    .qris-pay-grid { grid-template-columns: 1fr; gap: 20px; justify-items: center; }
-    .qris-detail { width: 100%; }
+    .qris-pay-card { padding: 20px; }
     .qris-actions { flex-direction: column; align-items: stretch; }
     .qris-actions .qris-primary { width: 100%; }
     .qris-secondary { text-align: center; }

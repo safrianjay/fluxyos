@@ -37,13 +37,13 @@
                 <h2 class="qris-title">Complete your QRIS payment</h2>
                 <p class="qris-body">Scan the QR code using your banking app or e-wallet. Pay the exact amount shown below. After payment, click &ldquo;I&rsquo;ve completed payment&rdquo; so we can verify it manually.</p>
 
-                <div class="qris-pay-grid">
+                <div class="qris-pay-card">
                     <figure class="qris-code">
                         <img id="qris-image" src="assets/images/qris-tanda360.png" alt="QRIS payment QR code">
-                        <figcaption class="qris-merchant" id="qris-merchant"></figcaption>
                     </figure>
+                    <p class="qris-merchant" id="qris-merchant"></p>
                     <dl class="qris-detail">
-                        <div class="qris-detail-row"><dt>Amount</dt><dd id="qris-detail-amount" class="mono"></dd></div>
+                        <div class="qris-detail-row"><dt>Amount</dt><dd id="qris-detail-amount" class="mono qris-detail-amount"></dd></div>
                         <div class="qris-detail-row"><dt>Plan</dt><dd id="qris-detail-plan"></dd></div>
                         <div class="qris-detail-row"><dt>Billing</dt><dd id="qris-detail-billing"></dd></div>
                         <div class="qris-detail-row"><dt>Method</dt><dd>QRIS</dd></div>
