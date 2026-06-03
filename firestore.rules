@@ -339,6 +339,25 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(data.current_payment_request_id)).data.payment_status == 'pending_verification';
     }
 
+    // Owner carries a reviewer's verify/reject decision from the open
+    // internal_users index into their canonical subscription. Only from in-flight
+    // states, only status+updated_at change, and only when the internal decision
+    // is newer than the subscription's last write (so a retry is not clobbered by
+    // a stale decision). MVP/UX-only: internal_users is the credential-gated ops
+    // index; a trusted backend should own this in production.
+    function isInternalReviewReconcile(userId, prev, data) {
+      return (prev.status == 'pending_verification' || prev.status == 'awaiting_payment')
+        && data.diff(prev).affectedKeys().hasOnly(['status', 'updated_at'])
+        && exists(/databases/$(database)/documents/internal_users/$(userId))
+        && get(/databases/$(database)/documents/internal_users/$(userId)).data.updated_at > prev.updated_at
+        && (
+          (data.status == 'payment_failed'
+            && get(/databases/$(database)/documents/internal_users/$(userId)).data.payment_status == 'rejected')
+          || (data.status == 'active'
+            && get(/databases/$(database)/documents/internal_users/$(userId)).data.payment_status == 'verified')
+        );
+    }
+
     // QRIS checkout: subscription moves to awaiting_payment alongside an
     // awaiting_payment request (cross-checked in the same commit).
     function isCheckoutAwaitingPaymentWrite(userId, data) {
@@ -1182,6 +1201,7 @@ service cloud.firestore {
           && (
             isCheckoutSubscriptionWrite(userId, request.resource.data)
             || isCheckoutAwaitingPaymentWrite(userId, request.resource.data)
+            || isInternalReviewReconcile(userId, resource.data, request.resource.data)
             || isLegacyBillingMigration(userId, request.resource.data)
             || (resource.data.status == 'trialing'
               && request.resource.data.status == 'expired'

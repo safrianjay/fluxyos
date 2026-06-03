@@ -626,6 +626,21 @@ Canonical user-scoped package and trial state. Full spec:
 migrates safe frozen legacy state on authenticated load, renders the shared banner,
 and applies the existing UX-only write/export/AI locks.
 
+**Internal review reconcile:** the credential-gated ops console (`internal.html`)
+has no Firebase identity, so its Verify/Reject buttons only update the open
+`internal_users/{uid}` index — they cannot write owner-scoped billing docs. On the
+user's next authenticated load, `ensureBillingSubscription` →
+`reconcileBillingFromInternalIndex` carries that decision into
+`billing_subscription/current`: an in-flight `pending_verification`/`awaiting_payment`
+subscription becomes `payment_failed` (internal `payment_status == 'rejected'`) or
+`active` (`== 'verified'`), but only when `internal_users.updated_at` is newer than
+the subscription's own `updated_at` (so a fresh retry is never clobbered by a stale
+decision). The Firestore rule `isInternalReviewReconcile` authorizes exactly this
+owner self-write. `DataService.getBillingReviewReason` surfaces the reviewer note
+(`internal_users.last_internal_note`) on `/payment-pending` for the rejected state.
+This is UX-only MVP enforcement (the internal index is open); a trusted backend
+should own activation in production.
+
 ### 4l. Billing Payment Requests — `users/{userId}/billing_payment_requests/{id}`
 
 Metadata-only manual verification request created from `/checkout`. Amounts are raw

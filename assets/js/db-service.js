@@ -1146,10 +1146,52 @@ class DataService {
         };
     }
 
+    // Carry a reviewer's verify/reject decision from the open internal_users index
+    // into the canonical billing_subscription (the ops console has no Firebase
+    // identity, so it can't write owner-scoped billing docs itself). Only acts on
+    // in-flight states and only when the internal decision is newer than the
+    // subscription's own last write — so a fresh retry is never clobbered by a
+    // stale prior decision. UX-only enforcement: a real backend should own this.
+    async reconcileBillingFromInternalIndex(userId, subscription) {
+        try {
+            if (!subscription || !['pending_verification', 'awaiting_payment'].includes(subscription.status)) {
+                return subscription;
+            }
+            const internal = await this.getInternalUser(userId);
+            if (!internal) return subscription;
+            const subUpdatedMs = subscription.updated_at?.toMillis?.() ?? 0;
+            const intUpdatedMs = internal.updated_at?.toMillis?.() ?? 0;
+            if (intUpdatedMs <= subUpdatedMs) return subscription;
+            let newStatus = null;
+            if (internal.payment_status === 'rejected') newStatus = 'payment_failed';
+            else if (internal.payment_status === 'verified') newStatus = 'active';
+            if (!newStatus) return subscription;
+            await this.upsertBillingSubscription(userId, { status: newStatus });
+            return { ...subscription, status: newStatus };
+        } catch (_) {
+            return subscription;
+        }
+    }
+
+    // Read the reviewer's note (rejection/verification reason) for display on the
+    // user's payment status page. Open internal_users read; non-sensitive metadata.
+    async getBillingReviewReason(userId) {
+        if (!userId) return null;
+        try {
+            const internal = await this.getInternalUser(userId);
+            return internal?.last_internal_note || null;
+        } catch (_) {
+            return null;
+        }
+    }
+
     async ensureBillingSubscription(userId) {
         if (!userId) return null;
         const current = await this.getBillingSubscription(userId);
-        if (current) return this.expireBillingSubscriptionIfNeeded(userId, current);
+        if (current) {
+            const reconciled = await this.reconcileBillingFromInternalIndex(userId, current);
+            return this.expireBillingSubscriptionIfNeeded(userId, reconciled || current);
+        }
 
         const legacyAccess = await this.getBillingAccess(userId).catch(() => null);
         if (legacyAccess) {

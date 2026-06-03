@@ -35,13 +35,14 @@ onAuthStateChanged(auth, async (user) => {
     clearTimeout(authTimeout);
     currentUser = user;
     try {
-        const [subscription, request] = await Promise.all([
+        const [subscription, request, reviewReason] = await Promise.all([
             data.ensureBillingSubscription(user.uid),
             requestIdParam
                 ? data.getPaymentRequestById(user.uid, requestIdParam)
-                : data.getLatestPaymentRequestWithLegacyFallback(user.uid)
+                : data.getLatestPaymentRequestWithLegacyFallback(user.uid),
+            data.getBillingReviewReason(user.uid)
         ]);
-        route(subscription, request);
+        route(subscription, request, reviewReason);
     } catch (_) {
         renderError();
     }
@@ -52,12 +53,12 @@ function showView(view) {
     $('status-view').classList.toggle('hidden', view !== 'status');
 }
 
-function route(subscription, request) {
+function route(subscription, request, reviewReason) {
     if (request?.payment_status === 'awaiting_payment') {
         renderQris(request);
         return;
     }
-    render(subscription, request);
+    render(subscription, request, reviewReason);
 }
 
 /* ---------------- QRIS payment screen (awaiting_payment) ---------------- */
@@ -201,7 +202,7 @@ function retryUrl(subscription, request) {
     return `/checkout?plan=${plan}&billing=${billing}`;
 }
 
-function setContent({ pill, title, body, helper = '', primaryLabel = 'Go to Dashboard', primaryHref = '/dashboard', showSupport = true }) {
+function setContent({ pill, title, body, helper = '', primaryLabel = 'Go to Dashboard', primaryHref = '/dashboard', showSupport = true, secondaryLabel = null, secondaryHref = null }) {
     $('status-pill').textContent = pill;
     $('status-title').textContent = title;
     $('status-body').textContent = body;
@@ -209,7 +210,16 @@ function setContent({ pill, title, body, helper = '', primaryLabel = 'Go to Dash
     $('status-helper').classList.toggle('hidden', !helper);
     $('primary-action').textContent = primaryLabel;
     $('primary-action').href = primaryHref;
-    $('secondary-action').classList.toggle('hidden', !showSupport);
+    const secondary = $('secondary-action');
+    if (secondaryLabel && secondaryHref) {
+        secondary.textContent = secondaryLabel;
+        secondary.href = secondaryHref;
+        secondary.classList.remove('hidden');
+    } else {
+        secondary.textContent = 'Contact support';
+        secondary.href = 'mailto:support@fluxyos.com?subject=FluxyOS%20payment%20support';
+        secondary.classList.toggle('hidden', !showSupport);
+    }
 }
 
 function renderMeta(request) {
@@ -228,7 +238,7 @@ function renderMeta(request) {
     meta.classList.remove('hidden');
 }
 
-function render(subscription, request) {
+function render(subscription, request, reviewReason) {
     showView('status');
     renderMeta(request);
     const requestStatus = request?.payment_status;
@@ -244,9 +254,12 @@ function render(subscription, request) {
         setContent({
             pill: 'Payment needs attention',
             title: 'Payment could not be verified',
-            body: 'Please submit a new payment request to continue after your trial ends.',
-            primaryLabel: 'Retry payment',
-            primaryHref: retryUrl(subscription, request)
+            body: 'Your payment was reviewed and could not be verified. Please complete the payment again to keep using FluxyOS after your trial ends.',
+            helper: reviewReason ? `Reason from our team: ${reviewReason}` : '',
+            primaryLabel: 'Complete payment again',
+            primaryHref: retryUrl(subscription, request),
+            secondaryLabel: 'Back to dashboard',
+            secondaryHref: '/dashboard'
         });
         return;
     }

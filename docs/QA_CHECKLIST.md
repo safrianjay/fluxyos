@@ -648,6 +648,15 @@ billing methods in `db-service.js`, or canonical billing Firestore rules.
   `awaiting_payment`, and trial write/AI access is retained; it becomes the verification banner after submit.
 - [ ] QR view stacks cleanly at 375px with no horizontal overflow.
 
+**Internal review reconcile (Verify / Reject reaches the user)**
+- [ ] Reject payment in `/internal` (with a reason) → user reloads an app page → banner becomes
+  "Payment could not be verified" and `/payment-pending` shows the reason + "Complete payment again"
+  + "Back to dashboard".
+- [ ] Verify payment in `/internal` → user reloads → banner clears and `/payment-pending` shows the
+  active state.
+- [ ] After a reject, user completes payment again → new pending request is NOT re-flipped to failed by
+  the stale decision (reconcile only applies when the internal decision is newer than the subscription).
+
 **Data/security**
 - [ ] Amounts stored as raw integers; no formatted currency strings; no card number,
   CVC, OTP, full bank account, NPWP, provider secret, or sensitive payload.
