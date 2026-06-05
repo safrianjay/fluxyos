@@ -528,6 +528,89 @@ main > header {
 .fluxy-dialog-btn--primary.is-danger { background: #DC2626; }
 .fluxy-dialog-btn--primary.is-danger:hover { background: #B91C1C; }
 
+.fluxy-dialog-card--reason {
+    max-width: min(560px, calc(100vw - 32px));
+    padding: 24px;
+    text-align: left;
+}
+.fluxy-dialog-card--reason .fluxy-dialog-icon {
+    margin-bottom: 14px;
+}
+.fluxy-dialog-card--reason .fluxy-dialog-title {
+    margin-bottom: 8px;
+}
+.fluxy-dialog-card--reason .fluxy-dialog-body {
+    margin-bottom: 18px;
+}
+.fluxy-dialog-field {
+    display: block;
+    margin-top: 0;
+    text-align: left;
+}
+.fluxy-dialog-label {
+    display: block;
+    margin-bottom: 8px;
+    color: #9CA3AF;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+.fluxy-dialog-select,
+.fluxy-dialog-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    background: #F9FAFB;
+    color: #111827;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 650;
+    outline: none;
+}
+.fluxy-dialog-select {
+    min-height: 48px;
+    padding: 0 14px;
+}
+.fluxy-dialog-textarea {
+    min-height: 92px;
+    margin-top: 12px;
+    padding: 12px 14px;
+    resize: none;
+    font-weight: 500;
+}
+.fluxy-dialog-select:focus,
+.fluxy-dialog-textarea:focus {
+    border-color: #EA580C;
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.14);
+}
+.fluxy-dialog-error {
+    margin: 8px 0 0;
+    color: #DC2626;
+    font-size: 12px;
+    font-weight: 650;
+}
+.fluxy-dialog-actions--reason {
+    display: grid;
+    grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+    margin-top: 16px;
+    align-items: center;
+}
+.fluxy-dialog-actions--reason .fluxy-dialog-btn {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 700;
+}
+@media (max-width: 340px) {
+    .fluxy-dialog-actions--reason {
+        grid-template-columns: 1fr;
+    }
+}
+
 @keyframes fluxyDialogFade {
     from { opacity: 0; }
     to   { opacity: 1; }
