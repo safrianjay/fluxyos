@@ -346,15 +346,22 @@ service cloud.firestore {
     // a stale decision). MVP/UX-only: internal_users is the credential-gated ops
     // index; a trusted backend should own this in production.
     function isInternalReviewReconcile(userId, prev, data) {
-      return (prev.status == 'pending_verification' || prev.status == 'awaiting_payment')
-        && data.diff(prev).affectedKeys().hasOnly(['status', 'updated_at'])
+      return data.diff(prev).affectedKeys().hasOnly(['status', 'updated_at'])
         && exists(/databases/$(database)/documents/internal_users/$(userId))
-        && get(/databases/$(database)/documents/internal_users/$(userId)).data.updated_at > prev.updated_at
         && (
-          (data.status == 'payment_failed'
-            && get(/databases/$(database)/documents/internal_users/$(userId)).data.payment_status == 'rejected')
-          || (data.status == 'active'
+          // A verified payment is a definitive grant: promote to active from any
+          // not-yet-active state (incl. expired/trialing). No updated_at race —
+          // the automatic trial-expiry write bumps prev.updated_at after the
+          // manual review, which must not strand an approved user.
+          (data.status == 'active'
+            && prev.status in ['pending_verification', 'awaiting_payment', 'expired', 'trialing']
             && get(/databases/$(database)/documents/internal_users/$(userId)).data.payment_status == 'verified')
+          // Rejection only fails an in-flight payment and must be newer than the
+          // subscription's own last write (never clobber a fresh retry).
+          || (data.status == 'payment_failed'
+            && (prev.status == 'pending_verification' || prev.status == 'awaiting_payment')
+            && get(/databases/$(database)/documents/internal_users/$(userId)).data.updated_at > prev.updated_at
+            && get(/databases/$(database)/documents/internal_users/$(userId)).data.payment_status == 'rejected')
         );
     }
 

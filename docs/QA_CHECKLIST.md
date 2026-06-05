@@ -653,10 +653,25 @@ billing methods in `db-service.js`, or canonical billing Firestore rules.
 - [ ] Reject payment in `/internal` (with a reason) → user reloads an app page → banner becomes
   "Payment could not be verified" and `/payment-pending` shows the reason + "Complete payment again"
   + "Back to dashboard".
-- [ ] Verify payment in `/internal` → user reloads → banner clears and `/payment-pending` shows the
+- [ ] Verify payment in `/internal` → user reloads → banner/paywall clears and `/payment-pending` shows the
   active state.
+- [ ] **Verify reaches an already-EXPIRED user:** with a subscription whose `status = expired`
+  (trial elapsed), Verify in `/internal` → user reloads → status becomes `active`, the paywall is gone,
+  no "Your trial has ended" banner. (Regression: reconcile + `isInternalReviewReconcile` must promote
+  `expired`/`trialing` → `active` for a verified user, with no `updated_at` race.)
 - [ ] After a reject, user completes payment again → new pending request is NOT re-flipped to failed by
-  the stale decision (reconcile only applies when the internal decision is newer than the subscription).
+  the stale decision (reconcile only fails in-flight states when the internal decision is newer).
+
+**Hard paywall (trial ended / payment failed)**
+- [ ] `status = expired` → every app page (dashboard, ledger, bill, subscription, budget, reports,
+  integration, settings*) shows a full-screen blurred, non-interactive paywall with "Your trial has
+  ended" + "Choose a plan" → `/pricing`; the page behind cannot be scrolled or clicked.
+- [ ] `status = payment_failed` with the trial window over → paywall shows "Payment couldn't be verified"
+  + "Retry payment" → `/checkout?...`.
+- [ ] Paywall "Already paid? Check status" → `/payment-pending`; "Sign out" signs out → `/login`.
+- [ ] Paywall never appears on `/pricing`, `/checkout`, or `/payment-pending` (the user can always pay).
+- [ ] A payment still in review (`pending_verification`/`awaiting_payment`) is NOT hard-blocked — it keeps
+  the slim banner and read access.
 
 **Data/security**
 - [ ] Amounts stored as raw integers; no formatted currency strings; no card number,

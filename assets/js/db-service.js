@@ -1154,18 +1154,30 @@ class DataService {
     // stale prior decision. UX-only enforcement: a real backend should own this.
     async reconcileBillingFromInternalIndex(userId, subscription) {
         try {
-            if (!subscription || !['pending_verification', 'awaiting_payment'].includes(subscription.status)) {
+            // Never touch a settled subscription.
+            if (!subscription || ['active', 'suspended'].includes(subscription.status)) {
                 return subscription;
             }
             const internal = await this.getInternalUser(userId);
             if (!internal) return subscription;
             const subUpdatedMs = subscription.updated_at?.toMillis?.() ?? 0;
             const intUpdatedMs = internal.updated_at?.toMillis?.() ?? 0;
-            if (intUpdatedMs <= subUpdatedMs) return subscription;
             let newStatus = null;
-            if (internal.payment_status === 'rejected') newStatus = 'payment_failed';
-            else if (internal.payment_status === 'verified') newStatus = 'active';
-            if (!newStatus) return subscription;
+            if (internal.payment_status === 'verified') {
+                // A verified payment is a definitive grant: promote to active from
+                // any not-yet-active state, including `expired` and `trialing`.
+                // Do NOT require the internal write to be newer — the automatic
+                // trial-expiry write bumps the subscription's updated_at after the
+                // manual review, which would otherwise strand the approved user
+                // on the "Your trial has ended" banner forever.
+                newStatus = 'active';
+            } else if (internal.payment_status === 'rejected'
+                && ['pending_verification', 'awaiting_payment'].includes(subscription.status)
+                && intUpdatedMs > subUpdatedMs) {
+                // Only fail an in-flight payment, and never clobber a fresh retry.
+                newStatus = 'payment_failed';
+            }
+            if (!newStatus || newStatus === subscription.status) return subscription;
             await this.upsertBillingSubscription(userId, { status: newStatus });
             return { ...subscription, status: newStatus };
         } catch (_) {

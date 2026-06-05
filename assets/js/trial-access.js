@@ -4,6 +4,7 @@
 // Client-side locks are UX-only; trusted backend enforcement remains future work.
 
 import { getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import DataService from "./db-service.js";
 
 const FIREBASE_CONFIG = {
@@ -52,7 +53,7 @@ function deriveState(subscription) {
             isPaymentSubmitted: false, isPaymentRejected: false, isActive: true, isSuspended: false,
             canRead: true, canWrite: true, canExport: true, canUseAI: true,
             canUploadDocuments: true, canUsePaymentPage: true, showBanner: false,
-            ctaRoute: '/pricing', subscription: null
+            isBlocked: false, ctaRoute: '/pricing', subscription: null
         };
     }
 
@@ -77,6 +78,11 @@ function deriveState(subscription) {
     const canExport = isActive;
     const canUseAI = isActive || canUseTrialPermissions;
     const canUploadDocuments = isActive || canUseTrialPermissions;
+    // Hard paywall: the user has no usable access left and must pay to continue —
+    // trial ended without paying (`expired`), or a submitted payment was rejected
+    // and the trial window is also over (`payment_failed`). Payments still in
+    // review (`pending_verification`/`awaiting_payment`) are NOT blocked.
+    const isBlocked = isTrialExpired || (isPaymentRejected && !trialStillUsable);
 
     return {
         subscriptionStatus: status,
@@ -88,6 +94,7 @@ function deriveState(subscription) {
         canRead, canWrite, canExport, canUseAI, canUploadDocuments,
         canUsePaymentPage: !isSuspended,
         showBanner: !isActive && !isSuspended,
+        isBlocked,
         ctaRoute: retryRoute(subscription),
         subscription
     };
@@ -211,6 +218,101 @@ function renderBanner(state) {
     (main || document.body).insertBefore(banner, (main || document.body).firstChild);
 }
 
+let paywallStylesInjected = false;
+function injectPaywallStyles() {
+    if (paywallStylesInjected) return;
+    paywallStylesInjected = true;
+    const style = document.createElement('style');
+    style.id = 'fluxy-paywall-styles';
+    style.textContent = `
+        .fluxy-paywall {
+            position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;
+            justify-content:center;padding:24px;background:rgba(11,15,25,.45);
+            -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+            animation:fluxyPaywallIn 200ms ease-out
+        }
+        .fluxy-paywall__card {
+            width:100%;max-width:420px;box-sizing:border-box;background:#fff;
+            border:1px solid #E5E7EB;border-radius:18px;box-shadow:0 24px 48px rgba(11,15,25,.18);
+            padding:32px 28px;text-align:center;display:flex;flex-direction:column;
+            align-items:center;gap:14px
+        }
+        .fluxy-paywall__icon {
+            width:52px;height:52px;border-radius:14px;display:inline-flex;align-items:center;
+            justify-content:center;background:linear-gradient(135deg,#FFF7ED 0%,#FFEDD5 100%);
+            box-shadow:inset 0 0 0 1px rgba(234,88,12,.18);color:#EA580C
+        }
+        .fluxy-paywall__icon svg {width:24px;height:24px}
+        .fluxy-paywall__title {margin:0;font-size:20px;font-weight:700;letter-spacing:-.01em;color:#0B0F19}
+        .fluxy-paywall__body {margin:0;font-size:14px;line-height:1.55;color:#4B5563;max-width:34ch}
+        .fluxy-paywall__primary {
+            margin-top:6px;width:100%;box-sizing:border-box;display:inline-flex;align-items:center;
+            justify-content:center;gap:6px;padding:12px 20px;border-radius:10px;background:#0B0F19;
+            color:#fff;font-size:14px;font-weight:600;text-decoration:none;transition:background 150ms ease
+        }
+        .fluxy-paywall__primary:hover {background:#1F2937}
+        .fluxy-paywall__secondary {color:#EA580C;font-size:14px;font-weight:600;text-decoration:none}
+        .fluxy-paywall__secondary:hover {color:#C2410C;text-decoration:underline}
+        .fluxy-paywall__signout {
+            margin-top:2px;background:none;border:0;cursor:pointer;color:#94A3B8;font-size:13px;font-weight:500
+        }
+        .fluxy-paywall__signout:hover {color:#475569;text-decoration:underline}
+        html.fluxy-paywall-lock,html.fluxy-paywall-lock body {overflow:hidden!important}
+        @keyframes fluxyPaywallIn {from{opacity:0}to{opacity:1}}
+        @media (prefers-reduced-motion:reduce){.fluxy-paywall{animation:none}}
+    `;
+    document.head.appendChild(style);
+}
+
+function paywallConfigFor(state) {
+    if (state.isPaymentRejected) {
+        return {
+            title: 'Payment couldn’t be verified',
+            body: 'We couldn’t confirm your last payment. Retry to regain access — your finance data is safe and waiting.',
+            primaryLabel: 'Retry payment',
+            primaryHref: state.ctaRoute
+        };
+    }
+    return {
+        title: 'Your trial has ended',
+        body: 'Choose a plan to keep using FluxyOS. Your finance data is safe and waiting for you.',
+        primaryLabel: 'Choose a plan',
+        primaryHref: '/pricing'
+    };
+}
+
+// Full-screen, non-dismissable paywall: blurs the page and blocks all
+// interaction until the user pays. Used when the trial has ended without an
+// active plan (`expired`) or a payment was rejected and the trial is over.
+// UX-only enforcement, consistent with the rest of this guard.
+function renderPaywall(state) {
+    if (document.querySelector('[data-fluxy-paywall]')) return;
+    const cfg = paywallConfigFor(state);
+    injectPaywallStyles();
+    document.documentElement.classList.add('fluxy-paywall-lock');
+    const overlay = document.createElement('div');
+    overlay.className = 'fluxy-paywall';
+    overlay.setAttribute('data-fluxy-paywall', '');
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.innerHTML = `
+        <div class="fluxy-paywall__card" role="document">
+            <span class="fluxy-paywall__icon">${iconSvg('warn')}</span>
+            <h2 class="fluxy-paywall__title">${cfg.title}</h2>
+            <p class="fluxy-paywall__body">${cfg.body}</p>
+            <a class="fluxy-paywall__primary" href="${cfg.primaryHref}">${cfg.primaryLabel}</a>
+            <a class="fluxy-paywall__secondary" href="/payment-pending">Already paid? Check status</a>
+            <button type="button" class="fluxy-paywall__signout" data-fluxy-paywall-signout>Sign out</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector('[data-fluxy-paywall-signout]')?.addEventListener('click', async () => {
+        try { await signOut(getAuth(getApp())); } catch (_) { /* ignore */ }
+        window.location.href = '/login';
+    });
+    overlay.querySelector('.fluxy-paywall__primary')?.focus();
+}
+
 const WRITE_SELECTORS = [
     '[data-action="add-record"]', '[data-action="add-transaction"]', '[data-action="add-bill"]',
     '[data-action="add-subscription"]', '[data-action="csv-import"]', '[data-action="scan-bill"]',
@@ -278,7 +380,10 @@ export async function applyToPage(authUser) {
     }
     const state = deriveState(subscription);
     window.__fluxyAccessState = state;
-    if (state.showBanner) {
+    if (state.isBlocked) {
+        // Hard paywall fully covers the page; the slim banner is redundant.
+        try { renderPaywall(state); } catch (_) { /* paywall must not break page */ }
+    } else if (state.showBanner) {
         try { renderBanner(state); } catch (_) { /* banner must not break page */ }
     }
     try { applyPageLocks(state); } catch (_) { /* locks must not break page */ }

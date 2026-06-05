@@ -631,15 +631,41 @@ has no Firebase identity, so its Verify/Reject buttons only update the open
 `internal_users/{uid}` index — they cannot write owner-scoped billing docs. On the
 user's next authenticated load, `ensureBillingSubscription` →
 `reconcileBillingFromInternalIndex` carries that decision into
-`billing_subscription/current`: an in-flight `pending_verification`/`awaiting_payment`
-subscription becomes `payment_failed` (internal `payment_status == 'rejected'`) or
-`active` (`== 'verified'`), but only when `internal_users.updated_at` is newer than
-the subscription's own `updated_at` (so a fresh retry is never clobbered by a stale
-decision). The Firestore rule `isInternalReviewReconcile` authorizes exactly this
-owner self-write. `DataService.getBillingReviewReason` surfaces the reviewer note
+`billing_subscription/current`:
+
+- **Verified (`payment_status == 'verified'`) → `active`.** A verified payment is a
+  definitive grant, so it promotes the subscription from **any** not-yet-active
+  state — `pending_verification`, `awaiting_payment`, **`expired`, or `trialing`** —
+  and does **not** require `internal_users.updated_at` to be newer than the
+  subscription's `updated_at`. (The automatic trial-expiry write bumps the
+  subscription's `updated_at` *after* the manual review; requiring "internal newer"
+  used to strand an approved-but-expired user on the "Your trial has ended" banner
+  forever — that was a bug, fixed by widening both this method and the rule.)
+- **Rejected (`payment_status == 'rejected'`) → `payment_failed`**, but only from an
+  in-flight `pending_verification`/`awaiting_payment` state **and** only when
+  `internal_users.updated_at` is newer than the subscription's own `updated_at`, so
+  a fresh retry is never clobbered by a stale rejection.
+- `active`/`suspended` subscriptions are never touched.
+
+The Firestore rule `isInternalReviewReconcile` authorizes exactly this owner
+self-write (and mirrors the same state matrix).
+`DataService.getBillingReviewReason` surfaces the reviewer note
 (`internal_users.last_internal_note`) on `/payment-pending` for the rejected state.
 This is UX-only MVP enforcement (the internal index is open); a trusted backend
 should own activation in production.
+
+**Access enforcement (`assets/js/trial-access.js`).** `deriveState` derives
+`isBlocked` — the user has no usable access and must pay: trial ended without paying
+(`expired`) or a payment was rejected and the trial window is also over
+(`payment_failed` with no trial time left). Payments still in review
+(`pending_verification`/`awaiting_payment`) are **not** blocked. When `isBlocked`,
+`applyToPage` renders a **full-screen, non-dismissable paywall** (`renderPaywall`):
+the page is blurred and fully non-interactive behind a centered "choose a plan" /
+"retry payment" card, with `/payment-pending` and Sign out escape links. It replaces
+the slim banner for blocked users. All other states keep the slim banner +
+per-action locks. Because the guard is wired only through `sidebar-loader.js`, the
+paywall never appears on `/pricing`, `/checkout`, or `/payment-pending` (no sidebar),
+so the user can always reach checkout. UX-only MVP enforcement.
 
 ### 4l. Billing Payment Requests — `users/{userId}/billing_payment_requests/{id}`
 
