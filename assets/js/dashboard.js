@@ -1271,6 +1271,16 @@ function getMonthEndKey(date = new Date()) {
     return getDayKey(new Date(date.getFullYear(), date.getMonth() + 1, 0));
 }
 
+function getQuarterStartKey(date = new Date()) {
+    const q = Math.floor(date.getMonth() / 3);
+    return getDayKey(new Date(date.getFullYear(), q * 3, 1));
+}
+
+function getQuarterEndKey(date = new Date()) {
+    const q = Math.floor(date.getMonth() / 3);
+    return getDayKey(new Date(date.getFullYear(), q * 3 + 3, 0));
+}
+
 function formatRangeLabel(startKey, endKey) {
     const start = parseDayKey(startKey);
     const end = parseDayKey(endKey);
@@ -1286,6 +1296,7 @@ function getRangeDays(startKey, endKey) {
 function formatBucketLabel(startKey, endKey, bucketType) {
     const start = parseDayKey(startKey);
     const end = parseDayKey(endKey);
+    if (bucketType === 'quarter') return `Q${Math.floor(start.getMonth() / 3) + 1} ${start.getFullYear()}`;
     if (bucketType === 'month') return start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     if (startKey === endKey) return start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
@@ -1296,20 +1307,26 @@ function formatBucketLabel(startKey, endKey, bucketType) {
 
 function buildCashflowBuckets(txs, startKey, endKey, budget = { monthly: 0 }) {
     const rangeDays = getRangeDays(startKey, endKey);
-    const bucketType = rangeDays <= 14 ? 'day' : (rangeDays > 93 ? 'month' : 'week');
+    const bucketType = rangeDays <= 14 ? 'day'
+        : rangeDays <= 93 ? 'week'
+        : rangeDays <= 366 ? 'month'
+        : 'quarter';
     const bucketStep = bucketType === 'day' ? 1 : 7;
     const buckets = [];
 
-    if (bucketType === 'month') {
-        let cursor = getMonthStartKey(parseDayKey(startKey));
+    if (bucketType === 'month' || bucketType === 'quarter') {
+        const stepMonths = bucketType === 'quarter' ? 3 : 1;
+        const periodStartKey = date => bucketType === 'quarter' ? getQuarterStartKey(date) : getMonthStartKey(date);
+        const periodEndKey = date => bucketType === 'quarter' ? getQuarterEndKey(date) : getMonthEndKey(date);
+        let cursor = periodStartKey(parseDayKey(startKey));
         while (cursor <= endKey) {
-            const monthEnd = getMonthEndKey(parseDayKey(cursor));
+            const periodEnd = periodEndKey(parseDayKey(cursor));
             const bucketStart = cursor < startKey ? startKey : cursor;
-            const bucketEnd = monthEnd > endKey ? endKey : monthEnd;
+            const bucketEnd = periodEnd > endKey ? endKey : periodEnd;
             buckets.push({ start: bucketStart, end: bucketEnd, label: formatBucketLabel(bucketStart, bucketEnd, bucketType), revenue: 0, spend: 0, budgetUsedPct: 0 });
             const next = parseDayKey(cursor);
-            next.setMonth(next.getMonth() + 1);
-            cursor = getMonthStartKey(next);
+            next.setMonth(next.getMonth() + stepMonths);
+            cursor = periodStartKey(next);
         }
     } else {
         let cursor = startKey;
