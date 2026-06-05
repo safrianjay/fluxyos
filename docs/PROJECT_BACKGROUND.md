@@ -56,6 +56,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Bills | `bill.html` | App | ✅ | **No** | ✅ |
 | Subscriptions | `subscription.html` | App | ✅ | **No** | ✅ |
 | Budgets | `budget.html` | App | ✅ | **No** | ✅ |
+| Accounting Center | `accounting.html` | App | ✅ | **No** | ✅ |
 | Reports & Exports | `reports.html` | App | ✅ | **No** | ✅ |
 | Report Preview (viewer) | `report-preview.html` | App | ✅ | **No** | No |
 | Integrations | `integration.html` | App | ✅ | **No** | ✅ |
@@ -701,6 +702,55 @@ state both render from `/payment-pending` (`?requestId=` optional); revisiting w
 
 Legacy `users/{uid}/billing/access` and `users/{uid}/payment_verifications/{id}`
 remain owner-readable migration inputs only. Customer writes are blocked.
+
+### 4m. Accounting Mappings — `users/{userId}/accounting_mappings/{mappingId}`
+
+Accounting Center (Phase 1) saved category/type → accounting-account mappings.
+**Strings/enums only — never store amounts or formatted currency here.** Doc id is
+deterministic (`{source_type}__{source_value}` slugified), so re-saving a source
+updates the same doc instead of duplicating.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `source_type` | string | `"transaction_category"` \| `"transaction_type"` |
+| `source_value` | string | The category label or transaction type being mapped (≤60 chars) |
+| `target_account_code` | string | Account code, e.g. `"6100"` (≤12 chars) |
+| `target_account_name` | string | Account name, e.g. `"Marketing Expense"` (≤80 chars) |
+| `target_account_type` | string | `asset` \| `liability` \| `equity` \| `revenue` \| `expense` \| `contra_revenue` \| `contra_expense` |
+| `confidence` | string | `system_default` \| `user_confirmed` \| `ai_suggested` (saves write `user_confirmed`) |
+| `status` | string | `active` \| `archived` |
+| `created_at` / `updated_at` | Timestamp | Server-set; `created_at` is preserved on update |
+
+**Rules:** owner read/create/update; `delete: if false`; `source_type`/`source_value`
+immutable on update; field-validated by `isValidAccountingMapping`. Saving writes an
+audit log (`accounting_mapping.created`/`.updated`, target `accounting_mappings`).
+
+**Accounting readiness (Phase 1, read-only).** `accounting.html` + `assets/js/accounting.js`
+render a readiness score, cleanup queue, mapping preview, and close-readiness checklist
+from existing user-scoped records. There is **no** journal posting, period close, or AI
+write in Phase 1 (the Close action is a disabled "Planned" control; no `accounting_periods`
+collection is created).
+
+`DataService` accounting methods:
+- `getAccountingReadiness(uid, startKey, endKey)` — orchestrates `getTransactionsForPeriod`
+  / `getBillsForPeriod` / `getSubscriptionsForPeriod` + `getAccountingMappings` +
+  `listBankStatementImports`, and returns `{ hasData, score, band, kpis, counts,
+  cleanupItems, mappingPreview, closeChecklist, closeStatus, limitations, bankSupported }`.
+- `getAccountingCleanupItems(uid, startKey, endKey)` — thin wrapper returning `cleanupItems`.
+- `getAccountingMappings(uid)` — reads active saved mappings.
+- `saveAccountingMapping(uid, data)` — deterministic upsert + audit log.
+
+**Readiness score** starts at 100 and subtracts per-bucket penalties — missing receipt
+(−8), missing category (−6), unmapped category (−6, per distinct source), bill missing
+due date (−8), bill missing invoice (−6), bank import needing review (−10), subscription
+missing renewal (−6) — each bucket capped at 24, score clamped 0–100. **No records → no
+score (no-data state), never a fake 100%.** Bands: 0–49 Needs cleanup, 50–79 Almost ready,
+80–100 Ready for review. Built-in categories (Revenue, Marketing, SaaS, Infrastructure,
+Operations) and AR/AP/fee/tax/income types map to defaults; custom / "Others" / empty
+categories are treated as unmapped until a mapping is saved.
+
+**Sidebar route:** `Accounting Center` → `/accounting`, under the Reporting group in
+`sidebar-loader.js` (active id `nav-accounting`).
 
 ---
 

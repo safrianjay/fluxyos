@@ -217,6 +217,107 @@ window.showFluxyDialog = function(options = {}) {
 window.showConfirmDialog = (options = {}) => window.showFluxyDialog({ ...options, singleOk: false });
 window.showAlertDialog   = (options = {}) => window.showFluxyDialog({ confirmLabel: 'OK', ...options, singleOk: true });
 
+window.showReasonDialog = function(options = {}) {
+    const {
+        title = 'Confirm action',
+        body = '',
+        confirmLabel = 'Confirm',
+        cancelLabel = 'Cancel',
+        tone = 'danger',
+        reasonLabel = 'Reason',
+        otherLabel = 'Other',
+        options: reasonOptions = []
+    } = options;
+
+    const choices = reasonOptions.length
+        ? reasonOptions
+        : ['Duplicate transaction', 'Wrong amount', 'Wrong import', 'Test data', otherLabel];
+
+    return new Promise((resolve) => {
+        document.getElementById('fluxy-dialog')?.remove();
+        const isDanger = tone === 'danger';
+        const wrap = document.createElement('div');
+        wrap.id = 'fluxy-dialog';
+        wrap.className = 'fluxy-dialog';
+        wrap.innerHTML = `
+            <div class="fluxy-dialog-overlay" data-dialog-action="cancel"></div>
+            <div class="fluxy-dialog-card" role="dialog" aria-modal="true" aria-labelledby="fluxy-dialog-title" aria-describedby="fluxy-dialog-body">
+                <div class="fluxy-dialog-icon ${isDanger ? 'is-danger' : ''}" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${FLUXY_DIALOG_ICONS.warn}</svg>
+                </div>
+                <h3 id="fluxy-dialog-title" class="fluxy-dialog-title">${title}</h3>
+                ${body ? `<div id="fluxy-dialog-body" class="fluxy-dialog-body">${body}</div>` : ''}
+                <div class="mt-4 text-left">
+                    <label for="fluxy-dialog-reason-select" class="mb-2 block text-[11px] font-bold uppercase tracking-wider text-gray-400">${reasonLabel}</label>
+                    <select id="fluxy-dialog-reason-select" class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-[14px] font-semibold text-gray-900 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
+                        <option value="">Choose a reason</option>
+                        ${choices.map(choice => `<option value="${String(choice).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}">${String(choice).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</option>`).join('')}
+                    </select>
+                    <textarea id="fluxy-dialog-reason-other" class="mt-3 hidden min-h-[92px] w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-[14px] text-gray-900 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100" maxlength="500" placeholder="Write the reason"></textarea>
+                    <p id="fluxy-dialog-reason-error" class="mt-2 hidden text-[12px] font-semibold text-red-600">Choose or write a reason before continuing.</p>
+                </div>
+                <div class="fluxy-dialog-actions">
+                    <button type="button" class="fluxy-dialog-btn fluxy-dialog-btn--ghost" data-dialog-action="cancel">${cancelLabel}</button>
+                    <button type="button" class="fluxy-dialog-btn fluxy-dialog-btn--primary ${isDanger ? 'is-danger' : ''}" data-dialog-action="confirm">${confirmLabel}</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(wrap);
+
+        const prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        const select = wrap.querySelector('#fluxy-dialog-reason-select');
+        const other = wrap.querySelector('#fluxy-dialog-reason-other');
+        const error = wrap.querySelector('#fluxy-dialog-reason-error');
+
+        const close = (result) => {
+            document.removeEventListener('keydown', onKey);
+            wrap.classList.add('is-closing');
+            window.setTimeout(() => {
+                wrap.remove();
+                document.body.style.overflow = prevOverflow;
+                resolve(result);
+            }, 140);
+        };
+        const getReason = () => {
+            const selected = String(select?.value || '').trim();
+            if (selected === otherLabel) return String(other?.value || '').trim();
+            return selected;
+        };
+        const confirm = () => {
+            const reason = getReason();
+            if (!reason) {
+                error?.classList.remove('hidden');
+                (select?.value === otherLabel ? other : select)?.focus();
+                return;
+            }
+            close(reason);
+        };
+        const onKey = (e) => {
+            if (e.key === 'Escape') close(null);
+            else if (e.key === 'Enter' && !e.shiftKey && document.activeElement !== other) {
+                e.preventDefault();
+                confirm();
+            }
+        };
+
+        select?.addEventListener('change', () => {
+            const isOther = select.value === otherLabel;
+            other?.classList.toggle('hidden', !isOther);
+            error?.classList.add('hidden');
+            if (isOther) window.setTimeout(() => other?.focus(), 20);
+        });
+        other?.addEventListener('input', () => error?.classList.add('hidden'));
+        wrap.addEventListener('click', (e) => {
+            const action = e.target?.closest('[data-dialog-action]')?.dataset?.dialogAction;
+            if (action === 'confirm') confirm();
+            else if (action === 'cancel') close(null);
+        });
+        document.addEventListener('keydown', onKey);
+        window.setTimeout(() => select?.focus(), 50);
+    });
+};
+
 window.showAddTransactionModal = function(options = {}) {
     // Trial/payment access guard: block record creation once the trial has expired
     // or while payment is pending verification. Fails open if state isn't loaded.

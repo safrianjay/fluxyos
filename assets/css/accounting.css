@@ -1,0 +1,218 @@
+/* Accounting Center (Phase 1) — page-specific styling.
+   Layout/colors follow docs/DESIGN_SYSTEM.md: gray-50 bg, white rounded-xl
+   cards, gray borders, Inter UI, Fira Code for money, orange #EA580C accents
+   only (never as a background). */
+
+.acct-mono {
+    font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+}
+
+/* --- Tabs --- */
+.acct-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid #E5E7EB;
+    margin-bottom: 24px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.acct-tabs::-webkit-scrollbar { display: none; }
+.acct-tab {
+    appearance: none;
+    background: transparent;
+    border: none;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6B7280;
+    letter-spacing: -0.005em;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s ease, border-color 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.acct-tab:hover { color: #111827; }
+.acct-tab.is-active {
+    color: #EA580C;
+    border-bottom-color: #EA580C;
+    font-weight: 600;
+}
+.acct-tab .acct-tab-count {
+    font-size: 10px;
+    font-weight: 600;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: #F3F4F6;
+    color: #6B7280;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.acct-tab.is-active .acct-tab-count { background: #FFEDD5; color: #C2410C; }
+
+/* --- KPI strip --- */
+.acct-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+@media (max-width: 1100px) { .acct-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px)  { .acct-kpi-grid { grid-template-columns: 1fr; } }
+
+.acct-card {
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+.acct-kpi {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.acct-kpi-value {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: #0B0F19;
+}
+
+/* --- Readiness ring/score accent --- */
+.acct-score-ring {
+    --pct: 0;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: conic-gradient(var(--ring-color, #EA580C) calc(var(--pct) * 1%), #F1F5F9 0);
+    display: grid;
+    place-items: center;
+}
+.acct-score-ring::after {
+    content: "";
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #fff;
+    grid-area: 1 / 1;
+}
+.acct-score-ring > span { grid-area: 1 / 1; z-index: 1; }
+
+/* --- Status pills --- */
+.acct-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+.acct-pill-saved     { background: #ECFDF5; color: #047857; border-color: #A7F3D0; }
+.acct-pill-suggested { background: #EFF6FF; color: #1D4ED8; border-color: #BFDBFE; }
+.acct-pill-unmapped  { background: #FFF7ED; color: #C2410C; border-color: #FED7AA; }
+.acct-pill-ready     { background: #ECFDF5; color: #047857; border-color: #A7F3D0; }
+.acct-pill-almost    { background: #FFFBEB; color: #B45309; border-color: #FDE68A; }
+.acct-pill-needs     { background: #FEF2F2; color: #B91C1C; border-color: #FECACA; }
+.acct-pill-planned   { background: #F3F4F6; color: #6B7280; border-color: #E5E7EB; }
+
+/* --- Severity dots --- */
+.acct-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.acct-dot-high   { background: #EF4444; }
+.acct-dot-medium { background: #F59E0B; }
+.acct-dot-low    { background: #3B82F6; }
+
+/* --- Cleanup / mapping rows --- */
+.acct-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #F3F4F6;
+}
+.acct-row:last-child { border-bottom: none; }
+.acct-row:hover { background: #F9FAFB; }
+
+.acct-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* --- Buttons --- */
+.acct-btn {
+    appearance: none;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+.acct-btn:active { transform: scale(0.97); }
+.acct-btn-primary { background: #0B0F19; color: #fff; border: 1px solid #0B0F19; }
+.acct-btn-primary:hover { background: #1F2937; }
+.acct-btn-secondary { background: #fff; color: #374151; border: 1px solid #E5E7EB; }
+.acct-btn-secondary:hover { background: #F9FAFB; }
+.acct-btn-ghost { background: transparent; color: #C2410C; border: 1px solid #FED7AA; }
+.acct-btn-ghost:hover { background: #FFF7ED; }
+.acct-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.acct-btn:disabled:active { transform: none; }
+
+.acct-prompt-btn {
+    text-align: left;
+    width: 100%;
+    background: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+.acct-prompt-btn:hover { background: #fff; border-color: #FED7AA; color: #111827; }
+
+/* --- Skeleton --- */
+.acct-skel {
+    background: linear-gradient(90deg, #F3F4F6 25%, #E9ECEF 37%, #F3F4F6 63%);
+    background-size: 400% 100%;
+    animation: acctShimmer 1.4s ease infinite;
+    border-radius: 8px;
+}
+@keyframes acctShimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) {
+    .acct-skel { animation: none; background: #F1F5F9; }
+}
+
+/* --- Checklist --- */
+.acct-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #F3F4F6;
+    font-size: 14px;
+    color: #374151;
+}
+.acct-check:last-child { border-bottom: none; }
+.acct-check-icon {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: grid; place-items: center; flex-shrink: 0;
+    font-size: 12px;
+}
+.acct-check-done    { background: #ECFDF5; color: #047857; }
+.acct-check-pending { background: #FFF7ED; color: #C2410C; }

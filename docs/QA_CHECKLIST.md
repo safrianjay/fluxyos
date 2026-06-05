@@ -539,6 +539,41 @@ were modified for self-upsert — run §3 Cross-Page Regression and confirm
 `/login`, `/dashboard`, sidebar load, entity switcher, and onboarding submit still
 work and the console stays clean.
 
+### N. Accounting Control Center (accounting.html, accounting.js, db-service.js accounting methods, firestore.rules accounting_mappings, sidebar-loader.js)
+
+**Prereq:** the `accounting_mappings` block in `firestore.rules` must be **deployed**
+before the mapping **Save** action works — otherwise the page still loads and reads
+correctly, but Save shows the friendly "Could not save the mapping" toast (handled,
+not a thrown error). Phase 1 is read-only except for saved mappings: no journal
+posting, no period close, no `accounting_periods` collection.
+
+| # | Check |
+|---|-------|
+| 1 | Open `/accounting` signed out → redirects to `/login` |
+| 2 | Open `/accounting` signed in → page renders with shared sidebar and **no** marketing footer |
+| 3 | Sidebar "Accounting Center" is visible under Reporting and active (orange) on `/accounting` |
+| 4 | Page defaults to the current month; period control is the shared `FluxyDateRangePicker` |
+| 5 | Loading skeleton shows first, then the real/empty state (no flash of fake numbers) |
+| 6 | Account with no finance records → "No accounting data for this period yet" empty state, **no** readiness score |
+| 7 | Readiness score never shows `NaN`/`Infinity`; band label matches the score band |
+| 8 | `Missing Receipt` transactions appear in the cleanup queue and missing-receipts count |
+| 9 | Bills without a due date appear in the cleanup queue and the bills-missing-due-date count |
+| 10 | Subscriptions without a renewal date appear in the cleanup queue |
+| 11 | Custom / "Others" categories appear as **Unmapped** in Account Mapping; built-ins show **Suggested** |
+| 12 | Saving a mapping writes to `users/{uid}/accounting_mappings` only + an `accounting_mapping.created`/`.updated` audit log; the row flips to **Saved** after reload |
+| 13 | Changing the period updates the KPI strip, cleanup queue, and mapping preview |
+| 14 | Tabs switch (Overview / Cleanup / Account Mapping / Close); "Review cleanup queue" jumps to the Cleanup tab |
+| 15 | Close tab "Close period" is a disabled **Planned** control; no period write occurs |
+| 16 | AI prompt buttons + "Ask Fluxy AI" only open the Fluxy AI drawer — they never save or mutate data |
+| 17 | Topbar "Export package" is disabled (**Planned**) |
+| 18 | Firestore shows no global accounting collections; all writes stay under `users/{uid}/…`; no amounts/formatted currency in `accounting_mappings` |
+| 19 | Responsive at 375 / 768 / 1280 — KPI strip stacks, tables scroll within their container, **no page horizontal scroll** (`document.documentElement.scrollWidth === clientWidth`) |
+| 20 | Browser console clean (no CSP/CORS/404/Firebase/permission errors) |
+
+**Regression (shared files touched):** `sidebar-loader.js` and `db-service.js` were
+modified — run §3 Cross-Page Regression and confirm Dashboard, Ledger, Bills,
+Subscriptions, Budget, and Reports still render and their sidebar active states work.
+
 ---
 
 ## 3. Cross-Page Regression (run when shared files are touched)

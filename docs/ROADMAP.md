@@ -142,6 +142,25 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Recurring revenue classification (for ARR — category-level) | ✅ Shipped MVP | `users/{uid}/settings/reports.recurring_revenue_category_ids` drives ARR; Settings → Finance preferences has the picker. Future: per-transaction `is_recurring` flag for higher precision. |
 | Bank balance / cash runway | 📋 Planned | Cash pressure stays proxy-only until real balance source exists |
 
+### Accounting Center
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Accounting Center app page (`/accounting`) | ✅ Shipped Phase 1 | Auth-guarded, sidebar-active under Reporting, no marketing footer |
+| Period filter (default current month) | ✅ Shipped Phase 1 | Uses shared `FluxyDateRangePicker` |
+| Readiness score + KPI strip | ✅ Shipped Phase 1 | Deterministic, capped per bucket; no-data state (never fake 100%) |
+| Cleanup queue (receipts, due dates, invoices, renewals, unmapped, bank review) | ✅ Shipped Phase 1 | Built from real user-scoped records |
+| Account mapping preview + save flow | ✅ Shipped Phase 1 | Saved mappings win over suggestions; writes `users/{uid}/accounting_mappings` + audit log |
+| Tabs: Overview / Cleanup / Account Mapping / Close | ✅ Shipped Phase 1 | |
+| Close readiness checklist | ✅ Shipped Phase 1 | Read-only; "Close period" is a disabled Planned control |
+| AI assistant panel (suggested prompts) | ✅ Shipped Phase 1 | Opens existing Fluxy AI drawer; no autonomous writes |
+| `accounting_mappings` collection + firestore.rules | ✅ Shipped Phase 1 | Enums/strings only; must be **deployed** before save works |
+| Period close + lock + `accounting_periods` | 📋 Planned | Needs confirmation, locking, and audit flow |
+| Chart of accounts management (`accounting_accounts`) | 📋 Planned | Phase 2 |
+| Journal drafts → posted journal entries (double-entry) | 📋 Planned | Phases 3–4; AI may draft, never auto-post |
+| Accounting statements (P&L, Balance Sheet, Cash Flow, Trial Balance) | 📋 Planned | Phase 6 |
+| Bank reconciliation matching | 📋 Planned | Phase 7 |
+| Accounting export package | 📋 Planned | Topbar "Export package" disabled until shipped |
+
 ### Integrations
 | Feature | Status | Notes |
 |---------|--------|-------|

@@ -336,7 +336,11 @@
             const snapshot = await getDocs(q);
             const rows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             // Type filter applied client-side to avoid composite-index requirement.
-            return rows.filter(row => REVENUE_TYPES.has((row.type || '').toLowerCase()));
+            return rows.filter(row =>
+                row.is_voided !== true
+                && String(row.status || '').trim().toLowerCase() !== 'voided'
+                && REVENUE_TYPES.has((row.type || '').toLowerCase())
+            );
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────

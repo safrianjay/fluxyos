@@ -3,6 +3,7 @@
     "postinstall": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "dependencies": {
+    "agentation": "^3.0.2",
     "firebase": "^12.13.0"
   },
   "devDependencies": {

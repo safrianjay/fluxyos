@@ -66,6 +66,49 @@ service cloud.firestore {
         && data.timestamp == existingData.timestamp;
     }
 
+    function isValidTransactionRecordUpdate(data, existingData) {
+      return data.keys().hasAll([
+          'amount',
+          'vendor_name',
+          'category',
+          'type',
+          'status',
+          'icon',
+          'timestamp'
+        ])
+        && data.amount is number
+        && data.amount > 0
+        && data.amount <= 999999999999
+        && data.vendor_name is string
+        && data.vendor_name.size() > 0
+        && data.vendor_name.size() <= 160
+        && data.category is string
+        && data.category.size() > 0
+        && data.category.size() <= 40
+        && data.type is string
+        && data.type.size() > 0
+        && data.type.size() <= 40
+        && data.status in ['Completed', 'Missing Receipt', 'Pending', 'Upcoming', 'Reconciled', 'Cancelled', 'Voided']
+        && data.icon is string
+        && data.icon.size() <= 16
+        && data.timestamp is timestamp
+        && (!('created_at' in data) || data.created_at == existingData.created_at)
+        && (!('updated_at' in data) || data.updated_at == request.time)
+        && (!('updated_by' in data) || data.updated_by == request.auth.uid)
+        && (!('is_voided' in data) || data.is_voided is bool)
+        && (!('voided_at' in data) || data.voided_at == request.time)
+        && (!('voided_by' in data) || data.voided_by == request.auth.uid)
+        && (!('void_reason' in data) || (data.void_reason is string && data.void_reason.size() > 0 && data.void_reason.size() <= 500))
+        && (!(data.status == 'Voided') || (
+          data.is_voided == true
+          && data.voided_at == request.time
+          && data.voided_by == request.auth.uid
+          && data.void_reason is string
+          && data.void_reason.size() > 0
+          && data.void_reason.size() <= 500
+        ));
+    }
+
     function isValidAICaptureMetadata(data) {
       return (!('source' in data) || data.source in ['bill_scan', 'transaction_scan', 'subscription_scan'])
         && (!('created_via' in data) || data.created_via in ['ai_bill_capture', 'ai_transaction_capture', 'ai_subscription_capture'])
@@ -116,12 +159,68 @@ service cloud.firestore {
           'documents',
           'billing',
           'billing_payment_requests',
-          'payment_verifications'
+          'payment_verifications',
+          'accounting_mappings'
         ]
         && data.target_id is string
         && data.target_id.size() <= 160
         && data.source in ['dashboard', 'ai', 'integration', 'system', 'onboarding']
         && data.created_at == request.time;
+    }
+
+    // Accounting Center (Phase 1) — saved category/type → account mappings.
+    // Strings/enums only. No money, no row-level financial data, no formatted
+    // currency. See docs/PROJECT_BACKGROUND.md §4 (Accounting mappings).
+    function isValidAccountingMapping(data) {
+      return data.keys().hasOnly([
+          'source_type',
+          'source_value',
+          'target_account_code',
+          'target_account_name',
+          'target_account_type',
+          'confidence',
+          'status',
+          'created_at',
+          'updated_at'
+        ])
+        && data.keys().hasAll([
+          'source_type',
+          'source_value',
+          'target_account_code',
+          'target_account_name',
+          'target_account_type',
+          'confidence',
+          'status',
+          'created_at',
+          'updated_at'
+        ])
+        && data.source_type in ['transaction_category', 'transaction_type']
+        && data.source_value is string
+        && data.source_value.size() > 0
+        && data.source_value.size() <= 60
+        && data.target_account_code is string
+        && data.target_account_code.size() > 0
+        && data.target_account_code.size() <= 12
+        && data.target_account_name is string
+        && data.target_account_name.size() > 0
+        && data.target_account_name.size() <= 80
+        && data.target_account_type in ['asset', 'liability', 'equity', 'revenue', 'expense', 'contra_revenue', 'contra_expense']
+        && data.confidence in ['system_default', 'user_confirmed', 'ai_suggested']
+        && data.status in ['active', 'archived'];
+    }
+
+    function isValidAccountingMappingCreate(data) {
+      return isValidAccountingMapping(data)
+        && data.created_at == request.time
+        && data.updated_at == request.time;
+    }
+
+    function isValidAccountingMappingUpdate(data, existingData) {
+      return isValidAccountingMapping(data)
+        && data.source_type == existingData.source_type
+        && data.source_value == existingData.source_value
+        && data.created_at == existingData.created_at
+        && data.updated_at == request.time;
     }
 
     // Owner-scoped 3-day trial / billing access doc (users/{uid}/billing/access).
@@ -1299,9 +1398,15 @@ service cloud.firestore {
             'budget_assignment_reason',
             'budget_assignment_updated_at',
             'budget_assignment_updated_by',
-            'budget_exclusion_reason'
+            'budget_exclusion_reason',
+            'updated_at',
+            'updated_by',
+            'is_voided',
+            'voided_at',
+            'voided_by',
+            'void_reason'
           ])
-          && isValidBaseRecordUpdate(request.resource.data, resource.data)
+          && isValidTransactionRecordUpdate(request.resource.data, resource.data)
           && isValidTransactionBudgetFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
@@ -1627,6 +1732,17 @@ service cloud.firestore {
         allow create, update: if isOwner(userId)
           && learningDoc == 'state'
           && isValidPlatformLearningState(request.resource.data);
+        allow delete: if false;
+      }
+
+      // Accounting Center (Phase 1) — saved account mappings only.
+      // Enums/strings only; never store amounts or formatted currency here.
+      match /accounting_mappings/{mappingId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidAccountingMappingCreate(request.resource.data);
+        allow update: if isOwner(userId)
+          && isValidAccountingMappingUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
 

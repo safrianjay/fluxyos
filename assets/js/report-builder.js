@@ -14,6 +14,14 @@
 export const REVENUE_TYPES = new Set(['income', 'revenue', 'refund', 'pending_receivable']);
 export const OPEX_TYPES = new Set(['expense', 'fee', 'tax', 'pending_payable']);
 
+function isVoidedRecord(record = {}) {
+    return record?.is_voided === true || String(record?.status || '').trim().toLowerCase() === 'voided';
+}
+
+function activeTransactions(transactions = []) {
+    return transactions.filter(tx => !isVoidedRecord(tx));
+}
+
 export const REPORT_SECTION_KEYS = [
     'executive_summary',
     'profit_loss',
@@ -306,6 +314,7 @@ export function formatPercent(value, digits = 1) {
 // ---------- Section calculations ----------
 
 export function calculateProfitLoss(transactions = []) {
+    transactions = activeTransactions(transactions);
     let revenue = 0;
     let opex = 0;
     let revenueRecords = 0;
@@ -520,6 +529,7 @@ function isCurrentMonthPartial(period, today = new Date()) {
 // Build a month-by-month trend across the period. transactions drive revenue/
 // opex/record-count; bills + subscriptions only contribute to record counts.
 export function calculateMonthlyTrend(transactions = [], bills = [], subscriptions = [], scope) {
+    transactions = activeTransactions(transactions);
     const period = scope?.current_period || scope; // accept either shape
     const startKey = period?.start_date || period?.start;
     const endKey = period?.end_date || period?.end;
@@ -581,6 +591,7 @@ export function calculateMonthlyTrend(transactions = [], bills = [], subscriptio
 // YTD aggregate metrics — extends profit_loss with averages, best/worst,
 // and partial-month flag. trend can be passed in to avoid recomputation.
 export function calculateYtdSummary(transactions = [], scope, trend = null) {
+    transactions = activeTransactions(transactions);
     const pl = calculateProfitLoss(transactions);
     const monthlyTrend = trend || calculateMonthlyTrend(transactions, [], [], scope);
     const elapsed = Math.max(1, elapsedMonthsInPeriod(scope?.current_period || scope));
@@ -712,6 +723,7 @@ export function calculateMonthlyTrendComparison(currentTrend = [], previousTrend
 }
 
 export function calculateExpenseBreakdown(transactions = [], subscriptions = []) {
+    transactions = activeTransactions(transactions);
     const opexTxs = transactions.filter(t => OPEX_TYPES.has(String(t.type || '').toLowerCase()));
     const all = [
         ...opexTxs.map(t => ({ ...t, _source: 'transactions' })),
@@ -805,6 +817,7 @@ export function calculateBillsSubscriptions(bills = [], subscriptions = [], peri
 }
 
 export function calculateDataQuality(transactions = [], bills = [], subscriptions = []) {
+    transactions = activeTransactions(transactions);
     const missingReceipts = transactions.filter(t => t.status === 'Missing Receipt').length;
     const billsWithoutDueDate = bills.filter(b => !b.due_date).length;
     const subsWithoutRenewal = subscriptions.filter(s => !s.renewal_date).length;

@@ -135,6 +135,7 @@
                         <p class="text-[14px] text-gray-500 mt-1 max-w-[260px]">Full audit trail of all transactions across your network.</p>
                     </div>
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 flex-shrink-0 overflow-x-auto">
+                        <div id="ledger-visibility-filter" class="fluxy-select" data-default-label="Active" data-aria-label="Filter active or voided transactions"></div>
                         <div id="ledger-status-filter" class="fluxy-select" data-default-label="All statuses" data-aria-label="Filter by status"></div>
                         <div id="ledger-type-filter" class="fluxy-select" data-default-label="All types" data-aria-label="Filter by type"></div>
                         <div id="ledger-date-range-picker" data-tour-target="ledger-date-filter"></div>
@@ -255,11 +256,12 @@
                                             Status <span class="ledger-sort-icon text-gray-400" aria-hidden="true"></span>
                                         </button>
                                     </th>
+                                    <th class="px-4 py-4 text-right text-[12px] font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="ledger-table-body" class="divide-y divide-gray-100 text-[14px]">
                                 <tr>
-                                    <td colspan="7" class="px-6 py-12 text-center text-gray-400">
+                                    <td colspan="8" class="px-6 py-12 text-center text-gray-400">
                                         Fetching ledger data...
                                     </td>
                                 </tr>
@@ -308,14 +310,14 @@
         <div id="tx-detail-drawer" role="dialog" aria-modal="true" class="absolute right-0 top-0 h-full w-full max-w-[440px] translate-x-full flex flex-col bg-white shadow-2xl transition-transform duration-300 ease-out sm:max-w-[480px]">
             <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 flex-shrink-0">
                 <div>
-                    <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Transaction Detail</p>
+                    <p id="tx-detail-eyebrow" class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Transaction Detail</p>
                     <h3 id="tx-detail-vendor" class="mt-1 text-lg font-bold text-gray-900">—</h3>
                 </div>
                 <button onclick="window.closeTxDetailDrawer()" class="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
-            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            <div id="tx-detail-content" class="flex-1 overflow-y-auto p-6 space-y-6">
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Amount</p>
@@ -357,12 +359,8 @@
                 </div>
                 <div id="tx-detail-receipt-section"></div>
             </div>
-            <div id="tx-detail-footer" class="hidden border-t border-gray-100 bg-white/95 p-4 shadow-[0_-12px_24px_rgba(15,23,42,0.06)] flex-shrink-0">
-                <button id="tx-detail-attach-btn" type="button" disabled
-                    class="w-full py-4 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-                    <span id="tx-detail-attach-label">Attach Receipt</span>
-                </button>
+            <div id="tx-detail-footer" class="border-t border-gray-100 bg-white/95 p-4 shadow-[0_-12px_24px_rgba(15,23,42,0.06)] flex-shrink-0">
+                <div id="tx-detail-footer-actions" class="flex flex-col gap-2"></div>
             </div>
         </div>
     </div>
@@ -409,7 +407,6 @@
     <script type="module">
         import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { collection, getDocs, limit, orderBy, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import DataService from './assets/js/db-service.js';
         import { applyToPage } from './assets/js/onboarding-gate.js';
         import { continuePendingTourIfAny } from './assets/js/platform-learning.js';
@@ -446,6 +443,7 @@
         const linkedLedgerSearch = new URLSearchParams(window.location.search).get('search') || '';
         let ledgerSearchTerm = linkedLedgerSearch;
         let activeLedgerVendorFilter = null;
+        let ledgerVisibilityFilter = 'active';
         let ledgerStatusFilter = '';
         let ledgerTypeFilter = '';
         let ledgerRangeStart = getMonthStartKey();
@@ -638,9 +636,26 @@
                 { value: '', label: 'All statuses' },
                 { value: 'Completed', label: 'Completed' },
                 { value: 'Missing Receipt', label: 'Missing Receipt' },
+                { value: 'Pending', label: 'Pending' },
+                { value: 'Reconciled', label: 'Reconciled' },
+                { value: 'Cancelled', label: 'Cancelled' },
+                { value: 'Voided', label: 'Voided' },
             ],
             onChange: (v) => {
                 ledgerStatusFilter = v;
+                applyLedgerMonthFilter();
+            }
+        });
+
+        const visibilitySelect = mountFluxySelect('#ledger-visibility-filter', {
+            options: [
+                { value: 'active', label: 'Active' },
+                { value: 'voided', label: 'Voided' },
+                { value: 'all', label: 'All' },
+            ],
+            value: 'active',
+            onChange: (v) => {
+                ledgerVisibilityFilter = v || 'active';
                 applyLedgerMonthFilter();
             }
         });
@@ -701,17 +716,8 @@
         }
 
         async function getLedgerTransactionsForRange(userId) {
-            const start = parseDayKey(ledgerRangeStart);
-            const end = parseDayKey(addDays(ledgerRangeEnd, 1));
-            const q = query(
-                collection(ds.db, `users/${userId}/transactions`),
-                where('timestamp', '>=', Timestamp.fromDate(start)),
-                where('timestamp', '<', Timestamp.fromDate(end)),
-                orderBy('timestamp', 'desc'),
-                limit(LEDGER_LOAD_LIMIT)
-            );
-            const snapshot = await getDocs(q);
-            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            void LEDGER_LOAD_LIMIT;
+            return ds.getTransactionsForPeriod(userId, ledgerRangeStart, ledgerRangeEnd, { includeVoided: true });
         }
 
         // SMART AUTH GUARD
@@ -907,6 +913,7 @@
             currentLedgerTransactions = allLedgerTransactions.filter(transaction =>
                 matchesLedgerVendorFilter(transaction)
                 && matchesLedgerSearch(transaction, ledgerSearchTerm)
+                && matchesLedgerVisibilityFilter(transaction)
                 && matchesLedgerStatusFilter(transaction)
                 && matchesLedgerTypeFilter(transaction)
             );
@@ -921,6 +928,17 @@
         function matchesLedgerStatusFilter(transaction) {
             if (!ledgerStatusFilter) return true;
             return String(transaction?.status || '').trim() === ledgerStatusFilter;
+        }
+
+        function isVoidedTransaction(transaction) {
+            return transaction?.is_voided === true || String(transaction?.status || '').trim().toLowerCase() === 'voided';
+        }
+
+        function matchesLedgerVisibilityFilter(transaction) {
+            const isVoided = isVoidedTransaction(transaction);
+            if (ledgerVisibilityFilter === 'voided') return isVoided;
+            if (ledgerVisibilityFilter === 'all') return true;
+            return !isVoided;
         }
 
         function matchesLedgerTypeFilter(transaction) {
@@ -1021,6 +1039,12 @@
                     label: `Type: ${getTypeFilterLabel(ledgerTypeFilter)}`
                 }));
             }
+            if (ledgerVisibilityFilter !== 'active') {
+                chips.push(renderFilterChip({
+                    kind: 'visibility',
+                    label: ledgerVisibilityFilter === 'voided' ? 'Visibility: Voided' : 'Visibility: All'
+                }));
+            }
 
             if (!chips.length) {
                 row.classList.add('hidden');
@@ -1032,6 +1056,7 @@
 
             setSelectActiveState(statusSelect, Boolean(ledgerStatusFilter));
             setSelectActiveState(typeSelect, Boolean(ledgerTypeFilter));
+            setSelectActiveState(visibilitySelect, ledgerVisibilityFilter !== 'active');
         }
 
         function setLedgerVendorFilter(vendorName) {
@@ -1626,6 +1651,7 @@
             if (status === 'Pending') return 'bg-amber-100 text-amber-800';
             if (status === 'Missing Receipt') return 'bg-orange-100 text-orange-800';
             if (status === 'Cancelled') return 'bg-gray-100 text-gray-600';
+            if (status === 'Voided') return 'bg-gray-200 text-gray-500';
             return 'bg-slate-100 text-slate-700';
         }
 
@@ -1723,7 +1749,7 @@
             if (visibleRows.length === 0) {
                 body.innerHTML = `
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center">
+                        <td colspan="8" class="px-6 py-12 text-center">
                             <p class="text-[14px] font-bold text-gray-700">No matching transactions</p>
                             <p class="mt-1 text-[12px] text-gray-400">Try another vendor, category, type, status, amount, or date.</p>
                         </td>
@@ -1738,7 +1764,8 @@
 
             body.innerHTML = visibleRows.map(row => {
                 const vendorName = getVendorDisplayName(row);
-                const badge = window.__resolveLedgerBudgetBadge?.(row) || null;
+                const isVoided = isVoidedTransaction(row);
+                const badge = isVoided ? null : (window.__resolveLedgerBudgetBadge?.(row) || null);
                 const amountText = 'Rp ' + Math.abs(Number(row.amount) || 0).toLocaleString('id-ID');
                 const budgetChip = badge ? `
                     <div class="mt-1.5 flex items-center gap-2 flex-wrap">
@@ -1746,9 +1773,9 @@
                         <button type="button" class="text-[10px] font-bold text-[#EA580C] hover:underline" data-fluxy-budget-action="${badge.action}" data-record-type="transactions" data-record-id="${escapeHtml(row.id)}" data-vendor="${escapeHtml(vendorName)}" data-amount-text="${escapeHtml(amountText)}" data-current-allocation-id="${escapeHtml(badge.allocationId || '')}">${badge.action === 'restore' ? 'Restore' : 'Assign'}</button>
                     </div>` : '';
                 return `
-                <tr class="hover:bg-gray-50 transition-colors cursor-pointer" data-ledger-id="${escapeHtml(row.id)}">
+                <tr class="hover:bg-gray-50 transition-colors cursor-pointer ${isVoided ? 'bg-gray-50/70 text-gray-400' : ''}" data-ledger-id="${escapeHtml(row.id)}">
                     <td class="px-6 py-4 text-gray-400 whitespace-nowrap text-[12px]">${row.created_at?.toDate ? row.created_at.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
-                    <td class="px-6 py-4 text-gray-500">${row.timestamp?.toDate().toLocaleString() || 'Just now'}</td>
+                    <td class="px-6 py-4 ${isVoided ? 'text-gray-400' : 'text-gray-500'}">${row.timestamp?.toDate().toLocaleString() || 'Just now'}</td>
                     <td class="px-6 py-4">
                         <span class="inline-flex items-center rounded-md border px-2 py-1 text-[10px] font-bold uppercase ${getTypeBadgeClass(getTransactionType(row))}">
                             ${getTransactionType(row)}
@@ -1763,13 +1790,18 @@
                         <p>${escapeHtml(row.category || '')}</p>
                         ${budgetChip}
                     </td>
-                    <td class="px-6 py-4 font-mono font-bold ${getAmountClass(row)}">
+                    <td class="px-6 py-4 font-mono font-bold ${isVoided ? 'text-gray-400 line-through' : getAmountClass(row)}">
                         ${formatTransactionAmount(row)}
                     </td>
                     <td class="px-6 py-4">
                         <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${getStatusBadgeClass(row.status)}">
-                            ${escapeHtml(row.status || '')}
+                            ${isVoided ? 'Voided' : escapeHtml(row.status || '')}
                         </span>
+                    </td>
+                    <td class="px-4 py-4 text-right">
+                        <button type="button" data-action="ledger-row-actions" data-record-id="${escapeHtml(row.id)}" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-lg font-bold leading-none text-gray-500 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors" aria-label="Open transaction actions">
+                            ...
+                        </button>
                     </td>
                 </tr>
             `;}).join('');
@@ -1835,6 +1867,10 @@
             } else if (kind === 'type') {
                 ledgerTypeFilter = '';
                 typeSelect?.setValue('');
+                applyLedgerMonthFilter();
+            } else if (kind === 'visibility') {
+                ledgerVisibilityFilter = 'active';
+                visibilitySelect?.setValue('active');
                 applyLedgerMonthFilter();
             }
         });
@@ -1902,6 +1938,14 @@
                     allocations: ledgerBudgetCtx.allocations || [],
                     onDone: () => window.loadLedger()
                 });
+                return;
+            }
+
+            const actionBtn = event.target.closest('[data-action="ledger-row-actions"]');
+            if (actionBtn) {
+                event.preventDefault();
+                event.stopPropagation();
+                window.__handleLedgerRowClick(actionBtn.dataset.recordId || '');
                 return;
             }
 
@@ -2011,104 +2055,29 @@
 
         // --- TRANSACTION DETAIL DRAWER ---
         window.__ledgerRowMap = {};
+        let activeTxDetailRow = null;
 
-        window.__handleLedgerRowClick = (txId) => {
-            const row = window.__ledgerRowMap[txId];
+        window.__handleLedgerRowClick = async (txId) => {
+            const row = window.__ledgerRowMap[txId] || findLedgerTransactionById(txId);
             if (!row) return;
             document.body.classList.add('overflow-hidden');
-            window.openTxDetailDrawer(row);
+            try {
+                const user = auth.currentUser;
+                const fresh = user ? await ds.getTransactionById(user.uid, txId) : null;
+                window.openTxDetailDrawer(fresh || row);
+            } catch (_) {
+                window.openTxDetailDrawer(row);
+            }
         };
 
         window.openTxDetailDrawer = (row) => {
             const overlay = document.getElementById('tx-detail-overlay');
             const drawer = document.getElementById('tx-detail-drawer');
             if (!overlay || !drawer) return;
+            activeTxDetailRow = row;
+            renderTxDetailView(row);
 
-            // Populate header
-            document.getElementById('tx-detail-vendor').textContent = row.vendor_name || '—';
-
-            // Amount
-            document.getElementById('tx-detail-amount').textContent = formatTransactionAmount(row);
-            document.getElementById('tx-detail-amount').className = `text-xl font-bold font-mono ${getAmountClass(row)}`;
-
-            // Type select
-            const typeSelect = document.getElementById('tx-detail-type-select');
-            const rawType = String(row.type || '').toLowerCase().replace(/\s+/g, '_');
-            const normalizedType = ({ revenue: 'income' })[rawType] || rawType;
-            typeSelect.onchange = async () => {
-                const newType = typeSelect.value;
-                const newIcon = ['income', 'revenue', 'refund', 'pending_receivable'].includes(newType) ? '💰' : '💸';
-                try {
-                    const user = auth.currentUser;
-                    if (!user) throw new Error('Session expired.');
-                    await ds.updateTransactionType(user.uid, row.id, newType, newIcon);
-                    row.type = newType; row.icon = newIcon;
-                    // Update amount display to reflect new type
-                    document.getElementById('tx-detail-amount').textContent = formatTransactionAmount(row);
-                    document.getElementById('tx-detail-amount').className = `text-xl font-bold font-mono ${getAmountClass(row)}`;
-                    // Sync in-memory lists
-                    [allLedgerTransactions, currentLedgerTransactions].forEach(list => {
-                        const t = list.find(t => t.id === row.id);
-                        if (t) { t.type = newType; t.icon = newIcon; }
-                    });
-                    renderLedgerTable();
-                    window.showToast('Transaction type updated.', 'success');
-                } catch (err) {
-                    window.showToast('Failed to update type: ' + err.message, 'error');
-                    typeSelect.value = normalizedType;
-                }
-            };
-
-            // Metadata grid
-            document.getElementById('tx-detail-date').textContent = row.timestamp?.toDate
-                ? row.timestamp.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-                : '—';
-            document.getElementById('tx-detail-category').textContent = row.category || '—';
-            const statusEl = document.getElementById('tx-detail-status');
-            statusEl.textContent = row.status || '—';
-            const statusColorMap = { 'Completed': 'text-green-700', 'Reconciled': 'text-blue-700', 'Pending': 'text-amber-700', 'Missing Receipt': 'text-orange-600', 'Cancelled': 'text-gray-500' };
-            statusEl.className = `text-[14px] font-bold ${statusColorMap[row.status] || 'text-gray-900'}`;
-            document.getElementById('tx-detail-uploaded').textContent = row.created_at?.toDate
-                ? row.created_at.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-                : '—';
-
-            // Receipt section
-            const receiptSection = document.getElementById('tx-detail-receipt-section');
-            if (row.receipt_url) {
-                receiptSection.innerHTML = `
-                    <div>
-                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
-                        <a href="${row.receipt_url}" target="_blank" rel="noopener noreferrer">
-                            <img src="${row.receipt_url}" alt="Receipt" class="w-full rounded-xl border border-gray-200 object-contain max-h-72 hover:opacity-90 transition-opacity">
-                        </a>
-                    </div>
-                `;
-                document.getElementById('tx-detail-footer').classList.add('hidden');
-            } else {
-                receiptSection.innerHTML = `
-                    <div>
-                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
-                        <label id="tx-detail-receipt-label" for="tx-detail-receipt-file"
-                            class="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 transition-colors">
-                            <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-                            <span id="tx-detail-receipt-filename" class="text-[14px] text-gray-500 truncate flex-1">Attach receipt image</span>
-                        </label>
-                        <input type="file" id="tx-detail-receipt-file" accept="image/*" class="sr-only">
-                        <div id="tx-detail-receipt-preview-wrapper" class="hidden mt-2">
-                            <img id="tx-detail-receipt-preview" src="" alt="Receipt preview" class="w-full rounded-xl border border-gray-200 object-contain max-h-48">
-                        </div>
-                        <p class="mt-1.5 text-[12px] text-gray-400">JPG, PNG or WebP · Max 1 MB · Compress the image first if it's too large</p>
-                    </div>
-                `;
-                document.getElementById('tx-detail-footer').classList.remove('hidden');
-                document.getElementById('tx-detail-attach-btn').disabled = true;
-                document.getElementById('tx-detail-attach-label').textContent = 'Attach Receipt';
-                _wireDetailAttachInput(row);
-            }
-
-            // Animate in
             overlay.classList.remove('hidden');
-            typeSelect.value = normalizedType;
             requestAnimationFrame(() => {
                 overlay.querySelector('.absolute.inset-0')?.classList.remove('opacity-0');
                 overlay.querySelector('.absolute.inset-0')?.classList.add('opacity-100');
@@ -2119,6 +2088,237 @@
             window.__closeTxDetailOnEscape = (e) => { if (e.key === 'Escape') window.closeTxDetailDrawer(); };
             document.addEventListener('keydown', window.__closeTxDetailOnEscape);
         };
+
+        function formatDetailDate(value, opts = { year: 'numeric', month: 'long', day: 'numeric' }) {
+            const date = value?.toDate?.();
+            return date ? date.toLocaleDateString('en-US', opts) : '—';
+        }
+
+        function getTransactionDateInputValue(row) {
+            const date = row?.timestamp?.toDate?.();
+            if (!date) return getDayKey(new Date());
+            return getDayKey(date);
+        }
+
+        function parseDateInputValue(value) {
+            if (!value) return new Date();
+            const [year, month, day] = value.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+
+        function syncTransactionInMemory(nextRow) {
+            [allLedgerTransactions, currentLedgerTransactions].forEach(list => {
+                const idx = list.findIndex(t => t.id === nextRow.id);
+                if (idx >= 0) list[idx] = { ...list[idx], ...nextRow };
+            });
+            if (window.__ledgerRowMap[nextRow.id]) window.__ledgerRowMap[nextRow.id] = { ...window.__ledgerRowMap[nextRow.id], ...nextRow };
+        }
+
+        function friendlyLedgerError(err, fallback = 'Could not save this transaction. Try again in a moment.') {
+            const code = String(err?.code || '');
+            const message = String(err?.message || '');
+            if (code.includes('permission') || message.toLowerCase().includes('permission')) return 'Permission denied. Check your access and try again.';
+            if (message.toLowerCase().includes('session')) return 'Session expired. Please log in again.';
+            return message || fallback;
+        }
+
+        function renderTxDetailView(row) {
+            const isVoided = isVoidedTransaction(row);
+            const content = document.getElementById('tx-detail-content');
+            const actions = document.getElementById('tx-detail-footer-actions');
+            document.getElementById('tx-detail-eyebrow').textContent = isVoided ? 'Voided Transaction' : 'Transaction Detail';
+            document.getElementById('tx-detail-vendor').textContent = row.vendor_name || '—';
+            if (!content || !actions) return;
+
+            const sourceText = row.source || row.created_via || row.extraction_source || 'Manual / dashboard';
+            const attachments = Array.isArray(row.attached_documents) ? row.attached_documents : [];
+            const attachmentHtml = attachments.length
+                ? `<div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                    <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Attached documents</p>
+                    <div class="space-y-2">${attachments.map(doc => `
+                        <div class="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-[12px]">
+                            <span class="truncate font-semibold text-gray-700">${escapeHtml(doc.file_name || doc.document_id || 'Document')}</span>
+                            <span class="flex-shrink-0 text-gray-400">${escapeHtml(doc.role || doc.document_role || 'document')}</span>
+                        </div>
+                    `).join('')}</div>
+                </div>`
+                : '';
+            const receiptHtml = row.receipt_url
+                ? `<div>
+                    <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
+                    <a href="${escapeHtml(row.receipt_url)}" target="_blank" rel="noopener noreferrer">
+                        <img src="${escapeHtml(row.receipt_url)}" alt="Receipt" class="w-full rounded-xl border border-gray-200 object-contain max-h-72 hover:opacity-90 transition-opacity">
+                    </a>
+                </div>`
+                : '';
+            const attachHtml = !row.receipt_url && !isVoided
+                ? `<div>
+                    <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
+                    <label id="tx-detail-receipt-label" for="tx-detail-receipt-file"
+                        class="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 transition-colors">
+                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                        <span id="tx-detail-receipt-filename" class="text-[14px] text-gray-500 truncate flex-1">Attach receipt image</span>
+                    </label>
+                    <input type="file" id="tx-detail-receipt-file" accept="image/*" class="sr-only">
+                    <div id="tx-detail-receipt-preview-wrapper" class="hidden mt-2">
+                        <img id="tx-detail-receipt-preview" src="" alt="Receipt preview" class="w-full rounded-xl border border-gray-200 object-contain max-h-48">
+                    </div>
+                    <p class="mt-1.5 text-[12px] text-gray-400">JPG, PNG or WebP · Max 1 MB · Compress the image first if it's too large</p>
+                </div>`
+                : '';
+
+            content.innerHTML = `
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Amount</p>
+                        <p class="text-xl font-bold font-mono ${isVoided ? 'text-gray-400 line-through' : getAmountClass(row)}">${formatTransactionAmount(row)}</p>
+                    </div>
+                    <div class="mt-1 flex flex-col items-end gap-1">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Type</p>
+                        <span class="inline-flex items-center rounded-md border px-2 py-1 text-[10px] font-bold uppercase ${getTypeBadgeClass(getTransactionType(row))}">${escapeHtml(getTransactionType(row))}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Transaction Date</p><p class="text-[14px] font-bold text-gray-900">${formatDetailDate(row.timestamp)}</p></div>
+                    <div><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Category</p><p class="text-[14px] font-bold text-gray-900">${escapeHtml(row.category || '—')}</p></div>
+                    <div><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Status</p><p class="text-[14px] font-bold ${isVoided ? 'text-gray-500' : 'text-gray-900'}">${isVoided ? 'Voided' : escapeHtml(row.status || '—')}</p></div>
+                    <div><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Uploaded</p><p class="text-[14px] font-bold text-gray-900">${formatDetailDate(row.created_at, { year: 'numeric', month: 'short', day: 'numeric' })}</p></div>
+                    <div class="col-span-2"><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Source</p><p class="text-[14px] font-bold text-gray-900">${escapeHtml(sourceText)}</p></div>
+                    ${isVoided ? `<div class="col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-4"><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Void reason</p><p class="text-[14px] font-semibold text-gray-700">${escapeHtml(row.void_reason || '—')}</p></div>` : ''}
+                </div>
+                ${receiptHtml}
+                ${attachmentHtml}
+                ${attachHtml}
+            `;
+
+            actions.innerHTML = isVoided
+                ? `<button type="button" onclick="window.closeTxDetailDrawer()" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Close</button>`
+                : `<div class="grid grid-cols-2 gap-2">
+                    <button id="tx-detail-edit-btn" type="button" class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Edit transaction</button>
+                    <button id="tx-detail-void-btn" type="button" class="rounded-xl border border-red-200 bg-white px-4 py-3 text-[14px] font-bold text-red-600 hover:bg-red-50 transition-colors">Void transaction</button>
+                </div>
+                ${!row.receipt_url ? `<button id="tx-detail-attach-btn" type="button" disabled class="mt-2 w-full py-3 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                    <span id="tx-detail-attach-label">Attach Receipt</span>
+                </button>` : ''}`;
+
+            document.getElementById('tx-detail-edit-btn')?.addEventListener('click', () => renderTxEditForm(row));
+            document.getElementById('tx-detail-void-btn')?.addEventListener('click', () => voidActiveTransaction(row));
+            if (!row.receipt_url && !isVoided) _wireDetailAttachInput(row);
+        }
+
+        function renderTxEditForm(row) {
+            const content = document.getElementById('tx-detail-content');
+            const actions = document.getElementById('tx-detail-footer-actions');
+            document.getElementById('tx-detail-eyebrow').textContent = 'Finance entry';
+            document.getElementById('tx-detail-vendor').textContent = 'Edit Transaction';
+            if (!content || !actions) return;
+            const rawType = String(row.type || '').toLowerCase().replace(/\s+/g, '_');
+            const normalizedType = ({ revenue: 'income' })[rawType] || rawType || 'expense';
+            const typeOptions = ['income', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending_payable'];
+            if (!typeOptions.includes(normalizedType)) typeOptions.push(normalizedType);
+            const statusOptions = ['Completed', 'Missing Receipt', 'Pending', 'Upcoming', 'Reconciled', 'Cancelled'];
+
+            content.innerHTML = `
+                <form id="tx-edit-form" class="space-y-5">
+                    <div>
+                        <label for="tx-edit-amount" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Amount (Rp)</label>
+                        <input type="text" id="tx-edit-amount" required value="${escapeHtml(String(Number(row.amount || 0).toLocaleString('id-ID')))}" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E85D19] focus:border-[#E85D19] outline-none font-mono font-bold text-lg">
+                    </div>
+                    <div>
+                        <label for="tx-edit-vendor" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Vendor / Description</label>
+                        <input type="text" id="tx-edit-vendor" required value="${escapeHtml(row.vendor_name || '')}" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="tx-edit-type" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Type</label>
+                            <select id="tx-edit-type" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                                ${typeOptions.map(type => `<option value="${escapeHtml(type)}" ${type === normalizedType ? 'selected' : ''}>${escapeHtml(getTypeFilterLabel(type))}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="tx-edit-status" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Status</label>
+                            <select id="tx-edit-status" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                                ${statusOptions.map(status => `<option value="${escapeHtml(status)}" ${status === row.status ? 'selected' : ''}>${escapeHtml(status)}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="tx-edit-category" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Category</label>
+                        <input type="text" id="tx-edit-category" required maxlength="40" value="${escapeHtml(row.category || '')}" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                    </div>
+                    <div>
+                        <label for="tx-edit-date" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Transaction Date</label>
+                        <input type="date" id="tx-edit-date" required value="${escapeHtml(getTransactionDateInputValue(row))}" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                    </div>
+                </form>
+            `;
+            actions.innerHTML = `
+                <div class="flex gap-2">
+                    <button id="tx-edit-cancel-btn" type="button" class="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                    <button id="tx-edit-save-btn" type="submit" form="tx-edit-form" class="flex-1 rounded-xl bg-gray-900 px-4 py-3 text-[14px] font-bold text-white hover:bg-gray-800 transition-colors">Save changes</button>
+                </div>
+            `;
+
+            const amountInput = document.getElementById('tx-edit-amount');
+            amountInput?.addEventListener('input', () => {
+                const digits = amountInput.value.replace(/[^\d]/g, '');
+                amountInput.value = digits ? Number(digits).toLocaleString('id-ID') : '';
+            });
+            document.getElementById('tx-edit-cancel-btn')?.addEventListener('click', () => renderTxDetailView(row));
+            document.getElementById('tx-edit-form')?.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                await saveEditedTransaction(row);
+            });
+        }
+
+        async function saveEditedTransaction(row) {
+            const saveBtn = document.getElementById('tx-edit-save-btn');
+            const originalLabel = saveBtn?.textContent || 'Save changes';
+            try {
+                const user = auth.currentUser;
+                if (!user) throw new Error('Session expired.');
+                if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+                const patch = {
+                    amount: document.getElementById('tx-edit-amount')?.value || '',
+                    vendor_name: document.getElementById('tx-edit-vendor')?.value || '',
+                    category: document.getElementById('tx-edit-category')?.value || '',
+                    type: document.getElementById('tx-edit-type')?.value || '',
+                    status: document.getElementById('tx-edit-status')?.value || '',
+                    date: parseDateInputValue(document.getElementById('tx-edit-date')?.value || '')
+                };
+                await ds.updateTransaction(user.uid, row.id, patch, 'Edited from ledger');
+                window.closeTxDetailDrawer();
+                window.showToast('Transaction updated.', 'success');
+                await window.loadLedger();
+            } catch (err) {
+                window.showToast(friendlyLedgerError(err), 'error');
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
+            }
+        }
+
+        async function voidActiveTransaction(row) {
+            const reason = await window.showReasonDialog?.({
+                title: 'Void transaction?',
+                body: 'This transaction will be removed from active totals and reports, but kept in the audit history.',
+                confirmLabel: 'Void transaction',
+                cancelLabel: 'Cancel',
+                tone: 'danger',
+                reasonLabel: 'Void reason',
+                options: ['Duplicate transaction', 'Wrong amount', 'Wrong import', 'Test data', 'Other']
+            });
+            if (!reason) return;
+            try {
+                const user = auth.currentUser;
+                if (!user) throw new Error('Session expired.');
+                await ds.voidTransaction(user.uid, row.id, reason);
+                window.closeTxDetailDrawer();
+                window.showToast('Transaction voided.', 'success');
+                await window.loadLedger();
+            } catch (err) {
+                window.showToast(friendlyLedgerError(err, 'Could not void this transaction. Try again in a moment.'), 'error');
+            }
+        }
 
         window.closeTxDetailDrawer = () => {
             const overlay = document.getElementById('tx-detail-overlay');
@@ -2182,21 +2382,6 @@
                     const receiptUrl = await ds.uploadReceipt(user.uid, toUpload);
                     await ds.updateTransactionReceipt(user.uid, row.id, receiptUrl);
 
-                    // Swap to image view
-                    const receiptSection = document.getElementById('tx-detail-receipt-section');
-                    receiptSection.innerHTML = `
-                        <div>
-                            <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
-                            <a href="${receiptUrl}" target="_blank" rel="noopener noreferrer">
-                                <img src="${receiptUrl}" alt="Receipt" class="w-full rounded-xl border border-gray-200 object-contain max-h-72 hover:opacity-90 transition-opacity">
-                            </a>
-                        </div>
-                    `;
-                    document.getElementById('tx-detail-footer').classList.add('hidden');
-                    document.getElementById('tx-detail-status').textContent = 'Completed';
-                    document.getElementById('tx-detail-status').className = 'text-[14px] font-bold text-green-700';
-
-                    // Update in-memory row and refresh table
                     row.receipt_url = receiptUrl;
                     row.status = 'Completed';
                     if (window.__ledgerRowMap[row.id]) {
@@ -2208,6 +2393,7 @@
                     const txInCurrent = currentLedgerTransactions.find(t => t.id === row.id);
                     if (txInCurrent) { txInCurrent.receipt_url = receiptUrl; txInCurrent.status = 'Completed'; }
                     applyLedgerMonthFilter();
+                    renderTxDetailView(row);
                     window.showToast('Receipt attached successfully.', 'success');
                 } catch (err) {
                     window.showToast('Failed to upload receipt: ' + err.message, 'error');

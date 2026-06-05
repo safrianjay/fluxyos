@@ -14,6 +14,7 @@ async function waitForLedgerReady(page) {
         return !!body && !/Fetching ledger data/.test(body.textContent || '');
     }, null, { timeout: 20_000 });
     // Wait for the custom selects to mount.
+    await page.waitForSelector('#ledger-visibility-filter .fluxy-select-trigger');
     await page.waitForSelector('#ledger-status-filter .fluxy-select-trigger');
     await page.waitForSelector('#ledger-type-filter .fluxy-select-trigger');
 }
@@ -39,10 +40,13 @@ test('ledger page renders custom filter dropdowns and removes Status/Type breakd
     await expect(page.getByRole('heading', { name: 'Type Breakdown' })).toHaveCount(0);
 
     // Filters: triggers visible, default labels
+    const visibilityRoot = page.locator('#ledger-visibility-filter');
     const statusRoot = page.locator('#ledger-status-filter');
     const typeRoot = page.locator('#ledger-type-filter');
+    await expect(visibilityRoot.locator('.fluxy-select-trigger')).toBeVisible();
     await expect(statusRoot.locator('.fluxy-select-trigger')).toBeVisible();
     await expect(typeRoot.locator('.fluxy-select-trigger')).toBeVisible();
+    await expect(visibilityRoot.locator('.fluxy-select-label')).toHaveText('Active');
     await expect(statusRoot.locator('.fluxy-select-label')).toHaveText('All statuses');
     await expect(typeRoot.locator('.fluxy-select-label')).toHaveText('All types');
 
@@ -53,7 +57,7 @@ test('ledger page renders custom filter dropdowns and removes Status/Type breakd
     // Status options
     await statusRoot.locator('.fluxy-select-trigger').click();
     const statusValues = await statusRoot.locator('.fluxy-select-option').evaluateAll(els => els.map(e => e.dataset.value));
-    expect(statusValues).toEqual(['', 'Completed', 'Missing Receipt']);
+    expect(statusValues).toEqual(['', 'Completed', 'Missing Receipt', 'Pending', 'Reconciled', 'Cancelled', 'Voided']);
     // Close menu by clicking trigger again
     await statusRoot.locator('.fluxy-select-trigger').click();
 
@@ -162,7 +166,7 @@ test('selecting Status narrows the table, shows a chip, and tints the trigger', 
     await expect(page.locator('#ledger-page-indicator')).toContainText('1 / ');
 
     // Every visible status badge reads "Completed"
-    const statusBadges = page.locator('#ledger-table-body tr td:last-child span');
+    const statusBadges = page.locator('#ledger-table-body tr td:nth-child(7) span');
     const count = await statusBadges.count();
     for (let i = 0; i < count; i++) {
         await expect(statusBadges.nth(i)).toContainText(/completed/i);
@@ -206,6 +210,31 @@ test('Type filter intersects with Status filter and clears independently', async
     await expect(chipRow.locator('[data-filter-clear="status"]')).toBeVisible();
 
     expect(consoleErrors, 'console errors during combined flow').toEqual([]);
+});
+
+test('Visibility filter can switch to Voided/All and clear independently', async ({ page }) => {
+    const consoleErrors = [];
+    page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+    page.on('pageerror', err => { consoleErrors.push(String(err)); });
+
+    await page.goto('/ledger.html');
+    await waitForLedgerReady(page);
+
+    await pickFluxyOption(page, 'ledger-visibility-filter', 'voided');
+    const visibilityRoot = page.locator('#ledger-visibility-filter');
+    await expect(visibilityRoot.locator('.fluxy-select-label')).toHaveText('Voided');
+    await expect(visibilityRoot.locator('.fluxy-select-trigger')).toHaveAttribute('data-active', 'true');
+    await expect(page.locator('#ledger-filter-chip-row [data-filter-clear="visibility"]')).toContainText('Visibility: Voided');
+
+    await page.locator('#ledger-filter-chip-row [data-filter-clear="visibility"]').click();
+    await expect(visibilityRoot.locator('.fluxy-select-label')).toHaveText('Active');
+    await expect(visibilityRoot.locator('.fluxy-select-trigger')).toHaveAttribute('data-active', 'false');
+
+    await pickFluxyOption(page, 'ledger-visibility-filter', 'all');
+    await expect(visibilityRoot.locator('.fluxy-select-label')).toHaveText('All');
+    await expect(page.locator('#ledger-filter-chip-row [data-filter-clear="visibility"]')).toContainText('Visibility: All');
+
+    expect(consoleErrors, 'console errors during Visibility flow').toEqual([]);
 });
 
 test('dropdown closes on outside click and on Escape', async ({ page }) => {

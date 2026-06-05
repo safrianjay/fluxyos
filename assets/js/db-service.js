@@ -19,6 +19,56 @@ const INTERNAL_PAYMENT_STATUSES = [
     'not_required', 'pending', 'submitted', 'under_review', 'verified', 'rejected', 'expired'
 ];
 
+// ===== Accounting Center (Phase 1) =====
+// Starter IDR-focused SMB chart-of-accounts catalog. Codes/names are strings
+// only — these are display/mapping references, never financial values.
+const ACCOUNTING_ACCOUNT_CATALOG = {
+    '1100': { name: 'Accounts Receivable', type: 'asset' },
+    '2000': { name: 'Accounts Payable', type: 'liability' },
+    '4000': { name: 'Revenue', type: 'revenue' },
+    '6100': { name: 'Marketing Expense', type: 'expense' },
+    '6200': { name: 'Software / SaaS Expense', type: 'expense' },
+    '6300': { name: 'Infrastructure Expense', type: 'expense' },
+    '6400': { name: 'Operations Expense', type: 'expense' },
+    '6500': { name: 'Tax Expense', type: 'expense' },
+    '6600': { name: 'Bank Fees', type: 'expense' },
+    '6999': { name: 'Other Expense', type: 'expense' }
+};
+// Built-in category → account code. Only these categories are considered
+// confidently mappable by default; anything else (custom / "Others") is treated
+// as unmapped until the user saves an explicit mapping.
+const ACCOUNTING_CATEGORY_DEFAULTS = {
+    'Revenue': '4000',
+    'Marketing': '6100',
+    'SaaS': '6200',
+    'Infrastructure': '6300',
+    'Operations': '6400'
+};
+// Transaction type → account code (used for non-category-driven types).
+const ACCOUNTING_TYPE_DEFAULTS = {
+    'income': '4000',
+    'revenue': '4000',
+    'refund': '4000',
+    'fee': '6600',
+    'tax': '6500',
+    'pending_payable': '2000',
+    'pending_receivable': '1100'
+};
+// Fallback suggestion for unmapped spend so the preview always shows a target.
+const ACCOUNTING_UNMAPPED_FALLBACK_CODE = '6999';
+// Per-bucket readiness penalty weights and the cap applied to each bucket so a
+// single noisy bucket can never dominate the whole score.
+const ACCOUNTING_PENALTY_WEIGHTS = {
+    missing_receipt: 8,
+    missing_category: 6,
+    unmapped_account: 6,
+    bill_missing_due_date: 8,
+    bill_missing_invoice: 6,
+    bank_import_needs_review: 10,
+    subscription_missing_renewal_date: 6
+};
+const ACCOUNTING_PENALTY_CAP = 24;
+
 class DataService {
     constructor(app) {
         this.app = app;
@@ -27,6 +77,78 @@ class DataService {
     }
 
     // --- TRANSACTIONS (LEDGER) ---
+    _isVoidedTransaction(record = {}) {
+        return record?.is_voided === true || String(record?.status || '').trim().toLowerCase() === 'voided';
+    }
+
+    _activeTransactions(records = []) {
+        return records.filter(record => !this._isVoidedTransaction(record));
+    }
+
+    _transactionAuditSnapshot(record = {}) {
+        const keys = [
+            'amount',
+            'vendor_name',
+            'category',
+            'type',
+            'status',
+            'timestamp',
+            'source',
+            'receipt_url',
+            'attached_documents',
+            'is_voided',
+            'voided_at',
+            'voided_by',
+            'void_reason',
+            'updated_at',
+            'updated_by'
+        ];
+        const out = {};
+        keys.forEach(key => {
+            if (record && record[key] !== undefined) out[key] = record[key] ?? null;
+        });
+        return out;
+    }
+
+    _normalizeTransactionPatch(patch = {}, existing = {}) {
+        const payload = {};
+
+        if (Object.prototype.hasOwnProperty.call(patch, 'amount')) {
+            const amount = Math.round(Number(String(patch.amount).replace(/[^\d]/g, '')) || 0);
+            if (amount <= 0) throw new Error('Amount must be greater than zero.');
+            payload.amount = amount;
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, 'vendor_name')) {
+            payload.vendor_name = this._stringOrDefault(patch.vendor_name, '', 160);
+            if (!payload.vendor_name) throw new Error('Vendor / description is required.');
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, 'category')) {
+            payload.category = this._stringOrDefault(patch.category, '', 40);
+            if (!payload.category) throw new Error('Category is required.');
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, 'type')) {
+            payload.type = this._stringOrDefault(patch.type, String(existing.type || 'expense'), 40).toLowerCase().replace(/\s+/g, '_');
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, 'status')) {
+            const allowedStatuses = ['Completed', 'Missing Receipt', 'Pending', 'Upcoming', 'Reconciled', 'Cancelled'];
+            payload.status = this._allowedValue(patch.status, allowedStatuses, existing.status || 'Completed');
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, 'timestamp')) {
+            payload.timestamp = this._coerceTimestampOrNow(patch.timestamp);
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, 'date')) {
+            payload.timestamp = this._coerceTimestampOrNow(patch.date);
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, 'icon')) {
+            payload.icon = this._stringOrDefault(patch.icon, existing.icon || '', 16);
+        } else if (payload.type) {
+            payload.icon = ['income', 'revenue', 'refund', 'pending_receivable'].includes(payload.type) ? '💰' : '💸';
+        }
+
+        payload.updated_at = serverTimestamp();
+        return this._cleanDefined(payload);
+    }
+
     async getTransactions(userId, limitCount = 50) {
         const q = query(
             collection(this.db, `users/${userId}/transactions`),
@@ -34,7 +156,7 @@ class DataService {
             limit(limitCount)
         );
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return this._activeTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }
 
     async getRevenueTransactionsForDashboardStats(userId) {
@@ -43,7 +165,7 @@ class DataService {
             where('type', 'in', ['income', 'revenue', 'refund', 'pending_receivable'])
         );
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return this._activeTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }
 
     async getTransactionsForDashboardOverview(userId, allTime = false) {
@@ -53,7 +175,88 @@ class DataService {
             orderBy('timestamp', 'desc')
         );
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return this._activeTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }
+
+    async getTransactionById(userId, transactionId) {
+        if (!userId || !transactionId) throw new Error('userId and transactionId required');
+        const snap = await getDoc(doc(this.db, `users/${userId}/transactions/${transactionId}`));
+        if (!snap.exists()) return null;
+        return { id: snap.id, ...snap.data() };
+    }
+
+    async updateTransaction(userId, transactionId, patch = {}, reason = 'Edited from ledger') {
+        if (!userId || !transactionId) throw new Error('userId and transactionId required');
+        const ref = doc(this.db, `users/${userId}/transactions/${transactionId}`);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('Transaction not found.');
+        const existing = snap.data() || {};
+        if (this._isVoidedTransaction(existing)) throw new Error('Voided transactions cannot be edited.');
+
+        const payload = this._normalizeTransactionPatch(patch, existing);
+        payload.updated_by = userId;
+        const after = { ...existing, ...payload };
+
+        const batch = writeBatch(this.db);
+        batch.update(ref, payload);
+        batch.set(doc(collection(this.db, `users/${userId}/audit_logs`)), {
+            actor_uid: userId,
+            actor_role: null,
+            action: 'transaction.update',
+            target_collection: 'transactions',
+            target_id: transactionId,
+            before: this._transactionAuditSnapshot(existing),
+            after: this._transactionAuditSnapshot(after),
+            reason: this._stringOrDefault(reason, 'Edited from ledger', 500),
+            source: 'dashboard',
+            created_at: serverTimestamp()
+        });
+        await batch.commit();
+        return { id: transactionId, ...after };
+    }
+
+    async voidTransaction(userId, transactionId, reason) {
+        if (!userId || !transactionId) throw new Error('userId and transactionId required');
+        const cleanReason = this._stringOrDefault(reason, '', 500);
+        if (!cleanReason) throw new Error('Void reason is required.');
+
+        const ref = doc(this.db, `users/${userId}/transactions/${transactionId}`);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('Transaction not found.');
+        const existing = snap.data() || {};
+        if (this._isVoidedTransaction(existing)) throw new Error('Transaction is already voided.');
+
+        const payload = {
+            is_voided: true,
+            status: 'Voided',
+            voided_at: serverTimestamp(),
+            voided_by: userId,
+            void_reason: cleanReason,
+            updated_at: serverTimestamp(),
+            updated_by: userId
+        };
+
+        const batch = writeBatch(this.db);
+        batch.update(ref, payload);
+        batch.set(doc(collection(this.db, `users/${userId}/audit_logs`)), {
+            actor_uid: userId,
+            actor_role: null,
+            action: 'transaction.void',
+            target_collection: 'transactions',
+            target_id: transactionId,
+            before: this._transactionAuditSnapshot(existing),
+            after: {
+                is_voided: true,
+                status: 'Voided',
+                voided_by: userId,
+                void_reason: cleanReason
+            },
+            reason: cleanReason,
+            source: 'dashboard',
+            created_at: serverTimestamp()
+        });
+        await batch.commit();
+        return { id: transactionId, ...existing, ...payload };
     }
 
     async addTransaction(userId, data) {
@@ -607,8 +810,8 @@ class DataService {
     // --- REPORTS & EXPORTS ---
     // Period-scoped fetchers. startKey / endKey are 'YYYY-MM-DD' day keys
     // (inclusive on both ends, interpreted in the client's local timezone).
-    async getTransactionsForPeriod(userId, startKey, endKey) {
-        return this._getRecordsForPeriod(userId, 'transactions', startKey, endKey);
+    async getTransactionsForPeriod(userId, startKey, endKey, options = {}) {
+        return this._getRecordsForPeriod(userId, 'transactions', startKey, endKey, options);
     }
 
     async getBillsForPeriod(userId, startKey, endKey) {
@@ -619,7 +822,7 @@ class DataService {
         return this._getRecordsForPeriod(userId, 'subscriptions', startKey, endKey);
     }
 
-    async _getRecordsForPeriod(userId, collectionName, startKey, endKey) {
+    async _getRecordsForPeriod(userId, collectionName, startKey, endKey, options = {}) {
         const start = this._parseDayKey(startKey);
         const end = this._parseDayKey(endKey);
         if (!start || !end) return [];
@@ -633,7 +836,8 @@ class DataService {
                 limit(1000)
             );
             const snapshot = await getDocs(q);
-            return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            const records = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            return collectionName === 'transactions' && options.includeVoided !== true ? this._activeTransactions(records) : records;
         } catch (e) {
             // Fallback for missing/legacy timestamp indexing: client-side filter.
             const q = query(
@@ -642,9 +846,10 @@ class DataService {
                 limit(1000)
             );
             const snapshot = await getDocs(q);
-            return snapshot.docs
+            const records = snapshot.docs
                 .map(d => ({ id: d.id, ...d.data() }))
                 .filter(r => this._isTransactionInPeriod(r, startKey, endKey));
+            return collectionName === 'transactions' && options.includeVoided !== true ? this._activeTransactions(records) : records;
         }
     }
 
@@ -727,6 +932,381 @@ class DataService {
         );
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    // --- ACCOUNTING CENTER (Phase 1) ---
+    // Read-only accounting-readiness layer over existing operational records.
+    // Computes a deterministic readiness score, a cleanup queue, an account
+    // mapping preview, and a close-readiness checklist for the selected period.
+    // Reads only user-scoped collections; never invents numbers.
+
+    _accountInfo(code) {
+        const acct = ACCOUNTING_ACCOUNT_CATALOG[code];
+        return acct
+            ? { code, name: acct.name, type: acct.type }
+            : { code: ACCOUNTING_UNMAPPED_FALLBACK_CODE, ...{ name: ACCOUNTING_ACCOUNT_CATALOG[ACCOUNTING_UNMAPPED_FALLBACK_CODE].name, type: 'expense' } };
+    }
+
+    // Resolve the source key + default account suggestion for a transaction-like
+    // record. Returns { sourceType, sourceValue, account, isDefaultMapped }.
+    // isDefaultMapped is false for custom / "Others" / unrecognized categories.
+    _resolveAccountingSource(record) {
+        const type = String(record.type || '').toLowerCase().trim();
+        const category = typeof record.category === 'string' ? record.category.trim() : '';
+        // Type-driven records (AR/AP, fees, tax, income/refund) map by type.
+        if (ACCOUNTING_TYPE_DEFAULTS[type] && (type !== 'expense')) {
+            const code = ACCOUNTING_TYPE_DEFAULTS[type];
+            return { sourceType: 'transaction_type', sourceValue: type, account: this._accountInfo(code), isDefaultMapped: true };
+        }
+        // Category-driven records.
+        if (category && ACCOUNTING_CATEGORY_DEFAULTS[category]) {
+            const code = ACCOUNTING_CATEGORY_DEFAULTS[category];
+            return { sourceType: 'transaction_category', sourceValue: category, account: this._accountInfo(code), isDefaultMapped: true };
+        }
+        // Unknown / custom / "Others" / empty category → not confidently mapped.
+        const sourceValue = category || (type ? type : 'Uncategorized');
+        return {
+            sourceType: category ? 'transaction_category' : 'transaction_type',
+            sourceValue,
+            account: this._accountInfo(ACCOUNTING_UNMAPPED_FALLBACK_CODE),
+            isDefaultMapped: false
+        };
+    }
+
+    async getAccountingMappings(userId) {
+        if (!userId) return [];
+        try {
+            const snapshot = await getDocs(collection(this.db, `users/${userId}/accounting_mappings`));
+            return snapshot.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .filter(m => m.status !== 'archived');
+        } catch (_) {
+            return [];
+        }
+    }
+
+    // Upsert a saved mapping. Doc id is deterministic from source_type+value so a
+    // re-save updates the existing mapping rather than duplicating it.
+    async saveAccountingMapping(userId, data = {}) {
+        if (!userId) throw new Error('userId required');
+        const sourceType = data.source_type === 'transaction_type' ? 'transaction_type' : 'transaction_category';
+        const sourceValue = this._nullableString(data.source_value, 60);
+        if (!sourceValue) throw new Error('source_value required');
+        const code = this._nullableString(data.target_account_code, 12);
+        if (!code) throw new Error('target_account_code required');
+        const catalog = ACCOUNTING_ACCOUNT_CATALOG[code];
+        const targetName = this._nullableString(data.target_account_name, 80) || (catalog ? catalog.name : null);
+        const targetType = data.target_account_type || (catalog ? catalog.type : null);
+        if (!targetName || !targetType) throw new Error('target account name/type required');
+
+        // Deterministic id keeps one mapping per source. Sanitize for a doc id.
+        const safeKey = `${sourceType}__${sourceValue}`.toLowerCase().replace(/[^a-z0-9_]+/g, '-').slice(0, 140);
+        const ref = doc(this.db, `users/${userId}/accounting_mappings/${safeKey}`);
+        const existing = await getDoc(ref);
+        const payload = {
+            source_type: sourceType,
+            source_value: sourceValue,
+            target_account_code: code,
+            target_account_name: targetName,
+            target_account_type: targetType,
+            confidence: 'user_confirmed',
+            status: 'active',
+            updated_at: serverTimestamp()
+        };
+        if (existing.exists()) {
+            payload.created_at = existing.data().created_at || serverTimestamp();
+            await setDoc(ref, payload);
+        } else {
+            payload.created_at = serverTimestamp();
+            await setDoc(ref, payload);
+        }
+        await this.addAuditLog(userId, {
+            action: existing.exists() ? 'accounting_mapping.updated' : 'accounting_mapping.created',
+            target_collection: 'accounting_mappings',
+            target_id: safeKey,
+            after: { source_type: sourceType, source_value: sourceValue, target_account_code: code },
+            source: 'dashboard'
+        });
+        return { id: safeKey, ...payload };
+    }
+
+    // Orchestrates the period reads and returns the full readiness snapshot used
+    // by accounting.js. startKey/endKey are 'YYYY-MM-DD' day keys.
+    async getAccountingReadiness(userId, startKey, endKey) {
+        const [transactions, bills, subscriptions, savedMappings, bankImports] = await Promise.all([
+            this.getTransactionsForPeriod(userId, startKey, endKey).catch(() => []),
+            this.getBillsForPeriod(userId, startKey, endKey).catch(() => []),
+            this.getSubscriptionsForPeriod(userId, startKey, endKey).catch(() => []),
+            this.getAccountingMappings(userId).catch(() => []),
+            this.listBankStatementImports(userId, 100).catch(() => [])
+        ]);
+
+        const savedKeys = new Set(
+            savedMappings.map(m => `${m.source_type}::${String(m.source_value || '').trim()}`)
+        );
+        const isSaved = (sourceType, sourceValue) => savedKeys.has(`${sourceType}::${String(sourceValue || '').trim()}`);
+
+        const recordsTotal = transactions.length + bills.length + subscriptions.length;
+        const hasData = recordsTotal > 0 || bankImports.length > 0;
+
+        const cleanupItems = [];
+        const issueRecordKeys = new Set();
+        const unmappedSources = new Map(); // sourceKey -> preview entry
+        let unmappedRecordCount = 0;
+
+        const flagRecord = (col, id) => issueRecordKeys.add(`${col}:${id}`);
+
+        // --- Transactions ---
+        transactions.forEach(tx => {
+            const vendor = tx.vendor_name || tx.merchant_name || tx.vendor || null;
+            const category = typeof tx.category === 'string' ? tx.category.trim() : '';
+            if (tx.status === 'Missing Receipt') {
+                cleanupItems.push({
+                    type: 'missing_receipt',
+                    label: 'Missing receipt',
+                    description: `${vendor || 'Transaction'} has no receipt attached.`,
+                    source_collection: 'transactions',
+                    source_id: tx.id,
+                    amount: typeof tx.amount === 'number' ? tx.amount : null,
+                    vendor_name: vendor,
+                    severity: 'high',
+                    recommended_action: 'Attach a receipt to this transaction.'
+                });
+                flagRecord('transactions', tx.id);
+            }
+            if (!category) {
+                cleanupItems.push({
+                    type: 'missing_category',
+                    label: 'Missing category',
+                    description: `${vendor || 'Transaction'} has no category.`,
+                    source_collection: 'transactions',
+                    source_id: tx.id,
+                    amount: typeof tx.amount === 'number' ? tx.amount : null,
+                    vendor_name: vendor,
+                    severity: 'medium',
+                    recommended_action: 'Set a category so it can map to an account.'
+                });
+                flagRecord('transactions', tx.id);
+            } else {
+                const resolved = this._resolveAccountingSource(tx);
+                const saved = isSaved(resolved.sourceType, resolved.sourceValue);
+                if (!resolved.isDefaultMapped && !saved) {
+                    unmappedRecordCount += 1;
+                    flagRecord('transactions', tx.id);
+                    const key = `${resolved.sourceType}::${resolved.sourceValue}`;
+                    if (!unmappedSources.has(key)) {
+                        unmappedSources.set(key, {
+                            source_type: resolved.sourceType,
+                            source_value: resolved.sourceValue,
+                            target_account_code: resolved.account.code,
+                            target_account_name: resolved.account.name,
+                            target_account_type: resolved.account.type,
+                            status: 'unmapped'
+                        });
+                        cleanupItems.push({
+                            type: 'unmapped_account',
+                            label: 'Unmapped category',
+                            description: `"${resolved.sourceValue}" is not mapped to an accounting account.`,
+                            source_collection: 'transactions',
+                            source_id: tx.id,
+                            amount: null,
+                            vendor_name: null,
+                            severity: 'medium',
+                            recommended_action: `Map "${resolved.sourceValue}" to an account in Account Mapping.`
+                        });
+                    }
+                }
+            }
+        });
+
+        // --- Bills ---
+        bills.forEach(bill => {
+            const vendor = bill.vendor || bill.vendor_name || null;
+            if (!bill.due_date) {
+                cleanupItems.push({
+                    type: 'bill_missing_due_date',
+                    label: 'Bill missing due date',
+                    description: `${vendor || 'Bill'} has no due date.`,
+                    source_collection: 'bills',
+                    source_id: bill.id,
+                    amount: typeof bill.amount === 'number' ? bill.amount : null,
+                    vendor_name: vendor,
+                    severity: 'high',
+                    recommended_action: 'Set a due date on this bill.'
+                });
+                flagRecord('bills', bill.id);
+            }
+            const hasInvoice = bill.invoice_status === 'attached'
+                || (Array.isArray(bill.attached_documents) && bill.attached_documents.length > 0);
+            if (!hasInvoice) {
+                cleanupItems.push({
+                    type: 'bill_missing_invoice',
+                    label: 'Bill missing invoice',
+                    description: `${vendor || 'Bill'} has no invoice attached.`,
+                    source_collection: 'bills',
+                    source_id: bill.id,
+                    amount: typeof bill.amount === 'number' ? bill.amount : null,
+                    vendor_name: vendor,
+                    severity: 'medium',
+                    recommended_action: 'Attach the invoice document to this bill.'
+                });
+                flagRecord('bills', bill.id);
+            }
+        });
+
+        // --- Subscriptions ---
+        subscriptions.forEach(sub => {
+            const vendor = sub.vendor || sub.vendor_name || null;
+            if (!sub.renewal_date) {
+                cleanupItems.push({
+                    type: 'subscription_missing_renewal_date',
+                    label: 'Subscription missing renewal date',
+                    description: `${vendor || 'Subscription'} has no renewal date.`,
+                    source_collection: 'subscriptions',
+                    source_id: sub.id,
+                    amount: typeof sub.amount === 'number' ? sub.amount : null,
+                    vendor_name: vendor,
+                    severity: 'low',
+                    recommended_action: 'Set a renewal date on this subscription.'
+                });
+                flagRecord('subscriptions', sub.id);
+            }
+        });
+
+        // --- Bank statement imports needing review (period-agnostic; pending queue) ---
+        const pendingImports = bankImports.filter(imp =>
+            ['draft', 'needs_review', 'ready_to_import'].includes(imp.review_status)
+        );
+        const bankSupported = bankImports.length > 0;
+        pendingImports.forEach(imp => {
+            cleanupItems.push({
+                type: 'bank_import_needs_review',
+                label: 'Bank import needs review',
+                description: `${imp.bank_name || 'Bank statement'} import is "${imp.review_status}".`,
+                source_collection: 'bank_statement_imports',
+                source_id: imp.id,
+                amount: null,
+                vendor_name: imp.bank_name || null,
+                severity: 'high',
+                recommended_action: 'Review and confirm this bank statement import.'
+            });
+        });
+
+        // --- Mapping preview (distinct sources seen in the period) ---
+        const mappingPreview = [];
+        const previewSeen = new Set();
+        const addPreview = (sourceType, sourceValue, account, defaultMapped) => {
+            const key = `${sourceType}::${sourceValue}`;
+            if (previewSeen.has(key)) return;
+            previewSeen.add(key);
+            const saved = isSaved(sourceType, sourceValue);
+            const savedMap = saved
+                ? savedMappings.find(m => m.source_type === sourceType && String(m.source_value).trim() === String(sourceValue).trim())
+                : null;
+            mappingPreview.push({
+                source_type: sourceType,
+                source_value: sourceValue,
+                target_account_code: savedMap ? savedMap.target_account_code : account.code,
+                target_account_name: savedMap ? savedMap.target_account_name : account.name,
+                target_account_type: savedMap ? savedMap.target_account_type : account.type,
+                status: saved ? 'saved' : (defaultMapped ? 'suggested' : 'unmapped')
+            });
+        };
+        transactions.forEach(tx => {
+            if (!(typeof tx.category === 'string' && tx.category.trim())) return;
+            const resolved = this._resolveAccountingSource(tx);
+            addPreview(resolved.sourceType, resolved.sourceValue, resolved.account, resolved.isDefaultMapped);
+        });
+        mappingPreview.sort((a, b) => {
+            const rank = { unmapped: 0, suggested: 1, saved: 2 };
+            return (rank[a.status] - rank[b.status]) || a.source_value.localeCompare(b.source_value);
+        });
+
+        // --- Score ---
+        const penaltyCounts = {
+            missing_receipt: cleanupItems.filter(i => i.type === 'missing_receipt').length,
+            missing_category: cleanupItems.filter(i => i.type === 'missing_category').length,
+            unmapped_account: unmappedSources.size,
+            bill_missing_due_date: cleanupItems.filter(i => i.type === 'bill_missing_due_date').length,
+            bill_missing_invoice: cleanupItems.filter(i => i.type === 'bill_missing_invoice').length,
+            bank_import_needs_review: pendingImports.length,
+            subscription_missing_renewal_date: cleanupItems.filter(i => i.type === 'subscription_missing_renewal_date').length
+        };
+        let penaltyTotal = 0;
+        Object.keys(ACCOUNTING_PENALTY_WEIGHTS).forEach(type => {
+            const raw = (penaltyCounts[type] || 0) * ACCOUNTING_PENALTY_WEIGHTS[type];
+            penaltyTotal += Math.min(raw, ACCOUNTING_PENALTY_CAP);
+        });
+        let score = hasData ? Math.max(0, Math.min(100, Math.round(100 - penaltyTotal))) : null;
+        if (score !== null && !Number.isFinite(score)) score = 0;
+
+        let band = 'no_data';
+        if (score !== null) {
+            if (score >= 80) band = 'ready';
+            else if (score >= 50) band = 'almost';
+            else band = 'needs_cleanup';
+        }
+
+        const recordsReviewed = Math.max(0, recordsTotal - issueRecordKeys.size);
+        let closeStatus = 'no_data';
+        if (hasData) {
+            if (score >= 80 && cleanupItems.length === 0) closeStatus = 'ready_to_close';
+            else if (score >= 80) closeStatus = 'ready_to_close';
+            else closeStatus = 'needs_cleanup';
+        }
+
+        const limitations = [];
+        if (!bankSupported) {
+            limitations.push('No bank statement imported yet — bank reconciliation readiness is not included.');
+        }
+
+        const closeChecklist = {
+            transactions_reviewed: transactions.length > 0
+                && cleanupItems.filter(i => i.source_collection === 'transactions').length === 0,
+            missing_receipts_resolved: cleanupItems.filter(i => i.type === 'missing_receipt').length === 0,
+            bills_reviewed: cleanupItems.filter(i => i.source_collection === 'bills').length === 0,
+            bank_imports_reviewed: pendingImports.length === 0,
+            categories_mapped: unmappedSources.size === 0
+        };
+
+        return {
+            hasData,
+            period: { start: startKey, end: endKey },
+            score,
+            band,
+            kpis: {
+                readiness_score: score,
+                cleanup_items: cleanupItems.length,
+                records_total: recordsTotal,
+                records_reviewed: recordsReviewed,
+                unmapped_records: unmappedRecordCount,
+                close_status: closeStatus
+            },
+            counts: {
+                transactions: transactions.length,
+                bills: bills.length,
+                subscriptions: subscriptions.length,
+                missing_receipts: penaltyCounts.missing_receipt,
+                missing_categories: penaltyCounts.missing_category,
+                unmapped_categories: unmappedSources.size,
+                bills_missing_due_date: penaltyCounts.bill_missing_due_date,
+                bills_missing_invoice: penaltyCounts.bill_missing_invoice,
+                subscriptions_missing_renewal: penaltyCounts.subscription_missing_renewal_date,
+                bank_imports_pending: pendingImports.length
+            },
+            cleanupItems,
+            mappingPreview,
+            closeChecklist,
+            closeStatus,
+            limitations,
+            bankSupported
+        };
+    }
+
+    // Thin wrapper for callers/tests that only need the cleanup queue.
+    async getAccountingCleanupItems(userId, startKey, endKey) {
+        const readiness = await this.getAccountingReadiness(userId, startKey, endKey);
+        return readiness.cleanupItems;
     }
 
     // --- INTERNAL OPERATIONS CONSOLE (Phase 1 MVP) ---
