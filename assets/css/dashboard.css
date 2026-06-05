@@ -127,15 +127,37 @@
     background: #FFFFFF;
 }
 
+.cashflow-scroll {
+    position: absolute;
+    inset: 0 0 0 92px;
+    z-index: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+
+.cashflow-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.cashflow-line-track {
+    position: relative;
+    height: 100%;
+    min-width: 100%;
+    box-sizing: border-box;
+}
+
 .cashflow-bars {
     position: relative;
     z-index: 1;
     display: flex;
-    height: 304px;
+    height: 100%;
+    min-width: 100%;
+    box-sizing: border-box;
     align-items: flex-end;
     justify-content: space-between;
     gap: 18px;
-    padding: 28px 12px 8px 92px;
+    padding: 28px 12px 8px 12px;
 }
 
 .cashflow-bar-group {
@@ -213,8 +235,9 @@
 
 .cashflow-line-hover-zones {
     position: absolute;
-    inset: 28px 12px 8px 92px;
+    inset: 28px 12px 8px 12px;
     z-index: 2;
+    overflow: hidden;
     pointer-events: auto;
 }
 
@@ -226,11 +249,29 @@
     transform: translateX(-50%);
 }
 
+.cashflow-labels-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-left: 92px;
+    scrollbar-width: thin;
+}
+
+.cashflow-labels-scroll::-webkit-scrollbar {
+    height: 6px;
+}
+
+.cashflow-labels-scroll::-webkit-scrollbar-thumb {
+    background: #E2E8F0;
+    border-radius: 999px;
+}
+
 .cashflow-labels {
     display: flex;
     justify-content: space-between;
     gap: 12px;
-    padding: 10px 12px 0 92px;
+    min-width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px 0 12px;
     color: #64748B;
     font-size: 11px;
     font-weight: 700;
@@ -762,10 +803,18 @@
         padding: 20px;
     }
 
+    .cashflow-scroll {
+        inset: 0 0 0 76px;
+    }
+
+    .cashflow-labels-scroll {
+        padding-left: 76px;
+    }
+
     .cashflow-bars,
     .cashflow-labels {
         gap: 8px;
-        padding-left: 76px;
+        padding-left: 4px;
         padding-right: 4px;
     }
 
@@ -779,7 +828,7 @@
     }
 
     .cashflow-line-hover-zones {
-        inset: 28px 4px 8px 76px;
+        inset: 28px 4px 8px 4px;
     }
 
     .overview-command-card {

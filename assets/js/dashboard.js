@@ -1312,7 +1312,7 @@ function buildCashflowBuckets(txs, startKey, endKey, budget = { monthly: 0 }) {
         : rangeDays <= 366 ? 'month'
         : 'quarter';
     const bucketStep = bucketType === 'day' ? 1 : 7;
-    const buckets = [];
+    let buckets = [];
 
     if (bucketType === 'month' || bucketType === 'quarter') {
         const stepMonths = bucketType === 'quarter' ? 3 : 1;
@@ -1361,6 +1361,18 @@ function buildCashflowBuckets(txs, startKey, endKey, budget = { monthly: 0 }) {
         });
     }
 
+    // For long ranges, anchor the chart to real activity: start at the first
+    // bucket with data ("when the dashboard started collecting") and drop empty
+    // trailing buckets that stretch out to today.
+    if ((bucketType === 'month' || bucketType === 'quarter') && buckets.length > 1) {
+        const hasActivity = bucket => bucket.revenue > 0 || bucket.spend > 0;
+        let lo = 0;
+        let hi = buckets.length - 1;
+        while (lo < hi && !hasActivity(buckets[lo])) lo++;
+        while (hi > lo && !hasActivity(buckets[hi])) hi--;
+        buckets = buckets.slice(lo, hi + 1);
+    }
+
     if (!buckets.length) {
         buckets.push({ start: startKey, end: endKey, label: formatBucketLabel(startKey, endKey, 'day'), revenue: 0, spend: 0, budgetUsedPct: 0 });
     }
@@ -1395,6 +1407,32 @@ function safeNumber(value) {
     return Number.isFinite(n) ? n : 0;
 }
 
+// Minimum horizontal space per bucket. When the buckets need more than the
+// chart's visible width (lots of data / long date range), the plot and its
+// labels scroll horizontally instead of cramming together.
+const CASHFLOW_MIN_BUCKET_PX = 64;
+
+function cashflowTrackWidth() {
+    return cashflowBuckets.length * CASHFLOW_MIN_BUCKET_PX;
+}
+
+// The plot area and the labels row live in two separate horizontal scrollers
+// (so the Y-axis can stay pinned). Mirror their scrollLeft so they move as one.
+function syncCashflowScroll(chart) {
+    const plot = chart.querySelector('[data-cashflow-scroll]');
+    const labels = chart.querySelector('[data-cashflow-labels-scroll]');
+    if (!plot || !labels) return;
+    let lock = false;
+    const mirror = (from, to) => {
+        if (lock) return;
+        lock = true;
+        to.scrollLeft = from.scrollLeft;
+        lock = false;
+    };
+    plot.addEventListener('scroll', () => mirror(plot, labels));
+    labels.addEventListener('scroll', () => mirror(labels, plot));
+}
+
 function renderCashflowChart() {
     const chart = document.getElementById('cashflow-chart');
     if (!chart) return;
@@ -1405,6 +1443,7 @@ function renderCashflowChart() {
 function renderCashflowBarChart(chart) {
     const maxValue = Math.max(...cashflowBuckets.map(item => Math.max(item.revenue, item.spend)), 1);
     const hasBudget = safeNumber(currentBudget.monthly) > 0;
+    const trackWidth = cashflowTrackWidth();
     chart.innerHTML = `
         <div class="cashflow-chart-stage" data-cashflow-bar-stage>
             <div class="cashflow-axis">
@@ -1412,27 +1451,32 @@ function renderCashflowBarChart(chart) {
                 <div><span>${formatCompactIDR(maxValue / 2)}</span></div>
                 <div><span>Rp 0</span></div>
             </div>
-            <div class="cashflow-bars">
-                ${cashflowBuckets.map(item => {
-                    const revenueHeight = Math.max((item.revenue / maxValue) * 100, item.revenue > 0 ? 4 : 0);
-                    const spendHeight = Math.max((item.spend / maxValue) * 100, item.spend > 0 ? 4 : 0);
-                    const budgetUsedPct = Math.min(safeNumber(item.budgetUsedPct), 100);
-                    const budgetHeight = Math.max(budgetUsedPct, budgetUsedPct > 0 ? 4 : 0);
-                    return `
-                        <div class="cashflow-bar-group" data-chart-bar data-label="${escapeHtml(item.label)}" data-revenue="${item.revenue}" data-spend="${item.spend}" data-budget-used="${safeNumber(item.budgetUsedPct)}">
-                            <div class="cashflow-bar cashflow-bar-revenue" style="height: ${revenueHeight}%"></div>
-                            <div class="cashflow-bar cashflow-bar-spend" style="height: ${spendHeight}%"></div>
-                            ${hasBudget ? `<div class="cashflow-bar cashflow-bar-budget${budgetUsedPct > 0 ? '' : ' is-empty'}" style="height: ${budgetHeight}%"></div>` : ''}
-                        </div>
-                    `;
-                }).join('')}
+            <div class="cashflow-scroll" data-cashflow-scroll>
+                <div class="cashflow-bars" style="width: ${trackWidth}px">
+                    ${cashflowBuckets.map(item => {
+                        const revenueHeight = Math.max((item.revenue / maxValue) * 100, item.revenue > 0 ? 4 : 0);
+                        const spendHeight = Math.max((item.spend / maxValue) * 100, item.spend > 0 ? 4 : 0);
+                        const budgetUsedPct = Math.min(safeNumber(item.budgetUsedPct), 100);
+                        const budgetHeight = Math.max(budgetUsedPct, budgetUsedPct > 0 ? 4 : 0);
+                        return `
+                            <div class="cashflow-bar-group" data-chart-bar data-label="${escapeHtml(item.label)}" data-revenue="${item.revenue}" data-spend="${item.spend}" data-budget-used="${safeNumber(item.budgetUsedPct)}">
+                                <div class="cashflow-bar cashflow-bar-revenue" style="height: ${revenueHeight}%"></div>
+                                <div class="cashflow-bar cashflow-bar-spend" style="height: ${spendHeight}%"></div>
+                                ${hasBudget ? `<div class="cashflow-bar cashflow-bar-budget${budgetUsedPct > 0 ? '' : ' is-empty'}" style="height: ${budgetHeight}%"></div>` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
             </div>
         </div>
-        <div class="cashflow-labels">
-            ${cashflowBuckets.map(item => `<span>${escapeHtml(item.label)}</span>`).join('')}
+        <div class="cashflow-labels-scroll" data-cashflow-labels-scroll>
+            <div class="cashflow-labels" style="width: ${trackWidth}px">
+                ${cashflowBuckets.map(item => `<span>${escapeHtml(item.label)}</span>`).join('')}
+            </div>
         </div>
     `;
     attachCashflowHover(chart.querySelector('[data-cashflow-bar-stage]'), '#4ADE80', '#D1D5DB');
+    syncCashflowScroll(chart);
 }
 
 function buildLinePoints(values, maxValue, width, height, paddingX, paddingY) {
@@ -1448,9 +1492,10 @@ function buildLinePoints(values, maxValue, width, height, paddingX, paddingY) {
 }
 
 function renderCashflowLineChart(chart) {
-    const width = 900;
+    const trackWidth = cashflowTrackWidth();
+    const width = trackWidth;
     const height = 280;
-    const paddingX = 86;
+    const paddingX = 24;
     const paddingY = 28;
     const revenueValues = cashflowBuckets.map(item => item.revenue);
     const spendValues = cashflowBuckets.map(item => item.spend);
@@ -1470,24 +1515,31 @@ function renderCashflowLineChart(chart) {
                 <div><span>${formatCompactIDR(maxValue / 2)}</span></div>
                 <div><span>Rp 0</span></div>
             </div>
-            <svg class="cashflow-line-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Cash flow line chart">
-                <polyline class="cashflow-line cashflow-line-revenue" points="${toPolyline(revenuePoints)}"></polyline>
-                <polyline class="cashflow-line cashflow-line-spend" points="${toPolyline(spendPoints)}"></polyline>
-                ${budgetPoints.length ? `<polyline class="cashflow-line cashflow-line-budget" points="${toPolyline(budgetPoints)}"></polyline>` : ''}
-                ${revenuePoints.map(point => `<circle class="cashflow-point cashflow-point-revenue" cx="${point.x}" cy="${point.y}" r="4"></circle>`).join('')}
-                ${spendPoints.map(point => `<circle class="cashflow-point cashflow-point-spend" cx="${point.x}" cy="${point.y}" r="4"></circle>`).join('')}
-            </svg>
-            <div class="cashflow-line-hover-zones">
-                ${cashflowBuckets.map((item, index) => `
-                    <div class="cashflow-line-hover-zone" data-chart-bar data-label="${escapeHtml(item.label)}" data-revenue="${item.revenue}" data-spend="${item.spend}" data-budget-used="${safeNumber(item.budgetUsedPct)}" style="left:${(index / Math.max(cashflowBuckets.length - 1, 1)) * 100}%"></div>
-                `).join('')}
+            <div class="cashflow-scroll" data-cashflow-scroll>
+                <div class="cashflow-line-track" style="width: ${trackWidth}px">
+                    <svg class="cashflow-line-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Cash flow line chart">
+                        <polyline class="cashflow-line cashflow-line-revenue" points="${toPolyline(revenuePoints)}"></polyline>
+                        <polyline class="cashflow-line cashflow-line-spend" points="${toPolyline(spendPoints)}"></polyline>
+                        ${budgetPoints.length ? `<polyline class="cashflow-line cashflow-line-budget" points="${toPolyline(budgetPoints)}"></polyline>` : ''}
+                        ${revenuePoints.map(point => `<circle class="cashflow-point cashflow-point-revenue" cx="${point.x}" cy="${point.y}" r="4"></circle>`).join('')}
+                        ${spendPoints.map(point => `<circle class="cashflow-point cashflow-point-spend" cx="${point.x}" cy="${point.y}" r="4"></circle>`).join('')}
+                    </svg>
+                    <div class="cashflow-line-hover-zones">
+                        ${cashflowBuckets.map((item, index) => `
+                            <div class="cashflow-line-hover-zone" data-chart-bar data-label="${escapeHtml(item.label)}" data-revenue="${item.revenue}" data-spend="${item.spend}" data-budget-used="${safeNumber(item.budgetUsedPct)}" style="left:${(index / Math.max(cashflowBuckets.length - 1, 1)) * 100}%"></div>
+                        `).join('')}
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="cashflow-labels">
-            ${cashflowBuckets.map(item => `<span>${escapeHtml(item.label)}</span>`).join('')}
+        <div class="cashflow-labels-scroll" data-cashflow-labels-scroll>
+            <div class="cashflow-labels" style="width: ${trackWidth}px">
+                ${cashflowBuckets.map(item => `<span>${escapeHtml(item.label)}</span>`).join('')}
+            </div>
         </div>
     `;
     attachCashflowHover(chart.querySelector('[data-cashflow-line-stage]'), '#22C55E', '#9CA3AF');
+    syncCashflowScroll(chart);
 }
 
 function attachCashflowHover(stage, revenueColor, spendColor) {
