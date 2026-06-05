@@ -128,6 +128,42 @@ Mobile/touch: hover is desktop-only. Charts that would hide their data values on
 
 Reference implementations: Revenue Sync Volume (`revenue-sync.html` `renderVolumeChart`) and Ledger Volume (`ledger.html` `renderVolumeChart`). See [docs/COMPONENT_GUIDE.md](COMPONENT_GUIDE.md) Recipe 7 for the build steps and [docs/PROJECT_BACKGROUND.md §6](PROJECT_BACKGROUND.md) for the helper API.
 
+#### 4a. Time-series bucketing & horizontal scroll (Overview charts)
+
+The Overview **Performance Trend** and **Cash Flow** charts plot one bucket per
+period across the selected range. They follow these rules (see
+`assets/js/dashboard.js` `buildCashflowBuckets` / `renderCashflowChart` /
+`renderCashFlowChart`, styled in `assets/css/dashboard.css`):
+
+- **Adaptive granularity by range length:** `≤14d → day`, `≤93d → week`,
+  `≤366d → month`, `> 366d → quarter` (label `Q# YYYY`). This keeps **All Time**
+  (which the backend resolves to *earliest record → today*) from exploding into
+  30+ monthly columns.
+- **Anchor to real activity:** for month/quarter ranges, trim empty **leading and
+  trailing** buckets so the chart starts at the first period with data and ends at
+  the last — it must not pad empty quarters out to today.
+- **Never cram. Scroll instead.** Each bucket gets a minimum width
+  (`CASHFLOW_MIN_BUCKET_PX = 64`). When the track is wider than the panel, the
+  plot **and** its labels scroll horizontally inside the card while the Y-axis
+  stays pinned. The plot and label rows are two scrollers kept in sync via
+  `linkHorizontalScroll`.
+
+**Bug class — page-level horizontal scroll (regression guard).** The app content
+wrapper is `<div class="flex-1 overflow-y-auto …">`. Per CSS, `overflow-y: auto`
+with the default `overflow-x: visible` **computes `overflow-x` to `auto`**, so
+*any* descendant wider than the viewport produces a horizontal scrollbar on the
+whole page (sidebar appears to overlap content). A wide chart track (e.g. All
+Time = ~100 monthly Cash Flow bars in a non-scrolling `1fr` grid) triggers this.
+**Every wide/variable-width chart track must be contained by its own
+`overflow-x: auto` scroller** so it never reaches the page wrapper. When adding or
+changing an Overview chart, QA at **All Time** and confirm
+`document.documentElement.scrollWidth === clientWidth`.
+
+**Line charts:** the SVG `viewBox` width must equal its rendered pixel width.
+With `preserveAspectRatio="none"` a narrow viewBox stretched to a wide panel
+distorts the line and turns point markers into ovals (visible on short ranges
+like *This/Last Month*). Compute the plot width from the real container width.
+
 ### 5. Dialog (Confirmation & Alert Popups)
 
 There is one canonical popup component in FluxyOS. **Never call `window.confirm()` or `window.alert()` directly** — they break the design system and produce unstyled OS dialogs.

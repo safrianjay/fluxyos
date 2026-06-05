@@ -559,6 +559,7 @@ function renderCashFlowChart() {
         return amount > 0 ? Math.max((amount / maxAxis) * 50, 4) : 0;
     };
 
+    const trackWidth = cashFlowBuckets.length * CASHFLOW_MIN_BUCKET_PX;
     chart.innerHTML = `
         <div class="cash-flow-stage" data-cashflow-stage>
             <div class="cash-flow-axis">
@@ -570,7 +571,8 @@ function renderCashFlowChart() {
             </div>
             <div class="cash-flow-plot">
                 <div class="cash-flow-zero-line"></div>
-                <div class="cash-flow-bars">
+              <div class="cash-flow-scroll" data-cashflow-cf-scroll>
+                <div class="cash-flow-bars" style="width: ${trackWidth}px">
                     ${cashFlowBuckets.map(item => {
                         const inHeight = scaledCashFlowHeight(item.cashIn);
                         const outHeight = scaledCashFlowHeight(item.cashOut);
@@ -590,12 +592,19 @@ function renderCashFlowChart() {
                         `;
                     }).join('')}
                 </div>
+              </div>
             </div>
         </div>
-        <div class="cash-flow-labels">
-            ${cashFlowBuckets.map(item => `<span>${escapeHtml(item.label)}</span>`).join('')}
+        <div class="cash-flow-labels-scroll" data-cashflow-cf-labels>
+            <div class="cash-flow-labels" style="width: ${trackWidth}px">
+                ${cashFlowBuckets.map(item => `<span>${escapeHtml(item.label)}</span>`).join('')}
+            </div>
         </div>
     `;
+    linkHorizontalScroll(
+        chart.querySelector('[data-cashflow-cf-scroll]'),
+        chart.querySelector('[data-cashflow-cf-labels]')
+    );
 
     const stage = chart.querySelector('[data-cashflow-stage]');
     if (stage && window.attachChartHover) {
@@ -1418,10 +1427,8 @@ function cashflowTrackWidth() {
 
 // The plot area and the labels row live in two separate horizontal scrollers
 // (so the Y-axis can stay pinned). Mirror their scrollLeft so they move as one.
-function syncCashflowScroll(chart) {
-    const plot = chart.querySelector('[data-cashflow-scroll]');
-    const labels = chart.querySelector('[data-cashflow-labels-scroll]');
-    if (!plot || !labels) return;
+function linkHorizontalScroll(a, b) {
+    if (!a || !b) return;
     let lock = false;
     const mirror = (from, to) => {
         if (lock) return;
@@ -1429,8 +1436,15 @@ function syncCashflowScroll(chart) {
         to.scrollLeft = from.scrollLeft;
         lock = false;
     };
-    plot.addEventListener('scroll', () => mirror(plot, labels));
-    labels.addEventListener('scroll', () => mirror(labels, plot));
+    a.addEventListener('scroll', () => mirror(a, b));
+    b.addEventListener('scroll', () => mirror(b, a));
+}
+
+function syncCashflowScroll(chart) {
+    linkHorizontalScroll(
+        chart.querySelector('[data-cashflow-scroll]'),
+        chart.querySelector('[data-cashflow-labels-scroll]')
+    );
 }
 
 function renderCashflowChart() {
@@ -1492,7 +1506,13 @@ function buildLinePoints(values, maxValue, width, height, paddingX, paddingY) {
 }
 
 function renderCashflowLineChart(chart) {
-    const trackWidth = cashflowTrackWidth();
+    // The SVG viewBox width must equal its rendered pixel width, or the line is
+    // stretched horizontally on short ranges (few buckets, track fills the panel
+    // but the viewBox stays narrow). Use the real plot width: the buckets' track
+    // when it overflows (scrolls), else the available panel width.
+    const axisGutter = 92;
+    const available = Math.max(0, Math.round((chart.clientWidth || 0) - axisGutter));
+    const trackWidth = Math.max(cashflowTrackWidth(), available || cashflowTrackWidth());
     const width = trackWidth;
     const height = 280;
     const paddingX = 24;
