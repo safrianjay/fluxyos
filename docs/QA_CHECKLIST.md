@@ -382,6 +382,35 @@ Run the **Cross-Page Regression** section below — changes to shared files affe
 | 40 | When categories tagged + matching income exists: ARR shows the rupiah value with the "(partial)" suffix and the caveat: "ARR excludes untagged revenue and may exclude valid recurring revenue if categories are not configured." |
 | 41 | ARR formula: recurring monthly revenue × 12; for YTD periods the monthly baseline is `total recurring income ÷ elapsed months` |
 
+### J2. Balance Sheet (balance-sheet.html, balance-sheet.js, db-service.js, sidebar-loader.js)
+
+| # | Check |
+|---|-------|
+| 1 | Open `/balance-sheet` logged out → redirects to `/login` within 2s |
+| 2 | After login, sidebar renders, "Balance Sheet" appears under Reporting, and it is the active item |
+| 3 | Marketing footer does NOT appear |
+| 4 | Page title, subtitle, breadcrumb, controls, CSV action, and Print / Save PDF action render in a compact report-first layout |
+| 5 | As-of picker uses the shared `FluxyDateRangePicker`; cadence and comparison controls refresh the report |
+| 6 | Empty account with no cash, receivables, unpaid bills, or pending payables shows an honest empty state and no fake numbers |
+| 7 | No active bank account shows Cash & Bank as `Rp 0` plus the quiet "No active cash or bank balance has been set." warning |
+| 8 | Cash & Bank includes active `bank_accounts`; comparison uses the latest `bank_balance_snapshots` row on or before the comparison date when available |
+| 9 | Accounts Receivable includes only `pending_receivable` transactions on or before the as-of date |
+| 10 | Accounts Payable includes unpaid bills (`payment_status != paid` or missing) using date priority `due_date`, `date`, `timestamp`, `created_at` |
+| 11 | Pending Payables includes only `pending_payable` transactions on or before the as-of date |
+| 12 | Net Position equals Total Assets minus Total Liabilities; UI labels it **Net Position**, not Equity |
+| 13 | Comparison and change columns never render `NaN`, `Infinity`, `-Infinity`, `undefined`, or `null`; unavailable comparison shows `—` |
+| 14 | Negative values display with parentheses; zero displays `Rp 0`; all money cells are right-aligned mono |
+| 15 | Expand/collapse works for sections and Cash & Bank children; Expand all / Collapse all updates the table without layout shift |
+| 16 | Clicking Cash & Bank, Accounts Receivable, Accounts Payable, or Pending Payables opens a right-side read-only drawer with only related records |
+| 17 | Drawer closes via X, overlay click, and Escape; page scroll locks while open |
+| 18 | CSV export is disabled when no source data exists and explains why |
+| 19 | Confirmed CSV export writes `users/{uid}/report_exports` with `report_type = "balance_sheet"` and an `export.create` audit log targeting `report_exports` |
+| 20 | CSV output contains raw integer amounts only (no `Rp ` prefix, no dot separators) |
+| 21 | Audit log and `report_exports` metadata never contain row-level CSV content or related-record details |
+| 22 | Print / Save PDF opens browser print; the app never claims a PDF was downloaded successfully |
+| 23 | Mobile width 375px → no page-level horizontal overflow; the report table scrolls inside its container and the drawer is full width |
+| 24 | Browser console clean (no CSP/CORS/404/Firebase/permission errors) |
+
 ### K. Budget Page (budget.html, budget.js, db-service.js budget methods, firestore.rules budget_allocations + bills)
 
 Run this section whenever `budget.html`, `assets/js/budget.js`, the
@@ -545,7 +574,9 @@ work and the console stays clean.
 before the mapping **Save** action works — otherwise the page still loads and reads
 correctly, but Save shows the friendly "Could not save the mapping" toast (handled,
 not a thrown error). Phase 1 is read-only except for saved mappings: no journal
-posting, no period close, no `accounting_periods` collection.
+posting, no period close, no `accounting_periods` collection. The **Income Statement
+Preview** is the primary tab; readiness is now a supporting **report confidence**
+banner/KPI, not the main card.
 
 | # | Check |
 |---|-------|
@@ -554,21 +585,23 @@ posting, no period close, no `accounting_periods` collection.
 | 3 | Sidebar "Accounting Center" is visible under Reporting and active (orange) on `/accounting` |
 | 4 | Page defaults to the current month; period control is the shared `FluxyDateRangePicker` |
 | 5 | Loading skeleton shows first, then the real/empty state (no flash of fake numbers) |
-| 6 | Account with no finance records → "No accounting data for this period yet" empty state, **no** readiness score |
-| 7 | Readiness score never shows `NaN`/`Infinity`; band label matches the score band |
-| 8 | `Missing Receipt` transactions appear in the cleanup queue and missing-receipts count |
-| 9 | Bills without a due date appear in the cleanup queue and the bills-missing-due-date count |
-| 10 | Subscriptions without a renewal date appear in the cleanup queue |
-| 11 | Custom / "Others" categories appear as **Unmapped** in Account Mapping; built-ins show **Suggested** |
-| 12 | Saving a mapping writes to `users/{uid}/accounting_mappings` only + an `accounting_mapping.created`/`.updated` audit log; the row flips to **Saved** after reload |
-| 13 | Changing the period updates the KPI strip, cleanup queue, and mapping preview |
-| 14 | Tabs switch (Overview / Cleanup / Account Mapping / Close); "Review cleanup queue" jumps to the Cleanup tab |
-| 15 | Close tab "Close period" is a disabled **Planned** control; no period write occurs |
-| 16 | AI prompt buttons + "Ask Fluxy AI" only open the Fluxy AI drawer — they never save or mutate data |
-| 17 | Topbar "Export package" is disabled (**Planned**) |
-| 18 | Firestore shows no global accounting collections; all writes stay under `users/{uid}/…`; no amounts/formatted currency in `accounting_mappings` |
-| 19 | Responsive at 375 / 768 / 1280 — KPI strip stacks, tables scroll within their container, **no page horizontal scroll** (`document.documentElement.scrollWidth === clientWidth`) |
-| 20 | Browser console clean (no CSP/CORS/404/Firebase/permission errors) |
+| 6 | Account with no finance records → "No income statement data for this period" empty state, **no** fake report rows |
+| 7 | First tab is **Income Statement** (not Overview/Readiness); tab list is Income Statement / Cleanup / Account Mapping / Close |
+| 8 | Income Statement table renders real data; column headers show the selected period + comparison labels (e.g. "May 2026" / "Apr 2026") |
+| 9 | Revenue total matches income/revenue/refund/pending_receivable transactions; OpEx total matches expense/fee/tax/pending_payable; COGS defaults to 0 (Infrastructure stays under OpEx) |
+| 10 | Gross Profit = Revenue − COGS; Operating Income = Gross Profit − OpEx; Net Income math is correct; margins show in subtotal status |
+| 11 | Change column shows previous-period delta; Change % shows **N/A** when previous is 0 and never `NaN`/`Infinity`; cost increases read red/parentheses, decreases read green |
+| 12 | Clicking any row opens the related-records drawer titled "Related records: [Line item]" with only that row's records; closes via X, overlay click, and Escape; page scroll locks while open |
+| 13 | Child line statuses surface counts (e.g. "2 missing receipts", "1 unmapped"); empty lines show "No records"; subtotal/total rows show the calc note in the drawer |
+| 14 | Report confidence banner shows Ready/Almost ready/Needs cleanup + message; "View blockers" jumps to the Cleanup tab; readiness ring/band KPI matches |
+| 15 | `Missing Receipt` transactions, bills without a due date, subscriptions without a renewal date appear in the Cleanup tab |
+| 16 | Custom / "Others" categories appear as **Unmapped** in Account Mapping; built-ins show **Suggested**; saving writes `users/{uid}/accounting_mappings` only + audit log; row flips to **Saved** after reload |
+| 17 | Changing the period updates KPI strip, Income Statement table, confidence banner, cleanup queue, and mapping preview |
+| 18 | Close tab "Close period" is a disabled **Planned** control; Topbar "Export package" is disabled (**Planned**); no period write occurs |
+| 19 | AI prompt buttons + "Ask Fluxy AI" only open the Fluxy AI drawer — they never save or mutate data |
+| 20 | Firestore shows no global accounting collections; all writes stay under `users/{uid}/…`; no amounts/formatted currency in `accounting_mappings` |
+| 21 | Responsive at 375 / 768 / 1280 — KPI strip stacks, the Income Statement table scrolls within its container, drawer is full-width on mobile, **no page horizontal scroll** (`document.documentElement.scrollWidth === clientWidth`) |
+| 22 | Browser console clean (no CSP/CORS/404/Firebase/permission errors) |
 
 **Regression (shared files touched):** `sidebar-loader.js` and `db-service.js` were
 modified — run §3 Cross-Page Regression and confirm Dashboard, Ledger, Bills,
@@ -646,7 +679,7 @@ billing methods in `db-service.js`, or canonical billing Firestore rules.
 
 **Banner**
 - [ ] Trial banner shows on dashboard, ledger, bill, subscription, budget, reports,
-  integration, and settings*; CTA opens `/checkout?plan=growth&billing=annually`.
+  balance-sheet, integration, and settings*; CTA opens `/checkout?plan=growth&billing=annually`.
 - [ ] Pending banner CTA opens `/payment-pending`; active user sees no banner.
 - [ ] No horizontal overflow at 375px; banner CTA is the only primary action.
 
@@ -699,7 +732,7 @@ billing methods in `db-service.js`, or canonical billing Firestore rules.
 
 **Hard paywall (trial ended / payment failed)**
 - [ ] `status = expired` → every app page (dashboard, ledger, bill, subscription, budget, reports,
-  integration, settings*) shows a full-screen blurred, non-interactive paywall with "Your trial has
+  balance-sheet, integration, settings*) shows a full-screen blurred, non-interactive paywall with "Your trial has
   ended" + "Choose a plan" → `/pricing`; the page behind cannot be scrolled or clicked.
 - [ ] `status = payment_failed` with the trial window over → paywall shows "Payment couldn't be verified"
   + "Retry payment" → `/checkout?...`.

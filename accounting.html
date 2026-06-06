@@ -72,7 +72,7 @@
                         <div style="width:48px;height:48px;border-radius:12px;background:#FEF2F2;color:#B91C1C;display:grid;place-items:center;margin:0 auto 16px;">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>
                         </div>
-                        <h2 class="fluxy-section-title" style="margin-bottom:8px;">Could not load accounting readiness</h2>
+                        <h2 class="fluxy-section-title" style="margin-bottom:8px;">Could not load income statement preview</h2>
                         <p class="fluxy-body" style="color:#6B7280;margin-bottom:20px;">Check your connection and try again.</p>
                         <button type="button" id="acct-retry" class="acct-btn acct-btn-primary" style="margin:0 auto;">Try again</button>
                     </div>
@@ -84,8 +84,8 @@
                         <div style="width:52px;height:52px;border-radius:14px;background:#FFF7ED;color:#C2410C;display:grid;place-items:center;margin:0 auto 18px;">
                             <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
                         </div>
-                        <h2 class="fluxy-section-title" style="margin-bottom:8px;">No accounting data for this period yet</h2>
-                        <p class="fluxy-body" style="color:#6B7280;margin-bottom:24px;">Add transactions, bills, receipts, or bank statements first. FluxyOS will use them to prepare accounting readiness.</p>
+                        <h2 class="fluxy-section-title" style="margin-bottom:8px;">No income statement data for this period</h2>
+                        <p class="fluxy-body" style="color:#6B7280;margin-bottom:24px;">Add transactions, bills, or revenue records first. FluxyOS will use them to build an income statement preview.</p>
                         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
                             <a href="/ledger" class="acct-btn acct-btn-primary" style="text-decoration:none;">Add transaction</a>
                             <a href="/integration" class="acct-btn acct-btn-secondary" style="text-decoration:none;">Import statement</a>
@@ -97,90 +97,90 @@
                 <div id="accounting-content" class="hidden">
 
                     <!-- KPI STRIP -->
-                    <section class="acct-kpi-grid" aria-label="Accounting readiness summary">
+                    <section class="acct-kpi-grid" aria-label="Income statement summary">
                         <article class="acct-card acct-kpi">
-                            <span class="fluxy-kpi-label">Readiness score</span>
+                            <span class="fluxy-kpi-label">Revenue</span>
+                            <span id="kpi-revenue-value" class="acct-kpi-value acct-mono">—</span>
+                            <span id="kpi-revenue-sub" class="fluxy-meta">Selected period</span>
+                        </article>
+                        <article class="acct-card acct-kpi">
+                            <span class="fluxy-kpi-label">Gross Profit</span>
+                            <span id="kpi-gross-value" class="acct-kpi-value acct-mono">—</span>
+                            <span id="kpi-gross-sub" class="fluxy-meta">Gross margin</span>
+                        </article>
+                        <article class="acct-card acct-kpi">
+                            <span class="fluxy-kpi-label">Operating Expenses</span>
+                            <span id="kpi-opex-value" class="acct-kpi-value acct-mono">—</span>
+                            <span id="kpi-opex-sub" class="fluxy-meta">Selected period</span>
+                        </article>
+                        <article class="acct-card acct-kpi">
+                            <span class="fluxy-kpi-label">Net Income</span>
+                            <span id="kpi-net-value" class="acct-kpi-value acct-mono">—</span>
+                            <span id="kpi-net-sub" class="fluxy-meta">Net margin</span>
+                        </article>
+                        <article class="acct-card acct-kpi">
+                            <span class="fluxy-kpi-label">Report confidence</span>
                             <div style="display:flex;align-items:center;gap:12px;">
                                 <div id="kpi-readiness-ring" class="acct-score-ring"><span id="kpi-readiness-value" class="acct-kpi-value acct-mono" style="font-size:16px;">—</span></div>
                                 <span id="kpi-readiness-band" class="acct-pill acct-pill-planned">—</span>
                             </div>
                         </article>
-                        <article class="acct-card acct-kpi">
-                            <span class="fluxy-kpi-label">Cleanup items</span>
-                            <span id="kpi-cleanup-value" class="acct-kpi-value acct-mono">—</span>
-                            <span id="kpi-cleanup-sub" class="fluxy-meta">Across this period</span>
-                        </article>
-                        <article class="acct-card acct-kpi">
-                            <span class="fluxy-kpi-label">Records reviewed</span>
-                            <span id="kpi-reviewed-value" class="acct-kpi-value acct-mono">—</span>
-                            <span id="kpi-reviewed-sub" class="fluxy-meta">Ready of total</span>
-                        </article>
-                        <article class="acct-card acct-kpi">
-                            <span class="fluxy-kpi-label">Unmapped records</span>
-                            <span id="kpi-unmapped-value" class="acct-kpi-value acct-mono">—</span>
-                            <span id="kpi-unmapped-sub" class="fluxy-meta">Need an account</span>
-                        </article>
-                        <article class="acct-card acct-kpi">
-                            <span class="fluxy-kpi-label">Close status</span>
-                            <span id="kpi-close-value" class="acct-pill acct-pill-planned" style="align-self:flex-start;margin-top:2px;">—</span>
-                            <span id="kpi-close-sub" class="fluxy-meta">For the selected period</span>
-                        </article>
                     </section>
 
-                    <!-- PARTIAL-DATA / LIMITATIONS NOTE -->
-                    <div id="accounting-limitations" class="hidden acct-card" style="padding:12px 16px;margin-bottom:24px;display:flex;align-items:flex-start;gap:10px;background:#FFFBEB;border-color:#FDE68A;">
-                        <svg class="w-4 h-4" style="color:#B45309;margin-top:2px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <p id="accounting-limitations-text" class="fluxy-meta" style="color:#92400E;"></p>
+                    <!-- REPORT CONFIDENCE BANNER -->
+                    <div id="acct-confidence-banner" class="acct-confidence" role="status">
+                        <span id="acct-confidence-dot" class="acct-confidence-dot" aria-hidden="true"></span>
+                        <div style="flex:1;min-width:0;">
+                            <span id="acct-confidence-title" class="fluxy-body-strong" style="color:#111827;"></span>
+                            <p id="acct-confidence-message" class="fluxy-meta" style="margin-top:2px;"></p>
+                        </div>
+                        <button type="button" id="acct-view-blockers" class="acct-btn acct-btn-secondary">View blockers</button>
                     </div>
 
                     <!-- TABS -->
                     <nav class="acct-tabs" role="tablist" aria-label="Accounting Center views">
-                        <button type="button" class="acct-tab is-active" data-acct-tab="overview" role="tab">Overview</button>
+                        <button type="button" class="acct-tab is-active" data-acct-tab="income" role="tab">Income Statement</button>
                         <button type="button" class="acct-tab" data-acct-tab="cleanup" role="tab">Cleanup <span class="acct-tab-count" id="tab-cleanup-count">0</span></button>
                         <button type="button" class="acct-tab" data-acct-tab="mapping" role="tab">Account Mapping</button>
                         <button type="button" class="acct-tab" data-acct-tab="close" role="tab">Close</button>
                     </nav>
 
-                    <!-- OVERVIEW TAB -->
-                    <div data-acct-panel="overview" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div class="lg:col-span-2 flex flex-col gap-6">
-                            <!-- Priority panel -->
-                            <section class="acct-card" style="padding:20px;">
-                                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
-                                    <div>
-                                        <h2 class="fluxy-section-title">Fix these before closing this period</h2>
-                                        <p class="fluxy-meta">The highest-impact issues blocking a clean close.</p>
-                                    </div>
-                                    <div style="display:flex;gap:8px;">
-                                        <button type="button" id="acct-review-cleanup" class="acct-btn acct-btn-primary">Review cleanup queue</button>
-                                    </div>
+                    <!-- INCOME STATEMENT TAB -->
+                    <div data-acct-panel="income" class="flex flex-col gap-6">
+                        <!-- Report card -->
+                        <section class="acct-card">
+                            <div style="padding:20px 20px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+                                <div>
+                                    <h2 class="fluxy-section-title">Income Statement</h2>
+                                    <p class="fluxy-meta">Click a row to inspect related records.</p>
                                 </div>
-                                <div id="priority-panel-content"></div>
-                            </section>
-
-                            <!-- Readiness breakdown -->
-                            <section class="acct-card" style="padding:20px;">
-                                <h2 class="fluxy-section-title" style="margin-bottom:4px;">Accounting readiness</h2>
-                                <p class="fluxy-meta" style="margin-bottom:16px;">What's reviewed and what's still outstanding.</p>
-                                <div id="readiness-breakdown-content"></div>
-                            </section>
-                        </div>
+                                <div class="acct-is-legend">
+                                    <span><span class="acct-legend-dot acct-legend-current"></span>Current</span>
+                                    <span><span class="acct-legend-dot acct-legend-change"></span>Change</span>
+                                </div>
+                            </div>
+                            <div id="income-statement-table" class="acct-is-scroll"></div>
+                        </section>
 
                         <!-- AI assistant panel -->
-                        <aside class="flex flex-col gap-6">
-                            <section class="acct-card" style="padding:20px;">
-                                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-                                    <div style="width:32px;height:32px;border-radius:8px;background:#0B0F19;display:grid;place-items:center;flex-shrink:0;">
-                                        <svg viewBox="0 0 40 40" class="w-5 h-5" fill="none"><path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#fff"/><path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#fff"/></svg>
-                                    </div>
-                                    <div>
-                                        <h2 class="fluxy-card-title">Ask Fluxy AI</h2>
-                                        <p class="fluxy-meta">Explanations only — Fluxy never posts or closes.</p>
-                                    </div>
+                        <section class="acct-card" style="padding:20px;">
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                                <div style="width:32px;height:32px;border-radius:8px;background:#0B0F19;display:grid;place-items:center;flex-shrink:0;">
+                                    <svg viewBox="0 0 40 40" class="w-5 h-5" fill="none"><path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#fff"/><path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#fff"/></svg>
                                 </div>
-                                <div id="acct-ai-prompts" style="display:flex;flex-direction:column;gap:8px;margin-top:12px;"></div>
-                            </section>
-                        </aside>
+                                <div>
+                                    <h2 class="fluxy-card-title">Ask Fluxy AI</h2>
+                                    <p class="fluxy-meta">Explanations only — Fluxy never posts, closes, or edits your data.</p>
+                                </div>
+                            </div>
+                            <div id="acct-ai-prompts" class="acct-ai-prompts"></div>
+                        </section>
+
+                        <!-- PARTIAL-DATA / LIMITATIONS NOTE -->
+                        <div id="accounting-limitations" class="hidden acct-card" style="padding:12px 16px;display:flex;align-items:flex-start;gap:10px;background:#FFFBEB;border-color:#FDE68A;">
+                            <svg class="w-4 h-4" style="color:#B45309;margin-top:2px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <p id="accounting-limitations-text" class="fluxy-meta" style="color:#92400E;"></p>
+                        </div>
                     </div>
 
                     <!-- CLEANUP TAB -->

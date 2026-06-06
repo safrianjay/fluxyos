@@ -1,8 +1,9 @@
 // Accounting Center page controller — Phase 1.
-// Renders accounting readiness, cleanup queue, account mapping preview, and
-// close-readiness from existing user-scoped records. Read-only except for the
-// saved account-mapping flow. No journal posting, no period close, no AI writes.
-// All data access goes through DataService.
+// Primary surface is the Income Statement Preview (a deterministic P&L built from
+// ledger transactions). Readiness is reused as supporting "report confidence"
+// metadata, not the main experience. The Cleanup, Account Mapping, and Close tabs
+// keep the read-only readiness flows. No journal posting, no period close, no AI
+// writes. All data access goes through DataService.
 
 const state = {
     ds: null,
@@ -10,9 +11,11 @@ const state = {
     startKey: null,
     endKey: null,
     picker: null,
-    activeTab: 'overview',
+    activeTab: 'income',
     loading: false,
-    data: null
+    data: null,
+    rowsById: {},
+    drawerOpen: false
 };
 
 // Display-only account catalog for the mapping <select>. Mirrors the catalog in
@@ -31,32 +34,27 @@ const ACCOUNT_OPTIONS = [
 ];
 
 const AI_PROMPTS = [
-    'Can I close this month?',
-    'What needs cleanup before reporting?',
-    'Which records are not accounting-ready?',
-    'Which categories are unmapped?',
-    'Why is my readiness score low?'
+    'Why did net income change?',
+    'Which income statement rows need cleanup?',
+    'What caused OpEx to increase?',
+    'Which records are behind Marketing expenses?',
+    'Can I treat this as accounting-ready?'
 ];
 
-const BAND_META = {
-    ready:         { label: 'Ready for review', pill: 'acct-pill-ready', ring: '#16A34A' },
-    almost:        { label: 'Almost ready',     pill: 'acct-pill-almost', ring: '#EA580C' },
-    needs_cleanup: { label: 'Needs cleanup',    pill: 'acct-pill-needs', ring: '#EF4444' },
-    no_data:       { label: 'No data',          pill: 'acct-pill-planned', ring: '#94A3B8' }
-};
-
-const CLOSE_META = {
-    ready_to_close: { label: 'Ready to close', pill: 'acct-pill-ready' },
-    needs_cleanup:  { label: 'Needs cleanup',  pill: 'acct-pill-almost' },
-    open:           { label: 'Open',           pill: 'acct-pill-planned' },
-    no_data:        { label: 'No data',        pill: 'acct-pill-planned' }
-};
+const TONE_COLOR = { success: '#16A34A', warning: '#EA580C', danger: '#EF4444', neutral: '#94A3B8' };
+const TONE_PILL = { success: 'acct-pill-ready', warning: 'acct-pill-almost', danger: 'acct-pill-needs', neutral: 'acct-pill-planned' };
 
 const SOURCE_LINKS = {
     transactions: '/ledger',
     bills: '/bill',
     subscriptions: '/subscription',
     bank_statement_imports: '/integration'
+};
+const SOURCE_LABEL = {
+    transactions: 'Ledger',
+    bills: 'Bills',
+    subscriptions: 'Subscriptions',
+    bank_statement_imports: 'Bank import'
 };
 
 // --- helpers ---
@@ -76,6 +74,21 @@ function formatRupiah(n) {
     const value = Number(n);
     if (!Number.isFinite(value)) return null;
     return `Rp ${Math.abs(Math.round(value)).toLocaleString('id-ID')}`;
+}
+
+// Signed display: negatives wrapped in parentheses, e.g. (Rp 4.750.000).
+function signedRupiah(n) {
+    const value = Number(n) || 0;
+    const text = formatRupiah(value) || 'Rp 0';
+    return value < 0 ? `(${text})` : text;
+}
+
+function formatDate(dayKey) {
+    if (!dayKey) return '—';
+    const parts = String(dayKey).split('-').map(Number);
+    if (parts.length !== 3) return dayKey;
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function getDayKey(date = new Date()) {
@@ -116,10 +129,14 @@ function mountPicker() {
 function wireStaticControls() {
     el('acct-ask-ai')?.addEventListener('click', () => openFluxyAI());
     el('acct-retry')?.addEventListener('click', () => load());
-    el('acct-review-cleanup')?.addEventListener('click', () => setTab('cleanup'));
+    el('acct-view-blockers')?.addEventListener('click', () => setTab('cleanup'));
 
     document.querySelectorAll('[data-acct-tab]').forEach(btn => {
         btn.addEventListener('click', () => setTab(btn.getAttribute('data-acct-tab')));
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && state.drawerOpen) closeDrawer();
     });
 }
 
@@ -154,13 +171,17 @@ function setTab(tab) {
 async function load() {
     if (state.loading) return;
     state.loading = true;
+    closeDrawer();
     show('accounting-loading');
     hide('accounting-error');
     hide('accounting-empty');
     hide('accounting-content');
 
     try {
-        const data = await state.ds.getAccountingReadiness(state.user.uid, state.startKey, state.endKey);
+        const data = await state.ds.getIncomeStatementPreview(state.user.uid, {
+            start: state.startKey,
+            end: state.endKey
+        });
         state.data = data;
         hide('accounting-loading');
 
@@ -172,7 +193,7 @@ async function load() {
         render(data);
         show('accounting-content');
     } catch (err) {
-        console.error('Accounting readiness failed:', err);
+        console.error('Income statement preview failed:', err);
         hide('accounting-loading');
         show('accounting-error');
     } finally {
@@ -183,40 +204,67 @@ async function load() {
 // --- render ---
 function render(data) {
     renderKpis(data);
+    renderConfidenceBanner(data);
     renderLimitations(data);
-    renderPriority(data);
-    renderBreakdown(data);
-    renderCleanup(data);
-    renderMapping(data);
-    renderClose(data);
+    indexRows(data);
+    renderIncomeStatement(data);
+
+    const readiness = data.readiness;
+    if (readiness) {
+        renderCleanup(readiness);
+        renderMapping(readiness);
+        renderClose(readiness);
+        el('tab-cleanup-count').textContent = `${readiness.cleanupItems.length}`;
+    }
     setTab(state.activeTab);
 }
 
 function renderKpis(data) {
-    const k = data.kpis;
-    const band = BAND_META[data.band] || BAND_META.no_data;
+    const s = data.summary;
+    el('kpi-revenue-value').textContent = formatRupiah(s.revenue) || 'Rp 0';
+    el('kpi-gross-value').textContent = signedRupiah(s.gross_profit);
+    el('kpi-gross-sub').textContent = `${s.gross_margin_pct}% gross margin`;
+    el('kpi-opex-value').textContent = formatRupiah(s.operating_expenses) || 'Rp 0';
+    el('kpi-net-value').textContent = signedRupiah(s.net_income);
+    el('kpi-net-sub').textContent = `${s.net_margin_pct}% net margin`;
 
-    el('kpi-readiness-value').textContent = data.score === null ? '—' : `${data.score}`;
+    const c = data.confidence;
+    el('kpi-readiness-value').textContent = (c.score === null || c.score === undefined) ? '—' : `${c.score}`;
     const ring = el('kpi-readiness-ring');
     if (ring) {
-        ring.style.setProperty('--pct', data.score === null ? 0 : data.score);
-        ring.style.setProperty('--ring-color', band.ring);
+        ring.style.setProperty('--pct', (c.score === null || c.score === undefined) ? 0 : c.score);
+        ring.style.setProperty('--ring-color', TONE_COLOR[c.tone] || TONE_COLOR.neutral);
     }
-    const bandPill = el('kpi-readiness-band');
-    bandPill.textContent = band.label;
-    bandPill.className = `acct-pill ${band.pill}`;
+    const band = el('kpi-readiness-band');
+    band.textContent = c.label;
+    band.className = `acct-pill ${TONE_PILL[c.tone] || TONE_PILL.neutral}`;
+}
 
-    el('kpi-cleanup-value').textContent = `${k.cleanup_items}`;
-    el('kpi-reviewed-value').textContent = `${k.records_reviewed}`;
-    el('kpi-reviewed-sub').textContent = `of ${k.records_total} records`;
-    el('kpi-unmapped-value').textContent = `${k.unmapped_records}`;
+function renderConfidenceBanner(data) {
+    const c = data.confidence;
+    const banner = el('acct-confidence-banner');
+    if (!banner) return;
+    const titles = {
+        Ready: 'Ready for accounting review',
+        'Almost ready': 'Almost ready for accounting review',
+        'Needs cleanup': 'Needs cleanup before accounting review',
+        'No data': 'Income statement preview'
+    };
+    el('acct-confidence-title').textContent = titles[c.label] || 'Income statement preview';
+    el('acct-confidence-message').textContent = c.message;
+    const dot = el('acct-confidence-dot');
+    if (dot) dot.style.background = TONE_COLOR[c.tone] || TONE_COLOR.neutral;
+    banner.className = `acct-confidence acct-confidence-${c.tone}`;
 
-    const close = CLOSE_META[k.close_status] || CLOSE_META.open;
-    const closePill = el('kpi-close-value');
-    closePill.textContent = close.label;
-    closePill.className = `acct-pill ${close.pill}`;
-
-    el('tab-cleanup-count').textContent = `${k.cleanup_items}`;
+    const cta = el('acct-view-blockers');
+    if (cta) {
+        if (c.cleanup_count > 0) {
+            cta.style.display = '';
+            cta.textContent = `View blockers (${c.cleanup_count})`;
+        } else {
+            cta.style.display = 'none';
+        }
+    }
 }
 
 function renderLimitations(data) {
@@ -230,6 +278,285 @@ function renderLimitations(data) {
     }
 }
 
+// --- income statement table ---
+function indexRows(data) {
+    const map = {};
+    (data.rows || []).forEach(row => {
+        map[row.id] = row;
+        (row.children || []).forEach(child => { map[child.id] = child; });
+    });
+    state.rowsById = map;
+}
+
+function amountCell(value, kind) {
+    const v = Number(value) || 0;
+    if (kind === 'cost') {
+        if (v === 0) return { text: 'Rp 0', cls: 'is-zero' };
+        return { text: `(${formatRupiah(v)})`, cls: 'is-neg' };
+    }
+    if (v < 0) return { text: `(${formatRupiah(v)})`, cls: 'is-neg' };
+    if (v === 0) return { text: 'Rp 0', cls: 'is-zero' };
+    return { text: formatRupiah(v), cls: 'is-pos' };
+}
+
+function changeDisplay(row) {
+    const c = Number(row.change_amount) || 0;
+    let tone = 'neutral';
+    if (c !== 0) {
+        if (row.kind === 'cost') tone = c > 0 ? 'danger' : 'success';
+        else tone = c > 0 ? 'success' : 'danger';
+    }
+    let text;
+    if (c === 0) text = 'Rp 0';
+    else if (row.kind === 'cost') text = c > 0 ? `(${formatRupiah(c)})` : formatRupiah(c);
+    else text = c > 0 ? formatRupiah(c) : `(${formatRupiah(c)})`;
+
+    let pctText;
+    if (row.change_pct === null || row.change_pct === undefined) pctText = 'N/A';
+    else {
+        const p = Number(row.change_pct);
+        pctText = `${p > 0 ? '+' : ''}${p.toFixed(1)}%`;
+    }
+    return { tone, text, pctText, pctTone: (row.change_pct === null || row.change_pct === undefined) ? 'neutral' : tone };
+}
+
+function statusCellHtml(row, isChild) {
+    const tone = row.status_tone || 'neutral';
+    if (row.level === 'subtotal' || row.level === 'total') {
+        return `<span class="acct-is-status-text" style="font-weight:600;">${escapeHtml(row.status)}</span>`;
+    }
+    if (isChild) {
+        return `<span class="acct-is-status-text acct-tone-${tone}">${escapeHtml(row.status)}</span>`;
+    }
+    return `<span class="acct-pill ${TONE_PILL[tone] || TONE_PILL.neutral}">${escapeHtml(row.status)}</span>`;
+}
+
+function rowTr(row, isChild, parentId) {
+    const cur = amountCell(row.current_amount, row.kind);
+    const prev = amountCell(row.previous_amount, row.kind);
+    const ch = changeDisplay(row);
+    const hasChildren = !isChild && row.children && row.children.length;
+    const levelClass = isChild
+        ? 'acct-is-child'
+        : row.level === 'total' ? 'acct-is-total'
+        : row.level === 'subtotal' ? 'acct-is-subtotal'
+        : 'acct-is-group';
+    const chevron = hasChildren
+        ? `<button type="button" class="acct-is-chevron" data-toggle="${escapeHtml(row.id)}" aria-label="Toggle ${escapeHtml(row.label)} rows"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg></button>`
+        : '<span class="acct-is-chevron-spacer"></span>';
+    const parentAttr = isChild ? ` data-parent="${escapeHtml(parentId)}"` : '';
+    return `
+        <tr class="acct-is-row ${levelClass}" data-row-id="${escapeHtml(row.id)}"${parentAttr} tabindex="0" role="button" aria-label="Inspect ${escapeHtml(row.label)}">
+            <td class="acct-is-line">${chevron}<span>${escapeHtml(row.label)}</span></td>
+            <td class="acct-is-num ${cur.cls}">${cur.text}</td>
+            <td class="acct-is-num ${prev.cls}">${prev.text}</td>
+            <td class="acct-is-num acct-tone-${ch.tone}">${ch.text}</td>
+            <td class="acct-is-num acct-tone-${ch.pctTone}">${ch.pctText}</td>
+            <td class="acct-is-status">${statusCellHtml(row, isChild)}</td>
+        </tr>`;
+}
+
+function rowGroupHtml(row) {
+    if (row.level === 'group') {
+        const children = (row.children || []).map(c => rowTr(c, true, row.id)).join('');
+        return rowTr(row, false) + children;
+    }
+    return rowTr(row, false);
+}
+
+function incomeEmptyInline() {
+    return `
+        <div style="padding:48px 24px;text-align:center;">
+            <div class="fluxy-section-title" style="margin-bottom:6px;">No income statement data for this period</div>
+            <p class="fluxy-meta" style="max-width:420px;margin:0 auto 18px;">Add transactions, bills, or revenue records first. FluxyOS will use them to build an income statement preview.</p>
+            <button type="button" class="acct-btn acct-btn-primary" data-add-tx style="margin:0 auto;">Add transaction</button>
+        </div>`;
+}
+
+function renderIncomeStatement(data) {
+    const wrap = el('income-statement-table');
+    if (!wrap) return;
+
+    if (!data.hasIncomeData) {
+        wrap.innerHTML = incomeEmptyInline();
+        wrap.querySelector('[data-add-tx]')?.addEventListener('click', () => {
+            if (typeof window.showAddTransactionModal === 'function') {
+                window.showAddTransactionModal({ title: 'Add Transaction', submitLabel: 'Add Transaction', context: 'transaction' });
+            } else {
+                window.location.href = '/ledger';
+            }
+        });
+        return;
+    }
+
+    const curLabel = data.period.label;
+    const prevLabel = data.comparison_period.label;
+    const body = (data.rows || []).map(rowGroupHtml).join('');
+    wrap.innerHTML = `
+        <table class="acct-is-table">
+            <thead>
+                <tr>
+                    <th class="acct-is-th-line">Line item</th>
+                    <th class="acct-is-th-num">${escapeHtml(curLabel)}</th>
+                    <th class="acct-is-th-num">${escapeHtml(prevLabel)}</th>
+                    <th class="acct-is-th-num">Change</th>
+                    <th class="acct-is-th-num">Change %</th>
+                    <th class="acct-is-th-status">Status</th>
+                </tr>
+            </thead>
+            <tbody>${body}</tbody>
+        </table>`;
+
+    wireIncomeStatement(wrap);
+}
+
+function wireIncomeStatement(wrap) {
+    wrap.querySelectorAll('[data-toggle]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-toggle');
+            const collapsed = btn.classList.toggle('is-collapsed');
+            wrap.querySelectorAll(`tr[data-parent="${CSS.escape(id)}"]`).forEach(tr => {
+                tr.classList.toggle('hidden', collapsed);
+            });
+        });
+    });
+
+    wrap.querySelectorAll('tr[data-row-id]').forEach(tr => {
+        const open = () => openDrawer(tr.getAttribute('data-row-id'));
+        tr.addEventListener('click', open);
+        tr.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+        });
+    });
+}
+
+// --- related-records drawer ---
+function ensureDrawer() {
+    let overlay = el('acct-drawer-overlay');
+    if (overlay) return overlay;
+    overlay = document.createElement('div');
+    overlay.id = 'acct-drawer-overlay';
+    overlay.className = 'acct-drawer-overlay';
+    overlay.innerHTML = `
+        <aside class="acct-drawer" role="dialog" aria-modal="true" aria-labelledby="acct-drawer-title">
+            <div class="acct-drawer-head">
+                <div style="min-width:0;">
+                    <span class="fluxy-meta" style="text-transform:uppercase;letter-spacing:0.06em;">Related records</span>
+                    <h2 id="acct-drawer-title" class="fluxy-section-title" style="margin-top:2px;"></h2>
+                </div>
+                <button type="button" class="acct-drawer-close" id="acct-drawer-close" aria-label="Close panel">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
+            </div>
+            <div class="acct-drawer-body" id="acct-drawer-body"></div>
+        </aside>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeDrawer(); });
+    overlay.querySelector('#acct-drawer-close').addEventListener('click', () => closeDrawer());
+    return overlay;
+}
+
+function suggestedAction(row) {
+    if (row.level === 'subtotal' || row.level === 'total') {
+        return 'This is a calculated row — adjust the contributing line items to change it.';
+    }
+    const tone = row.status_tone;
+    if (tone === 'danger') return 'Open the Cleanup tab to attach receipts and fix categories on these records.';
+    if (tone === 'warning') return 'Open the Account Mapping tab to map these categories to accounting accounts.';
+    if (row.status === 'No records') return 'No records fall under this line for the selected period.';
+    return 'No action needed — these records look review-ready.';
+}
+
+function recordCardHtml(rec) {
+    const link = SOURCE_LINKS[rec.source_collection];
+    const sourceLabel = SOURCE_LABEL[rec.source_collection] || rec.source_collection;
+    const statusTone = rec.status === 'Missing Receipt' ? 'danger' : 'neutral';
+    const metaParts = [formatDate(rec.date), rec.category || 'Uncategorized', rec.type || '—']
+        .map(escapeHtml).join(' · ');
+    return `
+        <div class="acct-rec-card">
+            <div style="flex:1;min-width:0;">
+                <div class="fluxy-body-strong" style="color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(rec.vendor_name)}</div>
+                <div class="fluxy-meta">${metaParts}</div>
+                <div class="fluxy-meta" style="margin-top:2px;display:flex;gap:8px;align-items:center;">
+                    <span class="acct-tone-${statusTone}">${escapeHtml(rec.status)}</span>
+                    ${link ? `<a href="${link}" class="acct-rec-link">${escapeHtml(sourceLabel)} →</a>` : `<span>${escapeHtml(sourceLabel)}</span>`}
+                </div>
+            </div>
+            <div class="acct-mono fluxy-body-strong" style="color:#111827;white-space:nowrap;">${formatRupiah(rec.amount) || 'Rp 0'}</div>
+        </div>`;
+}
+
+function openDrawer(rowId) {
+    const row = state.rowsById[rowId];
+    const data = state.data;
+    if (!row || !data) return;
+    const overlay = ensureDrawer();
+
+    el('acct-drawer-title').textContent = row.label;
+
+    const records = (data.related_records_index && data.related_records_index[rowId]) || [];
+    const ch = changeDisplay(row);
+    const curLabel = data.period.label;
+    const prevLabel = data.comparison_period.label;
+
+    const summaryHtml = `
+        <div class="acct-drawer-grid">
+            <div><span class="fluxy-meta">${escapeHtml(curLabel)}</span><span class="acct-mono fluxy-body-strong">${amountCell(row.current_amount, row.kind).text}</span></div>
+            <div><span class="fluxy-meta">${escapeHtml(prevLabel)}</span><span class="acct-mono fluxy-body-strong">${amountCell(row.previous_amount, row.kind).text}</span></div>
+            <div><span class="fluxy-meta">Change</span><span class="acct-mono fluxy-body-strong acct-tone-${ch.tone}">${ch.text} · ${ch.pctText}</span></div>
+            <div><span class="fluxy-meta">Status</span><span>${statusCellHtml(row, row.level === 'child')}</span></div>
+        </div>`;
+
+    const noteHtml = row.note
+        ? `<p class="fluxy-meta acct-drawer-note">${escapeHtml(row.note)}</p>`
+        : '';
+
+    const actionHtml = `
+        <div class="acct-drawer-action">
+            <span class="fluxy-meta" style="text-transform:uppercase;letter-spacing:0.06em;">Suggested action</span>
+            <p class="fluxy-body" style="color:#374151;margin-top:2px;">${escapeHtml(suggestedAction(row))}</p>
+        </div>`;
+
+    let recordsHtml;
+    if (!records.length) {
+        recordsHtml = `
+            <div class="acct-drawer-empty">
+                <div class="fluxy-body-strong" style="color:#111827;margin-bottom:4px;">No related records found for this line item.</div>
+                <div class="fluxy-meta">${row.level === 'subtotal' || row.level === 'total'
+                    ? 'This row is calculated from the line items above.'
+                    : 'Nothing in the ledger maps to this line for the selected period.'}</div>
+            </div>`;
+    } else {
+        recordsHtml = `
+            <div class="fluxy-meta" style="text-transform:uppercase;letter-spacing:0.06em;margin:18px 0 8px;">${records.length} related record${records.length === 1 ? '' : 's'}</div>
+            <div class="acct-rec-list">${records.map(recordCardHtml).join('')}</div>`;
+    }
+
+    el('acct-drawer-body').innerHTML = summaryHtml + noteHtml + actionHtml + recordsHtml;
+
+    overlay.classList.add('is-open');
+    lockScroll(true);
+    state.drawerOpen = true;
+}
+
+function closeDrawer() {
+    const overlay = el('acct-drawer-overlay');
+    if (overlay) overlay.classList.remove('is-open');
+    lockScroll(false);
+    state.drawerOpen = false;
+}
+
+// The app body carries Tailwind `overflow-hidden`; the real scroll container is
+// the inner `.flex-1.overflow-y-auto` region, so lock that (plus body, for safety).
+function lockScroll(locked) {
+    const scroller = document.querySelector('main .overflow-y-auto');
+    if (scroller) scroller.style.overflow = locked ? 'hidden' : '';
+    document.body.style.overflow = locked ? 'hidden' : '';
+}
+
+// --- cleanup / mapping / close (readiness-backed) ---
 function severityDot(severity) {
     const cls = severity === 'high' ? 'acct-dot-high' : severity === 'low' ? 'acct-dot-low' : 'acct-dot-medium';
     return `<span class="acct-dot ${cls}" aria-hidden="true"></span>`;
@@ -255,52 +582,12 @@ function cleanupRowHtml(item) {
         </div>`;
 }
 
-function renderPriority(data) {
-    const wrap = el('priority-panel-content');
-    if (!wrap) return;
-    const rank = { high: 0, medium: 1, low: 2 };
-    const top = [...data.cleanupItems].sort((a, b) => (rank[a.severity] - rank[b.severity])).slice(0, 3);
-    if (!top.length) {
-        wrap.innerHTML = `
-            <div style="display:flex;align-items:center;gap:10px;padding:12px 0;">
-                <span class="acct-check-icon acct-check-done">✓</span>
-                <div>
-                    <div class="fluxy-body-strong" style="color:#111827;">No blockers for this period</div>
-                    <div class="fluxy-meta">Your records look review-ready. Check the Close tab to wrap up.</div>
-                </div>
-            </div>`;
-        return;
-    }
-    wrap.innerHTML = `<div class="acct-table-scroll" style="border:1px solid #F3F4F6;border-radius:10px;">${top.map(cleanupRowHtml).join('')}</div>`;
-}
-
-function metricRow(label, value, tone) {
-    const color = tone === 'bad' ? '#B91C1C' : tone === 'warn' ? '#B45309' : tone === 'good' ? '#047857' : '#111827';
+function emptyInline(title, body) {
     return `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6;">
-            <span class="fluxy-body" style="color:#374151;">${escapeHtml(label)}</span>
-            <span class="fluxy-body-strong acct-mono" style="color:${color};">${escapeHtml(value)}</span>
+        <div style="padding:32px 16px;text-align:center;">
+            <div class="fluxy-body-strong" style="color:#111827;margin-bottom:4px;">${escapeHtml(title)}</div>
+            <div class="fluxy-meta">${escapeHtml(body)}</div>
         </div>`;
-}
-
-function renderBreakdown(data) {
-    const wrap = el('readiness-breakdown-content');
-    if (!wrap) return;
-    const c = data.counts;
-    const rows = [
-        metricRow('Transactions in period', `${c.transactions}`, 'neutral'),
-        metricRow('Missing receipts', `${c.missing_receipts}`, c.missing_receipts ? 'bad' : 'good'),
-        metricRow('Missing categories', `${c.missing_categories}`, c.missing_categories ? 'warn' : 'good'),
-        metricRow('Bills in period', `${c.bills}`, 'neutral'),
-        metricRow('Bills missing due date', `${c.bills_missing_due_date}`, c.bills_missing_due_date ? 'bad' : 'good'),
-        metricRow('Bills missing invoice', `${c.bills_missing_invoice}`, c.bills_missing_invoice ? 'warn' : 'good'),
-        metricRow('Unmapped categories', `${c.unmapped_categories}`, c.unmapped_categories ? 'warn' : 'good'),
-        metricRow('Subscriptions missing renewal', `${c.subscriptions_missing_renewal}`, c.subscriptions_missing_renewal ? 'warn' : 'good'),
-        data.bankSupported
-            ? metricRow('Pending bank imports', `${c.bank_imports_pending}`, c.bank_imports_pending ? 'bad' : 'good')
-            : metricRow('Pending bank imports', 'No bank statement', 'neutral')
-    ];
-    wrap.innerHTML = `<div>${rows.join('')}</div>`;
 }
 
 function renderCleanup(data) {
@@ -313,14 +600,6 @@ function renderCleanup(data) {
     const rank = { high: 0, medium: 1, low: 2 };
     const sorted = [...data.cleanupItems].sort((a, b) => (rank[a.severity] - rank[b.severity]));
     wrap.innerHTML = sorted.map(cleanupRowHtml).join('');
-}
-
-function emptyInline(title, body) {
-    return `
-        <div style="padding:32px 16px;text-align:center;">
-            <div class="fluxy-body-strong" style="color:#111827;margin-bottom:4px;">${escapeHtml(title)}</div>
-            <div class="fluxy-meta">${escapeHtml(body)}</div>
-        </div>`;
 }
 
 function mappingPillClass(status) {
@@ -360,7 +639,7 @@ function renderMapping(data) {
 }
 
 async function handleMappingSave(idx) {
-    const mapping = state.data?.mappingPreview?.[idx];
+    const mapping = state.data?.readiness?.mappingPreview?.[idx];
     if (!mapping) return;
     const select = document.querySelector(`[data-mapping-select="${idx}"]`);
     const code = select ? select.value : mapping.target_account_code;

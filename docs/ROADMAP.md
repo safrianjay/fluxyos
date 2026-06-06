@@ -141,23 +141,27 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | ZIP CSV bundle | 📋 Planned | MVP downloads files individually |
 | Recurring revenue classification (for ARR — category-level) | ✅ Shipped MVP | `users/{uid}/settings/reports.recurring_revenue_category_ids` drives ARR; Settings → Finance preferences has the picker. Future: per-transaction `is_recurring` flag for higher precision. |
 | Bank balance / cash runway | 📋 Planned | Cash pressure stays proxy-only until real balance source exists |
+| Balance Sheet Management View (`/balance-sheet`) | ✅ Shipped Phase 1 | Standalone Reporting page; point-in-time Assets, Liabilities, and Net Position from `bank_accounts`, `bank_balance_snapshots`, `transactions`, and `bills`; CSV export logs to `report_exports` |
 
 ### Accounting Center
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Accounting Center app page (`/accounting`) | ✅ Shipped Phase 1 | Auth-guarded, sidebar-active under Reporting, no marketing footer |
 | Period filter (default current month) | ✅ Shipped Phase 1 | Uses shared `FluxyDateRangePicker` |
-| Readiness score + KPI strip | ✅ Shipped Phase 1 | Deterministic, capped per bucket; no-data state (never fake 100%) |
+| Income Statement Preview (P&L) + related-records drawer | ✅ Shipped Phase 1 | Primary tab; deterministic P&L from ledger transactions (Revenue → COGS → Gross Profit → OpEx → Operating Income → Other → Net Income); `getIncomeStatementPreview`. Preview only — not posted/closed |
+| Report confidence banner + KPI strip | ✅ Shipped Phase 1 | Readiness reused as supporting "report confidence" metadata (score/band/cleanup count), no longer the main experience |
 | Cleanup queue (receipts, due dates, invoices, renewals, unmapped, bank review) | ✅ Shipped Phase 1 | Built from real user-scoped records |
 | Account mapping preview + save flow | ✅ Shipped Phase 1 | Saved mappings win over suggestions; writes `users/{uid}/accounting_mappings` + audit log |
-| Tabs: Overview / Cleanup / Account Mapping / Close | ✅ Shipped Phase 1 | |
+| Tabs: Income Statement / Cleanup / Account Mapping / Close | ✅ Shipped Phase 1 | Income Statement replaced the readiness-first Overview tab |
 | Close readiness checklist | ✅ Shipped Phase 1 | Read-only; "Close period" is a disabled Planned control |
 | AI assistant panel (suggested prompts) | ✅ Shipped Phase 1 | Opens existing Fluxy AI drawer; no autonomous writes |
 | `accounting_mappings` collection + firestore.rules | ✅ Shipped Phase 1 | Enums/strings only; must be **deployed** before save works |
+| Cost of Revenue (COGS) classification mapping | 📋 Planned | Preview defaults COGS to 0; needs a `cost_of_revenue` account type / `statement_section` before categories move out of OpEx |
+| Posted journal-entry income statement (P&L) | 📋 Planned | The shipped Income Statement is a preview; posted statements wait on journal posting + close |
 | Period close + lock + `accounting_periods` | 📋 Planned | Needs confirmation, locking, and audit flow |
 | Chart of accounts management (`accounting_accounts`) | 📋 Planned | Phase 2 |
 | Journal drafts → posted journal entries (double-entry) | 📋 Planned | Phases 3–4; AI may draft, never auto-post |
-| Accounting statements (P&L, Balance Sheet, Cash Flow, Trial Balance) | 📋 Planned | Phase 6 |
+| Formal accounting statements (posted Balance Sheet, Cash Flow, Trial Balance) | 📋 Planned | Phase 6; waits on chart of accounts, journal entries, opening balances, retained earnings, and period close |
 | Bank reconciliation matching | 📋 Planned | Phase 7 |
 | Accounting export package | 📋 Planned | Topbar "Export package" disabled until shipped |
 

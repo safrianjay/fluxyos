@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Balance Sheet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <style>
+        .bs-mono { font-family: "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+        .bs-report-loading { position: relative; pointer-events: none; }
+        .bs-report-loading > * { opacity: .55; }
+        .bs-report-loading::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent 0%, #EA580C 50%, transparent 100%);
+            background-size: 200% 100%;
+            animation: bs-loading-sweep 1.1s linear infinite;
+            z-index: 5;
+        }
+        @keyframes bs-loading-sweep {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
+        }
+        .bs-table { min-width: 820px; border-collapse: separate; border-spacing: 0; }
+        .bs-table th { position: sticky; top: 0; z-index: 2; background: #F8FAFC; }
+        .bs-row-button { width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 6px; color: #64748B; }
+        .bs-row-button:hover { background: #F1F5F9; color: #111827; }
+        .bs-row-button svg { transition: transform .16s ease; }
+        .bs-row-button[aria-expanded="false"] svg { transform: rotate(-90deg); }
+        .bs-row-clickable:hover { background: #F8FAFC; }
+        .bs-section-row { background: #F8FAFC; }
+        .bs-total-row { background: #fff; }
+        .bs-drawer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, .42);
+            z-index: 40;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .2s ease;
+        }
+        .bs-drawer-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: min(620px, 100vw);
+            height: 100vh;
+            background: #fff;
+            z-index: 41;
+            transform: translateX(100%);
+            transition: transform .24s ease;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -28px 0 90px rgba(15, 23, 42, .24);
+        }
+        body.bs-drawer-open .bs-drawer-overlay { opacity: 1; pointer-events: auto; }
+        body.bs-drawer-open .bs-drawer-panel { transform: translateX(0); }
+        .bs-print-only { display: none; }
+        @media print {
+            body { overflow: visible !important; background: #fff !important; }
+            #sidebar, .dashboard-main-topbar, .bs-no-print, .bs-drawer-overlay, .bs-drawer-panel { display: none !important; }
+            main, .overflow-y-auto { overflow: visible !important; height: auto !important; }
+            .bs-print-only { display: block; }
+            .bs-report-shell { max-width: none !important; margin: 0 !important; }
+            .bs-table-wrap { overflow: visible !important; }
+            .bs-table { min-width: 0 !important; width: 100% !important; }
+        }
+    </style>
+</head>
+<body class="dashboard-page flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="dashboard-main-topbar h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-4">
+            <div class="min-w-0">
+                <span class="dashboard-topbar-title">Balance Sheet</span>
+                <p class="dashboard-topbar-subtitle hidden sm:block">Management view based on FluxyOS records.</p>
+            </div>
+            <div class="flex items-center gap-3 bs-no-print">
+                <button type="button" id="bs-print-btn" class="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-medium text-gray-700 hover:bg-gray-50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"></path></svg>
+                    Print / Save PDF
+                </button>
+                <button type="button" id="bs-export-btn" class="inline-flex items-center gap-2 px-3 py-2 bg-gray-900 text-white rounded-lg text-[14px] font-semibold hover:bg-gray-800 active:scale-95 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
+                    Download CSV
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
+            <div class="bs-report-shell max-w-[1400px] mx-auto space-y-4">
+                <nav class="flex items-center gap-2 text-[12px] text-gray-500 bs-no-print" aria-label="Breadcrumb">
+                    <a href="/reports" class="hover:text-gray-900">Reporting</a>
+                    <svg class="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 18 6-6-6-6"></path></svg>
+                    <span class="font-medium text-gray-700">Balance Sheet</span>
+                </nav>
+
+                <section class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+                    <div class="max-w-2xl">
+                        <h1 class="text-[24px] leading-tight font-bold tracking-[-0.025em] text-gray-950">Balance Sheet</h1>
+                        <p class="mt-2 text-[14px] text-gray-600 leading-relaxed">A snapshot of your business assets, liabilities, and net position at a selected date.</p>
+                        <p id="bs-helper-label" class="mt-2 text-[12px] text-gray-500">Management view based on FluxyOS records.</p>
+                    </div>
+                    <p id="bs-generated-label" class="bs-print-only text-[12px] text-gray-500"></p>
+                </section>
+
+                <section class="bg-white border border-gray-200 rounded-xl shadow-sm p-4 bs-no-print">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[minmax(180px,240px)_160px_190px_170px_160px_auto] gap-3 items-end">
+                        <div>
+                            <label class="block text-[12px] font-semibold text-gray-500 mb-1.5">As of date</label>
+                            <div id="bs-as-of-picker"></div>
+                        </div>
+                        <div>
+                            <label for="bs-cadence-select" class="block text-[12px] font-semibold text-gray-500 mb-1.5">Cadence</label>
+                            <select id="bs-cadence-select" class="w-full h-10 px-3 border border-gray-200 rounded-lg text-[14px] bg-white focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                                <option value="monthly">Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="bs-compare-select" class="block text-[12px] font-semibold text-gray-500 mb-1.5">Compare with</label>
+                            <select id="bs-compare-select" class="w-full h-10 px-3 border border-gray-200 rounded-lg text-[14px] bg-white focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                                <option value="none">None</option>
+                                <option value="previous_period">Previous period</option>
+                                <option value="previous_month">Previous month</option>
+                                <option value="previous_quarter">Previous quarter</option>
+                                <option value="previous_year">Previous year</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="bs-section-filter" class="block text-[12px] font-semibold text-gray-500 mb-1.5">Group by</label>
+                            <select id="bs-section-filter" class="w-full h-10 px-3 border border-gray-200 rounded-lg text-[14px] bg-white focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                                <option value="all">Default view</option>
+                                <option value="assets">Assets only</option>
+                                <option value="liabilities">Liabilities only</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="bs-source-filter" class="block text-[12px] font-semibold text-gray-500 mb-1.5">Data source</label>
+                            <select id="bs-source-filter" class="w-full h-10 px-3 border border-gray-200 rounded-lg text-[14px] bg-white focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                                <option value="all">All sources</option>
+                                <option value="bank_accounts">Cash accounts</option>
+                                <option value="transactions">Transactions</option>
+                                <option value="bills">Bills</option>
+                            </select>
+                        </div>
+                        <button type="button" id="bs-expand-btn" class="h-10 px-3 bg-white border border-gray-200 rounded-lg text-[14px] font-medium text-gray-700 hover:bg-gray-50 active:scale-95">Collapse all</button>
+                    </div>
+                    <div id="bs-scope-summary" class="mt-3 text-[12px] text-gray-500" aria-live="polite"></div>
+                </section>
+
+                <div id="bs-error-banner" class="hidden rounded-xl border border-red-200 bg-red-50 text-red-700 text-[14px] px-4 py-3"></div>
+                <div id="bs-empty-banner" class="hidden rounded-xl border border-gray-200 bg-white text-gray-600 text-[14px] px-4 py-3">
+                    No balance sheet source data yet. Add cash balances, pending receivables, unpaid bills, or pending payables to make this report useful.
+                </div>
+                <section id="bs-warnings-panel" class="hidden bg-white border border-amber-200 rounded-xl shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-amber-100">
+                        <h2 class="text-[14px] font-semibold text-gray-900">Data quality</h2>
+                        <p class="text-[12px] text-gray-500 mt-1">Quiet notes about data that may make this management view incomplete.</p>
+                    </div>
+                    <div id="bs-warnings-list" class="divide-y divide-amber-100"></div>
+                </section>
+
+                <section id="bs-report-panel" class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    <div class="px-4 sm:px-5 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                            <h2 class="text-[16px] font-semibold tracking-[-0.01em] text-gray-900">Balance Sheet</h2>
+                            <p id="bs-report-subtitle" class="mt-1 text-[12px] text-gray-500">As of selected date</p>
+                        </div>
+                        <p id="bs-export-status" class="text-[12px] text-gray-500 bs-no-print"></p>
+                    </div>
+                    <div class="bs-table-wrap overflow-x-auto">
+                        <table class="bs-table w-full text-[14px]">
+                            <thead>
+                                <tr class="text-[12px] text-gray-500 border-b border-gray-200">
+                                    <th class="text-left font-semibold px-4 sm:px-5 py-3 w-[46%]">Account</th>
+                                    <th id="bs-current-header" class="text-right font-semibold px-4 py-3">Current</th>
+                                    <th id="bs-compare-header" class="text-right font-semibold px-4 py-3">Comparison</th>
+                                    <th class="text-right font-semibold px-4 sm:px-5 py-3">Change</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bs-table-body" class="divide-y divide-gray-100">
+                                <tr><td colspan="4" class="px-5 py-10 text-center text-[14px] text-gray-500">Loading balance sheet...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <div id="bs-drawer-overlay" class="bs-drawer-overlay bs-no-print"></div>
+    <aside class="bs-drawer-panel bs-no-print" aria-label="Balance Sheet detail drawer">
+        <div class="px-6 py-5 border-b border-gray-200 flex justify-between items-start gap-5">
+            <div class="min-w-0">
+                <h3 id="bs-drawer-title" class="text-[20px] font-semibold tracking-[-0.02em] text-gray-900">Details</h3>
+                <p id="bs-drawer-meta" class="mt-1 text-[14px] text-gray-500 leading-snug">Related records</p>
+            </div>
+            <button id="bs-drawer-close-btn" type="button" aria-label="Close details" class="w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50">
+                <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="px-6 py-5 flex-1 overflow-auto space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div class="border border-gray-200 rounded-xl p-3">
+                    <span class="block text-[12px] text-gray-500">Total amount</span>
+                    <strong id="bs-drawer-total" class="bs-mono mt-1 block text-[16px] text-gray-900">Rp 0</strong>
+                </div>
+                <div class="border border-gray-200 rounded-xl p-3">
+                    <span class="block text-[12px] text-gray-500">Record count</span>
+                    <strong id="bs-drawer-count" class="bs-mono mt-1 block text-[16px] text-gray-900">0</strong>
+                </div>
+            </div>
+            <section class="border border-gray-200 rounded-xl overflow-hidden">
+                <div class="px-4 py-3 border-b border-gray-100">
+                    <h4 class="text-[14px] font-semibold text-gray-900">Related records</h4>
+                    <p id="bs-drawer-source" class="text-[12px] text-gray-500 mt-1">Source</p>
+                </div>
+                <div id="bs-drawer-records" class="overflow-x-auto"></div>
+            </section>
+        </div>
+    </aside>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/date-range-picker.js"></script>
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+        import { applyToPage } from './assets/js/onboarding-gate.js';
+        import { initBalanceSheetPage } from './assets/js/balance-sheet.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.firebaseapp.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.replace('/login');
+                return;
+            }
+            const gated = await applyToPage(user, { pageKey: 'balance-sheet' });
+            if (gated) return;
+            initBalanceSheetPage({ ds, user });
+        });
+    </script>
+</body>
+</html>

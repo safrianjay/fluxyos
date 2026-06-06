@@ -69,6 +69,12 @@ const ACCOUNTING_PENALTY_WEIGHTS = {
 };
 const ACCOUNTING_PENALTY_CAP = 24;
 
+// Income Statement Preview (Accounting Center) — transaction-type buckets.
+// Revenue-side and operating-expense-side types mirror getDashboardStats /
+// _calculateOverviewPerformance so the preview never disagrees with Overview.
+const INCOME_STATEMENT_REVENUE_TYPES = ['income', 'revenue', 'refund', 'pending_receivable'];
+const INCOME_STATEMENT_OPEX_TYPES = ['expense', 'fee', 'tax', 'pending_payable'];
+
 class DataService {
     constructor(app) {
         this.app = app;
@@ -1307,6 +1313,629 @@ class DataService {
     async getAccountingCleanupItems(userId, startKey, endKey) {
         const readiness = await this.getAccountingReadiness(userId, startKey, endKey);
         return readiness.cleanupItems;
+    }
+
+    // --- BALANCE SHEET (Management View, Phase 1) ---
+    // Builds a point-in-time management balance sheet from existing user-scoped
+    // FluxyOS records only. This is not a posted double-entry statement: no
+    // chart of accounts, journal entries, retained earnings, or formal equity.
+    async getBalanceSheetReport(userId, options = {}) {
+        if (!userId) throw new Error('userId required');
+        const asOfDate = this._normalizeBalanceSheetDate(options.asOfDate || new Date());
+        const compareAsOfDate = options.compareAsOfDate ? this._normalizeBalanceSheetDate(options.compareAsOfDate) : null;
+        const filters = options.filters && typeof options.filters === 'object' ? options.filters : {};
+        const sectionFilter = ['assets', 'liabilities'].includes(filters.section) ? filters.section : 'all';
+        const sourceFilter = ['bank_accounts', 'transactions', 'bills'].includes(filters.source) ? filters.source : 'all';
+
+        const [accounts, snapshots, transactions, bills] = await Promise.all([
+            this.getBankAccounts(userId).catch(() => []),
+            this.getBankBalanceSnapshots(userId, { limit: 200 }).catch(() => []),
+            this._getBalanceSheetTransactionsOnOrBefore(userId, asOfDate).catch(() => []),
+            this.getBills(userId).catch(() => [])
+        ]);
+        const compareTransactions = compareAsOfDate
+            ? await this._getBalanceSheetTransactionsOnOrBefore(userId, compareAsOfDate).catch(() => [])
+            : [];
+
+        const activeAccounts = accounts.filter(account => String(account.status || 'active').toLowerCase() === 'active');
+        const warnings = [];
+        if (!activeAccounts.length) {
+            warnings.push({
+                id: 'missing_cash_balance',
+                type: 'missing_cash_balance',
+                severity: 'warning',
+                message: 'No active cash or bank balance has been set.',
+                action_label: 'Set up cash balance',
+                action_href: '/settings-cash'
+            });
+        }
+
+        const current = this._buildBalanceSheetSnapshot({ asOfDate, accounts: activeAccounts, snapshots, transactions, bills });
+        const compare = compareAsOfDate
+            ? this._buildBalanceSheetSnapshot({ asOfDate: compareAsOfDate, accounts: activeAccounts, snapshots, transactions: compareTransactions, bills })
+            : null;
+
+        const row = ({ id, code, label, source, total, records, children = [] }) => {
+            const compareLine = compare?.lines?.[id] || null;
+            const compareTotal = compareAsOfDate && compareLine && compareLine.record_count > 0 ? compareLine.total : null;
+            return {
+                id,
+                code,
+                label,
+                level: 1,
+                source,
+                total: this._safeInteger(total),
+                compare_total: compareTotal === null ? null : this._safeInteger(compareTotal),
+                change: compareTotal === null ? null : this._safeInteger(total - compareTotal),
+                record_count: records.length,
+                children
+            };
+        };
+
+        const cashChildren = current.cash.records.map(account => {
+            const compareAccount = compare?.cash.records.find(item => item.id === account.id) || null;
+            const compareTotal = compareAccount ? compareAccount.latest_balance : null;
+            return {
+                id: `cash_bank__${account.id}`,
+                code: '',
+                label: account.account_name || account.bank_name || 'Bank account',
+                level: 2,
+                source: 'bank_accounts',
+                total: this._safeInteger(account.latest_balance),
+                compare_total: compareTotal === null ? null : this._safeInteger(compareTotal),
+                change: compareTotal === null ? null : this._safeInteger(account.latest_balance - compareTotal),
+                record_count: 1,
+                children: []
+            };
+        });
+
+        const assetsRows = [
+            row({
+                id: 'cash_bank',
+                code: '1000',
+                label: 'Cash & Bank',
+                source: 'bank_accounts',
+                total: current.cash.total,
+                records: current.cash.records,
+                children: cashChildren
+            }),
+            row({
+                id: 'accounts_receivable',
+                code: '1100',
+                label: 'Accounts Receivable',
+                source: 'transactions',
+                total: current.accounts_receivable.total,
+                records: current.accounts_receivable.records
+            })
+        ];
+
+        const liabilityRows = [
+            row({
+                id: 'accounts_payable',
+                code: '2000',
+                label: 'Accounts Payable',
+                source: 'bills',
+                total: current.accounts_payable.total,
+                records: current.accounts_payable.records
+            }),
+            row({
+                id: 'pending_payables',
+                code: '2100',
+                label: 'Pending Payables',
+                source: 'transactions',
+                total: current.pending_payables.total,
+                records: current.pending_payables.records
+            })
+        ];
+
+        const applySourceFilter = rows => sourceFilter === 'all' ? rows : rows.filter(item => item.source === sourceFilter);
+        const visibleAssets = applySourceFilter(assetsRows);
+        const visibleLiabilities = applySourceFilter(liabilityRows);
+        const sectionTotal = rows => rows.reduce((sum, item) => sum + this._safeInteger(item.total), 0);
+        const sectionCompareTotal = rows => rows.some(item => item.compare_total !== null)
+            ? rows.reduce((sum, item) => sum + this._safeInteger(item.compare_total), 0)
+            : null;
+
+        const assetsTotal = sectionTotal(visibleAssets);
+        const liabilitiesTotal = sectionTotal(visibleLiabilities);
+        const compareAssetsTotal = sectionCompareTotal(visibleAssets);
+        const compareLiabilitiesTotal = sectionCompareTotal(visibleLiabilities);
+        const netPosition = assetsTotal - liabilitiesTotal;
+        const compareNetPosition = compareAssetsTotal === null || compareLiabilitiesTotal === null
+            ? null
+            : compareAssetsTotal - compareLiabilitiesTotal;
+
+        const sections = [
+            {
+                id: 'assets',
+                label: 'Assets',
+                total: assetsTotal,
+                compare_total: compareAssetsTotal,
+                change: compareAssetsTotal === null ? null : assetsTotal - compareAssetsTotal,
+                rows: visibleAssets
+            },
+            {
+                id: 'liabilities',
+                label: 'Liabilities',
+                total: liabilitiesTotal,
+                compare_total: compareLiabilitiesTotal,
+                change: compareLiabilitiesTotal === null ? null : liabilitiesTotal - compareLiabilitiesTotal,
+                rows: visibleLiabilities
+            }
+        ].filter(section => sectionFilter === 'all' || section.id === sectionFilter);
+
+        return {
+            report_type: 'balance_sheet',
+            report_label: 'Balance Sheet',
+            currency: 'IDR',
+            as_of_date: this._getDayKey(asOfDate),
+            compare_as_of_date: compareAsOfDate ? this._getDayKey(compareAsOfDate) : null,
+            cadence: ['monthly', 'quarterly', 'yearly'].includes(options.cadence) ? options.cadence : 'monthly',
+            generated_at: new Date().toISOString(),
+            totals: {
+                assets: assetsTotal,
+                liabilities: liabilitiesTotal,
+                net_position: netPosition,
+                compare_assets: compareAssetsTotal,
+                compare_liabilities: compareLiabilitiesTotal,
+                compare_net_position: compareNetPosition
+            },
+            sections,
+            warnings,
+            related_records_index: {
+                cash_bank: current.cash.records,
+                accounts_receivable: current.accounts_receivable.records,
+                accounts_payable: current.accounts_payable.records,
+                pending_payables: current.pending_payables.records
+            },
+            coverage: {
+                bank_accounts_count: current.cash.records.length,
+                receivable_transaction_count: current.accounts_receivable.records.length,
+                unpaid_bill_count: current.accounts_payable.records.length,
+                payable_transaction_count: current.pending_payables.records.length
+            }
+        };
+    }
+
+    async _getBalanceSheetTransactionsOnOrBefore(userId, asOfDate) {
+        const end = new Date(asOfDate);
+        end.setHours(23, 59, 59, 999);
+        try {
+            const q = query(
+                collection(this.db, `users/${userId}/transactions`),
+                where('timestamp', '<=', Timestamp.fromDate(end)),
+                orderBy('timestamp', 'desc'),
+                limit(2000)
+            );
+            const snapshot = await getDocs(q);
+            return this._activeTransactions(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+        } catch (_) {
+            const q = query(
+                collection(this.db, `users/${userId}/transactions`),
+                orderBy('timestamp', 'desc'),
+                limit(2000)
+            );
+            const snapshot = await getDocs(q);
+            return this._activeTransactions(snapshot.docs.map(d => ({ id: d.id, ...d.data() })))
+                .filter(tx => {
+                    const date = this._getTransactionDate(tx);
+                    return date && date <= end;
+                });
+        }
+    }
+
+    _buildBalanceSheetSnapshot({ asOfDate, accounts = [], snapshots = [], transactions = [], bills = [] }) {
+        const end = new Date(asOfDate);
+        end.setHours(23, 59, 59, 999);
+        const sourceSnapshots = new Map();
+        snapshots.forEach(snapshot => {
+            const accountId = snapshot.bank_account_id;
+            const date = this._getRecordDate(snapshot, 'snapshot_at');
+            if (!accountId || !date || date > end) return;
+            const previous = sourceSnapshots.get(accountId);
+            if (!previous || date > previous.date) {
+                sourceSnapshots.set(accountId, { snapshot, date });
+            }
+        });
+
+        const cashRecords = accounts.map(account => {
+            const snap = sourceSnapshots.get(account.id)?.snapshot || null;
+            const balance = snap ? Number(snap.balance) : Number(account.latest_balance);
+            const balanceDate = snap
+                ? this._getRecordDate(snap, 'snapshot_at')
+                : this._getRecordDate(account, 'latest_balance_at');
+            return {
+                source_collection: 'bank_accounts',
+                id: account.id,
+                account_name: account.account_name || '',
+                bank_name: account.bank_name || '',
+                latest_balance: this._safeInteger(balance),
+                latest_balance_at: balanceDate ? this._getDayKey(balanceDate) : null,
+                source_type: snap?.source_type || account.source_type || 'manual',
+                status: account.status || 'active'
+            };
+        });
+
+        const receivables = transactions
+            .filter(tx => String(tx.type || '').toLowerCase() === 'pending_receivable')
+            .map(tx => this._balanceSheetTransactionSummary(tx));
+        const pendingPayables = transactions
+            .filter(tx => String(tx.type || '').toLowerCase() === 'pending_payable')
+            .map(tx => this._balanceSheetTransactionSummary(tx));
+        const unpaidBills = bills
+            .filter(bill => this._isBalanceSheetBillOpenAsOf(bill, end))
+            .map(bill => this._balanceSheetBillSummary(bill));
+
+        return {
+            cash: {
+                total: cashRecords.reduce((sum, account) => sum + this._safeInteger(account.latest_balance), 0),
+                records: cashRecords
+            },
+            accounts_receivable: {
+                total: receivables.reduce((sum, tx) => sum + this._safeInteger(tx.amount), 0),
+                records: receivables
+            },
+            accounts_payable: {
+                total: unpaidBills.reduce((sum, bill) => sum + this._safeInteger(bill.amount), 0),
+                records: unpaidBills
+            },
+            pending_payables: {
+                total: pendingPayables.reduce((sum, tx) => sum + this._safeInteger(tx.amount), 0),
+                records: pendingPayables
+            },
+            get lines() {
+                return {
+                    cash_bank: { total: this.cash.total, record_count: this.cash.records.length },
+                    accounts_receivable: { total: this.accounts_receivable.total, record_count: this.accounts_receivable.records.length },
+                    accounts_payable: { total: this.accounts_payable.total, record_count: this.accounts_payable.records.length },
+                    pending_payables: { total: this.pending_payables.total, record_count: this.pending_payables.records.length }
+                };
+            }
+        };
+    }
+
+    _isBalanceSheetBillOpenAsOf(bill, asOfEnd) {
+        const status = String(bill.payment_status || '').trim().toLowerCase();
+        if (status === 'paid') return false;
+        const amount = Number(bill.amount);
+        if (!Number.isFinite(amount) || amount <= 0) return false;
+        const date = this._firstRecordDate(bill, ['due_date', 'date', 'timestamp', 'created_at']);
+        return Boolean(date && date <= asOfEnd);
+    }
+
+    _balanceSheetTransactionSummary(tx) {
+        const date = this._getTransactionDate(tx);
+        return {
+            source_collection: 'transactions',
+            id: tx.id,
+            vendor_name: tx.vendor_name || tx.merchant_name || tx.vendor || 'Transaction',
+            amount: this._safeInteger(Math.abs(Number(tx.amount) || 0)),
+            category: tx.category || null,
+            status: tx.status || null,
+            type: String(tx.type || '').toLowerCase(),
+            timestamp: date ? this._getDayKey(date) : null
+        };
+    }
+
+    _balanceSheetBillSummary(bill) {
+        const dueDate = this._getRecordDate(bill, 'due_date');
+        const fallbackDate = this._firstRecordDate(bill, ['date', 'timestamp', 'created_at']);
+        return {
+            source_collection: 'bills',
+            id: bill.id,
+            vendor_name: bill.vendor_name || bill.merchant_name || bill.vendor || 'Bill',
+            amount: this._safeInteger(Math.abs(Number(bill.amount) || 0)),
+            due_date: dueDate ? this._getDayKey(dueDate) : null,
+            payment_status: bill.payment_status || 'unpaid',
+            category: bill.category || null,
+            timestamp: fallbackDate ? this._getDayKey(fallbackDate) : null
+        };
+    }
+
+    _normalizeBalanceSheetDate(value) {
+        const date = value instanceof Date ? new Date(value) : new Date(value);
+        const safe = Number.isNaN(date.getTime()) ? new Date() : date;
+        safe.setHours(23, 59, 59, 999);
+        return safe;
+    }
+
+    _safeInteger(value) {
+        const numeric = Number(value);
+        return Number.isFinite(numeric) ? Math.round(numeric) : 0;
+    }
+
+    // --- INCOME STATEMENT PREVIEW (Accounting Center) ---
+    // Builds a deterministic P&L preview (Revenue → Cost of Revenue → Gross
+    // Profit → Operating Expenses → Operating Income → Other Income/Expense →
+    // Net Income) from ledger transactions only. This is a *preview*, not a
+    // posted journal-entry statement: no journal posting, no period close, no
+    // new collections, no AI writes. Bills/subscriptions are not folded into the
+    // amounts (they would double-count realized spend); they only inform the
+    // confidence banner. Readiness is reused as supporting confidence metadata.
+    //
+    // `period` / `comparisonPeriod` accept { start, end } day-key objects (the
+    // comparison defaults to the immediately preceding period).
+    async getIncomeStatementPreview(userId, period, comparisonPeriod) {
+        const cur = this._coercePeriodKeys(period)
+            || { start: this._getMonthStartKey(new Date()), end: this._getMonthEndKey(new Date()) };
+        const prevKeys = this._coercePeriodKeys(comparisonPeriod)
+            || this._previousPeriodRange(cur.start, cur.end);
+
+        const [readiness, curTx, prevTx, savedMappings] = await Promise.all([
+            this.getAccountingReadiness(userId, cur.start, cur.end).catch(() => null),
+            this.getTransactionsForPeriod(userId, cur.start, cur.end).catch(() => []),
+            this.getTransactionsForPeriod(userId, prevKeys.start, prevKeys.end).catch(() => []),
+            this.getAccountingMappings(userId).catch(() => [])
+        ]);
+
+        // Categories/types the user has explicitly mapped to cost-of-revenue.
+        // Until a COGS account type exists, this set is empty and COGS = 0.
+        const cogsKeys = new Set();
+        savedMappings.forEach(m => {
+            const section = String(m.statement_section || '').toLowerCase();
+            const acctType = String(m.target_account_type || '').toLowerCase();
+            if (section === 'cost_of_revenue' || acctType === 'cost_of_revenue') {
+                cogsKeys.add(`${m.source_type}::${String(m.source_value || '').trim().toLowerCase()}`);
+            }
+        });
+
+        const curB = this._buildIncomeStatementBuckets(curTx, cogsKeys);
+        const prevB = this._buildIncomeStatementBuckets(prevTx, cogsKeys);
+
+        // --- Summary (raw integers; positive magnitudes for components) ---
+        const round1 = v => (Number.isFinite(v) ? Math.round(v * 10) / 10 : 0);
+        const sum = b => {
+            const revenue = b.revenue.total;
+            const cost_of_revenue = b.cogs.total;
+            const gross_profit = revenue - cost_of_revenue;
+            const operating_expenses = b.opex.total;
+            const operating_income = gross_profit - operating_expenses;
+            const other_income = b.otherIncome.total;
+            const other_expense = b.otherExpense.total;
+            const net_income = operating_income + other_income - other_expense;
+            return {
+                revenue, cost_of_revenue, gross_profit, operating_expenses,
+                operating_income, other_income, other_expense, net_income,
+                gross_margin_pct: revenue > 0 ? round1((gross_profit / revenue) * 100) : 0,
+                net_margin_pct: revenue > 0 ? round1((net_income / revenue) * 100) : 0,
+                operating_margin_pct: revenue > 0 ? round1((operating_income / revenue) * 100) : 0
+            };
+        };
+        const summary = sum(curB);
+        const prevSummary = sum(prevB);
+
+        // --- Rows + related-records index ---
+        const relatedIndex = {};
+        const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'item';
+
+        const childRows = (groupId, curBucket, prevBucket) => {
+            const labels = new Set([...curBucket.lines.keys(), ...prevBucket.lines.keys()]);
+            return [...labels].map(label => {
+                const curLine = curBucket.lines.get(label) || { amount: 0, records: [] };
+                const prevLine = prevBucket.lines.get(label) || { amount: 0, records: [] };
+                const id = `${groupId}__${slug(label)}`;
+                relatedIndex[id] = curLine.records.map(r => this._incomeRecordSummary(r));
+                const status = this._incomeLineStatus(curLine.records, false);
+                return {
+                    id, label, level: 'child', kind: curBucket.kind,
+                    current_amount: curLine.amount, previous_amount: prevLine.amount,
+                    ...this._incomeChange(curLine.amount, prevLine.amount),
+                    status: status.label, status_tone: status.tone, children: []
+                };
+            }).sort((a, b) => b.current_amount - a.current_amount);
+        };
+
+        const groupRow = (id, label, curBucket, prevBucket) => {
+            relatedIndex[id] = curBucket.records.map(r => this._incomeRecordSummary(r));
+            const status = this._incomeLineStatus(curBucket.records, true);
+            return {
+                id, label, level: 'group', kind: curBucket.kind,
+                current_amount: curBucket.total, previous_amount: prevBucket.total,
+                ...this._incomeChange(curBucket.total, prevBucket.total),
+                status: status.label, status_tone: status.tone,
+                children: childRows(id, curBucket, prevBucket)
+            };
+        };
+
+        const subtotalRow = (id, label, curVal, prevVal, statusLabel, note) => {
+            relatedIndex[id] = [];
+            return {
+                id, label, level: id === 'net_income' ? 'total' : 'subtotal',
+                kind: 'subtotal',
+                current_amount: curVal, previous_amount: prevVal,
+                ...this._incomeChange(curVal, prevVal),
+                status: statusLabel, status_tone: 'neutral', note: note || null, children: []
+            };
+        };
+
+        const rows = [
+            groupRow('revenue', 'Revenue', curB.revenue, prevB.revenue),
+            groupRow('cost_of_revenue', 'Cost of Revenue', curB.cogs, prevB.cogs),
+            subtotalRow('gross_profit', 'Gross Profit', summary.gross_profit, prevSummary.gross_profit,
+                `${summary.gross_margin_pct}% margin`, 'Gross Profit = Revenue − Cost of Revenue'),
+            groupRow('operating_expenses', 'Operating Expenses', curB.opex, prevB.opex),
+            subtotalRow('operating_income', 'Operating Income', summary.operating_income, prevSummary.operating_income,
+                `${summary.operating_margin_pct}% margin`, 'Operating Income = Gross Profit − Operating Expenses'),
+            groupRow('other_income', 'Other Income', curB.otherIncome, prevB.otherIncome),
+            groupRow('other_expense', 'Other Expense', curB.otherExpense, prevB.otherExpense),
+            subtotalRow('net_income', 'Net Income', summary.net_income, prevSummary.net_income,
+                'Preview only', 'Net Income = Operating Income + Other Income − Other Expense')
+        ];
+
+        // --- Confidence banner (readiness as supporting metadata) ---
+        const band = readiness ? readiness.band : 'no_data';
+        const score = readiness ? readiness.score : null;
+        const cleanupCount = readiness ? readiness.cleanupItems.length : 0;
+        const txCount = readiness ? readiness.counts.transactions : curTx.length;
+        const billCount = readiness ? readiness.counts.bills : 0;
+        const confidenceMeta = {
+            ready: { label: 'Ready', tone: 'success' },
+            almost: { label: 'Almost ready', tone: 'warning' },
+            needs_cleanup: { label: 'Needs cleanup', tone: 'danger' },
+            no_data: { label: 'No data', tone: 'neutral' }
+        }[band] || { label: 'No data', tone: 'neutral' };
+
+        const countPhrase = `${txCount} transaction${txCount === 1 ? '' : 's'}`
+            + (billCount > 0 ? ` and ${billCount} bill${billCount === 1 ? '' : 's'}` : '');
+        const cleanupPhrase = cleanupCount > 0
+            ? `${cleanupCount} record${cleanupCount === 1 ? ' needs' : 's need'} cleanup before this can be treated as accounting-ready.`
+            : 'Records look review-ready for an accounting preview.';
+
+        const confidence = {
+            label: confidenceMeta.label,
+            tone: confidenceMeta.tone,
+            score,
+            cleanup_count: cleanupCount,
+            message: `This preview is based on ${countPhrase}. ${cleanupPhrase}`
+        };
+
+        const hasIncomeData = curTx.length > 0;
+        const hasData = hasIncomeData || (readiness ? readiness.hasData : false);
+
+        return {
+            hasData,
+            hasIncomeData,
+            period: { label: this._incomeStatementColumnLabel(cur.start, cur.end), start_date: cur.start, end_date: cur.end },
+            comparison_period: { label: this._incomeStatementColumnLabel(prevKeys.start, prevKeys.end), start_date: prevKeys.start, end_date: prevKeys.end },
+            confidence,
+            summary,
+            previous_summary: prevSummary,
+            rows,
+            related_records_index: relatedIndex,
+            readiness,
+            limitations: [
+                'This is an accounting-ready preview, not a posted journal-entry statement.',
+                'Income statement amounts use ledger transactions only; bills and subscriptions are not yet folded into the numbers.',
+                'Cost of Revenue uses saved accounting mappings only. Unmapped categories stay under Operating Expenses.'
+            ]
+        };
+    }
+
+    _coercePeriodKeys(period) {
+        if (!period || typeof period !== 'object') return null;
+        const start = period.start || period.startDate || period.startKey;
+        const end = period.end || period.endDate || period.endKey;
+        return (start && end) ? { start, end } : null;
+    }
+
+    // Immediately-preceding comparison period. A full calendar month maps to the
+    // previous calendar month; any other range maps to the preceding window of
+    // equal length so Change/Change % stay meaningful.
+    _previousPeriodRange(startKey, endKey) {
+        const start = this._parseDayKey(startKey);
+        const end = this._parseDayKey(endKey);
+        if (!start || !end) return { start: startKey, end: endKey };
+        if (startKey === this._getMonthStartKey(start) && endKey === this._getMonthEndKey(start)) {
+            const prevStart = new Date(start.getFullYear(), start.getMonth() - 1, 1);
+            const prevEnd = new Date(prevStart.getFullYear(), prevStart.getMonth() + 1, 0);
+            return { start: this._getDayKey(prevStart), end: this._getDayKey(prevEnd) };
+        }
+        const rangeDays = Math.max(1, Math.round((end - start) / 86400000) + 1);
+        const prevEnd = this._addDays(start, -1);
+        const prevStart = this._addDays(prevEnd, -(rangeDays - 1));
+        return { start: this._getDayKey(prevStart), end: this._getDayKey(prevEnd) };
+    }
+
+    // Column-header label: "May 2026" for a full month, otherwise "May 1–Jun 2".
+    _incomeStatementColumnLabel(startKey, endKey) {
+        const start = this._parseDayKey(startKey);
+        const end = this._parseDayKey(endKey);
+        if (!start || !end) return 'Period';
+        if (startKey === this._getMonthStartKey(start) && endKey === this._getMonthEndKey(start)) {
+            return start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        }
+        return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    }
+
+    _incomeChange(current, previous) {
+        const change_amount = (Number(current) || 0) - (Number(previous) || 0);
+        const pct = previous !== 0 ? (change_amount / Math.abs(previous)) * 100 : null;
+        return {
+            change_amount,
+            change_pct: (pct !== null && Number.isFinite(pct)) ? Math.round(pct * 10) / 10 : null
+        };
+    }
+
+    _incomeRecordSummary(tx) {
+        const date = this._getTransactionDate(tx);
+        return {
+            source_collection: 'transactions',
+            source_id: tx.id,
+            vendor_name: tx.vendor_name || tx.merchant_name || tx.vendor || 'Transaction',
+            amount: Math.abs(Number(tx.amount) || 0),
+            category: (typeof tx.category === 'string' && tx.category.trim()) ? tx.category.trim() : null,
+            type: String(tx.type || '').toLowerCase(),
+            status: tx.status || 'Completed',
+            date: date ? this._getDayKey(date) : null
+        };
+    }
+
+    // Bucket transactions into revenue / cost-of-revenue / operating-expense /
+    // other lines. Components hold positive magnitudes; the statement sign is
+    // decided at render time by row kind.
+    _buildIncomeStatementBuckets(transactions = [], cogsKeys = new Set()) {
+        const out = {
+            revenue: { kind: 'revenue', total: 0, lines: new Map(), records: [] },
+            cogs: { kind: 'cost', total: 0, lines: new Map(), records: [] },
+            opex: { kind: 'cost', total: 0, lines: new Map(), records: [] },
+            otherIncome: { kind: 'revenue', total: 0, lines: new Map(), records: [] },
+            otherExpense: { kind: 'cost', total: 0, lines: new Map(), records: [] }
+        };
+        const add = (bucket, label, amount, tx) => {
+            bucket.total += amount;
+            bucket.records.push(tx);
+            const line = bucket.lines.get(label) || { amount: 0, records: [] };
+            line.amount += amount;
+            line.records.push(tx);
+            bucket.lines.set(label, line);
+        };
+
+        transactions.forEach(tx => {
+            const type = String(tx.type || '').toLowerCase().trim();
+            const category = (typeof tx.category === 'string') ? tx.category.trim() : '';
+            const amount = Math.abs(Number(tx.amount) || 0);
+            if (!amount) return;
+
+            if (INCOME_STATEMENT_REVENUE_TYPES.includes(type)) {
+                add(out.revenue, category || 'Revenue', amount, tx);
+            } else if (INCOME_STATEMENT_OPEX_TYPES.includes(type)) {
+                const isCogs = (category && cogsKeys.has(`transaction_category::${category.toLowerCase()}`))
+                    || cogsKeys.has(`transaction_type::${type}`);
+                if (isCogs) {
+                    add(out.cogs, category || 'Cost of revenue', amount, tx);
+                } else {
+                    const line = type === 'fee' ? 'Fees' : type === 'tax' ? 'Tax' : (category || 'Others');
+                    add(out.opex, line, amount, tx);
+                }
+            }
+            // transfer / adjustment / custom types are neutral — excluded from P&L.
+        });
+        return out;
+    }
+
+    // Status for an income-statement row from its current-period transactions.
+    // Group rows collapse to Mapped / Review / Needs cleanup; child rows surface
+    // the specific count so the table reads like the cleanup queue.
+    _incomeLineStatus(records = [], isGroup = false) {
+        if (!records.length) return { label: 'No records', tone: 'neutral' };
+        const missingReceipts = records.filter(r => r.status === 'Missing Receipt').length;
+        const missingCategory = records.filter(r => !(typeof r.category === 'string' && r.category.trim())).length;
+        const unmapped = new Set();
+        records.forEach(r => {
+            if (!(typeof r.category === 'string' && r.category.trim())) return;
+            const resolved = this._resolveAccountingSource(r);
+            if (!resolved.isDefaultMapped) unmapped.add(`${resolved.sourceType}::${resolved.sourceValue}`);
+        });
+
+        if (isGroup) {
+            if (missingReceipts || missingCategory) return { label: 'Needs cleanup', tone: 'warning' };
+            if (unmapped.size) return { label: 'Review', tone: 'warning' };
+            return { label: 'Mapped', tone: 'success' };
+        }
+        if (missingReceipts) return { label: `${missingReceipts} missing receipt${missingReceipts === 1 ? '' : 's'}`, tone: 'danger' };
+        if (missingCategory) return { label: `${missingCategory} missing categor${missingCategory === 1 ? 'y' : 'ies'}`, tone: 'danger' };
+        if (unmapped.size) return { label: `${unmapped.size} unmapped`, tone: 'warning' };
+        return { label: 'Mapped', tone: 'neutral' };
     }
 
     // --- INTERNAL OPERATIONS CONSOLE (Phase 1 MVP) ---

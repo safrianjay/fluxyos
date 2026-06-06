@@ -58,6 +58,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Budgets | `budget.html` | App | ✅ | **No** | ✅ |
 | Accounting Center | `accounting.html` | App | ✅ | **No** | ✅ |
 | Reports & Exports | `reports.html` | App | ✅ | **No** | ✅ |
+| Balance Sheet | `balance-sheet.html` | App | ✅ | **No** | ✅ |
 | Report Preview (viewer) | `report-preview.html` | App | ✅ | **No** | No |
 | Integrations | `integration.html` | App | ✅ | **No** | ✅ |
 | Settings (index) | `settings.html` | App | ✅ | **No** | ✅ |
@@ -725,20 +726,59 @@ updates the same doc instead of duplicating.
 immutable on update; field-validated by `isValidAccountingMapping`. Saving writes an
 audit log (`accounting_mapping.created`/`.updated`, target `accounting_mappings`).
 
-**Accounting readiness (Phase 1, read-only).** `accounting.html` + `assets/js/accounting.js`
-render a readiness score, cleanup queue, mapping preview, and close-readiness checklist
-from existing user-scoped records. There is **no** journal posting, period close, or AI
-write in Phase 1 (the Close action is a disabled "Planned" control; no `accounting_periods`
-collection is created).
+**Accounting Center (Phase 1, read-only).** `accounting.html` + `assets/js/accounting.js`.
+The **primary tab is the Income Statement Preview** (a deterministic P&L); readiness was
+demoted from the main experience to a supporting **report confidence** banner + KPI.
+Tabs are **Income Statement / Cleanup / Account Mapping / Close** (the old readiness-first
+"Overview" tab was replaced). The page still renders the cleanup queue, mapping preview,
+and close-readiness checklist from existing user-scoped records. There is **no** journal
+posting, period close, or AI write in Phase 1 (the Close action is a disabled "Planned"
+control; no `accounting_periods` collection is created).
 
 `DataService` accounting methods:
+- `getIncomeStatementPreview(uid, period, comparisonPeriod)` — **primary Accounting
+  Center surface.** Builds a deterministic Income Statement Preview (P&L) from ledger
+  **transactions only** for the selected period vs an auto-derived comparison period
+  (`period`/`comparisonPeriod` accept `{ start, end }` day-key objects; the comparison
+  defaults to the previous calendar month, or the preceding equal-length window). Returns
+  `{ hasData, hasIncomeData, period, comparison_period, confidence, summary,
+  previous_summary, rows, related_records_index, readiness, limitations }`. See
+  classification + sign rules below.
 - `getAccountingReadiness(uid, startKey, endKey)` — orchestrates `getTransactionsForPeriod`
   / `getBillsForPeriod` / `getSubscriptionsForPeriod` + `getAccountingMappings` +
   `listBankStatementImports`, and returns `{ hasData, score, band, kpis, counts,
   cleanupItems, mappingPreview, closeChecklist, closeStatus, limitations, bankSupported }`.
+  `getIncomeStatementPreview` reuses this for its report-confidence banner and embeds the
+  full object as `result.readiness` (the Cleanup / Account Mapping / Close tabs render from it).
 - `getAccountingCleanupItems(uid, startKey, endKey)` — thin wrapper returning `cleanupItems`.
 - `getAccountingMappings(uid)` — reads active saved mappings.
 - `saveAccountingMapping(uid, data)` — deterministic upsert + audit log.
+
+**Income Statement Preview classification (Phase 1, transactions only).** This is a
+**preview**, not a posted journal-entry statement and not GAAP/IFRS-ready. Bills and
+subscriptions are deliberately **not** folded into the amounts (they would double-count
+realized spend); their counts only feed the confidence message.
+- **Revenue** = `type ∈ {income, legacy revenue, refund, pending_receivable}`, grouped by
+  category (default line `Revenue`). Mirrors `getDashboardStats` / `_calculateOverviewPerformance`.
+- **Operating Expenses** = `type ∈ {expense, fee, tax, pending_payable}`, grouped into lines
+  (`fee → Fees`, `tax → Tax`, else category or `Others`).
+- **Cost of Revenue (COGS)** defaults to **0**. A category/type only moves under COGS when a
+  saved `accounting_mappings` doc for it has `target_account_type === 'cost_of_revenue'` or
+  `statement_section === 'cost_of_revenue'`. No such account type exists yet, so Infrastructure
+  stays under OpEx by default (never auto-classified as COGS).
+- **Other Income / Other Expense** are `0` in Phase 1; `transfer`/`adjustment`/custom types are
+  neutral and excluded from the P&L.
+- **Calculations:** `gross_profit = revenue − cost_of_revenue`, `operating_income = gross_profit
+  − operating_expenses`, `net_income = operating_income + other_income − other_expense`. Margins
+  are `0` when revenue is `0`. `change_amount = current − previous`; `change_pct = previous !== 0
+  ? change/abs(previous)*100 : null` (UI shows **N/A**). Never renders NaN/Infinity. Component
+  rows store positive magnitudes; the statement sign (parentheses for costs/negatives) is applied
+  at render time by `row.kind` (`revenue` / `cost` / `subtotal`).
+- **Row status** is derived from current-period transactions only: groups collapse to Mapped /
+  Review / Needs cleanup / No records; child lines surface specific counts (e.g. `2 missing
+  receipts`, `1 unmapped`). `related_records_index[rowId]` backs the related-records drawer (white
+  card, black translucent overlay, close via X / overlay / Escape, scroll-locked); subtotal/total
+  rows carry a `note` formula and no records.
 
 **Readiness score** starts at 100 and subtracts per-bucket penalties — missing receipt
 (−8), missing category (−6), unmapped category (−6, per distinct source), bill missing
@@ -751,6 +791,41 @@ categories are treated as unmapped until a mapping is saved.
 
 **Sidebar route:** `Accounting Center` → `/accounting`, under the Reporting group in
 `sidebar-loader.js` (active id `nav-accounting`).
+
+**Balance Sheet (Phase 1 Management View).** `balance-sheet.html` + `assets/js/balance-sheet.js`
+render a standalone authenticated report under Reporting. It is a point-in-time
+management view based on existing FluxyOS records, not a formal accounting-grade
+balance sheet. The UI uses **Net Position** instead of Equity because FluxyOS does
+not yet have opening balances, retained earnings, owner capital, journal entries,
+or a full chart of accounts.
+
+`DataService.getBalanceSheetReport(uid, options)` reads only user-scoped data:
+`bank_accounts`, `bank_balance_snapshots`, `transactions`, and `bills`. Options are
+`{ asOfDate, compareAsOfDate, cadence, filters }`; returned amounts are raw integer
+IDR values. Sections are Assets, Liabilities, and calculated Net Position.
+
+Calculation rules:
+- **Cash & Bank** = active `bank_accounts.latest_balance`; for point-in-time
+  comparison, the latest `bank_balance_snapshots` row on or before the as-of date
+  is used when available, falling back to `latest_balance`.
+- **Accounts Receivable** = `transactions.type == "pending_receivable"` on or
+  before the as-of date.
+- **Accounts Payable** = unpaid `bills` (`payment_status != "paid"` or missing)
+  whose first available bill date (`due_date`, `date`, `timestamp`, `created_at`)
+  is on or before the as-of date.
+- **Pending Payables** = `transactions.type == "pending_payable"` on or before
+  the as-of date.
+- **Net Position** = total assets minus total liabilities.
+
+The page supports comparison dates, section/source filters, expandable report
+rows, and a read-only related-records drawer. CSV export contains raw integer
+amounts only. Confirmed exports create `users/{uid}/report_exports` metadata with
+`report_type: "balance_sheet"` and write an `export.create` audit log through
+`createExportAuditLog`, targeting `report_exports`; no CSV content or row-level
+financial records are stored in Firestore.
+
+**Sidebar route:** `Balance Sheet` → `/balance-sheet`, under the Reporting group
+in `sidebar-loader.js` (active id `nav-balance-sheet`).
 
 ---
 

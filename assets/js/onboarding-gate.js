@@ -197,6 +197,17 @@ const PAGE_CONFIG = {
         disable: ['header button', '[data-preview-report]', '#topbar-generate-btn', '#recommended-generate-btn', '#drawer-confirm-btn'],
         lockTargets: ['main .max-w-\\[1400px\\] > section']
     },
+    'balance-sheet': {
+        title: "Complete setup before viewing the Balance Sheet.",
+        body: "The Balance Sheet uses your user-scoped FluxyOS records to show assets, liabilities, and net position. Finish setup before exporting or sharing this report.",
+        steps: [
+            "Confirm your business name, role, and main finance goal.",
+            "Add the account owner details so FluxyOS can protect the workspace.",
+            "Then come back here to review and export the Balance Sheet."
+        ],
+        disable: ['header button', '#bs-export-btn', '#bs-print-btn'],
+        lockTargets: ['main .bs-report-shell > section', '#bs-report-panel']
+    },
     fluxy_ai: {
         title: "Complete setup before using Fluxy AI.",
         body: "AI finance answers must be grounded in your user-scoped data. Finish setup and add records before asking business performance questions.",
