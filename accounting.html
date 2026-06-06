@@ -34,8 +34,8 @@
             </div>
             <div class="flex items-center gap-3">
                 <div id="accounting-date-range-picker"></div>
-                <button type="button" id="acct-ask-ai" class="acct-btn acct-btn-secondary" title="Open Fluxy AI">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12a9 9 0 11-3.6-7.2L21 4v8z"></path></svg>
+                <button type="button" id="acct-ask-ai" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group" title="Open Fluxy AI">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     Ask Fluxy AI
                 </button>
                 <button type="button" id="acct-export-package" class="acct-btn acct-btn-secondary" disabled title="Accounting export package is planned for a later phase">
@@ -149,31 +149,11 @@
                     <div data-acct-panel="income" class="flex flex-col gap-6">
                         <!-- Report card -->
                         <section class="acct-card">
-                            <div style="padding:20px 20px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
-                                <div>
-                                    <h2 class="fluxy-section-title">Income Statement</h2>
-                                    <p class="fluxy-meta">Click a row to inspect related records.</p>
-                                </div>
-                                <div class="acct-is-legend">
-                                    <span><span class="acct-legend-dot acct-legend-current"></span>Current</span>
-                                    <span><span class="acct-legend-dot acct-legend-change"></span>Change</span>
-                                </div>
+                            <div style="padding:20px 20px 16px;">
+                                <h2 class="fluxy-section-title">Income Statement</h2>
+                                <p class="fluxy-meta">Click a row to inspect related records.</p>
                             </div>
                             <div id="income-statement-table" class="acct-is-scroll"></div>
-                        </section>
-
-                        <!-- AI assistant panel -->
-                        <section class="acct-card" style="padding:20px;">
-                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-                                <div style="width:32px;height:32px;border-radius:8px;background:#0B0F19;display:grid;place-items:center;flex-shrink:0;">
-                                    <svg viewBox="0 0 40 40" class="w-5 h-5" fill="none"><path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#fff"/><path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#fff"/></svg>
-                                </div>
-                                <div>
-                                    <h2 class="fluxy-card-title">Ask Fluxy AI</h2>
-                                    <p class="fluxy-meta">Explanations only — Fluxy never posts, closes, or edits your data.</p>
-                                </div>
-                            </div>
-                            <div id="acct-ai-prompts" class="acct-ai-prompts"></div>
                         </section>
 
                         <!-- PARTIAL-DATA / LIMITATIONS NOTE -->

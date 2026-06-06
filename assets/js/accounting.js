@@ -33,14 +33,6 @@ const ACCOUNT_OPTIONS = [
     { code: '6999', name: 'Other Expense', type: 'expense' }
 ];
 
-const AI_PROMPTS = [
-    'Why did net income change?',
-    'Which income statement rows need cleanup?',
-    'What caused OpEx to increase?',
-    'Which records are behind Marketing expenses?',
-    'Can I treat this as accounting-ready?'
-];
-
 const TONE_COLOR = { success: '#16A34A', warning: '#EA580C', danger: '#EF4444', neutral: '#94A3B8' };
 const TONE_PILL = { success: 'acct-pill-ready', warning: 'acct-pill-almost', danger: 'acct-pill-needs', neutral: 'acct-pill-planned' };
 
@@ -108,7 +100,6 @@ export function initAccountingPage({ ds, user }) {
     state.endKey = getMonthEndKey();
 
     mountPicker();
-    renderAiPrompts();
     wireStaticControls();
     load();
 }
@@ -143,17 +134,6 @@ function wireStaticControls() {
 function openFluxyAI() {
     if (typeof window.toggleFluxyAI === 'function') window.toggleFluxyAI(true);
     else window.showToast?.('Fluxy AI is still loading. Try again in a moment.', 'info');
-}
-
-function renderAiPrompts() {
-    const wrap = el('acct-ai-prompts');
-    if (!wrap) return;
-    wrap.innerHTML = AI_PROMPTS.map(p =>
-        `<button type="button" class="acct-prompt-btn" data-ai-prompt="${escapeHtml(p)}">${escapeHtml(p)}</button>`
-    ).join('');
-    wrap.querySelectorAll('[data-ai-prompt]').forEach(btn => {
-        btn.addEventListener('click', () => openFluxyAI());
-    });
 }
 
 function setTab(tab) {
