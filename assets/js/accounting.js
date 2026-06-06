@@ -120,7 +120,6 @@ function mountPicker() {
 function wireStaticControls() {
     el('acct-ask-ai')?.addEventListener('click', () => openFluxyAI());
     el('acct-retry')?.addEventListener('click', () => load());
-    el('acct-view-blockers')?.addEventListener('click', () => setTab('cleanup'));
 
     document.querySelectorAll('[data-acct-tab]').forEach(btn => {
         btn.addEventListener('click', () => setTab(btn.getAttribute('data-acct-tab')));
@@ -184,8 +183,6 @@ async function load() {
 // --- render ---
 function render(data) {
     renderKpis(data);
-    renderConfidenceBanner(data);
-    renderLimitations(data);
     indexRows(data);
     renderIncomeStatement(data);
 
@@ -220,43 +217,6 @@ function renderKpis(data) {
     band.className = `acct-pill ${TONE_PILL[c.tone] || TONE_PILL.neutral}`;
 }
 
-function renderConfidenceBanner(data) {
-    const c = data.confidence;
-    const banner = el('acct-confidence-banner');
-    if (!banner) return;
-    const titles = {
-        Ready: 'Ready for accounting review',
-        'Almost ready': 'Almost ready for accounting review',
-        'Needs cleanup': 'Needs cleanup before accounting review',
-        'No data': 'Income statement preview'
-    };
-    el('acct-confidence-title').textContent = titles[c.label] || 'Income statement preview';
-    el('acct-confidence-message').textContent = c.message;
-    const dot = el('acct-confidence-dot');
-    if (dot) dot.style.background = TONE_COLOR[c.tone] || TONE_COLOR.neutral;
-    banner.className = `acct-confidence acct-confidence-${c.tone}`;
-
-    const cta = el('acct-view-blockers');
-    if (cta) {
-        if (c.cleanup_count > 0) {
-            cta.style.display = '';
-            cta.textContent = `View blockers (${c.cleanup_count})`;
-        } else {
-            cta.style.display = 'none';
-        }
-    }
-}
-
-function renderLimitations(data) {
-    const note = el('accounting-limitations');
-    if (!note) return;
-    if (data.limitations && data.limitations.length) {
-        el('accounting-limitations-text').textContent = data.limitations.join(' ');
-        note.classList.remove('hidden');
-    } else {
-        note.classList.add('hidden');
-    }
-}
 
 // --- income statement table ---
 function indexRows(data) {

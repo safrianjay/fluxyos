@@ -227,28 +227,6 @@
 .acct-tone-warning { color: #B45309; }
 .acct-tone-neutral { color: #6B7280; }
 
-/* --- Report confidence banner --- */
-.acct-confidence {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    margin-bottom: 24px;
-    background: #fff;
-    border: 1px solid #E5E7EB;
-    border-left: 3px solid #94A3B8;
-    border-radius: 12px;
-    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-}
-.acct-confidence-success { border-left-color: #16A34A; }
-.acct-confidence-warning { border-left-color: #EA580C; }
-.acct-confidence-danger  { border-left-color: #EF4444; }
-.acct-confidence-dot {
-    width: 10px; height: 10px; border-radius: 50%;
-    flex-shrink: 0; background: #94A3B8;
-}
-.acct-confidence .acct-btn { flex-shrink: 0; }
-
 /* --- Income statement table --- */
 .acct-is-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border-top: 1px solid #F3F4F6; }
 .acct-is-table {
