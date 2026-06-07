@@ -465,6 +465,7 @@ function renderPaymentTab() {
             <td class="px-5 py-3.5 text-gray-700">${escapeHtml(x.plan_id || '—')}</td>
             <td class="px-5 py-3.5 mono text-[13px] text-gray-700">${fmtMoney(x.payment_amount)}</td>
             <td class="px-5 py-3.5">${badge(x.payment_status, PAYMENT_TONE)}</td>
+            <td class="px-5 py-3.5 text-[13px] text-gray-500">${fmtDate(x.payment_submitted_at || x.updated_at)}</td>
             <td class="px-5 py-3.5 text-right"><button class="text-[13px] font-semibold text-[#EA580C] hover:underline" data-review="${escapeHtml(uid)}">Review payment</button></td>
         </tr>`;
     }).join('');
