@@ -179,6 +179,12 @@ test.describe('billing internal mirror wiring', () => {
         expect(rules).toContain("duration.value(367, 'd')");
 
         expect(settingsBilling).toContain('M9 12.75L11.25 15 15 9.75');
+        expect(settingsBilling).toContain('billing-plan-level-label');
+        expect(settingsBilling).toContain('Trial member');
+        expect(settingsBilling).toContain('${planName} subscription');
+        expect(settingsBilling).toContain('M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2');
+        expect(settingsBilling).toContain('M12 3C7.58 3 4 4.79 4 7s3.58 4 8 4');
         expect(settingsBilling).not.toContain('M5 13l4 4L19 7M4 6h16');
+        expect(settingsBilling).not.toContain('M3 7l9-4 9 4M4 7v11h16V7M8 11v4M12 11v4M16 11v4');
     });
 });

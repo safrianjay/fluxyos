@@ -34,7 +34,10 @@
                 <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
-                <h1 class="text-lg font-bold text-gray-900">Billing &amp; plan</h1>
+                <div class="flex items-center gap-2 min-w-0">
+                    <h1 class="text-lg font-bold text-gray-900 truncate">Billing &amp; plan</h1>
+                    <span id="billing-plan-level-label" class="hidden sm:inline-flex flex-shrink-0 items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-bold text-gray-500">Loading plan</span>
+                </div>
             </div>
             <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
                 <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -193,6 +196,7 @@
                     ds.getBillingUsage(uid)
                 ]);
                 renderSummary(overview, usage);
+                renderPlanLevelLabel(overview);
                 renderYourPlan(overview);
                 renderPaymentMethod(overview);
                 renderUsage(overview, usage);
@@ -204,6 +208,7 @@
                 skeleton.classList.add('hidden');
                 content.classList.add('hidden');
                 errorState.classList.remove('hidden');
+                renderPlanLevelLabel({ status: 'error', has_plan: false });
                 setLoadState('error', 'Could not load billing');
                 window.showToast?.('Could not load billing details. Please try again.', 'error');
             }
@@ -370,10 +375,40 @@
                 summaryCard(dateLabel, `<span>${escapeHtml(String(dateValue))}</span>`, escapeHtml(dateSub),
                     'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'),
                 summaryCard('Team seats', `<span>${escapeHtml(seatsValue)}</span>`, escapeHtml(seatsSub),
-                    'M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4 0M16 7a3 3 0 11-6 0 3 3 0 016 0z'),
+                    'M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75'),
                 summaryCard('Storage usage', `<span>${escapeHtml(storageValue)}</span>`, escapeHtml(storageSub),
-                    'M3 7l9-4 9 4M4 7v11h16V7M8 11v4M12 11v4M16 11v4')
+                    'M12 3C7.58 3 4 4.79 4 7s3.58 4 8 4 8-1.79 8-4-3.58-4-8-4zM4 7v10c0 2.21 3.58 4 8 4s8-1.79 8-4V7M4 12c0 2.21 3.58 4 8 4s8-1.79 8-4')
             ].join('');
+        }
+
+        function renderPlanLevelLabel(o) {
+            const el = document.getElementById('billing-plan-level-label');
+            if (!el) return;
+            const status = o.status || 'none';
+            const planName = o.plan_name || PLAN_DISPLAY_NAMES[o.plan_id] || null;
+            let label = 'No subscription';
+            let tone = 'gray';
+            if (status === 'error') {
+                label = 'Billing unavailable';
+                tone = 'red';
+            } else if (status === 'trialing' || o.plan_id === 'trial') {
+                label = status === 'expired' ? 'Trial expired' : 'Trial member';
+                tone = status === 'expired' ? 'gray' : 'blue';
+            } else if (o.has_plan && planName) {
+                label = `${planName} subscription`;
+                tone = status === 'active' ? 'green'
+                    : status === 'pending_verification' || status === 'awaiting_payment' ? 'blue'
+                        : status === 'payment_failed' || status === 'past_due' ? 'red'
+                            : 'gray';
+            }
+            const toneClass = {
+                green: 'border-green-200 bg-green-50 text-green-700',
+                blue: 'border-blue-200 bg-blue-50 text-blue-700',
+                red: 'border-red-200 bg-red-50 text-red-700',
+                gray: 'border-gray-200 bg-gray-50 text-gray-500'
+            };
+            el.className = `hidden sm:inline-flex flex-shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-bold ${toneClass[tone] || toneClass.gray}`;
+            el.textContent = label;
         }
 
         /* ---------- your plan card ---------- */
