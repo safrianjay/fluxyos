@@ -431,9 +431,12 @@ page-level padding/max-width.
    `.fluxy-page-header` → `.fluxy-page-header-main` (title + one-line subtitle)
    on the left and `.fluxy-page-actions` on the right.
 7. **Date filter placement.** When a page has a period/date control, it lives in
-   the top page control row beside the secondary actions, using the shared
-   `FluxyDateRangePicker` — never `input[type="date"]`. Don't invent a date
-   filter on pages that don't already support one (e.g. Subscriptions).
+   the sticky 64px topbar (the true top of the page), immediately **before** the
+   Fluxy AI button — matching Accounting Center. It must use the shared
+   `FluxyDateRangePicker` (never `input[type="date"]`). Don't invent a date
+   filter on pages that don't already support one (e.g. Subscriptions). Page
+   table filters (status/type/visibility selects) stay in the in-page controls
+   row; only the period/date scope control moves to the topbar.
 8. **Fluxy AI is far-right.** The Fluxy AI / Ask Fluxy AI button is an assistant
    action (not the primary page action) and stays at the far-right of the page
    action group when present. Creation actions (Add Transaction/Bill/Subscription)
@@ -453,7 +456,7 @@ page-level padding/max-width.
 - **Dashboard/App Sidebar Hover**: Use only subtle `#F8FAFC` hover backgrounds. Do not add collapse/expand interactions.
 - **Dashboard/App Export Buttons**: Export/download actions should show a brief disabled loading state, a clear success state, and a subtle `active:scale-95` press interaction. Use CSV for ledger/transaction exports unless a PDF report is explicitly requested.
 - **Dashboard/App Date Picker**: Use the shared `FluxyDateRangePicker` from `assets/js/date-range-picker.js` for every dashboard calendar or date picker, including filters and entry drawers. Do not use native `input[type="date"]` or page-local calendar widgets. It should default to the current month when used for ledger-style data, default to today for single-entry dates, avoid separate Day/Month tabs and native calendar picker UI, support single-day and range selection inside the calendar, include tertiary Reset + Cancel + Apply actions for range mode, disable future date clicks, and keep scoped cards, charts, tables, pagination, and exports aligned to the selected period. Outer previous/next arrows must preserve full-month scope when the active filter is monthly, including when returning to the current partial month; only an explicit calendar day/range selection or single-date mode should use day-level navigation.
-- **Ledger Filters**: Status and transaction Type are exposed as compact `<select>` controls in the ledger's top controls row (beside the date picker), not as standalone breakdown panels. Active filters render removable chips above the table and tint the select with the orange accent border/text. Filters intersect with the date range, search, and vendor filter, scope the CSV export and summary cards, and reset pagination to page 1 on change.
+- **Ledger Filters**: Status and transaction Type are exposed as compact `<select>` controls in the ledger's in-page controls row, alongside the active/voided select and the CSV / scan / Add Transaction actions, not as standalone breakdown panels. (The date filter itself lives in the sticky topbar beside Fluxy AI — see the Authenticated App Page Shell Standard.) Active filters render removable chips above the table and tint the select with the orange accent border/text. Filters intersect with the date range, search, and vendor filter, scope the CSV export and summary cards, and reset pagination to page 1 on change.
 - **Dashboard/App Entry Drawer**: Use the shared `showAddTransactionModal` drawer for transaction, bill, and subscription entry. It opens from the right side, locks page scroll, uses a black translucent overlay, and closes via X, overlay click, Escape, or successful submit.
 - **Dashboard/App Entry Dates**: Entry drawers that write finance records mount `FluxyDateRangePicker` in single-date mode. Single-date mode uses one month only, no outer previous/next period arrows, no footer range labels or action buttons, and auto-selects/closes when the user clicks a day. It defaults to today, allows today or previous days only, and shows an inline info warning above the sticky submit button when the selected date or CSV row dates are not today.
 - **Dashboard/App CSV Uploads**: CSV upload controls should show selected filename, disabled/ready/uploading/success/error states, and inline structure guidance before the user uploads. If a modal supports single and bulk entry, separate them with tabs and reuse the modal's primary submit button for the active tab instead of adding a second upload button.
