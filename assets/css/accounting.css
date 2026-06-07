@@ -249,9 +249,11 @@
 .acct-is-th-line { text-align: left !important; position: sticky; left: 0; background: #F9FAFB; z-index: 2; }
 .acct-is-th-status { text-align: left !important; }
 
-.acct-is-row { cursor: pointer; transition: background 0.12s ease; }
-.acct-is-row:hover { background: #F9FAFB; }
-.acct-is-row:focus-visible { outline: 2px solid #EA580C; outline-offset: -2px; }
+.acct-is-row { transition: background 0.12s ease; }
+.acct-is-actionable { cursor: pointer; }
+.acct-is-actionable:hover { background: #F9FAFB; }
+.acct-is-actionable:focus-visible { outline: 2px solid #EA580C; outline-offset: -2px; }
+.acct-is-static { cursor: default; }
 .acct-is-row td { padding: 12px 16px; border-bottom: 1px solid #F3F4F6; vertical-align: middle; }
 
 .acct-is-line {
@@ -267,7 +269,7 @@
     color: #111827;
     min-width: 200px;
 }
-.acct-is-row:hover .acct-is-line { background: #F9FAFB; }
+.acct-is-actionable:hover .acct-is-line { background: #F9FAFB; }
 .acct-is-num {
     text-align: right;
     font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -288,14 +290,11 @@
 .acct-is-child .acct-is-line { padding-left: 28px; color: #374151; font-weight: 400; }
 .acct-is-subtotal td { background: #F8FAFC; }
 .acct-is-subtotal .acct-is-line { background: #F8FAFC; font-weight: 600; }
-.acct-is-subtotal:hover .acct-is-line { background: #F1F5F9; }
 .acct-is-subtotal .acct-is-num { font-weight: 600; }
 
 /* Net income (total) — dark navy */
 .acct-is-total td { background: #0B0F19; border-bottom: none; }
 .acct-is-total .acct-is-line { background: #0B0F19; color: #fff; font-weight: 700; }
-.acct-is-total:hover td,
-.acct-is-total:hover .acct-is-line { background: #111827; }
 .acct-is-total .acct-is-num { color: #fff; font-weight: 700; }
 .acct-is-total .acct-is-num.is-neg { color: #FCA5A5; }
 .acct-is-total .acct-is-status-text { color: #fff; }
@@ -317,106 +316,164 @@
     transition: transform 0.15s ease, color 0.15s ease;
     flex-shrink: 0;
 }
-.acct-is-chevron:hover { color: #EA580C; }
+.acct-is-chevron:hover,
+.acct-is-chevron:focus-visible { color: #EA580C; }
 .acct-is-chevron.is-collapsed { transform: rotate(0deg); }
 .acct-is-chevron-spacer { width: 18px; flex-shrink: 0; display: inline-block; }
 
-/* --- Related-records drawer --- */
-.acct-drawer-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(11, 15, 25, 0.5);
-    backdrop-filter: blur(2px);
-    z-index: 60;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
-}
-.acct-drawer-overlay.is-open { opacity: 1; visibility: visible; }
-.acct-drawer {
-    position: absolute;
-    top: 0; right: 0; bottom: 0;
-    width: 440px;
-    max-width: 100%;
-    background: #fff;
-    box-shadow: -16px 0 48px rgba(11, 15, 25, 0.18);
-    display: flex;
-    flex-direction: column;
-    transform: translateX(24px);
-    transition: transform 0.22s ease;
-}
-.acct-drawer-overlay.is-open .acct-drawer { transform: translateX(0); }
-.acct-drawer-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 20px;
-    border-bottom: 1px solid #F3F4F6;
-    flex-shrink: 0;
-}
-.acct-drawer-close {
-    appearance: none;
-    background: transparent;
-    border: 1px solid #E5E7EB;
-    border-radius: 8px;
-    padding: 6px;
-    color: #6B7280;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: background 0.15s ease, color 0.15s ease;
-}
-.acct-drawer-close:hover { background: #F9FAFB; color: #111827; }
-.acct-drawer-body { padding: 20px; overflow-y: auto; flex: 1; }
-.acct-drawer-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 16px;
-}
-.acct-drawer-grid > div {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 10px 12px;
-    background: #F9FAFB;
-    border: 1px solid #F3F4F6;
-    border-radius: 10px;
-}
-.acct-drawer-note {
-    color: #6B7280;
-    padding: 10px 12px;
-    background: #F9FAFB;
-    border-radius: 10px;
-    margin-bottom: 16px;
-}
-.acct-drawer-action {
-    padding: 12px;
-    border: 1px solid #FED7AA;
-    background: #FFF7ED;
-    border-radius: 10px;
-    margin-bottom: 8px;
-}
-.acct-rec-list { display: flex; flex-direction: column; gap: 8px; }
-.acct-rec-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px;
-    border: 1px solid #F3F4F6;
-    border-radius: 10px;
-}
-.acct-rec-card:hover { background: #F9FAFB; }
-.acct-rec-link { color: #C2410C; font-weight: 500; }
-.acct-rec-link:hover { text-decoration: underline; }
-.acct-drawer-empty {
-    text-align: center;
-    padding: 32px 16px;
-    border: 1px dashed #E5E7EB;
-    border-radius: 10px;
+/* --- Accounting related-records page --- */
+.acct-records-shell {
+    max-width: 1540px;
+    margin: 0 auto;
 }
 
-@media (max-width: 520px) {
-    .acct-drawer { width: 100%; }
-    .acct-drawer-grid { grid-template-columns: 1fr; }
+.acct-records-hero {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.acct-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: #6B7280;
+    margin-bottom: 8px;
+}
+.acct-breadcrumb a { color: #6B7280; text-decoration: none; }
+.acct-breadcrumb a:hover { color: #EA580C; }
+
+.acct-records-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.acct-records-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.acct-records-note {
+    padding: 14px 16px;
+    margin-bottom: 16px;
+}
+
+.acct-records-filters {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.4fr) repeat(4, minmax(150px, 1fr));
+    gap: 10px;
+    padding: 14px 16px;
+    border-top: 1px solid #F3F4F6;
+    border-bottom: 1px solid #F3F4F6;
+    background: #F9FAFB;
+}
+
+.acct-records-input,
+.acct-records-select {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid #E5E7EB;
+    background: #fff;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 14px;
+    color: #111827;
+    outline: none;
+}
+.acct-records-input:focus,
+.acct-records-select:focus {
+    border-color: #EA580C;
+    box-shadow: 0 0 0 1px #EA580C;
+}
+
+.acct-records-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.acct-records-table {
+    width: 100%;
+    min-width: 980px;
+    border-collapse: collapse;
+}
+.acct-records-table th {
+    background: #F9FAFB;
+    color: #6B7280;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 10px 16px;
+    border-bottom: 1px solid #E5E7EB;
+    text-align: left;
+    white-space: nowrap;
+}
+.acct-records-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #F3F4F6;
+    font-size: 14px;
+    color: #374151;
+    vertical-align: middle;
+}
+.acct-records-table tbody tr:hover { background: #F9FAFB; }
+.acct-records-amount,
+.acct-records-th-amount {
+    text-align: right !important;
+    white-space: nowrap;
+}
+.acct-records-primary {
+    color: #111827;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 320px;
+}
+.acct-records-link {
+    color: #C2410C;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.acct-records-link:hover { text-decoration: underline; }
+
+.acct-records-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    border-top: 1px solid #F3F4F6;
+}
+
+.acct-records-empty {
+    padding: 44px 18px;
+    text-align: center;
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+@media (max-width: 1180px) {
+    .acct-records-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .acct-records-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+    .acct-records-hero { flex-direction: column; }
+    .acct-records-actions { justify-content: flex-start; width: 100%; }
+    .acct-records-summary,
+    .acct-records-filters { grid-template-columns: 1fr; }
+    .acct-records-footer { align-items: stretch; }
+    .acct-records-footer > div:last-child { display: flex; width: 100%; gap: 8px; }
+    .acct-records-footer .acct-btn { flex: 1; justify-content: center; }
 }

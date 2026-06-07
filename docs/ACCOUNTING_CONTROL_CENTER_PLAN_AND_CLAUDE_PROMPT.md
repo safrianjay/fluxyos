@@ -46,10 +46,15 @@ Rows: Revenue → Cost of Revenue → **Gross Profit** → Operating Expenses �
   when revenue is `0`. `change_pct` is **N/A** when previous is `0`; never
   NaN/Infinity.
 
-Clicking any row opens a right-side **related-records drawer** (white card, black
-translucent overlay; close via X / overlay / Escape; scroll locked). Each record
-shows vendor, date, category, type, Rp amount, status, and source. Subtotal/total
-rows show the calc formula and no records.
+Clicking a source row opens `/accounting-records`, a dedicated related-records
+subpage with breadcrumb, summary cards, suggested action, search, filters,
+pagination, and a source-record table. Gross Profit, Operating Income, and Net
+Income are calculated totals and stay non-clickable.
+
+The subpage uses `DataService.getIncomeStatementRelatedRecords(uid, params)`.
+Income Statement amounts still come from ledger transactions only. Bills and
+Subscriptions may appear as supporting context rows for OpEx/COGS drilldowns,
+but they do not change P&L totals.
 
 This is a **preview**, not a posted journal-entry statement and not GAAP/IFRS
 ready. Labelled "Income Statement Preview" (tab: "Income Statement").
@@ -59,12 +64,18 @@ ready. Labelled "Income Statement Preview" (tab: "Income Statement").
 - `accounting.html` — KPI strip (Revenue / Gross Profit / OpEx / Net Income /
   Report confidence), confidence banner, tabs, Income Statement report card +
   table container, AI panel, limitations note. Empty/loading/error states.
+- `accounting-records.html` — authenticated related-records subpage for large
+  Income Statement drilldowns; no marketing footer.
 - `assets/js/accounting.js` — page controller: KPIs, confidence banner, income
-  statement table render + collapse + related-records drawer, plus the existing
+  statement table render + collapse + related-records navigation, plus the existing
   cleanup / mapping / close renderers (now fed from `result.readiness`).
+- `assets/js/accounting-records.js` — page controller for query parsing, search,
+  filters, sorting, pagination, empty/loading/error states, and read-only links
+  back to Ledger/Bills/Subscriptions by search query.
 - `assets/css/accounting.css` — confidence banner, income-statement table, tone
-  helpers, drawer, AI prompts grid.
-- `assets/js/db-service.js` — `getIncomeStatementPreview` + helpers
+  helpers, and related-records subpage table styles.
+- `assets/js/db-service.js` — `getIncomeStatementPreview`,
+  `getIncomeStatementRelatedRecords` + helpers
   (`_buildIncomeStatementBuckets`, `_incomeLineStatus`, `_incomeChange`,
   `_previousPeriodRange`, `_incomeStatementColumnLabel`, `_incomeRecordSummary`,
   `_coercePeriodKeys`). Reuses `getAccountingReadiness` for confidence.

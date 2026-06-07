@@ -148,7 +148,8 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 |---------|--------|-------|
 | Accounting Center app page (`/accounting`) | ✅ Shipped Phase 1 | Auth-guarded, sidebar-active under Reporting, no marketing footer |
 | Period filter (default current month) | ✅ Shipped Phase 1 | Uses shared `FluxyDateRangePicker` |
-| Income Statement Preview (P&L) + related-records drawer | ✅ Shipped Phase 1 | Primary tab; deterministic P&L from ledger transactions (Revenue → COGS → Gross Profit → OpEx → Operating Income → Other → Net Income); `getIncomeStatementPreview`. Preview only — not posted/closed |
+| Income Statement Preview (P&L) + related-records subpage | ✅ Shipped Phase 1 | Primary tab; deterministic P&L from ledger transactions (Revenue → COGS → Gross Profit → OpEx → Operating Income → Other → Net Income); source rows navigate to `/accounting-records`; Gross Profit, Operating Income, and Net Income stay non-clickable. Preview only — not posted/closed |
+| Accounting Records drilldown (`/accounting-records`) | ✅ Shipped Phase 1 | Auth-guarded read-only subpage with summary cards, suggested action, search/filter/sort, table pagination, and supporting Bills/Subscriptions context via `getIncomeStatementRelatedRecords` |
 | Report confidence banner + KPI strip | ✅ Shipped Phase 1 | Readiness reused as supporting "report confidence" metadata (score/band/cleanup count), no longer the main experience |
 | Cleanup queue (receipts, due dates, invoices, renewals, unmapped, bank review) | ✅ Shipped Phase 1 | Built from real user-scoped records |
 | Account mapping preview + save flow | ✅ Shipped Phase 1 | Saved mappings win over suggestions; writes `users/{uid}/accounting_mappings` + audit log |

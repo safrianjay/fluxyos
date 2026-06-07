@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Accounting Records</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="assets/css/accounting.css">
+</head>
+<body class="dashboard-page flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content will be loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="dashboard-main-topbar h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-4">
+            <div class="dashboard-topbar-copy">
+                <span class="dashboard-topbar-title">Accounting Records</span>
+                <p class="dashboard-topbar-subtitle hidden sm:block">Inspect source records behind an Income Statement line.</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button type="button" id="acct-records-ask-ai" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group" title="Open Fluxy AI">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Ask Fluxy AI
+                </button>
+                <button type="button" id="acct-records-back" class="acct-btn acct-btn-secondary">
+                    Back to Accounting Center
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
+            <div class="acct-records-shell">
+                <div id="acct-records-loading">
+                    <div class="acct-records-summary">
+                        <div class="acct-card acct-kpi"><div class="acct-skel" style="height:12px;width:60%"></div><div class="acct-skel" style="height:20px;width:50%"></div><div class="acct-skel" style="height:10px;width:70%"></div></div>
+                        <div class="acct-card acct-kpi"><div class="acct-skel" style="height:12px;width:60%"></div><div class="acct-skel" style="height:20px;width:50%"></div><div class="acct-skel" style="height:10px;width:70%"></div></div>
+                        <div class="acct-card acct-kpi"><div class="acct-skel" style="height:12px;width:60%"></div><div class="acct-skel" style="height:20px;width:50%"></div><div class="acct-skel" style="height:10px;width:70%"></div></div>
+                        <div class="acct-card acct-kpi"><div class="acct-skel" style="height:12px;width:60%"></div><div class="acct-skel" style="height:20px;width:50%"></div><div class="acct-skel" style="height:10px;width:70%"></div></div>
+                    </div>
+                    <div class="acct-card" style="padding:20px;">
+                        <div class="acct-skel" style="height:16px;width:240px;margin-bottom:16px"></div>
+                        <div class="acct-skel" style="height:48px;width:100%;margin-bottom:10px"></div>
+                        <div class="acct-skel" style="height:48px;width:100%;margin-bottom:10px"></div>
+                        <div class="acct-skel" style="height:48px;width:100%"></div>
+                    </div>
+                </div>
+
+                <div id="acct-records-error" class="hidden">
+                    <div class="acct-card" style="padding:40px;text-align:center;max-width:520px;margin:48px auto;">
+                        <div style="width:48px;height:48px;border-radius:12px;background:#FEF2F2;color:#B91C1C;display:grid;place-items:center;margin:0 auto 16px;">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>
+                        </div>
+                        <h2 class="fluxy-section-title" style="margin-bottom:8px;">Could not load related records</h2>
+                        <p class="fluxy-body" style="color:#6B7280;margin-bottom:20px;">Check your connection and try again.</p>
+                        <button type="button" id="acct-records-retry" class="acct-btn acct-btn-primary" style="margin:0 auto;">Try again</button>
+                    </div>
+                </div>
+
+                <div id="acct-records-content" class="hidden">
+                    <section class="acct-records-hero">
+                        <div style="min-width:0;">
+                            <nav class="acct-breadcrumb" aria-label="Breadcrumb">
+                                <a href="/accounting">Accounting Center</a>
+                                <span>/</span>
+                                <a href="/accounting">Income Statement</a>
+                                <span>/</span>
+                                <span id="acct-records-crumb-label" style="color:#374151;font-weight:500;">Records</span>
+                            </nav>
+                            <h1 id="acct-records-title" class="fluxy-section-title" style="font-size:24px;line-height:1.25;color:#0B0F19;">Records</h1>
+                            <p id="acct-records-subtitle" class="fluxy-body" style="color:#6B7280;margin-top:4px;">Records behind this Income Statement line for the selected period.</p>
+                        </div>
+                        <div class="acct-records-actions">
+                            <a href="/accounting" class="acct-btn acct-btn-secondary" style="text-decoration:none;">Back to Accounting Center</a>
+                        </div>
+                    </section>
+
+                    <section id="acct-records-summary" class="acct-records-summary" aria-label="Related records summary"></section>
+
+                    <section id="acct-records-note" class="acct-card acct-records-note"></section>
+
+                    <section class="acct-card">
+                        <div style="padding:16px 16px 12px;">
+                            <h2 class="fluxy-section-title">Related records</h2>
+                            <p class="fluxy-meta">Search, filter, and page through source records for this line.</p>
+                        </div>
+                        <div class="acct-records-filters">
+                            <input id="acct-records-search" class="acct-records-input" type="search" placeholder="Search vendor, description, category, amount">
+                            <select id="acct-records-status" class="acct-records-select" aria-label="Status filter">
+                                <option value="all">All statuses</option>
+                                <option value="completed">Completed</option>
+                                <option value="missing_receipt">Missing Receipt</option>
+                            </select>
+                            <select id="acct-records-type" class="acct-records-select" aria-label="Type filter">
+                                <option value="all">All types</option>
+                                <option value="income">Income</option>
+                                <option value="expense">Expense</option>
+                                <option value="fee">Fee</option>
+                                <option value="tax">Tax</option>
+                                <option value="pending_receivable">Pending receivable</option>
+                                <option value="pending_payable">Pending payable</option>
+                            </select>
+                            <select id="acct-records-source" class="acct-records-select" aria-label="Source filter">
+                                <option value="all">All sources</option>
+                                <option value="transactions">Transactions</option>
+                                <option value="bills">Bills</option>
+                                <option value="subscriptions">Subscriptions</option>
+                            </select>
+                            <select id="acct-records-sort" class="acct-records-select" aria-label="Sort records">
+                                <option value="newest">Newest first</option>
+                                <option value="oldest">Oldest first</option>
+                                <option value="amount_desc">Amount high to low</option>
+                                <option value="amount_asc">Amount low to high</option>
+                            </select>
+                        </div>
+
+                        <div id="acct-records-empty" class="acct-records-empty hidden">
+                            <h2 id="acct-records-empty-title" class="fluxy-section-title" style="margin-bottom:8px;">No related records found</h2>
+                            <p id="acct-records-empty-body" class="fluxy-body" style="color:#6B7280;margin-bottom:20px;">This Income Statement line has no source records for the selected period.</p>
+                            <button type="button" id="acct-records-empty-back" class="acct-btn acct-btn-primary" style="margin:0 auto;">Back to Accounting Center</button>
+                        </div>
+
+                        <div id="acct-records-table-wrap" class="acct-records-table-wrap">
+                            <table class="acct-records-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Vendor / Description</th>
+                                        <th>Source</th>
+                                        <th>Category</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th class="acct-records-th-amount">Amount</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="acct-records-body"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="acct-records-footer">
+                            <p id="acct-records-page-summary" class="fluxy-meta">Showing 0 records</p>
+                            <div style="display:flex;gap:8px;">
+                                <button type="button" id="acct-records-prev" class="acct-btn acct-btn-secondary">Previous</button>
+                                <button type="button" id="acct-records-next" class="acct-btn acct-btn-secondary">Next</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+        import { applyToPage } from './assets/js/onboarding-gate.js';
+        import { initAccountingRecordsPage } from './assets/js/accounting-records.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.firebaseapp.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.replace('/login');
+                return;
+            }
+            const gated = await applyToPage(user, { pageKey: 'accounting' });
+            if (gated) return;
+            initAccountingRecordsPage({ ds, user });
+        });
+    </script>
+</body>
+</html>

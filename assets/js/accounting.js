@@ -14,8 +14,7 @@ const state = {
     activeTab: 'income',
     loading: false,
     data: null,
-    rowsById: {},
-    drawerOpen: false
+    rowsById: {}
 };
 
 // Display-only account catalog for the mapping <select>. Mirrors the catalog in
@@ -42,13 +41,6 @@ const SOURCE_LINKS = {
     subscriptions: '/subscription',
     bank_statement_imports: '/integration'
 };
-const SOURCE_LABEL = {
-    transactions: 'Ledger',
-    bills: 'Bills',
-    subscriptions: 'Subscriptions',
-    bank_statement_imports: 'Bank import'
-};
-
 // --- helpers ---
 function el(id) { return document.getElementById(id); }
 
@@ -73,14 +65,6 @@ function signedRupiah(n) {
     const value = Number(n) || 0;
     const text = formatRupiah(value) || 'Rp 0';
     return value < 0 ? `(${text})` : text;
-}
-
-function formatDate(dayKey) {
-    if (!dayKey) return '—';
-    const parts = String(dayKey).split('-').map(Number);
-    if (parts.length !== 3) return dayKey;
-    const d = new Date(parts[0], parts[1] - 1, parts[2]);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function getDayKey(date = new Date()) {
@@ -124,10 +108,6 @@ function wireStaticControls() {
     document.querySelectorAll('[data-acct-tab]').forEach(btn => {
         btn.addEventListener('click', () => setTab(btn.getAttribute('data-acct-tab')));
     });
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && state.drawerOpen) closeDrawer();
-    });
 }
 
 function openFluxyAI() {
@@ -150,7 +130,6 @@ function setTab(tab) {
 async function load() {
     if (state.loading) return;
     state.loading = true;
-    closeDrawer();
     show('accounting-loading');
     hide('accounting-error');
     hide('accounting-empty');
@@ -222,8 +201,8 @@ function renderKpis(data) {
 function indexRows(data) {
     const map = {};
     (data.rows || []).forEach(row => {
-        map[row.id] = row;
-        (row.children || []).forEach(child => { map[child.id] = child; });
+        map[row.id] = { ...row };
+        (row.children || []).forEach(child => { map[child.id] = { ...child, parent_id: row.id }; });
     });
     state.rowsById = map;
 }
@@ -271,6 +250,50 @@ function statusCellHtml(row, isChild) {
     return `<span class="acct-pill ${TONE_PILL[tone] || TONE_PILL.neutral}">${escapeHtml(row.status)}</span>`;
 }
 
+function isActionableIncomeRow(row) {
+    return row && row.level !== 'subtotal' && row.level !== 'total';
+}
+
+function slugParam(value) {
+    return String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/_/g, '-')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '') || 'revenue';
+}
+
+function isFullMonthRange(startKey, endKey) {
+    if (!startKey || !endKey) return false;
+    return startKey === getMonthStartKey(new Date(`${startKey}T00:00:00`))
+        && endKey === getMonthEndKey(new Date(`${startKey}T00:00:00`));
+}
+
+function periodQueryValue() {
+    if (isFullMonthRange(state.startKey, state.endKey)) return String(state.startKey).slice(0, 7);
+    return `${state.startKey}..${state.endKey}`;
+}
+
+function comparisonQueryValue() {
+    return isFullMonthRange(state.startKey, state.endKey) ? 'previous_month' : 'previous_period';
+}
+
+function navigateToRelatedRecords(rowId) {
+    const row = state.rowsById[rowId];
+    if (!isActionableIncomeRow(row)) return;
+    const params = new URLSearchParams();
+    params.set('period', periodQueryValue());
+    params.set('compare', comparisonQueryValue());
+    if (row.parent_id) {
+        params.set('section', slugParam(row.label));
+        params.set('parent', slugParam(row.parent_id));
+        params.set('category', row.label || '');
+    } else {
+        params.set('section', slugParam(row.id));
+    }
+    window.location.href = `/accounting-records?${params.toString()}`;
+}
+
 function rowTr(row, isChild, parentId) {
     const cur = amountCell(row.current_amount, row.kind);
     const prev = amountCell(row.previous_amount, row.kind);
@@ -285,8 +308,12 @@ function rowTr(row, isChild, parentId) {
         ? `<button type="button" class="acct-is-chevron" data-toggle="${escapeHtml(row.id)}" aria-label="Toggle ${escapeHtml(row.label)} rows"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg></button>`
         : '<span class="acct-is-chevron-spacer"></span>';
     const parentAttr = isChild ? ` data-parent="${escapeHtml(parentId)}"` : '';
+    const actionable = isActionableIncomeRow(row);
+    const rowAttrs = actionable
+        ? ` data-row-id="${escapeHtml(row.id)}" tabindex="0" role="button" aria-label="Open ${escapeHtml(row.label)} records"`
+        : ' aria-disabled="true"';
     return `
-        <tr class="acct-is-row ${levelClass}" data-row-id="${escapeHtml(row.id)}"${parentAttr} tabindex="0" role="button" aria-label="Inspect ${escapeHtml(row.label)}">
+        <tr class="acct-is-row ${levelClass} ${actionable ? 'acct-is-actionable' : 'acct-is-static'}"${rowAttrs}${parentAttr}>
             <td class="acct-is-line">${chevron}<span>${escapeHtml(row.label)}</span></td>
             <td class="acct-is-num ${cur.cls}">${cur.text}</td>
             <td class="acct-is-num ${prev.cls}">${prev.text}</td>
@@ -363,137 +390,12 @@ function wireIncomeStatement(wrap) {
     });
 
     wrap.querySelectorAll('tr[data-row-id]').forEach(tr => {
-        const open = () => openDrawer(tr.getAttribute('data-row-id'));
+        const open = () => navigateToRelatedRecords(tr.getAttribute('data-row-id'));
         tr.addEventListener('click', open);
         tr.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
         });
     });
-}
-
-// --- related-records drawer ---
-function ensureDrawer() {
-    let overlay = el('acct-drawer-overlay');
-    if (overlay) return overlay;
-    overlay = document.createElement('div');
-    overlay.id = 'acct-drawer-overlay';
-    overlay.className = 'acct-drawer-overlay';
-    overlay.innerHTML = `
-        <aside class="acct-drawer" role="dialog" aria-modal="true" aria-labelledby="acct-drawer-title">
-            <div class="acct-drawer-head">
-                <div style="min-width:0;">
-                    <span class="fluxy-meta" style="text-transform:uppercase;letter-spacing:0.06em;">Related records</span>
-                    <h2 id="acct-drawer-title" class="fluxy-section-title" style="margin-top:2px;"></h2>
-                </div>
-                <button type="button" class="acct-drawer-close" id="acct-drawer-close" aria-label="Close panel">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg>
-                </button>
-            </div>
-            <div class="acct-drawer-body" id="acct-drawer-body"></div>
-        </aside>`;
-    document.body.appendChild(overlay);
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeDrawer(); });
-    overlay.querySelector('#acct-drawer-close').addEventListener('click', () => closeDrawer());
-    return overlay;
-}
-
-function suggestedAction(row) {
-    if (row.level === 'subtotal' || row.level === 'total') {
-        return 'This is a calculated row — adjust the contributing line items to change it.';
-    }
-    const tone = row.status_tone;
-    if (tone === 'danger') return 'Open the Cleanup tab to attach receipts and fix categories on these records.';
-    if (tone === 'warning') return 'Open the Account Mapping tab to map these categories to accounting accounts.';
-    if (row.status === 'No records') return 'No records fall under this line for the selected period.';
-    return 'No action needed — these records look review-ready.';
-}
-
-function recordCardHtml(rec) {
-    const link = SOURCE_LINKS[rec.source_collection];
-    const sourceLabel = SOURCE_LABEL[rec.source_collection] || rec.source_collection;
-    const statusTone = rec.status === 'Missing Receipt' ? 'danger' : 'neutral';
-    const metaParts = [formatDate(rec.date), rec.category || 'Uncategorized', rec.type || '—']
-        .map(escapeHtml).join(' · ');
-    return `
-        <div class="acct-rec-card">
-            <div style="flex:1;min-width:0;">
-                <div class="fluxy-body-strong" style="color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(rec.vendor_name)}</div>
-                <div class="fluxy-meta">${metaParts}</div>
-                <div class="fluxy-meta" style="margin-top:2px;display:flex;gap:8px;align-items:center;">
-                    <span class="acct-tone-${statusTone}">${escapeHtml(rec.status)}</span>
-                    ${link ? `<a href="${link}" class="acct-rec-link">${escapeHtml(sourceLabel)} →</a>` : `<span>${escapeHtml(sourceLabel)}</span>`}
-                </div>
-            </div>
-            <div class="acct-mono fluxy-body-strong" style="color:#111827;white-space:nowrap;">${formatRupiah(rec.amount) || 'Rp 0'}</div>
-        </div>`;
-}
-
-function openDrawer(rowId) {
-    const row = state.rowsById[rowId];
-    const data = state.data;
-    if (!row || !data) return;
-    const overlay = ensureDrawer();
-
-    el('acct-drawer-title').textContent = row.label;
-
-    const records = (data.related_records_index && data.related_records_index[rowId]) || [];
-    const ch = changeDisplay(row);
-    const curLabel = data.period.label;
-    const prevLabel = data.comparison_period.label;
-
-    const summaryHtml = `
-        <div class="acct-drawer-grid">
-            <div><span class="fluxy-meta">${escapeHtml(curLabel)}</span><span class="acct-mono fluxy-body-strong">${amountCell(row.current_amount, row.kind).text}</span></div>
-            <div><span class="fluxy-meta">${escapeHtml(prevLabel)}</span><span class="acct-mono fluxy-body-strong">${amountCell(row.previous_amount, row.kind).text}</span></div>
-            <div><span class="fluxy-meta">Change</span><span class="acct-mono fluxy-body-strong acct-tone-${ch.tone}">${ch.text} · ${ch.pctText}</span></div>
-            <div><span class="fluxy-meta">Status</span><span>${statusCellHtml(row, row.level === 'child')}</span></div>
-        </div>`;
-
-    const noteHtml = row.note
-        ? `<p class="fluxy-meta acct-drawer-note">${escapeHtml(row.note)}</p>`
-        : '';
-
-    const actionHtml = `
-        <div class="acct-drawer-action">
-            <span class="fluxy-meta" style="text-transform:uppercase;letter-spacing:0.06em;">Suggested action</span>
-            <p class="fluxy-body" style="color:#374151;margin-top:2px;">${escapeHtml(suggestedAction(row))}</p>
-        </div>`;
-
-    let recordsHtml;
-    if (!records.length) {
-        recordsHtml = `
-            <div class="acct-drawer-empty">
-                <div class="fluxy-body-strong" style="color:#111827;margin-bottom:4px;">No related records found for this line item.</div>
-                <div class="fluxy-meta">${row.level === 'subtotal' || row.level === 'total'
-                    ? 'This row is calculated from the line items above.'
-                    : 'Nothing in the ledger maps to this line for the selected period.'}</div>
-            </div>`;
-    } else {
-        recordsHtml = `
-            <div class="fluxy-meta" style="text-transform:uppercase;letter-spacing:0.06em;margin:18px 0 8px;">${records.length} related record${records.length === 1 ? '' : 's'}</div>
-            <div class="acct-rec-list">${records.map(recordCardHtml).join('')}</div>`;
-    }
-
-    el('acct-drawer-body').innerHTML = summaryHtml + noteHtml + actionHtml + recordsHtml;
-
-    overlay.classList.add('is-open');
-    lockScroll(true);
-    state.drawerOpen = true;
-}
-
-function closeDrawer() {
-    const overlay = el('acct-drawer-overlay');
-    if (overlay) overlay.classList.remove('is-open');
-    lockScroll(false);
-    state.drawerOpen = false;
-}
-
-// The app body carries Tailwind `overflow-hidden`; the real scroll container is
-// the inner `.flex-1.overflow-y-auto` region, so lock that (plus body, for safety).
-function lockScroll(locked) {
-    const scroller = document.querySelector('main .overflow-y-auto');
-    if (scroller) scroller.style.overflow = locked ? 'hidden' : '';
-    document.body.style.overflow = locked ? 'hidden' : '';
 }
 
 // --- cleanup / mapping / close (readiness-backed) ---
