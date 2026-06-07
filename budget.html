@@ -363,29 +363,29 @@
                     </div>
 
                     <!-- Sub-budgets (full width now that the right rail is gone) -->
-                    <div class="bg-white rounded-[10px] border border-gray-200 shadow-sm overflow-hidden">
-                        <div class="px-5 sm:px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div class="fluxy-table-card">
+                        <div class="fluxy-table-card-header">
                             <div>
-                                <h3 class="text-[16px] font-bold text-gray-900">Sub-budgets</h3>
-                                <p class="text-[12px] text-gray-400 mt-0.5">Matched by category. Recategorising a record moves it between allocations.</p>
+                                <h3 class="fluxy-table-title">Sub-budgets</h3>
+                                <p class="fluxy-table-subtitle">Matched by category. Recategorising a record moves it between allocations.</p>
                             </div>
-                            <p id="budget-alloc-count" class="text-[12px] text-gray-400"></p>
+                            <p id="budget-alloc-count" class="fluxy-table-subtitle"></p>
                         </div>
-                        <div class="hidden md:block overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
+                        <div class="hidden md:block fluxy-table-scroll">
+                            <table class="fluxy-table min-w-[860px]">
                                 <thead>
-                                    <tr class="bg-gray-50 border-b border-gray-200">
-                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider w-[28%]">Allocation</th>
-                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider w-[15%]">Allocated</th>
-                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider w-[15%]">Spent + Reserved</th>
-                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider w-[15%]">Remaining</th>
-                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider w-[17%]">Usage</th>
-                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider w-[10%]">Status</th>
+                                    <tr class="fluxy-table-header">
+                                        <th class="w-[28%]">Allocation</th>
+                                        <th class="fluxy-table-money w-[15%]">Allocated</th>
+                                        <th class="fluxy-table-money w-[15%]">Spent + Reserved</th>
+                                        <th class="fluxy-table-money w-[15%]">Remaining</th>
+                                        <th class="w-[17%]">Usage</th>
+                                        <th class="w-[10%]">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody id="budget-alloc-body" class="divide-y divide-gray-100 text-[14px]">
+                                <tbody id="budget-alloc-body">
                                     <tr>
-                                        <td colspan="6" class="px-6 py-10 text-center text-[14px] text-gray-400">Loading allocations...</td>
+                                        <td colspan="6" class="fluxy-table-loading-cell">Loading allocations...</td>
                                     </tr>
                                 </tbody>
                             </table>

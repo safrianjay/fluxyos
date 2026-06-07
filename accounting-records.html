@@ -82,12 +82,14 @@
 
                     <section id="acct-records-note" class="acct-card acct-records-note"></section>
 
-                    <section class="acct-card">
-                        <div style="padding:16px 16px 12px;">
-                            <h2 class="fluxy-section-title">Related records</h2>
-                            <p class="fluxy-meta">Search, filter, and page through source records for this line.</p>
+                    <section class="acct-card fluxy-table-card">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">Related records</h2>
+                                <p class="fluxy-table-subtitle">Search, filter, and page through source records for this line.</p>
+                            </div>
                         </div>
-                        <div class="acct-records-filters">
+                        <div class="acct-records-filters fluxy-table-toolbar">
                             <input id="acct-records-search" class="acct-records-input" type="search" placeholder="Search vendor, description, category, amount">
                             <select id="acct-records-status" class="acct-records-select" aria-label="Status filter">
                                 <option value="all">All statuses</option>
@@ -117,33 +119,33 @@
                             </select>
                         </div>
 
-                        <div id="acct-records-empty" class="acct-records-empty hidden">
-                            <h2 id="acct-records-empty-title" class="fluxy-section-title" style="margin-bottom:8px;">No related records found</h2>
-                            <p id="acct-records-empty-body" class="fluxy-body" style="color:#6B7280;margin-bottom:20px;">This Income Statement line has no source records for the selected period.</p>
+                        <div id="acct-records-empty" class="acct-records-empty fluxy-table-empty hidden">
+                            <h2 id="acct-records-empty-title" class="fluxy-table-empty-title">No related records found</h2>
+                            <p id="acct-records-empty-body" class="fluxy-table-empty-description" style="margin-bottom:20px;">This Income Statement line has no source records for the selected period.</p>
                             <button type="button" id="acct-records-empty-back" class="acct-btn acct-btn-primary" style="margin:0 auto;">Back to Accounting Center</button>
                         </div>
 
-                        <div id="acct-records-table-wrap" class="acct-records-table-wrap">
-                            <table class="acct-records-table">
+                        <div id="acct-records-table-wrap" class="acct-records-table-wrap fluxy-table-scroll">
+                            <table class="acct-records-table fluxy-table">
                                 <thead>
-                                    <tr>
+                                    <tr class="fluxy-table-header">
                                         <th>Date</th>
                                         <th>Vendor / Description</th>
                                         <th>Source</th>
                                         <th>Category</th>
                                         <th>Type</th>
                                         <th>Status</th>
-                                        <th class="acct-records-th-amount">Amount</th>
-                                        <th>Action</th>
+                                        <th class="acct-records-th-amount fluxy-table-money">Amount</th>
+                                        <th class="fluxy-table-action">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="acct-records-body"></tbody>
                             </table>
                         </div>
 
-                        <div class="acct-records-footer">
-                            <p id="acct-records-page-summary" class="fluxy-meta">Showing 0 records</p>
-                            <div style="display:flex;gap:8px;">
+                        <div class="acct-records-footer fluxy-table-pagination">
+                            <p id="acct-records-page-summary" class="fluxy-table-pagination-summary">Showing 0 records</p>
+                            <div class="fluxy-table-pagination-actions">
                                 <button type="button" id="acct-records-prev" class="acct-btn acct-btn-secondary">Previous</button>
                                 <button type="button" id="acct-records-next" class="acct-btn acct-btn-secondary">Next</button>
                             </div>

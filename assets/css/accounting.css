@@ -235,16 +235,16 @@
     border-collapse: collapse;
 }
 .acct-is-table thead th {
-    background: #F9FAFB;
-    font-size: 10px;
+    background: #F8FAFC;
+    font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #6B7280;
-    padding: 10px 16px;
+    color: #64748B;
+    padding: 12px 20px;
     text-align: right;
     white-space: nowrap;
-    border-bottom: 1px solid #E5E7EB;
+    border-bottom: 1px solid #E2E8F0;
 }
 .acct-is-th-line { text-align: left !important; position: sticky; left: 0; background: #F9FAFB; z-index: 2; }
 .acct-is-th-status { text-align: left !important; }
@@ -254,7 +254,7 @@
 .acct-is-actionable:hover { background: #F9FAFB; }
 .acct-is-actionable:focus-visible { outline: 2px solid #EA580C; outline-offset: -2px; }
 .acct-is-static { cursor: default; }
-.acct-is-row td { padding: 12px 16px; border-bottom: 1px solid #F3F4F6; vertical-align: middle; }
+.acct-is-row td { padding: 16px 20px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
 
 .acct-is-line {
     text-align: left;
@@ -275,7 +275,7 @@
     font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
-    font-size: 13px;
+    font-size: 14px;
     white-space: nowrap;
 }
 .acct-is-num.is-neg { color: #B91C1C; }
@@ -287,7 +287,8 @@
 /* Row hierarchy weights */
 .acct-is-group .acct-is-line { font-weight: 600; }
 .acct-is-group .acct-is-num { font-weight: 600; }
-.acct-is-child .acct-is-line { padding-left: 28px; color: #374151; font-weight: 400; }
+.acct-is-child td { padding-top: 12px; padding-bottom: 12px; }
+.acct-is-child .acct-is-line { padding-left: 32px; color: #374151; font-weight: 400; }
 .acct-is-subtotal td { background: #F8FAFC; }
 .acct-is-subtotal .acct-is-line { background: #F8FAFC; font-weight: 600; }
 .acct-is-subtotal .acct-is-num { font-weight: 600; }
@@ -405,25 +406,25 @@
     border-collapse: collapse;
 }
 .acct-records-table th {
-    background: #F9FAFB;
-    color: #6B7280;
-    font-size: 10px;
+    background: #F8FAFC;
+    color: #64748B;
+    font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    padding: 10px 16px;
-    border-bottom: 1px solid #E5E7EB;
+    padding: 12px 20px;
+    border-bottom: 1px solid #E2E8F0;
     text-align: left;
     white-space: nowrap;
 }
 .acct-records-table td {
-    padding: 12px 16px;
-    border-bottom: 1px solid #F3F4F6;
+    padding: 16px 20px;
+    border-bottom: 1px solid #F1F5F9;
     font-size: 14px;
     color: #374151;
     vertical-align: middle;
 }
-.acct-records-table tbody tr:hover { background: #F9FAFB; }
+.acct-records-table tbody tr:hover { background: #F8FAFC; }
 .acct-records-amount,
 .acct-records-th-amount {
     text-align: right !important;
@@ -452,8 +453,9 @@
     align-items: center;
     gap: 12px;
     flex-wrap: wrap;
-    padding: 14px 16px;
-    border-top: 1px solid #F3F4F6;
+    padding: 14px 20px;
+    border-top: 1px solid #E2E8F0;
+    background: #F8FAFC;
 }
 
 .acct-records-empty {

@@ -259,17 +259,17 @@ function filteredRecords() {
 }
 
 function statusPillClass(record) {
-    if (record.status_filter === 'missing_receipt') return 'acct-pill-needs';
+    if (record.status_filter === 'missing_receipt') return 'fluxy-status-danger acct-pill-needs';
     const status = String(record.status || '').toLowerCase();
-    if (status === 'paid' || status === 'active' || status === 'completed') return 'acct-pill-ready';
-    if (status.includes('due')) return 'acct-pill-almost';
-    return 'acct-pill-planned';
+    if (status === 'paid' || status === 'active' || status === 'completed') return 'fluxy-status-success acct-pill-ready';
+    if (status.includes('due')) return 'fluxy-status-warning acct-pill-almost';
+    return 'fluxy-status-neutral acct-pill-planned';
 }
 
 function sourceBadgeClass(source) {
-    if (source === 'transactions') return 'acct-pill-suggested';
-    if (source === 'bills') return 'acct-pill-planned';
-    return 'acct-pill-saved';
+    if (source === 'transactions') return 'fluxy-status-info acct-pill-suggested';
+    if (source === 'bills') return 'fluxy-status-neutral acct-pill-planned';
+    return 'fluxy-status-success acct-pill-saved';
 }
 
 function actionLabel(source) {
@@ -308,18 +308,18 @@ function renderTable() {
         empty.classList.add('hidden');
         tableWrap.classList.remove('hidden');
         body.innerHTML = pageRecords.map(record => `
-            <tr>
-                <td>${escapeHtml(formatDate(record.date))}</td>
-                <td>
-                    <div class="acct-records-primary">${escapeHtml(record.vendor_name || 'Record')}</div>
-                    ${record.description ? `<div class="fluxy-meta">${escapeHtml(record.description)}</div>` : ''}
+            <tr class="fluxy-table-row">
+                <td class="fluxy-table-cell">${escapeHtml(formatDate(record.date))}</td>
+                <td class="fluxy-table-cell">
+                    <div class="acct-records-primary fluxy-table-cell-primary">${escapeHtml(record.vendor_name || 'Record')}</div>
+                    ${record.description ? `<div class="fluxy-table-cell-meta">${escapeHtml(record.description)}</div>` : ''}
                 </td>
-                <td><span class="acct-pill ${sourceBadgeClass(record.source_collection)}">${escapeHtml(record.source_label || titleCaseToken(record.source_collection))}</span></td>
-                <td>${escapeHtml(record.category || 'Uncategorized')}</td>
-                <td>${escapeHtml(titleCaseToken(record.type || 'expense'))}</td>
-                <td><span class="acct-pill ${statusPillClass(record)}">${escapeHtml(record.status || 'Completed')}</span></td>
-                <td class="acct-records-amount acct-mono">${escapeHtml(formatRupiah(record.amount))}</td>
-                <td><a class="acct-records-link" href="${escapeHtml(record.source_route || '/accounting')}">${escapeHtml(actionLabel(record.source_collection))}</a></td>
+                <td class="fluxy-table-cell"><span class="acct-pill fluxy-table-status ${sourceBadgeClass(record.source_collection)}">${escapeHtml(record.source_label || titleCaseToken(record.source_collection))}</span></td>
+                <td class="fluxy-table-cell">${escapeHtml(record.category || 'Uncategorized')}</td>
+                <td class="fluxy-table-cell">${escapeHtml(titleCaseToken(record.type || 'expense'))}</td>
+                <td class="fluxy-table-cell"><span class="acct-pill fluxy-table-status ${statusPillClass(record)}">${escapeHtml(record.status || 'Completed')}</span></td>
+                <td class="acct-records-amount acct-mono fluxy-table-cell fluxy-table-money">${escapeHtml(formatRupiah(record.amount))}</td>
+                <td class="fluxy-table-cell"><a class="acct-records-link fluxy-table-action" href="${escapeHtml(record.source_route || '/accounting')}">${escapeHtml(actionLabel(record.source_collection))}</a></td>
             </tr>
         `).join('');
     }

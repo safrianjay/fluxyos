@@ -217,7 +217,7 @@
                 <!-- 3. Workspace: recommended output + right column -->
                 <section class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-6">
 
-                    <div id="panel-recommended" class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                    <div id="panel-recommended" class="fluxy-table-card bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
                         <div class="flex items-start justify-between gap-4 p-5 border-b border-slate-100">
                             <div>
                                 <h3 class="text-[16px] font-bold text-gray-900">Recommended output</h3>
@@ -253,15 +253,15 @@
                             <h3 class="text-[14px] font-bold text-gray-900">Individual reports</h3>
                             <p class="mt-1 text-[14px] text-gray-500">Use these when one specific file is needed instead of the full monthly package.</p>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse text-[14px]">
+                        <div class="fluxy-table-scroll">
+                            <table class="fluxy-table min-w-[860px]">
                                 <thead>
-                                    <tr class="bg-slate-50 text-[12px] uppercase tracking-wider text-gray-500 border-y border-slate-100">
-                                        <th class="px-5 py-3 font-medium">Report</th>
-                                        <th class="px-5 py-3 font-medium">Purpose</th>
-                                        <th class="px-5 py-3 font-medium hidden md:table-cell">Data source</th>
-                                        <th class="px-5 py-3 font-medium hidden sm:table-cell">Format</th>
-                                        <th class="px-5 py-3 font-medium"></th>
+                                    <tr class="fluxy-table-header">
+                                        <th>Report</th>
+                                        <th>Purpose</th>
+                                        <th class="hidden md:table-cell">Data source</th>
+                                        <th class="hidden sm:table-cell">Format</th>
+                                        <th class="fluxy-table-action"></th>
                                     </tr>
                                 </thead>
                                 <tbody class="text-gray-700">

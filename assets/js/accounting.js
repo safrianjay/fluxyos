@@ -34,6 +34,7 @@ const ACCOUNT_OPTIONS = [
 
 const TONE_COLOR = { success: '#16A34A', warning: '#EA580C', danger: '#EF4444', neutral: '#94A3B8' };
 const TONE_PILL = { success: 'acct-pill-ready', warning: 'acct-pill-almost', danger: 'acct-pill-needs', neutral: 'acct-pill-planned' };
+const TONE_STATUS = { success: 'fluxy-status-success', warning: 'fluxy-status-warning', danger: 'fluxy-status-danger', neutral: 'fluxy-status-neutral' };
 
 const SOURCE_LINKS = {
     transactions: '/ledger',
@@ -242,12 +243,12 @@ function changeDisplay(row) {
 function statusCellHtml(row, isChild) {
     const tone = row.status_tone || 'neutral';
     if (row.level === 'subtotal' || row.level === 'total') {
-        return `<span class="acct-is-status-text" style="font-weight:600;">${escapeHtml(row.status)}</span>`;
+        return `<span class="acct-is-status-text fluxy-table-cell-meta" style="font-weight:600;">${escapeHtml(row.status)}</span>`;
     }
     if (isChild) {
-        return `<span class="acct-is-status-text acct-tone-${tone}">${escapeHtml(row.status)}</span>`;
+        return `<span class="acct-is-status-text fluxy-table-cell-meta acct-tone-${tone}">${escapeHtml(row.status)}</span>`;
     }
-    return `<span class="acct-pill ${TONE_PILL[tone] || TONE_PILL.neutral}">${escapeHtml(row.status)}</span>`;
+    return `<span class="acct-pill fluxy-table-status ${TONE_STATUS[tone] || TONE_STATUS.neutral} ${TONE_PILL[tone] || TONE_PILL.neutral}">${escapeHtml(row.status)}</span>`;
 }
 
 function isActionableIncomeRow(row) {
@@ -312,14 +313,19 @@ function rowTr(row, isChild, parentId) {
     const rowAttrs = actionable
         ? ` data-row-id="${escapeHtml(row.id)}" tabindex="0" role="button" aria-label="Open ${escapeHtml(row.label)} records"`
         : ' aria-disabled="true"';
+    const fluxyLevelClass = row.level === 'total'
+        ? 'fluxy-table-row-final'
+        : row.level === 'subtotal'
+            ? 'fluxy-table-row-total'
+            : '';
     return `
-        <tr class="acct-is-row ${levelClass} ${actionable ? 'acct-is-actionable' : 'acct-is-static'}"${rowAttrs}${parentAttr}>
-            <td class="acct-is-line">${chevron}<span>${escapeHtml(row.label)}</span></td>
-            <td class="acct-is-num ${cur.cls}">${cur.text}</td>
-            <td class="acct-is-num ${prev.cls}">${prev.text}</td>
-            <td class="acct-is-num acct-tone-${ch.tone}">${ch.text}</td>
-            <td class="acct-is-num acct-tone-${ch.pctTone}">${ch.pctText}</td>
-            <td class="acct-is-status">${statusCellHtml(row, isChild)}</td>
+        <tr class="fluxy-table-row ${fluxyLevelClass} acct-is-row ${levelClass} ${actionable ? 'fluxy-table-row-clickable acct-is-actionable' : 'acct-is-static'}"${rowAttrs}${parentAttr}>
+            <td class="fluxy-table-cell fluxy-table-cell-primary acct-is-line">${chevron}<span>${escapeHtml(row.label)}</span></td>
+            <td class="fluxy-table-cell fluxy-table-money acct-is-num ${cur.cls}">${cur.text}</td>
+            <td class="fluxy-table-cell fluxy-table-money acct-is-num ${prev.cls}">${prev.text}</td>
+            <td class="fluxy-table-cell fluxy-table-money acct-is-num acct-tone-${ch.tone}">${ch.text}</td>
+            <td class="fluxy-table-cell fluxy-table-money acct-is-num acct-tone-${ch.pctTone}">${ch.pctText}</td>
+            <td class="fluxy-table-cell acct-is-status">${statusCellHtml(row, isChild)}</td>
         </tr>`;
 }
 
@@ -333,9 +339,9 @@ function rowGroupHtml(row) {
 
 function incomeEmptyInline() {
     return `
-        <div style="padding:48px 24px;text-align:center;">
-            <div class="fluxy-section-title" style="margin-bottom:6px;">No income statement data for this period</div>
-            <p class="fluxy-meta" style="max-width:420px;margin:0 auto 18px;">Add transactions, bills, or revenue records first. FluxyOS will use them to build an income statement preview.</p>
+        <div class="fluxy-table-empty">
+            <div class="fluxy-table-empty-title">No income statement data for this period</div>
+            <p class="fluxy-table-empty-description" style="margin-bottom:18px;">Add transactions, bills, or revenue records first. FluxyOS will use them to build an income statement preview.</p>
             <button type="button" class="acct-btn acct-btn-primary" data-add-tx style="margin:0 auto;">Add transaction</button>
         </div>`;
 }
@@ -360,14 +366,14 @@ function renderIncomeStatement(data) {
     const prevLabel = data.comparison_period.label;
     const body = (data.rows || []).map(rowGroupHtml).join('');
     wrap.innerHTML = `
-        <table class="acct-is-table">
+        <table class="fluxy-table acct-is-table">
             <thead>
-                <tr>
+                <tr class="fluxy-table-header">
                     <th class="acct-is-th-line">Line item</th>
-                    <th class="acct-is-th-num">${escapeHtml(curLabel)}</th>
-                    <th class="acct-is-th-num">${escapeHtml(prevLabel)}</th>
-                    <th class="acct-is-th-num">Change</th>
-                    <th class="acct-is-th-num">Change %</th>
+                    <th class="fluxy-table-money acct-is-th-num">${escapeHtml(curLabel)}</th>
+                    <th class="fluxy-table-money acct-is-th-num">${escapeHtml(prevLabel)}</th>
+                    <th class="fluxy-table-money acct-is-th-num">Change</th>
+                    <th class="fluxy-table-money acct-is-th-num">Change %</th>
                     <th class="acct-is-th-status">Status</th>
                 </tr>
             </thead>

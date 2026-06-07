@@ -646,7 +646,7 @@ function renderAllocationsTable(allocations) {
         ? `${allocations.length} allocation${allocations.length === 1 ? '' : 's'}`
         : '';
     if (allocations.length === 0) {
-        body.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-[13px] text-gray-400">No allocations yet. Edit this budget to add Marketing, Infrastructure, Operations, or SaaS allocations.</td></tr>`;
+        body.innerHTML = `<tr><td colspan="6" class="fluxy-table-loading-cell">No allocations yet. Edit this budget to add Marketing, Infrastructure, Operations, or SaaS allocations.</td></tr>`;
         if (mobile) {
             mobile.innerHTML = `<div class="px-5 py-8 text-center text-[13px] text-gray-400">No allocations yet. Edit this budget to split it by purpose.</div>`;
         }
@@ -663,21 +663,21 @@ function renderAllocationsTable(allocations) {
         // Variance line goes inside the inner text block so it indents under
         // the name + category instead of running flush-left below the swatch.
         return `
-            <tr class="hover:bg-gray-50 transition-colors cursor-pointer align-top" data-allocation-id="${escapeHtml(alloc.id)}" data-action="open-allocation-drill-in">
-                <td class="px-5 py-4">
+            <tr class="fluxy-table-row fluxy-table-row-clickable align-top" data-allocation-id="${escapeHtml(alloc.id)}" data-action="open-allocation-drill-in">
+                <td class="fluxy-table-cell">
                     <div class="flex items-start gap-3">
                         <span class="mt-1.5 h-2.5 w-2.5 rounded-sm flex-shrink-0" style="background: ${allocationColor(index)};"></span>
                         <div class="min-w-0">
-                            <p class="font-semibold text-gray-900 truncate">${escapeHtml(alloc.name)}</p>
-                            <p class="text-[11px] text-gray-400 mt-0.5 truncate">${escapeHtml(scope || '—')}</p>
-                            ${variance ? `<p class="mt-1 text-[11px] text-gray-500 leading-snug">${variance}</p>` : ''}
+                            <p class="fluxy-table-cell-primary truncate">${escapeHtml(alloc.name)}</p>
+                            <p class="fluxy-table-cell-meta mt-0.5 truncate">${escapeHtml(scope || '—')}</p>
+                            ${variance ? `<p class="fluxy-table-cell-meta mt-1 leading-snug">${variance}</p>` : ''}
                         </div>
                     </div>
                 </td>
-                <td class="px-5 py-4 font-mono text-gray-900 whitespace-nowrap">${formatRp(alloc.allocated_amount)}</td>
-                <td class="px-5 py-4 font-mono text-gray-700 whitespace-nowrap">${formatRp(spentReserved)}</td>
-                <td class="px-5 py-4 font-mono ${remainingCls} whitespace-nowrap">${formatRp(alloc.remaining_amount)}</td>
-                <td class="px-5 py-4">
+                <td class="fluxy-table-cell fluxy-table-money text-gray-900">${formatRp(alloc.allocated_amount)}</td>
+                <td class="fluxy-table-cell fluxy-table-money text-gray-700">${formatRp(spentReserved)}</td>
+                <td class="fluxy-table-cell fluxy-table-money ${remainingCls}">${formatRp(alloc.remaining_amount)}</td>
+                <td class="fluxy-table-cell">
                     <div class="flex items-center gap-2">
                         <span class="font-mono text-[12px] font-bold text-gray-700 whitespace-nowrap">${formatPercent(alloc.usage_percent)}</span>
                         <div class="hidden sm:block w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
@@ -685,8 +685,8 @@ function renderAllocationsTable(allocations) {
                         </div>
                     </div>
                 </td>
-                <td class="px-5 py-4">
-                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap ${status.cls}">${status.label}</span>
+                <td class="fluxy-table-cell">
+                    <span class="fluxy-table-status ${status.cls}">${status.label}</span>
                 </td>
             </tr>
         `;

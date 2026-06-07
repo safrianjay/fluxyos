@@ -138,12 +138,14 @@
                     <!-- INCOME STATEMENT TAB -->
                     <div data-acct-panel="income" class="flex flex-col gap-6">
                         <!-- Report card -->
-                        <section class="acct-card">
-                            <div style="padding:20px 20px 16px;">
-                                <h2 class="fluxy-section-title">Income Statement</h2>
-                                <p class="fluxy-meta">Click a row to inspect related records.</p>
+                        <section class="acct-card fluxy-table-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">Income Statement</h2>
+                                    <p class="fluxy-table-subtitle">Click a row to inspect related records.</p>
+                                </div>
                             </div>
-                            <div id="income-statement-table" class="acct-is-scroll"></div>
+                            <div id="income-statement-table" class="acct-is-scroll fluxy-table-scroll"></div>
                         </section>
                     </div>
 

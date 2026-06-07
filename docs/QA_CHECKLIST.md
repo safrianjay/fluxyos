@@ -234,6 +234,29 @@ this build and fail safely. Spec: the Billing & plan Phase 1 task brief.
 Dashboard, Ledger, Bills, Budget, Settings, and `/checkout` + `/payment-pending`
 still render with correct sidebar active states.
 
+### D5. Dashboard Table Standard Regression
+
+Run this section whenever an authenticated app table changes, any `fluxy-table*`
+class is added/edited, or `assets/css/shared-dashboard.css` table styles change.
+
+| # | Check |
+|---|-------|
+| 1 | Table card uses `fluxy-table-card` or a documented equivalent standard wrapper |
+| 2 | Header title/subtitle use `fluxy-table-title` / `fluxy-table-subtitle` or matching 16px/12px dashboard typography |
+| 3 | Header labels are uppercase 12px labels with `0.06em` tracking and slate text |
+| 4 | Primary cells use 14px text, 600 weight, and slate-950/near-black color |
+| 5 | Money cells use `Fira Code`, tabular numbers, and right alignment via `fluxy-table-money` |
+| 6 | Status badges use `fluxy-table-status` plus semantic shared classes (`fluxy-status-success`, `warning`, `danger`, `neutral`, `info`) |
+| 7 | Hover states are subtle slate backgrounds; no orange row backgrounds, gradients, or heavy shadows |
+| 8 | Clickable rows use `fluxy-table-row-clickable` or equivalent, show a visible affordance, and do not lose existing row open/detail behavior |
+| 9 | Summary/total rows are not clickable unless intentionally linked to source records; financial final totals use dark navy only where appropriate |
+| 10 | Empty state shows no fake rows, fake money, `NaN`, `Infinity`, or placeholder records |
+| 11 | Loading state shows stable shimmer/loading copy and never leaves a blank table body |
+| 12 | Pagination appears for data-heavy tables with more than 10 rows where the page uses paging, and resets to page 1 on search/filter changes |
+| 13 | Mobile 375px has no page-level horizontal overflow; the table scrolls inside `fluxy-table-scroll` |
+| 14 | Existing search, filter, sort, export, row-click, drawer, and pagination behavior still works |
+| 15 | Browser console is clean on each changed table page: no CSP, CORS, 404, Firebase, or uncaught JS errors |
+
 ### E. Add Transaction / Bill / Subscription (shared-dashboard.js, db-service.js)
 
 | # | Check |

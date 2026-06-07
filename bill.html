@@ -114,40 +114,43 @@
                 </div>
 
                 <!-- Bills Table -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                        <h2 class="text-[14px] font-bold text-gray-900">All Bills</h2>
-                        <p id="bill-table-count" class="text-[12px] text-gray-400"></p>
+                <div class="fluxy-table-card">
+                    <div class="fluxy-table-card-header">
+                        <div>
+                            <h2 class="fluxy-table-title">All Bills</h2>
+                            <p class="fluxy-table-subtitle">Track upcoming payments, vendor invoices, and payable obligations.</p>
+                        </div>
+                        <p id="bill-table-count" class="fluxy-table-subtitle"></p>
                     </div>
-                    <div id="bill-vendor-filter-chip-row" class="hidden px-6 py-3 border-b border-gray-100 bg-gray-50/50">
+                    <div id="bill-vendor-filter-chip-row" class="fluxy-table-toolbar hidden">
                         <button id="bill-clear-vendor-filter" type="button" class="inline-flex max-w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">
                             <span id="bill-vendor-filter-label" class="truncate">Vendor: —</span>
                             <span class="text-gray-400" aria-hidden="true">×</span>
                         </button>
                     </div>
                     <div id="bill-empty-state" class="hidden"></div>
-                    <div id="bill-table-container" data-tour-target="bill-table" class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
+                    <div id="bill-table-container" data-tour-target="bill-table" class="fluxy-table-scroll">
+                        <table class="fluxy-table min-w-[760px]">
                             <thead>
-                                <tr class="bg-gray-50 border-b border-gray-200">
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Vendor</th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Category</th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Due Date</th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider" data-tour-target="bill-action-column">Action</th>
+                                <tr class="fluxy-table-header">
+                                    <th>Vendor</th>
+                                    <th>Category</th>
+                                    <th>Due Date</th>
+                                    <th class="fluxy-table-money">Amount</th>
+                                    <th>Status</th>
+                                    <th class="fluxy-table-action" data-tour-target="bill-action-column">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="bill-table-body" class="divide-y divide-gray-100 text-[14px]">
+                            <tbody id="bill-table-body">
                                 <tr>
-                                    <td colspan="6" class="px-6 py-12 text-center text-gray-400">Loading your bills...</td>
+                                    <td colspan="6" class="fluxy-table-loading-cell">Loading your bills...</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <div id="bill-pagination" class="hidden border-t border-gray-100 bg-gray-50/50 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <p id="bill-page-summary" class="text-[12px] font-medium text-gray-500">Showing 0 bills</p>
-                        <div class="flex items-center gap-2">
+                    <div id="bill-pagination" class="fluxy-table-pagination hidden">
+                        <p id="bill-page-summary" class="fluxy-table-pagination-summary">Showing 0 bills</p>
+                        <div class="fluxy-table-pagination-actions">
                             <button id="bill-prev-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
                             <span id="bill-page-indicator" class="min-w-16 text-center text-[12px] font-bold text-gray-600">1 / 1</span>
                             <button id="bill-next-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
@@ -431,16 +434,16 @@
 
         function getStatusBadge(status) {
             const map = {
-                'Overdue':          'bg-red-100 text-red-700',
-                'Due Today':        'bg-amber-100 text-amber-700',
-                'Due Soon':         'bg-orange-100 text-orange-700',
-                'Scheduled':        'bg-blue-50 text-blue-600',
-                'Missing Due Date': 'bg-gray-100 text-gray-500',
-                'Paid':             'bg-green-100 text-green-700',
-                'Upcoming':         'bg-orange-100 text-orange-700',
+                'Overdue':          'fluxy-status-danger',
+                'Due Today':        'fluxy-status-warning',
+                'Due Soon':         'fluxy-status-warning',
+                'Scheduled':        'fluxy-status-info',
+                'Missing Due Date': 'fluxy-status-neutral',
+                'Paid':             'fluxy-status-success',
+                'Upcoming':         'fluxy-status-info',
             };
-            const cls = map[status] || 'bg-gray-100 text-gray-500';
-            return `<span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${cls}">${escapeHtml(status)}</span>`;
+            const cls = map[status] || 'fluxy-status-neutral';
+            return `<span class="fluxy-table-status ${cls}">${escapeHtml(status)}</span>`;
         }
 
         // ── Render: Summary Cards ─────────────────────────────────────────────
@@ -556,7 +559,7 @@
             if (!body) return;
 
             if (visible.length === 0) {
-                body.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-[14px] text-gray-400">No bills match your search.</td></tr>`;
+                body.innerHTML = `<tr><td colspan="6" class="fluxy-table-loading-cell">No bills match your search.</td></tr>`;
                 return;
             }
 
@@ -567,25 +570,25 @@
                 const amountText = formatCurrencyIDR(bill.amount);
                 const budgetChip = badge ? `
                     <div class="mt-1.5 flex items-center gap-2 flex-wrap">
-                        <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${badge.cls}">${escapeHtml(badge.label)}</span>
-                        <button type="button" class="text-[10px] font-bold text-[#EA580C] hover:underline" data-fluxy-budget-action="${badge.action}" data-record-id="${escapeHtml(bill.id)}" data-vendor="${escapeHtml(vendorName)}" data-amount-text="${escapeHtml(amountText)}" data-current-allocation-id="${escapeHtml(badge.allocationId || '')}">${badge.action === 'restore' ? 'Restore' : 'Assign'}</button>
+                        <span class="fluxy-table-status ${badge.cls}">${escapeHtml(badge.label)}</span>
+                        <button type="button" class="fluxy-table-action" data-fluxy-budget-action="${badge.action}" data-record-id="${escapeHtml(bill.id)}" data-vendor="${escapeHtml(vendorName)}" data-amount-text="${escapeHtml(amountText)}" data-current-allocation-id="${escapeHtml(badge.allocationId || '')}">${badge.action === 'restore' ? 'Restore' : 'Assign'}</button>
                     </div>` : '';
                 return `
-                    <tr class="hover:bg-gray-50 transition-colors cursor-pointer" data-action="review" data-bill-id="${escapeHtml(bill.id)}">
-                        <td class="px-6 py-4">
-                            <button type="button" data-action="bill-vendor-filter" data-vendor-name="${escapeHtml(vendorName)}" class="inline-block max-w-[220px] truncate text-left align-bottom font-semibold text-gray-900 hover:text-[#EA580C] hover:underline">
+                    <tr class="fluxy-table-row fluxy-table-row-clickable" data-action="review" data-bill-id="${escapeHtml(bill.id)}">
+                        <td class="fluxy-table-cell">
+                            <button type="button" data-action="bill-vendor-filter" data-vendor-name="${escapeHtml(vendorName)}" class="fluxy-table-cell-primary inline-block max-w-[220px] truncate text-left align-bottom hover:text-[#EA580C] hover:underline">
                                 ${escapeHtml(vendorName)}
                             </button>
                         </td>
-                        <td class="px-6 py-4 text-gray-500 align-top">
+                        <td class="fluxy-table-cell fluxy-table-cell-meta align-top">
                             <p>${escapeHtml(bill.category || 'Operations')}</p>
                             ${budgetChip}
                         </td>
-                        <td class="px-6 py-4 text-[14px]">${formatDueDateDisplay(bill)}</td>
-                        <td class="px-6 py-4 font-mono font-bold text-gray-900">${formatCurrencyIDR(bill.amount)}</td>
-                        <td class="px-6 py-4">${getStatusBadge(status)}</td>
-                        <td class="px-6 py-4">
-                            <button class="text-[12px] font-bold text-[#EA580C] hover:underline">Review</button>
+                        <td class="fluxy-table-cell">${formatDueDateDisplay(bill)}</td>
+                        <td class="fluxy-table-cell fluxy-table-money font-bold text-gray-900">${formatCurrencyIDR(bill.amount)}</td>
+                        <td class="fluxy-table-cell">${getStatusBadge(status)}</td>
+                        <td class="fluxy-table-cell fluxy-table-action">
+                            <button class="fluxy-table-action">Review</button>
                         </td>
                     </tr>
                 `;

@@ -833,3 +833,336 @@ main > header {
 .fluxy-kpi-label { font-size: var(--fluxy-text-xs); font-weight: var(--fluxy-fw-medium); letter-spacing: var(--fluxy-tracking-wide); text-transform: uppercase; color: #6B7280; }
 .fluxy-caps-label { font-size: var(--fluxy-text-xs); font-weight: var(--fluxy-fw-medium); letter-spacing: var(--fluxy-tracking-wide); text-transform: uppercase; }
 .fluxy-eyebrow { font-size: var(--fluxy-text-xs); font-weight: var(--fluxy-fw-semibold); letter-spacing: var(--fluxy-tracking-widest); text-transform: uppercase; }
+
+/* Dashboard Data Table Standard
+   Shared table vocabulary for authenticated app pages. Keep page-specific
+   behavior in the page controller; use these classes for visual consistency. */
+.fluxy-table-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+}
+
+.fluxy-table-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.fluxy-table-title {
+    margin: 0;
+    color: #020617;
+    font-size: var(--fluxy-text-lg);
+    font-weight: var(--fluxy-fw-semibold);
+    line-height: var(--fluxy-lh-tight);
+    letter-spacing: var(--fluxy-tracking-tight);
+}
+
+.fluxy-table-subtitle {
+    margin: 4px 0 0;
+    color: #64748B;
+    font-size: var(--fluxy-text-sm);
+    font-weight: var(--fluxy-fw-regular);
+    line-height: var(--fluxy-lh-snug);
+}
+
+.fluxy-table-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.fluxy-table-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 20px;
+    border-bottom: 1px solid #E2E8F0;
+    background: #FFFFFF;
+}
+
+.fluxy-table-toolbar input,
+.fluxy-table-toolbar select,
+.fluxy-table-toolbar .fluxy-select-trigger {
+    min-height: 40px;
+    border-color: #E2E8F0;
+    border-radius: 8px;
+    color: #334155;
+    font-size: var(--fluxy-text-md);
+}
+
+.fluxy-table-toolbar input::placeholder {
+    color: #94A3B8;
+}
+
+.fluxy-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.fluxy-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #334155;
+    font-size: var(--fluxy-text-md);
+}
+
+.fluxy-table-header,
+.fluxy-table thead tr {
+    background: #F8FAFC;
+}
+
+.fluxy-table th {
+    padding: 12px 20px;
+    border-bottom: 1px solid #E2E8F0;
+    color: #64748B;
+    font-size: var(--fluxy-text-sm);
+    font-weight: var(--fluxy-fw-semibold);
+    letter-spacing: var(--fluxy-tracking-wide);
+    line-height: var(--fluxy-lh-tight);
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.fluxy-table td,
+.fluxy-table-cell {
+    padding: 16px 20px;
+    border-bottom: 1px solid #F1F5F9;
+    color: #334155;
+    font-size: var(--fluxy-text-md);
+    font-weight: var(--fluxy-fw-regular);
+    line-height: var(--fluxy-lh-normal);
+    vertical-align: middle;
+}
+
+.fluxy-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.fluxy-table-row,
+.fluxy-table tbody tr {
+    transition: background-color 120ms ease, color 120ms ease;
+}
+
+.fluxy-table-row:hover,
+.fluxy-table tbody tr:hover {
+    background: #F8FAFC;
+}
+
+.fluxy-table-row-clickable {
+    cursor: pointer;
+}
+
+.fluxy-table-row-clickable:focus-visible {
+    outline: 2px solid #EA580C;
+    outline-offset: -2px;
+}
+
+.fluxy-table-row-total {
+    background: #F8FAFC;
+    font-weight: var(--fluxy-fw-semibold);
+}
+
+.fluxy-table-row-total td,
+.fluxy-table-row-total .fluxy-table-cell-primary,
+.fluxy-table-row-total .fluxy-table-money {
+    font-weight: var(--fluxy-fw-semibold);
+}
+
+.fluxy-table-row-final {
+    background: #0B0F19;
+}
+
+.fluxy-table-row-final td,
+.fluxy-table-row-final .fluxy-table-cell-primary,
+.fluxy-table-row-final .fluxy-table-cell-meta,
+.fluxy-table-row-final .fluxy-table-money {
+    border-bottom: 0;
+    color: #FFFFFF;
+    font-weight: var(--fluxy-fw-semibold);
+}
+
+.fluxy-table-cell-primary {
+    color: #020617;
+    font-size: var(--fluxy-text-md);
+    font-weight: var(--fluxy-fw-semibold);
+    line-height: var(--fluxy-lh-snug);
+}
+
+.fluxy-table-cell-meta {
+    color: #64748B;
+    font-size: var(--fluxy-text-sm);
+    font-weight: var(--fluxy-fw-regular);
+    line-height: var(--fluxy-lh-snug);
+}
+
+.fluxy-table-money {
+    color: #0F172A;
+    font-family: "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: var(--fluxy-text-md);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+    text-align: right;
+    white-space: nowrap;
+}
+
+.fluxy-table th.fluxy-table-money,
+.fluxy-table td.fluxy-table-money,
+.fluxy-table th.fluxy-table-action,
+.fluxy-table td.fluxy-table-action {
+    text-align: right;
+}
+
+.fluxy-table th.fluxy-table-money,
+.fluxy-table th.fluxy-table-action {
+    color: #64748B;
+    font-family: inherit;
+    font-size: var(--fluxy-text-sm);
+    font-weight: var(--fluxy-fw-semibold);
+}
+
+.fluxy-table-action {
+    color: #EA580C;
+    font-size: var(--fluxy-text-sm);
+    font-weight: var(--fluxy-fw-semibold);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.fluxy-table-action:hover {
+    text-decoration: underline;
+}
+
+.fluxy-table-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 9999px;
+    padding: 4px 8px;
+    font-size: var(--fluxy-text-sm);
+    font-weight: var(--fluxy-fw-medium);
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.fluxy-status-success {
+    border-color: #BBF7D0;
+    background: #F0FDF4;
+    color: #15803D;
+}
+
+.fluxy-status-warning {
+    border-color: #FED7AA;
+    background: #FFF7ED;
+    color: #C2410C;
+}
+
+.fluxy-status-danger {
+    border-color: #FECACA;
+    background: #FEF2F2;
+    color: #B91C1C;
+}
+
+.fluxy-status-neutral {
+    border-color: #E2E8F0;
+    background: #F8FAFC;
+    color: #64748B;
+}
+
+.fluxy-status-info {
+    border-color: #BFDBFE;
+    background: #EFF6FF;
+    color: #1D4ED8;
+}
+
+.fluxy-table-empty {
+    display: flex;
+    min-height: 220px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    text-align: center;
+}
+
+.fluxy-table-empty-title {
+    margin: 0;
+    color: #020617;
+    font-size: var(--fluxy-text-lg);
+    font-weight: var(--fluxy-fw-semibold);
+    line-height: var(--fluxy-lh-tight);
+}
+
+.fluxy-table-empty-description {
+    max-width: 420px;
+    margin: 6px auto 0;
+    color: #64748B;
+    font-size: var(--fluxy-text-md);
+    font-weight: var(--fluxy-fw-regular);
+    line-height: var(--fluxy-lh-snug);
+}
+
+.fluxy-table-loading-cell {
+    padding: 40px 20px;
+    color: #64748B;
+    text-align: center;
+}
+
+.fluxy-table-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 14px 20px;
+    border-top: 1px solid #E2E8F0;
+    background: #F8FAFC;
+}
+
+.fluxy-table-pagination-summary {
+    color: #64748B;
+    font-size: var(--fluxy-text-sm);
+    font-weight: var(--fluxy-fw-medium);
+}
+
+.fluxy-table-pagination-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hidden.fluxy-table-toolbar,
+.hidden.fluxy-table-empty,
+.hidden.fluxy-table-pagination {
+    display: none;
+}
+
+@media (max-width: 640px) {
+    .fluxy-table-card-header,
+    .fluxy-table-pagination {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .fluxy-table-actions,
+    .fluxy-table-pagination-actions {
+        justify-content: flex-start;
+    }
+
+    .fluxy-table-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}

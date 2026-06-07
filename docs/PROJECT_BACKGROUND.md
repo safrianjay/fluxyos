@@ -1018,6 +1018,18 @@ window.renderEmptyState('ledger-empty-state', {
 ### `window.renderShimmer(containerId, rowCount = 5)`
 Shows skeleton loading rows inside a container while data loads.
 
+### Authenticated app table standard
+**File:** `assets/css/shared-dashboard.css`
+
+All authenticated dashboard/app tables should use the shared `fluxy-table*`
+classes documented in `DESIGN_SYSTEM.md` and `COMPONENT_GUIDE.md`. Use
+`fluxy-table-card`, `fluxy-table-scroll`, `fluxy-table`, `fluxy-table-row`,
+`fluxy-table-cell`, `fluxy-table-money`, `fluxy-table-status`, and
+`fluxy-table-pagination` rather than inventing page-local table typography,
+money alignment, badge colors, or horizontal-scroll behavior. Preserve existing
+DOM IDs, event selectors, Firestore access, and calculations when applying the
+standard.
+
 ### `window.attachChartHover(container, options)`
 **File:** `assets/js/shared-dashboard.js`
 

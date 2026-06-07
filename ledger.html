@@ -225,52 +225,52 @@
                 </section>
 
                 <!-- Ledger Table Card -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div class="fluxy-table-card">
                     <div id="ledger-empty-state" class="hidden"></div>
-                    <div id="ledger-filter-chip-row" class="hidden px-6 py-3 border-b border-gray-100 bg-gray-50/50 flex flex-wrap items-center gap-2"></div>
+                    <div id="ledger-filter-chip-row" class="fluxy-table-toolbar hidden"></div>
                     
-                    <div id="ledger-table-container" data-tour-target="ledger-table" class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
+                    <div id="ledger-table-container" data-tour-target="ledger-table" class="fluxy-table-scroll">
+                        <table class="fluxy-table min-w-[960px]">
                             <thead>
-                                <tr class="bg-gray-50 border-b border-gray-200">
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Uploaded</th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">
+                                <tr class="fluxy-table-header">
+                                    <th>Uploaded</th>
+                                    <th>
                                         <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="date">
                                             Date <span class="ledger-sort-icon text-gray-400" aria-hidden="true"></span>
                                         </button>
                                     </th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Type</th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Description</th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>
                                         <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="category">
                                             Category <span class="ledger-sort-icon text-gray-400" aria-hidden="true"></span>
                                         </button>
                                     </th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">
+                                    <th class="fluxy-table-money">
                                         <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="amount">
                                             Amount <span class="ledger-sort-icon text-gray-400" aria-hidden="true"></span>
                                         </button>
                                     </th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">
+                                    <th>
                                         <button type="button" class="ledger-sort-btn inline-flex items-center gap-1 hover:text-gray-900 transition-colors" data-sort-key="status">
                                             Status <span class="ledger-sort-icon text-gray-400" aria-hidden="true"></span>
                                         </button>
                                     </th>
-                                    <th class="px-4 py-4 text-right text-[12px] font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                                    <th class="fluxy-table-action">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="ledger-table-body" class="divide-y divide-gray-100 text-[14px]">
+                            <tbody id="ledger-table-body">
                                 <tr>
-                                    <td colspan="8" class="px-6 py-12 text-center text-gray-400">
+                                    <td colspan="8" class="fluxy-table-loading-cell">
                                         Fetching ledger data...
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <div id="ledger-pagination" class="hidden border-t border-gray-100 bg-gray-50/50 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <p id="ledger-page-summary" class="text-[12px] font-medium text-gray-500">Showing 0 transactions</p>
-                        <div class="flex items-center gap-2">
+                    <div id="ledger-pagination" class="fluxy-table-pagination hidden">
+                        <p id="ledger-page-summary" class="fluxy-table-pagination-summary">Showing 0 transactions</p>
+                        <div class="fluxy-table-pagination-actions">
                             <button id="ledger-prev-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
                             <span id="ledger-page-indicator" class="min-w-16 text-center text-[12px] font-bold text-gray-600">1 / 1</span>
                             <button id="ledger-next-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
@@ -1646,13 +1646,13 @@
         }
 
         function getStatusBadgeClass(status) {
-            if (status === 'Completed') return 'bg-green-100 text-green-800';
-            if (status === 'Reconciled') return 'bg-blue-100 text-blue-800';
-            if (status === 'Pending') return 'bg-amber-100 text-amber-800';
-            if (status === 'Missing Receipt') return 'bg-orange-100 text-orange-800';
-            if (status === 'Cancelled') return 'bg-gray-100 text-gray-600';
-            if (status === 'Voided') return 'bg-gray-200 text-gray-500';
-            return 'bg-slate-100 text-slate-700';
+            if (status === 'Completed') return 'fluxy-status-success';
+            if (status === 'Reconciled') return 'fluxy-status-info';
+            if (status === 'Pending') return 'fluxy-status-warning';
+            if (status === 'Missing Receipt') return 'fluxy-status-danger';
+            if (status === 'Cancelled') return 'fluxy-status-neutral';
+            if (status === 'Voided') return 'fluxy-status-neutral';
+            return 'fluxy-status-neutral';
         }
 
         function getTopVendorSpend(transactions) {
@@ -1749,9 +1749,9 @@
             if (visibleRows.length === 0) {
                 body.innerHTML = `
                     <tr>
-                        <td colspan="8" class="px-6 py-12 text-center">
-                            <p class="text-[14px] font-bold text-gray-700">No matching transactions</p>
-                            <p class="mt-1 text-[12px] text-gray-400">Try another vendor, category, type, status, amount, or date.</p>
+                        <td colspan="8" class="fluxy-table-loading-cell">
+                            <p class="fluxy-table-empty-title">No matching transactions</p>
+                            <p class="fluxy-table-empty-description">Try another vendor, category, type, status, amount, or date.</p>
                         </td>
                     </tr>
                 `;
@@ -1769,36 +1769,36 @@
                 const amountText = 'Rp ' + Math.abs(Number(row.amount) || 0).toLocaleString('id-ID');
                 const budgetChip = badge ? `
                     <div class="mt-1.5 flex items-center gap-2 flex-wrap">
-                        <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${badge.cls}">${escapeHtml(badge.label)}</span>
-                        <button type="button" class="text-[10px] font-bold text-[#EA580C] hover:underline" data-fluxy-budget-action="${badge.action}" data-record-type="transactions" data-record-id="${escapeHtml(row.id)}" data-vendor="${escapeHtml(vendorName)}" data-amount-text="${escapeHtml(amountText)}" data-current-allocation-id="${escapeHtml(badge.allocationId || '')}">${badge.action === 'restore' ? 'Restore' : 'Assign'}</button>
+                        <span class="fluxy-table-status ${badge.cls}">${escapeHtml(badge.label)}</span>
+                        <button type="button" class="fluxy-table-action" data-fluxy-budget-action="${badge.action}" data-record-type="transactions" data-record-id="${escapeHtml(row.id)}" data-vendor="${escapeHtml(vendorName)}" data-amount-text="${escapeHtml(amountText)}" data-current-allocation-id="${escapeHtml(badge.allocationId || '')}">${badge.action === 'restore' ? 'Restore' : 'Assign'}</button>
                     </div>` : '';
                 return `
-                <tr class="hover:bg-gray-50 transition-colors cursor-pointer ${isVoided ? 'bg-gray-50/70 text-gray-400' : ''}" data-ledger-id="${escapeHtml(row.id)}">
-                    <td class="px-6 py-4 text-gray-400 whitespace-nowrap text-[12px]">${row.created_at?.toDate ? row.created_at.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
-                    <td class="px-6 py-4 ${isVoided ? 'text-gray-400' : 'text-gray-500'}">${row.timestamp?.toDate().toLocaleString() || 'Just now'}</td>
-                    <td class="px-6 py-4">
-                        <span class="inline-flex items-center rounded-md border px-2 py-1 text-[10px] font-bold uppercase ${getTypeBadgeClass(getTransactionType(row))}">
+                <tr class="fluxy-table-row fluxy-table-row-clickable ${isVoided ? 'bg-gray-50/70 text-gray-400' : ''}" data-ledger-id="${escapeHtml(row.id)}">
+                    <td class="fluxy-table-cell fluxy-table-cell-meta whitespace-nowrap">${row.created_at?.toDate ? row.created_at.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
+                    <td class="fluxy-table-cell ${isVoided ? 'text-gray-400' : 'text-gray-500'}">${row.timestamp?.toDate().toLocaleString() || 'Just now'}</td>
+                    <td class="fluxy-table-cell">
+                        <span class="fluxy-table-status ${getTypeBadgeClass(getTransactionType(row))}">
                             ${getTransactionType(row)}
                         </span>
                     </td>
-                    <td class="px-6 py-4">
-                        <button type="button" data-action="ledger-vendor-filter" data-vendor-name="${escapeHtml(vendorName)}" class="inline-block max-w-[240px] truncate text-left align-bottom font-bold text-gray-900 hover:text-[#EA580C] hover:underline">
+                    <td class="fluxy-table-cell">
+                        <button type="button" data-action="ledger-vendor-filter" data-vendor-name="${escapeHtml(vendorName)}" class="fluxy-table-cell-primary inline-block max-w-[240px] truncate text-left align-bottom hover:text-[#EA580C] hover:underline">
                             ${escapeHtml(vendorName)}
                         </button>
                     </td>
-                    <td class="px-6 py-4 text-gray-500 align-top">
+                    <td class="fluxy-table-cell fluxy-table-cell-meta align-top">
                         <p>${escapeHtml(row.category || '')}</p>
                         ${budgetChip}
                     </td>
-                    <td class="px-6 py-4 font-mono font-bold ${isVoided ? 'text-gray-400 line-through' : getAmountClass(row)}">
+                    <td class="fluxy-table-cell fluxy-table-money font-bold ${isVoided ? 'text-gray-400 line-through' : getAmountClass(row)}">
                         ${formatTransactionAmount(row)}
                     </td>
-                    <td class="px-6 py-4">
-                        <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${getStatusBadgeClass(row.status)}">
+                    <td class="fluxy-table-cell">
+                        <span class="fluxy-table-status ${getStatusBadgeClass(row.status)}">
                             ${isVoided ? 'Voided' : escapeHtml(row.status || '')}
                         </span>
                     </td>
-                    <td class="px-4 py-4 text-right">
+                    <td class="fluxy-table-cell fluxy-table-action">
                         <button type="button" data-action="ledger-row-actions" data-record-id="${escapeHtml(row.id)}" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-lg font-bold leading-none text-gray-500 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors" aria-label="Open transaction actions">
                             ...
                         </button>

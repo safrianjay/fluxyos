@@ -332,3 +332,74 @@ The helper is idempotent — safe to call after every re-render.
 Hover several bars, including the leftmost and rightmost. The tooltip flips so it never clips the chart container. The crosshair follows. The active bar brightens. Moving off the chart hides everything.
 
 Reference implementations: Revenue Sync Volume in `revenue-sync.html`, Ledger Volume in `ledger.html`.
+
+---
+
+## Recipe 8: Add Or Update A Dashboard Data Table
+
+All authenticated app tables should use the `fluxy-table*` classes from
+`assets/css/shared-dashboard.css`. This keeps Accounting Center, Accounting
+Records, Ledger, Bills, Subscriptions, Reports, Budget, Settings, and future app
+pages on one table system.
+
+### Step 1 — Keep behavior contracts intact
+
+Before editing, identify any IDs, `data-*` attributes, sort buttons, pagination
+IDs, event-delegation selectors, export hooks, or row-click handlers the page
+controller depends on. Do not rename those for styling.
+
+### Step 2 — Use the shared shell
+
+```html
+<section class="fluxy-table-card">
+  <div class="fluxy-table-card-header">
+    <div>
+      <h2 class="fluxy-table-title">All records</h2>
+      <p class="fluxy-table-subtitle">Short helper text.</p>
+    </div>
+    <div class="fluxy-table-actions">...</div>
+  </div>
+
+  <div class="fluxy-table-toolbar">...</div>
+
+  <div class="fluxy-table-scroll">
+    <table class="fluxy-table min-w-[760px]">
+      <thead>
+        <tr class="fluxy-table-header">
+          <th>Vendor</th>
+          <th class="fluxy-table-money">Amount</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="existing-table-body"></tbody>
+    </table>
+  </div>
+</section>
+```
+
+Toolbar and pagination are optional. Add them only when the page already has
+filters or paging.
+
+### Step 3 — Render rows with table roles
+
+Use `fluxy-table-row`, `fluxy-table-cell`, `fluxy-table-cell-primary`,
+`fluxy-table-cell-meta`, `fluxy-table-money`, `fluxy-table-status`, and
+`fluxy-table-action` in JS templates. Clickable inspection rows also get
+`fluxy-table-row-clickable`; financial totals use `fluxy-table-row-total` or, for
+final statement totals only, `fluxy-table-row-final`.
+
+### Step 4 — Map badges semantically
+
+Use:
+
+- `fluxy-status-success` for completed, paid, ready, healthy.
+- `fluxy-status-warning` for review, missing info, at risk.
+- `fluxy-status-danger` for missing receipt, overdue, exceeded, failed.
+- `fluxy-status-neutral` for pending, draft, preview, no records.
+- `fluxy-status-info` for synced, imported, informational.
+
+### Step 5 — QA
+
+Run `QA_CHECKLIST.md` Smoke Tests, Dashboard/App checks for affected pages, the
+Dashboard Table Standard Regression section, and Cross-Page Regression whenever
+`shared-dashboard.css` changes.

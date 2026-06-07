@@ -108,9 +108,151 @@ new code must already be on-scale.
 - **Accent**: `text-[#EA580C] font-bold`.
 
 ### 3. Tables
-- **Header**: `bg-gray-50`, `text-[11px]`, `uppercase`, `tracking-wider`.
-- **Row Hover**: `hover:bg-gray-50/50`.
-- **Border**: `border-b border-gray-50`.
+- Authenticated app tables use the full **Dashboard Data Table Standard** below.
+- Legacy table snippets should migrate to `fluxy-table*` classes instead of
+  adding page-local `text-[11px]`, mixed padding, or custom badge colors.
+
+## Dashboard Data Table Standard
+
+Authenticated app tables use the shared `fluxy-table*` classes in
+`assets/css/shared-dashboard.css`. The purpose is to make finance data feel like
+one FluxyOS product system across Accounting Center, Accounting Records, Ledger,
+Bills, Subscriptions, Reports, Budget, Settings, and future dashboard pages.
+Use these classes for new app tables unless a documented page-specific exception
+is needed.
+
+### When to use
+
+Use the table standard for authenticated dashboard/app tables, financial record
+lists, drilldown records, report/export lists, allocation tables, settings
+tables, and any table-like source-record inspection surface. Do not apply it to
+marketing comparison/pricing tables unless that page is explicitly being
+restyled.
+
+### Structure
+
+```html
+<section class="fluxy-table-card">
+  <div class="fluxy-table-card-header">
+    <div>
+      <h2 class="fluxy-table-title">Table title</h2>
+      <p class="fluxy-table-subtitle">Short helper text.</p>
+    </div>
+    <div class="fluxy-table-actions">...</div>
+  </div>
+
+  <div class="fluxy-table-toolbar">...</div>
+
+  <div class="fluxy-table-scroll">
+    <table class="fluxy-table">
+      <thead>
+        <tr class="fluxy-table-header">
+          <th>Vendor</th>
+          <th class="fluxy-table-money">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="fluxy-table-row fluxy-table-row-clickable">
+          <td class="fluxy-table-cell">
+            <span class="fluxy-table-cell-primary">AWS</span>
+            <span class="fluxy-table-cell-meta">Infrastructure</span>
+          </td>
+          <td class="fluxy-table-cell fluxy-table-money">Rp 1.250.000</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="fluxy-table-pagination">...</div>
+</section>
+```
+
+Toolbar and pagination are optional. Do not force them onto small static tables
+that do not need filtering or paging.
+
+### Typography
+
+- Table title: `16px`, `600`, slate-950.
+- Subtitle/helper: `12px`, `400`, slate-500, `1.4` line-height.
+- Header labels: `12px`, `600`, uppercase, `0.06em`, slate-500.
+- Primary cell text: `14px`, `600`, slate-950.
+- Secondary/meta cell text: `12px`, `400/500`, slate-500.
+- Normal cell text: `14px`, `400/500`, slate-700.
+- Money: `Fira Code`, `14px`, tabular numbers, right-aligned.
+- Status badges: `12px`, `500`.
+
+Do not introduce `text-[11px]`, `text-[13px]`, `text-3xl`, or off-scale font
+weights inside app tables.
+
+### Row Density And Alignment
+
+- Header cells: `12px 20px` padding.
+- Standard rows: `16px 20px` padding.
+- Compact child rows: `12px 20px` padding when rows are secondary.
+- Text/date/status columns align left.
+- Money and numeric columns align right using `.fluxy-table-money`.
+- Actions align right only when they are the last compact column.
+- Keep the primary object column first: vendor, line item, report name,
+  allocation name, or setting name.
+
+### Visual Rules
+
+- Table cards: white background, `border-slate-200`, 12px radius, subtle shadow.
+- Header background: white or `slate-50` only.
+- Row hover: subtle `slate-50`.
+- Summary rows: `fluxy-table-row-total` (`slate-50`, stronger text).
+- Financial final-total rows may use `fluxy-table-row-final` dark navy. Use this
+  sparingly; Accounting Center Net Income is the benchmark.
+- Avoid orange row backgrounds, decorative gradients, heavy shadows,
+  glassmorphism, and dense ERP-style clutter.
+
+### Money And Finite Values
+
+Always display currency as Indonesian Rupiah with dot separators, for example
+`Rp 1.000.000`. Financial statement negatives use parentheses, for example
+`(Rp 1.000.000)`. Changes may use `+Rp 1.000.000`, `(Rp 1.000.000)`, or the
+page's current negative convention. Never render `NaN`, `Infinity`, or
+`-Infinity`; unavailable percentages display `N/A`.
+
+### Status Badges
+
+Use `.fluxy-table-status` plus one semantic class:
+
+- `.fluxy-status-success`: ready, mapped, completed, paid, healthy.
+- `.fluxy-status-warning`: review, missing info, almost ready, at risk.
+- `.fluxy-status-danger`: missing receipt, overdue, exceeded, failed.
+- `.fluxy-status-neutral`: no records, draft, pending, preview.
+- `.fluxy-status-info`: synced, imported, informational.
+
+Do not invent page-local status colors when one of these semantic states fits.
+
+### Row Interaction
+
+There are three row types:
+
+- Non-clickable data row: default `.fluxy-table-row`.
+- Clickable inspection row: `.fluxy-table-row fluxy-table-row-clickable`, visible
+  row affordance, `cursor:pointer`, and `focus-visible` ring when keyboard
+  focus is supported.
+- Summary/total row: `.fluxy-table-row-total` or `.fluxy-table-row-final`.
+  Totals are not clickable unless there is a clear source-record list.
+
+### Empty, Loading, Pagination, Mobile
+
+Empty states use `.fluxy-table-empty`, `.fluxy-table-empty-title`, and
+`.fluxy-table-empty-description`; never show fake rows or fake money. Loading
+states should use `window.renderShimmer` where possible or a stable
+`.fluxy-table-loading-cell` fallback. Data-heavy tables default to 10 rows per
+page and use `.fluxy-table-pagination` with Previous/Next controls and a
+"Showing 1-10 of 58 records" summary.
+
+At `375px`, the page itself must not create horizontal overflow. The table may
+scroll inside `.fluxy-table-scroll`, toolbars wrap vertically, pagination wraps,
+and primary actions remain visible.
+
+Do: reuse `fluxy-table-card`, `fluxy-table-scroll`, `fluxy-table-money`, and
+semantic status classes. Do not: rename JavaScript-dependent IDs, rebuild table
+logic for styling, or move Firestore/data calculations into presentation code.
 
 ### 4. Charts (Amplitude-Style Hover)
 
