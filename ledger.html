@@ -126,15 +126,15 @@
         </header>
 
         <!-- Scrollable Content -->
-        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-            <div class="max-w-7xl mx-auto space-y-6">
-                
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div class="min-w-0">
+        <div class="fluxy-page-shell">
+            <div class="fluxy-page-canvas fluxy-section-stack">
+
+                <div class="fluxy-page-header">
+                    <div class="fluxy-page-header-main">
                         <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Financial Ledger</h1>
                         <p class="text-[14px] text-gray-500 mt-1 max-w-[260px]">Full audit trail of all transactions across your network.</p>
                     </div>
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 flex-shrink-0 overflow-x-auto">
+                    <div class="fluxy-page-actions">
                         <div id="ledger-visibility-filter" class="fluxy-select" data-default-label="Active" data-aria-label="Filter active or voided transactions"></div>
                         <div id="ledger-status-filter" class="fluxy-select" data-default-label="All statuses" data-aria-label="Filter by status"></div>
                         <div id="ledger-type-filter" class="fluxy-select" data-default-label="All types" data-aria-label="Filter by type"></div>

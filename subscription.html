@@ -36,14 +36,14 @@
             </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-            <div class="max-w-7xl mx-auto space-y-6">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
+        <div class="fluxy-page-shell">
+            <div class="fluxy-page-canvas fluxy-section-stack">
+                <div class="fluxy-page-header">
+                    <div class="fluxy-page-header-main">
                         <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Active Subscriptions</h1>
                         <p class="text-[14px] text-gray-500 mt-1">Track your recurring SaaS spend and renewal cycles.</p>
                     </div>
-                    <div class="flex items-center gap-3">
+                    <div class="fluxy-page-actions">
                         <button onclick="window.showAddTransactionModal({ title: 'Add Subscription', submitLabel: 'Activate Subscription', defaultCategory: 'SaaS', context: 'subscription' })" data-tour-target="subscription-add" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[14px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                             Add Subscription
@@ -51,7 +51,7 @@
                     </div>
                 </div>
 
-                <div class="fluxy-table-card mt-6">
+                <div class="fluxy-table-card">
                     <div class="fluxy-table-card-header">
                         <div>
                             <h2 class="fluxy-table-title">Subscription list</h2>

@@ -1166,3 +1166,106 @@ main > header {
         flex-direction: column;
     }
 }
+
+/* ────────────────────────────────────────────────────────────────────
+   Authenticated App Page Shell Standard
+
+   Canonical layout vocabulary for authenticated dashboard/app pages.
+   Accounting Center (accounting.html) is the spacing benchmark: content
+   starts right after the 220px sidebar, the 64px topbar carries page
+   identity + actions, and the scrollable canvas uses a single max width
+   so Money Movement and Reporting pages share one left/right grid edge.
+
+   Use these instead of copying one-off Tailwind padding/max-width into
+   every page. Equivalent to the benchmark's
+   `flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8` + `max-w-[1540px] mx-auto`.
+   ──────────────────────────────────────────────────────────────────── */
+
+/* The main column to the right of the sidebar. */
+.fluxy-app-main {
+    flex: 1 1 0%;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Scrollable content region below the sticky topbar.
+   Padding: 16px mobile → 24px ≥640 → 32px ≥1024 (matches benchmark). */
+.fluxy-page-shell {
+    flex: 1 1 0%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px;
+}
+
+@media (min-width: 640px) {
+    .fluxy-page-shell { padding: 24px; }
+}
+
+@media (min-width: 1024px) {
+    .fluxy-page-shell { padding: 32px; }
+}
+
+/* Inner content canvas: one shared max width + centered, so every app
+   page aligns to the same left/right edge and never floats in dead space.
+   1540px is the Accounting Center benchmark width. */
+.fluxy-page-canvas {
+    max-width: 1540px;
+    margin-inline: auto;
+}
+
+/* Vertical rhythm between page sections (header, KPI grid, table, etc.).
+   Uses a top-margin stack (like Tailwind's space-y-6) rather than flex
+   `gap` so an explicit child `mt-*` stays non-additive and existing page
+   spacing is preserved 1:1. */
+.fluxy-section-stack > * + * {
+    margin-top: 24px;
+}
+
+/* In-page header row: title block on the left, action group on the right.
+   Stacks on mobile, sits on one line ≥640px. */
+.fluxy-page-header {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.fluxy-page-header-main {
+    min-width: 0;
+}
+
+@media (min-width: 640px) {
+    .fluxy-page-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+/* Standard top page control group. Date filter sits beside the secondary
+   actions; the Fluxy AI / Ask Fluxy AI button stays at the far-right edge
+   of this group when present. Wraps cleanly on small screens. */
+.fluxy-page-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+    .fluxy-page-actions {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+}
+
+/* Generic responsive card/KPI grid aligned to the same content edges. */
+.fluxy-content-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}

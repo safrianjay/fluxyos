@@ -257,6 +257,25 @@ class is added/edited, or `assets/css/shared-dashboard.css` table styles change.
 | 14 | Existing search, filter, sort, export, row-click, drawer, and pagination behavior still works |
 | 15 | Browser console is clean on each changed table page: no CSP, CORS, 404, Firebase, or uncaught JS errors |
 
+### D6. App Page Shell Layout Regression
+
+Run this whenever an authenticated page's shell changes, any `fluxy-app-main` /
+`fluxy-page-shell` / `fluxy-page-canvas` / `fluxy-section-stack` /
+`fluxy-page-header*` / `fluxy-page-actions` class is added/edited, or the App
+Page Shell Standard CSS in `assets/css/shared-dashboard.css` changes. See
+[DESIGN_SYSTEM.md → Authenticated App Page Shell Standard](../docs/DESIGN_SYSTEM.md).
+
+| # | Check |
+|---|-------|
+| 1 | Money Movement (`ledger.html`, `revenue-sync.html`, `bill.html`, `subscription.html`) and Reporting (`accounting.html`, `accounting-records.html`, `reports.html`) pages use the same app shell spacing and density |
+| 2 | Financial Ledger content no longer has excessive left/top whitespace — its content width and left edge match Accounting Center (`.fluxy-page-canvas`, 1540px), not the old centered 1280px |
+| 3 | Header controls align on one rhythm: title/subtitle on the left, action group on the right, on a single content edge |
+| 4 | The date filter appears in the top page control row beside the secondary actions, using the shared `FluxyDateRangePicker`, on every page that supports a period filter |
+| 5 | The Fluxy AI / Ask Fluxy AI button sits at the far-right of the page action group where present, and is not styled as the primary action |
+| 6 | Balance Sheet's date/period placement and report-tuned shell are intentionally preserved as the documented exception |
+| 7 | Mobile 375px has no page-level horizontal overflow; controls wrap cleanly and the title + primary action stay visible |
+| 8 | Existing per-page behavior still works: ledger filters, CSV export, scan/import drawer, date filter, table render, pagination, empty states, and Add Transaction/Bill/Subscription drawers |
+
 ### E. Add Transaction / Bill / Subscription (shared-dashboard.js, db-service.js)
 
 | # | Check |

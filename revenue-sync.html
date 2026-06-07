@@ -36,16 +36,16 @@
             </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-            <div class="max-w-7xl mx-auto space-y-6">
+        <div class="fluxy-page-shell">
+            <div class="fluxy-page-canvas fluxy-section-stack">
 
                 <!-- Page Title & Actions -->
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
+                <div class="fluxy-page-header">
+                    <div class="fluxy-page-header-main">
                         <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Revenue Sync</h1>
                         <p class="text-[14px] text-gray-500 mt-1">Connect sales channels and reconcile every revenue transaction in your ledger.</p>
                     </div>
-                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div class="fluxy-page-actions">
                         <div id="revenue-date-range-picker"></div>
                         <button id="download-csv-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60" disabled>
                             <svg id="download-csv-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>

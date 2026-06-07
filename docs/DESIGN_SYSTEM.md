@@ -402,6 +402,50 @@ Reference implementations: business-name change confirm in [settings-business.ht
 - **Grid/Card Rhythm**: Grid gaps use `24–32px`; standard cards use `32px` padding desktop and `20–24px` mobile.
 - **Text Width**: Keep long-form text under `720px`; hero headings under `760px`; hero paragraphs around `620px`; centered paragraphs around `640px`.
 
+### Authenticated App Page Shell Standard
+
+Every authenticated dashboard/app page (Money Movement and Reporting) uses the
+same content shell so finance pages feel like one product system. The shared
+classes live in `assets/css/shared-dashboard.css`: `.fluxy-app-main`,
+`.fluxy-page-shell`, `.fluxy-page-canvas`, `.fluxy-section-stack`,
+`.fluxy-page-header`, `.fluxy-page-header-main`, `.fluxy-page-actions`, and
+`.fluxy-content-grid`. New pages must reuse these instead of inventing
+page-level padding/max-width.
+
+1. **Accounting Center (`accounting.html`) is the benchmark** for authenticated
+   page spacing, density, and grid rhythm. Match it, don't diverge from it.
+2. **One app shell grid.** Money Movement (`ledger.html`, `revenue-sync.html`,
+   `bill.html`, `subscription.html`) and Reporting pages use the same shell:
+   `.fluxy-page-shell` scroll region + `.fluxy-page-canvas` inner wrapper.
+3. **Consistent desktop padding.** Content padding is `16px` mobile → `24px`
+   ≥640px → `32px` ≥1024px (the benchmark `p-4 sm:p-6 lg:p-8`). Do not add
+   extra left padding that detaches content from the sidebar.
+4. **One left/right grid edge.** Page title, top controls, KPI cards, tables,
+   and empty states all align to `.fluxy-page-canvas` (`max-width: 1540px;
+   margin-inline: auto`). The KPI/card grid shares the header's edges.
+5. **No dead whitespace.** Do not cap app content at a narrow width (e.g. the
+   old `max-w-7xl`/1280px on Money Movement) that floats content in the middle
+   of a wide viewport. Dense report pages may use up to `1400px`, but the left
+   edge must still read as aligned.
+6. **Standard header action row.** The in-page header is
+   `.fluxy-page-header` → `.fluxy-page-header-main` (title + one-line subtitle)
+   on the left and `.fluxy-page-actions` on the right.
+7. **Date filter placement.** When a page has a period/date control, it lives in
+   the top page control row beside the secondary actions, using the shared
+   `FluxyDateRangePicker` — never `input[type="date"]`. Don't invent a date
+   filter on pages that don't already support one (e.g. Subscriptions).
+8. **Fluxy AI is far-right.** The Fluxy AI / Ask Fluxy AI button is an assistant
+   action (not the primary page action) and stays at the far-right of the page
+   action group when present. Creation actions (Add Transaction/Bill/Subscription)
+   remain the primary action; export/scan/import stay secondary.
+9. **Balance Sheet exception.** `balance-sheet.html` may keep its own
+   date/period placement and report-tuned shell when the accounting workflow
+   requires it; do not force it into the standard date placement if that breaks
+   the balance-sheet model.
+10. **New pages reuse the shell.** Build new dashboard/app pages on the shared
+    shell classes above rather than copying one-off Tailwind padding/max-width
+    into the page.
+
 ---
 
 ## ✨ Animations & Micro-interactions
