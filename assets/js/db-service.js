@@ -1,5 +1,5 @@
 import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, doc, Timestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId } from "./billing-config.js";
+import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
 // See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
@@ -1668,16 +1668,7 @@ class DataService {
             this.getAccountingMappings(userId).catch(() => [])
         ]);
 
-        // Categories/types the user has explicitly mapped to cost-of-revenue.
-        // Until a COGS account type exists, this set is empty and COGS = 0.
-        const cogsKeys = new Set();
-        savedMappings.forEach(m => {
-            const section = String(m.statement_section || '').toLowerCase();
-            const acctType = String(m.target_account_type || '').toLowerCase();
-            if (section === 'cost_of_revenue' || acctType === 'cost_of_revenue') {
-                cogsKeys.add(`${m.source_type}::${String(m.source_value || '').trim().toLowerCase()}`);
-            }
-        });
+        const cogsKeys = this._incomeStatementCogsKeys(savedMappings);
 
         const curB = this._buildIncomeStatementBuckets(curTx, cogsKeys);
         const prevB = this._buildIncomeStatementBuckets(prevTx, cogsKeys);
@@ -1811,11 +1802,349 @@ class DataService {
         };
     }
 
+    async getIncomeStatementRelatedRecords(userId, params = {}) {
+        if (!userId) throw new Error('userId required');
+        const cur = this._coercePeriodKeys(params.period)
+            || { start: this._getMonthStartKey(new Date()), end: this._getMonthEndKey(new Date()) };
+        const comparisonPeriod = this._coerceIncomeStatementComparison(cur, params.compare);
+
+        const [preview, bills, subscriptions, savedMappings] = await Promise.all([
+            this.getIncomeStatementPreview(userId, cur, comparisonPeriod),
+            this.getBillsForPeriod(userId, cur.start, cur.end).catch(() => []),
+            this.getSubscriptionsForPeriod(userId, cur.start, cur.end).catch(() => []),
+            this.getAccountingMappings(userId).catch(() => [])
+        ]);
+
+        const context = this._resolveIncomeStatementDrilldownContext(preview, params);
+        const row = context.row;
+        const cogsKeys = this._incomeStatementCogsKeys(savedMappings);
+        const transactionRecords = ((preview.related_records_index && preview.related_records_index[row.id]) || [])
+            .map(record => this._incomeRelatedRecordViewModel(record));
+
+        const supportingRecords = [
+            ...bills.map(bill => this._incomeBillRelatedRecordSummary(bill, cogsKeys)),
+            ...subscriptions.map(sub => this._incomeSubscriptionRelatedRecordSummary(sub, cogsKeys))
+        ].filter(record => this._incomeSupportingRecordMatches(record, context, params));
+
+        const records = [...transactionRecords, ...supportingRecords]
+            .filter(record => this._incomeRecordMatchesParams(record, params))
+            .sort((a, b) => {
+                const left = this._parseDayKey(a.date)?.getTime() || 0;
+                const right = this._parseDayKey(b.date)?.getTime() || 0;
+                return right - left;
+            });
+
+        const cleanupCount = records.filter(record => record.status_filter === 'missing_receipt').length;
+        const suggested = this._incomeRelatedSuggestedAction(row, cleanupCount);
+        const limitations = [
+            ...(preview.limitations || []),
+            'Bills and subscriptions shown here are supporting context; Income Statement amounts remain transaction-backed.'
+        ];
+        if (context.usedFallback) {
+            limitations.push('The requested Income Statement line was not recognized, so Revenue records are shown.');
+        }
+
+        return {
+            section: context.section,
+            label: row.label,
+            period: preview.period,
+            comparison_period: preview.comparison_period,
+            summary: {
+                current_amount: this._safeInteger(row.current_amount),
+                previous_amount: this._safeInteger(row.previous_amount),
+                change_amount: this._safeInteger(row.change_amount),
+                change_pct: row.change_pct === null || row.change_pct === undefined ? null : Number(row.change_pct),
+                status_label: row.status || 'No records',
+                cleanup_count: cleanupCount,
+                record_count: records.length,
+                supporting_record_count: supportingRecords.length
+            },
+            suggested_action: suggested,
+            records,
+            limitations
+        };
+    }
+
     _coercePeriodKeys(period) {
         if (!period || typeof period !== 'object') return null;
         const start = period.start || period.startDate || period.startKey;
         const end = period.end || period.endDate || period.endKey;
         return (start && end) ? { start, end } : null;
+    }
+
+    _coerceIncomeStatementComparison(period, compare) {
+        if (!compare || compare === 'previous_period') return this._previousPeriodRange(period.start, period.end);
+        const explicit = this._coercePeriodKeys(compare);
+        if (explicit) return explicit;
+        if (typeof compare === 'string' && /^\d{4}-\d{2}$/.test(compare)) {
+            const [year, month] = compare.split('-').map(Number);
+            const start = new Date(year, month - 1, 1);
+            const end = new Date(year, month, 0);
+            return { start: this._getDayKey(start), end: this._getDayKey(end) };
+        }
+        if (compare === 'previous_month') {
+            const start = this._parseDayKey(period.start);
+            if (start) {
+                const prevStart = new Date(start.getFullYear(), start.getMonth() - 1, 1);
+                const prevEnd = new Date(prevStart.getFullYear(), prevStart.getMonth() + 1, 0);
+                return { start: this._getDayKey(prevStart), end: this._getDayKey(prevEnd) };
+            }
+        }
+        return this._previousPeriodRange(period.start, period.end);
+    }
+
+    _incomeStatementCogsKeys(savedMappings = []) {
+        const cogsKeys = new Set();
+        savedMappings.forEach(m => {
+            const section = String(m.statement_section || '').toLowerCase();
+            const acctType = String(m.target_account_type || '').toLowerCase();
+            if (section === 'cost_of_revenue' || acctType === 'cost_of_revenue') {
+                cogsKeys.add(`${m.source_type}::${String(m.source_value || '').trim().toLowerCase()}`);
+            }
+        });
+        return cogsKeys;
+    }
+
+    _incomeStatementSlug(value) {
+        return String(value || '')
+            .trim()
+            .toLowerCase()
+            .replace(/_/g, '-')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '') || 'revenue';
+    }
+
+    _incomeStatementGroupId(value) {
+        const slug = this._incomeStatementSlug(value);
+        const map = {
+            revenue: 'revenue',
+            'cost-of-revenue': 'cost_of_revenue',
+            cogs: 'cost_of_revenue',
+            'operating-expenses': 'operating_expenses',
+            opex: 'operating_expenses',
+            'other-income': 'other_income',
+            'other-expense': 'other_expense'
+        };
+        return map[slug] || slug.replace(/-/g, '_');
+    }
+
+    _flattenIncomeStatementRows(preview) {
+        const rows = [];
+        (preview.rows || []).forEach(row => {
+            rows.push({ ...row });
+            (row.children || []).forEach(child => rows.push({ ...child, parent_id: row.id }));
+        });
+        return rows;
+    }
+
+    _resolveIncomeStatementDrilldownContext(preview, params = {}) {
+        const rows = this._flattenIncomeStatementRows(preview);
+        const requestedSection = this._incomeStatementSlug(params.section || 'revenue');
+        const requestedParent = params.parent ? this._incomeStatementGroupId(params.parent) : null;
+        const requestedCategory = params.category ? this._incomeStatementSlug(params.category) : null;
+        const groupSection = this._incomeStatementGroupId(requestedSection);
+
+        let row = null;
+        if (requestedParent) {
+            row = rows.find(item => item.parent_id === requestedParent
+                && (this._incomeStatementSlug(item.label) === requestedSection
+                    || this._incomeStatementSlug(item.label) === requestedCategory
+                    || this._incomeStatementSlug(item.id) === requestedSection));
+        }
+        if (!row) {
+            row = rows.find(item => !item.parent_id
+                && (item.id === groupSection
+                    || this._incomeStatementSlug(item.id) === requestedSection
+                    || this._incomeStatementSlug(item.label) === requestedSection));
+        }
+        if (!row) {
+            row = rows.find(item => this._incomeStatementSlug(item.label) === requestedSection
+                || this._incomeStatementSlug(item.id) === requestedSection);
+        }
+
+        const fallbackRow = rows.find(item => item.id === 'revenue') || rows[0] || {
+            id: 'revenue',
+            label: 'Revenue',
+            level: 'group',
+            current_amount: 0,
+            previous_amount: 0,
+            change_amount: 0,
+            change_pct: null,
+            status: 'No records',
+            status_tone: 'neutral'
+        };
+        const resolved = row || fallbackRow;
+        return {
+            section: this._incomeStatementSlug(resolved.parent_id ? resolved.label : resolved.id),
+            row: resolved,
+            parent_id: resolved.parent_id || null,
+            group_id: resolved.parent_id || resolved.id,
+            line_slug: resolved.parent_id ? this._incomeStatementSlug(resolved.label) : null,
+            usedFallback: !row
+        };
+    }
+
+    _incomeRelatedRecordViewModel(record = {}) {
+        const vendor = record.vendor_name || record.description || 'Record';
+        const source = record.source_collection || 'transactions';
+        return {
+            source_collection: source,
+            source_id: record.source_id || record.id || null,
+            source_label: record.source_label || this._incomeSourceLabel(source),
+            vendor_name: vendor,
+            description: record.description || null,
+            amount: this._safeInteger(Math.abs(Number(record.amount) || 0)),
+            category: record.category || null,
+            type: String(record.type || '').toLowerCase().replace(/\s+/g, '_'),
+            status: record.status || 'Completed',
+            status_filter: record.status_filter || this._incomeRelatedStatusFilter(record.status || 'Completed'),
+            date: record.date || null,
+            source_route: record.source_route || this._incomeSourceRoute(source, vendor)
+        };
+    }
+
+    _incomeSourceLabel(source) {
+        return {
+            transactions: 'Transactions',
+            bills: 'Bills',
+            subscriptions: 'Subscriptions'
+        }[source] || 'Records';
+    }
+
+    _incomeSourceRoute(source, searchText) {
+        const base = {
+            transactions: '/ledger',
+            bills: '/bill',
+            subscriptions: '/subscription'
+        }[source] || '/accounting';
+        const query = String(searchText || '').trim();
+        return query ? `${base}?search=${encodeURIComponent(query)}` : base;
+    }
+
+    _incomeRelatedStatusFilter(status) {
+        const s = String(status || '').trim().toLowerCase();
+        return (s.includes('missing') || s.includes('overdue') || s.includes('needs'))
+            ? 'missing_receipt'
+            : 'completed';
+    }
+
+    _incomeSupportingSection(record = {}, cogsKeys = new Set(), defaultCategory = 'Operations') {
+        const category = (typeof record.category === 'string' && record.category.trim()) ? record.category.trim() : defaultCategory;
+        const type = String(record.type || 'expense').toLowerCase().trim().replace(/\s+/g, '_');
+        const isCogs = (category && cogsKeys.has(`transaction_category::${category.toLowerCase()}`))
+            || cogsKeys.has(`transaction_type::${type}`);
+        return {
+            section: isCogs ? 'cost_of_revenue' : 'operating_expenses',
+            line: isCogs ? (category || 'Cost of revenue') : (type === 'fee' ? 'Fees' : type === 'tax' ? 'Tax' : (category || defaultCategory)),
+            category,
+            type
+        };
+    }
+
+    _incomeBillStatus(bill = {}) {
+        const paymentStatus = String(bill.payment_status || '').toLowerCase();
+        if (paymentStatus === 'paid') return 'Paid';
+        const dueDate = this._getRecordDate(bill, 'due_date');
+        if (!dueDate) return 'Missing Due Date';
+        const hasInvoice = bill.invoice_status === 'attached'
+            || (Array.isArray(bill.attached_documents) && bill.attached_documents.length > 0);
+        if (!hasInvoice) return 'Missing Receipt';
+        return 'Scheduled';
+    }
+
+    _incomeBillRelatedRecordSummary(bill = {}, cogsKeys = new Set()) {
+        const vendor = bill.vendor_name || bill.merchant_name || bill.vendor || 'Bill';
+        const classification = this._incomeSupportingSection({ ...bill, type: bill.type || 'pending_payable' }, cogsKeys, 'Operations');
+        const date = this._firstRecordDate(bill, ['due_date', 'date', 'timestamp', 'created_at']);
+        const status = this._incomeBillStatus(bill);
+        return {
+            source_collection: 'bills',
+            source_id: bill.id,
+            source_label: 'Bills',
+            vendor_name: vendor,
+            description: bill.description || bill.notes || null,
+            amount: this._safeInteger(Math.abs(Number(bill.amount) || 0)),
+            category: classification.category,
+            type: classification.type || 'pending_payable',
+            status,
+            status_filter: this._incomeRelatedStatusFilter(status),
+            date: date ? this._getDayKey(date) : null,
+            statement_section: classification.section,
+            statement_line: classification.line,
+            source_route: this._incomeSourceRoute('bills', vendor)
+        };
+    }
+
+    _incomeSubscriptionRelatedRecordSummary(sub = {}, cogsKeys = new Set()) {
+        const vendor = sub.name || sub.vendor_name || sub.vendor || 'Subscription';
+        const classification = this._incomeSupportingSection({ ...sub, type: sub.type || 'expense' }, cogsKeys, 'SaaS');
+        const date = this._firstRecordDate(sub, ['renewal_date', 'date', 'timestamp', 'created_at']);
+        const status = sub.renewal_date ? (sub.status || 'Active') : 'Missing Renewal';
+        return {
+            source_collection: 'subscriptions',
+            source_id: sub.id,
+            source_label: 'Subscriptions',
+            vendor_name: vendor,
+            description: sub.description || sub.notes || null,
+            amount: this._safeInteger(Math.abs(Number(sub.amount) || 0)),
+            category: classification.category,
+            type: classification.type || 'expense',
+            status,
+            status_filter: this._incomeRelatedStatusFilter(status),
+            date: date ? this._getDayKey(date) : null,
+            statement_section: classification.section,
+            statement_line: classification.line,
+            source_route: this._incomeSourceRoute('subscriptions', vendor)
+        };
+    }
+
+    _incomeSupportingRecordMatches(record = {}, context = {}, params = {}) {
+        if (record.statement_section !== context.group_id) return false;
+        if (context.line_slug && this._incomeStatementSlug(record.statement_line) !== context.line_slug) return false;
+        if (params.category && this._incomeStatementSlug(record.category) !== this._incomeStatementSlug(params.category)) return false;
+        return true;
+    }
+
+    _incomeRecordMatchesParams(record = {}, params = {}) {
+        if (params.type) {
+            const wantedType = String(params.type).toLowerCase().trim().replace(/\s+/g, '_');
+            if (wantedType && String(record.type || '').toLowerCase() !== wantedType) return false;
+        }
+        if (params.category) {
+            const wantedCategory = this._incomeStatementSlug(params.category);
+            if (wantedCategory && this._incomeStatementSlug(record.category) !== wantedCategory) return false;
+        }
+        return true;
+    }
+
+    _incomeRelatedSuggestedAction(row = {}, cleanupCount = 0) {
+        const groupId = row.parent_id || row.id || '';
+        if (cleanupCount > 0) {
+            return {
+                tone: 'warning',
+                title: `${cleanupCount} cleanup item${cleanupCount === 1 ? '' : 's'} found`,
+                body: 'Review missing receipts, due dates, or renewal details before closing this period.'
+            };
+        }
+        if (groupId === 'cost_of_revenue') {
+            return {
+                tone: 'neutral',
+                title: 'Review mappings before treating these as direct costs.',
+                body: 'Cost of Revenue only includes categories or types explicitly mapped to COGS.'
+            };
+        }
+        if (groupId === 'operating_expenses') {
+            return {
+                tone: 'neutral',
+                title: 'No action needed — these expenses look review-ready.',
+                body: 'Use the table to inspect vendors, categories, and supporting bills or subscriptions.'
+            };
+        }
+        return {
+            tone: 'success',
+            title: 'No action needed — these records look review-ready.',
+            body: 'Use the table if you need to inspect source records for this Income Statement line.'
+        };
     }
 
     // Immediately-preceding comparison period. A full calendar month maps to the
@@ -1858,15 +2187,20 @@ class DataService {
 
     _incomeRecordSummary(tx) {
         const date = this._getTransactionDate(tx);
+        const vendor = tx.vendor_name || tx.merchant_name || tx.vendor || 'Transaction';
         return {
             source_collection: 'transactions',
             source_id: tx.id,
-            vendor_name: tx.vendor_name || tx.merchant_name || tx.vendor || 'Transaction',
+            source_label: 'Transactions',
+            vendor_name: vendor,
+            description: tx.description || tx.memo || tx.notes || null,
             amount: Math.abs(Number(tx.amount) || 0),
             category: (typeof tx.category === 'string' && tx.category.trim()) ? tx.category.trim() : null,
             type: String(tx.type || '').toLowerCase(),
             status: tx.status || 'Completed',
-            date: date ? this._getDayKey(date) : null
+            date: date ? this._getDayKey(date) : null,
+            status_filter: this._incomeRelatedStatusFilter(tx.status || 'Completed'),
+            source_route: this._incomeSourceRoute('transactions', vendor)
         };
     }
 
@@ -2470,6 +2804,220 @@ class DataService {
             });
         } catch (_) { /* non-fatal */ }
         return { ...current, status: 'expired' };
+    }
+
+    // ===== Billing & plan settings page (Phase 1, read-only view) =====
+    // The Billing & plan settings surface reads the SAME canonical subscription
+    // doc the trial/paywall system uses (users/{uid}/billing_subscription/current)
+    // so it never diverges from the live access banner. It normalizes that doc
+    // into a presentation view-model and layers seat/storage limits from
+    // PLAN_LIMITS. The frontend NEVER writes subscription status here — billing
+    // actions go to a trusted backend that is not part of this build and fail
+    // safely (see the request* methods). Firestore rules also block client
+    // status writes, so there is no frontend-only subscription mutation path.
+
+    _billingPlanCatalogEntry(planId) {
+        const limits = getPlanLimits(planId) || { tier: null, seat_limit: null, storage_limit_gb: null, storage_note: null };
+        return {
+            seat_limit: limits.seat_limit ?? null,
+            storage_limit_gb: limits.storage_limit_gb ?? null,
+            storage_note: limits.storage_note || null,
+            tier: limits.tier || null
+        };
+    }
+
+    _normalizeBillingSettingsOverview(subscription) {
+        if (!subscription || !subscription.status) {
+            return { status: 'none', raw_status: subscription?.status || null, has_plan: false, plan_id: null };
+        }
+        const rawStatus = String(subscription.status);
+        const planId = subscription.plan_id || null;
+        const catalog = this._billingPlanCatalogEntry(planId);
+        const billingFrequency = subscription.billing_frequency || null;
+        let priceAmount = null;
+        if (BILLING_PLANS[planId] && (billingFrequency === 'monthly' || billingFrequency === 'annually')) {
+            priceAmount = calculateBilling(planId, billingFrequency).monthlyDisplayAmount;
+        }
+        return {
+            status: rawStatus,
+            raw_status: rawStatus,
+            has_plan: rawStatus !== 'none',
+            plan_id: planId,
+            plan_tier: catalog.tier,
+            plan_name: subscription.plan_name || PLAN_DISPLAY_NAMES[planId] || (planId || 'Plan'),
+            plan_description: BILLING_PLANS[planId]?.description || null,
+            billing_cycle: billingFrequency,
+            price_amount: priceAmount,
+            currency: 'IDR',
+            seat_limit: catalog.seat_limit,
+            storage_limit_gb: catalog.storage_limit_gb,
+            storage_note: catalog.storage_note,
+            trial_start_at: subscription.trial_started_at || null,
+            trial_end_at: subscription.trial_ends_at || null,
+            current_period_start: subscription.current_period_start || null,
+            current_period_end: subscription.current_period_end || null,
+            renews_at: subscription.renews_at || subscription.current_period_end || null,
+            cancel_at_period_end: subscription.cancel_at_period_end === true,
+            provider: subscription.provider || null,
+            billing_email: subscription.billing_email || null,
+            payment_status: subscription.payment_status || null,
+            latest_invoice_id: subscription.latest_invoice_id || null,
+            current_payment_request_id: subscription.current_payment_request_id || null,
+            updated_at: subscription.updated_at || null
+        };
+    }
+
+    async getBillingSettingsOverview(userId) {
+        if (!userId) return { status: 'none', has_plan: false, plan_id: null };
+        let subscription = null;
+        try {
+            subscription = await this.ensureBillingSubscription(userId);
+        } catch (ensureErr) {
+            // ensureBillingSubscription performs writes (trial create / expiry /
+            // reconcile) and can fail transiently. Fall back to a plain read; if
+            // that ALSO throws, let it propagate so the page shows its error state
+            // instead of a misleading "no plan".
+            subscription = await this.getBillingSubscription(userId);
+        }
+        return this._normalizeBillingSettingsOverview(subscription);
+    }
+
+    async getBillingInvoices(userId, limitCount = 20) {
+        if (!userId) return [];
+        try {
+            const q = query(
+                collection(this.db, `users/${userId}/billing_invoices`),
+                orderBy('invoice_date', 'desc'),
+                limit(limitCount)
+            );
+            const snap = await getDocs(q);
+            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (_) {
+            // billing_invoices has no client write path and may not be deployed/
+            // populated yet; a missing rule or empty collection both resolve to
+            // "no history" rather than a thrown error.
+            return [];
+        }
+    }
+
+    _startOfCurrentMonthMs() {
+        const d = new Date();
+        d.setDate(1);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime();
+    }
+
+    async getBillingUsage(userId) {
+        const usage = {
+            storage: { bytes: 0, available: false },
+            documents_this_month: { count: 0, available: false },
+            report_exports_this_month: { count: 0, available: false },
+            ai_questions_this_month: { count: null, available: false },
+            whatsapp_uploads_this_month: { count: null, available: false }
+        };
+        if (!userId) return usage;
+        const monthStartMs = this._startOfCurrentMonthMs();
+
+        // Storage + document uploads share one bounded read of the documents
+        // collection so we never invent numbers or double-read.
+        try {
+            let bytes = 0;
+            let docsThisMonth = 0;
+            const docsSnap = await getDocs(query(collection(this.db, `users/${userId}/documents`), limit(500)));
+            docsSnap.forEach((d) => {
+                const data = d.data() || {};
+                const size = Number(data.file_size);
+                if (Number.isFinite(size) && size > 0) bytes += size;
+                const createdMs = data.created_at?.toMillis?.() ?? 0;
+                if (createdMs >= monthStartMs) docsThisMonth += 1;
+            });
+            // Bank statement imports also consume storage.
+            try {
+                const impSnap = await getDocs(query(collection(this.db, `users/${userId}/bank_statement_imports`), limit(500)));
+                impSnap.forEach((d) => {
+                    const size = Number((d.data() || {}).file_size);
+                    if (Number.isFinite(size) && size > 0) bytes += size;
+                });
+            } catch (_) { /* optional source */ }
+            usage.storage = { bytes, available: true };
+            usage.documents_this_month = { count: docsThisMonth, available: true };
+        } catch (_) { /* leave as unavailable — never fabricate */ }
+
+        // Report exports this month (bounded recent read, filtered client-side).
+        try {
+            const exports = await this.getRecentReportExports(userId, 100);
+            const count = exports.filter((e) => (e.created_at?.toMillis?.() ?? 0) >= monthStartMs).length;
+            usage.report_exports_this_month = { count, available: true };
+        } catch (_) { /* leave as unavailable */ }
+
+        return usage;
+    }
+
+    // Billing actions are owned by a trusted backend that is NOT part of this
+    // build. These helpers attempt the documented endpoints and fail safely;
+    // they never fake success and never mutate subscription status client-side.
+    _billingApiUrl(path) {
+        return `/api/v1/billing${path}`;
+    }
+
+    async _callBillingApi(path, { method = 'POST', body = null } = {}) {
+        let controller = null;
+        let timer = null;
+        try {
+            controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+            if (controller) timer = setTimeout(() => controller.abort(), 3500);
+            const res = await fetch(this._billingApiUrl(path), {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: body ? JSON.stringify(body) : null,
+                signal: controller ? controller.signal : undefined
+            });
+            if (timer) clearTimeout(timer);
+            if (!res.ok) return { ok: false, status: res.status, reason: 'backend_unavailable' };
+            // Guard against SPA/HTML fallbacks (Netlify serves index.html for
+            // unknown routes with status 200): only a real JSON billing response
+            // counts as connected, so we never mistake the SPA shell for success.
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                return { ok: false, status: res.status, reason: 'backend_unavailable' };
+            }
+            let data = null;
+            try { data = await res.json(); } catch (_) { return { ok: false, status: res.status, reason: 'invalid_response' }; }
+            return { ok: true, status: res.status, data };
+        } catch (_) {
+            if (timer) clearTimeout(timer);
+            return { ok: false, status: 0, reason: 'backend_unavailable' };
+        }
+    }
+
+    async requestBillingCheckout(userId, planId) {
+        const res = await this._callBillingApi('/checkout', { body: { uid: userId || null, plan_id: planId || null } });
+        if (res.ok && res.data && typeof res.data.checkout_url === 'string' && res.data.checkout_url) {
+            return { ok: true, checkout_url: res.data.checkout_url };
+        }
+        // No billing backend in this build → route to the existing manual checkout
+        // page (a real flow). This is not a fake success and never changes status.
+        const checkoutPlan = resolveCheckoutPlanId(planId);
+        return { ok: true, fallback: true, checkout_url: `/checkout?plan=${encodeURIComponent(checkoutPlan)}&billing=annually` };
+    }
+
+    async requestBillingUpgrade(userId, planId) {
+        const res = await this._callBillingApi('/upgrade', { body: { uid: userId || null, plan_id: planId || null } });
+        if (res.ok && res.data && typeof res.data.checkout_url === 'string' && res.data.checkout_url) {
+            return { ok: true, checkout_url: res.data.checkout_url };
+        }
+        const checkoutPlan = resolveCheckoutPlanId(planId);
+        return { ok: true, fallback: true, checkout_url: `/checkout?plan=${encodeURIComponent(checkoutPlan)}&billing=annually` };
+    }
+
+    async requestCancelRenewal(userId) {
+        // Never a local state change: the client cannot set cancel_scheduled
+        // (Firestore rules block it). Returns { ok:false, reason } when unavailable.
+        return await this._callBillingApi('/cancel-renewal', { body: { uid: userId || null } });
+    }
+
+    async requestReactivateSubscription(userId) {
+        return await this._callBillingApi('/reactivate', { body: { uid: userId || null } });
     }
 
     async getBillingAccess(userId) {

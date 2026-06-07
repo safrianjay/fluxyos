@@ -1318,6 +1318,15 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Provider/backend-owned invoice history surfaced read-only on the
+      // Billing & plan settings page (users/{uid}/billing_invoices). Invoices
+      // are issued by a trusted backend after a successful payment, never by the
+      // client, so every client write is blocked.
+      match /billing_invoices/{invoiceId} {
+        allow read: if isOwner(userId);
+        allow create, update, delete: if false;
+      }
+
       match /transactions/{transactionId} {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId)

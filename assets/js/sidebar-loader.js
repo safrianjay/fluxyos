@@ -302,7 +302,15 @@
 
         // Highlight Active
         const path = window.location.pathname;
+        // 'settings' MUST be matched before any other key: every /settings-*
+        // detail page must highlight Settings, and several of those slugs contain
+        // another nav key as a substring (e.g. /settings-billing contains 'bill',
+        // /settings-budget contains 'budget'). Because Object.keys() preserves
+        // insertion order and we take the first match, putting 'settings' first
+        // guarantees Settings wins for the whole /settings* family. No non-settings
+        // app route contains the substring 'settings', so this is safe.
         const pageIdMap = {
+            'settings': 'nav-settings',
             'dashboard': 'nav-overview',
             'ai': 'nav-fluxy-ai',
             'ledger': 'nav-ledger',
@@ -313,11 +321,6 @@
             'reports': 'nav-reports',
             'balance-sheet': 'nav-balance-sheet',
             'integration': 'nav-integrations',
-            // 'settings' must come before 'budget' so that the existing
-            // /settings-budget.html page still highlights Settings rather
-            // than the new Budgets entry. /budget itself does not contain
-            // 'settings' as a substring, so this ordering is correct.
-            'settings': 'nav-settings',
             'budget': 'nav-budgets'
         };
 

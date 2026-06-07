@@ -59,6 +59,40 @@ export const BILLING_PLANS = {
     }
 };
 
+// Plan seat / storage limits surfaced on the Billing & plan settings page.
+// The checkout plans (core/growth/enterprise) line up positionally with the
+// product limit tiers basic/growth/enterprise. `trial` mirrors the entry tier.
+// Limits are display references only — never financial values. `storage_limit_gb`
+// of `null` means "no fixed cap" (Enterprise custom agreement).
+export const PLAN_LIMITS = {
+    trial:      { tier: 'trial',      seat_limit: 5,  storage_limit_gb: 5 },
+    basic:      { tier: 'basic',      seat_limit: 5,  storage_limit_gb: 5 },
+    core:       { tier: 'basic',      seat_limit: 5,  storage_limit_gb: 5 },
+    growth:     { tier: 'growth',     seat_limit: 10, storage_limit_gb: 10 },
+    enterprise: { tier: 'enterprise', seat_limit: 50, storage_limit_gb: 50, storage_note: 'Unlimited storage available on custom agreement.' }
+};
+
+// Display name fallbacks for plan ids that are not in BILLING_PLANS (e.g. trial).
+export const PLAN_DISPLAY_NAMES = {
+    trial: 'Trial',
+    basic: 'Basic',
+    core: 'Core Ops',
+    growth: 'Growth Engine',
+    enterprise: 'Enterprise AI'
+};
+
+export function getPlanLimits(planId) {
+    return PLAN_LIMITS[planId] || null;
+}
+
+// Map an arbitrary settings plan id to a real, purchasable checkout plan id.
+// The Billing & plan page lets users pick basic/growth/enterprise; the live
+// checkout (`/checkout`) speaks core/growth/enterprise, so `basic → core`.
+export function resolveCheckoutPlanId(planId) {
+    if (planId === 'basic') return 'core';
+    return normalizePlanId(planId);
+}
+
 export function normalizePlanId(value) {
     return Object.prototype.hasOwnProperty.call(BILLING_PLANS, value)
         ? value

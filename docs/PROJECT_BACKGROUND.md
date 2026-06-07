@@ -57,6 +57,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Subscriptions | `subscription.html` | App | ✅ | **No** | ✅ |
 | Budgets | `budget.html` | App | ✅ | **No** | ✅ |
 | Accounting Center | `accounting.html` | App | ✅ | **No** | ✅ |
+| Accounting Records | `accounting-records.html` | App | ✅ | **No** | ✅ |
 | Reports & Exports | `reports.html` | App | ✅ | **No** | ✅ |
 | Balance Sheet | `balance-sheet.html` | App | ✅ | **No** | ✅ |
 | Report Preview (viewer) | `report-preview.html` | App | ✅ | **No** | No |
@@ -71,6 +72,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Settings — AI preferences | `settings-ai.html` | App | ✅ | **No** | ✅ |
 | Settings — WhatsApp connection | `settings-whatsapp.html` | App | ✅ | **No** | ✅ |
 | Settings — Team and security | `settings-security.html` | App | ✅ | **No** | ✅ |
+| Settings — Billing & plan | `settings-billing.html` | App | ✅ | **No** | ✅ |
 
 **Rule:** Footer loads on all landing pages, never on app pages. Any page that renders `#sidebar` is an app page and must not load the marketing footer.
 
@@ -669,6 +671,31 @@ per-action locks. Because the guard is wired only through `sidebar-loader.js`, t
 paywall never appears on `/pricing`, `/checkout`, or `/payment-pending` (no sidebar),
 so the user can always reach checkout. UX-only MVP enforcement.
 
+**Billing & plan settings page (`settings-billing.html`, Phase 1, read-only view).**
+The Settings → Product → Billing & plan tile routes to `/settings-billing`. The
+page is a **read-only** surface + **safe** subscription actions; it reads the same
+canonical `billing_subscription/current` doc the trial/paywall system uses (never a
+divergent source), normalizes it into a view-model, and layers seat/storage limits
+from `assets/js/billing-config.js` `PLAN_LIMITS` (basic/core → 5 seats & 5 GB,
+growth → 10 & 10, enterprise → 50 & 50, trial mirrors the entry tier). It renders
+four summary cards, a Your Plan card, a Payment Method card, a Usage & Limits card,
+and a Billing History table. The frontend **never** mutates subscription status
+(Firestore rules block it). DataService methods (all owner-scoped, all degrade
+safely): `getBillingSettingsOverview`, `getBillingInvoices`, `getBillingUsage`,
+`requestBillingCheckout`, `requestBillingUpgrade`, `requestCancelRenewal`,
+`requestReactivateSubscription`. The existing `getBillingSubscription` /
+`ensureBillingSubscription` are reused unchanged. Checkout/upgrade/fix-payment route
+to the real `/pricing` + `/checkout` flow; cancel/reactivate call the documented
+backend endpoints (`/api/v1/billing/*`) which are **not part of this build** and fail
+safely with a toast — never a fake success and never a local status change. Billing
+history reads `users/{uid}/billing_invoices/{invoiceId}` (owner-read rule; client
+writes blocked; issued by a trusted backend) and shows an empty state when absent.
+Usage numbers come only from real user-scoped records (`documents` +
+`bank_statement_imports` file sizes for storage, `documents` / `report_exports`
+counts for the current month); anything not yet metered shows a "being prepared"
+fallback rather than an invented number. The cancel-renewal flow uses the shared
+`showConfirmDialog` (danger tone), not `window.confirm()`.
+
 ### 4l. Billing Payment Requests — `users/{userId}/billing_payment_requests/{id}`
 
 Metadata-only manual verification request created from `/checkout`. Amounts are raw
@@ -744,6 +771,14 @@ control; no `accounting_periods` collection is created).
   `{ hasData, hasIncomeData, period, comparison_period, confidence, summary,
   previous_summary, rows, related_records_index, readiness, limitations }`. See
   classification + sign rules below.
+- `getIncomeStatementRelatedRecords(uid, params)` — read-only `/accounting-records`
+  drilldown source. Accepts `{ section, parent, category, type, period, compare }`, where
+  `period` is `{ start, end }`; the page maps `period=YYYY-MM` to a full month and
+  `period=YYYY-MM-DD..YYYY-MM-DD` to a custom range. Returns
+  `{ section, label, period, comparison_period, summary, suggested_action, records,
+  limitations }`. Statement summary amounts are still sourced from
+  `getIncomeStatementPreview`; Bills and Subscriptions may appear as supporting context
+  rows but do not change Income Statement totals.
 - `getAccountingReadiness(uid, startKey, endKey)` — orchestrates `getTransactionsForPeriod`
   / `getBillsForPeriod` / `getSubscriptionsForPeriod` + `getAccountingMappings` +
   `listBankStatementImports`, and returns `{ hasData, score, band, kpis, counts,
@@ -776,9 +811,10 @@ realized spend); their counts only feed the confidence message.
   at render time by `row.kind` (`revenue` / `cost` / `subtotal`).
 - **Row status** is derived from current-period transactions only: groups collapse to Mapped /
   Review / Needs cleanup / No records; child lines surface specific counts (e.g. `2 missing
-  receipts`, `1 unmapped`). `related_records_index[rowId]` backs the related-records drawer (white
-  card, black translucent overlay, close via X / overlay / Escape, scroll-locked); subtotal/total
-  rows carry a `note` formula and no records.
+  receipts`, `1 unmapped`). Source rows navigate to `/accounting-records`, a dedicated
+  related-records subpage with search, filters, table inspection, and pagination. The
+  calculated rows **Gross Profit**, **Operating Income**, and **Net Income** are not
+  clickable and carry formula notes only.
 
 **Readiness score** starts at 100 and subtracts per-bucket penalties — missing receipt
 (−8), missing category (−6), unmapped category (−6, per distinct source), bill missing

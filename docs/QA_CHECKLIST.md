@@ -147,7 +147,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 16 | Ledger search filters the selected date-period rows by vendor/description, category, type, status, amount, or visible date; no-match searches show an inline empty row instead of breaking pagination |
 | 17 | **Chart hover regression** — on every page with a bar chart (`ledger.html`, `revenue-sync.html`, any future chart), hover the **tallest visible bar** and confirm the tooltip never overlaps the chart's axis labels, date footer, or count captions below the bars. Per [DESIGN_SYSTEM.md §4 Charts](../docs/DESIGN_SYSTEM.md), the shared `attachChartHover` helper clamps to the chart container top — do not reintroduce flip-below behavior at any call site. |
 | 17a | **Overview chart range regression** — set the period to **All Time**, then **Last Month**, on Performance Trend **and** Cash Flow. Confirm: (a) the **page never scrolls horizontally** — the sidebar must not overlap content (`document.documentElement.scrollWidth === clientWidth`); wide tracks scroll *inside* the card with a pinned Y-axis; (b) the timeline starts at the first period with data (no empty quarters padded out to today); (c) in **Line** mode on short ranges the line is not horizontally stretched and point markers stay round. See [DESIGN_SYSTEM.md §4a](../docs/DESIGN_SYSTEM.md). |
-| 18 | `/settings` (index) renders search + three group sections (Personal, Workspace, Product) with all entry tiles; disabled tiles ("Communication preferences", "Data export", "Billing & plan") show a `Planned` pill and do not navigate |
+| 18 | `/settings` (index) renders search + three group sections (Personal, Workspace, Product) with all entry tiles; the active "Billing & plan" tile (Product settings) routes to `/settings-billing`; remaining disabled tiles ("Communication preferences", "Data export") show a `Planned` pill and do not navigate |
 | 19 | Index search filters tiles by title + description (e.g., typing "ai" leaves only the AI tile visible; typing "zzz" shows the "No settings found." empty state) |
 | 20 | Each live detail page (`settings-personal`, `settings-business`, `settings-finance`, `settings-import-rules`, `settings-ai`, `settings-whatsapp`, `settings-security`) loads with breadcrumb `Settings`, focused max-w-3xl content, and sidebar Settings active state |
 | 21 | `settings-business` tabs work: Account details (active) and Business details switch panels; Branding and Documents are visibly disabled and unclickable |
@@ -198,6 +198,41 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 11 | Skip and Done write only to `users/{uid}/platform_learning/state`; no financial collections are changed |
 | 12 | Missing or hidden tour targets are skipped gracefully; if no targets exist, show "This guide is not available on this page yet." |
 | 13 | Mobile at 375px: quick-start cards and coachmark popovers are readable with no horizontal overflow |
+
+### D4. Billing & plan settings (settings-billing.html, db-service.js billing methods, billing-config.js, firestore.rules billing_invoices)
+
+Phase 1 is a **read-only** billing view + **safe** subscription actions. The page
+reads the same canonical `users/{uid}/billing_subscription/current` the trial/paywall
+system uses (never a divergent source) and normalizes it. The frontend never
+mutates subscription status; cancel/reactivate call a backend that is not part of
+this build and fail safely. Spec: the Billing & plan Phase 1 task brief.
+
+| # | Check |
+|---|-------|
+| 1 | Open `/settings-billing` signed out → redirects to `/login` within 2s |
+| 2 | After login, shared sidebar renders and **Settings** is the active item (not Bills, even though the slug contains "bill") |
+| 3 | Marketing footer does NOT appear |
+| 4 | Loading skeleton shows first, then the live content or a friendly error state (with Try again) — never a flash of fake numbers |
+| 5 | No billing doc / ineligible user → "No active plan" state with a Choose plan CTA; eligible new user → trialing state (trial created by the shared trial guard) |
+| 6 | Trialing doc → blue Trial badge, "Trial ends" summary with days-left, trial-end copy, Choose plan CTA |
+| 7 | Active doc renders the real plan name + monthly price; seats/storage limits match the plan tier (basic/core → 5 & 5GB, growth → 10 & 10GB, enterprise → 50 & 50GB) |
+| 8 | Active doc shows Upgrade plan (primary) + Cancel renewal (tertiary, red ghost) |
+| 9 | cancel_scheduled doc → amber "Renewal canceled", Access-until date, **Reactivate subscription** CTA (Reactivate appears ONLY for cancel_scheduled) |
+| 10 | past_due / payment_failed doc → red badge, "Fix payment" CTA |
+| 11 | Usage values never render `NaN`, `Infinity`, `undefined`, or invented numbers; storage/seats show real progress bars, metered rows show counts or "being prepared" |
+| 12 | Billing history reads `users/{uid}/billing_invoices`, renders rows with `Rp` dot-separated amounts, or the "No billing history yet" empty state |
+| 13 | Invoice Action shows View/Download only when `provider_invoice_url` is an https URL (opens in a new tab) |
+| 14 | Cancel renewal opens the **shared FluxyOS confirm dialog** (Keep subscription / Cancel renewal, danger tone) — never `window.confirm()` |
+| 15 | Confirming cancel with no billing backend → safe error toast, NO status change, NO account lock; reload still shows the same (active) state |
+| 16 | Choose plan → `/pricing`; Upgrade/Fix payment → existing `/checkout` (real flow); View payment → `/payment-pending`. No CTA fakes payment success |
+| 17 | Firestore: no global billing collections; all reads stay under `users/{uid}/…`; the page never writes subscription status |
+| 18 | Mobile 375px: summary cards stack, main row stacks, billing table scrolls inside its container — no page-level horizontal overflow (`document.documentElement.scrollWidth === clientWidth`) |
+| 19 | Browser console clean (no CSP/CORS/404/Firebase/permission errors) — invoice reads degrade to the empty state if the `billing_invoices` rule is not deployed yet |
+
+**Regression (shared files touched):** `sidebar-loader.js`, `db-service.js`, and
+`billing-config.js` were modified — run §3 Cross-Page Regression and confirm
+Dashboard, Ledger, Bills, Budget, Settings, and `/checkout` + `/payment-pending`
+still render with correct sidebar active states.
 
 ### E. Add Transaction / Bill / Subscription (shared-dashboard.js, db-service.js)
 
@@ -591,8 +626,8 @@ banner/KPI, not the main card.
 | 9 | Revenue total matches income/revenue/refund/pending_receivable transactions; OpEx total matches expense/fee/tax/pending_payable; COGS defaults to 0 (Infrastructure stays under OpEx) |
 | 10 | Gross Profit = Revenue − COGS; Operating Income = Gross Profit − OpEx; Net Income math is correct; margins show in subtotal status |
 | 11 | Change column shows previous-period delta; Change % shows **N/A** when previous is 0 and never `NaN`/`Infinity`; cost increases read red/parentheses, decreases read green |
-| 12 | Clicking any row opens the related-records drawer titled "Related records: [Line item]" with only that row's records; closes via X, overlay click, and Escape; page scroll locks while open |
-| 13 | Child line statuses surface counts (e.g. "2 missing receipts", "1 unmapped"); empty lines show "No records"; subtotal/total rows show the calc note in the drawer |
+| 12 | Clicking Revenue, Cost of Revenue, Operating Expenses, Other Income, Other Expense, or a child source line navigates to `/accounting-records` with the selected `section`, `period`, and comparison params |
+| 13 | Gross Profit, Operating Income, and Net Income are non-clickable: no pointer cursor, no row `tabindex`, no `role="button"`, no chevron/record navigation, and keyboard Enter/Space does nothing |
 | 14 | Report confidence banner shows Ready/Almost ready/Needs cleanup + message; "View blockers" jumps to the Cleanup tab; readiness ring/band KPI matches |
 | 15 | `Missing Receipt` transactions, bills without a due date, subscriptions without a renewal date appear in the Cleanup tab |
 | 16 | Custom / "Others" categories appear as **Unmapped** in Account Mapping; built-ins show **Suggested**; saving writes `users/{uid}/accounting_mappings` only + audit log; row flips to **Saved** after reload |
@@ -600,8 +635,19 @@ banner/KPI, not the main card.
 | 18 | Close tab "Close period" is a disabled **Planned** control; Topbar "Export package" is disabled (**Planned**); no period write occurs |
 | 19 | AI prompt buttons + "Ask Fluxy AI" only open the Fluxy AI drawer — they never save or mutate data |
 | 20 | Firestore shows no global accounting collections; all writes stay under `users/{uid}/…`; no amounts/formatted currency in `accounting_mappings` |
-| 21 | Responsive at 375 / 768 / 1280 — KPI strip stacks, the Income Statement table scrolls within its container, drawer is full-width on mobile, **no page horizontal scroll** (`document.documentElement.scrollWidth === clientWidth`) |
+| 21 | Responsive at 375 / 768 / 1280 — KPI strip stacks, the Income Statement table scrolls within its container, **no page horizontal scroll** (`document.documentElement.scrollWidth === clientWidth`) |
 | 22 | Browser console clean (no CSP/CORS/404/Firebase/permission errors) |
+| 23 | Open `/accounting-records` signed out → redirects to `/login` |
+| 24 | Open `/accounting-records?section=revenue&period=YYYY-MM` signed in → page renders with shared sidebar, Accounting Center active, and **no** marketing footer |
+| 25 | `/accounting-records` header shows Accounting Center / Income Statement / row breadcrumb, `[Row label] records` title, period subtitle, Back to Accounting Center, and Ask Fluxy AI |
+| 26 | Related-records summary cards show current amount, previous amount, change, and status/cleanup count; money uses Rp + dot separators and Fira Code |
+| 27 | Related records match the clicked Income Statement section; transaction rows reconcile to the preview line amount, while Bills/Subscriptions appear only as supporting context and never change the P&L total |
+| 28 | Search filters vendor/description/category/type/status/amount; Status, Type, Source, and Sort controls intersect correctly and reset pagination to page 1 |
+| 29 | More than 10 records paginate at 10 per page; Previous/Next work; summary reads like `Showing 1-10 of 58 records` |
+| 30 | Empty state reads "No related records found" with Back to Accounting Center CTA; filtered-empty state says no records match the filters |
+| 31 | Loading skeleton appears before data resolves; error state says "Could not load related records. Check your connection and try again." and never shows raw Firebase errors |
+| 32 | Source actions link by route/search only (`/ledger?search=...`, `/bill?search=...`, `/subscription?search=...`); raw document IDs are not shown in UI or action hrefs |
+| 33 | Mobile 375px: summary cards stack, controls wrap, table scrolls inside its container, pagination remains usable, and there is no page-level horizontal overflow |
 
 **Regression (shared files touched):** `sidebar-loader.js` and `db-service.js` were
 modified — run §3 Cross-Page Regression and confirm Dashboard, Ledger, Bills,

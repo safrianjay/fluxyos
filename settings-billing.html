@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Billing &amp; plan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <style>
+        /* Currency / tabular numbers use the mono face, matching the dashboard. */
+        .bill-amount {
+            font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum";
+        }
+        .bill-progress-track { height: 8px; border-radius: 9999px; background: #f3f4f6; overflow: hidden; }
+        .bill-progress-fill { height: 8px; border-radius: 9999px; transition: width .25s ease; }
+        .bill-skel { background: linear-gradient(90deg,#f3f4f6 25%,#e9ebef 37%,#f3f4f6 63%); background-size: 400% 100%; animation: bill-skel 1.4s ease infinite; }
+        @keyframes bill-skel { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+        @media (prefers-reduced-motion: reduce) { .bill-skel { animation: none; } }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <aside id="sidebar" class="hidden w-[220px] bg-white text-[#1E2F4A] flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
+            <div class="flex items-center gap-4 min-w-0 flex-1">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <h1 class="text-lg font-bold text-gray-900">Billing &amp; plan</h1>
+            </div>
+            <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                Fluxy AI
+            </button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10">
+            <div class="max-w-6xl mx-auto space-y-6">
+
+                <section>
+                    <a href="/settings" class="text-[12px] font-bold text-[#EA580C] hover:underline">Settings</a>
+                    <h1 class="mt-2 text-2xl font-bold text-gray-900 tracking-tight">Billing &amp; plan</h1>
+                    <p class="mt-1 text-[14px] text-gray-500">Manage your subscription, usage, payment status, and billing history.</p>
+                </section>
+
+                <div id="billing-load-state" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-medium text-gray-500 shadow-sm" aria-live="polite">
+                    <span class="h-2 w-2 rounded-full bg-gray-300"></span>
+                    Loading billing
+                </div>
+                <div id="billing-error-state" class="hidden rounded-xl border border-red-200 bg-red-50 p-4 text-[14px] text-red-700" aria-live="assertive">
+                    <p class="font-bold">Could not load your billing details.</p>
+                    <p class="mt-1 text-[13px] text-red-600">Refresh the page or try again in a moment. Your subscription and data are safe.</p>
+                    <button id="billing-retry-btn" type="button" class="mt-3 inline-flex items-center justify-center rounded-lg border border-red-200 bg-white px-3 py-1.5 text-[13px] font-bold text-red-700 hover:bg-red-50">Try again</button>
+                </div>
+
+                <!-- LOADING SKELETON -->
+                <div id="billing-skeleton" class="space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"><div class="bill-skel h-3 w-20 rounded"></div><div class="bill-skel mt-3 h-5 w-28 rounded"></div></div>
+                        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"><div class="bill-skel h-3 w-20 rounded"></div><div class="bill-skel mt-3 h-5 w-28 rounded"></div></div>
+                        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"><div class="bill-skel h-3 w-20 rounded"></div><div class="bill-skel mt-3 h-5 w-28 rounded"></div></div>
+                        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"><div class="bill-skel h-3 w-20 rounded"></div><div class="bill-skel mt-3 h-5 w-28 rounded"></div></div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div class="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-5 shadow-sm"><div class="bill-skel h-4 w-32 rounded"></div><div class="bill-skel mt-4 h-8 w-40 rounded"></div><div class="bill-skel mt-4 h-2 w-full rounded"></div><div class="bill-skel mt-3 h-2 w-full rounded"></div></div>
+                        <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"><div class="bill-skel h-4 w-32 rounded"></div><div class="bill-skel mt-4 h-12 w-full rounded"></div></div>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"><div class="bill-skel h-4 w-32 rounded"></div><div class="bill-skel mt-4 h-24 w-full rounded"></div></div>
+                </div>
+
+                <!-- LIVE CONTENT -->
+                <div id="billing-content" class="hidden space-y-6">
+
+                    <!-- TOP SUMMARY CARDS -->
+                    <div id="billing-summary" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"></div>
+
+                    <!-- MAIN ROW: YOUR PLAN + PAYMENT METHOD -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+                        <div id="your-plan-card" class="lg:col-span-2 rounded-xl border border-gray-200 bg-white shadow-sm"></div>
+                        <div id="payment-method-card" class="rounded-xl border border-gray-200 bg-white shadow-sm"></div>
+                    </div>
+
+                    <!-- USAGE & LIMITS -->
+                    <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+                        <div class="px-5 py-4 border-b border-gray-100">
+                            <h2 class="text-[14px] font-bold text-gray-900">Usage &amp; limits</h2>
+                            <p class="mt-0.5 text-[12px] text-gray-500">Live usage against your plan. Values come from your own workspace records only.</p>
+                        </div>
+                        <div id="usage-rows" class="divide-y divide-gray-100"></div>
+                    </div>
+
+                    <!-- BILLING HISTORY -->
+                    <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+                        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+                            <div>
+                                <h2 class="text-[14px] font-bold text-gray-900">Billing history</h2>
+                                <p class="mt-0.5 text-[12px] text-gray-500">Invoices issued after a successful payment.</p>
+                            </div>
+                        </div>
+                        <div id="billing-history-wrap" class="overflow-x-auto">
+                            <table class="w-full min-w-[640px] text-left">
+                                <thead>
+                                    <tr class="bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500">
+                                        <th class="px-5 py-3 font-semibold">Invoice</th>
+                                        <th class="px-5 py-3 font-semibold">Billing date</th>
+                                        <th class="px-5 py-3 font-semibold">Status</th>
+                                        <th class="px-5 py-3 font-semibold text-right">Amount</th>
+                                        <th class="px-5 py-3 font-semibold">Plan</th>
+                                        <th class="px-5 py-3 font-semibold text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="billing-history-body" class="divide-y divide-gray-50"></tbody>
+                            </table>
+                        </div>
+                        <div id="billing-history-empty" class="hidden px-5 py-10 text-center">
+                            <div class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 17h6M9 13h6m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h6l6 6v10a2 2 0 01-2 2z"/></svg>
+                            </div>
+                            <p class="mt-3 text-[14px] font-semibold text-gray-700">No billing history yet</p>
+                            <p class="mt-1 text-[12px] text-gray-500">Your invoices will appear here after your first successful payment.</p>
+                        </div>
+                    </div>
+
+                    <p class="text-[11px] text-gray-400 leading-relaxed">
+                        Billing actions are processed on the secure checkout page. FluxyOS never stores card numbers, OTPs, bank credentials, or payment secrets in your browser.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+        import { formatIDR, PLAN_DISPLAY_NAMES, BILLING_PLANS } from './assets/js/billing-config.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.firebaseapp.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
+            measurementId: "G-ZN7J6DRD2L"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        const loadState = document.getElementById('billing-load-state');
+        const errorState = document.getElementById('billing-error-state');
+        const skeleton = document.getElementById('billing-skeleton');
+        const content = document.getElementById('billing-content');
+
+        let uid = null;
+        let billingEmail = null;
+
+        const authTimeout = setTimeout(() => window.location.replace('/login'), 2000);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) return;
+            clearTimeout(authTimeout);
+            uid = user.uid;
+            billingEmail = user.email || null;
+            await loadBilling();
+        });
+
+        document.getElementById('billing-retry-btn')?.addEventListener('click', () => loadBilling());
+
+        async function loadBilling() {
+            setLoadState('loading', 'Loading billing');
+            errorState.classList.add('hidden');
+            skeleton.classList.remove('hidden');
+            content.classList.add('hidden');
+            try {
+                const [overview, invoices, usage] = await Promise.all([
+                    ds.getBillingSettingsOverview(uid),
+                    ds.getBillingInvoices(uid, 20),
+                    ds.getBillingUsage(uid)
+                ]);
+                renderSummary(overview, usage);
+                renderYourPlan(overview);
+                renderPaymentMethod(overview);
+                renderUsage(overview, usage);
+                renderHistory(invoices);
+                skeleton.classList.add('hidden');
+                content.classList.remove('hidden');
+                setLoadState('ready', 'Billing ready');
+            } catch (error) {
+                skeleton.classList.add('hidden');
+                content.classList.add('hidden');
+                errorState.classList.remove('hidden');
+                setLoadState('error', 'Could not load billing');
+                window.showToast?.('Could not load billing details. Please try again.', 'error');
+            }
+        }
+
+        /* ---------- status mapping ---------- */
+        function statusInfo(o) {
+            const s = o.status;
+            const planName = o.plan_name || 'your plan';
+            const seatLimit = Number.isFinite(o.seat_limit) ? o.seat_limit : null;
+            const storageLimit = Number.isFinite(o.storage_limit_gb) ? o.storage_limit_gb : null;
+            const renews = o.renews_at ? formatDate(o.renews_at) : null;
+            const periodEnd = o.current_period_end ? formatDate(o.current_period_end) : null;
+            const trialEnd = o.trial_end_at ? formatDate(o.trial_end_at) : null;
+
+            const map = {
+                none: {
+                    badge: ['No plan', 'gray'], title: 'No active plan',
+                    copy: 'You don’t have an active FluxyOS subscription yet. Choose a plan to activate your workspace.',
+                    primary: { label: 'Choose plan', kind: 'choose' }
+                },
+                trialing: {
+                    badge: ['Trial', 'blue'], title: 'Trial active',
+                    copy: trialEnd
+                        ? `You are currently using FluxyOS trial access. Subscribe before ${trialEnd} to keep your workspace active.`
+                        : 'You are currently using FluxyOS trial access. Subscribe to keep your workspace active.',
+                    primary: { label: 'Choose plan', kind: 'choose' }
+                },
+                active: {
+                    badge: ['Active', 'green'], title: 'Active subscription',
+                    copy: renews
+                        ? `Your current plan renews on ${renews}.${seatLimit && storageLimit ? ` Your plan includes ${seatLimit} seats and ${storageLimit} GB storage.` : ''}`
+                        : `Your ${escapeHtml(planName)} plan is active.${seatLimit && storageLimit ? ` It includes ${seatLimit} seats and ${storageLimit} GB storage.` : ''}`,
+                    primary: { label: 'Upgrade plan', kind: 'upgrade' },
+                    tertiary: { label: 'Cancel renewal', kind: 'cancel' }
+                },
+                cancel_scheduled: {
+                    badge: ['Renewal canceled', 'amber'], title: 'Renewal canceled',
+                    copy: periodEnd
+                        ? `Your renewal has been canceled. You can keep using FluxyOS until ${periodEnd}.`
+                        : 'Your renewal has been canceled. You can keep using FluxyOS until the end of the current period.',
+                    primary: { label: 'Reactivate subscription', kind: 'reactivate' }
+                },
+                past_due: {
+                    badge: ['Past due', 'red'], title: 'Payment issue',
+                    copy: 'We could not process your latest payment. Fix payment to keep your workspace active.',
+                    primary: { label: 'Fix payment', kind: 'fixpayment' }
+                },
+                payment_failed: {
+                    badge: ['Payment failed', 'red'], title: 'Payment issue',
+                    copy: 'We could not process your latest payment. Fix payment to keep your workspace active.',
+                    primary: { label: 'Fix payment', kind: 'fixpayment' }
+                },
+                awaiting_payment: {
+                    badge: ['Payment waiting', 'amber'], title: 'Payment waiting',
+                    copy: 'Your QRIS payment is waiting. Open the payment screen to complete it.',
+                    primary: { label: 'View payment', kind: 'view-payment' }
+                },
+                pending_verification: {
+                    badge: ['In review', 'blue'], title: 'Payment in review',
+                    copy: 'We’re verifying your latest payment. This usually takes a short while.',
+                    primary: { label: 'View payment status', kind: 'view-payment' }
+                },
+                expired: {
+                    badge: ['Expired', 'gray'], title: 'Trial expired',
+                    copy: 'Your trial has ended. Choose a plan to restore full access to your workspace.',
+                    primary: { label: 'Choose plan', kind: 'choose' }
+                },
+                canceled: {
+                    badge: ['Canceled', 'gray'], title: 'No active access',
+                    copy: 'Your subscription has been canceled. Choose a plan to reactivate your workspace.',
+                    primary: { label: 'Choose plan', kind: 'choose' }
+                },
+                suspended: {
+                    badge: ['Suspended', 'red'], title: 'No active access',
+                    copy: 'Your access is suspended. Choose a plan or contact support to restore your workspace.',
+                    primary: { label: 'Choose plan', kind: 'choose' }
+                }
+            };
+            return map[s] || map.none;
+        }
+
+        const BADGE_CLASS = {
+            green: 'bg-green-50 text-green-700 border border-green-200',
+            blue:  'bg-blue-50 text-blue-700 border border-blue-200',
+            amber: 'bg-amber-50 text-amber-700 border border-amber-200',
+            red:   'bg-red-50 text-red-700 border border-red-200',
+            gray:  'bg-gray-100 text-gray-600 border border-gray-200'
+        };
+        const DOT_CLASS = { green: 'bg-green-500', blue: 'bg-blue-500', amber: 'bg-amber-500', red: 'bg-red-500', gray: 'bg-gray-400' };
+
+        function badge(text, tone) {
+            return `<span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${BADGE_CLASS[tone] || BADGE_CLASS.gray}">
+                <span class="h-1.5 w-1.5 rounded-full ${DOT_CLASS[tone] || DOT_CLASS.gray}"></span>${escapeHtml(text)}</span>`;
+        }
+
+        /* ---------- summary cards ---------- */
+        function summaryCard(label, value, sub, iconPath) {
+            return `<div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div class="flex items-center gap-2 text-gray-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="${iconPath}"/></svg>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500">${escapeHtml(label)}</span>
+                </div>
+                <p class="mt-2 text-[16px] font-bold text-gray-900">${value}</p>
+                <p class="mt-0.5 text-[12px] text-gray-500">${sub}</p>
+            </div>`;
+        }
+
+        function renderSummary(o, usage) {
+            const wrap = document.getElementById('billing-summary');
+            const hasPlan = o.has_plan;
+
+            // Card 2 label/value depend on state.
+            let dateLabel = 'Next billing', dateValue = '—', dateSub = 'Managed by your subscription';
+            if (o.status === 'trialing') {
+                dateLabel = 'Trial ends';
+                dateValue = o.trial_end_at ? trialDaysLabel(o.trial_end_at) : '—';
+                dateSub = o.trial_end_at ? formatDate(o.trial_end_at) : 'Trial period';
+            } else if (o.status === 'cancel_scheduled') {
+                dateLabel = 'Access until';
+                dateValue = o.current_period_end ? formatDate(o.current_period_end) : '—';
+                dateSub = 'Then limited access';
+            } else if (o.status === 'active') {
+                dateLabel = 'Next billing';
+                dateValue = o.renews_at ? formatDate(o.renews_at) : '—';
+                dateSub = o.billing_cycle ? cycleLabel(o.billing_cycle) : 'Managed by your subscription';
+            } else if (o.status === 'expired' || o.status === 'none' || o.status === 'canceled' || o.status === 'suspended') {
+                dateLabel = 'Access';
+                dateValue = 'No active plan';
+                dateSub = 'Choose a plan to activate';
+            } else if (o.status === 'past_due' || o.status === 'payment_failed') {
+                dateLabel = 'Status';
+                dateValue = 'Payment issue';
+                dateSub = 'Fix payment to continue';
+            } else if (o.status === 'awaiting_payment' || o.status === 'pending_verification') {
+                dateLabel = 'Status';
+                dateValue = o.status === 'awaiting_payment' ? 'Payment waiting' : 'In review';
+                dateSub = 'See payment status';
+            }
+
+            // Seats
+            const seatLimit = Number.isFinite(o.seat_limit) ? o.seat_limit : null;
+            const seatsValue = seatLimit ? `1 of ${seatLimit} used` : '—';
+            const seatsSub = seatLimit ? 'Team management coming soon' : 'Plan required';
+
+            // Storage
+            let storageValue = '—', storageSub = 'Plan required';
+            if (hasPlan) {
+                if (usage.storage && usage.storage.available) {
+                    const usedGb = formatGb(usage.storage.bytes);
+                    storageValue = Number.isFinite(o.storage_limit_gb)
+                        ? `${usedGb} GB of ${o.storage_limit_gb} GB`
+                        : `${usedGb} GB used`;
+                    storageSub = Number.isFinite(o.storage_limit_gb) ? 'Documents + imports' : (o.storage_note || 'Custom storage');
+                } else {
+                    storageValue = 'Being prepared';
+                    storageSub = 'Storage tracking soon';
+                }
+            }
+
+            wrap.innerHTML = [
+                summaryCard('Current plan', `<span>${escapeHtml(hasPlan ? o.plan_name : 'No plan')}</span>`,
+                    hasPlan ? statusInfo(o).badge[0] : 'Not subscribed', 'M5 13l4 4L19 7M4 6h16'),
+                summaryCard(dateLabel, `<span>${escapeHtml(String(dateValue))}</span>`, escapeHtml(dateSub),
+                    'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'),
+                summaryCard('Team seats', `<span>${escapeHtml(seatsValue)}</span>`, escapeHtml(seatsSub),
+                    'M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4 0M16 7a3 3 0 11-6 0 3 3 0 016 0z'),
+                summaryCard('Storage usage', `<span>${escapeHtml(storageValue)}</span>`, escapeHtml(storageSub),
+                    'M3 7l9-4 9 4M4 7v11h16V7M8 11v4M12 11v4M16 11v4')
+            ].join('');
+        }
+
+        /* ---------- your plan card ---------- */
+        function renderYourPlan(o) {
+            const el = document.getElementById('your-plan-card');
+            const info = statusInfo(o);
+            const hasPlan = o.has_plan;
+            const priceLine = (hasPlan && Number.isFinite(o.price_amount) && o.price_amount > 0)
+                ? `<div class="flex items-baseline gap-1">
+                        <span class="bill-amount text-2xl font-bold text-gray-900">${escapeHtml(formatIDR(o.price_amount))}</span>
+                        <span class="text-[13px] text-gray-500">/ month${o.billing_cycle === 'annually' ? ' (billed yearly)' : ''}</span>
+                   </div>`
+                : (o.status === 'trialing'
+                    ? `<div class="text-[15px] font-bold text-gray-900">Free trial</div>`
+                    : `<div class="text-[15px] font-bold text-gray-900">No active price</div>`);
+
+            const seatLimit = Number.isFinite(o.seat_limit) ? o.seat_limit : null;
+            const storageLimit = Number.isFinite(o.storage_limit_gb) ? o.storage_limit_gb : null;
+
+            const planRows = hasPlan ? `
+                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    ${detailRow('Billing cycle', o.billing_cycle ? cycleLabel(o.billing_cycle) : 'Not set')}
+                    ${detailRow('Current period', periodText(o))}
+                    ${detailRow('Seats included', seatLimit ? `${seatLimit} seats` : 'Not set')}
+                    ${detailRow('Storage included', storageLimit ? `${storageLimit} GB` : (o.storage_note ? 'Custom' : 'Not set'))}
+                </div>` : '';
+
+            const tertiary = info.tertiary
+                ? `<button type="button" data-action="${info.tertiary.kind}" class="bill-action inline-flex items-center justify-center rounded-lg border border-red-200 bg-white px-3.5 py-2 text-[13px] font-bold text-red-600 hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed">${escapeHtml(info.tertiary.label)}</button>`
+                : '';
+
+            const enterpriseNote = (o.plan_tier === 'enterprise' && o.storage_note)
+                ? `<p class="mt-3 text-[12px] text-gray-500">${escapeHtml(o.storage_note)}</p>` : '';
+
+            el.innerHTML = `
+                <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+                    <h2 class="text-[14px] font-bold text-gray-900">Your plan</h2>
+                    ${badge(info.badge[0], info.badge[1])}
+                </div>
+                <div class="p-5">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-[16px] font-bold text-gray-900">${escapeHtml(hasPlan ? o.plan_name : 'No active plan')}</p>
+                            <p class="mt-0.5 text-[13px] text-gray-500 max-w-md">${escapeHtml(o.plan_description || info.title)}</p>
+                        </div>
+                        <div class="text-right">${priceLine}</div>
+                    </div>
+
+                    <div class="mt-4 rounded-lg border border-gray-100 bg-gray-50/60 px-4 py-3 text-[13px] text-gray-600 leading-relaxed">${info.copy}</div>
+
+                    ${planRows}
+                    ${enterpriseNote}
+
+                    <div class="mt-5 flex flex-wrap items-center gap-2.5">
+                        <button type="button" data-action="${info.primary.kind}" class="bill-action inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed">${escapeHtml(info.primary.label)}</button>
+                        ${tertiary}
+                    </div>
+                </div>`;
+
+            el.querySelectorAll('.bill-action').forEach((btn) => {
+                btn.addEventListener('click', () => handleAction(btn.getAttribute('data-action'), btn, o));
+            });
+        }
+
+        function detailRow(label, value) {
+            return `<div class="rounded-lg border border-gray-100 bg-white px-3 py-2.5">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">${escapeHtml(label)}</p>
+                <p class="mt-1 text-[13px] font-semibold text-gray-800">${escapeHtml(value)}</p>
+            </div>`;
+        }
+
+        function periodText(o) {
+            const start = o.current_period_start ? formatDate(o.current_period_start) : null;
+            const end = o.current_period_end ? formatDate(o.current_period_end) : null;
+            if (start && end) return `${start} – ${end}`;
+            if (end) return `Until ${end}`;
+            if (o.status === 'trialing' && o.trial_end_at) return `Trial until ${formatDate(o.trial_end_at)}`;
+            return 'Not set';
+        }
+
+        /* ---------- payment method card ---------- */
+        function renderPaymentMethod(o) {
+            const el = document.getElementById('payment-method-card');
+            const s = o.status;
+            let stateTitle, tone, line;
+            if (s === 'active') { stateTitle = 'Payment active'; tone = 'green'; line = 'Your subscription payment is current.'; }
+            else if (s === 'awaiting_payment' || s === 'pending_verification') { stateTitle = 'Payment pending'; tone = 'amber'; line = 'A payment is being completed or verified.'; }
+            else if (s === 'past_due' || s === 'payment_failed') { stateTitle = 'Payment failed'; tone = 'red'; line = 'Your last payment did not go through.'; }
+            else { stateTitle = 'No payment method'; tone = 'gray'; line = 'No payment method is on file yet.'; }
+
+            const provider = o.provider ? capitalize(o.provider) : 'Not connected';
+            const email = o.billing_email || billingEmail || null;
+            const showStatusLink = (s === 'awaiting_payment' || s === 'pending_verification' || s === 'past_due' || s === 'payment_failed');
+
+            el.innerHTML = `
+                <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+                    <h2 class="text-[14px] font-bold text-gray-900">Payment method</h2>
+                    ${badge(stateTitle, tone)}
+                </div>
+                <div class="p-5 space-y-3">
+                    <p class="text-[13px] text-gray-600">${escapeHtml(line)}</p>
+                    <dl class="space-y-2.5 text-[13px]">
+                        ${pmRow('Provider', escapeHtml(provider))}
+                        ${email ? pmRow('Billing email', escapeHtml(email)) : ''}
+                        ${pmRow('Payment status', escapeHtml(stateTitle))}
+                    </dl>
+                    <div class="rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2.5 text-[12px] text-gray-500">
+                        Payment management is handled from the secure checkout page.
+                    </div>
+                    ${showStatusLink ? `<a href="/payment-pending" class="inline-flex items-center gap-1.5 text-[13px] font-bold text-[#EA580C] hover:underline">
+                        View payment status
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </a>` : ''}
+                </div>`;
+        }
+
+        function pmRow(label, value) {
+            return `<div class="flex items-center justify-between gap-3">
+                <dt class="text-gray-500">${label}</dt>
+                <dd class="font-semibold text-gray-800 text-right truncate">${value}</dd>
+            </div>`;
+        }
+
+        /* ---------- usage & limits ---------- */
+        function renderUsage(o, usage) {
+            const el = document.getElementById('usage-rows');
+            const hasPlan = o.has_plan;
+            const seatLimit = Number.isFinite(o.seat_limit) ? o.seat_limit : null;
+            const storageLimit = Number.isFinite(o.storage_limit_gb) ? o.storage_limit_gb : null;
+            const rows = [];
+
+            // 1. Team seats
+            if (hasPlan && seatLimit) {
+                rows.push(usageRow('Team seats', `1 of ${seatLimit} seats used`, 'Team member management is coming soon.', pct(1, seatLimit)));
+            } else {
+                rows.push(usageRow('Team seats', 'No plan', 'Choose a plan to see seat limits.', null));
+            }
+
+            // 2. Storage
+            if (hasPlan && usage.storage && usage.storage.available) {
+                const usedGb = formatGb(usage.storage.bytes);
+                if (storageLimit) {
+                    const usedGbNum = usage.storage.bytes / 1073741824;
+                    rows.push(usageRow('Storage', `${usedGb} GB of ${storageLimit} GB used`, 'Documents and bank statement imports.', pct(usedGbNum, storageLimit)));
+                } else {
+                    rows.push(usageRow('Storage', `${usedGb} GB used`, o.storage_note || 'Custom storage agreement.', null));
+                }
+            } else if (hasPlan) {
+                rows.push(usageRow('Storage', 'Being prepared', 'Storage tracking is being prepared.', null));
+            } else {
+                rows.push(usageRow('Storage', 'No plan', 'Choose a plan to see storage limits.', null));
+            }
+
+            // 3. AI questions (no monthly limit defined / count not metered yet)
+            rows.push(usageRow('AI questions', 'Metered on your plan', 'Usage tracking is being prepared.', null));
+
+            // 4. Document uploads (real current-month count)
+            rows.push(usage.documents_this_month && usage.documents_this_month.available
+                ? usageRow('Document uploads', `${usage.documents_this_month.count} this month`, 'Receipts, invoices, and proofs uploaded this month.', null)
+                : usageRow('Document uploads', 'Being prepared', 'Usage tracking is being prepared.', null));
+
+            // 5. Report exports (real current-month count)
+            rows.push(usage.report_exports_this_month && usage.report_exports_this_month.available
+                ? usageRow('Report exports', `${usage.report_exports_this_month.count} this month`, 'Confirmed report exports this month.', null)
+                : usageRow('Report exports', 'Being prepared', 'Usage tracking is being prepared.', null));
+
+            // 6. WhatsApp uploads (source not metered yet)
+            rows.push(usageRow('WhatsApp uploads', 'Being prepared', 'Usage tracking is being prepared.', null));
+
+            el.innerHTML = rows.join('');
+        }
+
+        function usageRow(label, value, sub, percent) {
+            const hasBar = percent !== null && Number.isFinite(percent);
+            let tone = 'bg-gray-900';
+            if (hasBar && percent >= 100) tone = 'bg-red-500';
+            else if (hasBar && percent >= 90) tone = 'bg-amber-500';
+            const bar = hasBar
+                ? `<div class="mt-2 bill-progress-track"><div class="bill-progress-fill ${tone}" style="width:${Math.max(2, Math.min(100, percent))}%"></div></div>`
+                : '';
+            return `<div class="px-5 py-3.5">
+                <div class="flex items-baseline justify-between gap-3">
+                    <span class="text-[13px] font-semibold text-gray-800">${escapeHtml(label)}</span>
+                    <span class="text-[13px] font-semibold text-gray-700">${escapeHtml(value)}</span>
+                </div>
+                ${bar}
+                <p class="mt-1.5 text-[12px] text-gray-500">${escapeHtml(sub)}</p>
+            </div>`;
+        }
+
+        /* ---------- billing history ---------- */
+        function renderHistory(invoices) {
+            const body = document.getElementById('billing-history-body');
+            const wrap = document.getElementById('billing-history-wrap');
+            const empty = document.getElementById('billing-history-empty');
+            const rows = Array.isArray(invoices) ? invoices : [];
+
+            if (!rows.length) {
+                wrap.classList.add('hidden');
+                empty.classList.remove('hidden');
+                body.innerHTML = '';
+                return;
+            }
+            wrap.classList.remove('hidden');
+            empty.classList.add('hidden');
+
+            const STATUS = {
+                paid: ['Paid', 'green'], pending: ['Pending', 'amber'], failed: ['Failed', 'red'],
+                refunded: ['Refunded', 'gray'], void: ['Void', 'gray']
+            };
+
+            body.innerHTML = rows.map((inv) => {
+                const st = STATUS[inv.status] || ['—', 'gray'];
+                const planName = PLAN_DISPLAY_NAMES[inv.plan_id] || BILLING_PLANS[inv.plan_id]?.name || (inv.plan_id ? capitalize(inv.plan_id) : '—');
+                const amount = Number.isFinite(Number(inv.amount)) ? formatIDR(Number(inv.amount)) : '—';
+                const number = inv.invoice_number || inv.id || '—';
+                const date = inv.invoice_date ? formatDate(inv.invoice_date) : '—';
+                const action = (typeof inv.provider_invoice_url === 'string' && /^https:\/\//i.test(inv.provider_invoice_url))
+                    ? `<a href="${escapeAttr(inv.provider_invoice_url)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[13px] font-bold text-[#EA580C] hover:underline">${inv.status === 'paid' ? 'Download' : 'View'}
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg></a>`
+                    : '<span class="text-[13px] text-gray-400">—</span>';
+                return `<tr class="hover:bg-gray-50/50">
+                    <td class="px-5 py-3.5 text-[13px] font-semibold text-gray-800">${escapeHtml(number)}</td>
+                    <td class="px-5 py-3.5 text-[13px] text-gray-600">${escapeHtml(date)}</td>
+                    <td class="px-5 py-3.5">${badge(st[0], st[1])}</td>
+                    <td class="px-5 py-3.5 text-right"><span class="bill-amount text-[13px] font-semibold text-gray-900">${escapeHtml(amount)}</span></td>
+                    <td class="px-5 py-3.5 text-[13px] text-gray-600">${escapeHtml(planName)}</td>
+                    <td class="px-5 py-3.5 text-right">${action}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        /* ---------- actions ---------- */
+        async function handleAction(kind, btn, o) {
+            if (kind === 'choose') { navigate('/pricing'); return; }
+            if (kind === 'view-payment') {
+                navigate(o.current_payment_request_id ? `/payment-pending?requestId=${encodeURIComponent(o.current_payment_request_id)}` : '/payment-pending');
+                return;
+            }
+            if (kind === 'upgrade' || kind === 'fixpayment') {
+                await withBusy(btn, async () => {
+                    const res = kind === 'upgrade'
+                        ? await ds.requestBillingUpgrade(uid, o.plan_id)
+                        : await ds.requestBillingCheckout(uid, o.plan_id);
+                    if (res && res.checkout_url) { navigate(res.checkout_url); }
+                    else { navigate('/pricing'); }
+                });
+                return;
+            }
+            if (kind === 'cancel') { await cancelRenewal(btn, o); return; }
+            if (kind === 'reactivate') { await reactivate(btn, o); return; }
+        }
+
+        async function cancelRenewal(btn, o) {
+            const planName = o.plan_name || 'your';
+            const periodEnd = o.current_period_end ? formatDate(o.current_period_end) : 'the end of your current period';
+            const ok = await window.showConfirmDialog({
+                title: 'Cancel renewal?',
+                body: `Your <strong>${escapeHtml(planName)}</strong> plan will stay active until <strong>${escapeHtml(periodEnd)}</strong>. After that, your workspace will move to limited access unless you reactivate. This will not delete your financial data.`,
+                confirmLabel: 'Cancel renewal',
+                cancelLabel: 'Keep subscription',
+                tone: 'danger'
+            });
+            if (!ok) return;
+            await withBusy(btn, async () => {
+                const res = await ds.requestCancelRenewal(uid);
+                if (res && res.ok) {
+                    window.showToast?.('Renewal canceled. You can keep using FluxyOS until your period ends.', 'success');
+                    await loadBilling();
+                } else {
+                    window.showToast?.('Billing actions aren’t connected yet, so nothing was changed. Please try again later.', 'error');
+                }
+            });
+        }
+
+        async function reactivate(btn, o) {
+            await withBusy(btn, async () => {
+                const res = await ds.requestReactivateSubscription(uid);
+                if (res && res.ok) {
+                    window.showToast?.('Subscription reactivated.', 'success');
+                    await loadBilling();
+                } else {
+                    window.showToast?.('Billing actions aren’t connected yet, so nothing was changed. Please try again later.', 'error');
+                }
+            });
+        }
+
+        async function withBusy(btn, fn) {
+            if (!btn) return fn();
+            const original = btn.textContent;
+            btn.disabled = true;
+            btn.dataset.busy = '1';
+            btn.textContent = 'Working…';
+            try { await fn(); }
+            finally {
+                if (btn.isConnected) { btn.disabled = false; btn.textContent = original; delete btn.dataset.busy; }
+            }
+        }
+
+        function navigate(url) { window.location.assign(url); }
+
+        /* ---------- helpers ---------- */
+        function setLoadState(state, text) {
+            if (!loadState) return;
+            const color = state === 'ready' ? 'bg-green-500' : state === 'error' ? 'bg-red-500' : 'bg-gray-300';
+            loadState.innerHTML = `<span class="h-2 w-2 rounded-full ${color}"></span>${escapeHtml(text)}`;
+        }
+
+        function toDate(value) {
+            if (!value) return null;
+            const d = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
+            return Number.isNaN(d?.getTime?.()) ? null : d;
+        }
+        function formatDate(value) {
+            const d = toDate(value);
+            if (!d) return '—';
+            return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+        function trialDaysLabel(value) {
+            const d = toDate(value);
+            if (!d) return '—';
+            const days = Math.ceil((d.getTime() - Date.now()) / 86400000);
+            if (days <= 0) return 'Ends today';
+            return `${days} day${days === 1 ? '' : 's'} left`;
+        }
+        function formatGb(bytes) {
+            const n = Number(bytes);
+            if (!Number.isFinite(n) || n <= 0) return '0.0';
+            const gb = n / 1073741824;
+            if (gb > 0 && gb < 0.1) return '<0.1';
+            return gb.toFixed(1);
+        }
+        function pct(used, limit) {
+            const u = Number(used), l = Number(limit);
+            if (!Number.isFinite(u) || !Number.isFinite(l) || l <= 0) return null;
+            return Math.max(0, (u / l) * 100);
+        }
+        function cycleLabel(c) { return c === 'annually' ? 'Annual' : c === 'monthly' ? 'Monthly' : capitalize(c || ''); }
+        function capitalize(s) { s = String(s || ''); return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+        function escapeAttr(value) { return escapeHtml(value); }
+    </script>
+</body>
+</html>
