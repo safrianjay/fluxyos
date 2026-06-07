@@ -218,6 +218,32 @@ Reference implementations: business-name change confirm in [settings-business.ht
 - **Dashboard/App Sidebar Density**: Menu rows are compact: `32px` min-height, `6px 8px` item padding, and `2px` vertical gap between entries.
 - **Dashboard/App Sidebar Group Rhythm**: Group labels use `20px` top spacing and `8px` bottom spacing after the first group, so dense navigation still has readable section breaks.
 - **Dashboard/App Page Background**: Authenticated app pages use `bg-gray-50` behind the white topbar, sidebar, and cards.
+- **App Page Topbar (Header Bar)**: Every authenticated app page has exactly one
+  sticky `64px` (`h-16`) white topbar (`.dashboard-main-topbar`, `border-b
+  border-gray-200`, `shadow-sm`) — page identity on the left, page actions on the
+  right. The page title + description live **here**, wrapped in
+  `.dashboard-topbar-copy` (flex column, `min-width:0`):
+  - `.dashboard-topbar-title` — the page name. `18px / 700`, color `#0B0F19`,
+    letter-spacing `-0.015em`, line-height `1.15`. This is the persistent **chrome
+    title** and is distinct from the `24px` in-page/print "page title" step in the
+    Dashboard type scale.
+  - `.dashboard-topbar-subtitle` — **one short descriptive sentence** about what the
+    page is (not a terse fragment like "Point-in-time financial position"). `13px /
+    500`, color `#6B7280`, letter-spacing `-0.005em`, line-height `1.35`, `3px` top
+    margin. May carry `hidden sm:block` to drop on mobile.
+  - **Canonical implementation:** `accounting.html` + `assets/css/accounting.css`.
+    Pages that don't load `dashboard.css` (e.g. `balance-sheet.html`) **must define
+    these three classes page-scoped**, copying the Accounting Center block verbatim —
+    otherwise the title/subtitle render as unstyled default text.
+  - **Single source of the title (anti-redundancy):** the topbar is the only place
+    the page name appears as a heading on screen. Do **not** also render a large
+    in-page `<h1>` that repeats the page name (and especially do not repeat the
+    subtitle copy) below it — that is the duplicated-header AI-slop pattern (§6 under
+    Anti-AI-Slop). A small breadcrumb crumb is allowed.
+  - **Print/PDF exception:** report pages that print (the topbar is hidden on print)
+    may keep an in-page document header — `<h1>` (24px page-title step) + one-line
+    description + generated date — scoped to print only via `bs-print-only`. See
+    `balance-sheet.html`.
 - **Dashboard/App Sidebar IA**: All dashboard/app pages use the centralized `sidebar-loader.js` grouped menu:
   - `Command`: Overview, Fluxy AI.
   - `Money Movement`: Transactions, Revenue Sync, Bills, Subscriptions.
