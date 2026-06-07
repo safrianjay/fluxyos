@@ -183,21 +183,21 @@
                         </div>
                     </div>
                     <div id="revenue-empty-state" class="hidden"></div>
-                    <div id="revenue-table-container" data-tour-target="revenue-table" class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
+                    <div id="revenue-table-container" data-tour-target="revenue-table" class="fluxy-table-scroll">
+                        <table class="fluxy-table min-w-[760px]">
                             <thead>
-                                <tr class="bg-gray-50 border-b border-gray-200">
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Channel</th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Category</th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-4 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Flag</th>
+                                <tr class="fluxy-table-header">
+                                    <th>Date</th>
+                                    <th>Channel</th>
+                                    <th>Category</th>
+                                    <th class="fluxy-table-money">Amount</th>
+                                    <th>Status</th>
+                                    <th>Flag</th>
                                 </tr>
                             </thead>
-                            <tbody id="revenue-table-body" class="divide-y divide-gray-100 text-[14px]">
+                            <tbody id="revenue-table-body">
                                 <tr>
-                                    <td colspan="6" class="px-6 py-12 text-center text-gray-400">Loading your revenue...</td>
+                                    <td colspan="6" class="fluxy-table-loading-cell">Loading your revenue...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -703,26 +703,26 @@
                 const emptyMsg = searchValue
                     ? 'No revenue rows match your search.'
                     : (activeTab === 'review' ? 'No flagged rows in this period.' : 'No revenue rows match this view.');
-                body.innerHTML = `<tr><td colspan="6" class="px-6 py-10 text-center text-[14px] text-gray-400">${escapeHtml(emptyMsg)}</td></tr>`;
+                body.innerHTML = `<tr><td colspan="6" class="fluxy-table-loading-cell">${escapeHtml(emptyMsg)}</td></tr>`;
                 return;
             }
 
             body.innerHTML = visible.map(row => {
                 const dateStr = getRowDate(row)?.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) || '—';
                 const status = getRowStatus(row);
-                const statusCls = status === 'Missing Receipt' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-50 text-emerald-700';
+                const statusCls = status === 'Missing Receipt' ? 'fluxy-status-danger' : 'fluxy-status-success';
                 const flags = flagsById.get(row.id) || [];
                 const flagsHtml = flags.length
                     ? flags.map(f => `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">${escapeHtml(f)}</span>`).join(' ')
                     : '<span class="text-[12px] text-gray-300">—</span>';
                 return `
-                    <tr class="hover:bg-gray-50 transition-colors cursor-pointer" data-action="review" data-revenue-id="${escapeHtml(row.id)}">
-                        <td class="px-6 py-4 text-gray-500">${escapeHtml(dateStr)}</td>
-                        <td class="px-6 py-4 font-semibold text-gray-900">${escapeHtml(getChannelName(row))}</td>
-                        <td class="px-6 py-4 text-gray-500">${escapeHtml(row.category || '—')}</td>
-                        <td class="px-6 py-4 font-mono font-bold text-gray-900">${formatCurrencyIDR(row.amount)}</td>
-                        <td class="px-6 py-4"><span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${statusCls}">${escapeHtml(status)}</span></td>
-                        <td class="px-6 py-4">${flagsHtml}</td>
+                    <tr class="fluxy-table-row fluxy-table-row-clickable" data-action="review" data-revenue-id="${escapeHtml(row.id)}">
+                        <td class="fluxy-table-cell">${escapeHtml(dateStr)}</td>
+                        <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${escapeHtml(getChannelName(row))}</span></td>
+                        <td class="fluxy-table-cell">${escapeHtml(row.category || '—')}</td>
+                        <td class="fluxy-table-cell fluxy-table-money">${formatCurrencyIDR(row.amount)}</td>
+                        <td class="fluxy-table-cell"><span class="fluxy-table-status ${statusCls}">${escapeHtml(status)}</span></td>
+                        <td class="fluxy-table-cell">${flagsHtml}</td>
                     </tr>
                 `;
             }).join('');
