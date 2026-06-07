@@ -1,4 +1,6 @@
 const { test, expect } = require('@playwright/test');
+const fs = require('fs');
+const path = require('path');
 
 const browserIssues = new WeakMap();
 
@@ -116,5 +118,27 @@ test.describe('guest billing routes', () => {
     test('payment pending redirects logged-out users to login', async ({ page }) => {
         await page.goto('/payment-pending');
         await expect(page).toHaveURL(/\/login$/, { timeout: 5000 });
+    });
+});
+
+test.describe('billing internal mirror wiring', () => {
+    test('canonical billing writes refresh the internal dashboard index', async () => {
+        const source = fs.readFileSync(path.join(__dirname, '..', 'assets/js/db-service.js'), 'utf8');
+        const createPaymentRequest = source.slice(
+            source.indexOf('async createPaymentRequest'),
+            source.indexOf('async getPaymentRequestById')
+        );
+        const submitPaymentRequestForVerification = source.slice(
+            source.indexOf('async submitPaymentRequestForVerification'),
+            source.indexOf('async getLatestPaymentRequest')
+        );
+
+        expect(createPaymentRequest).toContain('syncInternalUserBillingSubscriptionIndex');
+        expect(submitPaymentRequestForVerification).toContain('syncInternalUserBillingSubscriptionIndex');
+        expect(source).toContain('async syncInternalUserBillingSubscriptionIndex');
+        expect(source).toContain("status === 'awaiting_payment'");
+        expect(source).toContain("paymentStatus = 'pending'");
+        expect(source).toContain("status === 'pending_verification'");
+        expect(source).toContain("paymentStatus = 'submitted'");
     });
 });

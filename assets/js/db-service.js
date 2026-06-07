@@ -2463,6 +2463,10 @@ class DataService {
             updated_at: serverTimestamp()
         });
         await setDoc(this._billingSubscriptionDoc(userId), payload, { merge: true });
+        try {
+            const fresh = await this.getBillingSubscription(userId);
+            if (fresh) await this.syncInternalUserBillingSubscriptionIndex(userId, fresh);
+        } catch (_) { /* internal mirror is non-critical */ }
         return payload;
     }
 
@@ -2512,7 +2516,7 @@ class DataService {
         };
 
         batch.set(requestRef, requestPayload);
-        batch.set(this._billingSubscriptionDoc(userId), {
+        const subscriptionPayload = {
             plan_id: planId,
             plan_name: calculation.plan.name,
             status: paymentStatus,
@@ -2523,7 +2527,8 @@ class DataService {
             current_period_start: currentSubscription?.current_period_start || null,
             current_period_end: currentSubscription?.current_period_end || null,
             updated_at: serverTimestamp()
-        });
+        };
+        batch.set(this._billingSubscriptionDoc(userId), subscriptionPayload);
         batch.set(auditRef, {
             actor_uid: userId,
             actor_role: null,
@@ -2544,6 +2549,13 @@ class DataService {
             created_at: serverTimestamp()
         });
         await batch.commit();
+        try {
+            await this.syncInternalUserBillingSubscriptionIndex(
+                userId,
+                { id: 'current', ...subscriptionPayload },
+                { id: requestRef.id, ...requestPayload }
+            );
+        } catch (_) { /* internal mirror is non-critical */ }
         return { id: requestRef.id, ...requestPayload };
     }
 
@@ -2589,7 +2601,7 @@ class DataService {
         }
         batch.update(requestRef, requestUpdate);
 
-        batch.set(this._billingSubscriptionDoc(userId), {
+        const subscriptionPayload = {
             plan_id: request.plan_id,
             plan_name: request.plan_name,
             status: 'pending_verification',
@@ -2600,7 +2612,8 @@ class DataService {
             current_period_start: currentSubscription?.current_period_start || null,
             current_period_end: currentSubscription?.current_period_end || null,
             updated_at: serverTimestamp()
-        });
+        };
+        batch.set(this._billingSubscriptionDoc(userId), subscriptionPayload);
 
         batch.set(auditRef, {
             actor_uid: userId,
@@ -2620,7 +2633,15 @@ class DataService {
         });
 
         await batch.commit();
-        return { ...request, ...requestUpdate, payment_status: 'pending_verification' };
+        const updatedRequest = { ...request, ...requestUpdate, payment_status: 'pending_verification' };
+        try {
+            await this.syncInternalUserBillingSubscriptionIndex(
+                userId,
+                { id: 'current', ...subscriptionPayload },
+                updatedRequest
+            );
+        } catch (_) { /* internal mirror is non-critical */ }
+        return updatedRequest;
     }
 
     async getLatestPaymentRequest(userId) {
@@ -3218,6 +3239,65 @@ class DataService {
         return { id: verRef.id, amount, status: 'submitted' };
     }
 
+    _internalBillingMirrorPayload(subscription = {}, request = null) {
+        if (!subscription) return null;
+        const requestStatus = request?.payment_status || null;
+        const status = subscription.status || requestStatus || null;
+        const trialEndMs = subscription.trial_ends_at?.toMillis?.() ?? null;
+        const trialIsEnding = trialEndMs !== null && trialEndMs - Date.now() <= DAY_MS;
+        let accessStatus;
+        let paymentStatus;
+
+        if (status === 'active' || requestStatus === 'verified') {
+            accessStatus = 'active';
+            paymentStatus = 'verified';
+        } else if (status === 'payment_failed' || requestStatus === 'failed') {
+            accessStatus = 'payment_pending';
+            paymentStatus = 'rejected';
+        } else if (status === 'awaiting_payment' || requestStatus === 'awaiting_payment') {
+            accessStatus = 'payment_pending';
+            paymentStatus = 'pending';
+        } else if (status === 'pending_verification' || requestStatus === 'pending_verification') {
+            accessStatus = 'payment_submitted';
+            paymentStatus = 'submitted';
+        } else if (status === 'expired') {
+            accessStatus = 'trial_expired';
+            paymentStatus = 'pending';
+        } else if (status === 'trialing') {
+            accessStatus = trialIsEnding ? 'trial_expiring' : 'trial_active';
+            paymentStatus = 'pending';
+        } else if (status === 'suspended') {
+            accessStatus = 'suspended';
+        }
+
+        const paymentAmount = Number(request?.total_amount);
+        return this._cleanDefined({
+            access_status: accessStatus,
+            payment_status: paymentStatus,
+            trial_started_at: subscription.trial_started_at || undefined,
+            trial_ends_at: subscription.trial_ends_at || undefined,
+            payment_submitted_at: paymentStatus === 'submitted'
+                ? (request?.submitted_for_verification_at || request?.user_confirmed_payment_at || request?.submitted_at || serverTimestamp())
+                : undefined,
+            payment_verified_at: paymentStatus === 'verified' ? (request?.verified_at || undefined) : undefined,
+            plan_id: 'plan_id' in subscription || request?.plan_id ? (request?.plan_id || subscription.plan_id || null) : undefined,
+            payment_amount: Number.isFinite(paymentAmount) ? paymentAmount : undefined,
+            payment_method: request?.payment_method || undefined,
+            payment_proof_file_name: request?.proof_file_name || undefined
+        });
+    }
+
+    async syncInternalUserBillingSubscriptionIndex(userId, subscription = {}, request = null) {
+        if (!userId || !subscription) return null;
+        let linkedRequest = request || null;
+        if (!linkedRequest && subscription.current_payment_request_id) {
+            linkedRequest = await this.getPaymentRequestById(userId, subscription.current_payment_request_id).catch(() => null);
+        }
+        const payload = this._internalBillingMirrorPayload(subscription, linkedRequest);
+        if (!payload || !Object.keys(payload).length) return null;
+        return await this.syncInternalUserAccessIndex(userId, payload);
+    }
+
     // Mirror non-financial trial/payment status fields into internal_users/{uid}.
     // Reuses the open index seeded by syncSelfToInternalIndex; never writes ledger
     // data, secrets, or formatted currency, and never clobbers reviewer KYC fields.
@@ -3243,6 +3323,7 @@ class DataService {
             trial_days_remaining: daysRemaining,
             payment_status: internalPaymentStatus,
             payment_submitted_at: payload.payment_submitted_at,
+            payment_verified_at: payload.payment_verified_at,
             plan_id: 'plan_id' in payload ? (payload.plan_id || null) : undefined,
             payment_amount: 'payment_amount' in payload ? (Number.isFinite(payload.payment_amount) ? payload.payment_amount : null) : undefined,
             payment_method: 'payment_method' in payload ? (payload.payment_method || null) : undefined,
