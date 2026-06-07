@@ -1,10 +1,10 @@
 /* Accounting Center (Phase 1) — page-specific styling.
    Layout/colors follow docs/DESIGN_SYSTEM.md: gray-50 bg, white rounded-xl
-   cards, gray borders, Inter UI, Fira Code for money, orange #EA580C accents
-   only (never as a background). */
+   cards, gray borders, Inter UI (incl. money: Inter tabular-nums, plain zero),
+   orange #EA580C accents only (never as a background). */
 
 .acct-mono {
-    font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
 }
@@ -272,7 +272,7 @@
 .acct-is-actionable:hover .acct-is-line { background: #F9FAFB; }
 .acct-is-num {
     text-align: right;
-    font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
     font-size: 14px;

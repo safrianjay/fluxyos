@@ -622,7 +622,7 @@
     align-items: center;
     justify-content: center;
     color: #0f172a;
-    font-family: "Fira Code", ui-monospace, monospace;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
     font-size: 22px;
     font-weight: 800;
 }

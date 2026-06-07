@@ -789,7 +789,8 @@ main > header {
        --fluxy-text-2xl 24px  page title
 
    Weights: 400 body, 500 buttons/labels, 600 headings/KPI, 700 page title.
-   Mono face stays Fira Code for currency / tabular numbers; sans stays Inter.
+   Numbers/currency use Inter with tabular-nums (plain zero) — never a mono
+   face. See "Numeric & currency format (strict)" in DESIGN_SYSTEM.md.
    ──────────────────────────────────────────────────────────────────── */
 :root {
     --fluxy-text-xs:  10px;

@@ -105,7 +105,7 @@
     flex-direction: column;
     justify-content: space-between;
     color: #9CA3AF;
-    font-family: "Fira Code", monospace;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
     font-size: 10px;
     pointer-events: none;
 }
@@ -478,7 +478,7 @@
     display: block;
     margin-top: 6px;
     color: #111827;
-    font-family: "Fira Code", monospace;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
     font-size: 14px;
     line-height: 1.25;
     overflow-wrap: anywhere;
@@ -544,7 +544,7 @@
 .overview-money-row strong {
     flex-shrink: 0;
     color: #111827;
-    font-family: "Fira Code", monospace;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
     font-size: 13px;
     text-align: right;
     white-space: nowrap;
@@ -597,7 +597,7 @@
     display: block;
     margin: 4px 0;
     color: #111827;
-    font-family: "Fira Code", monospace;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
     font-size: 14px;
     line-height: 1.35;
     overflow-wrap: anywhere;
@@ -676,7 +676,7 @@
 }
 
 .overview-row-side strong {
-    font-family: "Fira Code", monospace;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
 }
 
 .overview-row-side small {
@@ -1156,7 +1156,7 @@
 
 .metric-revenue-secondary strong {
     color: #111827;
-    font-family: "Fira Code", monospace;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
     font-size: 14px;
     font-weight: 700;
     line-height: 1.25;
@@ -2036,7 +2036,7 @@
     color: #6B7280;
     font-size: 11px;
     font-weight: 700;
-    font-family: "Fira Code", monospace;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
 
@@ -2142,7 +2142,7 @@
 .readiness-row strong {
     color: #111827;
     font-weight: 800;
-    font-family: "Fira Code", monospace;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
 }
 
 .status-badge {
@@ -2279,7 +2279,7 @@
 
 .metric-mini-tile strong {
     display: block;
-    font-family: "Fira Code", monospace;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
     font-size: 14px;
     font-weight: 700;
     color: #111827;
