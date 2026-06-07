@@ -6,12 +6,22 @@ body { margin: 0; min-height: 100vh; background: #F3F4F6; color: #111827; font-f
 
 /* ---------- Status card view (pending / active / failed / empty) ---------- */
 .status-view { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
-.status-shell { width: 100%; max-width: 680px; padding: 36px; border: 1px solid #E5E7EB; border-radius: 20px; background: #fff; box-shadow: 0 20px 50px rgba(15, 23, 42, .1); }
+.status-shell { width: 100%; max-width: 680px; padding: 36px; border: 1px solid #E5E7EB; border-radius: 20px; background: #fff; box-shadow: 0 20px 50px rgba(15, 23, 42, .1); transition: border-color .24s ease, box-shadow .24s ease, transform .24s ease; }
+.status-shell.is-success { border-color: rgba(22, 163, 74, .28); box-shadow: 0 24px 60px rgba(22, 101, 52, .14); animation: success-card-in .42s cubic-bezier(.2, .8, .2, 1) both; }
 .logo { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 10px; background: #000; color: #fff; font-weight: 800; }
+.status-success-icon { width: 72px; height: 72px; margin-bottom: 18px; color: #16A34A; }
+.status-success-icon svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.success-ring, .success-check { fill: none; stroke: currentColor; stroke-width: 3.6; stroke-linecap: round; stroke-linejoin: round; }
+.success-ring { opacity: .18; }
+.success-check { stroke-dasharray: 30; stroke-dashoffset: 30; animation: success-check-draw .48s ease .22s forwards; }
+.status-shell.is-success .status-success-icon { animation: success-pop .54s cubic-bezier(.2, .9, .25, 1.4) both; }
+.status-shell.is-success .logo { display: none; }
 .status-pill { display: inline-flex; margin-top: 24px; padding: 6px 10px; border-radius: 999px; background: #FFF7ED; color: #C2410C; font-size: 12px; font-weight: 800; }
+.status-shell.is-success .status-pill { margin-top: 0; background: #DCFCE7; color: #15803D; }
 .status-shell h1 { margin: 14px 0 10px; font-size: 30px; letter-spacing: -.04em; }
 .body, .helper { color: #6B7280; font-size: 15px; line-height: 1.65; }
 .helper { padding: 14px; border-radius: 12px; background: #F9FAFB; }
+.status-shell.is-success .helper { background: #F0FDF4; color: #166534; }
 .meta { display: grid; gap: 10px; margin: 22px 0 0; padding: 18px 0; border-top: 1px solid #E5E7EB; border-bottom: 1px solid #E5E7EB; }
 .meta-row { display: flex; justify-content: space-between; gap: 18px; font-size: 14px; }
 .meta-row dt { color: #6B7280; }
@@ -19,6 +29,26 @@ body { margin: 0; min-height: 100vh; background: #F3F4F6; color: #111827; font-f
 .actions { display: flex; align-items: center; gap: 14px; margin-top: 24px; flex-wrap: wrap; }
 .primary { display: inline-flex; padding: 12px 18px; border-radius: 10px; background: #111827; color: #fff; font-size: 14px; font-weight: 800; text-decoration: none; }
 .secondary { color: #EA580C; font-size: 14px; font-weight: 800; text-decoration: none; }
+
+@keyframes success-card-in {
+    from { transform: translateY(8px) scale(.985); opacity: .92; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes success-pop {
+    0% { transform: scale(.72); opacity: 0; }
+    62% { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+@keyframes success-check-draw {
+    to { stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .status-shell, .status-shell.is-success, .status-shell.is-success .status-success-icon, .success-check {
+        animation: none;
+        transition: none;
+    }
+    .success-check { stroke-dashoffset: 0; }
+}
 
 /* ---------- QRIS payment view (awaiting_payment) ---------- */
 .qris-shell {

@@ -23,9 +23,13 @@ const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => 
 
 const PROOF_ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 const PROOF_MAX_BYTES = 5 * 1024 * 1024;
+const SUCCESS_REDIRECT_DELAY_MS = 3400;
 
 let currentUser = null;
 let pendingProofFile = null;
+let unsubscribeInternalStatus = null;
+let redirectTimer = null;
+let redirectScheduled = false;
 
 const requestIdParam = new URLSearchParams(window.location.search).get('requestId');
 
@@ -35,17 +39,16 @@ onAuthStateChanged(auth, async (user) => {
     clearTimeout(authTimeout);
     currentUser = user;
     try {
-        const [subscription, request, reviewReason] = await Promise.all([
-            data.ensureBillingSubscription(user.uid),
-            requestIdParam
-                ? data.getPaymentRequestById(user.uid, requestIdParam)
-                : data.getLatestPaymentRequestWithLegacyFallback(user.uid),
-            data.getBillingReviewReason(user.uid)
-        ]);
-        route(subscription, request, reviewReason);
+        await refreshStatus();
+        startInternalStatusListener(user.uid);
     } catch (_) {
         renderError();
     }
+});
+
+window.addEventListener('beforeunload', () => {
+    stopInternalStatusListener();
+    cancelDashboardRedirect();
 });
 
 function showView(view) {
@@ -53,7 +56,57 @@ function showView(view) {
     $('status-view').classList.toggle('hidden', view !== 'status');
 }
 
+async function loadStatusSnapshot() {
+    const [subscription, request, reviewReason] = await Promise.all([
+        data.ensureBillingSubscription(currentUser.uid),
+        requestIdParam
+            ? data.getPaymentRequestById(currentUser.uid, requestIdParam)
+            : data.getLatestPaymentRequestWithLegacyFallback(currentUser.uid),
+        data.getBillingReviewReason(currentUser.uid)
+    ]);
+    return { subscription, request, reviewReason };
+}
+
+async function refreshStatus() {
+    if (!currentUser?.uid) return;
+    const { subscription, request, reviewReason } = await loadStatusSnapshot();
+    route(subscription, request, reviewReason);
+}
+
+function startInternalStatusListener(userId) {
+    stopInternalStatusListener();
+    unsubscribeInternalStatus = data.subscribeInternalUser(userId, async (internalUser) => {
+        if (!internalUser || !currentUser?.uid) return;
+        const status = internalUser.payment_status;
+        const access = internalUser.access_status;
+        const shouldRefresh = ['pending', 'submitted', 'under_review', 'verified', 'rejected'].includes(status)
+            || ['payment_pending', 'payment_submitted', 'payment_verified', 'active', 'suspended'].includes(access);
+        if (!shouldRefresh) return;
+        try {
+            await refreshStatus();
+        } catch (err) {
+            console.warn('[payment-pending] live status refresh skipped', err?.code || err);
+        }
+    }, (err) => console.warn('[payment-pending] live status listener skipped', err?.code || err));
+}
+
+function stopInternalStatusListener() {
+    if (typeof unsubscribeInternalStatus === 'function') {
+        unsubscribeInternalStatus();
+    }
+    unsubscribeInternalStatus = null;
+}
+
 function route(subscription, request, reviewReason) {
+    const requestStatus = request?.payment_status;
+    if (subscription?.status === 'active'
+        || requestStatus === 'verified'
+        || subscription?.status === 'payment_failed'
+        || requestStatus === 'failed'
+        || requestStatus === 'expired') {
+        render(subscription, request, reviewReason);
+        return;
+    }
     if (request?.payment_status === 'awaiting_payment') {
         renderQris(request);
         return;
@@ -68,6 +121,8 @@ function billingLabel(frequency) {
 }
 
 function renderQris(request) {
+    cancelDashboardRedirect();
+    setSuccessMode(false);
     showView('qris');
     const amount = formatIDR(request.total_amount);
     $('qris-amount').textContent = amount;
@@ -222,6 +277,25 @@ function setContent({ pill, title, body, helper = '', primaryLabel = 'Go to Dash
     }
 }
 
+function setSuccessMode(enabled) {
+    document.querySelector('.status-shell')?.classList.toggle('is-success', enabled);
+    $('status-success-icon')?.classList.toggle('hidden', !enabled);
+}
+
+function cancelDashboardRedirect() {
+    if (redirectTimer) clearTimeout(redirectTimer);
+    redirectTimer = null;
+    redirectScheduled = false;
+}
+
+function scheduleDashboardRedirect() {
+    if (redirectScheduled) return;
+    redirectScheduled = true;
+    redirectTimer = setTimeout(() => {
+        window.location.replace('/dashboard');
+    }, SUCCESS_REDIRECT_DELAY_MS);
+}
+
 function renderMeta(request) {
     const meta = $('status-meta');
     if (!request) {
@@ -243,13 +317,21 @@ function render(subscription, request, reviewReason) {
     renderMeta(request);
     const requestStatus = request?.payment_status;
     if (subscription?.status === 'active' || requestStatus === 'verified') {
+        setSuccessMode(true);
         setContent({
             pill: 'Payment verified',
-            title: 'Your FluxyOS plan is active',
-            body: `Your ${request?.plan_name || subscription?.plan_name || 'FluxyOS'} package is active. You can continue using your workspace.`
+            title: 'Payment confirmed',
+            body: `Your ${request?.plan_name || subscription?.plan_name || 'FluxyOS'} package is active. We are opening your dashboard now.`,
+            helper: 'Redirecting automatically in a few seconds.',
+            primaryLabel: 'Open dashboard now',
+            primaryHref: '/dashboard',
+            showSupport: false
         });
+        scheduleDashboardRedirect();
         return;
     }
+    cancelDashboardRedirect();
+    setSuccessMode(false);
     if (requestStatus === 'failed' || requestStatus === 'expired' || subscription?.status === 'payment_failed') {
         setContent({
             pill: 'Payment needs attention',

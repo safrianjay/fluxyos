@@ -141,4 +141,23 @@ test.describe('billing internal mirror wiring', () => {
         expect(source).toContain("status === 'pending_verification'");
         expect(source).toContain("paymentStatus = 'submitted'");
     });
+
+    test('payment pending page live-confirms internal approval', async () => {
+        const dbService = fs.readFileSync(path.join(__dirname, '..', 'assets/js/db-service.js'), 'utf8');
+        const pageScript = fs.readFileSync(path.join(__dirname, '..', 'assets/js/payment-pending.js'), 'utf8');
+        const pageHtml = fs.readFileSync(path.join(__dirname, '..', 'payment-pending.html'), 'utf8');
+        const pageCss = fs.readFileSync(path.join(__dirname, '..', 'assets/css/payment-pending.css'), 'utf8');
+
+        expect(dbService).toContain('onSnapshot');
+        expect(dbService).toContain('subscribeInternalUser');
+        expect(pageScript).toContain('startInternalStatusListener');
+        expect(pageScript).toContain('data.subscribeInternalUser');
+        expect(pageScript).toContain("['pending', 'submitted', 'under_review', 'verified', 'rejected'].includes(status)");
+        expect(pageScript).toContain("subscription?.status === 'active'");
+        expect(pageScript).toContain('scheduleDashboardRedirect');
+        expect(pageScript).toContain("window.location.replace('/dashboard')");
+        expect(pageHtml).toContain('status-success-icon');
+        expect(pageCss).toContain('success-check-draw');
+        expect(pageCss).toContain('prefers-reduced-motion');
+    });
 });

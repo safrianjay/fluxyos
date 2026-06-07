@@ -1,4 +1,4 @@
-import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, doc, Timestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, doc, Timestamp, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
@@ -2298,6 +2298,13 @@ class DataService {
     async getInternalUser(userId) {
         const snap = await getDoc(this._internalUserDoc(userId));
         return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    }
+
+    subscribeInternalUser(userId, onChange, onError) {
+        if (!userId) return () => {};
+        return onSnapshot(this._internalUserDoc(userId), (snap) => {
+            onChange(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+        }, onError);
     }
 
     async addInternalAuditLog(payload = {}) {
