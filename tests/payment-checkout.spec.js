@@ -180,8 +180,13 @@ test.describe('billing internal mirror wiring', () => {
 
         expect(settingsBilling).toContain('M9 12.75L11.25 15 15 9.75');
         expect(settingsBilling).toContain('billing-plan-level-label');
-        expect(settingsBilling).toContain('Trial member');
-        expect(settingsBilling).toContain('${planName} subscription');
+        expect(settingsBilling).toContain('bill-plan-chip-premium');
+        expect(settingsBilling).toContain('Loading membership');
+        expect(settingsBilling).toContain('Membership options');
+        expect(settingsBilling).toContain('Trial access');
+        expect(settingsBilling).toContain('${planName} member');
+        expect(settingsBilling).not.toContain('Trial member');
+        expect(settingsBilling).not.toContain('${planName} subscription');
         expect(settingsBilling).toContain('M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2');
         expect(settingsBilling).toContain('M12 3C7.58 3 4 4.79 4 7s3.58 4 8 4');
         expect(settingsBilling).not.toContain('M5 13l4 4L19 7M4 6h16');

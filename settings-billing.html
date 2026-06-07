@@ -18,6 +18,46 @@
         .bill-progress-track { height: 8px; border-radius: 9999px; background: #f3f4f6; overflow: hidden; }
         .bill-progress-fill { height: 8px; border-radius: 9999px; transition: width .25s ease; }
         .bill-skel { background: linear-gradient(90deg,#f3f4f6 25%,#e9ebef 37%,#f3f4f6 63%); background-size: 400% 100%; animation: bill-skel 1.4s ease infinite; }
+        .bill-plan-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 34px;
+            max-width: 100%;
+            border-radius: 9999px;
+            padding: 7px 12px;
+            border: 1px solid #E5E7EB;
+            background: #FFFFFF;
+            color: #4B5563;
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+            white-space: nowrap;
+        }
+        .bill-plan-chip svg { width: 15px; height: 15px; flex-shrink: 0; }
+        .bill-plan-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+        .bill-plan-chip-premium {
+            border-color: rgba(201, 164, 91, 0.58);
+            background: linear-gradient(135deg, #0B0F19 0%, #172033 58%, #111827 100%);
+            color: #F8E8B6;
+            box-shadow: 0 14px 34px rgba(11, 15, 25, 0.18), inset 0 1px 0 rgba(255,255,255,0.14);
+        }
+        .bill-plan-chip-active {
+            border-color: #A7F3D0;
+            background: linear-gradient(135deg, #ECFDF5 0%, #FFFFFF 100%);
+            color: #047857;
+        }
+        .bill-plan-chip-review {
+            border-color: #BFDBFE;
+            background: linear-gradient(135deg, #EFF6FF 0%, #FFFFFF 100%);
+            color: #1D4ED8;
+        }
+        .bill-plan-chip-attention {
+            border-color: #FECACA;
+            background: linear-gradient(135deg, #FEF2F2 0%, #FFFFFF 100%);
+            color: #B91C1C;
+        }
         @keyframes bill-skel { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
         @media (prefers-reduced-motion: reduce) { .bill-skel { animation: none; } }
     </style>
@@ -34,10 +74,7 @@
                 <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
-                <div class="flex items-center gap-2 min-w-0">
-                    <h1 class="text-lg font-bold text-gray-900 truncate">Billing &amp; plan</h1>
-                    <span id="billing-plan-level-label" class="hidden sm:inline-flex flex-shrink-0 items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-bold text-gray-500">Loading plan</span>
-                </div>
+                <h1 class="text-lg font-bold text-gray-900 truncate">Billing &amp; plan</h1>
             </div>
             <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
                 <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -48,10 +85,16 @@
         <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10">
             <div class="max-w-6xl mx-auto space-y-6">
 
-                <section>
-                    <a href="/settings" class="text-[12px] font-bold text-[#EA580C] hover:underline">Settings</a>
-                    <h1 class="mt-2 text-2xl font-bold text-gray-900 tracking-tight">Billing &amp; plan</h1>
-                    <p class="mt-1 text-[14px] text-gray-500">Manage your subscription, usage, payment status, and billing history.</p>
+                <section class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div class="min-w-0">
+                        <a href="/settings" class="text-[12px] font-bold text-[#EA580C] hover:underline">Settings</a>
+                        <h1 class="mt-2 text-2xl font-bold text-gray-900 tracking-tight">Billing &amp; plan</h1>
+                        <p class="mt-1 text-[14px] text-gray-500">Manage your subscription, usage, payment status, and billing history.</p>
+                    </div>
+                    <span id="billing-plan-level-label" class="bill-plan-chip flex-shrink-0 self-start sm:self-end" aria-live="polite">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 3l2.1 5.4L20 9l-4.5 3.9L16.8 19 12 15.8 7.2 19l1.3-6.1L4 9l5.9-.6L12 3z"/></svg>
+                        <span>Loading membership</span>
+                    </span>
                 </section>
 
                 <div id="billing-load-state" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-medium text-gray-500 shadow-sm" aria-live="polite">
@@ -386,29 +429,43 @@
             if (!el) return;
             const status = o.status || 'none';
             const planName = o.plan_name || PLAN_DISPLAY_NAMES[o.plan_id] || null;
-            let label = 'No subscription';
-            let tone = 'gray';
+            let label = 'Membership options';
+            let tone = 'base';
+            let iconPath = 'M12 3l2.1 5.4L20 9l-4.5 3.9L16.8 19 12 15.8 7.2 19l1.3-6.1L4 9l5.9-.6L12 3z';
             if (status === 'error') {
                 label = 'Billing unavailable';
-                tone = 'red';
+                tone = 'attention';
             } else if (status === 'trialing' || o.plan_id === 'trial') {
-                label = status === 'expired' ? 'Trial expired' : 'Trial member';
-                tone = status === 'expired' ? 'gray' : 'blue';
+                label = status === 'expired' ? 'Trial completed' : 'Trial access';
+                tone = status === 'expired' ? 'base' : 'review';
             } else if (o.has_plan && planName) {
-                label = `${planName} subscription`;
-                tone = status === 'active' ? 'green'
-                    : status === 'pending_verification' || status === 'awaiting_payment' ? 'blue'
-                        : status === 'payment_failed' || status === 'past_due' ? 'red'
-                            : 'gray';
+                if (o.plan_id === 'enterprise' && status === 'active') {
+                    label = `${planName} member`;
+                    tone = 'premium';
+                } else if (status === 'active') {
+                    label = `${planName} member`;
+                    tone = 'active';
+                    iconPath = 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
+                } else if (status === 'pending_verification' || status === 'awaiting_payment') {
+                    label = `${planName} activation in review`;
+                    tone = 'review';
+                } else if (status === 'payment_failed' || status === 'past_due') {
+                    label = `${planName} payment attention`;
+                    tone = 'attention';
+                    iconPath = 'M12 9v3.75m0 3.75h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z';
+                } else {
+                    label = `${planName} membership`;
+                }
             }
             const toneClass = {
-                green: 'border-green-200 bg-green-50 text-green-700',
-                blue: 'border-blue-200 bg-blue-50 text-blue-700',
-                red: 'border-red-200 bg-red-50 text-red-700',
-                gray: 'border-gray-200 bg-gray-50 text-gray-500'
+                premium: 'bill-plan-chip-premium',
+                active: 'bill-plan-chip-active',
+                review: 'bill-plan-chip-review',
+                attention: 'bill-plan-chip-attention',
+                base: ''
             };
-            el.className = `hidden sm:inline-flex flex-shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-bold ${toneClass[tone] || toneClass.gray}`;
-            el.textContent = label;
+            el.className = `bill-plan-chip flex-shrink-0 self-start sm:self-end ${toneClass[tone] || ''}`;
+            el.innerHTML = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="${iconPath}"/></svg><span>${escapeHtml(label)}</span>`;
         }
 
         /* ---------- your plan card ---------- */
