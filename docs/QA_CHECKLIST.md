@@ -276,6 +276,25 @@ Page Shell Standard CSS in `assets/css/shared-dashboard.css` changes. See
 | 7 | Mobile 375px has no page-level horizontal overflow; controls wrap cleanly and the title + primary action stay visible |
 | 8 | Existing per-page behavior still works: ledger filters, CSV export, scan/import drawer, date filter, table render, pagination, empty states, and Add Transaction/Bill/Subscription drawers |
 
+### D7. Custom Select / Dropdown Regression
+
+Run this whenever `assets/js/fluxy-select.js`, the `.fluxy-select*` CSS, or any
+page's `<select>` markup changes. See
+[DESIGN_SYSTEM.md → Select / Dropdown](../docs/DESIGN_SYSTEM.md).
+
+| # | Check |
+|---|-------|
+| 1 | No app page shows the raw browser `<select>` arrow or native option list — every `<select>` renders the custom Fluxy dropdown (trigger + chevron + floating menu) |
+| 2 | The chevron is the shared 16px down-chevron, correctly sized/positioned, rotating 180° on open (no squashed/off-center arrow) |
+| 3 | Selecting an option updates the underlying value, fires `change`, and any dependent UI (e.g. report scope, modal "Others" field) reacts exactly as before |
+| 4 | Programmatic value changes (settings loaded from Firestore, modal defaults) update the trigger label |
+| 5 | Dropdowns inside drawers/modals (Add Transaction/Bill/Subscription, tx detail) open with the menu correctly positioned (portaled, not clipped by the slide-in transform) |
+| 6 | Menu flips above when near the viewport bottom, clamps horizontally, follows on scroll, and closes on outside-click / Escape / resize |
+| 7 | Keyboard works: open, arrow/Home/End navigation, Enter/Space select, Escape close |
+| 8 | Forms still submit correct values and `required` selects still validate; no "invalid form control is not focusable" console error |
+| 9 | Browser console is clean on each page with selects (no JS errors from enhancement) |
+| 10 | `onboarding.html` still uses its own select enhancer and is not double-enhanced |
+
 ### E. Add Transaction / Bill / Subscription (shared-dashboard.js, db-service.js)
 
 | # | Check |

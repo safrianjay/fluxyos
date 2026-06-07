@@ -352,6 +352,46 @@ Reference implementations: business-name change confirm in [settings-business.ht
 
 ---
 
+### 6. Select / Dropdown (Custom — never the native control)
+
+Authenticated app pages must **never** show the raw browser `<select>` arrow or
+the OS-native option list — they look different on every OS/browser and break
+the design system. There is one custom dropdown look (`.fluxy-select*` in
+`assets/css/shared-dashboard.css`): a white pill trigger with a single
+down-chevron that rotates 180° when open, and a floating menu with the selected
+row tinted orange (`#FFF7ED` / `#EA580C`) and a check glyph.
+
+**How to get it:** just write a normal native `<select>`. The shared
+`assets/js/fluxy-select.js` (loaded on every app page) **progressively
+enhances** every `<select>` into the custom dropdown on load — including
+selects added later in modals/drawers (via a `MutationObserver`). The native
+`<select>` stays in the DOM as the value source, so `select.value`, the
+`change`/`input` events, form submission, and `required` validation keep
+working unchanged.
+
+Contract / rules:
+- The chevron is a 16px Lucide-style `m6 9 6 6 6-6` stroke icon, `#9CA3AF`,
+  rotating on open. Do not hand-roll a different arrow.
+- The open menu is **portaled to `<body>`** with `position: fixed`, so it is
+  never clipped or mis-placed by a transformed ancestor (slide-in drawers).
+- Positioning is viewport-aware: it opens below, **flips above** when there
+  isn't room below, clamps horizontally to the viewport, follows the trigger on
+  scroll, and closes on outside-click / Escape / resize.
+- Keyboard: Enter/Space/↓ open; ↑/↓/Home/End move; Enter/Space pick; Escape
+  closes; Tab closes.
+- Opt out with `data-no-fluxy-select` on the `<select>`; `multiple` and
+  `size > 1` are skipped automatically.
+- The programmatic builder variant (`<div class="fluxy-select">` filled by a
+  page controller, e.g. the Ledger status/type/visibility filters) uses the
+  same classes and look.
+- `onboarding.html` keeps its own `onboarding-custom-select` enhancer and does
+  **not** load `fluxy-select.js` (avoids double-enhancing).
+
+Do not restyle native `<select>` with one-off CSS arrows, and do not call
+`window.alert`-style native pickers.
+
+---
+
 ## 📐 Layout & Spacing
 - **Dashboard/App Sidebar Width**: `220px` fixed. There is no collapsed sidebar state.
 - **Dashboard/App Sidebar Theme**: `bg-white`, `border-slate-200`, dark navy text `#1E2F4A`, active item text/icon `#EA580C` with no orange background.
