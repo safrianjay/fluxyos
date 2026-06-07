@@ -622,7 +622,7 @@ Canonical user-scoped package and trial state. Full spec:
 | `billing_frequency` | string \| null | `monthly`/`annually`. |
 | `current_payment_request_id` | string \| null | Latest canonical request ID. |
 | `trial_started_at`, `trial_ends_at` | Timestamp \| null | Trial timing. |
-| `current_period_start`, `current_period_end` | Timestamp \| null | Reserved for trusted provider lifecycle. |
+| `current_period_start`, `current_period_end` | Timestamp \| null | Active billing period. Manual internal verification stamps these from the admin's `payment_verified_at` time using `billing_frequency` (`monthly` → +1 month, `annually` → +1 year). |
 | `updated_at` | Timestamp | `serverTimestamp()`. |
 
 `assets/js/trial-access.js` reads this doc through
@@ -640,7 +640,10 @@ user's next authenticated load, `ensureBillingSubscription` →
 - **Verified (`payment_status == 'verified'`) → `active`.** A verified payment is a
   definitive grant, so it promotes the subscription from **any** not-yet-active
   state — `pending_verification`, `awaiting_payment`, **`expired`, or `trialing`** —
-  and does **not** require `internal_users.updated_at` to be newer than the
+  and, when `current_period_end` is missing, sets the active billing period from
+  the admin verification timestamp based on `billing_frequency` (`monthly` or
+  `annually`). This is what the billing settings page uses for "Next billing."
+  It does **not** require `internal_users.updated_at` to be newer than the
   subscription's `updated_at`. (The automatic trial-expiry write bumps the
   subscription's `updated_at` *after* the manual review; requiring "internal newer"
   used to strand an approved-but-expired user on the "Your trial has ended" banner
@@ -649,7 +652,9 @@ user's next authenticated load, `ensureBillingSubscription` →
   in-flight `pending_verification`/`awaiting_payment` state **and** only when
   `internal_users.updated_at` is newer than the subscription's own `updated_at`, so
   a fresh retry is never clobbered by a stale rejection.
-- `active`/`suspended` subscriptions are never touched.
+- Already-active subscriptions are only touched to backfill a missing active billing
+  period after an internal verified payment. `suspended` subscriptions are never
+  touched.
 
 The Firestore rule `isInternalReviewReconcile` authorizes exactly this owner
 self-write (and mirrors the same state matrix).

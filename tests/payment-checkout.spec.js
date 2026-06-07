@@ -160,4 +160,25 @@ test.describe('billing internal mirror wiring', () => {
         expect(pageCss).toContain('success-check-draw');
         expect(pageCss).toContain('prefers-reduced-motion');
     });
+
+    test('verified billing approval stamps next billing period', async () => {
+        const dbService = fs.readFileSync(path.join(__dirname, '..', 'assets/js/db-service.js'), 'utf8');
+        const rules = fs.readFileSync(path.join(__dirname, '..', 'firestore.rules'), 'utf8');
+        const settingsBilling = fs.readFileSync(path.join(__dirname, '..', 'settings-billing.html'), 'utf8');
+
+        expect(dbService).toContain('_billingPeriodForFrequency');
+        expect(dbService).toContain("endDate.setMonth(endDate.getMonth() + 1)");
+        expect(dbService).toContain("endDate.setFullYear(endDate.getFullYear() + 1)");
+        expect(dbService).toContain('internal.payment_verified_at');
+        expect(dbService).toContain('backfillActiveBillingPeriod');
+        expect(dbService).toContain('current_period_end');
+
+        expect(rules).toContain('hasValidVerifiedBillingPeriod');
+        expect(rules).toContain('isActiveBillingPeriodBackfill');
+        expect(rules).toContain("duration.value(32, 'd')");
+        expect(rules).toContain("duration.value(367, 'd')");
+
+        expect(settingsBilling).toContain('M9 12.75L11.25 15 15 9.75');
+        expect(settingsBilling).not.toContain('M5 13l4 4L19 7M4 6h16');
+    });
 });

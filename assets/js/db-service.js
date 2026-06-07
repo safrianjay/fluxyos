@@ -2717,16 +2717,47 @@ class DataService {
         };
     }
 
+    _billingPeriodForFrequency(billingFrequency, startValue = null) {
+        if (!['monthly', 'annually'].includes(billingFrequency)) return null;
+        const startTs = startValue ? this._coerceTimestampOrNow(startValue) : Timestamp.fromDate(new Date());
+        const startDate = startTs.toDate();
+        const endDate = new Date(startDate.getTime());
+        if (billingFrequency === 'annually') {
+            endDate.setFullYear(endDate.getFullYear() + 1);
+        } else {
+            endDate.setMonth(endDate.getMonth() + 1);
+        }
+        return {
+            current_period_start: startTs,
+            current_period_end: Timestamp.fromDate(endDate)
+        };
+    }
+
+    _needsActiveBillingPeriod(subscription) {
+        return subscription?.status === 'active'
+            && ['monthly', 'annually'].includes(subscription.billing_frequency)
+            && !subscription.current_period_end;
+    }
+
+    async backfillActiveBillingPeriod(userId, subscription, startValue = null) {
+        if (!this._needsActiveBillingPeriod(subscription)) return subscription;
+        const period = this._billingPeriodForFrequency(subscription.billing_frequency, startValue);
+        if (!period) return subscription;
+        await this.upsertBillingSubscription(userId, period);
+        return { ...subscription, ...period };
+    }
+
     // Carry a reviewer's verify/reject decision from the open internal_users index
     // into the canonical billing_subscription (the ops console has no Firebase
     // identity, so it can't write owner-scoped billing docs itself). Only acts on
-    // in-flight states and only when the internal decision is newer than the
+    // reviewable states and only when the internal decision is newer than the
     // subscription's own last write — so a fresh retry is never clobbered by a
-    // stale prior decision. UX-only enforcement: a real backend should own this.
+    // stale prior rejection. Verified payments also stamp the billing period from
+    // the admin verification time so settings can show the next billing date.
+    // UX-only enforcement: a real backend should own this.
     async reconcileBillingFromInternalIndex(userId, subscription) {
         try {
-            // Never touch a settled subscription.
-            if (!subscription || ['active', 'suspended'].includes(subscription.status)) {
+            if (!subscription || subscription.status === 'suspended') {
                 return subscription;
             }
             const internal = await this.getInternalUser(userId);
@@ -2734,7 +2765,11 @@ class DataService {
             const subUpdatedMs = subscription.updated_at?.toMillis?.() ?? 0;
             const intUpdatedMs = internal.updated_at?.toMillis?.() ?? 0;
             let newStatus = null;
+            let updatePayload = null;
             if (internal.payment_status === 'verified') {
+                if (this._needsActiveBillingPeriod(subscription)) {
+                    return await this.backfillActiveBillingPeriod(userId, subscription, internal.payment_verified_at || null);
+                }
                 // A verified payment is a definitive grant: promote to active from
                 // any not-yet-active state, including `expired` and `trialing`.
                 // Do NOT require the internal write to be newer — the automatic
@@ -2742,15 +2777,20 @@ class DataService {
                 // manual review, which would otherwise strand the approved user
                 // on the "Your trial has ended" banner forever.
                 newStatus = 'active';
+                const period = subscription.current_period_end
+                    ? null
+                    : this._billingPeriodForFrequency(subscription.billing_frequency, internal.payment_verified_at || null);
+                updatePayload = this._cleanDefined(period ? { status: newStatus, ...period } : { status: newStatus });
             } else if (internal.payment_status === 'rejected'
                 && ['pending_verification', 'awaiting_payment'].includes(subscription.status)
                 && intUpdatedMs > subUpdatedMs) {
                 // Only fail an in-flight payment, and never clobber a fresh retry.
                 newStatus = 'payment_failed';
+                updatePayload = { status: newStatus };
             }
             if (!newStatus || newStatus === subscription.status) return subscription;
-            await this.upsertBillingSubscription(userId, { status: newStatus });
-            return { ...subscription, status: newStatus };
+            await this.upsertBillingSubscription(userId, updatePayload || { status: newStatus });
+            return { ...subscription, ...(updatePayload || { status: newStatus }) };
         } catch (_) {
             return subscription;
         }
