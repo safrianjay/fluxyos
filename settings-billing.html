@@ -85,16 +85,10 @@
         <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10">
             <div class="max-w-6xl mx-auto space-y-6">
 
-                <section class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div class="min-w-0">
-                        <a href="/settings" class="text-[12px] font-bold text-[#EA580C] hover:underline">Settings</a>
-                        <h1 class="mt-2 text-2xl font-bold text-gray-900 tracking-tight">Billing &amp; plan</h1>
-                        <p class="mt-1 text-[14px] text-gray-500">Manage your subscription, usage, payment status, and billing history.</p>
-                    </div>
-                    <span id="billing-plan-level-label" class="bill-plan-chip flex-shrink-0 self-start sm:self-end" aria-live="polite">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 3l2.1 5.4L20 9l-4.5 3.9L16.8 19 12 15.8 7.2 19l1.3-6.1L4 9l5.9-.6L12 3z"/></svg>
-                        <span>Loading membership</span>
-                    </span>
+                <section>
+                    <a href="/settings" class="text-[12px] font-bold text-[#EA580C] hover:underline">Settings</a>
+                    <h1 class="mt-2 text-2xl font-bold text-gray-900 tracking-tight">Billing &amp; plan</h1>
+                    <p class="mt-1 text-[14px] text-gray-500">Manage your subscription, usage, payment status, and billing history.</p>
                 </section>
 
                 <div id="billing-load-state" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-medium text-gray-500 shadow-sm" aria-live="polite">
@@ -239,7 +233,6 @@
                     ds.getBillingUsage(uid)
                 ]);
                 renderSummary(overview, usage);
-                renderPlanLevelLabel(overview);
                 renderYourPlan(overview);
                 renderPaymentMethod(overview);
                 renderUsage(overview, usage);
@@ -251,7 +244,6 @@
                 skeleton.classList.add('hidden');
                 content.classList.add('hidden');
                 errorState.classList.remove('hidden');
-                renderPlanLevelLabel({ status: 'error', has_plan: false });
                 setLoadState('error', 'Could not load billing');
                 window.showToast?.('Could not load billing details. Please try again.', 'error');
             }
@@ -349,11 +341,14 @@
         }
 
         /* ---------- summary cards ---------- */
-        function summaryCard(label, value, sub, iconPath) {
+        function summaryCard(label, value, sub, iconPath, accessory = '') {
             return `<div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div class="flex items-center gap-2 text-gray-400">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="${iconPath}"/></svg>
-                    <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500">${escapeHtml(label)}</span>
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex min-w-0 items-center gap-2 text-gray-400">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="${iconPath}"/></svg>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500">${escapeHtml(label)}</span>
+                    </div>
+                    ${accessory}
                 </div>
                 <p class="mt-2 text-[16px] font-bold text-gray-900">${value}</p>
                 <p class="mt-0.5 text-[12px] text-gray-500">${sub}</p>
@@ -414,7 +409,7 @@
 
             wrap.innerHTML = [
                 summaryCard('Current plan', `<span>${escapeHtml(hasPlan ? o.plan_name : 'No plan')}</span>`,
-                    hasPlan ? statusInfo(o).badge[0] : 'Not subscribed', 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z'),
+                    hasPlan ? statusInfo(o).badge[0] : 'Not subscribed', 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z', planLevelChip(o)),
                 summaryCard(dateLabel, `<span>${escapeHtml(String(dateValue))}</span>`, escapeHtml(dateSub),
                     'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'),
                 summaryCard('Team seats', `<span>${escapeHtml(seatsValue)}</span>`, escapeHtml(seatsSub),
@@ -424,12 +419,10 @@
             ].join('');
         }
 
-        function renderPlanLevelLabel(o) {
-            const el = document.getElementById('billing-plan-level-label');
-            if (!el) return;
+        function planLevelChip(o) {
             const status = o.status || 'none';
             const planName = o.plan_name || PLAN_DISPLAY_NAMES[o.plan_id] || null;
-            let label = 'Membership options';
+            let label = 'Plan options';
             let tone = 'base';
             let iconPath = 'M12 3l2.1 5.4L20 9l-4.5 3.9L16.8 19 12 15.8 7.2 19l1.3-6.1L4 9l5.9-.6L12 3z';
             if (status === 'error') {
@@ -440,10 +433,10 @@
                 tone = status === 'expired' ? 'base' : 'review';
             } else if (o.has_plan && planName) {
                 if (o.plan_id === 'enterprise' && status === 'active') {
-                    label = `${planName} member`;
+                    label = `${planName} plan`;
                     tone = 'premium';
                 } else if (status === 'active') {
-                    label = `${planName} member`;
+                    label = `${planName} plan`;
                     tone = 'active';
                     iconPath = 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
                 } else if (status === 'pending_verification' || status === 'awaiting_payment') {
@@ -454,7 +447,7 @@
                     tone = 'attention';
                     iconPath = 'M12 9v3.75m0 3.75h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z';
                 } else {
-                    label = `${planName} membership`;
+                    label = `${planName} plan`;
                 }
             }
             const toneClass = {
@@ -464,8 +457,10 @@
                 attention: 'bill-plan-chip-attention',
                 base: ''
             };
-            el.className = `bill-plan-chip flex-shrink-0 self-start sm:self-end ${toneClass[tone] || ''}`;
-            el.innerHTML = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="${iconPath}"/></svg><span>${escapeHtml(label)}</span>`;
+            return `<span class="bill-plan-chip ${toneClass[tone] || ''}" aria-label="${escapeAttr(label)}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="${iconPath}"/></svg>
+                <span>${escapeHtml(label)}</span>
+            </span>`;
         }
 
         /* ---------- your plan card ---------- */
@@ -599,7 +594,7 @@
 
             // 1. Team seats
             if (hasPlan && seatLimit) {
-                rows.push(usageRow('Team seats', `1 of ${seatLimit} seats used`, 'Team member management is coming soon.', pct(1, seatLimit)));
+                rows.push(usageRow('Team seats', `1 of ${seatLimit} seats used`, 'Team management coming soon.', pct(1, seatLimit)));
             } else {
                 rows.push(usageRow('Team seats', 'No plan', 'Choose a plan to see seat limits.', null));
             }
