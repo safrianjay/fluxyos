@@ -188,25 +188,25 @@ function resolveDashboardPeriod(mode) {
 
 function renderOverviewLoadingState() {
     revenueTransactionsStatus = 'loading';
-    updateKPI('kpi-revenue', 'Rp 0');
-    updateKPI('kpi-opex', 'Rp 0');
+    updateKPI('kpi-revenue', 'Rp0');
+    updateKPI('kpi-opex', 'Rp0');
     updateKPI('kpi-margin', '0%');
-    updateKPI('kpi-cash-pressure', 'Rp 0');
-    updateKPI('kpi-bank-cash', 'Rp 0');
-    updateKPI('kpi-payables', 'Rp 0');
+    updateKPI('kpi-cash-pressure', 'Rp0');
+    updateKPI('kpi-bank-cash', 'Rp0');
+    updateKPI('kpi-payables', 'Rp0');
     updateKPI('kpi-revenue-change', 'Loading...');
     updateKPI('revenue-scope-label', getRevenuePeriodLabel(dashboardPeriodMode));
     updateKPI('revenue-record-count', 'Loading...');
     updateKPI('revenue-secondary-label', dashboardPeriodMode === 'all_time' ? 'This month' : 'All-time revenue');
-    updateKPI('revenue-secondary-value', 'Rp 0');
+    updateKPI('revenue-secondary-value', 'Rp0');
     updateKPI('kpi-opex-change', 'Loading...');
     updateKPI('kpi-margin-status', 'Loading...');
     updateKPI('kpi-cash-pressure-sub', 'Loading...');
     updateKPI('kpi-bank-cash-sub', 'Loading...');
-    updateKPI('kpi-bank-cash-outlook', 'Rp 0');
+    updateKPI('kpi-bank-cash-outlook', 'Rp0');
     updateKPI('kpi-bank-cash-coverage', 'Not available');
     updateKPI('kpi-opex-budget-used', '0%');
-    updateKPI('kpi-opex-budget-total', 'Rp 0');
+    updateKPI('kpi-opex-budget-total', 'Rp0');
     updateKPI('kpi-payables-sub', 'Loading...');
     setBudgetBar(0);
     setPressureMeter(0, 'low');
@@ -229,12 +229,12 @@ function renderOverviewLoadingState() {
 
 function renderOverviewErrorState() {
     revenueTransactionsStatus = 'error';
-    updateKPI('kpi-revenue', 'Rp 0');
-    updateKPI('kpi-opex', 'Rp 0');
+    updateKPI('kpi-revenue', 'Rp0');
+    updateKPI('kpi-opex', 'Rp0');
     updateKPI('kpi-margin', '0%');
-    updateKPI('kpi-cash-pressure', 'Rp 0');
-    updateKPI('kpi-bank-cash', 'Rp 0');
-    updateKPI('kpi-payables', 'Rp 0');
+    updateKPI('kpi-cash-pressure', 'Rp0');
+    updateKPI('kpi-bank-cash', 'Rp0');
+    updateKPI('kpi-payables', 'Rp0');
     updateKPI('kpi-revenue-change', 'No data');
     updateKPI('revenue-record-count', 'Revenue records unavailable');
     updateKPI('revenue-secondary-value', 'Unavailable');
@@ -242,10 +242,10 @@ function renderOverviewErrorState() {
     updateKPI('kpi-margin-status', 'No revenue data');
     updateKPI('kpi-cash-pressure-sub', 'No data');
     updateKPI('kpi-bank-cash-sub', 'No bank data connected');
-    updateKPI('kpi-bank-cash-outlook', 'Rp 0');
+    updateKPI('kpi-bank-cash-outlook', 'Rp0');
     updateKPI('kpi-bank-cash-coverage', 'Not available');
     updateKPI('kpi-opex-budget-used', '0%');
-    updateKPI('kpi-opex-budget-total', 'Rp 0');
+    updateKPI('kpi-opex-budget-total', 'Rp0');
     updateKPI('kpi-payables-sub', 'No records found');
     setBudgetBar(0);
     setPressureMeter(0, 'low');
@@ -374,7 +374,7 @@ function renderOpexBudgetCell(performance, budget) {
     }
 
     updateKPI('kpi-opex-budget-used', monthly > 0 ? `${usedPct.toFixed(1)}%` : '0%');
-    updateKPI('kpi-opex-budget-total', monthly > 0 ? formatIDR(monthly) : 'Rp 0');
+    updateKPI('kpi-opex-budget-total', monthly > 0 ? formatIDR(monthly) : 'Rp0');
     setBudgetBar(monthly > 0 ? usedPct : 0);
     toggleKpiCta('opex-budget-cta', monthly <= 0);
 }
@@ -565,7 +565,7 @@ function renderCashFlowChart() {
             <div class="cash-flow-axis">
                 <div><span>${formatCompactIDR(maxAxis)}</span></div>
                 <div><span>${formatCompactIDR(maxAxis / 2)}</span></div>
-                <div><span>Rp 0</span></div>
+                <div><span>Rp0</span></div>
                 <div><span>-${formatCompactIDR(maxAxis / 2)}</span></div>
                 <div><span>-${formatCompactIDR(maxAxis)}</span></div>
             </div>
@@ -1193,9 +1193,9 @@ function renderRevenueCard() {
     updateKPI('revenue-secondary-label', secondaryLabel);
 
     if (revenueTransactionsStatus === 'loading') {
-        updateKPI('kpi-revenue', 'Rp 0');
+        updateKPI('kpi-revenue', 'Rp0');
         updateKPI('revenue-record-count', 'Loading...');
-        updateKPI('revenue-secondary-value', 'Rp 0');
+        updateKPI('revenue-secondary-value', 'Rp0');
         updateKPI('kpi-revenue-change', 'Loading...');
         renderMetricArrow('kpi-revenue-arrow', null, 'revenue');
         clearMetricSparklines();
@@ -1389,21 +1389,21 @@ function buildCashflowBuckets(txs, startKey, endKey, budget = { monthly: 0 }) {
 }
 
 function formatIDR(value) {
-    return `Rp ${Math.round(Math.abs(Number(value) || 0)).toLocaleString('id-ID')}`;
+    return `Rp${Math.round(Math.abs(Number(value) || 0)).toLocaleString('id-ID')}`;
 }
 
 function formatSignedIDR(value) {
     const n = Number(value) || 0;
-    if (n === 0) return 'Rp 0';
+    if (n === 0) return 'Rp0';
     return `${n < 0 ? '-' : '+'}${formatIDR(n)}`;
 }
 
 function formatCompactIDR(value) {
     const n = Math.abs(Number(value) || 0);
-    if (n >= 1_000_000_000) return `Rp ${(n / 1_000_000_000).toFixed(1)}B`;
-    if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000) return `Rp ${(n / 1_000).toFixed(0)}K`;
-    return `Rp ${Math.round(n)}`;
+    if (n >= 1_000_000_000) return `Rp${(n / 1_000_000_000).toFixed(1)}B`;
+    if (n >= 1_000_000) return `Rp${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `Rp${(n / 1_000).toFixed(0)}K`;
+    return `Rp${Math.round(n)}`;
 }
 
 function formatNumber(value, digits = 1) {
@@ -1463,7 +1463,7 @@ function renderCashflowBarChart(chart) {
             <div class="cashflow-axis">
                 <div><span>${formatCompactIDR(maxValue)}</span></div>
                 <div><span>${formatCompactIDR(maxValue / 2)}</span></div>
-                <div><span>Rp 0</span></div>
+                <div><span>Rp0</span></div>
             </div>
             <div class="cashflow-scroll" data-cashflow-scroll>
                 <div class="cashflow-bars" style="width: ${trackWidth}px">
@@ -1533,7 +1533,7 @@ function renderCashflowLineChart(chart) {
             <div class="cashflow-axis">
                 <div><span>${formatCompactIDR(maxValue)}</span></div>
                 <div><span>${formatCompactIDR(maxValue / 2)}</span></div>
-                <div><span>Rp 0</span></div>
+                <div><span>Rp0</span></div>
             </div>
             <div class="cashflow-scroll" data-cashflow-scroll>
                 <div class="cashflow-line-track" style="width: ${trackWidth}px">
@@ -1902,7 +1902,7 @@ function handleBudgetReview() {
     if (!form) return;
     const data = collectBudgetFormData(form);
     if (!(data.total_budget > 0)) {
-        window.showToast?.('Enter a budget greater than Rp 0.', 'error');
+        window.showToast?.('Enter a budget greater than Rp0.', 'error');
         return;
     }
     if (!data.start_day) {

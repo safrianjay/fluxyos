@@ -72,7 +72,7 @@ body {
 
 .summary-label, .billing-copy, .plan-desc, .tax-note { color: rgba(255, 255, 255, .7); }
 .summary-label { margin-bottom: 8px; font-size: 14px; }
-.due-amount { margin: 0 0 14px; font: 700 40px/1.08 "Fira Code", monospace; letter-spacing: -.05em; }
+.due-amount { margin: 0 0 14px; font: 700 40px/1.08 'Inter', sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -.05em; }
 .billing-copy { max-width: 430px; margin: 0 0 32px; font-size: 14px; line-height: 1.55; }
 .plan-card { display: flex; gap: 16px; margin-bottom: 24px; }
 .plan-logo { width: 44px; height: 44px; display: block; flex: 0 0 auto; border-radius: 12px; }
@@ -80,7 +80,7 @@ body {
 .plan-row, .breakdown-row { display: flex; justify-content: space-between; gap: 16px; }
 .plan-row { margin-bottom: 8px; }
 .plan-title { font-size: 16px; font-weight: 800; }
-.plan-price, .breakdown-row span:last-child { font-family: "Fira Code", monospace; text-align: right; white-space: nowrap; }
+.plan-price, .breakdown-row span:last-child { font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .plan-price { font-size: 14px; font-weight: 700; }
 .plan-desc, .tax-note { margin: 0; font-size: 13px; line-height: 1.5; }
 
@@ -125,7 +125,7 @@ body {
 .method-button.active { color: var(--checkout-orange); }
 .plan-option-header { display: flex; justify-content: space-between; gap: 18px; }
 .plan-option-name { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; }
-.plan-option-price { font: 800 14px "Fira Code", monospace; white-space: nowrap; }
+.plan-option-price { font: 800 14px 'Inter', sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .plan-option-desc, .select-card .small, .payment-copy, .fine-print { color: var(--checkout-muted); font-size: 13px; line-height: 1.5; }
 .plan-option-desc { margin: 8px 0 0; }
 .select-card .small { margin-bottom: 8px; }

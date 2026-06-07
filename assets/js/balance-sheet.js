@@ -122,7 +122,7 @@ function formatRupiah(value) {
     if (value === null || value === undefined) return UNAVAILABLE;
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return UNAVAILABLE;
-    const text = `Rp ${Math.abs(Math.round(numeric)).toLocaleString('id-ID')}`;
+    const text = `Rp${Math.abs(Math.round(numeric)).toLocaleString('id-ID')}`;
     return numeric < 0 ? `(${text})` : text;
 }
 

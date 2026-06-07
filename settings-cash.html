@@ -73,7 +73,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-4 gap-5">
                         <div>
                             <p class="text-[12px] font-bold uppercase tracking-wider text-gray-500">Total cash</p>
-                            <p id="cash-summary-total" class="mt-1 text-[22px] font-bold text-gray-900 tabular-nums">Rp 0</p>
+                            <p id="cash-summary-total" class="mt-1 text-[22px] font-bold text-gray-900 tabular-nums">Rp0</p>
                         </div>
                         <div>
                             <p class="text-[12px] font-bold uppercase tracking-wider text-gray-500">Active accounts</p>
@@ -392,7 +392,7 @@
             const balanceRaw = String(fd.get('current_balance') || '').replace(/\D/g, '');
             const balance = Math.max(0, Number(balanceRaw) || 0);
             if (!fd.get('bank_name') || !fd.get('account_name') || balance <= 0) {
-                window.showToast?.('Fill bank name, nickname, and a balance above Rp 0.', 'error');
+                window.showToast?.('Fill bank name, nickname, and a balance above Rp0.', 'error');
                 return;
             }
             const btn = document.getElementById('cash-add-submit');
@@ -451,7 +451,7 @@
             const balanceRaw = String(fd.get('balance') || '').replace(/\D/g, '');
             const balance = Math.max(0, Number(balanceRaw) || 0);
             if (balance <= 0) {
-                window.showToast?.('Enter a balance above Rp 0.', 'error');
+                window.showToast?.('Enter a balance above Rp0.', 'error');
                 return;
             }
             const btn = document.getElementById('cash-update-submit');
@@ -510,7 +510,7 @@
         }
 
         function formatIDR(value) {
-            return `Rp ${Math.round(Math.abs(Number(value) || 0)).toLocaleString('id-ID')}`;
+            return `Rp${Math.round(Math.abs(Number(value) || 0)).toLocaleString('id-ID')}`;
         }
 
         function toDate(value) {

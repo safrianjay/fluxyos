@@ -1007,12 +1007,33 @@ main > header {
 
 .fluxy-table-money {
     color: #0F172A;
-    font-family: "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     font-size: var(--fluxy-text-md);
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
     text-align: right;
     white-space: nowrap;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+   Numeric figures — one consistent face (plain zero, no slash/dot)
+
+   STRICT RULE: every amount / KPI / numeric value on an app page renders in
+   Inter with tabular figures. Inter's zero is plain; a monospace face
+   (Fira Code, or Tailwind `font-mono` → OS mono) renders a dotted/slashed
+   zero, which is never used for numbers. tabular-nums still aligns columns.
+   Currency is written "Rp1.000" with no space after Rp.
+   `!important` overrides Tailwind's runtime `.font-mono` and page CSS that
+   loads after this file (e.g. accounting.css).
+   ──────────────────────────────────────────────────────────────────── */
+.font-mono,
+.fluxy-table-money,
+.fluxy-kpi-value,
+.acct-mono,
+.acct-kpi-value {
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
+    font-variant-numeric: tabular-nums !important;
+    font-feature-settings: "tnum" !important;
 }
 
 .fluxy-table th.fluxy-table-money,

@@ -50,8 +50,8 @@
 
     function formatIDR(amount) {
         const n = Number(amount);
-        if (!Number.isFinite(n)) return 'Rp —';
-        return 'Rp ' + Math.abs(Math.round(n)).toLocaleString('id-ID');
+        if (!Number.isFinite(n)) return 'Rp—';
+        return 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID');
     }
 
     function formatDate(value) {

@@ -91,7 +91,7 @@ function getQuarterEndKey(year, quarter) {
 
 function formatRp(amount) {
     const val = Number(amount) || 0;
-    return 'Rp ' + Math.abs(val).toLocaleString('id-ID');
+    return 'Rp' + Math.abs(val).toLocaleString('id-ID');
 }
 
 function formatPercent(val) {

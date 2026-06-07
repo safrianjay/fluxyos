@@ -58,13 +58,13 @@ function formatRupiah(n) {
     if (n === null || n === undefined || n === '') return null;
     const value = Number(n);
     if (!Number.isFinite(value)) return null;
-    return `Rp ${Math.abs(Math.round(value)).toLocaleString('id-ID')}`;
+    return `Rp${Math.abs(Math.round(value)).toLocaleString('id-ID')}`;
 }
 
-// Signed display: negatives wrapped in parentheses, e.g. (Rp 4.750.000).
+// Signed display: negatives wrapped in parentheses, e.g. (Rp4.750.000).
 function signedRupiah(n) {
     const value = Number(n) || 0;
-    const text = formatRupiah(value) || 'Rp 0';
+    const text = formatRupiah(value) || 'Rp0';
     return value < 0 ? `(${text})` : text;
 }
 
@@ -178,10 +178,10 @@ function render(data) {
 
 function renderKpis(data) {
     const s = data.summary;
-    el('kpi-revenue-value').textContent = formatRupiah(s.revenue) || 'Rp 0';
+    el('kpi-revenue-value').textContent = formatRupiah(s.revenue) || 'Rp0';
     el('kpi-gross-value').textContent = signedRupiah(s.gross_profit);
     el('kpi-gross-sub').textContent = `${s.gross_margin_pct}% gross margin`;
-    el('kpi-opex-value').textContent = formatRupiah(s.operating_expenses) || 'Rp 0';
+    el('kpi-opex-value').textContent = formatRupiah(s.operating_expenses) || 'Rp0';
     el('kpi-net-value').textContent = signedRupiah(s.net_income);
     el('kpi-net-sub').textContent = `${s.net_margin_pct}% net margin`;
 
@@ -211,11 +211,11 @@ function indexRows(data) {
 function amountCell(value, kind) {
     const v = Number(value) || 0;
     if (kind === 'cost') {
-        if (v === 0) return { text: 'Rp 0', cls: 'is-zero' };
+        if (v === 0) return { text: 'Rp0', cls: 'is-zero' };
         return { text: `(${formatRupiah(v)})`, cls: 'is-neg' };
     }
     if (v < 0) return { text: `(${formatRupiah(v)})`, cls: 'is-neg' };
-    if (v === 0) return { text: 'Rp 0', cls: 'is-zero' };
+    if (v === 0) return { text: 'Rp0', cls: 'is-zero' };
     return { text: formatRupiah(v), cls: 'is-pos' };
 }
 
@@ -227,7 +227,7 @@ function changeDisplay(row) {
         else tone = c > 0 ? 'success' : 'danger';
     }
     let text;
-    if (c === 0) text = 'Rp 0';
+    if (c === 0) text = 'Rp0';
     else if (row.kind === 'cost') text = c > 0 ? `(${formatRupiah(c)})` : formatRupiah(c);
     else text = c > 0 ? formatRupiah(c) : `(${formatRupiah(c)})`;
 

@@ -81,7 +81,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div class="budget-stat">
                                 <div class="budget-stat-label">Total budget</div>
-                                <div id="budget-read-total" class="budget-stat-value">Rp 0</div>
+                                <div id="budget-read-total" class="budget-stat-value">Rp0</div>
                             </div>
                             <div class="budget-stat">
                                 <div class="budget-stat-label">Period</div>
@@ -312,7 +312,7 @@
             const totalRaw = String(fd.get('total_budget') || '').replace(/\D/g, '');
             const total = Math.max(0, Number(totalRaw) || 0);
             if (total <= 0) {
-                window.showToast?.('Enter a total budget above Rp 0.', 'error');
+                window.showToast?.('Enter a total budget above Rp0.', 'error');
                 return;
             }
             const periodType = String(fd.get('period_type') || 'monthly');
@@ -395,7 +395,7 @@
         }
 
         function formatIDR(value) {
-            return `Rp ${Math.round(Math.abs(Number(value) || 0)).toLocaleString('id-ID')}`;
+            return `Rp${Math.round(Math.abs(Number(value) || 0)).toLocaleString('id-ID')}`;
         }
 
         function toDate(value) {

@@ -141,5 +141,5 @@ export function calculateBilling(planId, billingFrequency) {
 }
 
 export function formatIDR(value) {
-    return `Rp ${Math.round(Math.abs(Number(value) || 0)).toLocaleString('id-ID')}`;
+    return `Rp${Math.round(Math.abs(Number(value) || 0)).toLocaleString('id-ID')}`;
 }

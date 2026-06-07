@@ -82,8 +82,8 @@ function readQueryParams() {
 
 function formatRupiah(value) {
     const n = Number(value);
-    if (!Number.isFinite(n)) return 'Rp 0';
-    return `Rp ${Math.abs(Math.round(n)).toLocaleString('id-ID')}`;
+    if (!Number.isFinite(n)) return 'Rp0';
+    return `Rp${Math.abs(Math.round(n)).toLocaleString('id-ID')}`;
 }
 
 function formatSignedRupiah(value) {

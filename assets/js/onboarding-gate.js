@@ -460,7 +460,7 @@ function renderGateCard(pageKey) {
             <div class="preview-card">
                 <div class="preview-bar"></div>
                 <div class="preview-bar short"></div>
-                <div class="preview-amount">Rp 0</div>
+                <div class="preview-amount">Rp0</div>
                 <div class="check">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>

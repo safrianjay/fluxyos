@@ -97,10 +97,11 @@ Quick rules:
 
 - **Navigation & Footer**: All landing pages MUST use the universal header/navbar from `fluxyos.html` and load footer via `footer-loader.js`. Never create custom header markup — copy nav structure from fluxyos.html and maintain consistency across all pages.
 - Footer loads on all **landing pages** only — never on dashboard app pages (`dashboard.html`, `bill.html`, `subscription.html`)
-- Amount formatting: Indonesian Rupiah with `.` as thousands separator (e.g. `1.234.567`)
+- Amount formatting: Indonesian Rupiah with `.` as thousands separator, displayed with **no space after `Rp`** (e.g. `Rp1.234.567`, never `Rp 1.234.567`)
 - Amount stored in Firestore as raw integer (dots stripped before save)
 - Brand colors: Orange `#EA580C` (accent only: text, icons, borders, gradients), Dark Navy `#0B0F19` (footer/login bg), Purple glow for canvas animation
   - **DESIGN RULE: Orange backgrounds are PROHIBITED project-wide.** Orange is reserved for accents, CTAs, and visual highlights only. Never use orange as a background color on any page (landing or app).
-- Currency display: All monetary amounts must use Rp (Indonesian Rupiah) format with dot separators. Never use $ or other currencies.
+- Currency display: All monetary amounts must use Rp (Indonesian Rupiah) format with dot separators and **no space after `Rp`** (e.g. `Rp1.000`). Never use $ or other currencies.
+- Numeric font (strict): amounts, KPIs, and all numbers render in `Inter` with `tabular-nums` (plain zero). **Never** use a monospace face (`Fira Code` / Tailwind `font-mono`) for numbers — it produces a slashed/dotted zero. Enforced in `assets/css/shared-dashboard.css`. See `docs/DESIGN_SYSTEM.md` → "Numeric & currency format (strict)".
 - Favicon: black F-logo SVG at `assets/images/favicon.svg`
 - Git: commit on worktree branch → merge to `main` in `/Users/slumdogmacbookair/Desktop/fluxionos` → push origin main

@@ -295,15 +295,15 @@ function composeReportTitle(mode, comparisonMode, currentPeriod) {
 
 export function formatRupiah(n) {
     const value = Number(n || 0);
-    return `Rp ${Math.abs(value).toLocaleString('id-ID')}`;
+    return `Rp${Math.abs(value).toLocaleString('id-ID')}`;
 }
 
 export function formatRupiahCompact(n) {
     const value = Math.abs(Number(n || 0));
-    if (value >= 1_000_000_000) return `Rp ${(value / 1_000_000_000).toFixed(2)}B`;
-    if (value >= 1_000_000) return `Rp ${(value / 1_000_000).toFixed(1)}M`;
-    if (value >= 1_000) return `Rp ${(value / 1_000).toFixed(1)}K`;
-    return `Rp ${value.toLocaleString('id-ID')}`;
+    if (value >= 1_000_000_000) return `Rp${(value / 1_000_000_000).toFixed(2)}B`;
+    if (value >= 1_000_000) return `Rp${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 1_000) return `Rp${(value / 1_000).toFixed(1)}K`;
+    return `Rp${value.toLocaleString('id-ID')}`;
 }
 
 export function formatPercent(value, digits = 1) {

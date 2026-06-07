@@ -1093,7 +1093,7 @@ window.showAddTransactionModal = function(options = {}) {
         const result = billBudgetContext.match(billData);
         billBudgetContext.lastResult = result;
 
-        const fmt = (n) => 'Rp ' + Math.abs(Number(n) || 0).toLocaleString('id-ID');
+        const fmt = (n) => 'Rp' + Math.abs(Number(n) || 0).toLocaleString('id-ID');
         const label = result.allocation?.name || 'Budget';
         if (result.status === 'out_of_period') {
             previewEl.className = 'rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600';
@@ -1203,7 +1203,7 @@ window.showAddTransactionModal = function(options = {}) {
                     <td class="px-3 py-2 font-semibold text-gray-900">${escapeHtml(row.vendor_name)}</td>
                     <td class="px-3 py-2 text-gray-600">${escapeHtml(row.category)}</td>
                     <td class="px-3 py-2 text-gray-600">${escapeHtml(row.type.replace(/_/g, ' '))}</td>
-                    <td class="px-3 py-2 font-mono font-bold text-gray-900">Rp ${Math.abs(row.amount).toLocaleString('id-ID')}</td>
+                    <td class="px-3 py-2 font-mono font-bold text-gray-900">Rp${Math.abs(row.amount).toLocaleString('id-ID')}</td>
                     <td class="px-3 py-2 text-gray-600">${escapeHtml(row.status)}</td>
                     <td class="px-3 py-2 text-gray-600">${escapeHtml(row.dateKey)}</td>
                 </tr>
@@ -2006,7 +2006,7 @@ window.attachChartHover = function attachChartHover(container, options) {
  *       recordType: 'transactions' | 'bills',
  *       recordId: 'docId',
  *       vendor: 'AWS',
- *       amountText: 'Rp 5.000.000',
+ *       amountText: 'Rp5.000.000',
  *       currentAllocationId: 'abc' | null,
  *       budgetId: 'budgetDocId',
  *       allocations: [{ id, name, scope_values }],
@@ -2439,7 +2439,7 @@ window.attachChartHover = function attachChartHover(container, options) {
         if (allocations.length === 0) {
             return `<p class="px-4 py-8 text-[12px] text-gray-400 text-center">All allocations look healthy.</p>`;
         }
-        const fmtRp = (n) => 'Rp ' + Math.abs(Number(n) || 0).toLocaleString('id-ID');
+        const fmtRp = (n) => 'Rp' + Math.abs(Number(n) || 0).toLocaleString('id-ID');
         const fmtPct = (v) => Number.isFinite(v) ? (v >= 1000 ? Math.round(v) : v.toFixed(v >= 10 ? 0 : 1)) + '%' : '0%';
         return `<ul class="divide-y divide-gray-100">${allocations.map(a => {
             const isExceeded = a.status === 'exceeded';

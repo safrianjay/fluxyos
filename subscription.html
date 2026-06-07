@@ -209,7 +209,7 @@
                         <span class="fluxy-table-cell-primary">${escapeHtml(sub.name || sub.vendor_name || 'Subscription')}</span>
                         </div>
                     </td>
-                    <td class="fluxy-table-cell fluxy-table-money font-bold">Rp ${Number(sub.amount || 0).toLocaleString('id-ID')}</td>
+                    <td class="fluxy-table-cell fluxy-table-money font-bold">Rp${Number(sub.amount || 0).toLocaleString('id-ID')}</td>
                     <td class="fluxy-table-cell fluxy-table-cell-meta">${sub.renewal_date?.toDate().toLocaleDateString() || 'Next month'}</td>
                     <td class="fluxy-table-cell">
                         <span class="fluxy-table-status fluxy-status-success">Active</span>

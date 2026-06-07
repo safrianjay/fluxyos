@@ -877,7 +877,7 @@ in `sidebar-loader.js` (active id `nav-balance-sheet`).
 **Display → Stored:** Strip dots, convert to float
 - `parseFloat("1.234.567".replace(/\./g, ""))` → `1234567`
 
-**Stored → Displayed in tables:** `"Rp " + Math.abs(amount).toLocaleString()`
+**Stored → Displayed in tables:** `"Rp" + Math.abs(amount).toLocaleString('id-ID')` — **no space after `Rp`** (e.g. `Rp1.234.567`). Render in Inter `tabular-nums` (plain zero), never a monospace face. See `docs/DESIGN_SYSTEM.md` → "Numeric & currency format (strict)".
 
 **Never store a formatted string in Firestore.** Amount must always be a raw number.
 
@@ -1240,7 +1240,7 @@ current month. `DataService` exposes `getTransactionsForPeriod`,
 ### Export rules
 
 - Generation never starts without an explicit Confirm export click.
-- CSV files store **raw integer amounts** (never `Rp 1.234.567` display strings).
+- CSV files store **raw integer amounts** (never `Rp1.234.567` display strings).
 - Audit log (`action: "export.create"`, `target_collection: "exports"`) is
   written **before** files are delivered. `"exports"` is the value allowlisted
   by `firestore.rules` (`isValidAuditLog`) for this flow. If the log write fails, no file is

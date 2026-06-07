@@ -295,6 +295,19 @@ page's `<select>` markup changes. See
 | 9 | Browser console is clean on each page with selects (no JS errors from enhancement) |
 | 10 | `onboarding.html` still uses its own select enhancer and is not double-enhanced |
 
+### D8. Numeric & Currency Format (strict)
+
+Run on any page showing amounts/KPIs, and whenever a currency helper or numeric
+CSS changes. See [DESIGN_SYSTEM.md → Numeric & currency format (strict)](../docs/DESIGN_SYSTEM.md).
+
+| # | Check |
+|---|-------|
+| 1 | Every amount/KPI/number renders a **plain zero** (no slash, no dot) — consistent across KPIs, table money, card amounts, drawers, charts tooltips |
+| 2 | No number renders in a monospace face; amounts use Inter `tabular-nums` and digit columns still align in tables |
+| 3 | Currency has **no space after `Rp`** everywhere: `Rp1.000`, `Rp0`, `(Rp1.000.000)` — KPIs, tables, cards, drawers, CSV-adjacent labels, empty/zero states |
+| 4 | No regression in amount parsing (input still formats with dots; stored value is raw integer) |
+| 5 | Marketing/landing prices are out of scope for this app rule unless explicitly swept; note any intentionally-skipped pages |
+
 ### E. Add Transaction / Bill / Subscription (shared-dashboard.js, db-service.js)
 
 | # | Check |

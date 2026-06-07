@@ -85,7 +85,7 @@
                         <p class="mt-3 text-[12px] text-gray-400">
                             <span id="ledger-clean-count" class="font-semibold text-gray-900">0</span>/<span id="ledger-total-count" class="font-semibold text-gray-900">0</span> clean
                             <span class="text-gray-300">&middot;</span>
-                            <span id="ledger-total-risk-amount" class="font-mono font-semibold text-gray-900">Rp 0</span> at risk
+                            <span id="ledger-total-risk-amount" class="font-mono font-semibold text-gray-900">Rp0</span> at risk
                         </p>
                     </div>
 
@@ -93,28 +93,28 @@
                         <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Missing Receipt</p>
                         <p id="ledger-missing-receipts-count" class="mt-1 font-mono text-2xl font-bold leading-none text-gray-900">0</p>
                         <p class="mt-1 text-[12px] text-gray-400">Need proof to claim expense</p>
-                        <p id="ledger-missing-receipts-risk" class="mt-2 font-mono text-[12px] font-semibold text-red-600">Rp 0 at risk</p>
+                        <p id="ledger-missing-receipts-risk" class="mt-2 font-mono text-[12px] font-semibold text-red-600">Rp0 at risk</p>
                     </div>
 
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
                         <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Uncategorized</p>
                         <p id="ledger-uncategorized-count" class="mt-1 font-mono text-2xl font-bold leading-none text-gray-900">0</p>
                         <p class="mt-1 text-[12px] text-gray-400">Won't report cleanly until tagged</p>
-                        <p id="ledger-uncategorized-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">Rp 0 at risk</p>
+                        <p id="ledger-uncategorized-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">Rp0 at risk</p>
                     </div>
 
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
                         <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Pending Approval</p>
                         <p id="ledger-pending-approval-count" class="mt-1 font-mono text-2xl font-bold leading-none text-gray-900">0</p>
                         <p id="ledger-pending-approval-subtitle" class="mt-1 text-[12px] text-gray-400">No pending approvals</p>
-                        <p id="ledger-pending-approval-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">Rp 0 at risk</p>
+                        <p id="ledger-pending-approval-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">Rp0 at risk</p>
                     </div>
 
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
                         <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Unreconciled</p>
                         <p id="ledger-unreconciled-count" class="mt-1 font-mono text-2xl font-bold leading-none text-gray-900">0</p>
                         <p id="ledger-unreconciled-subtitle" class="mt-1 text-[12px] text-gray-400">No explicit gaps found</p>
-                        <p id="ledger-unreconciled-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">Rp 0 at risk</p>
+                        <p id="ledger-unreconciled-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">Rp0 at risk</p>
                     </div>
                 </div>
 
@@ -881,7 +881,7 @@
 
         function formatCurrencyIDR(amount) {
             const val = typeof amount === 'number' ? amount : Number(amount) || 0;
-            return 'Rp ' + Math.abs(val).toLocaleString('id-ID');
+            return 'Rp' + Math.abs(val).toLocaleString('id-ID');
         }
 
         function getRecordAmount(record) {
@@ -1073,12 +1073,12 @@
         function formatTransactionAmount(transaction) {
             const type = getTransactionType(transaction);
             const amount = Math.abs(Number(transaction.amount) || 0).toLocaleString();
-            if (type === 'Income') return `+ Rp ${amount}`;
-            if (type === 'Expense') return `- Rp ${amount}`;
-            if (type === 'Refund' && Number(transaction.amount) > 0) return `+ Rp ${amount}`;
-            if (type === 'Fee' || type === 'Tax' || type === 'Pending payable') return `- Rp ${amount}`;
-            if (type === 'Pending receivable') return `+ Rp ${amount}`;
-            return `Rp ${amount}`;
+            if (type === 'Income') return `+ Rp${amount}`;
+            if (type === 'Expense') return `- Rp${amount}`;
+            if (type === 'Refund' && Number(transaction.amount) > 0) return `+ Rp${amount}`;
+            if (type === 'Fee' || type === 'Tax' || type === 'Pending payable') return `- Rp${amount}`;
+            if (type === 'Pending receivable') return `+ Rp${amount}`;
+            return `Rp${amount}`;
         }
 
         function getAmountClass(transaction) {
@@ -1684,7 +1684,7 @@
                 const vendorName = getVendorDisplayName(row);
                 const isVoided = isVoidedTransaction(row);
                 const badge = isVoided ? null : (window.__resolveLedgerBudgetBadge?.(row) || null);
-                const amountText = 'Rp ' + Math.abs(Number(row.amount) || 0).toLocaleString('id-ID');
+                const amountText = 'Rp' + Math.abs(Number(row.amount) || 0).toLocaleString('id-ID');
                 const budgetChip = badge ? `
                     <div class="mt-1.5 flex items-center gap-2 flex-wrap">
                         <span class="fluxy-table-status ${badge.cls}">${escapeHtml(badge.label)}</span>

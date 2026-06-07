@@ -23,7 +23,7 @@ This document defines the visual and functional standards for FluxyOS. Follow th
 ## 🔡 Typography
 
 - **Primary Font**: `Inter` (Sans-serif) - Used for all UI elements.
-- **Monospace Font**: `Fira Code` - Used for financial amounts and transaction IDs.
+- **Monospace Font**: `Fira Code` — available for code snippets only. **Numbers and financial amounts do NOT use a monospace face** (see the strict numeric rule below): a monospace zero renders with a slash/dot, which is banned. Amounts use `Inter` with `tabular-nums`.
 - **Premium Direction**: Typography should feel clean, confident, spacious, and easy to scan. Prefer restraint and strong hierarchy over decorative effects.
 - **Large Heading Weight**: Display, H1, H2, and large editorial headings should use lighter weights (`300–400`) when the font supports it. Avoid making every heading heavy.
 - **Letter Spacing**: Body, small text, captions, buttons, and navigation use `letter-spacing: 0`. Negative letter spacing is allowed only on large headings.
@@ -83,8 +83,10 @@ default body · `1.5` long-form prose. KPI numbers themselves use `1`.
 2. Pair size with weight, not just size. Louder element → +1 size AND
    +1 weight. Don't make `14/700` your hierarchy hammer.
 3. Caps text always pairs with letter-spacing ≥ `0.06em`.
-4. Numbers always use the mono face (`Fira Code`) with
-   `font-feature-settings: "tnum"`.
+4. **Numbers always use `Inter` with `tabular-nums` (plain zero).** Never put
+   numbers in a monospace face (`Fira Code`, or Tailwind `font-mono` → OS mono):
+   those render a slashed/dotted zero, which is banned. Inter's `tabular-nums`
+   still aligns digit columns. See "Numeric & currency format (strict)" below.
 5. Marketing pages keep the display scale above. Don't apply the
    dashboard scale to landing pages.
 
@@ -157,7 +159,7 @@ restyled.
             <span class="fluxy-table-cell-primary">AWS</span>
             <span class="fluxy-table-cell-meta">Infrastructure</span>
           </td>
-          <td class="fluxy-table-cell fluxy-table-money">Rp 1.250.000</td>
+          <td class="fluxy-table-cell fluxy-table-money">Rp1.250.000</td>
         </tr>
       </tbody>
     </table>
@@ -178,7 +180,7 @@ that do not need filtering or paging.
 - Primary cell text: `14px`, `600`, slate-950.
 - Secondary/meta cell text: `12px`, `400/500`, slate-500.
 - Normal cell text: `14px`, `400/500`, slate-700.
-- Money: `Fira Code`, `14px`, tabular numbers, right-aligned.
+- Money: `Inter`, `14px`, `tabular-nums` (plain zero), right-aligned. Never a monospace face.
 - Status badges: `12px`, `500`.
 
 Do not introduce `text-[11px]`, `text-[13px]`, `text-3xl`, or off-scale font
@@ -208,11 +210,33 @@ weights inside app tables.
 
 ### Money And Finite Values
 
-Always display currency as Indonesian Rupiah with dot separators, for example
-`Rp 1.000.000`. Financial statement negatives use parentheses, for example
-`(Rp 1.000.000)`. Changes may use `+Rp 1.000.000`, `(Rp 1.000.000)`, or the
-page's current negative convention. Never render `NaN`, `Infinity`, or
-`-Infinity`; unavailable percentages display `N/A`.
+Always display currency as Indonesian Rupiah with dot separators and **no space
+after `Rp`**, for example `Rp1.000.000` (never `Rp 1.000.000`). Financial
+statement negatives use parentheses, for example `(Rp1.000.000)`. Changes may
+use `+Rp1.000.000`, `(Rp1.000.000)`, or the page's current negative convention.
+Never render `NaN`, `Infinity`, or `-Infinity`; unavailable percentages display
+`N/A`.
+
+### Numeric & currency format (strict)
+
+These two rules are mandatory for every amount, KPI, and numeric value on an
+authenticated app page:
+
+1. **Plain zero.** Numbers render in `Inter` with `font-variant-numeric:
+   tabular-nums` (and/or `font-feature-settings: "tnum"`). A monospace face
+   (`Fira Code`, or Tailwind `font-mono` which resolves to the OS monospace)
+   renders a **slashed/dotted zero** and is banned for numbers — Fira Code's
+   zero keeps its dot even with the `zero` OpenType feature toggled, so the only
+   way to a clean zero is the sans face. `tabular-nums` keeps digit columns
+   aligned. This is enforced centrally in `assets/css/shared-dashboard.css`
+   (`.font-mono`, `.fluxy-table-money`, `.fluxy-kpi-value`, `.acct-mono`,
+   `.acct-kpi-value` are pinned to Inter `tabular-nums` with `!important`).
+2. **No space after `Rp`.** Currency is `Rp1.000`, never `Rp 1.000`. Format
+   helpers must emit `"Rp" + value.toLocaleString('id-ID')` (no space), and no
+   hardcoded `Rp 0` / `Rp ${…}` strings may reintroduce the space.
+
+Do not reintroduce a monospace face for amounts and do not add a space after
+`Rp` anywhere (helpers, templates, or static HTML).
 
 ### Status Badges
 
@@ -507,7 +531,7 @@ page-level padding/max-width.
 ---
 
 ## 🛠 Usage Checklist
-1. [ ] Does it use `Inter` for text and `Fira Code` for money?
+1. [ ] Does it use `Inter` for text **and** for money (`tabular-nums`, plain zero — never a monospace face), with `Rp1.000` (no space)?
 2. [ ] Is the primary action color `#EA580C`?
 3. [ ] Are corners rounded with `rounded-xl` or `rounded-lg`?
 4. [ ] Does the page use the centralized `sidebar-loader.js`?

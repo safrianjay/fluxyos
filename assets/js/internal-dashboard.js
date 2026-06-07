@@ -92,7 +92,7 @@ function fmtDateTime(ts) {
 
 function fmtMoney(amount) {
     if (amount == null || amount === '' || Number.isNaN(Number(amount))) return '—';
-    return 'Rp ' + Math.abs(Number(amount)).toLocaleString('id-ID');
+    return 'Rp' + Math.abs(Number(amount)).toLocaleString('id-ID');
 }
 
 function badge(value, toneMap) {
