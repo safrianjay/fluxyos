@@ -537,6 +537,15 @@
     <!-- 2. Hero Section -->
     <section class="landing-hero hero-v2">
         <style>
+            html {
+                scroll-behavior: smooth;
+            }
+
+            /* Offset anchor targets so they clear the sticky promo + nav header */
+            #how-it-works {
+                scroll-margin-top: 96px;
+            }
+
             .landing-hero.hero-v2 {
                 min-height: calc(100vh - 80px);
                 background: #0B0F19;
@@ -956,7 +965,7 @@
                 </p>
 
                 <div class="hero-v2-cta">
-                    <a href="/pricing" class="hero-v2-btn hero-v2-btn--primary">
+                    <a href="/login" class="hero-v2-btn hero-v2-btn--primary">
                         Start Free Trial
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 17L17 7M9 7h8v8"></path></svg>
                     </a>
@@ -969,29 +978,9 @@
 
             <!-- Product visual: FluxyOS finance command center screenshot -->
             <div class="hero-v2-stage">
-                <div class="hero-v2-float hero-v2-float--left" aria-hidden="true">
-                    <div class="hero-v2-float-label">
-                        <span class="hero-v2-float-icon">↗</span>
-                        Revenue synced
-                    </div>
-                    <p class="hero-v2-float-value">Rp3.629.463.830</p>
-                    <p class="hero-v2-float-meta">130 records matched for last month</p>
-                    <div class="hero-v2-float-bar"><span style="width: 78%"></span></div>
-                </div>
-
                 <figure class="hero-v2-product-shot">
                     <img src="assets/images/hero/fluxyos-product-highlight.png" alt="FluxyOS dashboard product highlight showing finance operations overview" loading="eager" decoding="async">
                 </figure>
-
-                <div class="hero-v2-float hero-v2-float--right" aria-hidden="true">
-                    <div class="hero-v2-float-label">
-                        <span class="hero-v2-float-icon">!</span>
-                        Bills needing action
-                    </div>
-                    <p class="hero-v2-float-value">14 overdue</p>
-                    <p class="hero-v2-float-meta">Fluxy AI flags the payables first</p>
-                    <div class="hero-v2-float-bar"><span style="width: 58%"></span></div>
-                </div>
             </div>
         </div>
     </section>
