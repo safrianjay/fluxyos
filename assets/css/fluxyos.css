@@ -908,31 +908,8 @@ body.mobile-menu-open {
     align-items: center;
 }
 
-.hero-v2-eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 14px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: rgba(255, 255, 255, 0.82);
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.01em;
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-}
-.hero-v2-eyebrow-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    background: #EA580C;
-    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.22);
-}
-
 .hero-v2-title {
-    margin: 24px 0 0;
+    margin: 0;
     max-width: 760px;
     font-size: 56px;
     line-height: 1.08;
@@ -1169,7 +1146,7 @@ body.mobile-menu-open {
     .landing-hero.hero-v2 .hero-v2-title {
         font-size: clamp(2rem, 9vw, 2.5rem) !important;
         line-height: 1.1 !important;
-        margin-top: 20px !important;
+        margin-top: 0 !important;
         max-width: 100%;
     }
     .landing-hero.hero-v2 .hero-v2-sub {
