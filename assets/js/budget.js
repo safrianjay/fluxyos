@@ -1528,7 +1528,7 @@ function renderPeriodFields(isAnnual) {
             <div id="budget-wizard-month-control" class="relative">
                 <input id="budget-wizard-month-input" type="text" inputmode="numeric" value="${escapeHtml(wizardMonthValue())}" placeholder="YYYY-MM" aria-label="Budget month" class="h-11 w-full rounded-lg border border-gray-200 bg-white px-4 pr-11 text-[14px] font-semibold text-gray-800 outline-none transition-all focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
                 <button id="budget-wizard-month-button" type="button" class="absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center rounded-r-lg text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-700" aria-label="Open month picker" aria-expanded="false">
-                    <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z"></path></svg>
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z"></path></svg>
                 </button>
                 <div id="budget-wizard-month-panel" class="budget-month-panel fixed z-[9999] hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
                     <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">

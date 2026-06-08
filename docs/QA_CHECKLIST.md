@@ -63,6 +63,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 7 | **No broken console errors** | Open DevTools Console on every page you changed — zero red errors |
 | 8 | **Mobile nav works** | Resize browser to 375px on `fluxyos.html` — hamburger icon visible, click opens menu, Escape closes it |
 | 9 | **New nav entry points work** | For any new page/use case, verify the production entry point from BOTH desktop mega-menu and mobile menu. The visible label must be inside an `<a>` whose `href` is the real route, never `#`; click it and confirm the target page loads. |
+| 10 | **Control icon sizing** | On pages changed, form-control and compact button SVG icons stay within 16–20px and use generated classes such as `h-4 w-4` / `h-5 w-5`; no oversized raw SVGs or unsupported classes like `h-4.5 w-4.5` |
 
 ---
 
@@ -563,6 +564,7 @@ touched.
 | 5 | Editing July does not archive or modify June allocations |
 | 6 | Duplicating a previous period creates a new budget with `created_from_budget_id` and new allocations with `created_from_allocation_id`; transactions, bills, actual usage, committed usage, and activity are not copied |
 | 7 | Legacy budgets without `budget_type` or `period_label` still render with fallback labels |
+| 8 | Budget wizard month picker uses the custom FluxyOS month control, not a native browser picker, and the trailing calendar icon stays 16px inside the 44px input |
 
 #### K3 — Usage calculation
 | # | Check |

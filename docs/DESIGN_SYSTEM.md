@@ -612,6 +612,10 @@ visual hierarchy, semantic color logic, and task-first UX clarity.
   - row separation and hover states that aid reading
 - Icon use must be consistent in stroke/fill style and size rhythm.
   Avoid mixed icon systems in one surface unless explicitly required.
+- Form-control and compact action icons must stay between 16px and 20px.
+  Use generated Tailwind classes (`h-4 w-4` or `h-5 w-5`) or explicit CSS;
+  never rely on unsupported fractional utility classes such as `h-4.5 w-4.5`
+  because the raw SVG can render oversized.
 - Card boundaries, radii, and shadows must follow system values; avoid stacking
   multiple effect styles that create noise.
 
