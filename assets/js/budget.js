@@ -71,6 +71,7 @@ function createBudgetWizardState(overrides = {}) {
         allocations: [],
         sourceBudgetId: null,
         datePicker: null,
+        monthPicker: null,
         saving: false,
         loadingSource: false,
         ...overrides
@@ -1034,6 +1035,12 @@ function wizardMonthValue() {
     return start.slice(0, 7);
 }
 
+function formatMonthInputLabel(monthValue) {
+    if (typeof monthValue !== 'string' || !/^\d{4}-\d{2}$/.test(monthValue)) return 'Select month';
+    const [year, month] = monthValue.split('-').map(Number);
+    return new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
 function wizardQuarterValue() {
     const start = parsePeriodDate(budgetWizardState.periodStart || getQuarterStartKey(new Date().getFullYear(), 1));
     return String(Math.floor(start.getMonth() / 3) + 1);
@@ -1172,6 +1179,8 @@ function closeBudgetWizard() {
 function destroyWizardDatePicker() {
     if (budgetWizardState.datePicker?.destroy) budgetWizardState.datePicker.destroy();
     budgetWizardState.datePicker = null;
+    if (budgetWizardState.monthPicker?.destroy) budgetWizardState.monthPicker.destroy();
+    budgetWizardState.monthPicker = null;
 }
 
 function getDefaultAnnualTarget(date = new Date()) {
@@ -1367,6 +1376,7 @@ function renderBudgetWizard() {
     el('budget-wizard-step').innerHTML = renderWizardStepContent();
     wireWizardStepControls();
     mountWizardDatePicker();
+    mountWizardMonthPicker();
     refreshWizardFooterAndComputed();
 }
 
@@ -1515,7 +1525,28 @@ function renderPeriodFields(isAnnual) {
     return `
         <div>
             <label for="budget-wizard-month-input" class="mb-2 block text-[12px] font-bold text-gray-600">Month</label>
-            <input id="budget-wizard-month-input" type="month" value="${escapeHtml(wizardMonthValue())}" class="h-11 w-full rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-semibold text-gray-800 outline-none transition-all focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
+            <div id="budget-wizard-month-control" class="relative">
+                <input id="budget-wizard-month-input" type="text" inputmode="numeric" value="${escapeHtml(wizardMonthValue())}" placeholder="YYYY-MM" aria-label="Budget month" class="h-11 w-full rounded-lg border border-gray-200 bg-white px-4 pr-11 text-[14px] font-semibold text-gray-800 outline-none transition-all focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
+                <button id="budget-wizard-month-button" type="button" class="absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center rounded-r-lg text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-700" aria-label="Open month picker" aria-expanded="false">
+                    <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z"></path></svg>
+                </button>
+                <div id="budget-wizard-month-panel" class="budget-month-panel fixed z-[9999] hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+                    <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                        <button type="button" data-budget-month-prev class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900" aria-label="Previous year">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m15 18-6-6 6-6"></path></svg>
+                        </button>
+                        <p data-budget-month-year class="text-[15px] font-bold text-gray-900">Year</p>
+                        <button type="button" data-budget-month-next class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900" aria-label="Next year">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m9 18 6-6-6-6"></path></svg>
+                        </button>
+                    </div>
+                    <div data-budget-month-grid class="budget-month-grid grid grid-cols-3 gap-2 p-4"></div>
+                    <div class="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-4 py-3">
+                        <span data-budget-month-selected class="truncate text-[12px] font-bold text-gray-500">${escapeHtml(formatMonthInputLabel(wizardMonthValue()))}</span>
+                        <button type="button" data-budget-month-current class="rounded-lg px-3 py-2 text-[13px] font-bold text-[#EA580C] transition-colors hover:bg-orange-50">This month</button>
+                    </div>
+                </div>
+            </div>
         </div>
         ${dateSummary}
     `;
@@ -1729,10 +1760,6 @@ function wireWizardStepControls() {
             renderBudgetWizard();
         });
     });
-    el('budget-wizard-month-input')?.addEventListener('change', (e) => {
-        syncWizardMonthlyTarget(e.target.value);
-        renderBudgetWizard();
-    });
     el('budget-wizard-quarter-input')?.addEventListener('change', () => {
         syncWizardQuarterTarget(Number(el('budget-wizard-quarter-year-input')?.value), Number(el('budget-wizard-quarter-input')?.value));
         renderBudgetWizard();
@@ -1819,6 +1846,144 @@ function mountWizardDatePicker() {
             if (labelInput) labelInput.value = budgetWizardState.periodLabel;
         }
     });
+}
+
+function mountWizardMonthPicker() {
+    const control = el('budget-wizard-month-control');
+    const input = el('budget-wizard-month-input');
+    const button = el('budget-wizard-month-button');
+    const panel = el('budget-wizard-month-panel');
+    if (!control || !input || !button || !panel) return;
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    let panelYear = Number((input.value || wizardMonthValue()).slice(0, 4)) || new Date().getFullYear();
+    const yearEl = panel.querySelector('[data-budget-month-year]');
+    const grid = panel.querySelector('[data-budget-month-grid]');
+    const selectedEl = panel.querySelector('[data-budget-month-selected]');
+
+    if (panel.parentNode !== document.body) document.body.appendChild(panel);
+
+    function currentMonthValue() {
+        return /^\d{4}-\d{2}$/.test(input.value) ? input.value : wizardMonthValue();
+    }
+
+    function positionPanel() {
+        const rect = input.getBoundingClientRect();
+        const margin = 16;
+        const gap = 8;
+        const width = Math.min(360, window.innerWidth - margin * 2);
+        panel.style.width = `${width}px`;
+        const left = Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin));
+        panel.style.left = `${left}px`;
+        const panelHeight = panel.offsetHeight || 0;
+        const below = rect.bottom + gap;
+        const above = rect.top - gap - panelHeight;
+        let top = below;
+        if (below + panelHeight > window.innerHeight - margin && above >= margin) top = above;
+        panel.style.top = `${Math.max(margin, Math.min(top, window.innerHeight - panelHeight - margin))}px`;
+    }
+
+    function renderPanel() {
+        const selected = currentMonthValue();
+        if (yearEl) yearEl.textContent = String(panelYear);
+        if (selectedEl) selectedEl.textContent = formatMonthInputLabel(selected);
+        if (!grid) return;
+        grid.innerHTML = monthNames.map((name, index) => {
+            const value = `${panelYear}-${String(index + 1).padStart(2, '0')}`;
+            const active = value === selected;
+            return `
+                <button type="button" data-budget-month="${value}" class="rounded-lg border px-3 py-2 text-[14px] font-bold transition-all ${active ? 'border-[#EA580C] bg-orange-50 text-[#EA580C] ring-1 ring-[#EA580C]' : 'border-gray-100 bg-white text-gray-700 hover:border-gray-200 hover:bg-gray-50'}">
+                    ${name}
+                </button>
+            `;
+        }).join('');
+    }
+
+    function togglePanel(show) {
+        const shouldShow = typeof show === 'boolean' ? show : panel.classList.contains('hidden');
+        panel.classList.toggle('hidden', !shouldShow);
+        button.setAttribute('aria-expanded', String(shouldShow));
+        if (shouldShow) {
+            panelYear = Number((currentMonthValue()).slice(0, 4)) || panelYear;
+            renderPanel();
+            positionPanel();
+        }
+    }
+
+    function applyMonth(monthValue, rerender = false) {
+        if (!/^\d{4}-\d{2}$/.test(monthValue)) return;
+        input.value = monthValue;
+        syncWizardMonthlyTarget(monthValue);
+        const labelInput = el('budget-wizard-period-label-input');
+        if (labelInput) labelInput.value = budgetWizardState.periodLabel;
+        refreshWizardFooterAndComputed();
+        if (rerender) renderBudgetWizard();
+    }
+
+    const onOpen = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        togglePanel();
+    };
+    const onInput = () => {
+        if (/^\d{4}-\d{2}$/.test(input.value)) applyMonth(input.value, false);
+    };
+    const onChange = () => {
+        if (/^\d{4}-\d{2}$/.test(input.value)) applyMonth(input.value, true);
+        else input.value = wizardMonthValue();
+    };
+    const onPanelClick = (event) => {
+        event.stopPropagation();
+        const monthBtn = event.target.closest('[data-budget-month]');
+        if (monthBtn) {
+            applyMonth(monthBtn.dataset.budgetMonth, false);
+            togglePanel(false);
+            renderPanel();
+            return;
+        }
+        if (event.target.closest('[data-budget-month-prev]')) {
+            panelYear = Math.max(2020, panelYear - 1);
+            renderPanel();
+            return;
+        }
+        if (event.target.closest('[data-budget-month-next]')) {
+            panelYear = Math.min(2099, panelYear + 1);
+            renderPanel();
+            return;
+        }
+        if (event.target.closest('[data-budget-month-current]')) {
+            const now = new Date();
+            panelYear = now.getFullYear();
+            applyMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`, false);
+            togglePanel(false);
+        }
+    };
+    const onDocumentClick = (event) => {
+        if (panel.classList.contains('hidden')) return;
+        if (control.contains(event.target) || panel.contains(event.target)) return;
+        togglePanel(false);
+    };
+    const onResizeOrScroll = () => {
+        if (!panel.classList.contains('hidden')) positionPanel();
+    };
+
+    input.addEventListener('click', onOpen);
+    input.addEventListener('input', onInput);
+    input.addEventListener('change', onChange);
+    button.addEventListener('click', onOpen);
+    panel.addEventListener('click', onPanelClick);
+    document.addEventListener('click', onDocumentClick);
+    window.addEventListener('resize', onResizeOrScroll);
+    window.addEventListener('scroll', onResizeOrScroll, true);
+
+    budgetWizardState.monthPicker = {
+        destroy: () => {
+            document.removeEventListener('click', onDocumentClick);
+            window.removeEventListener('resize', onResizeOrScroll);
+            window.removeEventListener('scroll', onResizeOrScroll, true);
+            if (panel.parentNode) panel.parentNode.removeChild(panel);
+        }
+    };
 }
 
 function refreshWizardFooterAndComputed() {
