@@ -536,26 +536,226 @@
 
     <!-- 2. Hero Section -->
     <section class="landing-hero hero-v2">
-        <!-- Cinematic sunset-mountain background (self-contained, no external asset) -->
+        <style>
+            .landing-hero.hero-v2 {
+                min-height: calc(100vh - 80px);
+                background: #0B0F19;
+            }
+
+            .landing-hero.hero-v2 .hero-v2-bg {
+                background: #0B0F19;
+            }
+
+            .landing-hero.hero-v2 .hero-v2-media {
+                position: absolute;
+                inset: -3%;
+                width: 106%;
+                height: 106%;
+                object-fit: cover;
+                opacity: 0.62;
+                filter: saturate(0.95) contrast(1.08);
+                transform: scale(1.02);
+                animation: heroMediaDrift 34s ease-in-out infinite alternate;
+            }
+
+            .landing-hero.hero-v2 .hero-v2-scrim,
+            .landing-hero.hero-v2 .hero-v2-ambient,
+            .landing-hero.hero-v2 .hero-v2-bottom-blend {
+                position: absolute;
+                inset: 0;
+                pointer-events: none;
+            }
+
+            .landing-hero.hero-v2 .hero-v2-scrim {
+                background:
+                    radial-gradient(circle at 50% 20%, rgba(11, 15, 25, 0.18) 0%, rgba(11, 15, 25, 0.58) 48%, rgba(11, 15, 25, 0.9) 100%),
+                    linear-gradient(180deg, rgba(11, 15, 25, 0.72) 0%, rgba(11, 15, 25, 0.42) 34%, rgba(11, 15, 25, 0.82) 100%);
+            }
+
+            .landing-hero.hero-v2 .hero-v2-ambient {
+                background:
+                    radial-gradient(circle at 30% 30%, rgba(234, 88, 12, 0.17), transparent 30%),
+                    radial-gradient(circle at 72% 42%, rgba(99, 102, 241, 0.16), transparent 34%);
+                filter: blur(18px);
+                opacity: 0.75;
+                animation: heroAmbientDrift 24s ease-in-out infinite alternate;
+            }
+
+            .landing-hero.hero-v2 .hero-v2-bottom-blend {
+                top: auto;
+                height: 34%;
+                background: linear-gradient(180deg, rgba(11, 15, 25, 0) 0%, #0B0F19 86%);
+            }
+
+            .landing-hero.hero-v2 .hero-v2-inner {
+                max-width: 1220px;
+                padding: 62px 24px 64px;
+            }
+
+            .landing-hero.hero-v2 .hero-v2-eyebrow {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 7px 14px;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                color: rgba(255, 255, 255, 0.86);
+                font-size: 13px;
+                font-weight: 500;
+                letter-spacing: 0.01em;
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+            }
+
+            .landing-hero.hero-v2 .hero-v2-eyebrow-dot {
+                width: 6px;
+                height: 6px;
+                border-radius: 999px;
+                background: #EA580C;
+                box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.2);
+            }
+
+            .landing-hero.hero-v2 .hero-v2-title {
+                margin-top: 24px;
+                font-weight: 500;
+                text-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
+            }
+
+            .landing-hero.hero-v2 .hero-v2-sub {
+                color: rgba(243, 244, 246, 0.84);
+                text-shadow: 0 12px 34px rgba(0, 0, 0, 0.36);
+            }
+
+            .landing-hero.hero-v2 .hero-v2-stage {
+                max-width: 1080px;
+                margin-top: 48px;
+            }
+
+            .landing-hero.hero-v2 .hero-v2-product-shot {
+                display: block;
+                width: 100%;
+                border-radius: 22px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                background: rgba(255, 255, 255, 0.08);
+                box-shadow:
+                    0 42px 100px -42px rgba(0, 0, 0, 0.78),
+                    0 18px 42px -28px rgba(234, 88, 12, 0.32);
+                overflow: hidden;
+                animation: heroProductFloat 9s ease-in-out infinite;
+            }
+
+            .landing-hero.hero-v2 .hero-v2-product-shot img {
+                display: block;
+                width: 100%;
+                height: auto;
+            }
+
+            @keyframes heroMediaDrift {
+                0% { transform: scale(1.02) translate3d(-1.2%, -0.8%, 0); }
+                100% { transform: scale(1.08) translate3d(1.2%, 1%, 0); }
+            }
+
+            @keyframes heroAmbientDrift {
+                0% { transform: translate3d(-1.4%, -1%, 0) scale(1); }
+                100% { transform: translate3d(1.4%, 1%, 0) scale(1.05); }
+            }
+
+            @keyframes heroProductFloat {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-8px); }
+            }
+
+            @media (max-width: 900px) {
+                .landing-hero.hero-v2 .hero-v2-inner {
+                    padding: 52px 24px 60px;
+                }
+
+                .landing-hero.hero-v2 .hero-v2-stage {
+                    max-width: 760px;
+                    margin-top: 40px;
+                }
+
+                .landing-hero.hero-v2 .hero-v2-product-shot {
+                    border-radius: 18px;
+                }
+            }
+
+            @media (max-width: 640px) {
+                .landing-hero.hero-v2 {
+                    min-height: auto;
+                }
+
+                .landing-hero.hero-v2 .hero-v2-media {
+                    inset: 0;
+                    width: 100%;
+                    height: 100%;
+                    opacity: 0.42;
+                    animation: none;
+                }
+
+                .landing-hero.hero-v2 .hero-v2-ambient {
+                    opacity: 0.5;
+                    animation: none;
+                }
+
+                .landing-hero.hero-v2 .hero-v2-inner {
+                    padding: 42px 18px 54px !important;
+                }
+
+                .landing-hero.hero-v2 .hero-v2-eyebrow {
+                    max-width: 100%;
+                    font-size: 12px;
+                    line-height: 1.35;
+                    text-align: left;
+                }
+
+                .landing-hero.hero-v2 .hero-v2-title {
+                    margin-top: 20px !important;
+                }
+
+                .landing-hero.hero-v2 .hero-v2-stage {
+                    margin-top: 36px;
+                }
+
+                .landing-hero.hero-v2 .hero-v2-product-shot {
+                    width: 100%;
+                    border-radius: 16px;
+                    animation: none;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .landing-hero.hero-v2 .hero-v2-media,
+                .landing-hero.hero-v2 .hero-v2-ambient {
+                    animation: none !important;
+                    transform: none !important;
+                }
+
+                .landing-hero.hero-v2 .hero-v2-product-shot {
+                    animation: none !important;
+                }
+            }
+        </style>
+
+        <!-- Animated finance operations background -->
         <div class="hero-v2-bg" aria-hidden="true">
-            <div class="hero-v2-sky"></div>
-            <div class="hero-v2-glow"></div>
-            <svg class="hero-v2-range" viewBox="0 0 1440 620" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
-                <!-- Back range (hazy) -->
-                <path d="M0 470 L150 392 L320 442 L470 360 L640 430 L820 336 L1010 420 L1200 372 L1440 430 L1440 620 L0 620 Z" fill="#3a2b4a" opacity="0.55"></path>
-                <!-- Mid range -->
-                <path d="M0 520 L180 446 L360 500 L540 410 L760 486 L980 404 L1180 478 L1440 432 L1440 620 L0 620 Z" fill="#241a31" opacity="0.85"></path>
-                <!-- Front range (darkest, prominent peak right of center) -->
-                <path d="M0 600 L220 520 L430 560 L660 470 L900 300 L1080 470 L1280 420 L1440 500 L1440 620 L0 620 Z" fill="#0c0e18"></path>
-            </svg>
-            <div class="hero-v2-tint"></div>
-            <div class="hero-v2-vignette"></div>
-            <div class="hero-v2-fade"></div>
+            <video class="hero-v2-media" autoplay muted loop playsinline preload="metadata">
+                <source src="assets/images/hero/finance-hero-bg.webm" type="video/webm">
+            </video>
+            <div class="hero-v2-scrim"></div>
+            <div class="hero-v2-ambient"></div>
+            <div class="hero-v2-bottom-blend"></div>
         </div>
 
         <div class="hero-v2-inner">
             <!-- Copy block (keeps .hero-copy so existing entrance animation runs) -->
             <div class="hero-copy hero-v2-copy">
+                <span class="hero-v2-eyebrow">
+                    <span class="hero-v2-eyebrow-dot"></span>
+                    Finance ops, ledger, bills, and AI in one system
+                </span>
+
                 <h1 class="hero-v2-title">
                     Run your entire finance<br class="hidden md:inline">
                     operation <span class="hero-v2-title-accent">in one place</span>
@@ -577,96 +777,11 @@
                 </div>
             </div>
 
-            <!-- Product visual: FluxyOS finance command center (static marketing mockup) -->
+            <!-- Product visual: FluxyOS finance command center screenshot -->
             <div class="hero-v2-stage">
-                <!-- Flanking accent card: Revenue Sync (desktop only) -->
-                <div class="hero-v2-side hero-v2-side--left hero-layer" aria-hidden="true">
-                    <div class="hero-v2-side-head">
-                        <span class="hero-v2-side-icon">↗</span>
-                        Revenue Sync
-                    </div>
-                    <p class="hero-v2-side-label">Synced this month · 9 channels</p>
-                    <p class="hero-v2-side-value hv-num">Rp642.800.000</p>
-                    <div class="hero-v2-side-bar"><span style="width:82%"></span></div>
-                </div>
-
-                <!-- Flanking accent card: Approvals (desktop only) -->
-                <div class="hero-v2-side hero-v2-side--right hero-layer" aria-hidden="true">
-                    <div class="hero-v2-side-head">
-                        <span class="hero-v2-side-icon hero-v2-side-icon--amber">!</span>
-                        Approvals
-                    </div>
-                    <p class="hero-v2-side-label">5 pending · 2 due this week</p>
-                    <div class="hero-v2-side-row"><span>Biznet Gio</span><span class="hv-num">Rp2.450.000</span></div>
-                    <div class="hero-v2-side-row"><span>AWS</span><span class="hv-num">Rp12.400.000</span></div>
-                </div>
-
-                <!-- Main dashboard card -->
-                <div class="hero-v2-product hero-layer">
-                    <div class="hero-v2-product-bar">
-                        <div class="hero-v2-product-id">
-                            <span class="hero-v2-product-mark">
-                                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" rx="9" fill="currentColor"></rect><g transform="translate(1.5,0)"><path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#fff"></path><path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#fff"></path></g></svg>
-                            </span>
-                            <div>
-                                <p class="hero-v2-product-title">Overview</p>
-                                <p class="hero-v2-product-meta">Finance command center · This month</p>
-                            </div>
-                        </div>
-                        <span class="hero-v2-product-sync"><span class="hero-v2-dot-green"></span>Synced 3m ago</span>
-                    </div>
-
-                    <!-- KPI row -->
-                    <div class="hero-v2-kpis">
-                        <div class="hero-v2-kpi">
-                            <p class="hero-v2-kpi-label">Revenue</p>
-                            <p class="hero-v2-kpi-value count-up" data-count="642800000" data-prefix="Rp" data-locale="id-ID">Rp642.800.000</p>
-                            <p class="hero-v2-kpi-delta hero-v2-up">▲ 12.4% vs last month</p>
-                        </div>
-                        <div class="hero-v2-kpi">
-                            <p class="hero-v2-kpi-label">Operating expenses</p>
-                            <p class="hero-v2-kpi-value hv-num">Rp318.450.000</p>
-                            <p class="hero-v2-kpi-delta hero-v2-muted">49.5% of revenue</p>
-                        </div>
-                        <div class="hero-v2-kpi">
-                            <p class="hero-v2-kpi-label">Net cash position</p>
-                            <p class="hero-v2-kpi-value hv-num">Rp324.350.000</p>
-                            <p class="hero-v2-kpi-delta hero-v2-up">● Healthy · 41 days cover</p>
-                        </div>
-                    </div>
-
-                    <!-- Fluxy AI insight -->
-                    <div class="hero-v2-ai">
-                        <span class="hero-v2-ai-tag">Fluxy AI</span>
-                        <p class="hero-v2-ai-text">Marketing is <strong>88% through budget</strong> with 9 days left, and 2 bills due this week need your approval.</p>
-                    </div>
-
-                    <!-- Lower split: bills due + recent activity -->
-                    <div class="hero-v2-split">
-                        <div class="hero-v2-panel">
-                            <p class="hero-v2-panel-title">Bills due</p>
-                            <div class="hero-v2-line">
-                                <div><p class="hero-v2-line-name">PLN · Electricity</p><p class="hero-v2-line-sub hero-v2-warn">Due in 2 days</p></div>
-                                <span class="hv-num">Rp4.200.000</span>
-                            </div>
-                            <div class="hero-v2-line">
-                                <div><p class="hero-v2-line-name">AWS · Infrastructure</p><p class="hero-v2-line-sub">Due in 5 days</p></div>
-                                <span class="hv-num">Rp12.400.000</span>
-                            </div>
-                        </div>
-                        <div class="hero-v2-panel">
-                            <p class="hero-v2-panel-title">Recent money movement</p>
-                            <div class="hero-v2-line">
-                                <div><p class="hero-v2-line-name">Shopee payout</p><p class="hero-v2-line-sub">Revenue · matched</p></div>
-                                <span class="hv-num hero-v2-pos">+Rp36.900.000</span>
-                            </div>
-                            <div class="hero-v2-line">
-                                <div><p class="hero-v2-line-name">TikTok Ads</p><p class="hero-v2-line-sub">Marketing · auto-categorized</p></div>
-                                <span class="hv-num">−Rp8.500.000</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <figure class="hero-v2-product-shot">
+                    <img src="assets/images/hero/fluxyos-product-highlight.png" alt="FluxyOS dashboard product highlight showing finance operations overview" loading="eager" decoding="async">
+                </figure>
             </div>
         </div>
     </section>
