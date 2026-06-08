@@ -43,6 +43,18 @@
             color: #F8E8B6;
             box-shadow: 0 14px 34px rgba(11, 15, 25, 0.18), inset 0 1px 0 rgba(255,255,255,0.14);
         }
+        .bill-plan-chip-gold {
+            border-color: rgba(217, 119, 6, 0.36);
+            background: linear-gradient(135deg, #FFF7E6 0%, #FFFBEB 48%, #FFFFFF 100%);
+            color: #92400E;
+            box-shadow: 0 10px 26px rgba(217, 119, 6, 0.14), inset 0 1px 0 rgba(255,255,255,0.9);
+        }
+        .bill-plan-chip-core {
+            border-color: #D1D5DB;
+            background: linear-gradient(135deg, #F9FAFB 0%, #FFFFFF 100%);
+            color: #4B5563;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+        }
         .bill-plan-chip-active {
             border-color: #A7F3D0;
             background: linear-gradient(135deg, #ECFDF5 0%, #FFFFFF 100%);
@@ -432,10 +444,19 @@
                 if (o.plan_id === 'enterprise' && status === 'active') {
                     label = `${planName} plan`;
                     tone = 'premium';
+                    iconPath = 'M12 3l2.1 5.4L20 9l-4.5 3.9L16.8 19 12 15.8 7.2 19l1.3-6.1L4 9l5.9-.6L12 3z';
+                } else if (o.plan_id === 'growth' && status === 'active') {
+                    label = `${planName} plan`;
+                    tone = 'gold';
+                    iconPath = 'M12 3.75l1.64 4.15 4.45.29-3.43 2.85 1.12 4.32L12 13l-3.78 2.36 1.12-4.32-3.43-2.85 4.45-.29L12 3.75z';
+                } else if ((o.plan_id === 'core' || o.plan_id === 'basic') && status === 'active') {
+                    label = `${planName} plan`;
+                    tone = 'core';
+                    iconPath = 'M8.25 12.75l2.25 2.25 5.25-6M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
                 } else if (status === 'active') {
                     label = `${planName} plan`;
                     tone = 'active';
-                    iconPath = 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
+                    iconPath = 'M8.25 12.75l2.25 2.25 5.25-6M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
                 } else if (status === 'pending_verification' || status === 'awaiting_payment') {
                     label = `${planName} activation in review`;
                     tone = 'review';
@@ -449,6 +470,8 @@
             }
             const toneClass = {
                 premium: 'bill-plan-chip-premium',
+                gold: 'bill-plan-chip-gold',
+                core: 'bill-plan-chip-core',
                 active: 'bill-plan-chip-active',
                 review: 'bill-plan-chip-review',
                 attention: 'bill-plan-chip-attention',

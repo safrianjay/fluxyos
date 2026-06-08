@@ -180,10 +180,14 @@ test.describe('billing internal mirror wiring', () => {
 
         expect(settingsBilling).toContain('M9 12.75L11.25 15 15 9.75');
         expect(settingsBilling).toContain('bill-plan-chip-premium');
+        expect(settingsBilling).toContain('bill-plan-chip-gold');
+        expect(settingsBilling).toContain('bill-plan-chip-core');
         expect(settingsBilling).toContain("summaryCard('Current plan', planLevelChip(o)");
         expect(settingsBilling).toContain('Plan options');
         expect(settingsBilling).toContain('Trial access');
         expect(settingsBilling).toContain('${planName} plan');
+        expect(settingsBilling).toContain("o.plan_id === 'growth' && status === 'active'");
+        expect(settingsBilling).toContain("o.plan_id === 'core' || o.plan_id === 'basic'");
         expect(settingsBilling).toContain('Team management coming soon');
         expect(settingsBilling).not.toContain('billing-plan-level-label');
         expect(settingsBilling).not.toContain('Loading membership');
