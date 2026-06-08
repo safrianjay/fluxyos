@@ -222,7 +222,7 @@ function bindQrisActions(request) {
         try {
             let proof = {};
             if (pendingProofFile) {
-                const uploaded = await data.uploadDocument(currentUser.uid, pendingProofFile);
+                const uploaded = await data.uploadDocument(currentUser.uid, pendingProofFile, { bypassPlanLimit: true });
                 await data.addDocumentMetadata(currentUser.uid, uploaded.documentId, {
                     file_name: uploaded.fileName,
                     file_mime_type: uploaded.fileMimeType,

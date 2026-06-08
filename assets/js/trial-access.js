@@ -1,7 +1,9 @@
 // FluxyOS canonical trial and billing access guard.
 // Reads users/{uid}/billing_subscription/current and migrates frozen legacy
 // billing/access state through DataService.ensureBillingSubscription().
-// Client-side locks are UX-only; trusted backend enforcement remains future work.
+// Client-side locks are UX guardrails. Trial AI usage is also enforced by the
+// API + Firestore `usage_limits/ai_chat_trial`; storage limits are preflighted
+// before uploads and backed by per-file Firebase rules where rules can check.
 
 import { getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -357,6 +359,25 @@ async function showLockedModal() {
         : 'mailto:support@fluxyos.com?subject=FluxyOS%20account%20support';
 }
 
+async function showSubscriptionLimitModal(options = {}) {
+    const state = currentState();
+    const href = options.href || state?.ctaRoute || PAYMENT_ROUTE;
+    const confirmFn = window.showConfirmDialog;
+    if (typeof confirmFn !== 'function') {
+        window.location.href = href;
+        return;
+    }
+    const shouldOpenPayment = await confirmFn({
+        title: options.title || 'Trial limit reached',
+        body: options.body || 'You have reached the limit included with your trial. Choose a plan to keep using FluxyOS without this restriction.',
+        confirmLabel: options.confirmLabel || 'Choose plan',
+        cancelLabel: options.cancelLabel || 'Not now',
+        tone: options.tone || 'warning',
+        icon: options.icon || 'warn'
+    });
+    if (shouldOpenPayment) window.location.href = href;
+}
+
 function currentState() {
     return window.__fluxyAccessState || null;
 }
@@ -403,5 +424,6 @@ window.FluxyAccessGuard = {
     requireExportAccess: makeRequire('canExport'),
     requireAIUsage: makeRequire('canUseAI'),
     requireUploadAccess: makeRequire('canUploadDocuments'),
+    showSubscriptionLimitModal,
     PAYMENT_ROUTE
 };

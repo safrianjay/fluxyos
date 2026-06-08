@@ -579,6 +579,7 @@
             });
             const body = await response.json().catch(() => ({}));
             if (!response.ok || body.success === false) {
+                maybeShowTrialLimit(body);
                 renderErrorResult(body?.error?.message || 'Fluxy AI could not read your finance data right now.', loadingId);
                 await saveAssistantMessage({
                     content: body?.error?.message || 'Fluxy AI could not read your finance data right now.',
@@ -608,6 +609,16 @@
         } finally {
             setBusy(false);
         }
+    }
+
+    function maybeShowTrialLimit(body) {
+        if (body?.error?.code !== 'trial_ai_limit_reached') return false;
+        window.FluxyAccessGuard?.showSubscriptionLimitModal?.({
+            title: 'Trial AI limit reached',
+            body: body.error.message || 'Your trial includes 3 Fluxy AI chats. Activate your subscription to keep chatting.',
+            confirmLabel: 'Activate subscription'
+        });
+        return true;
     }
 
     async function buildFinanceSnapshot() {

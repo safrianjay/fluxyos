@@ -192,6 +192,13 @@ Firestore rule requirements:
 - Rules must check ownership or active workspace membership.
 - Rules must reject unauthenticated reads and writes.
 - Rules must enforce role/capability boundaries for write actions.
+- Billing usage counters must be owner-scoped and monotonic. The current trial
+  Fluxy AI counter lives at `users/{uid}/usage_limits/ai_chat_trial`; rules allow
+  only increment-by-one writes up to the trial limit of 3 and never allow delete or
+  reset from the browser.
+- Trial storage uses the shared billing entitlement source. Upload helpers must
+  preflight aggregate storage before creating document/import records, while
+  Firebase rules enforce owner scope and single-write file limits.
 - Rules must validate critical fields where possible:
   - `amount` is a number.
   - `type` is `"revenue"` or `"expense"`.

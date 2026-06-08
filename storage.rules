@@ -1,6 +1,25 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    function hasTrialStorageEntitlement(userId) {
+      return firestore.exists(/databases/(default)/documents/users/$(userId)/billing_subscription/current)
+        && (
+          firestore.get(/databases/(default)/documents/users/$(userId)/billing_subscription/current).data.plan_id == 'trial'
+          || firestore.get(/databases/(default)/documents/users/$(userId)/billing_subscription/current).data.status in [
+            'trialing',
+            'awaiting_payment',
+            'pending_verification',
+            'payment_failed',
+            'expired'
+          ]
+        );
+    }
+
+    function respectsTrialStorageSingleFileLimit(userId) {
+      return !hasTrialStorageEntitlement(userId)
+        || request.resource.size <= 5 * 1024 * 1024;
+    }
+
     match /users/{userId}/receipts/{filename} {
       allow read:   if request.auth != null && request.auth.uid == userId;
       allow write:  if request.auth != null
@@ -13,6 +32,7 @@ service firebase.storage {
       allow read:   if request.auth != null && request.auth.uid == userId;
       allow write:  if request.auth != null
                     && request.auth.uid == userId
+                    && respectsTrialStorageSingleFileLimit(userId)
                     && request.resource.size <= 5 * 1024 * 1024
                     && request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
       allow delete: if false;
@@ -21,6 +41,7 @@ service firebase.storage {
       allow read:   if request.auth != null && request.auth.uid == userId;
       allow write:  if request.auth != null
                     && request.auth.uid == userId
+                    && respectsTrialStorageSingleFileLimit(userId)
                     && request.resource.size <= 10 * 1024 * 1024
                     && request.resource.contentType in [
                         'application/pdf',

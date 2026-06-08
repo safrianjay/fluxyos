@@ -164,6 +164,7 @@ test.describe('billing internal mirror wiring', () => {
     test('verified billing approval stamps next billing period', async () => {
         const dbService = fs.readFileSync(path.join(__dirname, '..', 'assets/js/db-service.js'), 'utf8');
         const rules = fs.readFileSync(path.join(__dirname, '..', 'firestore.rules'), 'utf8');
+        const storageRules = fs.readFileSync(path.join(__dirname, '..', 'storage.rules'), 'utf8');
         const settingsBilling = fs.readFileSync(path.join(__dirname, '..', 'settings-billing.html'), 'utf8');
 
         expect(dbService).toContain('_billingPeriodForFrequency');
@@ -199,5 +200,52 @@ test.describe('billing internal mirror wiring', () => {
         expect(settingsBilling).toContain('M12 3C7.58 3 4 4.79 4 7s3.58 4 8 4');
         expect(settingsBilling).not.toContain('M5 13l4 4L19 7M4 6h16');
         expect(settingsBilling).not.toContain('M3 7l9-4 9 4M4 7v11h16V7M8 11v4M12 11v4M16 11v4');
+    });
+
+    test('trial quotas are wired through config, rules, API, and UI popups', async () => {
+        const billingConfig = fs.readFileSync(path.join(__dirname, '..', 'assets/js/billing-config.js'), 'utf8');
+        const dbService = fs.readFileSync(path.join(__dirname, '..', 'assets/js/db-service.js'), 'utf8');
+        const rules = fs.readFileSync(path.join(__dirname, '..', 'firestore.rules'), 'utf8');
+        const storageRules = fs.readFileSync(path.join(__dirname, '..', 'storage.rules'), 'utf8');
+        const netlifyApi = fs.readFileSync(path.join(__dirname, '..', 'netlify/functions/api.js'), 'utf8');
+        const fastApi = fs.readFileSync(path.join(__dirname, '..', 'api/main.py'), 'utf8');
+        const trialAccess = fs.readFileSync(path.join(__dirname, '..', 'assets/js/trial-access.js'), 'utf8');
+        const sidebarAI = fs.readFileSync(path.join(__dirname, '..', 'assets/js/ai-chat.js'), 'utf8');
+        const commandAI = fs.readFileSync(path.join(__dirname, '..', 'assets/js/ai-command-center.js'), 'utf8');
+        const documentAttachment = fs.readFileSync(path.join(__dirname, '..', 'assets/js/document-attachment.js'), 'utf8');
+        const bankImport = fs.readFileSync(path.join(__dirname, '..', 'assets/js/bank-statement-import.js'), 'utf8');
+        const paymentPending = fs.readFileSync(path.join(__dirname, '..', 'assets/js/payment-pending.js'), 'utf8');
+
+        expect(billingConfig).toContain("seat_limit: 1");
+        expect(billingConfig).toContain("storage_limit_bytes: 5 * MB");
+        expect(billingConfig).toContain("ai_chat_limit: 3");
+
+        expect(dbService).toContain('async assertCanUseStorage');
+        expect(dbService).toContain('trial_storage_limit_reached');
+        expect(dbService).toContain('usage_limits/ai_chat_trial');
+        expect(dbService).toContain('await this.assertCanUseStorage(userId, file?.size || 0');
+        expect(dbService).toContain('await this.assertCanUseStorage(userId, data.file_size || 0');
+        expect(dbService).toContain('await this.assertCanUseStorage(userId, file.size || 0');
+        expect(paymentPending).toContain('bypassPlanLimit: true');
+
+        expect(rules).toContain('isValidTrialAIUsageCreate');
+        expect(rules).toContain('isValidTrialAIUsageUpdate');
+        expect(rules).toContain("limitId == 'ai_chat_trial'");
+        expect(rules).toContain('data.count == existingData.count + 1');
+        expect(rules).toContain('respectsTrialStorageSingleFileLimit');
+        expect(storageRules).toContain('respectsTrialStorageSingleFileLimit');
+        expect(storageRules).toContain('firestore.get(/databases/(default)/documents/users/$(userId)/billing_subscription/current)');
+
+        expect(netlifyApi).toContain('consumeTrialAIQuotaIfNeeded');
+        expect(netlifyApi).toContain('trial_ai_limit_reached');
+        expect(netlifyApi).toContain("patchUserDocument(uid, token, 'usage_limits', 'ai_chat_trial'");
+        expect(fastApi).toContain('_consume_trial_ai_quota');
+        expect(fastApi).toContain('trial_ai_limit_reached');
+
+        expect(trialAccess).toContain('showSubscriptionLimitModal');
+        expect(sidebarAI).toContain('maybeShowTrialLimit');
+        expect(commandAI).toContain('maybeShowTrialLimit');
+        expect(documentAttachment).toContain('maybeShowPlanLimit');
+        expect(bankImport).toContain('showSubscriptionLimitModal');
     });
 });

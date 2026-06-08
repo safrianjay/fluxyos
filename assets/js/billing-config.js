@@ -59,17 +59,18 @@ export const BILLING_PLANS = {
     }
 };
 
-// Plan seat / storage limits surfaced on the Billing & plan settings page.
-// The checkout plans (core/growth/enterprise) line up positionally with the
-// product limit tiers basic/growth/enterprise. `trial` mirrors the entry tier.
-// Limits are display references only — never financial values. `storage_limit_gb`
-// of `null` means "no fixed cap" (Enterprise custom agreement).
+export const MB = 1024 * 1024;
+export const GB = 1024 * MB;
+
+// Plan seat / storage / AI limits surfaced on the Billing & plan settings page
+// and reused by client/API guards. `storage_limit_bytes` is the canonical quota
+// value; `storage_limit_gb` remains for existing GB-oriented display/tests.
 export const PLAN_LIMITS = {
-    trial:      { tier: 'trial',      seat_limit: 5,  storage_limit_gb: 5 },
-    basic:      { tier: 'basic',      seat_limit: 5,  storage_limit_gb: 5 },
-    core:       { tier: 'basic',      seat_limit: 5,  storage_limit_gb: 5 },
-    growth:     { tier: 'growth',     seat_limit: 10, storage_limit_gb: 10 },
-    enterprise: { tier: 'enterprise', seat_limit: 50, storage_limit_gb: 50, storage_note: 'Unlimited storage available on custom agreement.' }
+    trial:      { tier: 'trial',      seat_limit: 1,  storage_limit_bytes: 5 * MB,  storage_limit_gb: null, ai_chat_limit: 3, ai_chat_scope: 'trial' },
+    basic:      { tier: 'basic',      seat_limit: 5,  storage_limit_bytes: 5 * GB,  storage_limit_gb: 5, ai_chat_limit: null, ai_chat_scope: 'plan' },
+    core:       { tier: 'basic',      seat_limit: 5,  storage_limit_bytes: 5 * GB,  storage_limit_gb: 5, ai_chat_limit: null, ai_chat_scope: 'plan' },
+    growth:     { tier: 'growth',     seat_limit: 10, storage_limit_bytes: 10 * GB, storage_limit_gb: 10, ai_chat_limit: null, ai_chat_scope: 'plan' },
+    enterprise: { tier: 'enterprise', seat_limit: 50, storage_limit_bytes: 50 * GB, storage_limit_gb: 50, ai_chat_limit: null, ai_chat_scope: 'plan', storage_note: 'Unlimited storage available on custom agreement.' }
 };
 
 // Display name fallbacks for plan ids that are not in BILLING_PLANS (e.g. trial).

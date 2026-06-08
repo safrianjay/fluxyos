@@ -139,6 +139,7 @@
                 await waitForMinimumThinkingTime(thinkingStartedAt);
                 loading.remove();
                 if (!response.ok || data.success === false) {
+                    maybeShowTrialLimit(data);
                     addErrorMessage(messages, data?.error?.message || data?.message || 'Fluxy AI could not read your finance data right now.');
                     return;
                 }
@@ -152,6 +153,16 @@
                 input.focus();
             }
         }
+    }
+
+    function maybeShowTrialLimit(data) {
+        if (data?.error?.code !== 'trial_ai_limit_reached') return false;
+        window.FluxyAccessGuard?.showSubscriptionLimitModal?.({
+            title: 'Trial AI limit reached',
+            body: data.error.message || 'Your trial includes 3 Fluxy AI chats. Activate your subscription to keep chatting.',
+            confirmLabel: 'Activate subscription'
+        });
+        return true;
     }
 
     function renderPromptChips(container, pageContext, onSelect) {

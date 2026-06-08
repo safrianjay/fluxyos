@@ -28,3 +28,20 @@ test('billing config calculates every package and safe query fallback', async ({
     ]);
     expect(result.fallback).toEqual({ planId: 'growth', billingFrequency: 'annually' });
 });
+
+test('billing config exposes enforced trial limits', async ({ page }) => {
+    await page.goto('/pricing');
+    const result = await page.evaluate(async () => {
+        const billing = await import('/assets/js/billing-config.js');
+        return billing.PLAN_LIMITS.trial;
+    });
+
+    expect(result).toMatchObject({
+        tier: 'trial',
+        seat_limit: 1,
+        storage_limit_bytes: 5 * 1024 * 1024,
+        storage_limit_gb: null,
+        ai_chat_limit: 3,
+        ai_chat_scope: 'trial'
+    });
+});

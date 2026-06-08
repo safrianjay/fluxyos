@@ -89,6 +89,16 @@
         }[char]));
     }
 
+    function maybeShowPlanLimit(error) {
+        const code = String(error?.code || '');
+        if (!code.includes('storage_limit')) return;
+        window.FluxyAccessGuard?.showSubscriptionLimitModal?.({
+            title: code === 'trial_storage_limit_reached' ? 'Trial storage limit reached' : 'Storage limit reached',
+            body: error?.message || 'Choose a plan to upload more documents.',
+            confirmLabel: code === 'trial_storage_limit_reached' ? 'Activate subscription' : 'Upgrade plan'
+        });
+    }
+
     /**
      * Mount the single-attachment UI inside a host element (used by the
      * Add Transaction / Add Revenue drawer).
@@ -212,7 +222,13 @@
         const check = validateFile(file);
         if (!check.ok) throw new Error(check.message);
 
-        const uploaded = await ds.uploadDocument(userId, file);
+        let uploaded;
+        try {
+            uploaded = await ds.uploadDocument(userId, file);
+        } catch (error) {
+            maybeShowPlanLimit(error);
+            throw error;
+        }
         await ds.addDocumentMetadata(userId, uploaded.documentId, {
             file_name: uploaded.fileName,
             file_mime_type: uploaded.fileMimeType,
@@ -245,7 +261,13 @@
         const check = validateFile(file);
         if (!check.ok) throw new Error(check.message);
 
-        const uploaded = await ds.uploadDocument(userId, file);
+        let uploaded;
+        try {
+            uploaded = await ds.uploadDocument(userId, file);
+        } catch (error) {
+            maybeShowPlanLimit(error);
+            throw error;
+        }
         await ds.addDocumentMetadata(userId, uploaded.documentId, {
             file_name: uploaded.fileName,
             file_mime_type: uploaded.fileMimeType,

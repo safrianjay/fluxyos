@@ -266,7 +266,7 @@
             const s = o.status;
             const planName = o.plan_name || 'your plan';
             const seatLimit = Number.isFinite(o.seat_limit) ? o.seat_limit : null;
-            const storageLimit = Number.isFinite(o.storage_limit_gb) ? o.storage_limit_gb : null;
+            const storageLimit = storageLimitLabel(o);
             const renews = o.renews_at ? formatDate(o.renews_at) : null;
             const periodEnd = o.current_period_end ? formatDate(o.current_period_end) : null;
             const trialEnd = o.trial_end_at ? formatDate(o.trial_end_at) : null;
@@ -287,8 +287,8 @@
                 active: {
                     badge: ['Active', 'green'], title: 'Active subscription',
                     copy: renews
-                        ? `Your current plan renews on ${renews}.${seatLimit && storageLimit ? ` Your plan includes ${seatLimit} seats and ${storageLimit} GB storage.` : ''}`
-                        : `Your ${escapeHtml(planName)} plan is active.${seatLimit && storageLimit ? ` It includes ${seatLimit} seats and ${storageLimit} GB storage.` : ''}`,
+                        ? `Your current plan renews on ${renews}.${seatLimit && storageLimit ? ` Your plan includes ${seatLimit} seats and ${storageLimit} storage.` : ''}`
+                        : `Your ${escapeHtml(planName)} plan is active.${seatLimit && storageLimit ? ` It includes ${seatLimit} seats and ${storageLimit} storage.` : ''}`,
                     primary: { label: 'Upgrade plan', kind: 'upgrade' },
                     tertiary: { label: 'Cancel renewal', kind: 'cancel' }
                 },
@@ -405,11 +405,11 @@
             let storageValue = '—', storageSub = 'Plan required';
             if (hasPlan) {
                 if (usage.storage && usage.storage.available) {
-                    const usedGb = formatGb(usage.storage.bytes);
-                    storageValue = Number.isFinite(o.storage_limit_gb)
-                        ? `${usedGb} GB of ${o.storage_limit_gb} GB`
-                        : `${usedGb} GB used`;
-                    storageSub = Number.isFinite(o.storage_limit_gb) ? 'Documents + imports' : (o.storage_note || 'Custom storage');
+                    const limitLabel = storageLimitLabel(o);
+                    storageValue = limitLabel
+                        ? `${formatStorageBytes(usage.storage.bytes)} of ${limitLabel}`
+                        : `${formatStorageBytes(usage.storage.bytes)} used`;
+                    storageSub = limitLabel ? 'Documents + imports' : (o.storage_note || 'Custom storage');
                 } else {
                     storageValue = 'Being prepared';
                     storageSub = 'Storage tracking soon';
@@ -498,14 +498,14 @@
                     : `<div class="text-[15px] font-bold text-gray-900">No active price</div>`);
 
             const seatLimit = Number.isFinite(o.seat_limit) ? o.seat_limit : null;
-            const storageLimit = Number.isFinite(o.storage_limit_gb) ? o.storage_limit_gb : null;
+            const storageLimit = storageLimitLabel(o);
 
             const planRows = hasPlan ? `
                 <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     ${detailRow('Billing cycle', o.billing_cycle ? cycleLabel(o.billing_cycle) : 'Not set')}
                     ${detailRow('Current period', periodText(o))}
                     ${detailRow('Seats included', seatLimit ? `${seatLimit} seats` : 'Not set')}
-                    ${detailRow('Storage included', storageLimit ? `${storageLimit} GB` : (o.storage_note ? 'Custom' : 'Not set'))}
+                    ${detailRow('Storage included', storageLimit || (o.storage_note ? 'Custom' : 'Not set'))}
                 </div>` : '';
 
             const tertiary = info.tertiary
@@ -609,7 +609,9 @@
             const el = document.getElementById('usage-rows');
             const hasPlan = o.has_plan;
             const seatLimit = Number.isFinite(o.seat_limit) ? o.seat_limit : null;
-            const storageLimit = Number.isFinite(o.storage_limit_gb) ? o.storage_limit_gb : null;
+            const storageLimitBytes = Number.isFinite(o.storage_limit_bytes) ? o.storage_limit_bytes : null;
+            const storageLimit = storageLimitLabel(o);
+            const aiLimit = Number.isFinite(o.ai_chat_limit) ? o.ai_chat_limit : null;
             const rows = [];
 
             // 1. Team seats
@@ -621,12 +623,10 @@
 
             // 2. Storage
             if (hasPlan && usage.storage && usage.storage.available) {
-                const usedGb = formatGb(usage.storage.bytes);
                 if (storageLimit) {
-                    const usedGbNum = usage.storage.bytes / 1073741824;
-                    rows.push(usageRow('Storage', `${usedGb} GB of ${storageLimit} GB used`, 'Documents and bank statement imports.', pct(usedGbNum, storageLimit)));
+                    rows.push(usageRow('Storage', `${formatStorageBytes(usage.storage.bytes)} of ${storageLimit} used`, 'Documents and bank statement imports.', pct(usage.storage.bytes, storageLimitBytes)));
                 } else {
-                    rows.push(usageRow('Storage', `${usedGb} GB used`, o.storage_note || 'Custom storage agreement.', null));
+                    rows.push(usageRow('Storage', `${formatStorageBytes(usage.storage.bytes)} used`, o.storage_note || 'Custom storage agreement.', null));
                 }
             } else if (hasPlan) {
                 rows.push(usageRow('Storage', 'Being prepared', 'Storage tracking is being prepared.', null));
@@ -634,8 +634,17 @@
                 rows.push(usageRow('Storage', 'No plan', 'Choose a plan to see storage limits.', null));
             }
 
-            // 3. AI questions (no monthly limit defined / count not metered yet)
-            rows.push(usageRow('AI questions', 'Metered on your plan', 'Usage tracking is being prepared.', null));
+            // 3. AI questions
+            if (hasPlan && aiLimit && usage.ai_questions_this_month?.available) {
+                const used = Number(usage.ai_questions_this_month.count) || 0;
+                rows.push(usageRow('AI chats', `${used} of ${aiLimit} trial chats used`, 'Trial AI access unlocks after subscription activation.', pct(used, aiLimit)));
+            } else if (hasPlan && aiLimit) {
+                rows.push(usageRow('AI chats', `${aiLimit} trial chats`, 'Usage tracking is being prepared.', null));
+            } else if (hasPlan) {
+                rows.push(usageRow('AI chats', 'Included with plan', 'Full Fluxy AI access is active on this plan.', null));
+            } else {
+                rows.push(usageRow('AI chats', 'No plan', 'Choose a plan to use Fluxy AI.', null));
+            }
 
             // 4. Document uploads (real current-month count)
             rows.push(usage.documents_this_month && usage.documents_this_month.available
@@ -805,6 +814,23 @@
             const days = Math.ceil((d.getTime() - Date.now()) / 86400000);
             if (days <= 0) return 'Ends today';
             return `${days} day${days === 1 ? '' : 's'} left`;
+        }
+        function storageLimitLabel(o) {
+            if (Number.isFinite(o?.storage_limit_bytes)) return formatStorageBytes(o.storage_limit_bytes);
+            if (Number.isFinite(o?.storage_limit_gb)) return `${o.storage_limit_gb} GB`;
+            return null;
+        }
+        function formatStorageBytes(bytes) {
+            const n = Number(bytes);
+            if (!Number.isFinite(n) || n <= 0) return '0 MB';
+            if (n < 1073741824) {
+                const mb = n / 1048576;
+                if (mb > 0 && mb < 0.1) return '<0.1 MB';
+                return `${mb.toFixed(mb >= 10 ? 0 : 1).replace('.0', '')} MB`;
+            }
+            const gb = n / 1073741824;
+            if (gb > 0 && gb < 0.1) return '<0.1 GB';
+            return `${gb.toFixed(1).replace('.0', '')} GB`;
         }
         function formatGb(bytes) {
             const n = Number(bytes);

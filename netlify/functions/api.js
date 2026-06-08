@@ -296,6 +296,26 @@ function decodeFirestoreDocument(document) {
     return decoded;
 }
 
+function encodeFirestoreValue(value) {
+    if (value === null || value === undefined) return { nullValue: null };
+    if (typeof value === 'boolean') return { booleanValue: value };
+    if (Number.isInteger(value)) return { integerValue: String(value) };
+    if (typeof value === 'number') return { doubleValue: value };
+    if (Array.isArray(value)) return { arrayValue: { values: value.map(encodeFirestoreValue) } };
+    if (typeof value === 'object') {
+        return {
+            mapValue: {
+                fields: Object.fromEntries(Object.entries(value).map(([key, val]) => [key, encodeFirestoreValue(val)])),
+            },
+        };
+    }
+    return { stringValue: String(value) };
+}
+
+function encodeFirestoreFields(data) {
+    return Object.fromEntries(Object.entries(data).map(([key, value]) => [key, encodeFirestoreValue(value)]));
+}
+
 function normalizeSnapshotDate(value) {
     if (!value) return null;
     if (typeof value === 'string') return value;
@@ -367,6 +387,75 @@ async function fetchUserCollection(uid, token, collectionName, pageSize = 1000) 
     }
     const data = await res.json();
     return (data.documents || []).map(decodeFirestoreDocument);
+}
+
+async function fetchUserDocument(uid, token, collectionName, documentId) {
+    if (!FIRESTORE_PROJECT_ID) throw new Error('FIREBASE_PROJECT_ID is not configured');
+    const encodedUid = encodeURIComponent(uid);
+    const encodedCollection = encodeURIComponent(collectionName);
+    const encodedDocument = encodeURIComponent(documentId);
+    const url = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/users/${encodedUid}/${encodedCollection}/${encodedDocument}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 404) return null;
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Firestore ${collectionName}/${documentId} read failed: ${res.status} ${text.slice(0, 120)}`);
+    }
+    return decodeFirestoreDocument(await res.json());
+}
+
+async function patchUserDocument(uid, token, collectionName, documentId, data) {
+    if (!FIRESTORE_PROJECT_ID) throw new Error('FIREBASE_PROJECT_ID is not configured');
+    const encodedUid = encodeURIComponent(uid);
+    const encodedCollection = encodeURIComponent(collectionName);
+    const encodedDocument = encodeURIComponent(documentId);
+    const mask = Object.keys(data).map(key => `updateMask.fieldPaths=${encodeURIComponent(key)}`).join('&');
+    const url = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/users/${encodedUid}/${encodedCollection}/${encodedDocument}${mask ? `?${mask}` : ''}`;
+    const res = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fields: encodeFirestoreFields(data) }),
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Firestore ${collectionName}/${documentId} write failed: ${res.status} ${text.slice(0, 160)}`);
+    }
+    return decodeFirestoreDocument(await res.json());
+}
+
+function shouldUseTrialAIQuota(subscription) {
+    if (!subscription || !subscription.status) return false;
+    if ((subscription.status === 'active' || subscription.status === 'cancel_scheduled') && subscription.plan_id !== 'trial') {
+        return false;
+    }
+    return subscription.plan_id === 'trial'
+        || ['trialing', 'awaiting_payment', 'pending_verification', 'payment_failed', 'expired'].includes(subscription.status);
+}
+
+async function consumeTrialAIQuotaIfNeeded(uid, token) {
+    const subscription = await fetchUserDocument(uid, token, 'billing_subscription', 'current').catch(() => null);
+    if (!shouldUseTrialAIQuota(subscription)) return null;
+    const limit = 3;
+    const existing = await fetchUserDocument(uid, token, 'usage_limits', 'ai_chat_trial').catch(() => null);
+    const used = Math.max(0, Number(existing?.count) || 0);
+    if (used >= limit) {
+        return { blocked: true, used, limit };
+    }
+    try {
+        await patchUserDocument(uid, token, 'usage_limits', 'ai_chat_trial', {
+            metric: 'ai_chat_requests',
+            scope: 'trial',
+            count: used + 1,
+            limit,
+        });
+        return { blocked: false, used: used + 1, limit };
+    } catch (error) {
+        console.error('[brain/chat] trial AI quota write failed:', error?.message || error);
+        return { blocked: true, used, limit };
+    }
 }
 
 async function fetchUserCollectionSafe(uid, token, collectionName, pageSize = 1000) {
@@ -2071,6 +2160,18 @@ exports.handler = async (event) => {
         if (parsed.error) return jsonResponse(headers, 400, { success: false, error: { code: 'invalid_json', message: parsed.error } });
         const uid = getUid(user);
         if (!uid) return jsonResponse(headers, 401, { success: false, error: { code: 'unauthenticated', message: 'Invalid user session' } });
+        const trialQuota = await consumeTrialAIQuotaIfNeeded(uid, token);
+        if (trialQuota?.blocked) {
+            return jsonResponse(headers, 402, {
+                success: false,
+                error: {
+                    code: 'trial_ai_limit_reached',
+                    message: 'Your trial includes 3 Fluxy AI chats. Activate your subscription to keep chatting.',
+                    used: trialQuota.used,
+                    limit: trialQuota.limit,
+                },
+            });
+        }
         const result = await buildBrainChatResponse({ request: parsed.body, uid, token });
         const body = path === '/chat' && result.body?.answer
             ? { ...result.body, reply: result.body.answer.direct_answer }

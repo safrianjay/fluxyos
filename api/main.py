@@ -3,6 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import JSONResponse
 import base64
 import csv
 import datetime
@@ -12,6 +13,7 @@ import json
 import re
 import urllib.request
 import urllib.parse
+import urllib.error
 from jose import jwt, JWTError
 
 try:
@@ -706,6 +708,24 @@ def _decode_firestore_doc(document: Dict[str, Any]) -> Dict[str, Any]:
     decoded["id"] = document.get("name", "").split("/")[-1]
     return decoded
 
+def _encode_firestore_value(value: Any) -> Dict[str, Any]:
+    if value is None:
+        return {"nullValue": None}
+    if isinstance(value, bool):
+        return {"booleanValue": value}
+    if isinstance(value, int):
+        return {"integerValue": str(value)}
+    if isinstance(value, float):
+        return {"doubleValue": value}
+    if isinstance(value, list):
+        return {"arrayValue": {"values": [_encode_firestore_value(v) for v in value]}}
+    if isinstance(value, dict):
+        return {"mapValue": {"fields": {k: _encode_firestore_value(v) for k, v in value.items()}}}
+    return {"stringValue": str(value)}
+
+def _encode_firestore_fields(data: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: _encode_firestore_value(v) for k, v in data.items()}
+
 def _fetch_collection(uid: str, token: str, collection_name: str, page_size: int = 1000) -> List[Dict[str, Any]]:
     project_id = FIREBASE_PROJECT_ID or "fluxyos"
     uid_encoded = urllib.parse.quote(uid, safe="")
@@ -720,6 +740,76 @@ def _fetch_collection(uid: str, token: str, collection_name: str, page_size: int
             return []
         raise
     return [_decode_firestore_doc(doc) for doc in data.get("documents", [])]
+
+def _fetch_document(uid: str, token: str, collection_name: str, document_id: str) -> Dict[str, Any] | None:
+    project_id = FIREBASE_PROJECT_ID or "fluxyos"
+    uid_encoded = urllib.parse.quote(uid, safe="")
+    collection_encoded = urllib.parse.quote(collection_name, safe="")
+    document_encoded = urllib.parse.quote(document_id, safe="")
+    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/(default)/documents/users/{uid_encoded}/{collection_encoded}/{document_encoded}"
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return _decode_firestore_doc(json.loads(resp.read()))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise
+
+def _patch_document(uid: str, token: str, collection_name: str, document_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    project_id = FIREBASE_PROJECT_ID or "fluxyos"
+    uid_encoded = urllib.parse.quote(uid, safe="")
+    collection_encoded = urllib.parse.quote(collection_name, safe="")
+    document_encoded = urllib.parse.quote(document_id, safe="")
+    mask = "&".join(f"updateMask.fieldPaths={urllib.parse.quote(k, safe='')}" for k in data.keys())
+    url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/(default)/documents/users/{uid_encoded}/{collection_encoded}/{document_encoded}"
+    if mask:
+        url = f"{url}?{mask}"
+    body = json.dumps({"fields": _encode_firestore_fields(data)}).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        method="PATCH",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return _decode_firestore_doc(json.loads(resp.read()))
+
+def _should_use_trial_ai_quota(subscription: Dict[str, Any] | None) -> bool:
+    if not subscription or not subscription.get("status"):
+        return False
+    status_value = subscription.get("status")
+    if status_value in {"active", "cancel_scheduled"} and subscription.get("plan_id") != "trial":
+        return False
+    return subscription.get("plan_id") == "trial" or status_value in {
+        "trialing", "awaiting_payment", "pending_verification", "payment_failed", "expired"
+    }
+
+def _consume_trial_ai_quota(uid: str, token: str) -> Dict[str, Any] | None:
+    try:
+        subscription = _fetch_document(uid, token, "billing_subscription", "current")
+    except Exception:
+        subscription = None
+    if not _should_use_trial_ai_quota(subscription):
+        return None
+    limit_count = 3
+    try:
+        existing = _fetch_document(uid, token, "usage_limits", "ai_chat_trial")
+    except Exception:
+        existing = None
+    used = max(0, int(existing.get("count", 0) if existing else 0))
+    if used >= limit_count:
+        return {"blocked": True, "used": used, "limit": limit_count}
+    try:
+        _patch_document(uid, token, "usage_limits", "ai_chat_trial", {
+            "metric": "ai_chat_requests",
+            "scope": "trial",
+            "count": used + 1,
+            "limit": limit_count,
+        })
+        return {"blocked": False, "used": used + 1, "limit": limit_count}
+    except Exception:
+        return {"blocked": True, "used": used, "limit": limit_count}
 
 def _fetch_collection_safe(uid: str, token: str, collection_name: str, page_size: int = 1000) -> tuple[List[Dict[str, Any]], str | None]:
     try:
@@ -1109,12 +1199,26 @@ async def brain_chat(request: ChatRequest, _user=Depends(verify_firebase_token))
     period = _period_dict(request.period, message)
     intent = _classify_intent(message, request.page_context or "global")
     chat_id = request.chat_id.strip()[:128] if isinstance(request.chat_id, str) and request.chat_id.strip() else None
+    uid = _user.get("user_id") or _user.get("sub")
+    token = _user.get("_id_token")
+    trial_quota = _consume_trial_ai_quota(uid, token) if uid and token else None
+    if trial_quota and trial_quota.get("blocked"):
+        return JSONResponse(
+            status_code=402,
+            content={
+                "success": False,
+                "error": {
+                    "code": "trial_ai_limit_reached",
+                    "message": "Your trial includes 3 Fluxy AI chats. Activate your subscription to keep chatting.",
+                    "used": trial_quota.get("used"),
+                    "limit": trial_quota.get("limit"),
+                },
+            },
+        )
     if intent in {"unsupported", "ambiguous"}:
         answer = _build_answer(intent, message, period, [], [], [], request.page_context or "global")
         return {"success": True, "chat_id": chat_id, "intent": intent, "scope": FINANCE_SCOPE, "answer": answer, "related_records": [], "error": None}
 
-    uid = _user.get("user_id") or _user.get("sub")
-    token = _user.get("_id_token")
     transactions, transactions_error = _fetch_collection_safe(uid, token, "transactions", 1000)
     bills, bills_error = _fetch_collection_safe(uid, token, "bills", 500)
     subscriptions, subscriptions_error = _fetch_collection_safe(uid, token, "subscriptions", 500)

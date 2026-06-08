@@ -226,8 +226,11 @@ this build and fail safely. Spec: the Billing & plan Phase 1 task brief.
 | 15 | Confirming cancel with no billing backend → safe error toast, NO status change, NO account lock; reload still shows the same (active) state |
 | 16 | Choose plan → `/pricing`; Upgrade/Fix payment → existing `/checkout` (real flow); View payment → `/payment-pending`. No CTA fakes payment success |
 | 17 | Firestore: no global billing collections; all reads stay under `users/{uid}/…`; the page never writes subscription status |
-| 18 | Mobile 375px: summary cards stack, main row stacks, billing table scrolls inside its container — no page-level horizontal overflow (`document.documentElement.scrollWidth === clientWidth`) |
-| 19 | Browser console clean (no CSP/CORS/404/Firebase/permission errors) — invoice reads degrade to the empty state if the `billing_invoices` rule is not deployed yet |
+| 18 | Trial plan limits show 1 seat, 5 MB storage, and 3 Fluxy AI chats; active paid plans keep their configured seat/storage limits |
+| 19 | Trial AI quota: three `/api/v1/brain/chat` submissions succeed, the fourth returns `trial_ai_limit_reached`, and both the Fluxy AI page and sidebar drawer show the subscription activation popup |
+| 20 | Trial storage quota: document/bank statement uploads are blocked once the incoming file would exceed 5 MB aggregate usage, but `/payment-pending` payment proof upload still works so the user can activate |
+| 21 | Mobile 375px: summary cards stack, main row stacks, billing table scrolls inside its container — no page-level horizontal overflow (`document.documentElement.scrollWidth === clientWidth`) |
+| 22 | Browser console clean (no CSP/CORS/404/Firebase/permission errors) — invoice reads degrade to the empty state if the `billing_invoices` rule is not deployed yet |
 
 **Regression (shared files touched):** `sidebar-loader.js`, `db-service.js`, and
 `billing-config.js` were modified — run §3 Cross-Page Regression and confirm

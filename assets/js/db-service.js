@@ -445,6 +445,7 @@ class DataService {
 
     // --- RECEIPTS (legacy single-image flow; new code should use the DOCUMENTS methods below) ---
     async uploadReceipt(userId, file) {
+        await this.assertCanUseStorage(userId, file?.size || 0, { source: 'receipt' });
         const { getStorage, ref, uploadBytes, getDownloadURL } =
             await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
         if (!this._storage) this._storage = getStorage(this.app);
@@ -464,7 +465,10 @@ class DataService {
     // Uploads a file to users/{uid}/documents/{documentId}/{fileName}, returning
     // the allocated documentId, storage_path, and (for images only) a public
     // download URL for the legacy `receipt_url` dual-write on transactions.
-    async uploadDocument(userId, file) {
+    async uploadDocument(userId, file, options = {}) {
+        if (!options.bypassPlanLimit) {
+            await this.assertCanUseStorage(userId, file?.size || 0, { source: 'document' });
+        }
         const { getStorage, ref, uploadBytes, getDownloadURL } =
             await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
         if (!this._storage) this._storage = getStorage(this.app);
@@ -2885,13 +2889,74 @@ class DataService {
     // status writes, so there is no frontend-only subscription mutation path.
 
     _billingPlanCatalogEntry(planId) {
-        const limits = getPlanLimits(planId) || { tier: null, seat_limit: null, storage_limit_gb: null, storage_note: null };
+        const limits = getPlanLimits(planId) || {
+            tier: null,
+            seat_limit: null,
+            storage_limit_bytes: null,
+            storage_limit_gb: null,
+            storage_note: null,
+            ai_chat_limit: null,
+            ai_chat_scope: null
+        };
         return {
             seat_limit: limits.seat_limit ?? null,
+            storage_limit_bytes: limits.storage_limit_bytes ?? null,
             storage_limit_gb: limits.storage_limit_gb ?? null,
             storage_note: limits.storage_note || null,
+            ai_chat_limit: limits.ai_chat_limit ?? null,
+            ai_chat_scope: limits.ai_chat_scope || null,
             tier: limits.tier || null
         };
+    }
+
+    _effectiveBillingPlanId(subscription) {
+        if (!subscription || !subscription.status) return null;
+        if ((subscription.status === 'active' || subscription.status === 'cancel_scheduled') && subscription.plan_id) {
+            return subscription.plan_id;
+        }
+        // While a payment is waiting/reviewing, access still behaves like trial
+        // until the internal verification promotes the plan to active.
+        if (['trialing', 'awaiting_payment', 'pending_verification', 'payment_failed', 'expired'].includes(subscription.status)) {
+            return 'trial';
+        }
+        return subscription.plan_id || null;
+    }
+
+    async getBillingEntitlements(userId, subscription = null) {
+        const current = subscription || await this.ensureBillingSubscription(userId).catch(() => null);
+        const effectivePlanId = this._effectiveBillingPlanId(current);
+        const limits = this._billingPlanCatalogEntry(effectivePlanId);
+        return {
+            subscription: current,
+            effective_plan_id: effectivePlanId,
+            is_trial_entitlement: effectivePlanId === 'trial',
+            ...limits
+        };
+    }
+
+    async assertCanUseStorage(userId, incomingBytes = 0, options = {}) {
+        if (!userId) throw new Error('Please sign in again before uploading.');
+        const size = Math.max(0, Math.floor(Number(incomingBytes) || 0));
+        const entitlements = await this.getBillingEntitlements(userId);
+        const limitBytes = Number(entitlements.storage_limit_bytes);
+        if (!Number.isFinite(limitBytes) || limitBytes <= 0) return true;
+        const usage = await this.getBillingUsage(userId);
+        if (!usage.storage?.available) {
+            const err = new Error('Storage usage could not be checked. Please try again.');
+            err.code = 'storage_usage_unavailable';
+            throw err;
+        }
+        const used = Math.max(0, Number(usage.storage.bytes) || 0);
+        if (used + size <= limitBytes) return true;
+        const err = new Error(entitlements.is_trial_entitlement
+            ? 'Your trial storage limit is 5 MB. Choose a plan to upload more documents.'
+            : 'Your plan storage limit has been reached. Upgrade your plan to upload more documents.');
+        err.code = entitlements.is_trial_entitlement ? 'trial_storage_limit_reached' : 'storage_limit_reached';
+        err.limitBytes = limitBytes;
+        err.usedBytes = used;
+        err.incomingBytes = size;
+        err.source = options.source || 'storage';
+        throw err;
     }
 
     _normalizeBillingSettingsOverview(subscription) {
@@ -2919,7 +2984,10 @@ class DataService {
             currency: 'IDR',
             seat_limit: catalog.seat_limit,
             storage_limit_gb: catalog.storage_limit_gb,
+            storage_limit_bytes: catalog.storage_limit_bytes,
             storage_note: catalog.storage_note,
+            ai_chat_limit: catalog.ai_chat_limit,
+            ai_chat_scope: catalog.ai_chat_scope,
             trial_start_at: subscription.trial_started_at || null,
             trial_end_at: subscription.trial_ends_at || null,
             current_period_start: subscription.current_period_start || null,
@@ -3016,6 +3084,15 @@ class DataService {
             const exports = await this.getRecentReportExports(userId, 100);
             const count = exports.filter((e) => (e.created_at?.toMillis?.() ?? 0) >= monthStartMs).length;
             usage.report_exports_this_month = { count, available: true };
+        } catch (_) { /* leave as unavailable */ }
+
+        try {
+            const aiSnap = await getDoc(doc(this.db, `users/${userId}/usage_limits/ai_chat_trial`));
+            const count = aiSnap.exists() ? Number((aiSnap.data() || {}).count) : 0;
+            usage.ai_questions_this_month = {
+                count: Number.isFinite(count) ? Math.max(0, count) : 0,
+                available: true
+            };
         } catch (_) { /* leave as unavailable */ }
 
         return usage;
@@ -3928,6 +4005,7 @@ class DataService {
     // "draft"` (or "needs_review" / "rejected") until then.
     async createBankStatementImport(userId, data = {}) {
         if (!userId) throw new Error('userId required');
+        await this.assertCanUseStorage(userId, data.file_size || 0, { source: 'bank_statement_import' });
         const payload = this._cleanDefined({
             bank_account_id: this._nullableString(data.bank_account_id, 120),
             file_name: this._stringOrDefault(data.file_name, 'bank_statement', 240),
@@ -4114,6 +4192,7 @@ class DataService {
     async uploadBankStatementFile(userId, importId, file) {
         if (!userId || !importId) throw new Error('userId and importId required');
         if (!file) throw new Error('file required');
+        await this.assertCanUseStorage(userId, file.size || 0, { source: 'bank_statement_import' });
         const { getStorage, ref, uploadBytes } =
             await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
         if (!this._storage) this._storage = getStorage(this.app);

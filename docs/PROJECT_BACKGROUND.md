@@ -680,9 +680,10 @@ so the user can always reach checkout. UX-only MVP enforcement.
 The Settings → Product → Billing & plan tile routes to `/settings-billing`. The
 page is a **read-only** surface + **safe** subscription actions; it reads the same
 canonical `billing_subscription/current` doc the trial/paywall system uses (never a
-divergent source), normalizes it into a view-model, and layers seat/storage limits
-from `assets/js/billing-config.js` `PLAN_LIMITS` (basic/core → 5 seats & 5 GB,
-growth → 10 & 10, enterprise → 50 & 50, trial mirrors the entry tier). It renders
+divergent source), normalizes it into a view-model, and layers seat/storage/AI
+limits from `assets/js/billing-config.js` `PLAN_LIMITS` (trial → 1 seat, 5 MB
+storage, 3 Fluxy AI chats; basic/core → 5 seats & 5 GB, growth → 10 & 10 GB,
+enterprise → 50 & 50 GB). It renders
 four summary cards, a Your Plan card, a Payment Method card, a Usage & Limits card,
 and a Billing History table. The frontend **never** mutates subscription status
 (Firestore rules block it). DataService methods (all owner-scoped, all degrade
@@ -696,10 +697,26 @@ safely with a toast — never a fake success and never a local status change. Bi
 history reads `users/{uid}/billing_invoices/{invoiceId}` (owner-read rule; client
 writes blocked; issued by a trusted backend) and shows an empty state when absent.
 Usage numbers come only from real user-scoped records (`documents` +
-`bank_statement_imports` file sizes for storage, `documents` / `report_exports`
-counts for the current month); anything not yet metered shows a "being prepared"
-fallback rather than an invented number. The cancel-renewal flow uses the shared
-`showConfirmDialog` (danger tone), not `window.confirm()`.
+`bank_statement_imports` file sizes for storage, `usage_limits/ai_chat_trial` for
+trial AI chats, and `documents` / `report_exports` counts for the current month);
+anything not yet metered shows a "being prepared" fallback rather than an invented
+number. The cancel-renewal flow uses the shared `showConfirmDialog` (danger tone),
+not `window.confirm()`.
+
+**Plan limit enforcement.** Runtime quotas are enforced from the same
+`PLAN_LIMITS` source. `DataService.assertCanUseStorage` blocks document, receipt,
+and bank statement uploads when the incoming file would exceed the effective
+plan storage quota; pending/unverified payment states keep trial entitlements
+until internal verification promotes the subscription to `active`. Payment proof
+uploads bypass this gate so users can still activate a subscription. The
+Netlify/FastAPI `/api/v1/brain/chat` endpoint enforces the trial Fluxy AI quota
+by incrementing `users/{uid}/usage_limits/ai_chat_trial` through Firestore rules;
+the owner can only increment that counter from 1 to 3 and cannot reset it. Firebase
+rules enforce ownership, AI counter monotonicity, and per-file limits where rules
+can inspect a single write. Aggregate storage counting is preflighted by
+`DataService` using `getBillingUsage`; a future server-side storage counter would
+be needed for fully race-proof aggregate storage enforcement across simultaneous
+uploads.
 
 ### 4l. Billing Payment Requests — `users/{userId}/billing_payment_requests/{id}`
 

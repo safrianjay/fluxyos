@@ -405,6 +405,13 @@
             window.showToast?.('Bank statement uploaded as a draft. Nothing has been saved to your ledger.', 'success');
         } catch (error) {
             console.warn('Bank statement import failed:', error?.message || error);
+            if (String(error?.code || '').includes('storage_limit')) {
+                window.FluxyAccessGuard?.showSubscriptionLimitModal?.({
+                    title: error.code === 'trial_storage_limit_reached' ? 'Trial storage limit reached' : 'Storage limit reached',
+                    body: error?.message || 'Choose a plan to import more files.',
+                    confirmLabel: error.code === 'trial_storage_limit_reached' ? 'Activate subscription' : 'Upgrade plan'
+                });
+            }
             ctx.state = STATE_ERROR;
             ctx.errorMessage = error?.code === 'permission-denied'
                 ? 'You do not have permission to import bank statements. Sign in again and retry.'

@@ -641,6 +641,25 @@ service cloud.firestore {
         && data.updated_at is timestamp;
     }
 
+    function hasTrialStorageEntitlement(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId)/billing_subscription/current)
+        && (
+          get(/databases/$(database)/documents/users/$(userId)/billing_subscription/current).data.plan_id == 'trial'
+          || get(/databases/$(database)/documents/users/$(userId)/billing_subscription/current).data.status in [
+            'trialing',
+            'awaiting_payment',
+            'pending_verification',
+            'payment_failed',
+            'expired'
+          ]
+        );
+    }
+
+    function respectsTrialStorageSingleFileLimit(userId, data) {
+      return !hasTrialStorageEntitlement(userId)
+        || data.file_size <= 5 * 1024 * 1024;
+    }
+
     function isValidAttachedDocuments(data) {
       return !('attached_documents' in data)
         || (data.attached_documents is list && data.attached_documents.size() <= 20);
@@ -734,6 +753,42 @@ service cloud.firestore {
         && (!('attachments' in data) || data.attachments is list)
         && data.created_at == request.time
         && data.expires_at is timestamp;
+    }
+
+    function isValidTrialAIUsage(data) {
+      return data.keys().hasAll([
+          'metric',
+          'scope',
+          'count',
+          'limit'
+        ])
+        && data.keys().hasOnly([
+          'metric',
+          'scope',
+          'count',
+          'limit'
+        ])
+        && data.metric == 'ai_chat_requests'
+        && data.scope == 'trial'
+        && data.limit == 3
+        && data.count is number
+        && data.count >= 1
+        && data.count <= 3;
+    }
+
+    function isValidTrialAIUsageCreate(limitId, data) {
+      return limitId == 'ai_chat_trial'
+        && isValidTrialAIUsage(data)
+        && data.count == 1;
+    }
+
+    function isValidTrialAIUsageUpdate(limitId, data, existingData) {
+      return limitId == 'ai_chat_trial'
+        && isValidTrialAIUsage(data)
+        && data.metric == existingData.metric
+        && data.scope == existingData.scope
+        && data.limit == existingData.limit
+        && data.count == existingData.count + 1;
     }
 
     function isValidSettingsTimestamp(data) {
@@ -1254,6 +1309,7 @@ service cloud.firestore {
       return isValidBankStatementImport(data)
         && data.created_at == request.time
         && data.updated_at == request.time
+        && respectsTrialStorageSingleFileLimit(userId, data)
         && data.review_status == 'draft'
         && data.extraction_status == 'pending'
         && (!('storage_path' in data) || data.storage_path == null
@@ -1712,6 +1768,15 @@ service cloud.firestore {
             && isValidAIChatMessage(request.resource.data);
           allow update, delete: if false;
         }
+      }
+
+      match /usage_limits/{limitId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidTrialAIUsageCreate(limitId, request.resource.data);
+        allow update: if isOwner(userId)
+          && isValidTrialAIUsageUpdate(limitId, request.resource.data, resource.data);
+        allow delete: if false;
       }
 
       match /settings/{settingsDoc} {
