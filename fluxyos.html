@@ -535,255 +535,149 @@
     </nav>
 
     <!-- 2. Hero Section -->
-    <section class="landing-hero pt-10 pb-16 lg:pt-16 lg:pb-24 px-6 relative max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-8 items-center overflow-hidden">
-        <div class="hero-ambient-background" aria-hidden="true">
-            <div class="hero-spline-bg__fallback"></div>
-            <div class="hero-spline-bg__frame">
-                <div class="hero-ai-ribbon"></div>
-                <div class="hero-ai-ribbon hero-ai-ribbon--secondary"></div>
-                <div class="hero-ai-particles"></div>
-            </div>
-            <div class="hero-bg-gradient-blur">
-                <div></div>
-                <div></div>
-                <div></div>
-                <div></div>
-                <div></div>
-                <div></div>
-            </div>
-            <div class="hero-bg-softener"></div>
-        </div>
-        
-        <!-- Left Side: Copy & CTA -->
-        <div class="hero-copy lg:col-span-5 pr-0 lg:pr-4 relative z-10">            
-
-            <h1 class="text-[44px] lg:text-[56px] font-bold leading-[1.1] tracking-tight mb-6 text-gray-900 mt-4">
-                Your Finance Operations System for clearer money movement.
-            </h1>
-            <p class="text-lg text-gray-600 leading-relaxed mb-8 max-w-[500px]">
-                FluxyOS connects sales, expenses, budgets, receipts, and payouts so owners, operators, and finance teams can see where money moves before the month ends.
-            </p>
-
-            <ul class="space-y-4 max-w-[480px] mb-10">
-                <li class="flex items-center gap-3">
-                    <div class="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
-                    </div>
-                    <span class="text-[15px] text-gray-700 font-medium">Compare daily revenue against operating costs.</span>
-                </li>
-                <li class="flex items-center gap-3">
-                    <div class="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
-                    </div>
-                    <span class="text-[15px] text-gray-700 font-medium">Flag missing receipts and reconciliation gaps earlier.</span>
-                </li>
-            </ul>
-
-            <div class="flex flex-col sm:flex-row gap-4">
-                <a href="/pricing" class="w-full sm:w-auto bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[16px] px-8 py-3.5 rounded-lg transition-all shadow-md hover:shadow-lg text-center">
-                    Try FluxyOS
-                </a>
-                <button class="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 font-semibold text-[16px] px-8 py-3.5 rounded-lg transition-all shadow-sm text-center flex items-center justify-center gap-2">
-                    Book a demo
-                </button>
-            </div>
+    <section class="landing-hero hero-v2">
+        <!-- Cinematic sunset-mountain background (self-contained, no external asset) -->
+        <div class="hero-v2-bg" aria-hidden="true">
+            <div class="hero-v2-sky"></div>
+            <div class="hero-v2-glow"></div>
+            <svg class="hero-v2-range" viewBox="0 0 1440 620" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+                <!-- Back range (hazy) -->
+                <path d="M0 470 L150 392 L320 442 L470 360 L640 430 L820 336 L1010 420 L1200 372 L1440 430 L1440 620 L0 620 Z" fill="#3a2b4a" opacity="0.55"></path>
+                <!-- Mid range -->
+                <path d="M0 520 L180 446 L360 500 L540 410 L760 486 L980 404 L1180 478 L1440 432 L1440 620 L0 620 Z" fill="#241a31" opacity="0.85"></path>
+                <!-- Front range (darkest, prominent peak right of center) -->
+                <path d="M0 600 L220 520 L430 560 L660 470 L900 300 L1080 470 L1280 420 L1440 500 L1440 620 L0 620 Z" fill="#0c0e18"></path>
+            </svg>
+            <div class="hero-v2-tint"></div>
+            <div class="hero-v2-vignette"></div>
+            <div class="hero-v2-fade"></div>
         </div>
 
-        <!-- Right Side: NEW Layered Device & Finance Mockup -->
-        <div class="hero-visual lg:col-span-7 relative h-[550px] lg:h-[650px] w-full flex items-center justify-center lg:justify-end pl-0 lg:pl-8 mt-10 lg:mt-0">
-            
-            <!-- Ambient Background Glow -->
-            <div class="absolute inset-0 bg-gradient-to-tr from-orange-100/40 via-indigo-50/40 to-transparent rounded-full blur-3xl -z-10 transform scale-110"></div>
+        <div class="hero-v2-inner">
+            <!-- Copy block (keeps .hero-copy so existing entrance animation runs) -->
+            <div class="hero-copy hero-v2-copy">
+                <span class="hero-v2-eyebrow">
+                    <span class="hero-v2-eyebrow-dot"></span>
+                    Finance ops, ledger, bills, and AI in one system
+                </span>
 
-            <!-- LAYER 1: Main Dashboard (Tablet/Laptop View) -->
-            <div class="hero-dashboard hero-layer relative w-full max-w-[500px] lg:max-w-[600px] aspect-[4/3] lg:aspect-[16/10] bg-white rounded-2xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15)] border-8 border-gray-900 overflow-hidden flex flex-col z-10 translate-x-4 lg:translate-x-12 float-slower">
-                <!-- Inner App Layout -->
-                <div class="flex h-full bg-[#F8F9FB]">
-                    <!-- Sidebar -->
-                    <div class="w-1/4 lg:w-1/5 border-r border-gray-200 bg-white p-4 hidden sm:flex flex-col gap-3">
-                        <div class="w-full h-6 rounded bg-gray-100 mb-4"></div>
-                        <div class="w-full h-8 rounded bg-orange-50 border border-orange-100 flex items-center px-2"><div class="w-2 h-2 rounded-full bg-orange-500"></div></div>
-                        <div class="w-full h-8 rounded bg-gray-50 border border-gray-100"></div>
-                        <div class="w-full h-8 rounded bg-gray-50 border border-gray-100"></div>
+                <h1 class="hero-v2-title">
+                    Run your entire finance<br class="hidden md:inline">
+                    operation <span class="hero-v2-title-accent">in one place</span>
+                </h1>
+
+                <p class="hero-v2-sub">
+                    Track revenue, control expenses, manage bills, and ask Fluxy AI what needs attention before month-end.
+                </p>
+
+                <div class="hero-v2-cta">
+                    <a href="/pricing" class="hero-v2-btn hero-v2-btn--primary">
+                        Start Free Trial
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 17L17 7M9 7h8v8"></path></svg>
+                    </a>
+                    <a href="#how-it-works" class="hero-v2-btn hero-v2-btn--secondary">
+                        See how it works
+                        <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Product visual: FluxyOS finance command center (static marketing mockup) -->
+            <div class="hero-v2-stage">
+                <!-- Flanking accent card: Revenue Sync (desktop only) -->
+                <div class="hero-v2-side hero-v2-side--left hero-layer" aria-hidden="true">
+                    <div class="hero-v2-side-head">
+                        <span class="hero-v2-side-icon">↗</span>
+                        Revenue Sync
                     </div>
-                    <!-- Main Area -->
-                    <div class="flex-1 p-4 lg:p-6 flex flex-col gap-4">
-                        <div class="flex justify-between items-end mb-2">
+                    <p class="hero-v2-side-label">Synced this month · 9 channels</p>
+                    <p class="hero-v2-side-value hv-num">Rp642.800.000</p>
+                    <div class="hero-v2-side-bar"><span style="width:82%"></span></div>
+                </div>
+
+                <!-- Flanking accent card: Approvals (desktop only) -->
+                <div class="hero-v2-side hero-v2-side--right hero-layer" aria-hidden="true">
+                    <div class="hero-v2-side-head">
+                        <span class="hero-v2-side-icon hero-v2-side-icon--amber">!</span>
+                        Approvals
+                    </div>
+                    <p class="hero-v2-side-label">5 pending · 2 due this week</p>
+                    <div class="hero-v2-side-row"><span>Biznet Gio</span><span class="hv-num">Rp2.450.000</span></div>
+                    <div class="hero-v2-side-row"><span>AWS</span><span class="hv-num">Rp12.400.000</span></div>
+                </div>
+
+                <!-- Main dashboard card -->
+                <div class="hero-v2-product hero-layer">
+                    <div class="hero-v2-product-bar">
+                        <div class="hero-v2-product-id">
+                            <span class="hero-v2-product-mark">
+                                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" rx="9" fill="currentColor"></rect><g transform="translate(1.5,0)"><path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#fff"></path><path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#fff"></path></g></svg>
+                            </span>
                             <div>
-                                <h3 class="text-[14px] font-bold text-gray-900">Card Usage</h3>
-                                <p class="text-[10px] text-gray-500">Current month spend</p>
-                            </div>
-                            <div class="text-[16px] font-mono font-bold text-[#EA580C]" data-count="18500000" data-prefix="Rp " data-locale="id-ID">Rp 18.500.000</div>
-                        </div>
-                        
-                        <!-- AI & Tax Automation Stats -->
-                        <div class="flex gap-3 mb-2">
-                            <div class="flex-1 border border-orange-100 bg-orange-50/50 rounded-lg p-2.5 shadow-sm flex flex-col justify-center">
-                                <div class="flex items-center gap-1.5 mb-1 text-orange-600">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                    <span class="text-[9px] font-bold uppercase tracking-wider">AI Automation</span>
-                                </div>
-                                <span class="text-[11px] font-bold text-gray-900">98% Auto-Matched</span>
-                            </div>
-                            <div class="flex-1 border border-green-100 bg-green-50/50 rounded-lg p-2.5 shadow-sm flex flex-col justify-center">
-                                <div class="flex items-center gap-1.5 mb-1 text-green-600">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    <span class="text-[9px] font-bold uppercase tracking-wider">Tax Automation</span>
-                                </div>
-                                <span class="text-[11px] font-bold text-gray-900">VAT & Withholding</span>
+                                <p class="hero-v2-product-title">Overview</p>
+                                <p class="hero-v2-product-meta">Finance command center · This month</p>
                             </div>
                         </div>
+                        <span class="hero-v2-product-sync"><span class="hero-v2-dot-green"></span>Synced 3m ago</span>
+                    </div>
 
-                        <!-- Transactions List -->
-                        <div class="flex-1 border border-gray-200 bg-white rounded-lg shadow-sm flex flex-col overflow-hidden">
-                            <div class="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                                <span class="text-[11px] font-bold text-gray-800">Transactions</span>
-                                <div class="w-16 h-5 bg-white border border-gray-200 rounded flex items-center px-1"><div class="w-3 h-1 bg-gray-200 rounded"></div></div>
+                    <!-- KPI row -->
+                    <div class="hero-v2-kpis">
+                        <div class="hero-v2-kpi">
+                            <p class="hero-v2-kpi-label">Revenue</p>
+                            <p class="hero-v2-kpi-value count-up" data-count="642800000" data-prefix="Rp" data-locale="id-ID">Rp642.800.000</p>
+                            <p class="hero-v2-kpi-delta hero-v2-up">▲ 12.4% vs last month</p>
+                        </div>
+                        <div class="hero-v2-kpi">
+                            <p class="hero-v2-kpi-label">Operating expenses</p>
+                            <p class="hero-v2-kpi-value hv-num">Rp318.450.000</p>
+                            <p class="hero-v2-kpi-delta hero-v2-muted">49.5% of revenue</p>
+                        </div>
+                        <div class="hero-v2-kpi">
+                            <p class="hero-v2-kpi-label">Net cash position</p>
+                            <p class="hero-v2-kpi-value hv-num">Rp324.350.000</p>
+                            <p class="hero-v2-kpi-delta hero-v2-up">● Healthy · 41 days cover</p>
+                        </div>
+                    </div>
+
+                    <!-- Fluxy AI insight -->
+                    <div class="hero-v2-ai">
+                        <span class="hero-v2-ai-tag">Fluxy AI</span>
+                        <p class="hero-v2-ai-text">Marketing is <strong>88% through budget</strong> with 9 days left, and 2 bills due this week need your approval.</p>
+                    </div>
+
+                    <!-- Lower split: bills due + recent activity -->
+                    <div class="hero-v2-split">
+                        <div class="hero-v2-panel">
+                            <p class="hero-v2-panel-title">Bills due</p>
+                            <div class="hero-v2-line">
+                                <div><p class="hero-v2-line-name">PLN · Electricity</p><p class="hero-v2-line-sub hero-v2-warn">Due in 2 days</p></div>
+                                <span class="hv-num">Rp4.200.000</span>
                             </div>
-                            <div class="flex flex-col p-2 gap-1.5">
-                                <div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-6 h-6 rounded bg-gray-100 flex items-center justify-center text-[10px]">💳</div>
-                                        <div>
-                                            <p class="text-[11px] font-bold text-gray-900">Biznet Gio</p>
-                                            <p class="text-[9px] text-gray-500">Auto-matched by AI</p>
-                                        </div>
-                                    </div>
-                                    <span class="text-[11px] font-mono font-bold">-Rp 2.450.000</span>
-                                </div>
-                                <div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-6 h-6 rounded bg-gray-100 flex items-center justify-center text-[10px]">📢</div>
-                                        <div>
-                                            <p class="text-[11px] font-bold text-gray-900">TikTok Ads</p>
-                                            <p class="text-[9px] text-gray-500">Marketing Budget</p>
-                                        </div>
-                                    </div>
-                                    <span class="text-[11px] font-mono font-bold">-Rp 1.200.000</span>
-                                </div>
+                            <div class="hero-v2-line">
+                                <div><p class="hero-v2-line-name">AWS · Infrastructure</p><p class="hero-v2-line-sub">Due in 5 days</p></div>
+                                <span class="hv-num">Rp12.400.000</span>
+                            </div>
+                        </div>
+                        <div class="hero-v2-panel">
+                            <p class="hero-v2-panel-title">Recent money movement</p>
+                            <div class="hero-v2-line">
+                                <div><p class="hero-v2-line-name">Shopee payout</p><p class="hero-v2-line-sub">Revenue · matched</p></div>
+                                <span class="hv-num hero-v2-pos">+Rp36.900.000</span>
+                            </div>
+                            <div class="hero-v2-line">
+                                <div><p class="hero-v2-line-name">TikTok Ads</p><p class="hero-v2-line-sub">Marketing · auto-categorized</p></div>
+                                <span class="hv-num">−Rp8.500.000</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- LAYER 2: Mobile App (Foreground Left) - Made Smaller -->
-            <div class="hero-phone hero-layer absolute -left-2 lg:-left-8 bottom-6 lg:bottom-12 w-[160px] lg:w-[180px] bg-white rounded-[1.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] border-[6px] border-gray-900 overflow-hidden z-30 flex flex-col h-[320px] lg:h-[360px] float-slow">
-                <!-- Mobile Notch -->
-                <div class="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-4 bg-gray-900 rounded-b-xl z-40"></div>
-                
-                <!-- Mobile Header -->
-                <div class="pt-8 pb-3 px-4 bg-white border-b border-gray-100 flex justify-between items-end relative z-30">
-                    <h2 class="text-[15px] font-bold text-gray-900">Expenses</h2>
-                    <div class="flex gap-1.5">
-                        <div class="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center"><svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg></div>
-                    </div>
-                </div>
-
-                <!-- Mobile List -->
-                <div class="flex-1 bg-[#F8F9FB] p-3 overflow-hidden flex flex-col gap-2 relative z-30">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">Today</p>
-                    
-                    <div class="bg-white p-2.5 rounded-xl border border-gray-100 shadow-sm">
-                        <div class="flex justify-between items-start mb-1">
-                            <span class="text-[11px] font-bold text-gray-900">Grab Car</span>
-                            <span class="text-[10px] font-mono font-bold text-gray-900">-Rp 125.000</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-[9px] text-gray-500">Business Trip</span>
-                            <span class="text-[8px] bg-[#FFEDD5] text-[#C2410C] font-bold px-1.5 py-0.5 rounded-full">In review</span>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-2.5 rounded-xl border border-gray-100 shadow-sm">
-                        <div class="flex justify-between items-start mb-1">
-                            <span class="text-[11px] font-bold text-gray-900">TikTok Ads</span>
-                            <span class="text-[10px] font-mono font-bold text-gray-900">-Rp 1.400.000</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-[9px] text-gray-500">Subscriptions</span>
-                            <span class="text-[8px] bg-green-100 text-green-700 font-bold px-1.5 py-0.5 rounded-full">Approved</span>
-                        </div>
-                    </div>
-
-                    <p class="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-0.5 mt-1.5">Yesterday</p>
-
-                    <div class="bg-white p-2.5 rounded-xl border border-gray-100 shadow-sm opacity-60">
-                        <div class="flex justify-between items-start mb-1">
-                            <span class="text-[11px] font-bold text-gray-900">Marugame Udon</span>
-                            <span class="text-[10px] font-mono font-bold text-gray-900">-Rp 82.000</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-[9px] text-gray-500">Meals</span>
-                            <span class="text-[8px] bg-[#FFEDD5] text-[#C2410C] font-bold px-1.5 py-0.5 rounded-full">In review</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Mobile Bottom Nav with Icons -->
-                <div class="h-12 bg-white border-t border-gray-100 flex justify-around items-center px-4 relative z-30">
-                    <div class="flex flex-col items-center gap-1 opacity-40 hover:opacity-100 transition-opacity cursor-pointer">
-                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                    </div>
-                    <div class="flex flex-col items-center gap-1 text-[#EA580C] cursor-pointer">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        <div class="w-1 h-1 rounded-full bg-[#EA580C]"></div>
-                    </div>
-                    <div class="flex flex-col items-center gap-1 opacity-40 hover:opacity-100 transition-opacity cursor-pointer">
-                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                    </div>
-                </div>
-            </div>
-
-            <!-- LAYER 3: Floating Notification (Moved to Top Left Side) -->
-            <div class="hero-note hero-layer absolute top-8 lg:top-12 -left-4 lg:-left-10 bg-white/95 backdrop-blur-md rounded-xl shadow-[0_15px_30px_-5px_rgba(0,0,0,0.15)] border border-gray-200 p-3 z-40 flex items-start gap-3 float-fast transform -rotate-[3deg] max-w-[260px]">
-                <div class="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 border border-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                </div>
-                <div>
-                    <div class="flex justify-between items-center mb-0.5 gap-4">
-                        <p class="text-[12px] font-bold text-gray-900">Expense approved via AI</p>
-                        <span class="text-[9px] text-gray-400">Just now</span>
-                    </div>
-                    <p class="text-[10px] text-gray-500 leading-tight">Cardholders have submitted new expenses matching internal policies.</p>
-                </div>
-            </div>
-
-            <!-- LAYER 4: Floating Receipt (Bottom Right) -->
-            <div class="hero-receipt hero-layer absolute -right-4 lg:-right-10 bottom-16 lg:bottom-24 w-[160px] lg:w-[200px] bg-white shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] transform rotate-[6deg] z-20 p-5 border border-gray-100 float-slower text-gray-800 flex flex-col hover:rotate-0 transition-transform duration-300">
-                <div class="flex flex-col items-center border-b border-gray-300 border-dashed pb-4 mb-4">
-                    <div class="w-8 h-8 bg-[#EA580C] rounded-full text-white flex items-center justify-center text-[14px] font-bold mb-2">B</div>
-                    <span class="font-bold text-[16px] leading-none mb-1">Bill Payment</span>
-                    <span class="text-[8px] text-gray-500 text-center leading-tight">Jl. Jend. Sudirman Kav. 52-53<br/>Tel: +62 21 528 9245</span>
-                </div>
-                <div class="text-center text-[9px] font-bold text-gray-600 mb-4">11/11/2026 - 12:15PM</div>
-                <div class="space-y-2.5 mb-5">
-                    <div class="flex justify-between text-[10px] border-b border-gray-100 pb-1">
-                        <span class="text-gray-500 font-medium">1x Indihome 100Mbps</span>
-                        <span class="font-mono text-gray-900">Rp 799.000</span>
-                    </div>
-                    <div class="flex justify-between text-[10px] border-b border-gray-100 pb-1">
-                        <span class="text-gray-500 font-medium">1x Token Listrik PLN</span>
-                        <span class="font-mono text-gray-900">Rp 40.000</span>
-                    </div>
-                    <div class="flex justify-between text-[10px] border-b border-gray-100 pb-1">
-                        <span class="text-gray-500 font-medium">1x PDAM Air</span>
-                        <span class="font-mono text-gray-900">Rp 19.000</span>
-                    </div>
-                </div>
-                <div class="flex justify-between items-center border-t-2 border-gray-900 pt-3">
-                    <span class="font-bold text-[14px]">Total</span>
-                    <span class="font-mono font-bold text-[14px]">Rp 858.000</span>
-                </div>
-                <!-- Jagged bottom edge using SVG pattern -->
-                <div class="absolute -bottom-1.5 left-0 w-full h-2 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjQiPjxwb2x5Z29uIHBvaW50cz0iMCAwIDQgNCA4IDAiIGZpbGw9IiNGRkYiLz48L3N2Zz4=')] bg-repeat-x drop-shadow-sm"></div>
-            </div>
-
         </div>
     </section>
 
     <!-- 3. Platform Hub (Dark Bento Layout) -->
-    <section class="py-16 lg:py-24 bg-[#0B0F19] text-white overflow-hidden border-y border-gray-800">
+    <section id="how-it-works" class="py-16 lg:py-24 bg-[#0B0F19] text-white overflow-hidden border-y border-gray-800">
         <div class="max-w-[1280px] mx-auto px-6">
             <div class="text-center mb-12">
                 <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight mb-4 text-white">Revenue, expenses, and budgets in one working view</h2>
