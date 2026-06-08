@@ -565,8 +565,10 @@ visual hierarchy, semantic color logic, and task-first UX clarity.
 - Do not use card-per-everything composition. Use cards only when they provide
   meaningful grouping, state, or interaction boundaries.
 - Avoid decorative hero eyebrow badges when the H1 already states the page
-  context. A redundant badge plus extra top whitespace is treated as AI slop
-  because it delays the real message without adding user value.
+  context. Generic labels such as "`Finance ops, ledger, bills, and AI in one
+  system`" or "`X, Y, and AI in one system`" are banned. A redundant badge plus
+  extra top whitespace is treated as AI slop because it delays the real message
+  without adding user value.
 - Information hierarchy must remain stable at both `375px` and `1280px`.
   Primary message/action must not be displaced below decorative elements.
 

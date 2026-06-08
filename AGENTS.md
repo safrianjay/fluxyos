@@ -107,6 +107,7 @@ Quick rules:
 - Amount stored in Firestore as raw integer (dots stripped before save)
 - Brand colors: Orange `#EA580C` (accent only: text, icons, borders, gradients), Dark Navy `#0B0F19` (footer/login bg), Purple glow for canvas animation
   - **DESIGN RULE: Orange backgrounds are PROHIBITED project-wide.** Orange is reserved for accents, CTAs, and visual highlights only. Never use orange as a background color on any page (landing or app).
+- **DESIGN RULE: Generic hero eyebrow labels are prohibited.** Do not add labels like "Finance ops, ledger, bills, and AI in one system" or "X, Y, and AI in one system" above a hero headline when the H1 already states the message.
 - Currency display: All monetary amounts must use Rp (Indonesian Rupiah) format with dot separators. Never use $ or other currencies.
 - Favicon: black F-logo SVG at `assets/images/favicon.svg`
 - Git: commit on worktree branch → merge to `main` in `/Users/slumdogmacbookair/Desktop/fluxionos` → push origin main

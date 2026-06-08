@@ -38,6 +38,7 @@ function _fluxyosInit() {
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const canAnimate = !reduceMotion && window.anime;
+    const nav = document.querySelector('nav[data-animate="nav"]');
     const tabButtons = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
     const mobileMenu = document.getElementById('mobile-menu');
@@ -190,20 +191,37 @@ function _fluxyosInit() {
         }
     };
 
+    const updateHomeNavState = () => {
+        if (!nav?.classList.contains('home-hero-nav')) return;
+        const shouldUseSolidNav = window.scrollY > 16 || document.body.classList.contains('mobile-menu-open');
+        document.body.classList.toggle('home-nav-scrolled', shouldUseSolidNav);
+    };
+
+    updateHomeNavState();
+    window.addEventListener('scroll', updateHomeNavState, { passive: true });
+
     mobileMenuToggle?.addEventListener('click', () => {
         setMobileMenu(mobileMenu?.classList.contains('hidden'));
+        updateHomeNavState();
     });
 
     document.querySelectorAll('.mobile-menu-link').forEach(link => {
-        link.addEventListener('click', () => setMobileMenu(false));
+        link.addEventListener('click', () => {
+            setMobileMenu(false);
+            updateHomeNavState();
+        });
     });
 
     document.addEventListener('keydown', event => {
-        if (event.key === 'Escape') setMobileMenu(false);
+        if (event.key === 'Escape') {
+            setMobileMenu(false);
+            updateHomeNavState();
+        }
     });
 
     window.addEventListener('resize', () => {
         if (window.innerWidth >= 1024) setMobileMenu(false);
+        updateHomeNavState();
     });
 
     tabButtons.forEach(button => {
