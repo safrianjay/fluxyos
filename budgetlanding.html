@@ -122,7 +122,11 @@
         }
 
         .mobile-menu-panel {
-            top: calc(var(--promo-banner-height, 0px) + 64px) !important;
+            /* Panel is a child of the backdrop-filtered nav, so its fixed-position
+               containing block is the nav. top:100% pins it flush to the nav bottom;
+               100% = nav height, minus the promo banner the nav sits below. */
+            top: 100% !important;
+            max-height: calc(100dvh - 100% - var(--promo-banner-height, 0px));
         }
         
         /* Subtle Grid Background for Hero */

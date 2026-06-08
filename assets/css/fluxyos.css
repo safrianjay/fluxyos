@@ -121,7 +121,10 @@ nav[data-animate="nav"] {
 }
 
 .mobile-menu-panel {
-    top: calc(var(--promo-banner-height, 0px) + 64px) !important;
+    /* The panel is a child of the backdrop-filtered nav, so its fixed-position
+       containing block is the nav (not the viewport). top:100% pins it flush to
+       the nav's bottom edge regardless of nav height. */
+    top: 100% !important;
 }
 
 .landing-hero {
@@ -490,7 +493,9 @@ nav[data-animate="nav"] {
 }
 
 .mobile-menu-panel {
-    height: calc(100vh - 64px);
+    /* 100% = nav height (containing block); subtract the promo banner the nav
+       sits below so the panel ends exactly at the viewport bottom and scrolls. */
+    max-height: calc(100dvh - 100% - var(--promo-banner-height, 0px));
     overscroll-behavior: contain;
 }
 
