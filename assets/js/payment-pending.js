@@ -138,9 +138,6 @@ function renderQris(request) {
     $('qris-image').src = QRIS_PAYMENT_INFO.imagePath;
     $('qris-image').alt = `QRIS payment QR code for ${QRIS_PAYMENT_INFO.merchantName}`;
     $('qris-merchant').textContent = 'Scan with any QRIS-enabled bank or e-wallet app';
-    $('qris-bank-name').textContent = QRIS_PAYMENT_INFO.recipientName;
-    $('qris-bank-bank').textContent = QRIS_PAYMENT_INFO.bankName;
-    $('qris-bank-number').textContent = QRIS_PAYMENT_INFO.referenceNumber;
 
     const plan = ['core', 'growth', 'enterprise'].includes(request.plan_id) ? request.plan_id : 'growth';
     const billing = ['monthly', 'annually'].includes(request.billing_frequency) ? request.billing_frequency : 'annually';
