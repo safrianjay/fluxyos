@@ -102,8 +102,18 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | `budget_assignment_updated_at` | Timestamp \| null | Optional. Phase 2. Server-set on each assignment write. |
 | `budget_assignment_updated_by` | string \| null | Optional. Phase 2. Pinned by Firestore rule to `request.auth.uid`. |
 | `budget_exclusion_reason` | string \| null | Optional. Phase 2. ≤500 chars. |
+| `cash_effective` | boolean \| null | Optional. Phase 1 cash impact. `true` when money has already moved, `false` when pending/neutral. |
+| `cash_status` | string \| null | Optional. Phase 1 cash impact. `"actual"` \| `"pending"` \| `"none"`. |
+| `cash_direction` | string \| null | Optional. Phase 1 cash impact. `"in"` \| `"out"` \| `"none"`. |
+| `cash_account_id` | string \| null | Optional. Phase 1 cash impact. Reserved for future bank account linkage; always `null` in Phase 1. |
+| `cash_source` | string \| null | Optional. Phase 1 cash impact. `"manual"` for user-entered transactions. |
+| `cash_match_status` | string \| null | Optional. Phase 1 cash impact. `"manual"` \| `"unmatched"` \| `null`. |
+| `cash_effective_at` | Firestore Timestamp \| null | Optional. Phase 1 cash impact. Equals `timestamp` when `cash_effective` is `true`; `null` otherwise. |
+| `cash_assignment_reason` | string \| null | Optional. Phase 2. ≤500 chars. Reason recorded when user manually updates cash-impact fields from Ledger. |
+| `cash_assignment_updated_at` | Timestamp \| null | Optional. Phase 2. Server-set on each cash-impact assignment write. |
+| `cash_assignment_updated_by` | string \| null | Optional. Phase 2. Set to `request.auth.uid` on each cash-impact write. |
 
-All 9 budget fields are optional. Legacy transactions without them keep
+All 9 budget fields, all 7 Phase 1 cash-impact fields, and all 3 Phase 2 cash-assignment audit fields are optional. Legacy transactions without them keep
 working — `DataService.resolveRecordAssignment` falls back to category match.
 
 **Ordering:** `timestamp DESC` (newest first). Default limit: 50. Dashboard preview: 5.

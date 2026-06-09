@@ -56,6 +56,7 @@
                         <div id="ledger-visibility-filter" class="fluxy-select" data-default-label="Active" data-aria-label="Filter active or voided transactions"></div>
                         <div id="ledger-status-filter" class="fluxy-select" data-default-label="All statuses" data-aria-label="Filter by status"></div>
                         <div id="ledger-type-filter" class="fluxy-select" data-default-label="All types" data-aria-label="Filter by type"></div>
+                        <div id="ledger-cash-filter" class="fluxy-select" data-default-label="All cash" data-aria-label="Filter by cash movement status"></div>
                         <button id="download-csv-btn" type="button" data-tour-target="ledger-export" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap" disabled>
                             <svg id="download-csv-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
                             <span id="download-csv-label">Download CSV</span>
@@ -117,6 +118,40 @@
                         <p id="ledger-unreconciled-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">Rp0 at risk</p>
                     </div>
                 </div>
+
+                <section id="ledger-cash-movement-section" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-100">
+                        <h2 class="text-[16px] font-semibold text-gray-900">Ledger cash movement</h2>
+                        <p class="text-[12px] text-gray-500 mt-1">Based on transactions marked as actual cash movement. This does not overwrite your bank balance.</p>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
+                        <div class="p-5">
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Cash in</p>
+                            <p id="lcm-cash-in" class="mt-1 font-mono text-xl font-bold text-emerald-600">Rp0</p>
+                            <p class="mt-1 text-[11px] text-gray-400">Actual inbound</p>
+                        </div>
+                        <div class="p-5">
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Cash out</p>
+                            <p id="lcm-cash-out" class="mt-1 font-mono text-xl font-bold text-gray-900">Rp0</p>
+                            <p class="mt-1 text-[11px] text-gray-400">Actual outbound</p>
+                        </div>
+                        <div class="p-5">
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Net movement</p>
+                            <p id="lcm-net" class="mt-1 font-mono text-xl font-bold text-emerald-600">Rp0</p>
+                            <p class="mt-1 text-[11px] text-gray-400">Cash in minus cash out</p>
+                        </div>
+                        <div class="p-5">
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Pending inflow</p>
+                            <p id="lcm-pending-in" class="mt-1 font-mono text-xl font-bold text-blue-600">Rp0</p>
+                            <p class="mt-1 text-[11px] text-gray-400">Not moved yet</p>
+                        </div>
+                        <div class="p-5">
+                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Pending outflow</p>
+                            <p id="lcm-pending-out" class="mt-1 font-mono text-xl font-bold text-amber-600">Rp0</p>
+                            <p class="mt-1 text-[11px] text-gray-400">Not paid yet</p>
+                        </div>
+                    </div>
+                </section>
 
                 <section id="ledger-attention-section" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                     <div class="px-5 py-4 border-b border-gray-100">
@@ -364,6 +399,7 @@
         let ledgerVisibilityFilter = 'active';
         let ledgerStatusFilter = '';
         let ledgerTypeFilter = '';
+        let ledgerCashFilter = '';
         let ledgerRangeStart = getMonthStartKey();
         let ledgerRangeEnd = getMonthEndKey();
         const linkedLedgerRecordId = new URLSearchParams(window.location.search).get('record');
@@ -593,6 +629,21 @@
             ],
             onChange: (v) => {
                 ledgerTypeFilter = v;
+                applyLedgerMonthFilter();
+            }
+        });
+
+        const cashSelect = mountFluxySelect('#ledger-cash-filter', {
+            options: [
+                { value: '',               label: 'All cash statuses' },
+                { value: 'actual',         label: 'Actual cash movement' },
+                { value: 'pending',        label: 'Pending cash movement' },
+                { value: 'no_impact',      label: 'No cash impact' },
+                { value: 'unlinked',       label: 'Unlinked actual cash' },
+                { value: 'not_classified', label: 'Not classified' },
+            ],
+            onChange: (v) => {
+                ledgerCashFilter = v;
                 applyLedgerMonthFilter();
             }
         });
@@ -834,11 +885,15 @@
                 && matchesLedgerVisibilityFilter(transaction)
                 && matchesLedgerStatusFilter(transaction)
                 && matchesLedgerTypeFilter(transaction)
+                && matchesLedgerCashFilter(transaction)
             );
             renderLedgerFilterChips();
             renderLedgerSummaryCards(currentLedgerTransactions);
             renderLedgerAttention(currentLedgerTransactions);
             renderLedgerActivity(currentLedgerTransactions);
+            // Cash movement summary is scoped by date only (uses allLedgerTransactions so
+            // the totals reflect the full date range regardless of active cash filter).
+            renderLedgerCashMovementSummary(allLedgerTransactions);
             if (downloadBtn) downloadBtn.disabled = currentLedgerTransactions.length === 0;
             renderLedgerTable();
         }
@@ -864,6 +919,61 @@
             const raw = getNormalizedRawTransactionType(transaction);
             const normalized = raw === 'revenue' ? 'income' : raw;
             return normalized === ledgerTypeFilter;
+        }
+
+        function matchesLedgerCashFilter(transaction) {
+            if (!ledgerCashFilter) return true;
+            const hasCashFields = transaction.cash_effective !== undefined || transaction.cash_status !== undefined;
+            if (ledgerCashFilter === 'actual')         return transaction.cash_effective === true;
+            if (ledgerCashFilter === 'pending')        return transaction.cash_status === 'pending';
+            if (ledgerCashFilter === 'no_impact')      return transaction.cash_status === 'none' || transaction.cash_direction === 'none';
+            if (ledgerCashFilter === 'unlinked')       return transaction.cash_effective === true && !transaction.cash_account_id;
+            if (ledgerCashFilter === 'not_classified') return !hasCashFields;
+            return true;
+        }
+
+        function getLedgerCashBadge(tx) {
+            const hasCashFields = tx.cash_effective !== undefined || tx.cash_status !== undefined;
+            if (!hasCashFields) return { label: 'Not classified', cls: 'border-gray-200 bg-gray-50 text-gray-500' };
+            if (tx.cash_effective === true) {
+                if (!tx.cash_account_id) return { label: 'Actual · unlinked', cls: 'border-orange-200 bg-orange-50 text-[#EA580C]' };
+                if (tx.cash_direction === 'in')  return { label: 'Actual cash in',  cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
+                if (tx.cash_direction === 'out') return { label: 'Actual cash out', cls: 'border-blue-200 bg-blue-50 text-blue-700' };
+                return { label: 'Actual cash in', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
+            }
+            if (tx.cash_status === 'pending') return { label: 'Pending cash', cls: 'border-amber-200 bg-amber-50 text-amber-700' };
+            if (tx.cash_status === 'none' || tx.cash_direction === 'none') return { label: 'No cash impact', cls: 'border-gray-200 bg-gray-50 text-gray-500' };
+            return { label: 'Not classified', cls: 'border-gray-200 bg-gray-50 text-gray-500' };
+        }
+
+        function calcLedgerCashMovement(transactions) {
+            let cashIn = 0, cashOut = 0, pendingIn = 0, pendingOut = 0;
+            const PENDING_IN_TYPES  = new Set(['income', 'revenue', 'refund', 'pending_receivable']);
+            const PENDING_OUT_TYPES = new Set(['expense', 'fee', 'tax', 'pending_payable']);
+            transactions.forEach(tx => {
+                const amt    = Math.abs(Number(tx.amount) || 0);
+                const txType = getNormalizedRawTransactionType(tx);
+                if (tx.cash_effective === true && tx.cash_direction === 'in')  cashIn  += amt;
+                if (tx.cash_effective === true && tx.cash_direction === 'out') cashOut += amt;
+                if (tx.cash_status === 'pending') {
+                    if (PENDING_IN_TYPES.has(txType))  pendingIn  += amt;
+                    if (PENDING_OUT_TYPES.has(txType)) pendingOut += amt;
+                }
+            });
+            return { cashIn, cashOut, net: cashIn - cashOut, pendingIn, pendingOut };
+        }
+
+        function renderLedgerCashMovementSummary(transactions) {
+            const m = calcLedgerCashMovement(transactions);
+            setSummaryText('lcm-cash-in',    formatCurrencyIDR(m.cashIn));
+            setSummaryText('lcm-cash-out',   formatCurrencyIDR(m.cashOut));
+            setSummaryText('lcm-pending-in', formatCurrencyIDR(m.pendingIn));
+            setSummaryText('lcm-pending-out',formatCurrencyIDR(m.pendingOut));
+            const netEl = document.getElementById('lcm-net');
+            if (netEl) {
+                netEl.textContent = (m.net < 0 ? '- ' : '') + formatCurrencyIDR(Math.abs(m.net));
+                netEl.className = `mt-1 font-mono text-xl font-bold ${m.net < 0 ? 'text-red-600' : 'text-emerald-600'}`;
+            }
         }
 
         function escapeHtml(str) {
@@ -963,6 +1073,19 @@
                     label: ledgerVisibilityFilter === 'voided' ? 'Visibility: Voided' : 'Visibility: All'
                 }));
             }
+            if (ledgerCashFilter) {
+                const cashFilterLabels = {
+                    actual: 'Cash: Actual movement',
+                    pending: 'Cash: Pending',
+                    no_impact: 'Cash: No impact',
+                    unlinked: 'Cash: Unlinked actual',
+                    not_classified: 'Cash: Not classified'
+                };
+                chips.push(renderFilterChip({
+                    kind: 'cash',
+                    label: cashFilterLabels[ledgerCashFilter] || `Cash: ${ledgerCashFilter}`
+                }));
+            }
 
             if (!chips.length) {
                 row.classList.add('hidden');
@@ -975,6 +1098,7 @@
             setSelectActiveState(statusSelect, Boolean(ledgerStatusFilter));
             setSelectActiveState(typeSelect, Boolean(ledgerTypeFilter));
             setSelectActiveState(visibilitySelect, ledgerVisibilityFilter !== 'active');
+            setSelectActiveState(cashSelect, Boolean(ledgerCashFilter));
         }
 
         function setLedgerVendorFilter(vendorName) {
@@ -1684,11 +1808,17 @@
                 const vendorName = getVendorDisplayName(row);
                 const isVoided = isVoidedTransaction(row);
                 const badge = isVoided ? null : (window.__resolveLedgerBudgetBadge?.(row) || null);
+                const cashBadge = isVoided ? null : getLedgerCashBadge(row);
                 const amountText = 'Rp' + Math.abs(Number(row.amount) || 0).toLocaleString('id-ID');
                 const budgetChip = badge ? `
                     <div class="mt-1.5 flex items-center gap-2 flex-wrap">
                         <span class="fluxy-table-status ${badge.cls}">${escapeHtml(badge.label)}</span>
                         <button type="button" class="fluxy-table-action" data-fluxy-budget-action="${badge.action}" data-record-type="transactions" data-record-id="${escapeHtml(row.id)}" data-vendor="${escapeHtml(vendorName)}" data-amount-text="${escapeHtml(amountText)}" data-current-allocation-id="${escapeHtml(badge.allocationId || '')}">${badge.action === 'restore' ? 'Restore' : 'Assign'}</button>
+                    </div>` : '';
+                const cashChip = cashBadge ? `
+                    <div class="mt-1 flex items-center gap-1.5 flex-wrap">
+                        <span class="fluxy-table-status ${cashBadge.cls}">${escapeHtml(cashBadge.label)}</span>
+                        <button type="button" class="fluxy-table-action" data-cash-edit-id="${escapeHtml(row.id)}">Edit</button>
                     </div>` : '';
                 return `
                 <tr class="fluxy-table-row fluxy-table-row-clickable ${isVoided ? 'bg-gray-50/70 text-gray-400' : ''}" data-ledger-id="${escapeHtml(row.id)}">
@@ -1707,6 +1837,7 @@
                     <td class="fluxy-table-cell fluxy-table-cell-meta align-top">
                         <p>${escapeHtml(row.category || '')}</p>
                         ${budgetChip}
+                        ${cashChip}
                     </td>
                     <td class="fluxy-table-cell fluxy-table-money font-bold ${isVoided ? 'text-gray-400 line-through' : getAmountClass(row)}">
                         ${formatTransactionAmount(row)}
@@ -1790,6 +1921,10 @@
                 ledgerVisibilityFilter = 'active';
                 visibilitySelect?.setValue('active');
                 applyLedgerMonthFilter();
+            } else if (kind === 'cash') {
+                ledgerCashFilter = '';
+                cashSelect?.setValue('');
+                applyLedgerMonthFilter();
             }
         });
 
@@ -1834,6 +1969,27 @@
                 event.preventDefault();
                 event.stopPropagation();
                 setLedgerVendorFilter(vendorBtn.dataset.vendorName || '');
+                return;
+            }
+
+            const cashEditBtn = event.target.closest('[data-cash-edit-id]');
+            if (cashEditBtn) {
+                event.preventDefault();
+                event.stopPropagation();
+                const txId = cashEditBtn.dataset.cashEditId || '';
+                const row  = window.__ledgerRowMap[txId] || findLedgerTransactionById(txId);
+                if (!row) { window.showToast?.('Transaction not found in current view.', 'info'); return; }
+                document.body.classList.add('overflow-hidden');
+                try {
+                    const user = auth.currentUser;
+                    const fresh = user ? await ds.getTransactionById(user.uid, txId) : null;
+                    window.openTxDetailDrawer(fresh || row);
+                    // Small delay so the drawer finishes animating in before we switch to the edit panel
+                    window.setTimeout(() => renderCashImpactEditPanel(fresh || row), 320);
+                } catch (_) {
+                    window.openTxDetailDrawer(row);
+                    window.setTimeout(() => renderCashImpactEditPanel(row), 320);
+                }
                 return;
             }
 
@@ -2107,7 +2263,21 @@
                 ${receiptHtml}
                 ${attachmentHtml}
                 ${attachHtml}
+                ${!isVoided ? (() => {
+                    const cb = getLedgerCashBadge(row);
+                    return `<div class="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Cash impact</p>
+                                <span class="mt-1 inline-flex items-center rounded border px-2 py-1 text-[11px] font-bold uppercase ${cb.cls}">${escapeHtml(cb.label)}</span>
+                            </div>
+                            <button type="button" id="tx-detail-cash-edit-btn" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">Edit</button>
+                        </div>
+                    </div>`;
+                })() : ''}
             `;
+
+            document.getElementById('tx-detail-cash-edit-btn')?.addEventListener('click', () => renderCashImpactEditPanel(row));
 
             actions.innerHTML = isVoided
                 ? `<button type="button" onclick="window.closeTxDetailDrawer()" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Close</button>`
@@ -2187,6 +2357,180 @@
             document.getElementById('tx-edit-form')?.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 await saveEditedTransaction(row);
+            });
+        }
+
+        async function renderCashImpactEditPanel(row) {
+            const content = document.getElementById('tx-detail-content');
+            const actions = document.getElementById('tx-detail-footer-actions');
+            document.getElementById('tx-detail-eyebrow').textContent = 'Cash impact';
+            document.getElementById('tx-detail-vendor').textContent = row.vendor_name || '—';
+            if (!content || !actions) return;
+
+            // Load bank accounts for optional linking (best-effort; empty list on failure)
+            let bankAccounts = [];
+            try {
+                const user = auth.currentUser;
+                if (user) bankAccounts = (await ds.getBankAccounts(user.uid)) || [];
+            } catch (_) {}
+
+            // Determine current state
+            const hasCashFields   = row.cash_effective !== undefined || row.cash_status !== undefined;
+            let initImpact   = 'not_classified';
+            if (hasCashFields) {
+                if (row.cash_effective === true)  initImpact = 'actual';
+                else if (row.cash_status === 'pending') initImpact = 'pending';
+                else initImpact = 'no_impact';
+            }
+            const initDirection  = row.cash_direction || 'in';
+            const initAccountId  = row.cash_account_id || '';
+
+            const accountOptions = bankAccounts
+                .filter(a => a.status === 'active')
+                .map(a => `<option value="${escapeHtml(a.id)}" ${a.id === initAccountId ? 'selected' : ''}>${escapeHtml(a.account_name || a.bank_name || a.id)}</option>`)
+                .join('');
+
+            content.innerHTML = `
+                <form id="tx-cash-edit-form" class="space-y-5">
+                    <div>
+                        <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Cash impact</p>
+                        <div class="grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1" id="cash-impact-selector">
+                            <button type="button" data-cash-impact="actual"         class="cash-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${initImpact === 'actual'         ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">Actual</button>
+                            <button type="button" data-cash-impact="pending"        class="cash-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${initImpact === 'pending'        ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">Pending</button>
+                            <button type="button" data-cash-impact="no_impact"      class="cash-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${initImpact === 'no_impact'      ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">No impact</button>
+                        </div>
+                    </div>
+                    <div id="cash-direction-field" class="${initImpact === 'actual' ? '' : 'hidden'}">
+                        <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Direction</p>
+                        <div class="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" id="cash-direction-selector">
+                            <button type="button" data-cash-dir="in"  class="cash-dir-btn rounded-lg px-3 py-2 text-[12px] font-bold transition-all ${initDirection !== 'out' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">Cash in</button>
+                            <button type="button" data-cash-dir="out" class="cash-dir-btn rounded-lg px-3 py-2 text-[12px] font-bold transition-all ${initDirection === 'out' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">Cash out</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="cash-account-select" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Link cash account <span class="normal-case font-normal">(optional)</span></label>
+                        ${bankAccounts.length
+                            ? `<select id="cash-account-select" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]">
+                                <option value="">No account linked</option>
+                                ${accountOptions}
+                               </select>`
+                            : `<p class="text-[13px] text-gray-500 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl">No bank accounts added yet. Add one in Settings → Cash & Bank Accounts.</p>`
+                        }
+                    </div>
+                    <div>
+                        <label for="cash-reason-input" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reason for change <span class="normal-case font-normal text-red-500">*</span></label>
+                        <input type="text" id="cash-reason-input" required maxlength="500" placeholder="Why are you changing this cash status?" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]">
+                    </div>
+                </form>
+            `;
+
+            actions.innerHTML = `
+                <div class="flex gap-2">
+                    <button id="cash-edit-cancel-btn" type="button" class="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                    <button id="cash-edit-save-btn" type="submit" form="tx-cash-edit-form" class="flex-1 rounded-xl bg-gray-900 px-4 py-3 text-[14px] font-bold text-white hover:bg-gray-800 transition-colors">Save cash impact</button>
+                </div>
+            `;
+
+            // Segmented button interaction
+            let selectedImpact    = initImpact;
+            let selectedDirection = initDirection !== 'out' ? 'in' : 'out';
+
+            function refreshImpactBtns() {
+                document.querySelectorAll('.cash-impact-btn').forEach(btn => {
+                    const active = btn.dataset.cashImpact === selectedImpact;
+                    btn.className = `cash-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`;
+                });
+                const dirField = document.getElementById('cash-direction-field');
+                if (dirField) dirField.classList.toggle('hidden', selectedImpact !== 'actual');
+            }
+
+            function refreshDirBtns() {
+                document.querySelectorAll('.cash-dir-btn').forEach(btn => {
+                    const active = btn.dataset.cashDir === selectedDirection;
+                    btn.className = `cash-dir-btn rounded-lg px-3 py-2 text-[12px] font-bold transition-all ${active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`;
+                });
+            }
+
+            document.getElementById('cash-impact-selector')?.addEventListener('click', (e) => {
+                const btn = e.target.closest('.cash-impact-btn');
+                if (!btn) return;
+                selectedImpact = btn.dataset.cashImpact || selectedImpact;
+                refreshImpactBtns();
+            });
+            document.getElementById('cash-direction-selector')?.addEventListener('click', (e) => {
+                const btn = e.target.closest('.cash-dir-btn');
+                if (!btn) return;
+                selectedDirection = btn.dataset.cashDir || selectedDirection;
+                refreshDirBtns();
+            });
+
+            document.getElementById('cash-edit-cancel-btn')?.addEventListener('click', () => renderTxDetailView(row));
+
+            document.getElementById('tx-cash-edit-form')?.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const reason = document.getElementById('cash-reason-input')?.value?.trim() || '';
+                if (!reason) {
+                    window.showToast?.('Please enter a reason for the cash impact change.', 'error');
+                    return;
+                }
+
+                const confirmed = await window.showConfirmDialog({
+                    title: 'Update cash impact?',
+                    body: 'This changes how the transaction is counted in Ledger cash movement. It will not update your real Bank Cash Balance.',
+                    confirmLabel: 'Update cash impact',
+                    cancelLabel: 'Cancel',
+                    tone: 'default',
+                    icon: 'info'
+                });
+                if (!confirmed) return;
+
+                const saveBtn = document.getElementById('cash-edit-save-btn');
+                const origLabel = saveBtn?.textContent || 'Save cash impact';
+                if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+
+                try {
+                    const user = auth.currentUser;
+                    if (!user) throw new Error('Session expired.');
+
+                    // Build payload from selected options
+                    let cashEffective = false;
+                    let cashStatus    = 'none';
+                    let cashDirection = 'none';
+                    let cashMatchStatus = 'unmatched';
+                    let cashEffectiveAt = null;
+                    const accountId   = document.getElementById('cash-account-select')?.value || null;
+
+                    if (selectedImpact === 'actual') {
+                        cashEffective   = true;
+                        cashStatus      = 'actual';
+                        cashDirection   = selectedDirection;
+                        cashMatchStatus = 'manual';
+                        cashEffectiveAt = row.timestamp || null;
+                    } else if (selectedImpact === 'pending') {
+                        cashEffective   = false;
+                        cashStatus      = 'pending';
+                        cashDirection   = 'none';
+                        cashMatchStatus = 'unmatched';
+                    }
+
+                    const payload = {
+                        cash_effective:   cashEffective,
+                        cash_status:      cashStatus,
+                        cash_direction:   cashDirection,
+                        cash_account_id:  accountId || null,
+                        cash_match_status: cashMatchStatus,
+                        cash_effective_at: cashEffectiveAt
+                    };
+
+                    const updated = await ds.updateTransactionCashImpact(user.uid, row.id, payload, reason);
+                    syncTransactionInMemory(updated);
+                    applyLedgerMonthFilter();
+                    window.showToast?.('Cash impact updated.', 'success');
+                    renderTxDetailView(updated);
+                } catch (err) {
+                    window.showToast?.(friendlyLedgerError(err, 'Could not update cash impact. Try again.'), 'error');
+                    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = origLabel; }
+                }
             });
         }
 

@@ -265,6 +265,53 @@ class DataService {
         return { id: transactionId, ...existing, ...payload };
     }
 
+    async updateTransactionCashImpact(userId, transactionId, payload, reason) {
+        if (!userId || !transactionId) throw new Error('userId and transactionId required');
+        const ref = doc(this.db, `users/${userId}/transactions/${transactionId}`);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('Transaction not found.');
+        const existing = snap.data() || {};
+        if (this._isVoidedTransaction(existing)) throw new Error('Voided transactions cannot be edited.');
+
+        const CASH_SNAPSHOT_FIELDS = ['cash_effective', 'cash_status', 'cash_direction', 'cash_account_id', 'cash_match_status'];
+        const before = {};
+        CASH_SNAPSHOT_FIELDS.forEach(k => { before[k] = existing[k] ?? null; });
+
+        // Only cash-impact fields are allowed in the update — never touch amount, type, etc.
+        const update = {};
+        if (Object.prototype.hasOwnProperty.call(payload, 'cash_effective'))  update.cash_effective  = Boolean(payload.cash_effective);
+        if (Object.prototype.hasOwnProperty.call(payload, 'cash_status'))     update.cash_status     = String(payload.cash_status || 'none');
+        if (Object.prototype.hasOwnProperty.call(payload, 'cash_direction'))  update.cash_direction  = String(payload.cash_direction || 'none');
+        if (Object.prototype.hasOwnProperty.call(payload, 'cash_account_id')) update.cash_account_id = payload.cash_account_id || null;
+        if (Object.prototype.hasOwnProperty.call(payload, 'cash_match_status')) update.cash_match_status = payload.cash_match_status || null;
+        if (Object.prototype.hasOwnProperty.call(payload, 'cash_effective_at')) update.cash_effective_at = payload.cash_effective_at || null;
+        update.cash_assignment_reason    = this._stringOrDefault(reason, '', 500) || null;
+        update.cash_assignment_updated_at = serverTimestamp();
+        update.cash_assignment_updated_by = userId;
+        update.updated_at = serverTimestamp();
+        update.updated_by = userId;
+
+        const after = {};
+        CASH_SNAPSHOT_FIELDS.forEach(k => { after[k] = update[k] !== undefined ? update[k] : (existing[k] ?? null); });
+
+        const batch = writeBatch(this.db);
+        batch.update(ref, update);
+        batch.set(doc(collection(this.db, `users/${userId}/audit_logs`)), {
+            actor_uid: userId,
+            actor_role: null,
+            action: 'transaction.cash_impact_updated',
+            target_collection: 'transactions',
+            target_id: transactionId,
+            before,
+            after,
+            reason: update.cash_assignment_reason,
+            source: 'dashboard',
+            created_at: serverTimestamp()
+        });
+        await batch.commit();
+        return { id: transactionId, ...existing, ...update };
+    }
+
     async addTransaction(userId, data) {
         const { timestamp, ...rest } = data;
         return await addDoc(collection(this.db, `users/${userId}/transactions`), {

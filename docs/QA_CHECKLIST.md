@@ -332,6 +332,74 @@ CSS changes. See [DESIGN_SYSTEM.md → Numeric & currency format (strict)](../do
 | 14 | Uploading an invalid CSV keeps the modal open, shows a row-specific validation error, and writes no partial rows |
 | 15 | Ledger table starts at 10 rows per page, pagination next/previous works, and Date, Amount, Category, and Status headers toggle ascending/descending sort with up/down icons |
 
+### E1b. Cash Impact Section (shared-dashboard.js, firestore.rules)
+
+Run this section whenever the cash-impact logic in `shared-dashboard.js` or the
+7 optional cash fields in `firestore.rules` transaction allowlists are touched.
+Spec: `docs/CASH_IMPACT_TRANSACTION_LOGIC.md` Phase 1.
+
+| # | Check |
+|---|-------|
+| 1 | **Segmented control shows for standard types.** Open Add Transaction with type `expense`, `income`, `refund`, `fee`, `tax`, `adjustment`. Confirm the "Cash impact" section is visible with two buttons ("Already received / paid" and "Still pending") |
+| 2 | **Default selection — standard types.** For types other than `adjustment`, "Already received / paid" is active by default (white bg + shadow). For `adjustment`, "Still pending" is active by default |
+| 3 | **Helper text — pending types.** Switch type to `pending_receivable` or `pending_payable`. Segmented control hides; blue info box appears: "This will be tracked as pending and will not affect real cash balance yet." |
+| 4 | **Helper text — transfer type.** Switch type to `transfer`. Segmented control hides; gray info box appears about neutral ledger record |
+| 5 | **User selection persists on type change within segmented group.** Set type to `expense`, click "Still pending", then change type to `income` (another segmented type) — selection resets to the default for the new type (should be "received") |
+| 6 | **Submit writes correct fields — received.** Add expense (type `expense`, cash impact "Already received / paid") → open Firestore Console → confirm `cash_effective: true`, `cash_status: "actual"`, `cash_direction: "out"`, `cash_source: "manual"`, `cash_match_status: "manual"`, `cash_effective_at` equals the transaction timestamp, `cash_account_id: null` |
+| 7 | **Submit writes correct fields — pending.** Add expense (type `expense`, cash impact "Still pending") → Firestore → confirm `cash_effective: false`, `cash_status: "pending"`, `cash_direction: "none"`, `cash_match_status: "unmatched"`, `cash_effective_at: null` |
+| 8 | **Income/refund direction is 'in'.** Add income transaction with "Already received / paid" → Firestore → `cash_direction: "in"` |
+| 9 | **Pending types auto-set fields.** Add `pending_receivable` → Firestore → `cash_effective: false`, `cash_status: "pending"`, `cash_direction: "none"`, `cash_match_status: "unmatched"` |
+| 10 | **Transfer auto-set fields.** Add `transfer` → Firestore → `cash_effective: false`, `cash_status: "none"`, `cash_direction: "none"`, `cash_match_status: null` |
+| 11 | **No cash fields on Add Bill.** Open Add Bill drawer → confirm no Cash impact section is visible; submit bill → Firestore bill doc has no `cash_*` fields |
+| 12 | **No cash fields on Add Subscription.** Same check for subscription drawer |
+| 13 | **Legacy transactions unaffected.** Ledger renders transactions without any `cash_*` fields without errors |
+| 14 | **No writes to bank_accounts or bank_balance_snapshots.** After any Add Transaction with cash impact set → confirm `users/{uid}/bank_accounts` and `users/{uid}/bank_balance_snapshots` are unchanged in Firestore Console |
+| 15 | **Mobile width 375 px.** Cash impact section does not overflow horizontally; segmented buttons fit within the drawer width |
+| 16 | **Browser console clean.** No Firestore permission errors, no JS errors, no CSP/CORS issues after any cash impact submission |
+
+### E1c. Cash Movement Ledger Visibility — Phase 2 (ledger.html, db-service.js, firestore.rules)
+
+Run this section whenever cash-impact badges, the Ledger cash movement summary, the cash movement filter,
+the cash-impact edit panel, or `DataService.updateTransactionCashImpact` are touched.
+Spec: `docs/CASH_MOVEMENT_LEDGER_VISIBILITY_PHASE_2.md`.
+
+| # | Check |
+|---|-------|
+| 1 | **Cash badges render on Phase 1 records.** Open Ledger with transactions that have Phase 1 cash-impact fields → each row shows a cash badge (`Actual cash in`, `Actual cash out`, `Pending cash`, `No cash impact`, or `Actual · unlinked`) in the category cell |
+| 2 | **Legacy badge.** Transactions without any `cash_*` fields show `Not classified` badge |
+| 3 | **Unlinked badge.** Transactions where `cash_effective === true` and `cash_account_id` is null show `Actual · unlinked` (all Phase 1 records start here) |
+| 4 | **Cash movement summary — Cash in.** Add income transaction with "Already received / paid" → Ledger summary `Cash in` increases |
+| 5 | **Cash movement summary — Cash out.** Add expense transaction with "Already received / paid" → `Cash out` increases; `Net movement` updates |
+| 6 | **Cash movement summary — Pending inflow.** Add income as "Still pending" → `Pending inflow` increases; `Cash in` unchanged |
+| 7 | **Cash movement summary — Pending outflow.** Add expense as "Still pending" → `Pending outflow` increases; `Cash out` unchanged |
+| 8 | **Summary scoped by date filter.** Change the Ledger date range → summary totals update to match the new period |
+| 9 | **Summary ignores cash filter.** Activate a cash filter (e.g. "Actual cash movement") → summary still shows totals for the full date range, not just filtered rows |
+| 10 | **Cash filter — Actual.** Select "Actual cash movement" → only rows with `cash_effective === true` are visible; pagination resets to page 1 |
+| 11 | **Cash filter — Pending.** Select "Pending cash movement" → only `cash_status === "pending"` rows visible |
+| 12 | **Cash filter — No impact.** Select "No cash impact" → rows with `cash_status === "none"` or `cash_direction === "none"` visible |
+| 13 | **Cash filter — Unlinked.** Select "Unlinked actual cash" → rows where `cash_effective === true` and no `cash_account_id` visible |
+| 14 | **Cash filter — Not classified.** Select "Not classified" → only legacy rows without any `cash_*` fields visible |
+| 15 | **Cash filter intersects existing filters.** Apply cash filter + type filter simultaneously → only rows matching both conditions are visible |
+| 16 | **Cash filter chip.** Active cash filter shows a removable chip above the table; clicking X on chip clears filter |
+| 17 | **Edit cash impact — opens from row.** Click "Edit" button in a transaction row's cash badge → detail drawer opens, then switches to the cash edit panel |
+| 18 | **Edit cash impact — opens from detail drawer.** Open transaction detail → scroll to Cash impact section → click "Edit" → edit panel renders |
+| 19 | **Edit panel — Actual → in.** Select "Actual", direction "Cash in", enter reason → Save cash impact → confirm dialog appears; confirm → update succeeds → badge updates to `Actual · unlinked` (no account linked yet) |
+| 20 | **Edit panel — Actual → out.** Same flow with "Cash out" → badge shows `Actual · unlinked` |
+| 21 | **Edit panel — Pending.** Select "Pending" → save → badge updates to `Pending cash`; direction field hidden |
+| 22 | **Edit panel — No impact.** Select "No impact" → save → badge shows `No cash impact`; Cash in/out summary decreases if was previously actual |
+| 23 | **Edit panel — reason required.** Click Save without entering a reason → toast error "Please enter a reason"; form does not submit |
+| 24 | **Edit panel — confirmation dialog.** Confirm dialog uses the FluxyOS dialog helper (not `window.confirm()`); shows correct copy about Ledger cash movement vs. Bank Cash Balance |
+| 25 | **Audit log written.** After any cash-impact edit → `users/{uid}/audit_logs` has a new doc with `action: "transaction.cash_impact_updated"`, `target_collection: "transactions"`, correct `before`/`after` snapshots, and `reason` field |
+| 26 | **Bank account link (if accounts exist).** Open cash edit panel → link dropdown shows active bank accounts; select account → save → `cash_account_id` updates in Firestore; badge changes from `Actual · unlinked` to `Actual cash in/out` |
+| 27 | **No bank accounts.** Cash edit panel shows helper text "No bank accounts added yet" when user has no accounts; form still saves without account |
+| 28 | **Bank balance unchanged.** After any cash-impact edit → `users/{uid}/bank_accounts` and `users/{uid}/bank_balance_snapshots` are unchanged |
+| 29 | **Regression — existing Ledger filters work.** Date filter, search, type, status, visibility, and vendor filters all still work after Phase 2 additions |
+| 30 | **Regression — sorting and pagination.** Table sort, next/previous pagination, and page count are unaffected |
+| 31 | **Regression — CSV export.** Download CSV still works and does not include cash-impact columns in the export file |
+| 32 | **Regression — Add Transaction still works.** Existing Add Transaction drawer (Phase 1) still shows the Cash impact segmented control and saves correctly |
+| 33 | **Mobile 375 px.** Cash movement summary, cash badges in table rows, cash filter, and cash edit panel do not overflow horizontally |
+| 34 | **Browser console clean.** No Firestore permission errors, no JS errors after all cash-impact interactions |
+
 ### E2. Receipt & Document Attachment (document-attachment.js, document.rules)
 
 Run this section whenever `document-attachment.js`, `db-service.js` document

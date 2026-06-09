@@ -417,6 +417,23 @@ window.showAddTransactionModal = function(options = {}) {
                             </div>
                         </div>
                         ${context === 'bill' ? `<div id="tx-budget-preview" class="hidden rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600"></div>` : ''}
+                        ${context === 'transaction' ? `
+                        <div id="tx-cash-impact-section" class="hidden space-y-2">
+                            <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Cash impact</p>
+                            <p class="mt-1 text-[13px] font-medium text-gray-700">Has this money already moved?</p>
+                            <div class="mt-2 grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1">
+                                <button type="button" id="tx-cash-btn-received"
+                                    class="rounded-lg px-3 py-2 text-[12px] font-bold transition-all bg-white text-gray-900 shadow-sm">
+                                    Already received / paid
+                                </button>
+                                <button type="button" id="tx-cash-btn-pending"
+                                    class="rounded-lg px-3 py-2 text-[12px] font-bold transition-all text-gray-500 hover:text-gray-900">
+                                    Still pending
+                                </button>
+                            </div>
+                        </div>
+                        <div id="tx-cash-impact-helper" class="hidden rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[12px] text-blue-800"></div>
+                        ` : ''}
                         ${context !== 'bill' ? `<div>
                             <label for="tx-status" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Status</label>
                             <select id="tx-status" name="status" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
@@ -592,6 +609,8 @@ window.showAddTransactionModal = function(options = {}) {
     let selectedEntryDate = todayKey;
     let updateSelectedCsvDateState = updateDateWarning;
     let bulkStatusOverride = null;
+    let cashImpactSelection = 'received';
+    let cashImpactUserTouched = false;
     let csvImportState = {
         file: null,
         csvText: '',
@@ -930,6 +949,62 @@ window.showAddTransactionModal = function(options = {}) {
             if (isOthers) typeCustomInput.focus();
             else typeCustomInput.value = '';
         });
+    }
+
+    // Cash impact section — transaction context only
+    if (context === 'transaction') {
+        const cashSection = document.getElementById('tx-cash-impact-section');
+        const cashHelper = document.getElementById('tx-cash-impact-helper');
+        const cashBtnReceived = document.getElementById('tx-cash-btn-received');
+        const cashBtnPending = document.getElementById('tx-cash-btn-pending');
+
+        const refreshCashBtnStyles = () => {
+            if (!cashBtnReceived || !cashBtnPending) return;
+            const isReceived = cashImpactSelection === 'received';
+            cashBtnReceived.className = `rounded-lg px-3 py-2 text-[12px] font-bold transition-all ${isReceived ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`;
+            cashBtnPending.className = `rounded-lg px-3 py-2 text-[12px] font-bold transition-all ${!isReceived ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`;
+        };
+
+        const updateCashImpactSection = () => {
+            if (!cashSection || !cashHelper) return;
+            const typeVal = typeSelectEl?.value || defaultType;
+            cashSection.classList.add('hidden');
+            cashHelper.classList.add('hidden');
+
+            if (['pending_receivable', 'pending_payable'].includes(typeVal)) {
+                cashHelper.className = 'rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[12px] text-blue-800';
+                cashHelper.textContent = 'This will be tracked as pending and will not affect real cash balance yet.';
+                cashHelper.classList.remove('hidden');
+                return;
+            }
+            if (typeVal === 'transfer') {
+                cashHelper.className = 'rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600';
+                cashHelper.textContent = 'Transfer tracking is saved as a neutral ledger record in this phase. Account-to-account transfer matching will be handled later.';
+                cashHelper.classList.remove('hidden');
+                return;
+            }
+            cashSection.classList.remove('hidden');
+            if (!cashImpactUserTouched) {
+                cashImpactSelection = typeVal === 'adjustment' ? 'pending' : 'received';
+                refreshCashBtnStyles();
+            }
+        };
+
+        cashBtnReceived?.addEventListener('click', () => {
+            cashImpactSelection = 'received';
+            cashImpactUserTouched = true;
+            refreshCashBtnStyles();
+        });
+        cashBtnPending?.addEventListener('click', () => {
+            cashImpactSelection = 'pending';
+            cashImpactUserTouched = true;
+            refreshCashBtnStyles();
+        });
+        typeSelectEl?.addEventListener('change', () => {
+            cashImpactUserTouched = false;
+            updateCashImpactSection();
+        });
+        updateCashImpactSection();
     }
 
     // Budget impact preview (Phase 1.5) — bill drawer only. Prefetches the
@@ -1386,6 +1461,55 @@ window.showAddTransactionModal = function(options = {}) {
         }
     }
 
+    // Derives the 7 optional cash-impact fields for a transaction.
+    // Only called for context === 'transaction'. Does NOT touch bank_accounts
+    // or bank_balance_snapshots — Phase 1 only annotates the transaction record.
+    function buildCashImpactFields(txType, selection, txTimestamp) {
+        if (['pending_receivable', 'pending_payable'].includes(txType)) {
+            return {
+                cash_effective: false,
+                cash_status: 'pending',
+                cash_direction: 'none',
+                cash_account_id: null,
+                cash_source: 'manual',
+                cash_match_status: 'unmatched',
+                cash_effective_at: null
+            };
+        }
+        if (txType === 'transfer') {
+            return {
+                cash_effective: false,
+                cash_status: 'none',
+                cash_direction: 'none',
+                cash_account_id: null,
+                cash_source: 'manual',
+                cash_match_status: null,
+                cash_effective_at: null
+            };
+        }
+        if (selection === 'received') {
+            const isInbound = ['income', 'revenue', 'refund'].includes(txType);
+            return {
+                cash_effective: true,
+                cash_status: 'actual',
+                cash_direction: isInbound ? 'in' : 'out',
+                cash_account_id: null,
+                cash_source: 'manual',
+                cash_match_status: 'manual',
+                cash_effective_at: txTimestamp
+            };
+        }
+        return {
+            cash_effective: false,
+            cash_status: 'pending',
+            cash_direction: 'none',
+            cash_account_id: null,
+            cash_source: 'manual',
+            cash_match_status: 'unmatched',
+            cash_effective_at: null
+        };
+    }
+
     // Form Submission
     document.getElementById('global-tx-form').onsubmit = async (e) => {
         e.preventDefault();
@@ -1468,6 +1592,12 @@ window.showAddTransactionModal = function(options = {}) {
                 data.due_date = buildBillDueDateTimestamp(selectedEntryDate, Timestamp);
             } else {
                 data.timestamp = buildTransactionTimestamp(selectedEntryDate, Timestamp);
+            }
+
+            // Append optional cash-impact fields for transaction context.
+            // Does not write to bank_accounts or bank_balance_snapshots.
+            if (context === 'transaction') {
+                Object.assign(data, buildCashImpactFields(txType, cashImpactSelection, data.timestamp));
             }
 
             // Shared document attachment (Phase 1):

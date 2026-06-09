@@ -1468,7 +1468,14 @@ service cloud.firestore {
             'budget_assignment_reason',
             'budget_assignment_updated_at',
             'budget_assignment_updated_by',
-            'budget_exclusion_reason'
+            'budget_exclusion_reason',
+            'cash_effective',
+            'cash_status',
+            'cash_direction',
+            'cash_account_id',
+            'cash_source',
+            'cash_match_status',
+            'cash_effective_at'
           ])
           && isValidBaseRecord(request.resource.data)
           && (!('created_at' in request.resource.data) || request.resource.data.created_at == request.time)
@@ -1512,6 +1519,16 @@ service cloud.firestore {
             'budget_assignment_updated_at',
             'budget_assignment_updated_by',
             'budget_exclusion_reason',
+            'cash_effective',
+            'cash_status',
+            'cash_direction',
+            'cash_account_id',
+            'cash_source',
+            'cash_match_status',
+            'cash_effective_at',
+            'cash_assignment_reason',
+            'cash_assignment_updated_at',
+            'cash_assignment_updated_by',
             'updated_at',
             'updated_by',
             'is_voided',
