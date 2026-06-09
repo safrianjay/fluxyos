@@ -318,7 +318,18 @@ function renderLedgerCashCell(ledgerCash, bankCash) {
         }
     }
 
-    renderBankCashCell(bankCash, {});
+    // Bank running balance = user's last known balance + net of cash transactions after that balance was set
+    const anchorMs = bankCash.syncedAt ? new Date(bankCash.syncedAt).getTime() : null;
+    let bankAdj = 0;
+    if (anchorMs !== null && Array.isArray(ledgerCash._entries)) {
+        for (const tx of ledgerCash._entries) {
+            if (tx.tsMs > anchorMs) {
+                bankAdj += tx.direction === 'in' ? tx.amount : -tx.amount;
+            }
+        }
+    }
+    const bankRunning = safeNumber(bankCash.balance) + bankAdj;
+    renderBankCashCell({ ...bankCash, balance: bankRunning }, {});
 }
 
 function renderBankCashCell(bankCash, rp) {

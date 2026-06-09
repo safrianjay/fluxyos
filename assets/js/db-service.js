@@ -175,7 +175,7 @@ class DataService {
     }
 
     async getLedgerCashPosition(userId) {
-        if (!userId) return { cashIn: 0, cashOut: 0, net: 0, recordCount: 0 };
+        if (!userId) return { cashIn: 0, cashOut: 0, net: 0, recordCount: 0, _entries: [] };
         try {
             const q = query(
                 collection(this.db, `users/${userId}/transactions`),
@@ -184,17 +184,22 @@ class DataService {
             );
             const snapshot = await getDocs(q);
             let cashIn = 0, cashOut = 0, count = 0;
+            const entries = [];
             snapshot.forEach(d => {
                 const data = d.data();
                 if (data.is_voided) return;
                 const amount = this._safeInteger(data.amount);
-                if (data.cash_direction === 'in') cashIn += amount;
-                else if (data.cash_direction === 'out') cashOut += amount;
+                const direction = data.cash_direction;
+                if (direction !== 'in' && direction !== 'out') return;
+                const ts = data.timestamp?.toDate?.() || data.cash_effective_at?.toDate?.();
+                if (direction === 'in') cashIn += amount;
+                else cashOut += amount;
                 count++;
+                entries.push({ direction, amount, tsMs: ts ? ts.getTime() : 0 });
             });
-            return { cashIn, cashOut, net: cashIn - cashOut, recordCount: count };
+            return { cashIn, cashOut, net: cashIn - cashOut, recordCount: count, _entries: entries };
         } catch {
-            return { cashIn: 0, cashOut: 0, net: 0, recordCount: 0 };
+            return { cashIn: 0, cashOut: 0, net: 0, recordCount: 0, _entries: [] };
         }
     }
 
