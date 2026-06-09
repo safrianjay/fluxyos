@@ -428,6 +428,21 @@ service cloud.firestore {
         );
     }
 
+    // Owner-driven cancel: an in-flight QRIS request moves
+    // awaiting_payment|pending_verification -> canceled. Only the lifecycle
+    // status + updated_at may change; amounts/plan/method stay immutable
+    // (guaranteed by the affectedKeys allow-list). verified/failed/expired stay
+    // server-owned and can never be set here.
+    function isValidPaymentRequestCancel(prev, next) {
+      return (prev.payment_status == 'awaiting_payment' || prev.payment_status == 'pending_verification')
+        && next.payment_status == 'canceled'
+        && next.diff(prev).affectedKeys().hasOnly([
+          'payment_status',
+          'updated_at'
+        ])
+        && next.updated_at == request.time;
+    }
+
     function isCheckoutSubscriptionWrite(userId, data) {
       return data.status == 'pending_verification'
         && data.plan_id in ['core', 'growth', 'enterprise']
@@ -521,6 +536,30 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(data.current_payment_request_id)).data.plan_id == data.plan_id
         && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(data.current_payment_request_id)).data.billing_frequency == data.billing_frequency
         && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(data.current_payment_request_id)).data.payment_status == 'awaiting_payment';
+    }
+
+    // Owner cancels an in-flight payment: the subscription reverts from
+    // awaiting_payment|pending_verification back to its trial state (trialing if
+    // the trial is still live, expired if it already lapsed), dropping the
+    // unpaid plan and clearing the payment request link. Cross-checked against
+    // the linked request being canceled in the SAME commit, so access can never
+    // silently revert to trial without the request actually being voided.
+    function isCancelPaymentRevert(userId, prev, data) {
+      return (prev.status == 'awaiting_payment' || prev.status == 'pending_verification')
+        && prev.current_payment_request_id is string
+        && data.plan_id == 'trial'
+        && data.plan_name == 'Trial'
+        && data.billing_frequency == null
+        && data.current_payment_request_id == null
+        && data.current_period_start == null
+        && data.current_period_end == null
+        && data.trial_started_at == prev.trial_started_at
+        && data.trial_ends_at == prev.trial_ends_at
+        && (
+          (data.status == 'trialing' && (prev.trial_ends_at == null || prev.trial_ends_at >= request.time))
+          || (data.status == 'expired' && prev.trial_ends_at is timestamp && prev.trial_ends_at < request.time)
+        )
+        && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(prev.current_payment_request_id)).data.payment_status == 'canceled';
     }
 
     function isTrialSubscriptionCreate(data) {
@@ -1389,9 +1428,13 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId)
           && isValidBillingPaymentRequest(request.resource.data);
-        // Owner may confirm a QRIS payment (awaiting_payment -> pending_verification).
+        // Owner may confirm a QRIS payment (awaiting_payment -> pending_verification)
+        // or cancel an in-flight payment (-> canceled).
         allow update: if isOwner(userId)
-          && isValidPaymentRequestVerificationSubmit(resource.data, request.resource.data);
+          && (
+            isValidPaymentRequestVerificationSubmit(resource.data, request.resource.data)
+            || isValidPaymentRequestCancel(resource.data, request.resource.data)
+          );
         allow delete: if false;
       }
 
@@ -1410,6 +1453,7 @@ service cloud.firestore {
           && (
             isCheckoutSubscriptionWrite(userId, request.resource.data)
             || isCheckoutAwaitingPaymentWrite(userId, request.resource.data)
+            || isCancelPaymentRevert(userId, resource.data, request.resource.data)
             || isInternalReviewReconcile(userId, resource.data, request.resource.data)
             || isActiveBillingPeriodBackfill(userId, resource.data, request.resource.data)
             || isLegacyBillingMigration(userId, request.resource.data)

@@ -38,6 +38,10 @@
                 <p class="qris-body">Scan the QR code using your banking app or e-wallet. Pay the exact amount shown below. After payment, click &ldquo;I&rsquo;ve completed payment&rdquo; so we can verify it manually.</p>
 
                 <div class="qris-pay-card">
+                    <div class="qris-countdown" id="qris-countdown" role="timer">
+                        <span class="qris-countdown-label" id="qris-countdown-label">Complete payment within</span>
+                        <span class="qris-countdown-value mono" id="qris-countdown-value">24:00:00</span>
+                    </div>
                     <figure class="qris-code">
                         <img id="qris-image" src="assets/images/qris-tanda360.png" alt="QRIS payment QR code">
                     </figure>
@@ -56,6 +60,7 @@
                 <div class="qris-actions" id="qris-stage-confirm">
                     <button class="qris-primary" type="button" id="confirm-paid-btn">I&rsquo;ve completed payment</button>
                     <a class="qris-secondary" id="qris-back-checkout" href="/checkout">Back to checkout</a>
+                    <button class="qris-cancel" type="button" id="cancel-payment-btn">Cancel payment</button>
                 </div>
 
                 <div class="qris-verify hidden" id="qris-stage-verify">
@@ -97,6 +102,20 @@
             </div>
         </div>
     </main>
+
+    <!-- Cancel-payment confirmation -->
+    <div class="qris-modal hidden" id="cancel-modal" role="dialog" aria-modal="true" aria-labelledby="cancel-modal-title" aria-describedby="cancel-modal-body">
+        <div class="qris-modal-backdrop" id="cancel-modal-backdrop"></div>
+        <div class="qris-modal-card" role="document">
+            <h3 class="qris-modal-title" id="cancel-modal-title">Cancel this payment?</h3>
+            <p class="qris-modal-body" id="cancel-modal-body">This will void your current QRIS payment request and take you back to choose a plan. You can start a new payment anytime.</p>
+            <div class="qris-modal-actions">
+                <button type="button" class="qris-modal-keep" id="cancel-modal-keep">Keep paying</button>
+                <button type="button" class="qris-modal-confirm" id="cancel-modal-confirm">Yes, cancel payment</button>
+            </div>
+            <p class="qris-error hidden" id="cancel-modal-error" role="alert"></p>
+        </div>
+    </div>
 
     <script type="module" src="assets/js/payment-pending.js"></script>
 </body>

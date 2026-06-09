@@ -24,12 +24,14 @@ const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => 
 const PROOF_ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 const PROOF_MAX_BYTES = 5 * 1024 * 1024;
 const SUCCESS_REDIRECT_DELAY_MS = 3400;
+const PAYMENT_WINDOW_MS = 24 * 60 * 60 * 1000; // QRIS payment is valid for 24 hours
 
 let currentUser = null;
 let pendingProofFile = null;
 let unsubscribeInternalStatus = null;
 let redirectTimer = null;
 let redirectScheduled = false;
+let countdownTimer = null;
 
 const requestIdParam = new URLSearchParams(window.location.search).get('requestId');
 
@@ -49,6 +51,7 @@ onAuthStateChanged(auth, async (user) => {
 window.addEventListener('beforeunload', () => {
     stopInternalStatusListener();
     cancelDashboardRedirect();
+    stopCountdown();
 });
 
 function showView(view) {
@@ -144,6 +147,58 @@ function renderQris(request) {
     $('qris-back-checkout').href = `/checkout?plan=${plan}&billing=${billing}`;
 
     bindQrisActions(request);
+    startCountdown(request);
+}
+
+/* 24-hour QRIS payment window countdown shown at the top of the QR card.
+   Prefers an explicit expires_at if present, otherwise counts down from the
+   request's creation time + 24h. */
+function resolvePaymentDeadlineMs(request) {
+    const expiresMs = request?.expires_at?.toMillis?.();
+    if (Number.isFinite(expiresMs) && expiresMs > 0) return expiresMs;
+    const createdMs = request?.created_at?.toMillis?.() ?? request?.submitted_at?.toMillis?.();
+    const startMs = Number.isFinite(createdMs) && createdMs > 0 ? createdMs : Date.now();
+    return startMs + PAYMENT_WINDOW_MS;
+}
+
+function startCountdown(request) {
+    stopCountdown();
+    const box = $('qris-countdown');
+    const label = $('qris-countdown-label');
+    const value = $('qris-countdown-value');
+    if (!box || !label || !value) return;
+    const deadlineMs = resolvePaymentDeadlineMs(request);
+    const pad = (n) => String(n).padStart(2, '0');
+
+    const tick = () => {
+        const remaining = deadlineMs - Date.now();
+        if (remaining <= 0) {
+            stopCountdown();
+            box.classList.add('is-expired');
+            label.textContent = 'Payment window expired';
+            value.textContent = '00:00:00';
+            const confirmBtn = $('confirm-paid-btn');
+            const submitBtn = $('submit-verify-btn');
+            if (confirmBtn) confirmBtn.disabled = true;
+            if (submitBtn) submitBtn.disabled = true;
+            return;
+        }
+        const totalSec = Math.floor(remaining / 1000);
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
+        box.classList.remove('is-expired');
+        label.textContent = 'Complete payment within';
+        value.textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+    };
+
+    tick();
+    countdownTimer = setInterval(tick, 1000);
+}
+
+function stopCountdown() {
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = null;
 }
 
 function bindQrisActions(request) {
@@ -244,6 +299,61 @@ function bindQrisActions(request) {
             showError('We could not submit your confirmation. Please try again.');
         }
     };
+
+    /* Cancel payment → confirm in a modal → void the request, revert to trial,
+       and return the user to plan selection. */
+    const cancelBtn = $('cancel-payment-btn');
+    const modal = $('cancel-modal');
+    const modalBackdrop = $('cancel-modal-backdrop');
+    const modalKeep = $('cancel-modal-keep');
+    const modalConfirm = $('cancel-modal-confirm');
+    const modalError = $('cancel-modal-error');
+
+    function onCancelModalKeydown(event) {
+        if (event.key === 'Escape' && !modalConfirm.disabled) closeCancelModal();
+    }
+    const closeCancelModal = () => {
+        modal.classList.add('hidden');
+        modalError.classList.add('hidden');
+        modalError.textContent = '';
+        modalConfirm.disabled = false;
+        modalKeep.disabled = false;
+        modalConfirm.textContent = 'Yes, cancel payment';
+        document.removeEventListener('keydown', onCancelModalKeydown);
+    };
+    const openCancelModal = () => {
+        modal.classList.remove('hidden');
+        document.addEventListener('keydown', onCancelModalKeydown);
+        modalKeep.focus();
+    };
+
+    cancelBtn.onclick = openCancelModal;
+    modalKeep.onclick = closeCancelModal;
+    modalBackdrop.onclick = () => { if (!modalConfirm.disabled) closeCancelModal(); };
+    modalConfirm.onclick = async () => {
+        if (modalConfirm.disabled) return;
+        if (!currentUser?.uid) {
+            modalError.textContent = 'Your session is still loading. Please try again.';
+            modalError.classList.remove('hidden');
+            return;
+        }
+        modalConfirm.disabled = true;
+        modalKeep.disabled = true;
+        modalConfirm.textContent = 'Canceling...';
+        modalError.classList.add('hidden');
+        try {
+            await data.cancelPaymentRequest(currentUser.uid, request.id);
+            stopCountdown();
+            stopInternalStatusListener();
+            window.location.replace('/pricing');
+        } catch (_) {
+            modalConfirm.disabled = false;
+            modalKeep.disabled = false;
+            modalConfirm.textContent = 'Yes, cancel payment';
+            modalError.textContent = 'We could not cancel the payment. Please try again.';
+            modalError.classList.remove('hidden');
+        }
+    };
 }
 
 /* ---------------- Status card (pending / active / failed / empty) ---------------- */
@@ -310,6 +420,7 @@ function renderMeta(request) {
 }
 
 function render(subscription, request, reviewReason) {
+    stopCountdown();
     showView('status');
     renderMeta(request);
     const requestStatus = request?.payment_status;

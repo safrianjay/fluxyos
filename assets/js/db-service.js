@@ -2731,6 +2731,79 @@ class DataService {
         return updatedRequest;
     }
 
+    // Owner cancels an in-flight QRIS payment (awaiting_payment or
+    // pending_verification). In one batch it voids the request
+    // (payment_status -> canceled), reverts the subscription back to its trial
+    // state — so access, plan limits, and the settings page stop reflecting the
+    // unpaid plan — and writes an audit log. After commit it mirrors the
+    // reverted status to internal_users so the ops console shows the user is no
+    // longer in a payment flow. verified/failed transitions stay server-owned.
+    async cancelPaymentRequest(userId, paymentRequestId) {
+        if (!userId) throw new Error('missing-user');
+        if (!paymentRequestId) throw new Error('missing-request');
+        const request = await this.getPaymentRequestById(userId, paymentRequestId);
+        if (!request) throw new Error('request-not-found');
+        if (request.payment_status !== 'awaiting_payment' && request.payment_status !== 'pending_verification') {
+            // Already verified/failed/expired/canceled — nothing to cancel.
+            return request;
+        }
+
+        const currentSubscription = await this.getBillingSubscription(userId);
+        const trialEndsAt = currentSubscription?.trial_ends_at || null;
+        const trialEndMs = trialEndsAt?.toMillis?.() ?? null;
+        // Revert to a live trial if one remains, otherwise to expired.
+        const revertStatus = (trialEndMs !== null && trialEndMs < Date.now()) ? 'expired' : 'trialing';
+
+        const requestRef = doc(this._billingPaymentRequestsCol(userId), paymentRequestId);
+        const auditRef = doc(collection(this.db, `users/${userId}/audit_logs`));
+        const batch = writeBatch(this.db);
+
+        batch.update(requestRef, {
+            payment_status: 'canceled',
+            updated_at: serverTimestamp()
+        });
+
+        const subscriptionPayload = {
+            plan_id: 'trial',
+            plan_name: 'Trial',
+            status: revertStatus,
+            billing_frequency: null,
+            current_payment_request_id: null,
+            trial_started_at: currentSubscription?.trial_started_at || null,
+            trial_ends_at: trialEndsAt,
+            current_period_start: null,
+            current_period_end: null,
+            updated_at: serverTimestamp()
+        };
+        batch.set(this._billingSubscriptionDoc(userId), subscriptionPayload);
+
+        batch.set(auditRef, {
+            actor_uid: userId,
+            actor_role: null,
+            action: 'billing.payment_request_canceled',
+            target_collection: 'billing_payment_requests',
+            target_id: paymentRequestId,
+            before: { payment_status: request.payment_status },
+            after: { payment_status: 'canceled', reverted_status: revertStatus },
+            reason: null,
+            source: 'dashboard',
+            created_at: serverTimestamp()
+        });
+
+        await batch.commit();
+
+        try {
+            // Pass no request so the mirror reflects the reverted trial plan
+            // (plan_id: 'trial') rather than the now-voided paid plan.
+            await this.syncInternalUserBillingSubscriptionIndex(
+                userId,
+                { id: 'current', ...subscriptionPayload }
+            );
+        } catch (_) { /* internal mirror is non-critical */ }
+
+        return { id: paymentRequestId, ...request, payment_status: 'canceled' };
+    }
+
     async getLatestPaymentRequest(userId) {
         if (!userId) return null;
         const q = query(this._billingPaymentRequestsCol(userId), orderBy('created_at', 'desc'), limit(1));
