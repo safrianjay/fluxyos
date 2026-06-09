@@ -17,6 +17,14 @@
 [build.processing.html]
   pretty_urls = true
 
+# Firebase Auth helper pages must be served from the app authDomain.
+# Netlify hosts fluxyos.com, so proxy these paths to Firebase Hosting.
+[[redirects]]
+  from = "/__/auth/*"
+  to = "https://fluxyos.firebaseapp.com/__/auth/:splat"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "https://fluxyos.netlify.app/fluxyos"
   to = "https://fluxyos.com/"
