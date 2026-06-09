@@ -64,13 +64,25 @@ function deriveState(subscription) {
     const remainingMs = endMs === null ? null : Math.max(0, endMs - Date.now());
     const daysRemaining = remainingMs === null ? null : Math.ceil(remainingMs / DAY_MS);
     const hoursRemaining = remainingMs === null ? null : Math.ceil(remainingMs / (60 * 60 * 1000));
-    const isActive = status === 'active';
+    // cancel_scheduled = renewal canceled but still paid through the period end,
+    // so it has the SAME full access as active.
+    const isCancelScheduled = status === 'cancel_scheduled';
+    const isActive = status === 'active' || isCancelScheduled;
     const isSuspended = status === 'suspended';
     const isTrialExpired = status === 'expired';
     const isAwaitingPayment = status === 'awaiting_payment';
     const isPaymentSubmitted = status === 'pending_verification';
     const isPaymentRejected = status === 'payment_failed';
     const isTrialState = status === 'trialing';
+
+    // Renewal reminder: in this manual-QRIS model a paid period must be renewed
+    // by hand. Surface a banner starting 7 days before current_period_end.
+    const periodEndMs = toMillis(subscription.current_period_end);
+    const periodRemainingMs = periodEndMs === null ? null : Math.max(0, periodEndMs - Date.now());
+    const daysUntilPeriodEnd = periodRemainingMs === null ? null : Math.ceil(periodRemainingMs / DAY_MS);
+    const periodEndsSoon = periodRemainingMs !== null && periodRemainingMs > 0 && periodRemainingMs <= 7 * DAY_MS;
+    const isPaymentDueSoon = status === 'active' && periodEndsSoon;
+    const isRenewalEndingSoon = isCancelScheduled && periodEndsSoon;
     const isTrialExpiring = isTrialState && daysRemaining !== null && daysRemaining <= 1 && remainingMs > 0;
     const isTrialActive = isTrialState && !isTrialExpiring;
     const trialStillUsable = remainingMs !== null && remainingMs > 0;
@@ -93,9 +105,11 @@ function deriveState(subscription) {
         daysRemaining, hoursRemaining,
         isTrialActive, isTrialExpiring, isTrialExpired,
         isAwaitingPayment, isPaymentSubmitted, isPaymentRejected, isActive, isSuspended,
+        isPaymentDueSoon, isRenewalEndingSoon, daysUntilPeriodEnd,
+        periodEndsAt: subscription.current_period_end || null,
         canRead, canWrite, canExport, canUseAI, canUploadDocuments,
         canUsePaymentPage: !isSuspended,
-        showBanner: !isActive && !isSuspended,
+        showBanner: (!isActive && !isSuspended) || isPaymentDueSoon || isRenewalEndingSoon,
         isBlocked,
         ctaRoute: retryRoute(subscription),
         subscription
@@ -110,6 +124,24 @@ function fmtTrialEnd(ts) {
 }
 
 function bannerConfigFor(state) {
+    if (state.isPaymentDueSoon) {
+        return {
+            variant: state.daysUntilPeriodEnd !== null && state.daysUntilPeriodEnd <= 2 ? 'warn' : 'clock',
+            title: 'Payment due soon.',
+            body: `Renew before ${fmtTrialEnd(state.periodEndsAt)} to keep your FluxyOS plan active.`,
+            cta: 'Pay now',
+            href: state.ctaRoute
+        };
+    }
+    if (state.isRenewalEndingSoon) {
+        return {
+            variant: 'warn',
+            title: 'Your plan access ends soon.',
+            body: `Renewal is canceled — access ends ${fmtTrialEnd(state.periodEndsAt)}. Reactivate to keep FluxyOS.`,
+            cta: 'Reactivate',
+            href: '/settings-billing'
+        };
+    }
     if (state.isPaymentRejected) {
         return {
             variant: 'warn',
