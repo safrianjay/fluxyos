@@ -342,7 +342,11 @@ service cloud.firestore {
           'proof_file_name',
           'proof_uploaded_at',
           'created_at',
-          'updated_at'
+          'updated_at',
+          'prev_plan_id',
+          'prev_plan_name',
+          'prev_status',
+          'prev_billing_frequency'
         ])
         && data.keys().hasOnly([
           'plan_id',
@@ -367,7 +371,11 @@ service cloud.firestore {
           'proof_file_name',
           'proof_uploaded_at',
           'created_at',
-          'updated_at'
+          'updated_at',
+          'prev_plan_id',
+          'prev_plan_name',
+          'prev_status',
+          'prev_billing_frequency'
         ])
         && data.plan_id in ['core', 'growth', 'enterprise']
         && isValidBillingPlanName(data.plan_id, data.plan_name)
@@ -397,7 +405,31 @@ service cloud.firestore {
         && data.proof_file_name == null
         && data.proof_uploaded_at == null
         && data.created_at == request.time
-        && data.updated_at == request.time;
+        && data.updated_at == request.time
+        // Prior-subscription snapshot (used to safely restore state on cancel).
+        && (data.prev_plan_id == null || data.prev_plan_id in ['trial', 'core', 'growth', 'enterprise'])
+        && (data.prev_plan_name == null || (data.prev_plan_name is string && data.prev_plan_name.size() <= 60))
+        && (data.prev_status == null || data.prev_status in ['trialing', 'awaiting_payment', 'pending_verification', 'active', 'past_due', 'expired', 'payment_failed'])
+        && (data.prev_billing_frequency == null || data.prev_billing_frequency in ['monthly', 'annually']);
+    }
+
+    // The prior-subscription snapshot stored on a new payment request must mirror
+    // the user's ACTUAL subscription at creation time (read pre-batch via get()),
+    // so it can never be forged to later restore an elevated/unpaid plan on cancel.
+    function hasValidPaymentRequestPrevSnapshot(userId, data) {
+      return (
+          !exists(/databases/$(database)/documents/users/$(userId)/billing_subscription/current)
+          && data.prev_plan_id == null
+          && data.prev_plan_name == null
+          && data.prev_status == null
+          && data.prev_billing_frequency == null
+        ) || (
+          exists(/databases/$(database)/documents/users/$(userId)/billing_subscription/current)
+          && data.prev_plan_id == get(/databases/$(database)/documents/users/$(userId)/billing_subscription/current).data.plan_id
+          && data.prev_plan_name == get(/databases/$(database)/documents/users/$(userId)/billing_subscription/current).data.plan_name
+          && data.prev_status == get(/databases/$(database)/documents/users/$(userId)/billing_subscription/current).data.status
+          && data.prev_billing_frequency == get(/databases/$(database)/documents/users/$(userId)/billing_subscription/current).data.billing_frequency
+        );
     }
 
     // Owner-driven transition: a QRIS request moves awaiting_payment ->
@@ -559,6 +591,36 @@ service cloud.firestore {
           (data.status == 'trialing' && (prev.trial_ends_at == null || prev.trial_ends_at >= request.time))
           || (data.status == 'expired' && prev.trial_ends_at is timestamp && prev.trial_ends_at < request.time)
         )
+        && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(prev.current_payment_request_id)).data.payment_status == 'canceled';
+    }
+
+    // Owner cancels an in-flight payment that was started while ALREADY on a paid
+    // plan (e.g. an upgrade attempt): the subscription is restored to that prior
+    // active plan rather than dropped to trial. The restored plan/frequency must
+    // match the snapshot captured on the canceled request (which itself was bound
+    // to the real prior subscription at create time), the billing period is
+    // preserved unchanged and must be a valid window, and the linked request must
+    // be canceled in the same commit. This grants 'active' only when the user
+    // genuinely held it — never an escalation.
+    function isCancelRestoreActive(userId, prev, data) {
+      return (prev.status == 'awaiting_payment' || prev.status == 'pending_verification')
+        && prev.current_payment_request_id is string
+        && data.status == 'active'
+        && data.plan_id in ['core', 'growth', 'enterprise']
+        && data.billing_frequency in ['monthly', 'annually']
+        && data.current_payment_request_id == null
+        && data.trial_started_at == prev.trial_started_at
+        && data.trial_ends_at == prev.trial_ends_at
+        && data.current_period_start == prev.current_period_start
+        && data.current_period_end == prev.current_period_end
+        && (
+          (data.current_period_start == null && data.current_period_end == null)
+          || hasValidBillingPeriodWindow(data)
+        )
+        && data.plan_id == getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(prev.current_payment_request_id)).data.prev_plan_id
+        && data.plan_name == getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(prev.current_payment_request_id)).data.prev_plan_name
+        && data.billing_frequency == getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(prev.current_payment_request_id)).data.prev_billing_frequency
+        && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(prev.current_payment_request_id)).data.prev_status == 'active'
         && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(prev.current_payment_request_id)).data.payment_status == 'canceled';
     }
 
@@ -1427,7 +1489,8 @@ service cloud.firestore {
       match /billing_payment_requests/{paymentRequestId} {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId)
-          && isValidBillingPaymentRequest(request.resource.data);
+          && isValidBillingPaymentRequest(request.resource.data)
+          && hasValidPaymentRequestPrevSnapshot(userId, request.resource.data);
         // Owner may confirm a QRIS payment (awaiting_payment -> pending_verification)
         // or cancel an in-flight payment (-> canceled).
         allow update: if isOwner(userId)
@@ -1454,6 +1517,7 @@ service cloud.firestore {
             isCheckoutSubscriptionWrite(userId, request.resource.data)
             || isCheckoutAwaitingPaymentWrite(userId, request.resource.data)
             || isCancelPaymentRevert(userId, resource.data, request.resource.data)
+            || isCancelRestoreActive(userId, resource.data, request.resource.data)
             || isInternalReviewReconcile(userId, resource.data, request.resource.data)
             || isActiveBillingPeriodBackfill(userId, resource.data, request.resource.data)
             || isLegacyBillingMigration(userId, request.resource.data)

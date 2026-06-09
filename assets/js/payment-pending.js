@@ -351,7 +351,9 @@ function bindQrisActions(request) {
             await data.cancelPaymentRequest(currentUser.uid, request.id);
             stopCountdown();
             stopInternalStatusListener();
-            window.location.replace('/pricing');
+            const plan = ['core', 'growth', 'enterprise'].includes(request.plan_id) ? request.plan_id : 'growth';
+            const billing = ['monthly', 'annually'].includes(request.billing_frequency) ? request.billing_frequency : 'annually';
+            window.location.replace(`/checkout?plan=${plan}&billing=${billing}`);
         } catch (_) {
             modalConfirm.disabled = false;
             modalKeep.disabled = false;

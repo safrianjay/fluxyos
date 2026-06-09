@@ -2599,7 +2599,14 @@ class DataService {
             proof_file_name: null,
             proof_uploaded_at: null,
             created_at: serverTimestamp(),
-            updated_at: serverTimestamp()
+            updated_at: serverTimestamp(),
+            // Snapshot of the subscription BEFORE this checkout, so canceling can
+            // restore it (e.g. keep an existing paid plan) instead of dropping to
+            // trial. Mirrors the live doc exactly — enforced by Firestore rules.
+            prev_plan_id: currentSubscription?.plan_id || null,
+            prev_plan_name: currentSubscription?.plan_name || null,
+            prev_status: currentSubscription?.status || null,
+            prev_billing_frequency: currentSubscription?.billing_frequency || null
         };
 
         batch.set(requestRef, requestPayload);
@@ -2749,10 +2756,48 @@ class DataService {
         }
 
         const currentSubscription = await this.getBillingSubscription(userId);
+        const trialStartedAt = currentSubscription?.trial_started_at || null;
         const trialEndsAt = currentSubscription?.trial_ends_at || null;
-        const trialEndMs = trialEndsAt?.toMillis?.() ?? null;
-        // Revert to a live trial if one remains, otherwise to expired.
-        const revertStatus = (trialEndMs !== null && trialEndMs < Date.now()) ? 'expired' : 'trialing';
+        const periodStart = currentSubscription?.current_period_start || null;
+        const periodEnd = currentSubscription?.current_period_end || null;
+
+        // Restore the subscription to the state captured when this payment was
+        // started (snapshot on the request), so canceling never downgrades an
+        // existing paid plan. If the user was already on a paid plan, restore it
+        // (period preserved); otherwise revert to a live trial, or expired if the
+        // trial has lapsed.
+        const wasActive = request.prev_status === 'active'
+            && ['core', 'growth', 'enterprise'].includes(request.prev_plan_id);
+        let subscriptionPayload;
+        if (wasActive) {
+            subscriptionPayload = {
+                plan_id: request.prev_plan_id,
+                plan_name: request.prev_plan_name,
+                status: 'active',
+                billing_frequency: request.prev_billing_frequency || null,
+                current_payment_request_id: null,
+                trial_started_at: trialStartedAt,
+                trial_ends_at: trialEndsAt,
+                current_period_start: periodStart,
+                current_period_end: periodEnd,
+                updated_at: serverTimestamp()
+            };
+        } else {
+            const trialEndMs = trialEndsAt?.toMillis?.() ?? null;
+            const revertStatus = (trialEndMs !== null && trialEndMs < Date.now()) ? 'expired' : 'trialing';
+            subscriptionPayload = {
+                plan_id: 'trial',
+                plan_name: 'Trial',
+                status: revertStatus,
+                billing_frequency: null,
+                current_payment_request_id: null,
+                trial_started_at: trialStartedAt,
+                trial_ends_at: trialEndsAt,
+                current_period_start: null,
+                current_period_end: null,
+                updated_at: serverTimestamp()
+            };
+        }
 
         const requestRef = doc(this._billingPaymentRequestsCol(userId), paymentRequestId);
         const auditRef = doc(collection(this.db, `users/${userId}/audit_logs`));
@@ -2763,18 +2808,6 @@ class DataService {
             updated_at: serverTimestamp()
         });
 
-        const subscriptionPayload = {
-            plan_id: 'trial',
-            plan_name: 'Trial',
-            status: revertStatus,
-            billing_frequency: null,
-            current_payment_request_id: null,
-            trial_started_at: currentSubscription?.trial_started_at || null,
-            trial_ends_at: trialEndsAt,
-            current_period_start: null,
-            current_period_end: null,
-            updated_at: serverTimestamp()
-        };
         batch.set(this._billingSubscriptionDoc(userId), subscriptionPayload);
 
         batch.set(auditRef, {
@@ -2784,7 +2817,7 @@ class DataService {
             target_collection: 'billing_payment_requests',
             target_id: paymentRequestId,
             before: { payment_status: request.payment_status },
-            after: { payment_status: 'canceled', reverted_status: revertStatus },
+            after: { payment_status: 'canceled', restored_status: subscriptionPayload.status, restored_plan_id: subscriptionPayload.plan_id },
             reason: null,
             source: 'dashboard',
             created_at: serverTimestamp()
