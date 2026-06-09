@@ -292,21 +292,19 @@ function renderSummaryBoard(overview, ledgerCash = {}) {
 
     renderRevenueCard();
 
-    renderLedgerCashCell(ledgerCash, overview.bankCash || {});
+    renderLedgerCashCell(ledgerCash, overview.bankCash || {}, overview.cashPressure || {});
     renderOpexBudgetCell(p, currentBudget);
-    renderCashPressureCell(overview.cashPressure || {});
 }
 
-function renderLedgerCashCell(ledgerCash, bankCash) {
+function renderLedgerCashCell(ledgerCash, bankCash, cashPressure) {
     const net = safeNumber(ledgerCash.net);
     const cashIn = safeNumber(ledgerCash.cashIn);
     const cashOut = safeNumber(ledgerCash.cashOut);
     const count = safeNumber(ledgerCash.recordCount);
 
     const el = document.getElementById('kpi-ledger-cash');
-    if (el) {
-        el.textContent = formatIDR(net);
-    }
+    if (el) el.textContent = formatIDR(net);
+
     const sub = document.getElementById('kpi-ledger-cash-sub');
     if (sub) {
         if (count === 0) {
@@ -329,7 +327,25 @@ function renderLedgerCashCell(ledgerCash, bankCash) {
         }
     }
     const bankRunning = safeNumber(bankCash.balance) + bankAdj;
-    renderBankCashCell({ ...bankCash, balance: bankRunning }, {});
+
+    // Append a live data point so the sparkline ends at the current running balance
+    const adjustedHistory = [...(bankCash.balanceHistory || [])];
+    if (bankAdj !== 0 || adjustedHistory.length === 0) {
+        adjustedHistory.push({ at: new Date().toISOString(), balance: bankRunning });
+    }
+    renderBankCashCell({ ...bankCash, balance: bankRunning, balanceHistory: adjustedHistory }, {});
+
+    // Recompute cash pressure using the live bank balance
+    const cp = cashPressure || {};
+    const recvDue = safeNumber(cp.receivablesDueSoon);
+    const payDue = safeNumber(cp.payablesDueSoon);
+    const overdueCount = safeNumber(cp.overdueCount);
+    const newOutlook = bankRunning + recvDue - payDue;
+    let newRisk = 'low';
+    if (overdueCount > 0 && (bankRunning + recvDue) < payDue) newRisk = 'critical';
+    else if (newOutlook < 0) newRisk = 'high';
+    else if (payDue > 0 && newOutlook < payDue) newRisk = 'watch';
+    renderCashPressureCell({ ...cp, outlook: newOutlook, riskLevel: newRisk });
 }
 
 function renderBankCashCell(bankCash, rp) {

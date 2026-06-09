@@ -3811,7 +3811,8 @@ class DataService {
                 receivablesDueSoon,
                 payablesDueSoon,
                 overdueCount: overdueBills.length
-            })
+            }),
+            overdueCount: overdueBills.length
         };
 
         overview.insights = this._buildOverviewInsights(overview, periodTransactions.length);
