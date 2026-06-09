@@ -164,9 +164,11 @@ function resolvePaymentDeadlineMs(request) {
 function startCountdown(request) {
     stopCountdown();
     const box = $('qris-countdown');
-    const label = $('qris-countdown-label');
-    const value = $('qris-countdown-value');
-    if (!box || !label || !value) return;
+    const text = $('qris-countdown-text');
+    const hEl = $('qris-cd-h');
+    const mEl = $('qris-cd-m');
+    const sEl = $('qris-cd-s');
+    if (!box || !text || !hEl || !mEl || !sEl) return;
     const deadlineMs = resolvePaymentDeadlineMs(request);
     const pad = (n) => String(n).padStart(2, '0');
 
@@ -175,8 +177,10 @@ function startCountdown(request) {
         if (remaining <= 0) {
             stopCountdown();
             box.classList.add('is-expired');
-            label.textContent = 'Payment window expired';
-            value.textContent = '00:00:00';
+            text.textContent = 'Payment window expired';
+            hEl.textContent = '00';
+            mEl.textContent = '00';
+            sEl.textContent = '00';
             const confirmBtn = $('confirm-paid-btn');
             const submitBtn = $('submit-verify-btn');
             if (confirmBtn) confirmBtn.disabled = true;
@@ -188,8 +192,10 @@ function startCountdown(request) {
         const m = Math.floor((totalSec % 3600) / 60);
         const s = totalSec % 60;
         box.classList.remove('is-expired');
-        label.textContent = 'Complete payment within';
-        value.textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+        text.textContent = 'Complete payment within';
+        hEl.textContent = pad(h);
+        mEl.textContent = pad(m);
+        sEl.textContent = pad(s);
     };
 
     tick();

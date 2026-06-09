@@ -39,8 +39,17 @@
 
                 <div class="qris-pay-card">
                     <div class="qris-countdown" id="qris-countdown" role="timer">
-                        <span class="qris-countdown-label" id="qris-countdown-label">Complete payment within</span>
-                        <span class="qris-countdown-value mono" id="qris-countdown-value">24:00:00</span>
+                        <span class="qris-countdown-label" id="qris-countdown-label">
+                            <svg class="qris-countdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+                            <span id="qris-countdown-text">Complete payment within</span>
+                        </span>
+                        <div class="qris-countdown-clock">
+                            <div class="qris-countdown-seg"><span class="qris-countdown-num mono" id="qris-cd-h">24</span><span class="qris-countdown-unit">Hrs</span></div>
+                            <span class="qris-countdown-colon" aria-hidden="true">:</span>
+                            <div class="qris-countdown-seg"><span class="qris-countdown-num mono" id="qris-cd-m">00</span><span class="qris-countdown-unit">Min</span></div>
+                            <span class="qris-countdown-colon" aria-hidden="true">:</span>
+                            <div class="qris-countdown-seg"><span class="qris-countdown-num mono" id="qris-cd-s">00</span><span class="qris-countdown-unit">Sec</span></div>
+                        </div>
                     </div>
                     <figure class="qris-code">
                         <img id="qris-image" src="assets/images/qris-tanda360.png" alt="QRIS payment QR code">

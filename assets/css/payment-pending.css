@@ -97,11 +97,18 @@ body { margin: 0; min-height: 100vh; background: #F3F4F6; color: #111827; font-f
 .qris-body { margin: 0 0 28px; color: #6B7280; font-size: 15px; line-height: 1.6; }
 
 .qris-pay-card { padding: 28px; border: 1px solid #E5E7EB; border-radius: 20px; background: #FAFAFA; text-align: center; }
-.qris-countdown { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0 0 22px; padding: 12px 16px; border: 1px solid #FDE68A; border-radius: 14px; background: #FFFBEB; }
-.qris-countdown-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #92400E; }
-.qris-countdown-value { font-size: 24px; font-weight: 800; line-height: 1.1; color: #B45309; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
-.qris-countdown.is-expired { border-color: #FECACA; background: #FEF2F2; }
-.qris-countdown.is-expired .qris-countdown-label, .qris-countdown.is-expired .qris-countdown-value { color: #B91C1C; }
+.qris-countdown { display: flex; flex-direction: column; align-items: center; gap: 12px; margin: 0 0 24px; padding: 16px; border: 1px solid #FDE68A; border-radius: 16px; background: linear-gradient(180deg, #FFFBEB 0%, #FEF3C7 100%); }
+.qris-countdown-label { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #92400E; }
+.qris-countdown-icon { width: 15px; height: 15px; flex: 0 0 auto; }
+.qris-countdown-clock { display: flex; align-items: flex-start; gap: 8px; }
+.qris-countdown-seg { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 58px; padding: 8px 6px; border: 1px solid #FDE68A; border-radius: 12px; background: #fff; box-shadow: 0 4px 12px rgba(180, 83, 9, .08); }
+.qris-countdown-num { font-size: 28px; font-weight: 800; line-height: 1; color: #B45309; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.qris-countdown-unit { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #B45309; opacity: .68; }
+.qris-countdown-colon { padding-top: 11px; font-size: 24px; font-weight: 800; line-height: 1; color: #D97706; }
+.qris-countdown.is-expired { border-color: #FECACA; background: linear-gradient(180deg, #FEF2F2 0%, #FEE2E2 100%); }
+.qris-countdown.is-expired .qris-countdown-label { color: #B91C1C; }
+.qris-countdown.is-expired .qris-countdown-seg { border-color: #FECACA; }
+.qris-countdown.is-expired .qris-countdown-num, .qris-countdown.is-expired .qris-countdown-unit, .qris-countdown.is-expired .qris-countdown-colon { color: #B91C1C; }
 .qris-code { margin: 0; }
 .qris-code img { width: 320px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: 1px solid #E5E7EB; border-radius: 16px; background: #fff; padding: 16px; box-shadow: 0 10px 30px rgba(15, 23, 42, .08); }
 .qris-merchant { margin: 18px auto 0; max-width: 340px; font-size: 14px; font-weight: 600; line-height: 1.5; color: #4B5563; }
@@ -126,7 +133,7 @@ body { margin: 0; min-height: 100vh; background: #F3F4F6; color: #111827; font-f
 .qris-primary:disabled { cursor: not-allowed; opacity: .58; transform: none; }
 .qris-secondary { color: #6B7280; font-size: 14px; font-weight: 700; text-decoration: none; }
 .qris-secondary:hover { color: #374151; text-decoration: underline; }
-.qris-cancel { padding: 0; border: 0; background: none; color: #B91C1C; font-size: 14px; font-weight: 700; cursor: pointer; }
+.qris-cancel { margin-left: auto; padding: 0; border: 0; background: none; color: #B91C1C; font-size: 14px; font-weight: 700; cursor: pointer; }
 .qris-cancel:hover { color: #991B1B; text-decoration: underline; }
 .qris-cancel:disabled { cursor: not-allowed; opacity: .58; }
 
