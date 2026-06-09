@@ -2953,20 +2953,27 @@ class DataService {
             let newStatus = null;
             let updatePayload = null;
             if (internal.payment_status === 'verified') {
+                // Active sub missing its billing period → backfill it (no status change).
                 if (this._needsActiveBillingPeriod(subscription)) {
                     return await this.backfillActiveBillingPeriod(userId, subscription, internal.payment_verified_at || null);
                 }
-                // A verified payment is a definitive grant: promote to active from
-                // any not-yet-active state, including `expired` and `trialing`.
+                // A verified payment is a definitive grant: promote to active, but
+                // only from a NOT-yet-active state. `active` is a no-op and
+                // `cancel_scheduled` is a deliberate user choice (renewal canceled,
+                // access kept until period end) — re-promoting it would silently
+                // undo the cancellation on the next read. Mirrors the allowed prev
+                // states of the isInternalReviewReconcile Firestore rule.
                 // Do NOT require the internal write to be newer — the automatic
                 // trial-expiry write bumps the subscription's updated_at after the
                 // manual review, which would otherwise strand the approved user
                 // on the "Your trial has ended" banner forever.
-                newStatus = 'active';
-                const period = subscription.current_period_end
-                    ? null
-                    : this._billingPeriodForFrequency(subscription.billing_frequency, internal.payment_verified_at || null);
-                updatePayload = this._cleanDefined(period ? { status: newStatus, ...period } : { status: newStatus });
+                if (['pending_verification', 'awaiting_payment', 'expired', 'trialing'].includes(subscription.status)) {
+                    newStatus = 'active';
+                    const period = subscription.current_period_end
+                        ? null
+                        : this._billingPeriodForFrequency(subscription.billing_frequency, internal.payment_verified_at || null);
+                    updatePayload = this._cleanDefined(period ? { status: newStatus, ...period } : { status: newStatus });
+                }
             } else if (internal.payment_status === 'rejected'
                 && ['pending_verification', 'awaiting_payment'].includes(subscription.status)
                 && intUpdatedMs > subUpdatedMs) {
