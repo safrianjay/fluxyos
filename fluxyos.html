@@ -2011,38 +2011,56 @@
     </section>
 
     <!-- 7. Features Grid -->
-    <section class="py-24 px-6 bg-white border-y border-gray-200">
+    <section class="py-24 lg:py-28 px-6 bg-white border-y border-gray-100">
         <div class="max-w-[1280px] mx-auto">
-            <div class="text-center max-w-[600px] mx-auto mb-20">
-                <h2 class="text-[40px] font-bold text-gray-900 tracking-tight mb-4">See revenue, spending, and budgets together.</h2>
-                <p class="text-lg text-gray-600 leading-relaxed">Track burn rate, compare spending against revenue, and catch budget issues before they become expensive.</p>
+            <div class="max-w-[900px] mb-16 lg:mb-20">
+                <p class="text-[13px] font-bold text-[#EA580C] mb-6">Finance command center</p>
+                <h2 class="text-[36px] md:text-[48px] lg:text-[56px] font-bold text-[#0B0F19] tracking-tight leading-[1.08]">See revenue, spending, and budgets together</h2>
             </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <!-- Card 1 -->
-                <div class="bg-[#F8F9FB] rounded-2xl p-10 ui-shadow-hover border border-gray-100">
-                    <div class="w-14 h-14 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-orange-600 mb-8 ui-shadow shadow-sm">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                    </div>
-                    <h3 class="text-[20px] font-bold mb-4 text-gray-900 tracking-tight">Dynamic Budgeting</h3>
-                    <p class="text-[16px] text-gray-600 leading-relaxed">Track planned versus actual spend by team, project, or entity.</p>
-                </div>
-                <!-- Card 2 -->
-                <div class="bg-[#F8F9FB] rounded-2xl p-10 ui-shadow-hover border border-gray-100">
-                    <div class="w-14 h-14 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-blue-600 mb-8 ui-shadow shadow-sm">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
-                    </div>
-                    <h3 class="text-[20px] font-bold mb-4 text-gray-900 tracking-tight">Revenue vs. Spend</h3>
-                    <p class="text-[16px] text-gray-600 leading-relaxed">Compare revenue from sales channels against operating costs and payouts.</p>
-                </div>
-                <!-- Card 3 -->
-                <div class="bg-[#F8F9FB] rounded-2xl p-10 ui-shadow-hover border border-gray-100">
-                    <div class="w-14 h-14 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-green-600 mb-8 ui-shadow shadow-sm">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path></svg>
-                    </div>
-                    <h3 class="text-[20px] font-bold mb-4 text-gray-900 tracking-tight">Ad Spend Tracking</h3>
-                    <p class="text-[16px] text-gray-600 leading-relaxed">Match ad deductions and invoices to marketing budgets.</p>
-                </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-y-10 md:gap-y-12 lg:gap-y-0">
+                <article class="pr-0 md:pr-8 lg:pr-10">
+                    <svg class="h-14 w-14 mb-8 text-[#0B0F19]" fill="none" viewBox="0 0 56 56" aria-hidden="true" focusable="false">
+                        <path d="M12 40V20.5C12 18 14 16 16.5 16H43" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <path d="M18 37L25 30L31 34L41 22" stroke="#EA580C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <path d="M36 22H41V27" stroke="#EA580C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <path d="M18 44H44" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+                    </svg>
+                    <h3 class="text-[21px] font-bold text-[#0B0F19] tracking-tight mb-4">Revenue clarity</h3>
+                    <p class="text-[17px] text-gray-600 leading-relaxed max-w-[290px]">Track collected revenue, pending receivables, and monthly performance without jumping between sheets.</p>
+                </article>
+
+                <article class="pt-10 border-t border-dashed border-gray-200 md:pt-0 md:border-t-0 md:border-l md:pl-8 lg:pl-10 lg:pr-10">
+                    <svg class="h-14 w-14 mb-8 text-[#0B0F19]" fill="none" viewBox="0 0 56 56" aria-hidden="true" focusable="false">
+                        <path d="M17 15H39C41.2 15 43 16.8 43 19V42L38 39L33 42L28 39L23 42L18 39L13 42V19C13 16.8 14.8 15 17 15Z" stroke="currentColor" stroke-width="3" stroke-linejoin="round"></path>
+                        <path d="M20 25H36" stroke="#EA580C" stroke-width="3" stroke-linecap="round"></path>
+                        <path d="M20 32H29" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+                    </svg>
+                    <h3 class="text-[21px] font-bold text-[#0B0F19] tracking-tight mb-4">Spending control</h3>
+                    <p class="text-[17px] text-gray-600 leading-relaxed max-w-[290px]">See where cash is going across vendors, subscriptions, fees, taxes, and operating expenses.</p>
+                </article>
+
+                <article class="pt-10 border-t border-dashed border-gray-200 md:pt-10 md:border-t md:border-l-0 md:pl-0 md:pr-8 lg:pt-0 lg:border-t-0 lg:border-l lg:pl-10 lg:pr-10">
+                    <svg class="h-14 w-14 mb-8 text-[#0B0F19]" fill="none" viewBox="0 0 56 56" aria-hidden="true" focusable="false">
+                        <path d="M28 45C37.389 45 45 37.389 45 28C45 18.611 37.389 11 28 11C18.611 11 11 18.611 11 28C11 37.389 18.611 45 28 45Z" stroke="currentColor" stroke-width="3"></path>
+                        <path d="M28 17V28H39" stroke="#EA580C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <path d="M18 36C21.1 39.2 25.9 40.5 30.3 39.2" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+                    </svg>
+                    <h3 class="text-[21px] font-bold text-[#0B0F19] tracking-tight mb-4">Budget awareness</h3>
+                    <p class="text-[17px] text-gray-600 leading-relaxed max-w-[290px]">Compare actual and committed spend against your operating budget before costs get out of control.</p>
+                </article>
+
+                <article class="pt-10 border-t border-dashed border-gray-200 md:pt-10 md:border-t md:border-l md:pl-8 lg:pt-0 lg:border-t-0 lg:pl-10">
+                    <svg class="h-14 w-14 mb-8 text-[#0B0F19]" fill="none" viewBox="0 0 56 56" aria-hidden="true" focusable="false">
+                        <path d="M16 32C16 23.2 23.2 16 32 16H36C38.2 16 40 17.8 40 20V24C40 32.8 32.8 40 24 40H20C17.8 40 16 38.2 16 36V32Z" stroke="currentColor" stroke-width="3" stroke-linejoin="round"></path>
+                        <path d="M32 12V18" stroke="#EA580C" stroke-width="3" stroke-linecap="round"></path>
+                        <path d="M44 28H38" stroke="#EA580C" stroke-width="3" stroke-linecap="round"></path>
+                        <path d="M34 30C31.5 35 27 37.5 22 38" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+                        <path d="M22 24L24 20L26 24L30 26L26 28L24 32L22 28L18 26L22 24Z" stroke="#EA580C" stroke-width="2.6" stroke-linejoin="round"></path>
+                    </svg>
+                    <h3 class="text-[21px] font-bold text-[#0B0F19] tracking-tight mb-4">Fluxy AI insight</h3>
+                    <p class="text-[17px] text-gray-600 leading-relaxed max-w-[290px]">Ask what changed, what needs attention, and which records may affect your month-end numbers.</p>
+                </article>
             </div>
         </div>
     </section>
