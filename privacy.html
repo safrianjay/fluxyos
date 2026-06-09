@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy | FluxyOS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <meta name="description" content="Learn how FluxyOS collects, uses, protects, and manages personal and business financial data.">
+    <link rel="canonical" href="https://fluxyos.com/privacy">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://fluxyos.com/privacy">
+    <meta property="og:title" content="Privacy Policy | FluxyOS">
+    <meta property="og:description" content="Learn how FluxyOS collects, uses, protects, and manages personal and business financial data.">
+    <meta property="og:image" content="https://fluxyos.com/assets/images/og-home.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="FluxyOS">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Privacy Policy | FluxyOS">
+    <meta name="twitter:description" content="Learn how FluxyOS collects, uses, protects, and manages personal and business financial data.">
+    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-home.png">
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-ZN7J6DRD2L');
+    </script>
+
+    <!-- Schema.org structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "FluxyOS",
+      "url": "https://fluxyos.com",
+      "logo": "https://fluxyos.com/assets/images/favicon.svg",
+      "description": "Finance operations platform for Indonesian businesses.",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "privacy",
+        "email": "privacy@fluxyos.com"
+      }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://fluxyos.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Privacy Policy",
+          "item": "https://fluxyos.com/privacy"
+        }
+      ]
+    }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+
+        /* Mobile menu reveal */
+        #privacy-mobile-menu.hidden { display: none; }
+
+        /* Content typography */
+        .policy-section + .policy-section {
+            margin-top: 3rem;
+        }
+        .policy-section h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #111827;
+            letter-spacing: -0.01em;
+            margin-bottom: 1rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #F3F4F6;
+        }
+        .policy-section h3 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: #374151;
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+        .policy-section p {
+            font-size: 0.9375rem;
+            line-height: 1.75;
+            color: #4B5563;
+            margin-bottom: 0.875rem;
+        }
+        .policy-section ul {
+            list-style: none;
+            padding: 0;
+            margin: 0.5rem 0 1rem 0;
+        }
+        .policy-section ul li {
+            font-size: 0.9375rem;
+            line-height: 1.7;
+            color: #4B5563;
+            padding-left: 1.25rem;
+            position: relative;
+            margin-bottom: 0.375rem;
+        }
+        .policy-section ul li::before {
+            content: "–";
+            position: absolute;
+            left: 0;
+            color: #9CA3AF;
+        }
+
+        /* TOC */
+        .toc-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            columns: 1;
+        }
+        @media (min-width: 640px) {
+            .toc-list { columns: 2; }
+        }
+        .toc-list li {
+            break-inside: avoid;
+            margin-bottom: 0.5rem;
+        }
+        .toc-list a {
+            font-size: 0.875rem;
+            color: #EA580C;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .toc-list a:hover {
+            text-decoration: underline;
+        }
+        .toc-list .toc-num {
+            font-size: 0.75rem;
+            color: #9CA3AF;
+            margin-right: 0.375rem;
+            font-weight: 400;
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden bg-white">
+
+    <!-- =================== UNIVERSAL NAVBAR =================== -->
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
+            <div class="flex items-center gap-12 h-full">
+                <a href="/fluxyos" class="flex items-center gap-2.5 cursor-pointer group">
+                    <div class="w-8 h-8 text-black shadow-sm group-hover:scale-105 transition-transform duration-200">
+                        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                            <rect width="40" height="40" rx="8" fill="currentColor" />
+                            <g transform="translate(1.5, 0)">
+                                <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                                <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                            </g>
+                        </svg>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-gray-900">FluxyOS</span>
+                </a>
+
+                <div class="hidden lg:flex items-center gap-8 h-full">
+
+                    <!-- Platform Mega Menu -->
+                    <div class="group h-full flex items-center">
+                        <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
+                            Platform
+                            <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="max-w-[1280px] mx-auto flex">
+                                <div class="flex-1 py-10 px-6 flex gap-12">
+                                    <div class="flex-[2]">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Features</h4>
+                                        <div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                                            <a href="/budgetlanding" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Dynamic Budgeting</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Allocate and track funds live</div>
+                                                </div>
+                                            </a>
+                                            <a href="/vendorspend" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Vendor Spend</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Manage SaaS &amp; contract payouts</div>
+                                                </div>
+                                            </a>
+                                            <a href="/revenuesync" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Revenue Sync</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Ingest client retainers &amp; POS</div>
+                                                </div>
+                                            </a>
+                                            <a href="/receiptcapture" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Receipt Capture</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Automate manual paper chasing</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Platform</h4>
+                                        <div class="space-y-8">
+                                            <a href="/aiagents" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">FluxyOS AI Agents</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Multiply finance efficiency instantly</div>
+                                                </div>
+                                            </a>
+                                            <a href="/fluxyos" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Global Ready</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Reconcile 120+ currencies globally</div>
+                                                </div>
+                                            </a>
+                                            <a href="/integration" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l-4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Native Integrations</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Connect ERPs, HRIS &amp; Productivity</div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
+                                    <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">New Release</h4>
+                                    <a href="/fluxyos" class="block group/release cursor-pointer mb-4">
+                                        <div class="bg-black rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-md group-hover/release:shadow-lg transition-all">
+                                            <div class="absolute inset-0 opacity-40 mix-blend-overlay bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiAvPgo8cGF0aCBkPSJNMCAwSDRWNEgwWiIgZmlsbD0ibm9uZSIvPjwvc3ZnPg==')]"></div>
+                                            <div class="absolute inset-0 bg-gradient-to-tr from-gray-900 via-black to-gray-800"></div>
+                                            <h3 class="relative z-10 text-white font-bold text-[36px] leading-[0.9] tracking-tighter">SPRING<br/>RELEASE<br/><span class="text-gray-400">2026</span></h3>
+                                        </div>
+                                        <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">WhatsApp AI Agents &rarr;</h5>
+                                        <p class="text-[13px] text-gray-500 leading-relaxed">Chat directly with your ledger to resolve missing receipts, sync vendors, and check live budgets on the go.</p>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Use Cases Mega Menu -->
+                    <div class="group h-full flex items-center">
+                        <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
+                            Use Cases
+                            <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div class="max-w-[1280px] mx-auto flex">
+                                <div class="flex-1 py-10 px-6 flex gap-12">
+                                    <div class="flex-[2]">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">By Industry</h4>
+                                        <div class="grid grid-cols-2 gap-x-8 gap-y-8">
+                                            <a href="/use-cases/ecommerce-brands" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg></div>
+                                                <div><div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">E-Commerce Brands</div><div class="text-[13px] text-gray-500 leading-snug">Reconcile thousands of POS &amp; gateway transactions.</div></div>
+                                            </a>
+                                            <a href="/use-cases/tech-startups-saas" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path></svg></div>
+                                                <div><div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Tech Startups &amp; SaaS</div><div class="text-[13px] text-gray-500 leading-snug">Manage burn rates, runway, and software subscriptions.</div></div>
+                                            </a>
+                                            <a href="/use-cases/marketing-agencies" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
+                                                <div><div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Marketing Agencies</div><div class="text-[13px] text-gray-500 leading-snug">Map digital ad spend to specific client budgets.</div></div>
+                                            </a>
+                                            <a href="/use-cases/retail-franchises" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg></div>
+                                                <div><div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Retail &amp; Franchises</div><div class="text-[13px] text-gray-500 leading-snug">Consolidate P&amp;L records across multiple locations.</div></div>
+                                            </a>
+                                            <a href="/use-cases/dropshippers-digital-ads" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></div>
+                                                <div><div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Dropshippers &amp; Digital Ads</div><div class="text-[13px] text-gray-500 leading-snug">Track live ad ROI against supplier costs.</div></div>
+                                            </a>
+                                            <a href="/use-cases/manufacturing" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></div>
+                                                <div><div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Manufacturing</div><div class="text-[13px] text-gray-500 leading-snug">Track unit economics and manufacturer costs.</div></div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">By Role</h4>
+                                        <div class="space-y-8">
+                                            <a href="/use-cases/cfo-finance-teams" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] text-gray-600 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg></div>
+                                                <div><div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">CFOs &amp; Finance Teams</div><div class="text-[13px] text-gray-500 leading-snug">Automate reconciliation and month-end closes.</div></div>
+                                            </a>
+                                            <a href="/use-cases/founder-ceo" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
+                                                <div><div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Founders &amp; CEOs</div><div class="text-[13px] text-gray-500 leading-snug">Real-time visibility into overall business economics.</div></div>
+                                            </a>
+                                            <a href="/fluxyos" class="flex items-start gap-4 group/item">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg></div>
+                                                <div><div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Department Heads</div><div class="text-[13px] text-gray-500 leading-snug">Track live spend against allocated internal budgets.</div></div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
+                                    <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">Featured Story</h4>
+                                    <a href="/fluxyos" class="block group/release cursor-pointer mb-4">
+                                        <div class="bg-gray-100 rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-sm border border-gray-200 group-hover/release:shadow-md transition-all">
+                                            <div class="absolute inset-0 bg-gradient-to-tr from-gray-200 to-gray-50 z-0"></div>
+                                            <div class="relative z-10 w-full"><span class="bg-[#EA580C] text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wide inline-block mb-2">Case Study</span><h3 class="text-gray-900 font-bold text-[18px] leading-[1.2] tracking-tight">Scaling an Omnichannel Fashion Brand</h3></div>
+                                        </div>
+                                        <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">Read the story &rarr;</h5>
+                                        <p class="text-[13px] text-gray-500 leading-relaxed">See how a growing modest fashion label unified retail POS and e-commerce to track live unit economics.</p>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="/fluxyos" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Customers</a>
+                    <a href="/pricing" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Pricing</a>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <!-- Language Dropdown -->
+                <div class="relative group cursor-pointer hidden sm:block h-full py-2">
+                    <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors h-full">
+                        <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        EN
+                        <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="absolute right-0 top-[100%] mt-2 w-36 bg-white border border-gray-100 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
+                        <a href="/privacy" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">
+                            English (EN)
+                            <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        </a>
+                        <a href="/fluxyos" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">Bahasa (ID)</a>
+                    </div>
+                </div>
+
+                <a href="/login" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Sign in</a>
+                <a href="/pricing" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-6 py-3 rounded-md transition-all duration-200 shadow-sm hover:shadow text-center">
+                    Try FluxyOS
+                </a>
+                <!-- Mobile menu toggle -->
+                <button type="button" id="privacy-mobile-toggle" class="lg:hidden w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-800 flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors" aria-controls="privacy-mobile-menu" aria-expanded="false" aria-label="Open navigation menu">
+                    <svg data-menu-open-icon class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M4 7h16M4 12h16M4 17h16"></path></svg>
+                    <svg data-menu-close-icon class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Panel -->
+        <div id="privacy-mobile-menu" class="hidden lg:hidden fixed left-0 right-0 top-[80px] z-[60] bg-white border-b border-gray-200 shadow-[0_20px_40px_-18px_rgba(0,0,0,0.2)] overflow-y-auto max-h-[80vh]">
+            <div class="px-5 py-6 space-y-7">
+                <div>
+                    <h4 class="text-[12px] font-bold text-gray-900 uppercase tracking-wider mb-4">Platform</h4>
+                    <div class="grid grid-cols-1 gap-3">
+                        <a href="/budgetlanding" class="privacy-mobile-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Dynamic Budgeting</span><span class="block text-[13px] text-gray-500">Allocate and track funds live</span></span>
+                        </a>
+                        <a href="/vendorspend" class="privacy-mobile-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Vendor Spend</span><span class="block text-[13px] text-gray-500">Manage SaaS &amp; contract payouts</span></span>
+                        </a>
+                        <a href="/revenuesync" class="privacy-mobile-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Revenue Sync</span><span class="block text-[13px] text-gray-500">Ingest client retainers &amp; POS</span></span>
+                        </a>
+                        <a href="/aiagents" class="privacy-mobile-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">FluxyOS AI Agents</span><span class="block text-[13px] text-gray-500">Multiply finance efficiency instantly</span></span>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-[12px] font-bold text-gray-900 uppercase tracking-wider mb-4">Use Cases</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <a href="/use-cases/ecommerce-brands" class="privacy-mobile-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">E-Commerce Brands</span><span class="block text-[13px] text-gray-500">Reconcile POS &amp; gateway transactions.</span></a>
+                        <a href="/use-cases/tech-startups-saas" class="privacy-mobile-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Tech Startups &amp; SaaS</span><span class="block text-[13px] text-gray-500">Manage burn, runway, and subscriptions.</span></a>
+                        <a href="/use-cases/marketing-agencies" class="privacy-mobile-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Marketing Agencies</span><span class="block text-[13px] text-gray-500">Map ad spend to client budgets.</span></a>
+                        <a href="/use-cases/dropshippers-digital-ads" class="privacy-mobile-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Dropshippers &amp; Digital Ads</span><span class="block text-[13px] text-gray-500">Spot ad waste and product margin.</span></a>
+                        <a href="/use-cases/retail-franchises" class="privacy-mobile-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Retail &amp; Franchises</span><span class="block text-[13px] text-gray-500">Compare outlet P&amp;L and settlement.</span></a>
+                        <a href="/use-cases/manufacturing" class="privacy-mobile-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Manufacturing</span><span class="block text-[13px] text-gray-500">Track unit economics and costs.</span></a>
+                        <a href="/use-cases/founder-ceo" class="privacy-mobile-link rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"><span class="block text-[15px] font-bold text-gray-900">Founder &amp; CEO</span><span class="block text-[13px] text-gray-500">Real-time business economics visibility.</span></a>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="/fluxyos" class="privacy-mobile-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Customers</a>
+                    <a href="/pricing" class="privacy-mobile-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Pricing</a>
+                    <a href="/login" class="privacy-mobile-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Sign in</a>
+                    <a href="/pricing" class="privacy-mobile-link rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F97316] px-4 py-3 text-[15px] font-semibold text-white text-center shadow-sm">Try FluxyOS</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- =================== MAIN CONTENT =================== -->
+    <main>
+
+        <!-- Page Header -->
+        <div class="bg-gray-50 border-b border-gray-100">
+            <div class="max-w-[900px] mx-auto px-5 sm:px-8 py-14 sm:py-20">
+                <span class="text-[13px] font-semibold tracking-widest uppercase text-[#EA580C] mb-4 block">Legal</span>
+                <h1 class="text-[32px] sm:text-[40px] font-light text-gray-900 tracking-tight leading-tight mb-4">Privacy Policy</h1>
+                <p class="text-[15px] text-gray-500 font-medium">Effective date: June 9, 2026</p>
+            </div>
+        </div>
+
+        <!-- Policy Content -->
+        <div class="max-w-[900px] mx-auto px-5 sm:px-8 py-12 sm:py-16">
+
+            <!-- Intro -->
+            <div class="mb-12">
+                <p class="text-[16px] leading-relaxed text-gray-600 mb-4">
+                    FluxyOS is a financial operations platform for Indonesian businesses and teams managing revenue, expenses, bills, budgets, and cash flow. We take privacy seriously and understand that your business financial data is sensitive.
+                </p>
+                <p class="text-[15px] leading-relaxed text-gray-500">
+                    This Privacy Policy explains what information we collect, how we use it, how we store and protect it, who we may share it with, and what rights you may have. It is a general first-version document and will be updated as the product and applicable legal requirements evolve. If you have questions, contact us at <a href="mailto:privacy@fluxyos.com" class="text-[#EA580C] font-medium hover:underline">privacy@fluxyos.com</a>.
+                </p>
+            </div>
+
+            <!-- Table of Contents -->
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 sm:p-8 mb-14">
+                <h2 class="text-[13px] font-bold text-gray-900 uppercase tracking-widest mb-5" style="border:none;padding-top:0;margin-bottom:1.25rem;">Contents</h2>
+                <ol class="toc-list">
+                    <li><a href="#section-1"><span class="toc-num">1.</span> Introduction</a></li>
+                    <li><a href="#section-2"><span class="toc-num">2.</span> Information We Collect</a></li>
+                    <li><a href="#section-3"><span class="toc-num">3.</span> How We Use Information</a></li>
+                    <li><a href="#section-4"><span class="toc-num">4.</span> AI and Financial Data</a></li>
+                    <li><a href="#section-5"><span class="toc-num">5.</span> How We Share Information</a></li>
+                    <li><a href="#section-6"><span class="toc-num">6.</span> Data Storage and Security</a></li>
+                    <li><a href="#section-7"><span class="toc-num">7.</span> Data Retention</a></li>
+                    <li><a href="#section-8"><span class="toc-num">8.</span> Your Rights</a></li>
+                    <li><a href="#section-9"><span class="toc-num">9.</span> Cookies and Analytics</a></li>
+                    <li><a href="#section-10"><span class="toc-num">10.</span> International Data Transfers</a></li>
+                    <li><a href="#section-11"><span class="toc-num">11.</span> Children's Privacy</a></li>
+                    <li><a href="#section-12"><span class="toc-num">12.</span> Third-Party Links and Services</a></li>
+                    <li><a href="#section-13"><span class="toc-num">13.</span> Changes to This Policy</a></li>
+                    <li><a href="#section-14"><span class="toc-num">14.</span> Contact</a></li>
+                </ol>
+            </div>
+
+            <!-- Section 1: Introduction -->
+            <div id="section-1" class="policy-section" style="scroll-margin-top: 100px;">
+                <h2>1. Introduction</h2>
+                <p>
+                    FluxyOS ("we," "our," or "us") operates an online financial operations platform accessible at fluxyos.com and through related services. We respect the privacy of our users ("you") and are committed to protecting the personal information and business data you share with us.
+                </p>
+                <p>
+                    This policy applies to all users of FluxyOS, including account holders, team members, and visitors to our website. By using FluxyOS, you acknowledge that you have read and understood this policy.
+                </p>
+                <p>
+                    This document represents a general first-version policy. It will be updated as FluxyOS adds new features, as applicable laws change, or as our data practices evolve. We encourage you to review it periodically.
+                </p>
+            </div>
+
+            <!-- Section 2: Information We Collect -->
+            <div id="section-2" class="policy-section" style="scroll-margin-top: 100px;">
+                <h2>2. Information We Collect</h2>
+                <p>We collect information you provide directly, information generated by your use of the platform, and limited technical data from your device and browser.</p>
+
+                <h3>Account information</h3>
+                <p>When you create an account or sign in, we collect:</p>
+                <ul>
+                    <li>Your name and email address</li>
+                    <li>Login method (email/password or Google sign-in)</li>
+                    <li>Authentication identifiers assigned by Firebase Authentication</li>
+                </ul>
+
+                <h3>Business profile information</h3>
+                <p>During onboarding and in your settings, you may provide:</p>
+                <ul>
+                    <li>Company name, entity label, and business type</li>
+                    <li>Your role within the business</li>
+                    <li>Country of operation</li>
+                    <li>Answers to onboarding setup questions (e.g. team size, revenue range, primary goals)</li>
+                    <li>Preferred WhatsApp number (used only for in-product notifications if you connect WhatsApp)</li>
+                </ul>
+
+                <h3>Financial operation data</h3>
+                <p>The core purpose of FluxyOS is to help you manage financial operations. To do this, we store:</p>
+                <ul>
+                    <li>Transactions: revenue records, expenses, transfers, refunds, and pending receivables or payables</li>
+                    <li>Bills and payment schedules, including amounts, due dates, vendors, and payment status</li>
+                    <li>Subscriptions and recurring payments</li>
+                    <li>Operating budgets and category-level allocation data</li>
+                    <li>Transaction categories, vendor names, and related metadata</li>
+                    <li>Bank account names and balances (manually entered or from uploaded statements)</li>
+                    <li>Accounting mappings and income statement preview data</li>
+                </ul>
+                <p>All monetary amounts are stored as raw integers. FluxyOS does not store bank login credentials, full bank account numbers, card numbers, CVCs, OTPs, or any sensitive financial credentials.</p>
+
+                <h3>Uploaded documents</h3>
+                <p>You may choose to upload files to FluxyOS, including:</p>
+                <ul>
+                    <li>Receipts, invoices, and payment proofs</li>
+                    <li>Bank statements in PDF, CSV, XLS, or XLSX format</li>
+                    <li>Revenue proof documents and other finance-related files</li>
+                </ul>
+                <p>Uploaded files are stored in Firebase Storage under your user-scoped storage path. We store file name, type, size, upload status, and a reference to the document in your Firestore records.</p>
+
+                <h3>Usage and technical data</h3>
+                <p>We automatically collect certain technical information when you use FluxyOS:</p>
+                <ul>
+                    <li>Device and browser type, operating system, and language settings</li>
+                    <li>IP address and approximate geographic location</li>
+                    <li>Pages visited, features used, and actions taken within the product</li>
+                    <li>Timestamps, session duration, and navigation paths</li>
+                    <li>Error logs and performance data</li>
+                    <li>Analytics events (via Google Analytics)</li>
+                </ul>
+
+                <h3>Communication data</h3>
+                <p>If you contact us for support or provide feedback, we collect:</p>
+                <ul>
+                    <li>The content of your support messages</li>
+                    <li>Product feedback you submit</li>
+                    <li>WhatsApp connection settings and business display name, if you choose to connect WhatsApp in the future</li>
+                </ul>
+
+                <h3>Payment and subscription data</h3>
+                <p>When you subscribe to a paid plan, we collect and store:</p>
+                <ul>
+                    <li>Your selected billing plan, billing frequency, and subscription status</li>
+                    <li>Trial start and end dates</li>
+                    <li>Payment method type and payment status</li>
+                    <li>Invoice and payment request metadata</li>
+                    <li>Proof of payment files you choose to upload for manual verification</li>
+                </ul>
+                <p>FluxyOS does not store full card numbers, CVCs, bank account login credentials, or other sensitive payment credentials.</p>
+            </div>
+
+            <!-- Section 3: How We Use Information -->
+            <div id="section-3" class="policy-section" style="scroll-margin-top: 100px;">
+                <h2>3. How We Use Information</h2>
+                <p>We use the information we collect to provide and improve FluxyOS. Specifically:</p>
+                <ul>
+                    <li>To provide, operate, and maintain the FluxyOS platform and all its features</li>
+                    <li>To authenticate users and protect account security</li>
+                    <li>To display your financial dashboards, ledger records, reports, bills, subscriptions, budgets, and cash flow data</li>
+                    <li>To process uploaded documents and help extract or organize financial information within your account</li>
+                    <li>To provide AI-assisted finance explanations, document classification, field extraction, record summaries, and suggested next steps — based only on your own FluxyOS data</li>
+                    <li>To generate and export financial reports and income statement previews</li>
+                    <li>To manage billing, subscription status, and trial access</li>
+                    <li>To improve product reliability, performance, and security</li>
+                    <li>To provide customer support and communicate product updates, service notices, and policy changes</li>
+                    <li>To comply with legal, tax, regulatory, security, and audit obligations</li>
+                    <li>To detect fraud, prevent abuse, and enforce our Terms of Service</li>
+                </ul>
+                <p>We do not use your financial data for advertising targeting, profiling for third-party sale, or any purpose unrelated to providing the FluxyOS service.</p>
+            </div>
+
+            <!-- Section 4: AI and Financial Data -->
+            <div id="section-4" class="policy-section" style="scroll-margin-top: 100px;">
+                <h2>4. AI and Financial Data</h2>
+                <p>FluxyOS may use AI features to help you work with your financial data. These features may include:</p>
+                <ul>
+                    <li>Answering finance questions based on your ledger and reports</li>
+                    <li>Classifying uploaded documents (receipts, invoices, bank statements)</li>
+                    <li>Extracting field values from scanned documents</li>
+                    <li>Summarizing transaction records and financial periods</li>
+                    <li>Suggesting next steps for data cleanup or financial operations</li>
+                </ul>
+                <p><strong>AI is not professional advice.</strong> Outputs from FluxyOS AI features should not be treated as accounting, tax, legal, investment, or financial advice. You remain responsible for verifying AI-generated outputs and consulting qualified professionals where required.</p>
+                <p><strong>Your data is not used to train public AI models.</strong> FluxyOS does not intentionally use your customer financial data to train public or third-party AI models unless we explicitly state this and obtain your permission.</p>
+                <p><strong>AI write actions require your confirmation.</strong> Any AI-suggested action that would create or modify data in your account requires your explicit confirmation before it is saved. AI suggestions alone do not write to your records.</p>
+                <p>AI features process your data through service providers as described in Section 5. We apply reasonable access controls to limit which data is sent to AI providers and for what purpose.</p>
+            </div>
+
+            <!-- Section 5: How We Share Information -->
+            <div id="section-5" class="policy-section" style="scroll-margin-top: 100px;">
+                <h2>5. How We Share Information</h2>
+                <p>FluxyOS does not sell your personal information. We share data only as described below.</p>
+
+                <h3>Service providers</h3>
+                <p>We use third-party service providers to operate FluxyOS. These providers may process your data on our behalf and are subject to appropriate data protection agreements. Categories include:</p>
+                <ul>
+                    <li>Hosting and content delivery (Netlify)</li>
+                    <li>Database, authentication, and storage (Google Firebase / Firestore / Firebase Storage)</li>
+                    <li>Analytics (Google Analytics)</li>
+                    <li>AI and language model service providers (used to process your in-product AI requests)</li>
+                    <li>Email and notification providers (for service communication)</li>
+                    <li>Payment processing and billing infrastructure providers</li>
+                </ul>
+
+                <h3>Legal obligations</h3>
+                <p>We may disclose your information when required by applicable law, regulation, court order, or a valid request from a government authority or law enforcement agency.</p>
+
+                <h3>Professional advisors</h3>
+                <p>We may share information with legal counsel, auditors, accountants, or other professional advisors when necessary to protect our rights or comply with obligations.</p>
+
+                <h3>Business transfers</h3>
+                <p>If FluxyOS is involved in a merger, acquisition, financing, asset sale, or similar transaction, your information may be transferred as part of that transaction. We will notify you of any material change in how your information is used.</p>
+
+                <h3>What we do not do</h3>
+                <ul>
+                    <li>We do not sell your personal information to third parties</li>
+                    <li>We do not share your financial records with other FluxyOS users</li>
+                    <li>Each user's financial data is scoped to their own account only. Access to shared workspaces, if introduced in a future team feature, will require your explicit consent and configuration</li>
+                </ul>
+            </div>
+
+            <!-- Section 6: Data Storage and Security -->
+            <div id="section-6" class="policy-section" style="scroll-margin-top: 100px;">
+                <h2>6. Data Storage and Security</h2>
+                <p>FluxyOS takes reasonable measures to protect the information you entrust to us. Our approach includes:</p>
+                <ul>
+                    <li>User-scoped database access controls — your financial data is stored under your unique user ID in Firestore and is not accessible to other users</li>
+                    <li>Firebase Security Rules that enforce ownership and prevent unauthorized reads or writes</li>
+                    <li>HTTPS encryption for all data in transit</li>
+                    <li>Technical safeguards provided by Google Firebase, Netlify, and other infrastructure providers</li>
+                    <li>Administrative controls limiting internal access to production data</li>
+                    <li>Organizational policies requiring that sensitive credentials are never stored in frontend code or Firestore documents</li>
+                </ul>
+                <p><strong>No system is completely secure.</strong> While we take appropriate steps to protect your data, we cannot guarantee that unauthorized parties will never access your information. We encourage you to use a strong, unique password and to protect your login credentials.</p>
+                <p>If you become aware of a security incident or suspected unauthorized access to your account, please contact us immediately at <a href="mailto:privacy@fluxyos.com" class="text-[#EA580C] font-medium hover:underline">privacy@fluxyos.com</a>.</p>
+            </div>
+
+            <!-- Section 7: Data Retention -->
+            <div id="section-7" class="policy-section" style="scroll-margin-top: 100px;">
+                <h2>7. Data Retention</h2>
+                <p>We retain your data for as long as your account is active or as needed to provide the FluxyOS service. Specifically:</p>
+                <ul>
+                    <li>Account and financial data is retained while your account exists and for a reasonable period following account closure</li>
+                    <li>Certain records — such as audit logs, billing history, and payment verification records — may be retained for longer periods to meet legal, accounting, fraud prevention, dispute resolution, or security requirements</li>
+                    <li>Uploaded files are retained in Firebase Storage for the duration of your account. After account closure, files may be deleted in accordance with our data deletion practices</li>
+                    <li>Analytics and usage data collected by Google Analytics is subject to Google's own retention policies</li>
+                </ul>
+                <p>You may request deletion of your account and personal data by contacting us at <a href="mailto:privacy@fluxyos.com" class="text-[#EA580C] font-medium hover:underline">privacy@fluxyos.com</a>. We will honor deletion requests where applicable, subject to legal or operational requirements that may require us to retain certain records.</p>
+            </div>
+
+            <!-- Section 8: User Rights -->
+            <div id="section-8" class="policy-section" style="scroll-margin-top: 100px;">
+                <h2>8. Your Rights</h2>
+                <p>Depending on where you are located, you may have rights regarding your personal information. FluxyOS respects these rights where applicable.</p>
+
+                <h3>Rights that may apply to you</h3>
+                <ul>
+                    <li><strong>Access:</strong> Request a copy of the personal information we hold about you</li>
+                    <li><strong>Correction:</strong> Ask us to correct inaccurate or incomplete information</li>
+                    <li><strong>Deletion:</strong> Request that we delete your personal data, where applicable</li>
+                    <li><strong>Restriction:</strong> Ask us to restrict how we process your data in certain circumstances</li>
+                    <li><strong>Objection:</strong> Object to processing based on legitimate interests</li>
+                    <li><strong>Portability:</strong> Request your data in a structured, machine-readable format, where technically feasible</li>
+                    <li><strong>Withdraw consent:</strong> Where processing is based on consent, withdraw it at any time</li>
+                    <li><strong>Complaint:</strong> Lodge a complaint with a relevant data protection authority in your jurisdiction</li>
+                </ul>
+
+                <h3>Regional rights</h3>
+                <p><strong>Indonesia:</strong> FluxyOS operates in accordance with the principles of Indonesia's personal data protection framework, including the right to access, correct, and request deletion of your personal data where applicable under Indonesian law.</p>
+                <p><strong>European Economic Area (GDPR):</strong> If you are located in the EEA, you may have additional rights under the General Data Protection Regulation, including the right to data portability and the right to lodge a complaint with your local supervisory authority.</p>
+                <p><strong>California (CCPA/CPRA):</strong> If you are a California resident, you may have the right to know what personal information we collect, to request deletion, to opt out of the sale of personal information (which we do not engage in), and to non-discrimination for exercising these rights.</p>
+                <p>We do not make formal guarantees of full compliance with any specific regulation. We use appropriate wording ("depending on your location," "where applicable") because the applicability of specific legal frameworks depends on circumstances that vary by user location and situation.</p>
+
+                <h3>How to submit a request</h3>
+                <p>To exercise any applicable right or to ask a question about your data, contact us at <a href="mailto:privacy@fluxyos.com" class="text-[#EA580C] font-medium hover:underline">privacy@fluxyos.com</a>. We will respond within a reasonable time frame and in accordance with applicable law.</p>
+            </div>
+
+            <!-- Section 9: Cookies and Analytics -->
+            <div id="section-9" class="policy-section" style="scroll-margin-top: 100px;">
+                <h2>9. Cookies and Analytics</h2>
+                <p>FluxyOS and its underlying service providers may use cookies, local storage, session storage, and similar browser technologies to support product functionality.</p>
+                <p>These technologies are used for purposes including:</p>
+                <ul>
+                    <li>Maintaining your authenticated login session (Firebase Authentication)</li>
+                    <li>Security and CSRF protection</li>
+                    <li>Storing your preferences and interface settings</li>
+                    <li>Measuring product usage through Google Analytics</li>
+                    <li>Improving product performance and identifying issues</li>
+                </ul>
+                <p>Google Analytics collects anonymized usage data including page views, session counts, geographic location (country/city level), and device type. You can opt out of Google Analytics tracking by using the <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer" class="text-[#EA580C] font-medium hover:underline">Google Analytics Opt-out Browser Add-on</a>.</p>
+                <p>You can control or clear cookies through your browser settings. Please note that disabling certain cookies or storage types may affect your ability to sign in or use core features of FluxyOS.</p>
+            </div>
+
+            <!-- Section 10: International Data Transfers -->
+            <div id="section-10" class="policy-section" style="scroll-margin-top: 100px;">
+                <h2>10. International Data Transfers</h2>
+                <p>FluxyOS uses service providers — including Google Firebase, Netlify, and AI infrastructure providers — that may process or store data in countries outside your own. This includes transfers from Indonesia to the United States and potentially other regions.</p>
+                <p>Where required by applicable law, we rely on appropriate legal mechanisms for international data transfers, such as standard contractual clauses or other safeguards recognized by the relevant data protection authorities.</p>
+                <p>By using FluxyOS, you acknowledge that your information may be processed in countries with different data protection standards than your own.</p>
+            </div>
+
+            <!-- Section 11: Children's Privacy -->
+            <div id="section-11" class="policy-section" style="scroll-margin-top: 100px;">
+                <h2>11. Children's Privacy</h2>
+                <p>FluxyOS is a business operations platform intended for adults and business users. It is not directed to children under the age of 13 (or the applicable minimum age in your jurisdiction).</p>
+                <p>We do not knowingly collect personal information from children. If you believe that a child has provided us with their information, please contact us at <a href="mailto:privacy@fluxyos.com" class="text-[#EA580C] font-medium hover:underline">privacy@fluxyos.com</a> and we will take steps to delete that information.</p>
+            </div>
+
+            <!-- Section 12: Third-Party Links and Services -->
+            <div id="section-12" class="policy-section" style="scroll-margin-top: 100px;">
+                <h2>12. Third-Party Links and Services</h2>
+                <p>FluxyOS may contain links to third-party websites, tools, or integration partners. These services have their own privacy policies and data practices that are independent of ours.</p>
+                <p>We encourage you to review the privacy policies of any third-party service before providing your information. FluxyOS is not responsible for the privacy practices of third-party services, even if we link to them or describe them within the product.</p>
+            </div>
+
+            <!-- Section 13: Changes to This Policy -->
+            <div id="section-13" class="policy-section" style="scroll-margin-top: 100px;">
+                <h2>13. Changes to This Policy</h2>
+                <p>We may update this Privacy Policy from time to time to reflect changes in our product, operations, legal obligations, or industry practices.</p>
+                <p>When we update the policy, the revised version will be published at <a href="https://fluxyos.com/privacy" class="text-[#EA580C] font-medium hover:underline">fluxyos.com/privacy</a> with a new effective date at the top. For significant changes that materially affect how we handle your data, we will make reasonable efforts to notify you through the website, by email, or through an in-product notice.</p>
+                <p>Continued use of FluxyOS after an update to this policy constitutes your acknowledgment of the changes.</p>
+            </div>
+
+            <!-- Section 14: Contact -->
+            <div id="section-14" class="policy-section" style="scroll-margin-top: 100px;">
+                <h2>14. Contact</h2>
+                <p>If you have questions, concerns, or requests related to this Privacy Policy or how we handle your data, please contact us:</p>
+                <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 mt-4">
+                    <p class="text-[15px] font-semibold text-gray-900 mb-1">FluxyOS</p>
+                    <p class="text-[14px] text-gray-600 mb-0.5">
+                        Email: <a href="mailto:privacy@fluxyos.com" class="text-[#EA580C] font-medium hover:underline">privacy@fluxyos.com</a>
+                    </p>
+                    <p class="text-[14px] text-gray-600">
+                        Website: <a href="https://fluxyos.com" class="text-[#EA580C] font-medium hover:underline">https://fluxyos.com</a>
+                    </p>
+                </div>
+                <p class="mt-6 text-[13px] text-gray-400 italic">This Privacy Policy was last updated on June 9, 2026.</p>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer is loaded by footer-loader.js -->
+
+    <script src="assets/js/universe-canvas.js" defer></script>
+    <script src="assets/js/footer-loader.js" defer></script>
+
+    <script>
+        (function () {
+            var toggle = document.getElementById('privacy-mobile-toggle');
+            var menu = document.getElementById('privacy-mobile-menu');
+            if (!toggle || !menu) return;
+
+            var openIcon = toggle.querySelector('[data-menu-open-icon]');
+            var closeIcon = toggle.querySelector('[data-menu-close-icon]');
+
+            function setOpen(isOpen) {
+                menu.classList.toggle('hidden', !isOpen);
+                toggle.setAttribute('aria-expanded', String(isOpen));
+                toggle.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
+                if (openIcon) openIcon.classList.toggle('hidden', isOpen);
+                if (closeIcon) closeIcon.classList.toggle('hidden', !isOpen);
+            }
+
+            toggle.addEventListener('click', function () {
+                setOpen(menu.classList.contains('hidden'));
+            });
+
+            document.querySelectorAll('.privacy-mobile-link').forEach(function (link) {
+                link.addEventListener('click', function () { setOpen(false); });
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') setOpen(false);
+            });
+
+            window.addEventListener('resize', function () {
+                if (window.innerWidth >= 1024) setOpen(false);
+            });
+        })();
+    </script>
+
+</body>
+</html>
