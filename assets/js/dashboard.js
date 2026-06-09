@@ -333,7 +333,12 @@ function renderLedgerCashCell(ledgerCash, bankCash, cashPressure) {
     if (bankAdj !== 0 || adjustedHistory.length === 0) {
         adjustedHistory.push({ at: new Date().toISOString(), balance: bankRunning });
     }
-    renderBankCashCell({ ...bankCash, balance: bankRunning, balanceHistory: adjustedHistory }, {});
+    renderBankCashCell({
+        ...bankCash,
+        balance: bankRunning,
+        thirtyDayOutlook: safeNumber(bankCash.thirtyDayOutlook) + bankAdj,
+        balanceHistory: adjustedHistory
+    }, {});
 
     // Recompute cash pressure using the live bank balance
     const cp = cashPressure || {};
