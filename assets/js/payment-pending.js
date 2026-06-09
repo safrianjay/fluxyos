@@ -5,7 +5,7 @@ import { formatIDR, QRIS_PAYMENT_INFO } from "./billing-config.js";
 
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
-    authDomain: "fluxyos.firebaseapp.com",
+    authDomain: "fluxyos.com",
     projectId: "fluxyos",
     storageBucket: "fluxyos.firebasestorage.app",
     messagingSenderId: "1084252368929",

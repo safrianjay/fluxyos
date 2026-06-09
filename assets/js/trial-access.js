@@ -11,7 +11,7 @@ import DataService from "./db-service.js";
 
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
-    authDomain: "fluxyos.firebaseapp.com",
+    authDomain: "fluxyos.com",
     projectId: "fluxyos",
     storageBucket: "fluxyos.firebasestorage.app",
     messagingSenderId: "1084252368929",

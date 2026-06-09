@@ -16,7 +16,7 @@ test('budget-allocation page renders bars + compact rows + header back button', 
     const ids = await page.evaluate(async () => {
         const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
         const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
-        const cfg = { apiKey: 'AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA', authDomain: 'fluxyos.firebaseapp.com', projectId: 'fluxyos', storageBucket: 'fluxyos.firebasestorage.app', messagingSenderId: '1084252368929', appId: '1:1084252368929:web:da73dc0db83fe592c7f360' };
+        const cfg = { apiKey: 'AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA', authDomain: 'fluxyos.com', projectId: 'fluxyos', storageBucket: 'fluxyos.firebasestorage.app', messagingSenderId: '1084252368929', appId: '1:1084252368929:web:da73dc0db83fe592c7f360' };
         const app = getApps().length ? getApps()[0] : initializeApp(cfg);
         const auth = getAuth(app);
         if (auth.authStateReady) await auth.authStateReady();

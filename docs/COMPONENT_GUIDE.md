@@ -31,7 +31,7 @@ Copy the structure from `bill.html` (simplest existing page). Must include:
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        const app = initializeApp({ apiKey: "AIzaSyCaJqmpEMulLdMvRT7mYf2K-XDw46-dT7A", authDomain: "fluxyos.firebaseapp.com", projectId: "fluxyos", storageBucket: "fluxyos.firebasestorage.app", messagingSenderId: "1084252368929", appId: "1:1084252368929:web:da73dc0db83fe592c7f360" });
+        const app = initializeApp({ apiKey: "AIzaSyCaJqmpEMulLdMvRT7mYf2K-XDw46-dT7A", authDomain: "fluxyos.com", projectId: "fluxyos", storageBucket: "fluxyos.firebasestorage.app", messagingSenderId: "1084252368929", appId: "1:1084252368929:web:da73dc0db83fe592c7f360" });
         const auth = getAuth(app);
         let redirectTimer = setTimeout(() => window.location.href = '/login', 2000);
         onAuthStateChanged(auth, user => {

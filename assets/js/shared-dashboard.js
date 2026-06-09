@@ -638,7 +638,7 @@ window.showAddTransactionModal = function(options = {}) {
         const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
-            authDomain: "fluxyos.firebaseapp.com",
+            authDomain: "fluxyos.com",
             projectId: "fluxyos",
             storageBucket: "fluxyos.firebasestorage.app",
             messagingSenderId: "1084252368929",
@@ -952,7 +952,7 @@ window.showAddTransactionModal = function(options = {}) {
                     const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
                     const firebaseConfig = {
                         apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
-                        authDomain: "fluxyos.firebaseapp.com",
+                        authDomain: "fluxyos.com",
                         projectId: "fluxyos",
                         storageBucket: "fluxyos.firebasestorage.app",
                         messagingSenderId: "1084252368929",
@@ -2145,7 +2145,7 @@ window.attachChartHover = function attachChartHover(container, options) {
         const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
-            authDomain: "fluxyos.firebaseapp.com",
+            authDomain: "fluxyos.com",
             projectId: "fluxyos",
             storageBucket: "fluxyos.firebasestorage.app",
             messagingSenderId: "1084252368929",
@@ -2354,7 +2354,7 @@ window.attachChartHover = function attachChartHover(container, options) {
         const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
-            authDomain: "fluxyos.firebaseapp.com",
+            authDomain: "fluxyos.com",
             projectId: "fluxyos",
             storageBucket: "fluxyos.firebasestorage.app",
             messagingSenderId: "1084252368929",

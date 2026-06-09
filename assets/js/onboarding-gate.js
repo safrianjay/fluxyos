@@ -21,7 +21,7 @@ export const ONBOARDING_RELEASE_CUTOFF = new Date("2026-05-19T00:00:00.000Z");
 
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
-    authDomain: "fluxyos.firebaseapp.com",
+    authDomain: "fluxyos.com",
     projectId: "fluxyos",
     storageBucket: "fluxyos.firebasestorage.app",
     messagingSenderId: "1084252368929",
