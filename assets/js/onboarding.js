@@ -147,6 +147,11 @@ function initUI() {
     document.getElementById('btn-back').addEventListener('click', onBack);
     document.getElementById('btn-submit').addEventListener('click', onSubmit);
     document.getElementById('btn-save-later').addEventListener('click', onSaveLater);
+    document.getElementById('tos-agree-checkbox')?.addEventListener('change', () => {
+        document.getElementById('tos-agree-label')?.classList.remove('is-invalid');
+        const err = document.getElementById('tos-agree-error');
+        if (err) err.textContent = '';
+    });
 
     // Live-bind form fields
     bindInput('#f-business-name', 'business_name');
@@ -703,6 +708,17 @@ async function onSaveLater() {
 
 async function onSubmit() {
     if (state.submitting) return;
+    const tosCheckbox = document.getElementById('tos-agree-checkbox');
+    const tosLabel = document.getElementById('tos-agree-label');
+    const tosError = document.getElementById('tos-agree-error');
+    if (tosCheckbox && !tosCheckbox.checked) {
+        tosLabel?.classList.add('is-invalid');
+        if (tosError) tosError.textContent = 'Please agree to the Terms of Service and Privacy Policy to continue.';
+        tosCheckbox.focus();
+        return;
+    }
+    if (tosLabel) tosLabel.classList.remove('is-invalid');
+    if (tosError) tosError.textContent = '';
     if (!validateAllBeforeSubmit()) return;
     state.submitting = true;
     const btn = document.getElementById('btn-submit');

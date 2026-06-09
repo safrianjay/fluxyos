@@ -591,6 +591,73 @@
     margin: 0;
 }
 
+/* ToS agreement checkbox (review step) */
+.onboarding-tos-agree {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    margin-top: 20px;
+    margin-bottom: 4px;
+    user-select: none;
+}
+.onboarding-tos-agree input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+.onboarding-tos-agree-box {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid #D1D5DB;
+    border-radius: 4px;
+    background: #fff;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s, background 0.15s;
+}
+.onboarding-tos-agree input:checked + .onboarding-tos-agree-box {
+    background: #111827;
+    border-color: #111827;
+}
+.onboarding-tos-agree input:checked + .onboarding-tos-agree-box::after {
+    content: '';
+    display: block;
+    width: 10px;
+    height: 6px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: translateY(-1px) rotate(-45deg);
+}
+.onboarding-tos-agree:hover .onboarding-tos-agree-box {
+    border-color: #9CA3AF;
+}
+.onboarding-tos-agree input:focus-visible + .onboarding-tos-agree-box {
+    outline: 2px solid #EA580C;
+    outline-offset: 2px;
+}
+.onboarding-tos-agree.is-invalid .onboarding-tos-agree-box {
+    border-color: #EF4444;
+}
+.onboarding-tos-agree-text {
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.55;
+}
+.onboarding-tos-link {
+    color: #EA580C;
+    text-decoration: none;
+    font-weight: 500;
+}
+.onboarding-tos-link:hover {
+    text-decoration: underline;
+}
+
 /* Action bar */
 .onboarding-actions {
     margin-top: auto;

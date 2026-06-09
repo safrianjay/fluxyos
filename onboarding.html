@@ -266,6 +266,17 @@
                         <!-- populated by onboarding.js -->
                     </dl>
 
+                    <label class="onboarding-tos-agree" id="tos-agree-label">
+                        <input type="checkbox" id="tos-agree-checkbox" aria-describedby="tos-agree-error">
+                        <span class="onboarding-tos-agree-box" aria-hidden="true"></span>
+                        <span class="onboarding-tos-agree-text">By submitting this setup I agree to the FluxyOS
+                            <a href="/terms" target="_blank" rel="noopener noreferrer" class="onboarding-tos-link">Terms of Service</a>
+                            and
+                            <a href="/privacy" target="_blank" rel="noopener noreferrer" class="onboarding-tos-link">Privacy Policy</a>.
+                        </span>
+                    </label>
+                    <span class="onboarding-error" id="tos-agree-error" aria-live="polite"></span>
+
                     <p class="onboarding-foot-note">Submitting will create your workspace profile and unlock the FluxyOS dashboard.</p>
                 </div>
 
