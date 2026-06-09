@@ -174,6 +174,30 @@ class DataService {
         return this._activeTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }
 
+    async getLedgerCashPosition(userId) {
+        if (!userId) return { cashIn: 0, cashOut: 0, net: 0, recordCount: 0 };
+        try {
+            const q = query(
+                collection(this.db, `users/${userId}/transactions`),
+                where('cash_effective', '==', true),
+                limit(2000)
+            );
+            const snapshot = await getDocs(q);
+            let cashIn = 0, cashOut = 0, count = 0;
+            snapshot.forEach(d => {
+                const data = d.data();
+                if (data.is_voided) return;
+                const amount = this._safeInteger(data.amount);
+                if (data.cash_direction === 'in') cashIn += amount;
+                else if (data.cash_direction === 'out') cashOut += amount;
+                count++;
+            });
+            return { cashIn, cashOut, net: cashIn - cashOut, recordCount: count };
+        } catch {
+            return { cashIn: 0, cashOut: 0, net: 0, recordCount: 0 };
+        }
+    }
+
     async getTransactionsForDashboardOverview(userId, allTime = false) {
         if (!allTime) return this.getTransactions(userId, 1000);
         const q = query(

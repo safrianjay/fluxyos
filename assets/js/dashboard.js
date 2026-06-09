@@ -48,19 +48,23 @@ window.loadDashboard = async () => {
     renderOverviewLoadingState();
 
     try {
-        const [overviewResult, revenueResult] = await Promise.allSettled([
+        const [overviewResult, revenueResult, ledgerCashResult] = await Promise.allSettled([
             ds.getDashboardOverview(user.uid, {
                 startDate: dashboardRangeStart,
                 endDate: dashboardRangeEnd,
                 label: period.label,
                 mode: dashboardPeriodMode
             }),
-            ds.getRevenueTransactionsForDashboardStats(user.uid)
+            ds.getRevenueTransactionsForDashboardStats(user.uid),
+            ds.getLedgerCashPosition(user.uid)
         ]);
         if (overviewResult.status !== 'fulfilled') throw overviewResult.reason;
         const overview = overviewResult.value;
         revenueTransactionsCache = revenueResult.status === 'fulfilled' ? revenueResult.value : [];
         revenueTransactionsStatus = revenueResult.status === 'fulfilled' ? 'loaded' : 'error';
+        const ledgerCash = ledgerCashResult.status === 'fulfilled'
+            ? ledgerCashResult.value
+            : { cashIn: 0, cashOut: 0, net: 0, recordCount: 0 };
         dashboardRangeStart = overview.period?.startDate || dashboardRangeStart;
         dashboardRangeEnd = overview.period?.endDate || dashboardRangeEnd;
         window.FluxyDashboardRange = { start: dashboardRangeStart, end: dashboardRangeEnd };
@@ -75,7 +79,7 @@ window.loadDashboard = async () => {
         cashFlowBuckets = overview.cashFlow || [];
         updateBudgetCaption();
 
-        renderSummaryBoard(overview);
+        renderSummaryBoard(overview, ledgerCash);
         renderCashflowChart();
         attachCashflowChartToggle();
         renderCashFlowChart();
@@ -193,6 +197,8 @@ function renderOverviewLoadingState() {
     updateKPI('kpi-margin', '0%');
     updateKPI('kpi-cash-pressure', 'Rp0');
     updateKPI('kpi-bank-cash', 'Rp0');
+    updateKPI('kpi-ledger-cash', 'Rp0');
+    updateKPI('kpi-ledger-cash-sub', 'Loading...');
     updateKPI('kpi-payables', 'Rp0');
     updateKPI('kpi-revenue-change', 'Loading...');
     updateKPI('revenue-scope-label', getRevenuePeriodLabel(dashboardPeriodMode));
@@ -234,6 +240,8 @@ function renderOverviewErrorState() {
     updateKPI('kpi-margin', '0%');
     updateKPI('kpi-cash-pressure', 'Rp0');
     updateKPI('kpi-bank-cash', 'Rp0');
+    updateKPI('kpi-ledger-cash', 'Rp0');
+    updateKPI('kpi-ledger-cash-sub', 'No cash transactions yet');
     updateKPI('kpi-payables', 'Rp0');
     updateKPI('kpi-revenue-change', 'No data');
     updateKPI('revenue-record-count', 'Revenue records unavailable');
@@ -265,7 +273,7 @@ function renderOverviewErrorState() {
     }
 }
 
-function renderSummaryBoard(overview) {
+function renderSummaryBoard(overview, ledgerCash = {}) {
     const p = overview.performance || {};
     const rp = overview.receivablesPayables || {};
     const actions = overview.actionItems || {};
@@ -284,9 +292,33 @@ function renderSummaryBoard(overview) {
 
     renderRevenueCard();
 
-    renderBankCashCell(overview.bankCash || {}, rp);
+    renderLedgerCashCell(ledgerCash, overview.bankCash || {});
     renderOpexBudgetCell(p, currentBudget);
     renderCashPressureCell(overview.cashPressure || {});
+}
+
+function renderLedgerCashCell(ledgerCash, bankCash) {
+    const net = safeNumber(ledgerCash.net);
+    const cashIn = safeNumber(ledgerCash.cashIn);
+    const cashOut = safeNumber(ledgerCash.cashOut);
+    const count = safeNumber(ledgerCash.recordCount);
+
+    const el = document.getElementById('kpi-ledger-cash');
+    if (el) {
+        el.textContent = formatIDR(net);
+    }
+    const sub = document.getElementById('kpi-ledger-cash-sub');
+    if (sub) {
+        if (count === 0) {
+            sub.textContent = 'No cash transactions yet';
+            sub.className = 'metric-sub';
+        } else {
+            sub.textContent = `${formatIDR(cashIn)} in · ${formatIDR(cashOut)} out · ${count} record${count === 1 ? '' : 's'}`;
+            sub.className = net >= 0 ? 'metric-sub is-good' : 'metric-sub is-bad';
+        }
+    }
+
+    renderBankCashCell(bankCash, {});
 }
 
 function renderBankCashCell(bankCash, rp) {
