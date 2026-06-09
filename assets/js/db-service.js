@@ -3041,7 +3041,14 @@ class DataService {
         }
         const rawStatus = String(subscription.status);
         const planId = subscription.plan_id || null;
-        const catalog = this._billingPlanCatalogEntry(planId);
+        // Seat/storage/AI limits reflect what the user can actually use RIGHT NOW,
+        // not the plan they are paying for. While a payment is awaiting/pending
+        // verification (or trial/expired), access still behaves like trial until
+        // the internal verification promotes the plan to active — so we layer the
+        // entitlement fields from the EFFECTIVE plan, matching getBillingEntitlements
+        // and assertCanUseStorage. Identity fields (plan_id/name/description/price)
+        // still describe the plan being activated so the chip can say "… in review".
+        const catalog = this._billingPlanCatalogEntry(this._effectiveBillingPlanId(subscription));
         const billingFrequency = subscription.billing_frequency || null;
         let priceAmount = null;
         if (BILLING_PLANS[planId] && (billingFrequency === 'monthly' || billingFrequency === 'annually')) {
