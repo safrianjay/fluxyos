@@ -1980,16 +1980,17 @@
                 const row  = window.__ledgerRowMap[txId] || findLedgerTransactionById(txId);
                 if (!row) { window.showToast?.('Transaction not found in current view.', 'info'); return; }
                 document.body.classList.add('overflow-hidden');
-                try {
-                    const user = auth.currentUser;
-                    const fresh = user ? await ds.getTransactionById(user.uid, txId) : null;
-                    window.openTxDetailDrawer(fresh || row);
-                    // Small delay so the drawer finishes animating in before we switch to the edit panel
-                    window.setTimeout(() => renderCashImpactEditPanel(fresh || row), 320);
-                } catch (_) {
-                    window.openTxDetailDrawer(row);
-                    window.setTimeout(() => renderCashImpactEditPanel(row), 320);
-                }
+                (async () => {
+                    try {
+                        const user = auth.currentUser;
+                        const fresh = user ? await ds.getTransactionById(user.uid, txId) : null;
+                        window.openTxDetailDrawer(fresh || row);
+                        window.setTimeout(() => renderCashImpactEditPanel(fresh || row), 320);
+                    } catch (_) {
+                        window.openTxDetailDrawer(row);
+                        window.setTimeout(() => renderCashImpactEditPanel(row), 320);
+                    }
+                })();
                 return;
             }
 
