@@ -308,7 +308,7 @@ service cloud.firestore {
         ])
         && isValidBillingPlan(data.plan_id)
         && isValidBillingPlanName(data.plan_id, data.plan_name)
-        && data.status in ['trialing', 'awaiting_payment', 'pending_verification', 'active', 'past_due', 'expired', 'payment_failed']
+        && data.status in ['trialing', 'awaiting_payment', 'pending_verification', 'active', 'cancel_scheduled', 'past_due', 'expired', 'payment_failed']
         && isValidBillingFrequency(data.billing_frequency)
         && (data.current_payment_request_id == null || (data.current_payment_request_id is string && data.current_payment_request_id.size() <= 160))
         && (data.trial_started_at == null || data.trial_started_at is timestamp)
@@ -622,6 +622,24 @@ service cloud.firestore {
         && data.billing_frequency == getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(prev.current_payment_request_id)).data.prev_billing_frequency
         && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(prev.current_payment_request_id)).data.prev_status == 'active'
         && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(prev.current_payment_request_id)).data.payment_status == 'canceled';
+    }
+
+    // Owner cancels renewal on an active subscription: status moves
+    // active -> cancel_scheduled (access kept until period end). Reactivate is the
+    // inverse (cancel_scheduled -> active). Only the lifecycle status changes, and
+    // neither is an escalation — the user already holds the paid entitlement.
+    function isCancelRenewalWrite(prev, data) {
+      return prev.status == 'active'
+        && data.status == 'cancel_scheduled'
+        && data.diff(prev).affectedKeys().hasOnly(['status', 'updated_at'])
+        && data.updated_at == request.time;
+    }
+
+    function isReactivateRenewalWrite(prev, data) {
+      return prev.status == 'cancel_scheduled'
+        && data.status == 'active'
+        && data.diff(prev).affectedKeys().hasOnly(['status', 'updated_at'])
+        && data.updated_at == request.time;
     }
 
     function isTrialSubscriptionCreate(data) {
@@ -1518,6 +1536,8 @@ service cloud.firestore {
             || isCheckoutAwaitingPaymentWrite(userId, request.resource.data)
             || isCancelPaymentRevert(userId, resource.data, request.resource.data)
             || isCancelRestoreActive(userId, resource.data, request.resource.data)
+            || isCancelRenewalWrite(resource.data, request.resource.data)
+            || isReactivateRenewalWrite(resource.data, request.resource.data)
             || isInternalReviewReconcile(userId, resource.data, request.resource.data)
             || isActiveBillingPeriodBackfill(userId, resource.data, request.resource.data)
             || isLegacyBillingMigration(userId, request.resource.data)

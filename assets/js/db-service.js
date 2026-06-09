@@ -3344,14 +3344,71 @@ class DataService {
         return { ok: true, fallback: true, checkout_url: `/checkout?plan=${encodeURIComponent(checkoutPlan)}&billing=annually` };
     }
 
+    // Owner schedules cancellation of an active subscription's renewal. Access is
+    // retained until the current period ends (status -> cancel_scheduled, which
+    // _effectiveBillingPlanId still treats as a paid entitlement); only the
+    // lifecycle status changes. Writes an audit log and mirrors to internal_users.
     async requestCancelRenewal(userId) {
-        // Never a local state change: the client cannot set cancel_scheduled
-        // (Firestore rules block it). Returns { ok:false, reason } when unavailable.
-        return await this._callBillingApi('/cancel-renewal', { body: { uid: userId || null } });
+        if (!userId) return { ok: false, reason: 'missing-user' };
+        const sub = await this.getBillingSubscription(userId);
+        if (!sub || sub.status !== 'active') return { ok: false, reason: 'not_active' };
+
+        const auditRef = doc(collection(this.db, `users/${userId}/audit_logs`));
+        const batch = writeBatch(this.db);
+        batch.update(this._billingSubscriptionDoc(userId), {
+            status: 'cancel_scheduled',
+            updated_at: serverTimestamp()
+        });
+        batch.set(auditRef, {
+            actor_uid: userId,
+            actor_role: null,
+            action: 'billing.renewal_canceled',
+            target_collection: 'billing',
+            target_id: 'current',
+            before: { status: 'active' },
+            after: { status: 'cancel_scheduled' },
+            reason: null,
+            source: 'dashboard',
+            created_at: serverTimestamp()
+        });
+        await batch.commit();
+        try {
+            await this.syncInternalUserBillingSubscriptionIndex(userId, { id: 'current', ...sub, status: 'cancel_scheduled' });
+        } catch (_) { /* internal mirror is non-critical */ }
+        return { ok: true };
     }
 
+    // Owner resumes renewal on a cancel_scheduled subscription (-> active). They
+    // already hold the paid entitlement during the scheduled period, so this is
+    // never an access escalation.
     async requestReactivateSubscription(userId) {
-        return await this._callBillingApi('/reactivate', { body: { uid: userId || null } });
+        if (!userId) return { ok: false, reason: 'missing-user' };
+        const sub = await this.getBillingSubscription(userId);
+        if (!sub || sub.status !== 'cancel_scheduled') return { ok: false, reason: 'not_cancel_scheduled' };
+
+        const auditRef = doc(collection(this.db, `users/${userId}/audit_logs`));
+        const batch = writeBatch(this.db);
+        batch.update(this._billingSubscriptionDoc(userId), {
+            status: 'active',
+            updated_at: serverTimestamp()
+        });
+        batch.set(auditRef, {
+            actor_uid: userId,
+            actor_role: null,
+            action: 'billing.renewal_reactivated',
+            target_collection: 'billing',
+            target_id: 'current',
+            before: { status: 'cancel_scheduled' },
+            after: { status: 'active' },
+            reason: null,
+            source: 'dashboard',
+            created_at: serverTimestamp()
+        });
+        await batch.commit();
+        try {
+            await this.syncInternalUserBillingSubscriptionIndex(userId, { id: 'current', ...sub, status: 'active' });
+        } catch (_) { /* internal mirror is non-critical */ }
+        return { ok: true };
     }
 
     async getBillingAccess(userId) {
@@ -3562,6 +3619,10 @@ class DataService {
         let paymentStatus;
 
         if (status === 'active' || requestStatus === 'verified') {
+            accessStatus = 'active';
+            paymentStatus = 'verified';
+        } else if (status === 'cancel_scheduled') {
+            // Renewal canceled but still inside the paid period — access remains.
             accessStatus = 'active';
             paymentStatus = 'verified';
         } else if (status === 'payment_failed' || requestStatus === 'failed') {
