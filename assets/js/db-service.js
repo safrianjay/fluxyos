@@ -2573,6 +2573,21 @@ class DataService {
         // immediately (unchanged behavior).
         const paymentStatus = paymentMethod === 'qris' ? 'awaiting_payment' : 'pending_verification';
         const currentSubscription = await this.getBillingSubscription(userId);
+
+        // Don't stack payments. If one is already in flight, return it instead of
+        // creating a second request: a second create would re-snapshot the prior
+        // state from the TRANSIENT awaiting/pending subscription (not the real paid
+        // plan), so canceling it would strand the user on trial. The caller
+        // redirects to /payment-pending for the returned request.
+        const openRequestId = currentSubscription?.current_payment_request_id || null;
+        if (openRequestId
+            && (currentSubscription.status === 'awaiting_payment' || currentSubscription.status === 'pending_verification')) {
+            const existing = await this.getPaymentRequestById(userId, openRequestId).catch(() => null);
+            if (existing && (existing.payment_status === 'awaiting_payment' || existing.payment_status === 'pending_verification')) {
+                return existing;
+            }
+        }
+
         const requestRef = doc(this._billingPaymentRequestsCol(userId));
         const auditRef = doc(collection(this.db, `users/${userId}/audit_logs`));
         const batch = writeBatch(this.db);

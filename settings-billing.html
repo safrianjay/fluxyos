@@ -270,6 +270,8 @@
             const renews = o.renews_at ? formatDate(o.renews_at) : null;
             const periodEnd = o.current_period_end ? formatDate(o.current_period_end) : null;
             const trialEnd = o.trial_end_at ? formatDate(o.trial_end_at) : null;
+            // enterprise is the highest tier — there is nothing to upgrade to.
+            const isTopTier = o.plan_id === 'enterprise';
 
             const map = {
                 none: {
@@ -287,9 +289,10 @@
                 active: {
                     badge: ['Active', 'green'], title: 'Active subscription',
                     copy: renews
-                        ? `Your current plan renews on ${renews}.${seatLimit && storageLimit ? ` Your plan includes ${seatLimit} seats and ${storageLimit} storage.` : ''}`
-                        : `Your ${escapeHtml(planName)} plan is active.${seatLimit && storageLimit ? ` It includes ${seatLimit} seats and ${storageLimit} storage.` : ''}`,
-                    primary: { label: 'Upgrade plan', kind: 'upgrade' },
+                        ? `Your current plan renews on ${renews}.${seatLimit && storageLimit ? ` Your plan includes ${seatLimit} seats and ${storageLimit} storage.` : ''}${isTopTier ? ' You’re on the highest plan available.' : ''}`
+                        : `Your ${escapeHtml(planName)} plan is active.${seatLimit && storageLimit ? ` It includes ${seatLimit} seats and ${storageLimit} storage.` : ''}${isTopTier ? ' You’re on the highest plan available.' : ''}`,
+                    // No upgrade CTA on the top tier — there's nothing higher.
+                    primary: isTopTier ? null : { label: 'Upgrade plan', kind: 'upgrade' },
                     tertiary: { label: 'Cancel renewal', kind: 'cancel' }
                 },
                 cancel_scheduled: {
@@ -508,6 +511,10 @@
                     ${detailRow('Storage included', storageLimit || (o.storage_note ? 'Custom' : 'Not set'))}
                 </div>` : '';
 
+            const primaryBtn = info.primary
+                ? `<button type="button" data-action="${info.primary.kind}" class="bill-action inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed">${escapeHtml(info.primary.label)}</button>`
+                : '';
+
             const tertiary = info.tertiary
                 ? `<button type="button" data-action="${info.tertiary.kind}" class="bill-action inline-flex items-center justify-center rounded-lg border border-red-200 bg-white px-3.5 py-2 text-[13px] font-bold text-red-600 hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed">${escapeHtml(info.tertiary.label)}</button>`
                 : '';
@@ -535,7 +542,7 @@
                     ${enterpriseNote}
 
                     <div class="mt-5 flex flex-wrap items-center gap-2.5">
-                        <button type="button" data-action="${info.primary.kind}" class="bill-action inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed">${escapeHtml(info.primary.label)}</button>
+                        ${primaryBtn}
                         ${tertiary}
                     </div>
                 </div>`;
@@ -729,13 +736,12 @@
                 navigate(o.current_payment_request_id ? `/payment-pending?requestId=${encodeURIComponent(o.current_payment_request_id)}` : '/payment-pending');
                 return;
             }
-            if (kind === 'upgrade' || kind === 'fixpayment') {
+            // Upgrade = pick a higher tier on pricing (don't re-checkout the same plan).
+            if (kind === 'upgrade') { navigate('/pricing'); return; }
+            if (kind === 'fixpayment') {
                 await withBusy(btn, async () => {
-                    const res = kind === 'upgrade'
-                        ? await ds.requestBillingUpgrade(uid, o.plan_id)
-                        : await ds.requestBillingCheckout(uid, o.plan_id);
-                    if (res && res.checkout_url) { navigate(res.checkout_url); }
-                    else { navigate('/pricing'); }
+                    const res = await ds.requestBillingCheckout(uid, o.plan_id);
+                    navigate(res && res.checkout_url ? res.checkout_url : '/pricing');
                 });
                 return;
             }
