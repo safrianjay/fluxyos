@@ -736,8 +736,16 @@
                 navigate(o.current_payment_request_id ? `/payment-pending?requestId=${encodeURIComponent(o.current_payment_request_id)}` : '/payment-pending');
                 return;
             }
-            // Upgrade = pick a higher tier on pricing (don't re-checkout the same plan).
-            if (kind === 'upgrade') { navigate('/pricing'); return; }
+            // Upgrade = go straight to checkout with the next higher tier preselected
+            // (checkout still lets them change the plan). enterprise has no upgrade CTA.
+            if (kind === 'upgrade') {
+                const order = ['core', 'growth', 'enterprise'];
+                const idx = order.indexOf(o.plan_id);
+                const nextPlan = (idx >= 0 && idx < order.length - 1) ? order[idx + 1] : 'growth';
+                const billing = ['monthly', 'annually'].includes(o.billing_cycle) ? o.billing_cycle : 'annually';
+                navigate(`/checkout?plan=${nextPlan}&billing=${billing}`);
+                return;
+            }
             if (kind === 'fixpayment') {
                 await withBusy(btn, async () => {
                     const res = await ds.requestBillingCheckout(uid, o.plan_id);
