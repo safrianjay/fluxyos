@@ -137,6 +137,11 @@ body { margin: 0; min-height: 100vh; background: #F3F4F6; color: #111827; font-f
 .qris-cancel:hover { color: #991B1B; text-decoration: underline; }
 .qris-cancel:disabled { cursor: not-allowed; opacity: .58; }
 
+/* Cancel on the pending-verification status card (same flow as QRIS cancel). */
+.status-cancel { padding: 0; border: 0; background: none; color: #B91C1C; font-size: 14px; font-weight: 700; cursor: pointer; }
+.status-cancel:hover { color: #991B1B; text-decoration: underline; }
+.status-cancel.hidden { display: none; }
+
 /* ---------- Cancel confirmation modal ---------- */
 .qris-modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 24px; }
 .qris-modal-backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, .5); backdrop-filter: blur(2px); }

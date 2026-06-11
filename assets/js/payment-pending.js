@@ -306,39 +306,50 @@ function bindQrisActions(request) {
         }
     };
 
-    /* Cancel payment → confirm in a modal → void the request, revert to trial,
-       and return the user to plan selection. */
-    const cancelBtn = $('cancel-payment-btn');
-    const modal = $('cancel-modal');
-    const modalBackdrop = $('cancel-modal-backdrop');
+    /* Cancel payment → confirm in the shared modal (also used by the
+       pending-verification status card). */
+    $('cancel-payment-btn').onclick = () => openCancelModal(request);
+}
+
+/* ---------------- Cancel payment (QRIS view + status card) ----------------
+   One confirm modal voids the request, reverts the subscription to its
+   pre-checkout snapshot, and returns the user to plan selection. */
+
+let cancelModalRequest = null;
+
+function onCancelModalKeydown(event) {
+    if (event.key === 'Escape' && !$('cancel-modal-confirm').disabled) closeCancelModal();
+}
+
+function closeCancelModal() {
+    $('cancel-modal').classList.add('hidden');
+    $('cancel-modal-error').classList.add('hidden');
+    $('cancel-modal-error').textContent = '';
+    $('cancel-modal-confirm').disabled = false;
+    $('cancel-modal-keep').disabled = false;
+    $('cancel-modal-confirm').textContent = 'Yes, cancel payment';
+    document.removeEventListener('keydown', onCancelModalKeydown);
+    cancelModalRequest = null;
+}
+
+function openCancelModal(request) {
+    cancelModalRequest = request;
+    $('cancel-modal').classList.remove('hidden');
+    document.addEventListener('keydown', onCancelModalKeydown);
+    $('cancel-modal-keep').focus();
+}
+
+function initCancelModal() {
     const modalKeep = $('cancel-modal-keep');
     const modalConfirm = $('cancel-modal-confirm');
     const modalError = $('cancel-modal-error');
 
-    function onCancelModalKeydown(event) {
-        if (event.key === 'Escape' && !modalConfirm.disabled) closeCancelModal();
-    }
-    const closeCancelModal = () => {
-        modal.classList.add('hidden');
-        modalError.classList.add('hidden');
-        modalError.textContent = '';
-        modalConfirm.disabled = false;
-        modalKeep.disabled = false;
-        modalConfirm.textContent = 'Yes, cancel payment';
-        document.removeEventListener('keydown', onCancelModalKeydown);
-    };
-    const openCancelModal = () => {
-        modal.classList.remove('hidden');
-        document.addEventListener('keydown', onCancelModalKeydown);
-        modalKeep.focus();
-    };
-
-    cancelBtn.onclick = openCancelModal;
     modalKeep.onclick = closeCancelModal;
-    modalBackdrop.onclick = () => { if (!modalConfirm.disabled) closeCancelModal(); };
+    $('cancel-modal-backdrop').onclick = () => { if (!modalConfirm.disabled) closeCancelModal(); };
     modalConfirm.onclick = async () => {
         if (modalConfirm.disabled) return;
-        if (!currentUser?.uid) {
+        const request = cancelModalRequest;
+        if (!currentUser?.uid || !request?.id) {
             modalError.textContent = 'Your session is still loading. Please try again.';
             modalError.classList.remove('hidden');
             return;
@@ -363,6 +374,7 @@ function bindQrisActions(request) {
         }
     };
 }
+initCancelModal();
 
 /* ---------------- Status card (pending / active / failed / empty) ---------------- */
 
@@ -431,6 +443,9 @@ function render(subscription, request, reviewReason) {
     stopCountdown();
     showView('status');
     renderMeta(request);
+    // Cancel is offered only in the pending-verification branch below.
+    $('status-cancel-btn').classList.add('hidden');
+    $('status-cancel-btn').onclick = null;
     const requestStatus = request?.payment_status;
     if (subscription?.status === 'active' || requestStatus === 'verified') {
         setSuccessMode(true);
@@ -468,6 +483,12 @@ function render(subscription, request, reviewReason) {
             body: `We received your payment confirmation for ${request.plan_name || subscription?.plan_name || 'your FluxyOS plan'}. Our team will verify the payment manually and activate your FluxyOS plan after confirmation.`,
             helper: 'You can continue using FluxyOS during your trial while we verify your payment.'
         });
+        // An in-review payment can still be canceled (same flow as the QRIS
+        // screen): voids the request and restores the pre-checkout plan state.
+        if (requestStatus === 'pending_verification') {
+            $('status-cancel-btn').classList.remove('hidden');
+            $('status-cancel-btn').onclick = () => openCancelModal(request);
+        }
         return;
     }
     setContent({

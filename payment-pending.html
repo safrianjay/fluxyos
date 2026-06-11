@@ -108,6 +108,7 @@
             <div class="actions">
                 <a class="primary" id="primary-action" href="/dashboard">Go to Dashboard</a>
                 <a class="secondary" id="secondary-action" href="mailto:support@fluxyos.com?subject=FluxyOS%20payment%20support">Contact support</a>
+                <button class="status-cancel hidden" type="button" id="status-cancel-btn">Cancel payment request</button>
             </div>
         </div>
     </main>
@@ -117,7 +118,7 @@
         <div class="qris-modal-backdrop" id="cancel-modal-backdrop"></div>
         <div class="qris-modal-card" role="document">
             <h3 class="qris-modal-title" id="cancel-modal-title">Cancel this payment?</h3>
-            <p class="qris-modal-body" id="cancel-modal-body">This will void your current QRIS payment request and take you back to choose a plan. You can start a new payment anytime.</p>
+            <p class="qris-modal-body" id="cancel-modal-body">This will void your current payment request and take you back to choose a plan. You can start a new payment anytime.</p>
             <div class="qris-modal-actions">
                 <button type="button" class="qris-modal-keep" id="cancel-modal-keep">Keep paying</button>
                 <button type="button" class="qris-modal-confirm" id="cancel-modal-confirm">Yes, cancel payment</button>

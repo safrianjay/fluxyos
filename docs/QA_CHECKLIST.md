@@ -902,6 +902,10 @@ voucher math, the internal console Vouchers tab, or the `voucher_*` /
   usage-limit copy and the undiscounted total.
 - [ ] QRIS confirm-payment and cancel-payment still work on a voucher-bearing
   request; `/payment-pending` shows the discounted total.
+- [ ] A `pending_verification` request (VA/Card/Invoice) shows "Cancel payment
+  request" on the status card; canceling reverts the subscription and settles
+  the voucher redemption to `cancelled` in the internal usage drawer (the
+  used slot stays consumed — documented v1 behavior).
 - [ ] Firestore stores raw integer amounts only — never formatted `Rp` strings.
 
 **Internal console — Vouchers tab**

@@ -814,9 +814,12 @@ record): `voucher_id`/`code`, `user_id` (must equal `auth.uid`),
 `checkout_session_id` (== doc id), `plan_id`, `billing_frequency`,
 `original_amount` (= subtotal), `discount_amount`, `final_amount`
 (= total incl. PPN), `currency: 'IDR'`, `status`
-(`reserved` → `redeemed` on internal `payment.verify`, or `cancelled`),
-`created_at`, `redeemed_at`. Raw integers only. Rules mirror every amount
-against the payment request written in the same commit via `getAfter()`.
+(`reserved` → `redeemed` on internal `payment.verify`, or `cancelled` when the
+owner cancels the payment request — `cancelPaymentRequest` settles it
+best-effort; the voucher's `redemption_count` is NOT decremented, so a
+cancelled redemption still consumes a slot in v1), `created_at`,
+`redeemed_at`. Raw integers only. Rules mirror every amount against the
+payment request written in the same commit via `getAfter()`.
 
 **Payment request voucher snapshot:** `billing_payment_requests` gains 4
 optional fields (`hasOnly`, not `hasAll`, so pre-voucher cached clients keep

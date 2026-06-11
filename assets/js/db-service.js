@@ -3255,6 +3255,18 @@ class DataService {
 
         await batch.commit();
 
+        // A voucher checkout reserved a redemption — settle it to cancelled so
+        // the internal usage view stays truthful. Best-effort: the redemption
+        // doc shares the request's ID, and rules only allow reserved →
+        // cancelled, so a repeat/odd-state cancel is a safe no-op failure.
+        // (The voucher's redemption_count is NOT decremented in v1: rules only
+        // permit +1 bumps, so a cancelled redemption still consumes a slot.)
+        if (request.voucher_id) {
+            try {
+                await updateDoc(doc(this._voucherRedemptionsCol(), paymentRequestId), { status: 'cancelled' });
+            } catch (_) { /* redemption settle is non-critical */ }
+        }
+
         try {
             // Pass no request so the mirror reflects the reverted trial plan
             // (plan_id: 'trial') rather than the now-voided paid plan.
