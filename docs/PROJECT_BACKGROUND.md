@@ -1043,14 +1043,15 @@ terminal for the client.
 **Overdue is display-only:** stored status stays `open`; the UI shows
 `Overdue` when `status == "open" && due_date < today && amount_due > 0`.
 
-**Email delivery is a mailto: handoff only.** The detail view's "Send by
-email" action (open invoices with a `customer_email`) opens the user's own
-mail client pre-filled with the invoice summary. FluxyOS has no email
-provider and never sends mail itself; "Mark as sent" remains the explicit
-delivery stamp (`sent_at` + `invoice.sent` audit). Implementation note: the
-mailto launches from a `target="_blank"` anchor — a same-page mailto
-navigation fires `beforeunload` and strands the page-transition overlay,
-and a hidden iframe violates the production CSP `frame-src`.
+**Email delivery is a Gmail-compose handoff only.** The detail view's "Send
+by email" action (open invoices with a `customer_email`) opens
+`mail.google.com` compose (`view=cm`) in a new tab pre-filled with the
+recipient, subject, and invoice-summary body. FluxyOS has no email provider
+and never sends mail itself; "Mark as sent" remains the explicit delivery
+stamp (`sent_at` + `invoice.sent` audit). Implementation note: it must be a
+`target="_blank"` anchor — a same-page navigation fires `beforeunload` and
+strands the page-transition overlay, and a hidden iframe violates the
+production CSP `frame-src` (both were real bugs).
 
 **PDF is browser-print only.** The detail view's "Preview PDF" modal renders
 the invoice document; "Download PDF" calls `window.print()` scoped via a

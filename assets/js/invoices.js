@@ -926,10 +926,11 @@ export function initInvoicesPage({ ds, user }) {
         showView('detail');
     }
 
-    // mailto: handoff — opens the user's own mail client pre-filled with the
-    // invoice summary. FluxyOS sends nothing itself; "Mark as sent" stays the
-    // explicit delivery stamp.
-    function buildInvoiceMailto(invoice, items) {
+    // Gmail-compose handoff — opens mail.google.com compose in a new tab,
+    // pre-filled with the invoice summary. Works without a configured OS mail
+    // app. FluxyOS sends nothing itself; "Mark as sent" stays the explicit
+    // delivery stamp.
+    function buildInvoiceGmailUrl(invoice, items) {
         const due = formatDate(invoice.due_date);
         const subject = `Invoice ${invoice.invoice_number} from ${businessName}`;
         const itemLines = items.slice(0, 20).map(item =>
@@ -954,8 +955,9 @@ export function initInvoicesPage({ ds, user }) {
         if (invoice.memo) lines.push('', invoice.memo);
         if (invoice.footer) lines.push('', invoice.footer);
         lines.push('', 'Thank you,', businessName);
-        return `mailto:${encodeURIComponent(invoice.customer_email)}`
-            + `?subject=${encodeURIComponent(subject)}`
+        return 'https://mail.google.com/mail/?view=cm&fs=1'
+            + `&to=${encodeURIComponent(invoice.customer_email)}`
+            + `&su=${encodeURIComponent(subject)}`
             + `&body=${encodeURIComponent(lines.join('\n'))}`;
     }
 
@@ -982,10 +984,10 @@ export function initInvoicesPage({ ds, user }) {
         const canEmail = invoice.status === 'open' && Boolean(invoice.customer_email);
         el('detail-email-btn').classList.toggle('hidden', !canEmail);
         el('detail-email-btn').classList.toggle('inline-flex', canEmail);
-        // target="_blank" mailto: a new browsing context fires no beforeunload
-        // here (no stranded page-transition overlay) and uses no iframe (no
-        // CSP frame-src violation).
-        el('detail-email-btn').href = canEmail ? buildInvoiceMailto(invoice, items) : '#';
+        // target="_blank" Gmail compose: a new tab fires no beforeunload here
+        // (no stranded page-transition overlay) and uses no iframe (no CSP
+        // frame-src violation).
+        el('detail-email-btn').href = canEmail ? buildInvoiceGmailUrl(invoice, items) : '#';
         const canVoid = ['draft', 'open'].includes(invoice.status);
         el('detail-void-btn').classList.toggle('hidden', !canVoid);
         el('detail-void-btn').classList.toggle('inline-flex', canVoid);
@@ -1031,8 +1033,8 @@ export function initInvoicesPage({ ds, user }) {
         if (!detailInvoice?.customer_email) return;
         window.showToast?.(
             detailInvoice.sent_at
-                ? 'Email draft opened in your mail app.'
-                : 'Email draft opened in your mail app. Mark the invoice as sent once delivered.',
+                ? 'Gmail compose opened in a new tab.'
+                : 'Gmail compose opened in a new tab. Mark the invoice as sent once delivered.',
             'info'
         );
     });
