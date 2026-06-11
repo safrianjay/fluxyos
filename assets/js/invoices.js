@@ -123,6 +123,7 @@ export function initInvoicesPage({ ds, user }) {
     let searchTerm = '';
     let statusFilter = 'all';
     let detailInvoice = null;
+    let detailItems = [];
 
     // Editor state — the single source of truth for the form + preview.
     const blankEditorState = () => ({
@@ -919,9 +920,43 @@ export function initInvoicesPage({ ds, user }) {
             return;
         }
         detailInvoice = invoice;
+        detailItems = items;
         if (push) setUrl(`invoice=${encodeURIComponent(invoiceId)}`, true);
         renderDetail(invoice, items);
         showView('detail');
+    }
+
+    // mailto: handoff — opens the user's own mail client pre-filled with the
+    // invoice summary. FluxyOS sends nothing itself; "Mark as sent" stays the
+    // explicit delivery stamp.
+    function buildInvoiceMailto(invoice, items) {
+        const due = formatDate(invoice.due_date);
+        const subject = `Invoice ${invoice.invoice_number} from ${businessName}`;
+        const itemLines = items.slice(0, 20).map(item =>
+            `- ${item.description} — ${formatQty(item.quantity)} × ${formatRp(item.unit_price)} = ${formatRp(item.amount)}`
+        );
+        if (items.length > 20) itemLines.push(`… and ${items.length - 20} more item(s)`);
+        const lines = [
+            `Hi ${invoice.customer_name || 'there'},`,
+            '',
+            `Please find your invoice from ${businessName} below.`,
+            '',
+            `Invoice number: ${invoice.invoice_number}`,
+            `Issue date: ${formatDate(invoice.issue_date)}`,
+            `Due date: ${due}`,
+            '',
+            'Items:',
+            ...itemLines,
+            '',
+            `Total: ${formatRp(invoice.total_amount)}`,
+            `Amount due: ${formatRp(invoice.amount_due)} (due ${due})`
+        ];
+        if (invoice.memo) lines.push('', invoice.memo);
+        if (invoice.footer) lines.push('', invoice.footer);
+        lines.push('', 'Thank you,', businessName);
+        return `mailto:${encodeURIComponent(invoice.customer_email)}`
+            + `?subject=${encodeURIComponent(subject)}`
+            + `&body=${encodeURIComponent(lines.join('\n'))}`;
     }
 
     function renderDetail(invoice, items) {
@@ -944,6 +979,9 @@ export function initInvoicesPage({ ds, user }) {
         const canMarkSent = invoice.status === 'open' && !invoice.sent_at;
         el('detail-sent-btn').classList.toggle('hidden', !canMarkSent);
         el('detail-sent-btn').classList.toggle('inline-flex', canMarkSent);
+        const canEmail = invoice.status === 'open' && Boolean(invoice.customer_email);
+        el('detail-email-btn').classList.toggle('hidden', !canEmail);
+        el('detail-email-btn').classList.toggle('inline-flex', canEmail);
         const canVoid = ['draft', 'open'].includes(invoice.status);
         el('detail-void-btn').classList.toggle('hidden', !canVoid);
         el('detail-void-btn').classList.toggle('inline-flex', canVoid);
@@ -984,6 +1022,25 @@ export function initInvoicesPage({ ds, user }) {
     }
 
     el('invoice-detail-back').addEventListener('click', () => openList(true));
+
+    el('detail-email-btn').addEventListener('click', () => {
+        if (!detailInvoice?.customer_email) return;
+        // Launch the mailto from a hidden iframe: a direct location/anchor
+        // navigation fires the page's beforeunload, which strands the global
+        // page-transition overlay because a mailto never actually unloads.
+        const url = buildInvoiceMailto(detailInvoice, detailItems);
+        const frame = document.createElement('iframe');
+        frame.style.display = 'none';
+        frame.src = url;
+        document.body.appendChild(frame);
+        window.setTimeout(() => frame.remove(), 3000);
+        window.showToast?.(
+            detailInvoice.sent_at
+                ? 'Email draft opened in your mail app.'
+                : 'Email draft opened in your mail app. Mark the invoice as sent once delivered.',
+            'info'
+        );
+    });
     el('detail-edit-btn').addEventListener('click', () => {
         if (detailInvoice) openEditor(detailInvoice.id, true);
     });

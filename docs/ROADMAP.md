@@ -212,7 +212,8 @@ disabled until a real authenticated app page and data contract exist.
 | Per-user invoice numbers `INV-YYYYMM-0001` | ✅ Shipped MVP | Derived from latest existing number; no global counters |
 | Ledger transaction from finalization | 🚫 By design | A finalized invoice is an expected receivable only — it never auto-creates revenue |
 | Payment collection / gateway / payment page | 📋 Planned | `payment_collection_method` stored; no provider integration |
-| PDF generation + invoice email delivery | 📋 Planned | Mark-as-sent is a manual status stamp only in v1 |
+| Send by email (mailto: handoff) | ✅ Shipped MVP | Detail-view action on open invoices with a customer email; opens the user's own mail client pre-filled with the invoice summary. FluxyOS sends nothing itself |
+| PDF generation + invoice email delivery (provider-backed) | 📋 Planned | Mark-as-sent is a manual status stamp only in v1 |
 | Mark as paid + ledger reconciliation | 📋 Planned | `paid` status reserved; client writes of `paid_at` are blocked by rules |
 | Recurring invoices, multi-currency, customer database, discounts | 📋 Planned | Currency locked to IDR in v1; `discount_amount` stored as 0 |
 

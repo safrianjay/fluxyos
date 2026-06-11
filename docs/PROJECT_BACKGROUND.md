@@ -1043,6 +1043,12 @@ terminal for the client.
 **Overdue is display-only:** stored status stays `open`; the UI shows
 `Overdue` when `status == "open" && due_date < today && amount_due > 0`.
 
+**Email delivery is a mailto: handoff only.** The detail view's "Send by
+email" action (open invoices with a `customer_email`) opens the user's own
+mail client pre-filled with the invoice summary. FluxyOS has no email
+provider and never sends mail itself; "Mark as sent" remains the explicit
+delivery stamp (`sent_at` + `invoice.sent` audit).
+
 **DataService methods:** `generateInvoiceNumber`, `getInvoices`, `getInvoice`,
 `getInvoiceItems`, `createInvoiceDraft` (invoice + items + audit in one
 `writeBatch`), `updateInvoiceDraft` (doc patch + item upsert/delete sync + audits
