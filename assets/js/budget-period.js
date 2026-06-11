@@ -1095,6 +1095,28 @@ function buildFunctionalAllocations(totalBudget = budgetWizardState.totalBudget)
     });
 }
 
+function autoSplitWizardAllocations() {
+    const sourceRows = budgetWizardState.allocations.length
+        ? budgetWizardState.allocations
+        : DEFAULT_ALLOCATION_ROWS.map(row => ({ ...row, sourceAllocationId: null }));
+    const total = Math.round(Math.max(0, Number(budgetWizardState.totalBudget) || 0));
+    const base = sourceRows.length ? Math.floor(total / sourceRows.length) : 0;
+    let used = 0;
+    budgetWizardState.allocations = sourceRows.map((row, index) => {
+        const amount = index === sourceRows.length - 1 ? total - used : base;
+        used += amount;
+        const category = ALLOCATION_CATEGORIES.includes(row.category) ? row.category : pickNextCategory();
+        return {
+            ...row,
+            name: String(row.name || category || 'Allocation').slice(0, 120),
+            category,
+            amount,
+            sourceAllocationId: row.sourceAllocationId || null
+        };
+    });
+    budgetWizardState.template = budgetWizardState.allocations.length ? 'functional' : 'blank';
+}
+
 function ensureFunctionalAllocations() {
     if (budgetWizardState.template !== 'functional') return;
     if (budgetWizardState.allocations.length > 0) return;
@@ -1581,12 +1603,18 @@ function renderWizardAllocationStep() {
                 </div>
             </div>
             <div>
-                <div class="mb-3 flex items-center justify-between gap-3">
+                <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p class="text-[13px] font-bold text-gray-600">Sub-budget categories</p>
-                    <button id="budget-wizard-add-allocation" type="button" class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[13px] font-bold text-[#EA580C] transition-colors hover:bg-gray-50">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M12 4v16m8-8H4"></path></svg>
-                        Add category
-                    </button>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="budget-wizard-auto-split" type="button" class="inline-flex h-9 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-[13px] font-bold text-gray-700 shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50">
+                            <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M4 7h16M4 12h16M4 17h16"></path></svg>
+                            Auto split
+                        </button>
+                        <button id="budget-wizard-add-allocation" type="button" class="inline-flex h-9 items-center gap-1 rounded-lg px-3 text-[13px] font-bold text-[#EA580C] transition-colors hover:bg-gray-50">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M12 4v16m8-8H4"></path></svg>
+                            Add category
+                        </button>
+                    </div>
                 </div>
                 <div id="budget-wizard-allocation-rows" class="space-y-2">
                     ${budgetWizardState.allocations.length ? budgetWizardState.allocations.map(renderWizardAllocationRow).join('') : `
@@ -1619,23 +1647,35 @@ function renderTemplateCard(value, title, copy, disabled = false) {
 
 function renderWizardAllocationRow(row, index) {
     return `
-        <div class="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 bg-white p-3 sm:grid-cols-12 sm:items-center" data-allocation-row="${index}">
-            <div class="flex items-center gap-3 sm:col-span-4">
-                <span class="h-3 w-3 flex-shrink-0 rounded-sm" style="background:${allocationColor(index)}"></span>
-                <input type="text" maxlength="120" data-field="name" value="${escapeHtml(row.name)}" placeholder="Allocation name" class="min-w-0 flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] font-bold text-gray-900 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
+        <div class="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end" data-allocation-row="${index}">
+            <div class="sm:col-span-2 lg:col-span-3">
+                <label class="mb-1 block text-[10px] font-bold uppercase text-gray-400">Sub-budget name</label>
+                <div class="flex items-center gap-3">
+                    <span class="h-3 w-3 flex-shrink-0 rounded-sm" style="background:${allocationColor(index)}"></span>
+                    <input type="text" maxlength="120" data-field="name" value="${escapeHtml(row.name)}" placeholder="Allocation name" class="min-w-0 flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] font-bold text-gray-900 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
+                </div>
             </div>
-            <select data-field="category" class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] font-semibold text-gray-700 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100 sm:col-span-3">
-                ${ALLOCATION_CATEGORIES.map(cat => `<option value="${cat}" ${cat === row.category ? 'selected' : ''}>${cat}</option>`).join('')}
-            </select>
-            <div class="flex items-center rounded-lg border border-gray-200 bg-gray-50 focus-within:border-[#EA580C] focus-within:ring-2 focus-within:ring-orange-100 sm:col-span-3">
-                <span class="px-3 font-mono text-[12px] font-bold text-gray-400">Rp</span>
-                <input type="text" inputmode="numeric" data-field="amount" value="${escapeHtml(formatRpInput(row.amount))}" placeholder="0" class="min-w-0 flex-1 bg-transparent px-2 py-2 text-right font-mono text-[13px] font-bold text-gray-900 outline-none">
+            <div class="lg:col-span-3">
+                <label class="mb-1 block text-[10px] font-bold uppercase text-gray-400">Budget category</label>
+                <select data-field="category" class="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-[13px] font-semibold text-gray-700 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
+                    ${ALLOCATION_CATEGORIES.map(cat => `<option value="${cat}" ${cat === row.category ? 'selected' : ''}>${cat}</option>`).join('')}
+                </select>
             </div>
-            <div class="flex items-center rounded-lg border border-gray-200 bg-gray-50 focus-within:border-[#EA580C] focus-within:ring-2 focus-within:ring-orange-100 sm:col-span-1">
-                <input type="text" inputmode="decimal" data-field="percent" value="${escapeHtml(formatAllocationPercent(row.amount))}" class="min-w-0 flex-1 bg-transparent px-2 py-2 text-right font-mono text-[12px] font-bold text-gray-700 outline-none">
-                <span class="pr-2 text-[11px] text-gray-400">%</span>
+            <div class="lg:col-span-3">
+                <label class="mb-1 block text-[10px] font-bold uppercase text-gray-400">Budget amount</label>
+                <div class="flex h-10 items-center rounded-lg border border-gray-200 bg-gray-50 focus-within:border-[#EA580C] focus-within:ring-2 focus-within:ring-orange-100">
+                    <span class="px-3 font-mono text-[12px] font-bold text-gray-400">Rp</span>
+                    <input type="text" inputmode="numeric" data-field="amount" value="${escapeHtml(formatRpInput(row.amount))}" placeholder="0" class="min-w-0 flex-1 bg-transparent px-2 text-right font-mono text-[13px] font-bold text-gray-900 outline-none">
+                </div>
             </div>
-            <button type="button" data-remove-allocation class="inline-flex h-9 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 sm:col-span-1" aria-label="Remove allocation">
+            <div class="lg:col-span-2">
+                <label class="mb-1 block text-[10px] font-bold uppercase text-gray-400">Share</label>
+                <div class="flex h-10 items-center rounded-lg border border-gray-200 bg-gray-50 focus-within:border-[#EA580C] focus-within:ring-2 focus-within:ring-orange-100">
+                    <input type="text" inputmode="decimal" data-field="percent" value="${escapeHtml(formatAllocationPercent(row.amount))}" class="min-w-0 flex-1 bg-transparent pl-2 pr-1 text-right font-mono text-[13px] font-bold text-gray-700 outline-none">
+                    <span class="pr-2 text-[12px] font-bold text-gray-400">%</span>
+                </div>
+            </div>
+            <button type="button" data-remove-allocation class="inline-flex h-10 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 lg:col-span-1" aria-label="Remove allocation">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
@@ -1782,6 +1822,10 @@ function wireWizardStepControls() {
             sourceAllocationId: null
         });
         budgetWizardState.template = budgetWizardState.allocations.length ? 'functional' : 'blank';
+        renderBudgetWizard();
+    });
+    el('budget-wizard-auto-split')?.addEventListener('click', () => {
+        autoSplitWizardAllocations();
         renderBudgetWizard();
     });
     document.querySelectorAll('[data-allocation-row]').forEach(rowEl => {

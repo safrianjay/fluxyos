@@ -654,7 +654,8 @@ touched.
 | 1 | On `/budget-period`, primary CTA reads "Edit or assign budget" and opens the period edit flow at Step 1 without a budget-type selector |
 | 2 | Saving changed allocations archives existing allocations for that period (status flips to `archived` in Firestore) and writes the new set with `status='active'` |
 | 3 | Step 2 total budget amount helper shows parent total and remaining parent balance after the typed period amount |
-| 4 | Dashboard's `OpEx vs Budget` KPI continues to read the same `total_budget` after the new flow saves; settings-budget.html's history table still shows the same active row |
+| 4 | Step 3 shows Auto split, labeled allocation fields, and a percent input wide enough for `100 %`; clicking Auto split evenly reallocates the current rows to the total budget |
+| 5 | Dashboard's `OpEx vs Budget` KPI continues to read the same `total_budget` after the new flow saves; settings-budget.html's history table still shows the same active row |
 
 #### K5 — Add Bill drawer budget impact (Phase 1.5)
 | # | Check |
