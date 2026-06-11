@@ -6,7 +6,7 @@ const { test, expect } = require('@playwright/test');
  *
  * Probes:
  *   P1 — allocation row opens the Phase C full-page drill-in
- *   P2 — Phase 2 sections render on /budget (unallocated, excluded, activity)
+ *   P2 — Phase 2 sections render on /budget-period (unallocated, excluded, activity)
  *   P3 — ledger row shows a budget chip
  *   P4 — bills row shows a budget chip
  *   P5 — shared FluxyBudgetAssignment is exposed on every app page
@@ -22,19 +22,39 @@ function attachLog(page, log) {
     page.on('pageerror', e => log.push({ t: 'pageerror', text: e.message }));
 }
 
-test('P1: allocation row opens the full-page allocation drill-in', async ({ page }) => {
-    const log = [];
-    attachLog(page, log);
+async function suppressPaywall(page) {
+    await page.addStyleTag({
+        content: '[data-fluxy-paywall]{display:none!important;pointer-events:none!important;}'
+    }).catch(() => {});
+}
+
+async function openFirstPeriodDetail(page) {
     await page.goto('/budget.html');
+    await suppressPaywall(page);
     await page.waitForFunction(() => {
         const c = document.getElementById('budget-content');
         return c && !c.classList.contains('hidden');
     }, { timeout: 15000 });
+    const firstPeriod = page.locator('#budget-period-body tr[data-action="open-period-detail"]').first();
+    await expect(firstPeriod).toBeVisible();
+    await firstPeriod.click();
+    await expect(page).toHaveURL(/budget-period\.html\?budgetId=.*periodId=/);
+    await suppressPaywall(page);
+    await page.waitForFunction(() => {
+        const c = document.getElementById('budget-content');
+        return c && !c.classList.contains('hidden');
+    }, { timeout: 15000 });
+}
+
+test('P1: allocation row opens the full-page allocation drill-in', async ({ page }) => {
+    const log = [];
+    attachLog(page, log);
+    await openFirstPeriodDetail(page);
     // First allocation row (variance text means we need to wait for render)
     const firstRow = page.locator('#budget-alloc-body tr[data-action="open-allocation-drill-in"]').first();
     await expect(firstRow).toBeVisible();
     await firstRow.click();
-    await expect(page).toHaveURL(/budget-allocation\.html\?budgetId=.*allocationId=/);
+    await expect(page).toHaveURL(/budget-allocation\.html\?budgetId=.*periodId=.*allocationId=/);
     await expect(page.locator('#budget-detail-drawer')).toHaveCount(0);
     await page.waitForFunction(() => {
         const c = document.getElementById('allocation-content');
@@ -49,15 +69,11 @@ test('P1: allocation row opens the full-page allocation drill-in', async ({ page
 });
 
 test('P1b: allocation stacked-bar segment opens the full-page drill-in', async ({ page }) => {
-    await page.goto('/budget.html');
-    await page.waitForFunction(() => {
-        const c = document.getElementById('budget-content');
-        return c && !c.classList.contains('hidden');
-    }, { timeout: 15000 });
+    await openFirstPeriodDetail(page);
     const firstSegment = page.locator('#budget-allocation-bar [data-action="open-allocation-drill-in"]').first();
     await expect(firstSegment).toBeVisible();
     await firstSegment.click();
-    await expect(page).toHaveURL(/budget-allocation\.html\?budgetId=.*allocationId=/);
+    await expect(page).toHaveURL(/budget-allocation\.html\?budgetId=.*periodId=.*allocationId=/);
     await page.waitForFunction(() => {
         const c = document.getElementById('allocation-content');
         return c && !c.classList.contains('hidden');
@@ -68,11 +84,7 @@ test('P1b: allocation stacked-bar segment opens the full-page drill-in', async (
 test('P2: Phase 2 sections present (unallocated / excluded / activity) when applicable', async ({ page }) => {
     const log = [];
     attachLog(page, log);
-    await page.goto('/budget.html');
-    await page.waitForFunction(() => {
-        const c = document.getElementById('budget-content');
-        return c && !c.classList.contains('hidden');
-    }, { timeout: 15000 });
+    await openFirstPeriodDetail(page);
     await page.waitForTimeout(1200);
     const presentSections = await page.evaluate(() => {
         return {
@@ -132,11 +144,7 @@ test('P5: FluxyBudgetAssignment is exposed on /budget /ledger /bill', async ({ p
 test('P6: calculation invariant — totals reconcile against allocation+unallocated sums', async ({ page }) => {
     const log = [];
     attachLog(page, log);
-    await page.goto('/budget.html');
-    await page.waitForFunction(() => {
-        const c = document.getElementById('budget-content');
-        return c && !c.classList.contains('hidden');
-    }, { timeout: 15000 });
+    await openFirstPeriodDetail(page);
     // Sum the allocation table's Spent + Reserved cells.
     const rowTotals = await page.evaluate(() => {
         const rows = document.querySelectorAll('#budget-alloc-body tr[data-action="open-allocation-drill-in"]');

@@ -67,14 +67,14 @@ const TOUR_CONFIG = {
         route: '/budget',
         label: 'Plan and track your budget',
         chip: 'Budgets',
-        description: 'Set a spending envelope, split allocations, and see what remains.',
+        description: 'Set a main budget, split it into periods, and manage allocations inside each period.',
         icon: 'BG',
         steps: [
-            { selector: '#budget-period-select', title: 'Pick a period', body: 'Each month or quarter has its own plan — choose which one you are viewing.' },
-            { selector: '#budget-total', title: 'Spending envelope', body: 'The total budget you set for the selected period.' },
-            { selector: '#budget-allocation-map', title: 'Allocations', body: 'See how the envelope is split across Marketing, Infrastructure, Operations, and SaaS.' },
-            { selector: '#budget-spent', title: 'Spent and reserved', body: 'Actual spend plus committed bills, so you know how close you are to the limit.' },
-            { selector: '#budget-create-btn', title: 'Edit your budget', body: 'Open the wizard any time to change the envelope or rebalance allocations.' }
+            { selector: '#budget-main-select', title: 'Pick a main budget', body: 'Choose the annual budget you want to plan from.' },
+            { selector: '#budget-annual-total', title: 'Annual envelope', body: 'This is the total budget that period budgets roll up to.' },
+            { selector: '#budget-planned-bar', title: 'Planned into periods', body: 'See how much of the annual budget has already been split into working periods.' },
+            { selector: '#budget-period-body', title: 'Open a period', body: 'Click a monthly, quarterly, or custom period to manage allocations inside it.' },
+            { selector: '#budget-new-period-btn', title: 'Create a period', body: 'Add the next working period under the selected main budget.' }
         ]
     },
     fluxy_ai: {

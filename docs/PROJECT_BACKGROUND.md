@@ -284,9 +284,11 @@ graphic.
 ### 4e.3. Budgets — `users/{userId}/budgets/{budgetId}`
 
 Operating budgets that drive (a) `OpEx vs Budget` on Overview and `Budget Used`
-on the Performance Trend chart, and (b) the live allocation usage on
-`/budget`. The Budget page (Phase 1) and `settings-budget.html` operate on
-the same active doc so both views stay coherent.
+on the Performance Trend chart, and (b) the Budget hierarchy. `/budget` is the
+Main Budget page for annual envelopes and child period budgets.
+`/budget-period` is the Period Budget Detail page where allocations/sub-budgets
+are managed. `settings-budget.html` still uses the budget collection for
+settings/history compatibility.
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -299,25 +301,28 @@ the same active doc so both views stay coherent.
 | `period_end` | Timestamp | End of the period (inclusive). |
 | `currency` | string | Locked to `"IDR"`. |
 | `total_budget` | number | Raw integer Rupiah. |
-| `category_budgets` | map | Optional per-category split. The Budget page dual-writes a denormalized `{category → allocated_amount}` summary derived from `budget_allocations`, so the legacy OpEx-vs-Budget tracker stays in sync. |
-| `notes` | string \| null | Optional, ≤500 chars. Written by the Budget page's Create Budget drawer; absent on legacy docs. |
+| `category_budgets` | map | Optional per-category split. The Period Budget Detail allocation flow dual-writes a denormalized `{category → allocated_amount}` summary derived from `budget_allocations`, so the legacy OpEx-vs-Budget tracker stays in sync. |
+| `notes` | string \| null | Optional, ≤500 chars. Written by the Budget page's Create Budget modal and Period Budget Detail allocation flow; absent on legacy docs. |
 | `created_from_budget_id` | string \| null | Optional source period budget ID when a period is duplicated. |
 | `status` | string | `"active"` or `"archived"`. |
 | `created_at` / `updated_at` | Timestamp | Server-set. |
 
-**Period budget rule:** the Budget page selects an explicit period budget
-instead of editing the latest active budget globally. `getActiveBudget` remains
-for compatibility and returns the latest active period budget first, then falls
-back to any active budget.
+**Budget hierarchy rule:** `/budget` selects an explicit annual/main budget and
+lists only active period budgets whose `parent_budget_id` points to that main
+budget. `/budget-period?budgetId={mainBudgetId}&periodId={periodBudgetId}`
+selects an explicit period budget for allocation work. `getActiveBudget`
+remains for compatibility and returns the latest active period budget first,
+then falls back to any active budget.
 
 **Audit:** `budget.created`, `budget.updated`, `budget.archived`,
 `budget.allocations_updated`.
 
 ### 4e.4. Budget Allocations — `users/{userId}/budget_allocations/{allocationId}`
 
-Category-scoped sub-budgets that detail how the main `budgets` doc is split
-into operational areas (e.g. Marketing, Infrastructure, Operations, SaaS).
-Created via the Budget page's Create / Edit drawer.
+Category-scoped sub-budgets that detail how a selected period `budgets` doc is
+split into operational areas (e.g. Marketing, Infrastructure, Operations, SaaS).
+Created from the Period Budget Detail page, not from the `/budget` Main Budget
+page. `parent_budget_id` must point to the period budget document.
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -336,9 +341,11 @@ Created via the Budget page's Create / Edit drawer.
 
 **Atomic write:** `DataService.addBudgetWithAllocations(uid, budgetData, allocations)`
 commits the explicit budget doc in `budgetData.budget_id` when editing, or a
-new budget doc when creating. It only archives allocations that belong to that
-same budget, so editing July does not change June. The budget doc, allocation
-archive, and new allocation set commit in a **single Firestore
+new budget doc when creating. Passing an empty allocation array is valid for
+annual/main budgets and newly created period budgets before allocations are
+added. It only archives allocations that belong to that same period budget, so
+editing July does not change June. The budget doc, allocation archive, and new
+allocation set commit in a **single Firestore
 `writeBatch`**. If any row is rejected (rules, validation, network), nothing
 is written — the existing budget doc stays intact. Audit logs are written
 post-commit and are best-effort (failures are non-fatal). `setActiveBudget`

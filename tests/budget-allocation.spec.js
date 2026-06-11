@@ -34,12 +34,12 @@ test('budget-allocation page renders bars + compact rows + header back button', 
             const spend = (a.actual_used || 0) + (a.committed_amount || 0);
             if (spend > bestSpend) { bestSpend = spend; best = allocs.find(x => x.id === a.id) || best; }
         });
-        return { budgetId: budget.id, allocationId: best?.id || allocs[0]?.id || null };
+        return { budgetId: budget.parent_budget_id || budget.id, periodId: budget.id, allocationId: best?.id || allocs[0]?.id || null };
     });
     console.log('[alloc] ids:', ids);
     expect(ids.allocationId).toBeTruthy();
 
-    await page.goto(`/budget-allocation.html?budgetId=${ids.budgetId}&allocationId=${ids.allocationId}`);
+    await page.goto(`/budget-allocation.html?budgetId=${ids.budgetId}&periodId=${ids.periodId}&allocationId=${ids.allocationId}`);
     await page.waitForFunction(() => {
         const c = document.getElementById('allocation-content');
         return c && !c.classList.contains('hidden');

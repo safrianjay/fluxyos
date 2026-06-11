@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Period Budget</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="assets/css/platform-learning.css">
+    <style>
+        .budget-summary-board .budget-metric-cell {
+            min-height: 118px;
+            padding: 20px;
+            position: relative;
+            background: #FFFFFF;
+            overflow: hidden;
+        }
+        .budget-summary-board .metric-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+            z-index: 3;
+            color: #9CA3AF;
+            font-size: 11px;
+            font-weight: 800;
+            margin-bottom: 6px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .budget-summary-board .metric-value-row {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            min-height: 32px;
+            padding-right: 22px;
+        }
+        .budget-summary-board .metric-value {
+            font-family: Inter, sans-serif;
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum";
+            color: #111827;
+            font-size: clamp(18px, 1.2vw, 22px);
+            line-height: 1.25;
+            letter-spacing: 0;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+        .budget-summary-board .metric-value.is-negative {
+            color: #DC2626;
+        }
+        @media (max-width: 520px) {
+            .budget-summary-board .budget-metric-cell {
+                padding: 18px;
+            }
+            .budget-summary-board .metric-value-row {
+                padding-right: 0;
+            }
+            .budget-summary-board .metric-value {
+                font-size: 11px;
+            }
+        }
+        .budget-page-skeleton {
+            position: relative;
+        }
+        .budget-skeleton-line,
+        .budget-skeleton-block,
+        .budget-skeleton-pill {
+            display: block;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #E5E7EB 0%, #F8FAFC 48%, #E5E7EB 100%);
+            background-size: 220% 100%;
+            animation: budgetSkeletonShimmer 1.35s ease-in-out infinite;
+        }
+        .budget-skeleton-block {
+            border-radius: 14px;
+        }
+        .budget-skeleton-pill {
+            height: 28px;
+        }
+        @keyframes budgetSkeletonShimmer {
+            0% { background-position: 220% 0; }
+            100% { background-position: -220% 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .budget-skeleton-line,
+            .budget-skeleton-block,
+            .budget-skeleton-pill {
+                animation: none;
+                background: #E5E7EB;
+            }
+        }
+        .budget-month-panel {
+            width: 360px;
+            max-width: calc(100vw - 2rem);
+        }
+        .budget-month-grid button {
+            min-height: 44px;
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
+            <div class="flex items-center gap-4 flex-1 min-w-0">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <a id="period-back-link" href="/budget" class="inline-flex min-w-0 items-center gap-2 text-[14px] font-semibold text-gray-500 transition-colors hover:text-gray-900">
+                    <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    <span class="truncate">Back to Main Budget</span>
+                </a>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-white text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-gray-50 transition-all shadow-sm group">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Fluxy AI
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-3 sm:p-5 lg:px-8 lg:pt-5 lg:pb-8">
+            <div class="max-w-7xl mx-auto space-y-4">
+
+                <!-- Page Title & Actions -->
+                <div id="budget-page-title" class="hidden flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Period Budget Detail</h1>
+                        <p class="text-[14px] text-gray-500 mt-0.5">Manage allocations, related records, and committed spend inside this working period.</p>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="budget-loading" class="budget-page-skeleton space-y-5" role="status" aria-live="polite" aria-busy="true">
+                    <span class="sr-only">Loading your budget...</span>
+                    <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div class="min-w-0 flex-1 space-y-3">
+                                <span class="budget-skeleton-line h-7 w-64 max-w-full"></span>
+                                <span class="budget-skeleton-line h-4 w-96 max-w-full"></span>
+                            </div>
+                            <div class="flex gap-2">
+                                <span class="budget-skeleton-pill w-24"></span>
+                                <span class="budget-skeleton-pill w-32"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                        <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                            <span class="budget-skeleton-line h-3 w-24"></span>
+                            <span class="budget-skeleton-line mt-4 h-7 w-36"></span>
+                            <span class="budget-skeleton-line mt-3 h-3 w-28"></span>
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                            <span class="budget-skeleton-line h-3 w-20"></span>
+                            <span class="budget-skeleton-line mt-4 h-7 w-32"></span>
+                            <span class="budget-skeleton-line mt-3 h-3 w-24"></span>
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                            <span class="budget-skeleton-line h-3 w-24"></span>
+                            <span class="budget-skeleton-line mt-4 h-7 w-32"></span>
+                            <span class="budget-skeleton-line mt-3 h-3 w-28"></span>
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                            <span class="budget-skeleton-line h-3 w-20"></span>
+                            <span class="budget-skeleton-line mt-4 h-7 w-28"></span>
+                            <span class="budget-skeleton-line mt-3 h-3 w-24"></span>
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                            <span class="budget-skeleton-line h-3 w-24"></span>
+                            <span class="budget-skeleton-line mt-4 h-7 w-32"></span>
+                            <span class="budget-skeleton-line mt-3 h-3 w-28"></span>
+                        </div>
+                    </div>
+                    <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+                        <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                            <span class="budget-skeleton-line h-4 w-44"></span>
+                            <span class="budget-skeleton-block mt-5 h-10 w-full"></span>
+                            <span class="budget-skeleton-block mt-3 h-10 w-full"></span>
+                            <span class="budget-skeleton-block mt-3 h-10 w-full"></span>
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                            <span class="budget-skeleton-line h-4 w-36"></span>
+                            <span class="budget-skeleton-block mt-5 h-24 w-full"></span>
+                            <span class="budget-skeleton-line mt-4 h-3 w-3/4"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="budget-empty-state" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"></div>
+
+                <!-- Content (rendered when a budget exists) -->
+                <div id="budget-content" class="hidden space-y-6">
+
+                    <!-- Budget workspace header -->
+                    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-3 min-w-0">
+                                <h2 id="budget-name" class="max-w-full sm:max-w-[620px] xl:max-w-[520px] truncate text-2xl leading-tight font-bold text-gray-900">—</h2>
+                                <span id="budget-status-pill" class="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[12px] font-semibold text-gray-600 shadow-sm">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-slate-950"></span>
+                                    Active
+                                </span>
+                            </div>
+                            <div id="budget-workspace-meta" class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-gray-500">
+                                <span id="budget-period">—</span>
+                                <span class="text-gray-300">·</span>
+                                <span id="budget-workspace-allocation-count">—</span>
+                                <span id="budget-period-type-wrap" class="inline-flex items-center gap-3">
+                                    <span class="text-gray-300">·</span>
+                                    <span id="budget-period-type">—</span>
+                                </span>
+                                <span id="budget-workspace-updated-wrap" class="inline-flex items-center gap-3">
+                                    <span class="text-gray-300">·</span>
+                                    <span id="budget-workspace-updated">—</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 xl:justify-end">
+                            <button id="budget-refresh-btn" type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 active:scale-95">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M20 8a8 8 0 00-13.66-3.66L4 6m16 12l-2.34 1.66A8 8 0 014 16"></path></svg>
+                                Refresh
+                            </button>
+                            <button id="budget-export-btn" type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 active:scale-95">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
+                                Export
+                            </button>
+                            <button id="budget-create-btn" type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-slate-800 active:scale-95 whitespace-nowrap">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                                <span id="budget-create-btn-label">Edit Budget</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Annual envelope + period -->
+                    <section id="budget-annual-card" class="bg-white rounded-[10px] border border-gray-200 shadow-sm">
+                        <!-- Annual envelope context -->
+                        <div class="px-4 py-3 sm:px-5 sm:py-4">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div class="min-w-0">
+                                    <p class="text-[12px] font-bold uppercase tracking-wide text-gray-400">Annual envelope</p>
+                                    <h3 id="budget-annual-title" class="mt-1 text-[16px] font-bold text-gray-900 truncate">—</h3>
+                                    <p id="budget-annual-subtitle" class="mt-0.5 text-[12px] text-gray-500">—</p>
+                                </div>
+                                <select id="budget-annual-select" class="hidden rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-[#EA580C] sm:w-48"></select>
+                            </div>
+                            <div id="budget-annual-metrics" class="mt-3"></div>
+                        </div>
+                        <!-- Period switcher -->
+                        <div class="border-t border-gray-100 px-4 py-3 sm:px-5 sm:py-4">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                                <div class="min-w-0 sm:flex-1 sm:max-w-md">
+                                    <label for="budget-period-select" class="text-[12px] font-bold uppercase tracking-wide text-gray-400">Viewing period</label>
+                                    <select id="budget-period-select" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-[#EA580C]"></select>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button id="budget-duplicate-btn" type="button" class="inline-flex h-10 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 text-[12px] font-bold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors whitespace-nowrap">Duplicate</button>
+                                    <button id="budget-create-period-btn" type="button" class="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-slate-950 px-3.5 text-[12px] font-bold text-white hover:bg-slate-800 transition-colors whitespace-nowrap">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                                        New period
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div id="budget-no-period-state" class="hidden bg-white rounded-[10px] border border-gray-200 shadow-sm px-5 py-8 text-center">
+                        <h3 id="budget-no-period-title" class="text-lg font-bold text-gray-900">No budget set for this period</h3>
+                        <p id="budget-no-period-copy" class="mt-2 text-[14px] text-gray-500">Create a new operating budget or duplicate a previous period’s allocation structure.</p>
+                        <div class="mt-5 flex flex-col sm:flex-row justify-center gap-2">
+                            <button id="budget-no-period-create" type="button" class="inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-[14px] font-bold text-white hover:bg-slate-800 transition-colors">Create Budget</button>
+                            <button id="budget-no-period-duplicate" type="button" class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-[14px] font-bold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">Duplicate Previous Budget</button>
+                        </div>
+                    </div>
+
+                    <!-- KPI strip -->
+                    <div id="budget-primary-workspace" class="space-y-6">
+                    <div class="budget-summary-board bg-white rounded-[10px] border border-gray-200 shadow-sm overflow-hidden">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 xl:divide-x divide-gray-200">
+                            <article class="budget-metric-cell border-b xl:border-b-0 border-gray-200">
+                                <div class="metric-label">
+                                    <span>Period Budget</span>
+                                    <button type="button" class="metric-info" aria-label="Period Budget: total amount you can spend during this period." data-tooltip="The total amount you can spend during this period. Set when you create the period budget; everything else on this page is measured against it.">?</button>
+                                </div>
+                                <div class="metric-value-row">
+                                    <span id="budget-total" class="metric-value truncate">—</span>
+                                </div>
+                                <p id="budget-total-hint" class="hidden"></p>
+                            </article>
+                            <article class="budget-metric-cell border-b xl:border-b-0 border-gray-200">
+                                <div class="metric-label">
+                                    <span>Allocated to Sub-budgets</span>
+                                    <button type="button" class="metric-info" aria-label="Allocated to Sub-budgets: how much of the period budget has been split into category allocations." data-tooltip="How much of this period budget has been split into category allocations like Marketing, Operations, Infrastructure, or SaaS. Each allocation tracks its own spend.">?</button>
+                                </div>
+                                <div class="metric-value-row">
+                                    <span id="budget-allocated" class="metric-value truncate">—</span>
+                                </div>
+                                <p id="budget-allocated-hint" class="hidden"></p>
+                            </article>
+                            <article class="budget-metric-cell border-b xl:border-b-0 border-gray-200">
+                                <div class="metric-label">
+                                    <span>Used + Committed</span>
+                                    <button type="button" class="metric-info" aria-label="Used + Committed: money already used or committed." data-tooltip="Used is money already recorded in transactions. Committed is money reserved by unpaid bills and pending payables. Both reduce what is remaining.">?</button>
+                                </div>
+                                <div class="metric-value-row">
+                                    <span id="budget-spent" class="metric-value truncate">—</span>
+                                </div>
+                                <p id="budget-spent-hint" class="hidden"></p>
+                                <div class="mt-3 h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                                    <div id="budget-usage-bar" class="h-full rounded-full bg-emerald-500 transition-all" style="width: 0%"></div>
+                                </div>
+                                <p class="mt-2 text-[12px] text-gray-400">
+                                    <span id="budget-usage-percent" class="font-mono font-bold text-gray-700">0%</span>
+                                    <span id="budget-remaining-text"> of period budget used</span>
+                                </p>
+                            </article>
+                            <article class="budget-metric-cell border-b sm:border-b-0 border-gray-200">
+                                <div class="metric-label">
+                                    <span>Period Remaining</span>
+                                    <button type="button" class="metric-info" aria-label="Period Remaining: budget left after used and committed amounts." data-tooltip="Budget left after recorded spend and unpaid committed bills are subtracted from this period budget.">?</button>
+                                </div>
+                                <div class="metric-value-row">
+                                    <span id="budget-remaining" class="metric-value truncate">—</span>
+                                </div>
+                                <p id="budget-remaining-hint" class="hidden"></p>
+                            </article>
+                            <article id="budget-unassigned-card" class="budget-metric-cell border-t sm:border-t-0 xl:border-t-0 border-gray-200 transition-colors bg-white">
+                                <div class="metric-label">
+                                    <span>Forecasted Close</span>
+                                    <button type="button" class="metric-info" aria-label="Forecasted Close: current plan baseline from existing budget data." data-tooltip="No forecast model is applied here. This card shows the current plan baseline from existing period budget totals.">?</button>
+                                </div>
+                                <div class="metric-value-row">
+                                    <span id="budget-unassigned" class="metric-value truncate">—</span>
+                                </div>
+                                <p id="budget-unassigned-hint" class="hidden"></p>
+                            </article>
+                        </div>
+                    </div>
+
+                    <!-- Allocation map + Unassigned callout -->
+                    <div class="bg-white rounded-[10px] border border-gray-200 shadow-sm px-4 py-3">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+                            <h3 id="budget-allocation-summary" class="text-[12px] font-bold uppercase tracking-wide text-gray-600">—</h3>
+                            <p class="text-[12px] text-gray-400">Allocation share of period budget</p>
+                        </div>
+                        <div id="budget-allocation-map" class="mt-3">
+                            <div id="budget-allocation-bar" class="flex h-5 w-full overflow-hidden rounded bg-gray-100 ring-1 ring-gray-200"></div>
+                            <div id="budget-allocation-empty" class="hidden rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-4 text-center text-[12px] text-gray-500">No allocations yet. Edit this budget to split it by purpose.</div>
+                            <div id="budget-allocation-legend" class="mt-2.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-x-4 gap-y-2"></div>
+                        </div>
+                        <!-- Unassigned callout — visible only when unassigned > 0.
+                             Variance attention + Recent Activity right-rail cards
+                             were removed since the bell in the topbar carries the
+                             same signal. The Assign Remaining Budget CTA still
+                             belongs here because it's the primary action when
+                             unassigned > 0. -->
+                        <div id="budget-unassigned-callout" class="hidden mt-3 rounded-lg border border-[#EA580C]/30 bg-white p-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="min-w-0">
+                                <p class="text-[12px] font-bold text-gray-900"><span id="budget-callout-amount" class="font-mono">Rp0</span> is still unassigned.</p>
+                                <p class="mt-0.5 text-[12px] text-gray-500">Assign it to allocations so this budget can be tracked by purpose.</p>
+                            </div>
+                            <button id="budget-assign-remaining-btn" type="button" class="self-stretch sm:self-auto px-3 py-2 bg-white border border-gray-200 hover:border-[#EA580C] hover:text-[#EA580C] rounded-lg text-[12px] font-bold text-gray-700 transition-colors whitespace-nowrap active:scale-95">Assign Remaining Budget</button>
+                        </div>
+                        <p id="budget-all-assigned-note" class="hidden mt-3 text-[12px] text-gray-500">All budget has been assigned to allocations.</p>
+                    </div>
+
+                    <!-- Sub-budgets (full width now that the right rail is gone) -->
+                    <div class="fluxy-table-card">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h3 class="fluxy-table-title">Sub-budgets</h3>
+                                <p class="fluxy-table-subtitle">Matched by category. Recategorising a record moves it between allocations.</p>
+                            </div>
+                            <p id="budget-alloc-count" class="fluxy-table-subtitle"></p>
+                        </div>
+                        <div class="hidden md:block fluxy-table-scroll">
+                            <table class="fluxy-table min-w-[860px]">
+                                <thead>
+                                    <tr class="fluxy-table-header">
+                                        <th class="w-[28%]">Allocation</th>
+                                        <th class="fluxy-table-money w-[15%]">Allocated</th>
+                                        <th class="fluxy-table-money w-[15%]">Spent + Reserved</th>
+                                        <th class="fluxy-table-money w-[15%]">Remaining</th>
+                                        <th class="w-[17%]">Usage</th>
+                                        <th class="w-[10%]">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="budget-alloc-body">
+                                    <tr>
+                                        <td colspan="6" class="fluxy-table-loading-cell">Loading allocations...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="budget-alloc-mobile" class="md:hidden divide-y divide-gray-100"></div>
+                    </div>
+
+                    <!-- Phase 2: Excluded records — collapsed by default.
+                         The Unallocated spend summary and the Budget activity
+                         timeline used to live here too; both were removed at
+                         the user's request because the same signal already
+                         lives in the allocation cards + audit log directly. -->
+                    <div id="budget-excluded-card" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <button id="budget-excluded-toggle" type="button" class="w-full px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3 text-left hover:bg-gray-50/60 transition-colors">
+                            <div>
+                                <h3 class="text-[14px] font-bold text-gray-900">Excluded records</h3>
+                                <p class="text-[12px] text-gray-400 mt-0.5"><span id="budget-excluded-count">0</span> record(s) intentionally excluded from this budget.</p>
+                            </div>
+                            <svg id="budget-excluded-caret" class="w-4 h-4 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div id="budget-excluded-body" class="hidden divide-y divide-gray-100 text-[14px]"></div>
+                    </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Create / Edit / Duplicate Budget Wizard -->
+    <div id="budget-wizard-backdrop" class="fixed inset-0 z-40 hidden bg-slate-900/45 backdrop-blur-sm"></div>
+    <div id="budget-wizard-shell" class="fixed inset-0 z-50 hidden items-center justify-center px-4 py-6 sm:px-6" role="dialog" aria-modal="true" aria-labelledby="budget-wizard-title">
+        <section id="budget-wizard" class="flex max-h-[calc(100vh-2rem)] w-full max-w-[760px] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl">
+            <header class="flex-shrink-0 border-b border-gray-100 bg-white">
+                <div class="flex items-start justify-between gap-4 px-5 py-5 sm:px-7">
+                    <div class="min-w-0">
+                        <p id="budget-wizard-eyebrow" class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#EA580C]">New Budget</p>
+                        <h2 id="budget-wizard-title" class="mt-2 text-[22px] font-bold leading-tight text-gray-900">Edit period budget</h2>
+                        <p id="budget-wizard-subtitle" class="mt-1 text-[14px] leading-6 text-gray-500">Set the envelope, then allocate to sub-budgets.</p>
+                    </div>
+                    <button id="budget-wizard-close" type="button" class="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-700" aria-label="Close budget wizard">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="border-t border-gray-100 bg-gray-50/70 px-5 py-3 sm:px-7">
+                    <div id="budget-wizard-progress" class="grid grid-cols-4 gap-1.5"></div>
+                </div>
+            </header>
+            <form id="budget-wizard-form" class="flex min-h-0 flex-1 flex-col">
+                <div id="budget-wizard-step" class="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7"></div>
+                <div id="budget-wizard-error" class="mx-5 mb-4 hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] font-medium text-red-700 sm:mx-7"></div>
+                <footer class="flex-shrink-0 border-t border-gray-100 bg-gray-50 px-5 py-4 sm:px-7">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p id="budget-wizard-step-label" class="font-mono text-[13px] text-gray-400">Step 1 of 4 · Plan</p>
+                        <div class="flex items-center justify-end gap-2">
+                            <button id="budget-wizard-back" type="button" class="hidden inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m15 18-6-6 6-6"></path></svg>
+                                Back
+                            </button>
+                            <button id="budget-wizard-primary" type="submit" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-[14px] font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500" disabled>
+                                Continue
+                                <svg id="budget-wizard-primary-icon" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m9 18 6-6-6-6"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </footer>
+            </form>
+        </section>
+    </div>
+
+    <!-- Phase 2: Allocation detail drawer (right side, opens from a row click) -->
+    <div id="budget-detail-backdrop" class="fixed inset-0 bg-black/40 z-40 hidden"></div>
+    <div id="budget-detail-drawer" class="fixed top-0 right-0 h-full w-full max-w-[560px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div class="min-w-0">
+                <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Allocation detail</p>
+                <h2 id="budget-detail-name" class="mt-1 text-[14px] font-bold text-gray-900 truncate">—</h2>
+            </div>
+            <button id="budget-detail-close-btn" type="button" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div id="budget-detail-content" class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+            <!-- Injected by budget.js -->
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
+            <button id="budget-detail-close-footer" type="button" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[14px] font-medium hover:bg-gray-200 transition-colors">Close</button>
+        </div>
+    </div>
+
+    <!-- Phase 2: Shared assignment drawer is injected by shared-dashboard.js (FluxyBudgetAssignment) -->
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/fluxy-select.js"></script>
+    <script src="assets/js/date-range-picker.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+        import { applyToPage } from './assets/js/onboarding-gate.js';
+        import { initBudgetPeriodPage } from './assets/js/budget-period.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.replace('/login');
+                return;
+            }
+            const gated = await applyToPage(user, { pageKey: 'budgets' });
+            if (gated) return;
+            initBudgetPeriodPage({ ds, user });
+        });
+    </script>
+</body>
+</html>

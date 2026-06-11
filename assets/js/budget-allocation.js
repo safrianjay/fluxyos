@@ -1,7 +1,7 @@
 const STATUS_BADGE = {
     healthy: { label: 'On Track', cls: 'bg-emerald-50 text-emerald-700 border-emerald-100', bar: 'bg-emerald-500' },
     watch: { label: 'Watch', cls: 'bg-amber-50 text-amber-700 border-amber-100', bar: 'bg-amber-500' },
-    at_risk: { label: 'At Risk', cls: 'bg-orange-50 text-orange-700 border-orange-100', bar: 'bg-orange-500' },
+    at_risk: { label: 'At Risk', cls: 'bg-amber-50 text-amber-700 border-amber-100', bar: 'bg-amber-500' },
     exceeded: { label: 'Exceeded', cls: 'bg-red-50 text-red-700 border-red-100', bar: 'bg-red-500' },
     not_allocated: { label: 'Not allocated', cls: 'bg-gray-50 text-gray-600 border-gray-200', bar: 'bg-gray-400' }
 };
@@ -9,6 +9,7 @@ const STATUS_BADGE = {
 const state = {
     ds: null,
     user: null,
+    mainBudget: null,
     budget: null,
     allocation: null,
     data: null,
@@ -113,17 +114,21 @@ export function initBudgetAllocationPage({ ds, user }) {
 }
 
 async function loadAndRender() {
-    const budgetId = getQueryParam('budgetId');
+    const mainBudgetId = getQueryParam('budgetId');
+    const periodId = getQueryParam('periodId') || mainBudgetId;
     const allocationId = getQueryParam('allocationId');
-    if (!budgetId || !allocationId) {
+    if (!periodId || !allocationId) {
         renderFatalState('Allocation detail could not be opened.', 'Return to Budget Overview.');
         return;
     }
 
     try {
-        const [budget, allocation] = await Promise.all([
-            state.ds.getBudget(state.user.uid, budgetId),
-            state.ds.getBudgetAllocation(state.user.uid, allocationId)
+        const [budget, allocation, mainBudget] = await Promise.all([
+            state.ds.getBudget(state.user.uid, periodId),
+            state.ds.getBudgetAllocation(state.user.uid, allocationId),
+            mainBudgetId && mainBudgetId !== periodId
+                ? state.ds.getBudget(state.user.uid, mainBudgetId)
+                : Promise.resolve(null)
         ]);
 
         if (!budget) {
@@ -135,6 +140,7 @@ async function loadAndRender() {
             return;
         }
 
+        state.mainBudget = mainBudget || null;
         state.budget = budget;
         state.allocation = allocation;
         state.data = await state.ds.getMatchedAllocationRecords(state.user.uid, budget, allocation);
@@ -153,12 +159,12 @@ function renderFatalState(title, body) {
     error.classList.remove('hidden');
     error.innerHTML = `
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-10 text-center">
-            <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50 text-[#EA580C]">
+            <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 text-[#EA580C]">
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>
             </div>
             <h1 class="text-xl font-bold text-gray-900">${escapeHtml(title)}</h1>
             <p class="mt-2 text-[13px] text-gray-500">${escapeHtml(body)}</p>
-            <a href="/budget" class="mt-5 inline-flex items-center justify-center rounded-lg bg-[#EA580C] px-4 py-2 text-[13px] font-bold text-white hover:bg-[#D94E0B]">Back to Budget Overview</a>
+            <a href="/budget" class="mt-5 inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-[13px] font-bold text-white hover:bg-slate-800">Back to Budget Overview</a>
         </div>
     `;
 }
@@ -185,10 +191,14 @@ function renderHeader() {
 
     const back = el('allocation-back-link');
     if (back) {
-        back.href = `/budget.html?budgetId=${encodeURIComponent(budget.id)}`;
+        const mainBudgetId = state.mainBudget?.id || budget.parent_budget_id || '';
+        const params = mainBudgetId
+            ? new URLSearchParams({ budgetId: mainBudgetId, periodId: budget.id })
+            : null;
+        back.href = params ? `/budget-period.html?${params.toString()}` : `/budget.html?budgetId=${encodeURIComponent(budget.id)}`;
         back.innerHTML = `
             <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-            <span class="truncate">Back to ${escapeHtml(budget.name || 'Budget Overview')}</span>
+            <span class="truncate">Back to ${escapeHtml(budget.name || 'Period Budget')}</span>
         `;
     }
 

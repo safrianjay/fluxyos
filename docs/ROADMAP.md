@@ -189,7 +189,7 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Revenue Sync | ✅ Shipped | Working app page at `/revenue-sync` (channels, reconciliation, revenue-only table) |
 | Vendor Spend | 📋 Planned | Visible as disabled `Soon`; no app page yet |
 | Receipt Capture | 📋 Planned | Visible as disabled `Soon`; no app page yet |
-| Budgets | ✅ Shipped Phase 2 | `/budget` — main budget + category allocations, live actual/committed usage, unallocated spend warning, Add Bill drawer budget impact preview. Phase 2 adds record-level control: clickable allocation detail drawer, unallocated records queue, excluded records section, budget activity timeline, deterministic variance explanation, and budget badge + Assign / Restore action on every Ledger and Bills row. Every manual change writes a `budget_assignment.*` audit log. Approvals, hard enforcement, Pay Now, and AI auto-assign remain Phase 3. |
+| Budgets | ✅ Shipped Phase 2 | `/budget` — Main Budget page for annual envelopes, planned-into-periods progress, and clickable period budgets. `/budget-period` owns allocation/sub-budget management, excluded records, and budget activity. `/budget-allocation` is the allocation drill-in. Ledger and Bills still show budget chips with Assign / Restore actions, and every manual change writes a `budget_assignment.*` audit log. Approvals, hard enforcement, Pay Now, and AI auto-assign remain Phase 3. |
 | Approvals | 📋 Planned | Visible as disabled `Soon`; no app page yet |
 | Reports & Exports | ✅ Shipped MVP | `/reports` — period filter, readiness score, preview drawer, CSV export, `export.create` audit log |
 | Audit Log | 📋 Planned | Visible as disabled `Soon`; no app page yet |

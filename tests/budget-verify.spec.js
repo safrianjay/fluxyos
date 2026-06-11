@@ -28,6 +28,12 @@ function attachConsole(page, log) {
     });
 }
 
+async function suppressPaywall(page) {
+    await page.addStyleTag({
+        content: '[data-fluxy-paywall]{display:none!important;pointer-events:none!important;}'
+    }).catch(() => {});
+}
+
 test.describe('Budget page — Phase 1 + 1.5 verify', () => {
 
     test('B1: sidebar Budgets is a real link and active on /budget', async ({ page }) => {
@@ -68,89 +74,47 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
         expect(emptyVisible || contentVisible).toBe(true);
     });
 
-    test('B3: Create/Edit Budget wizard opens with 4 default rows and validates', async ({ page }) => {
+    test('B3: Main and period budget modals validate without allocation controls on /budget', async ({ page }) => {
         const log = [];
         attachConsole(page, log);
         await page.goto('/budget.html');
+        await suppressPaywall(page);
         await page.waitForSelector('#sidebar #nav-budgets', { timeout: 15000 });
-        await page.waitForSelector('#budget-create-btn');
-        // Wait for budget.js initBudgetPage() to attach its listeners — signaled
-        // by either the empty state or the content section becoming visible.
         await page.waitForFunction(() => {
             const e = document.getElementById('budget-empty-state');
             const c = document.getElementById('budget-content');
             return (e && !e.classList.contains('hidden')) || (c && !c.classList.contains('hidden'));
         }, { timeout: 15000 });
-        await page.click('#budget-create-btn');
-        await expect(page.locator('#budget-wizard-shell')).toBeVisible();
+        const mainTrigger = await page.locator('#budget-create-main-btn').isVisible().catch(() => false)
+            ? '#budget-create-main-btn'
+            : '#budget-empty-create-main';
+        await page.click(mainTrigger);
+        await expect(page.locator('#budget-modal-shell')).toBeVisible();
         await page.waitForTimeout(500); // let date picker mount
 
-        // Step 1 validation + auto-generated period dates.
-        await expect(page.locator('#budget-wizard-step-label')).toContainText(/Step 1 of 4/);
-        const initialName = await page.locator('#budget-wizard-name-input').inputValue();
-        await page.fill('#budget-wizard-name-input', '');
-        await expect(page.locator('#budget-wizard-primary')).toBeDisabled();
-        await page.fill('#budget-wizard-name-input', initialName || 'QA Wizard Budget');
-        await page.click('#budget-wizard-budget-type [data-wizard-choice="period"]');
-        await page.click('#budget-wizard-period-type [data-wizard-choice="monthly"]');
-        await page.fill('#budget-wizard-month-input', '2026-07');
-        await expect(page.locator('#budget-wizard-start-display')).toHaveText('2026-07-01');
-        await expect(page.locator('#budget-wizard-end-display')).toHaveText('2026-07-31');
-        await page.click('#budget-wizard-period-type [data-wizard-choice="quarterly"]');
-        await page.selectOption('#budget-wizard-quarter-input', '3');
-        await page.fill('#budget-wizard-quarter-year-input', '2026');
-        await expect(page.locator('#budget-wizard-start-display')).toHaveText('2026-07-01');
-        await expect(page.locator('#budget-wizard-end-display')).toHaveText('2026-09-30');
+        const initialName = await page.locator('#budget-modal-name').inputValue();
+        await page.fill('#budget-modal-name', '');
+        await expect(page.locator('#budget-modal-submit')).toBeDisabled();
+        await page.fill('#budget-modal-name', initialName || 'QA Main Budget');
+        await page.fill('#budget-modal-total', '1.000.000');
+        await expect(page.locator('#budget-modal-submit')).toBeEnabled();
+        await expect(page.locator('#budget-modal-body')).not.toContainText(/allocation/i);
+        await page.screenshot({ path: `${SHOTS_DIR}/B3a-main-modal.png`, fullPage: true });
 
-        // Step 1 → Step 2
-        await page.click('#budget-wizard-primary');
-        await expect(page.locator('#budget-wizard-step-label')).toContainText(/Step 2 of 4/);
-
-        await page.fill('#budget-wizard-total-input', '1.000.000');
-        await page.click('#budget-wizard-primary');
-        await expect(page.locator('#budget-wizard-step-label')).toContainText(/Step 3 of 4/);
-        await page.click('[data-template="functional"]');
-
-        // Capture Functional split state — should create 4 supported category rows.
-        const rowCount = await page.locator('#budget-wizard-allocation-rows [data-allocation-row]').count();
-        await page.screenshot({ path: `${SHOTS_DIR}/B3a-wizard-default.png`, fullPage: true });
-        console.log('[B3a] default rows:', rowCount);
-
-        // Fill each allocation with 500.000 — sum = 2.000.000 > 1.000.000 → should block Continue.
-        const amountInputs = page.locator('#budget-wizard-allocation-rows [data-field="amount"]');
-        const n = await amountInputs.count();
-        for (let i = 0; i < n; i++) {
-            await amountInputs.nth(i).fill('500.000');
-            const nameInput = page.locator('#budget-wizard-allocation-rows [data-field="name"]').nth(i);
-            const nameVal = await nameInput.inputValue();
-            if (!nameVal) await nameInput.fill(`Allocation ${i + 1}`);
-        }
-        await page.waitForTimeout(200);
-        const overAllocDisabled = await page.locator('#budget-wizard-primary').isDisabled();
-        const warningVisible = await page.locator('#budget-wizard-allocation-warning').evaluate(el => !el.classList.contains('hidden'));
-        const warningText = await page.locator('#budget-wizard-allocation-warning').textContent();
-        await page.screenshot({ path: `${SHOTS_DIR}/B3b-over-allocation.png`, fullPage: true });
-        console.log('[B3b] over-allocation:', { submitDisabled: overAllocDisabled, warningVisible, warningText: warningText?.trim() });
-
-        // Probe: reduce rows below total → Continue should enable.
-        for (let i = 0; i < n; i++) {
-            await amountInputs.nth(i).fill('100.000');
-        }
-        await page.waitForTimeout(200);
-        const fixedDisabled = await page.locator('#budget-wizard-primary').isDisabled();
-        await page.screenshot({ path: `${SHOTS_DIR}/B3c-fixed-allocation.png`, fullPage: true });
-        console.log('[B3c] after fix:', { submitDisabled: fixedDisabled });
-
-        // Close wizard without saving.
-        await page.click('#budget-wizard-close');
+        await page.click('#budget-modal-close');
         await page.waitForTimeout(400);
-        const closed = await page.locator('#budget-wizard-shell').evaluate(el => el.classList.contains('hidden'));
-        console.log('[B3] wizard closed:', closed, ' console errors:', JSON.stringify(log, null, 2));
+        const closed = await page.locator('#budget-modal-shell').evaluate(el => el.classList.contains('hidden'));
 
-        expect(rowCount).toBe(4);
-        expect(overAllocDisabled).toBe(true);
-        expect(warningVisible).toBe(true);
-        expect(fixedDisabled).toBe(false);
+        if (await page.locator('#budget-new-period-btn').isEnabled().catch(() => false)) {
+            await page.click('#budget-new-period-btn');
+            await expect(page.locator('#budget-modal-title')).toContainText(/period budget/i);
+            await expect(page.locator('#budget-modal-period-type')).toBeVisible();
+            await expect(page.locator('#budget-modal-body')).not.toContainText(/Sub-budgets|allocation row/i);
+            await page.click('#budget-modal-close');
+        }
+        console.log('[B3] modal closed:', closed, ' console errors:', JSON.stringify(log, null, 2));
+
+        expect(closed).toBe(true);
     });
 
     test('B4: Add Bill drawer shows the budget impact preview block', async ({ page }) => {
@@ -213,86 +177,41 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
         expect(Object.keys(summary)).toHaveLength(pages.length);
     });
 
-    test('B6: Budget wizard save is atomic and persists when allowed', async ({ page }) => {
+    test('B6: Main budget summary persists after reload and period rows route to detail', async ({ page }) => {
         const log = [];
         attachConsole(page, log);
 
-        // 1. Establish baseline.
         await page.goto('/budget.html');
+        await suppressPaywall(page);
         await page.waitForSelector('#sidebar #nav-budgets', { timeout: 15000 });
         await page.waitForFunction(() => {
             const c = document.getElementById('budget-content');
             return c && !c.classList.contains('hidden');
         }, { timeout: 15000 });
-        const baselineName = (await page.locator('#budget-name').textContent())?.trim();
-        const baselineTotal = (await page.locator('#budget-total').textContent())?.trim();
+        const baselineName = (await page.locator('#budget-main-name').textContent())?.trim();
+        const baselineTotal = (await page.locator('#budget-annual-total').textContent())?.trim();
         console.log('[B6] baseline:', { name: baselineName, total: baselineTotal });
         await page.screenshot({ path: `${SHOTS_DIR}/B6a-baseline.png`, fullPage: true });
 
-        // 2. Attempt to save a budget with a DIFFERENT name + total.
-        //    If deployed rules reject any part of the batch, the existing doc
-        //    must stay unchanged. If rules allow the write, the new values
-        //    should survive reload.
-        const attemptName = `QA Atomicity Probe ${Date.now()}`;
-        const attemptTotalStr = '777.000.000';
-        await page.click('#budget-create-btn');
-        await page.waitForTimeout(800);
-        await expect(page.locator('#budget-wizard-shell')).toBeVisible();
-        await page.fill('#budget-wizard-name-input', attemptName);
-        await page.click('#budget-wizard-primary');
-        await expect(page.locator('#budget-wizard-step-label')).toContainText(/Step 2 of 4/);
-        await page.fill('#budget-wizard-total-input', attemptTotalStr);
-        await page.click('#budget-wizard-primary');
-        await expect(page.locator('#budget-wizard-step-label')).toContainText(/Step 3 of 4/);
-        const inputs = page.locator('#budget-wizard-allocation-rows [data-field="amount"]');
-        const count = await inputs.count();
-        for (let i = 0; i < count; i++) {
-            await inputs.nth(i).fill('1.000.000');
-            const nameInput = page.locator('#budget-wizard-allocation-rows [data-field="name"]').nth(i);
-            const v = await nameInput.inputValue();
-            if (!v) await nameInput.fill(`Probe ${i + 1}`);
-        }
-        await page.waitForTimeout(300);
-        const submitDisabled = await page.locator('#budget-wizard-primary').isDisabled();
-        console.log('[B6] submit disabled before click:', submitDisabled);
-        await page.click('#budget-wizard-primary');
-        await expect(page.locator('#budget-wizard-step-label')).toContainText(/Step 4 of 4/);
-        await page.click('#budget-wizard-primary');
-
-        // 3. Capture outcome — error toast OR wizard close.
-        const outcome = await Promise.race([
-            page.waitForSelector('#toast-container .text-white', { timeout: 8000 }).then(el => el.textContent()).catch(() => null),
-            page.waitForFunction(() => document.getElementById('budget-wizard-shell')?.classList.contains('hidden'), { timeout: 8000 }).then(() => 'wizard_closed').catch(() => null)
-        ]);
-        await page.waitForTimeout(800);
-        await page.screenshot({ path: `${SHOTS_DIR}/B6b-after-attempt.png`, fullPage: true });
-        const wizardClosed = await page.locator('#budget-wizard-shell').evaluate(el => el.classList.contains('hidden'));
-        console.log('[B6] save outcome:', outcome, ' wizard closed:', wizardClosed);
-
-        // 4. Hard reload and re-read the budget summary. If the batch wasn't
-        //    atomic, the budget doc was overwritten and the name/total would
-        //    match the attempt values.
         await page.goto('/budget.html');
+        await suppressPaywall(page);
         await page.waitForFunction(() => {
             const c = document.getElementById('budget-content');
             return c && !c.classList.contains('hidden');
         }, { timeout: 15000 });
-        const afterName = (await page.locator('#budget-name').textContent())?.trim();
-        const afterTotal = (await page.locator('#budget-total').textContent())?.trim();
+        const afterName = (await page.locator('#budget-main-name').textContent())?.trim();
+        const afterTotal = (await page.locator('#budget-annual-total').textContent())?.trim();
         await page.screenshot({ path: `${SHOTS_DIR}/B6c-after-reload.png`, fullPage: true });
         console.log('[B6] after-reload:', { name: afterName, total: afterTotal });
         console.log('[B6] console errors:', JSON.stringify(log.filter(e => e.type === 'error' || e.type === 'pageerror').slice(0, 5), null, 2));
 
-        if (outcome && typeof outcome === 'string' && outcome.includes('permission')) {
-            // Save FAILED → atomicity requires the doc to be unchanged.
-            expect(afterName).toBe(baselineName);
-            expect(afterTotal).toBe(baselineTotal);
-        } else if (wizardClosed) {
-            // Save SUCCEEDED (rules must now be deployed). The new values should
-            // be visible after reload.
-            expect(afterName).toContain('QA Atomicity Probe');
-        } else {
-            throw new Error('Unexpected outcome: ' + JSON.stringify(outcome));
+        expect(afterName).toBe(baselineName);
+        expect(afterTotal).toBe(baselineTotal);
+
+        const firstPeriod = page.locator('#budget-period-body tr[data-action="open-period-detail"]').first();
+        if (await firstPeriod.count()) {
+            await firstPeriod.click();
+            await expect(page).toHaveURL(/budget-period\.html\?budgetId=.*periodId=/);
         }
     });
 
@@ -320,19 +239,23 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
         await page.waitForTimeout(1000);
         await page.screenshot({ path: `${SHOTS_DIR}/B7b-after-save.png`, fullPage: false });
 
-        // Strongest end-to-end proof: re-read the Budget page. The bill's 3M
+        // Strongest end-to-end proof: re-read the Period Budget page. The bill's 3M
         // must show up in Marketing's Spent + Reserved column — that only happens if
         // (a) the bill write succeeded with `budget_allocation_id` matching
         // Marketing AND (b) getBudgetUsage's bill scan picked it up.
-        await page.goto('/budget.html');
-        await page.waitForFunction(() => {
-            const c = document.getElementById('budget-content');
-            return c && !c.classList.contains('hidden');
-        }, { timeout: 15000 });
-        const now = new Date();
-        const currentBillMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        await page.fill('#budget-target-month', currentBillMonth);
-        await page.click('#budget-select-target-btn');
+        const route = await page.evaluate(async () => {
+            const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+            const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            const cfg = { apiKey: 'AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA', authDomain: 'fluxyos.com', projectId: 'fluxyos', storageBucket: 'fluxyos.firebasestorage.app', messagingSenderId: '1084252368929', appId: '1:1084252368929:web:da73dc0db83fe592c7f360' };
+            const app = getApps().length ? getApps()[0] : initializeApp(cfg);
+            const auth = getAuth(app);
+            if (auth.authStateReady) await auth.authStateReady();
+            const { default: DataService } = await import('/assets/js/db-service.js');
+            const ds = new DataService(app);
+            const budget = await ds.getActiveBudget(auth.currentUser.uid);
+            return `/budget-period.html?budgetId=${encodeURIComponent(budget.parent_budget_id || budget.id)}&periodId=${encodeURIComponent(budget.id)}`;
+        });
+        await page.goto(route);
         await page.waitForFunction(() => {
             const c = document.getElementById('budget-content');
             return c && !c.classList.contains('hidden');
