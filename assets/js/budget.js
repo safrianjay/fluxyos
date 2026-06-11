@@ -6,6 +6,13 @@ const STATUS_BADGE = {
 };
 
 const LEGACY_MAIN_ID = '__legacy_unparented_periods__';
+const WIZARD_STEPS = [
+    { id: 1, label: 'Plan' },
+    { id: 2, label: 'Sizing' },
+    { id: 3, label: 'Categories' },
+    { id: 4, label: 'Review' }
+];
+const QUARTER_COLORS = ['#4F46E5', '#059669', '#2563EB', '#D97706'];
 
 const state = {
     ds: null,
@@ -18,8 +25,27 @@ const state = {
     annualEnvelope: null,
     periodBudgets: [],
     periodRows: [],
+    mainWizard: createMainWizardState(),
     modal: createModalState()
 };
+
+function createMainWizardState(overrides = {}) {
+    const target = getDefaultAnnualTarget();
+    return {
+        step: 1,
+        name: `${target.periodLabel} Main Budget`,
+        periodLabel: target.periodLabel,
+        periodStart: target.periodStart,
+        periodEnd: target.periodEnd,
+        totalBudget: 0,
+        notes: '',
+        template: 'quarterly',
+        quarters: [],
+        saving: false,
+        datePicker: null,
+        ...overrides
+    };
+}
 
 function createModalState(overrides = {}) {
     return {
@@ -141,6 +167,51 @@ function getDefaultPeriodTarget(date = new Date()) {
         periodStart: getDayKey(start),
         periodEnd: getDayKey(end)
     };
+}
+
+function getQuarterTarget(year, quarter) {
+    const q = Math.max(1, Math.min(4, Number(quarter) || 1));
+    const start = new Date(year, (q - 1) * 3, 1);
+    const end = new Date(year, q * 3, 0);
+    return {
+        periodType: 'quarterly',
+        periodLabel: `Q${q} ${year}`,
+        periodStart: getDayKey(start),
+        periodEnd: getDayKey(end)
+    };
+}
+
+function getWizardYear() {
+    return budgetDate(parseDayKey(state.mainWizard.periodStart))?.getFullYear() || new Date().getFullYear();
+}
+
+function splitQuarterAmounts(totalBudget) {
+    const total = Math.round(Math.max(0, Number(totalBudget) || 0));
+    const base = Math.floor(total / 4);
+    return [base, base, base, total - (base * 3)];
+}
+
+function buildQuarterSubBudgets(totalBudget = state.mainWizard.totalBudget) {
+    const year = getWizardYear();
+    const amounts = splitQuarterAmounts(totalBudget);
+    return [1, 2, 3, 4].map((quarter, index) => {
+        const target = getQuarterTarget(year, quarter);
+        return {
+            name: `${target.periodLabel} Budget`,
+            periodLabel: target.periodLabel,
+            periodStart: target.periodStart,
+            periodEnd: target.periodEnd,
+            amount: amounts[index]
+        };
+    });
+}
+
+function getWizardQuarterTotal() {
+    return (state.mainWizard.quarters || []).reduce((sum, row) => sum + Math.max(0, Math.round(Number(row.amount) || 0)), 0);
+}
+
+function getWizardQuarterRemaining() {
+    return Math.max(0, Math.round(Number(state.mainWizard.totalBudget) || 0) - getWizardQuarterTotal());
 }
 
 function formatRpInput(value) {
@@ -322,15 +393,12 @@ function renderEmptyState() {
     empty.classList.remove('hidden');
     empty.innerHTML = `
         <div class="flex flex-col items-center justify-center px-6 py-16 text-center">
-            <div class="flex h-14 w-14 items-center justify-center rounded-xl bg-slate-50 text-[#EA580C]">
-                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M12 4v16m8-8H4"></path></svg>
-            </div>
-            <h2 class="mt-5 text-[20px] font-bold text-gray-900">Create your first main budget</h2>
+            <h2 class="text-[18px] font-bold text-gray-900">Create your first main budget</h2>
             <p class="mt-2 max-w-md text-[14px] leading-6 text-gray-500">Start with an annual budget, then split it into monthly, quarterly, or custom working periods.</p>
             <button id="budget-empty-create-main" type="button" class="mt-6 inline-flex h-10 items-center justify-center rounded-lg bg-slate-950 px-4 text-[14px] font-bold text-white transition-colors hover:bg-slate-800">Create Budget</button>
         </div>
     `;
-    el('budget-empty-create-main')?.addEventListener('click', () => openBudgetModal('annual'));
+    el('budget-empty-create-main')?.addEventListener('click', openMainBudgetWizard);
 }
 
 function renderMainBudget() {
@@ -491,7 +559,7 @@ function renderPeriodMobileCard(row) {
 
 function wirePageControls() {
     el('budget-refresh-btn')?.addEventListener('click', loadAndRender);
-    el('budget-create-main-btn')?.addEventListener('click', () => openBudgetModal('annual'));
+    el('budget-create-main-btn')?.addEventListener('click', openMainBudgetWizard);
     el('budget-new-period-btn')?.addEventListener('click', () => openBudgetModal('period'));
     el('budget-table-new-period-btn')?.addEventListener('click', () => openBudgetModal('period'));
     el('budget-main-select')?.addEventListener('change', (event) => {
@@ -510,8 +578,18 @@ function wirePageControls() {
     el('budget-modal-cancel')?.addEventListener('click', closeBudgetModal);
     el('budget-modal-backdrop')?.addEventListener('click', closeBudgetModal);
     el('budget-modal-form')?.addEventListener('submit', handleBudgetModalSubmit);
+    el('budget-wizard-close')?.addEventListener('click', closeMainBudgetWizard);
+    el('budget-wizard-backdrop')?.addEventListener('click', closeMainBudgetWizard);
+    el('budget-wizard-back')?.addEventListener('click', () => {
+        if (state.mainWizard.step <= 1 || state.mainWizard.saving) return;
+        state.mainWizard.step -= 1;
+        renderMainBudgetWizard();
+    });
+    el('budget-wizard-form')?.addEventListener('submit', handleMainBudgetWizardSubmit);
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !el('budget-modal-shell')?.classList.contains('hidden')) {
+        if (event.key === 'Escape' && !el('budget-wizard-shell')?.classList.contains('hidden')) {
+            closeMainBudgetWizard();
+        } else if (event.key === 'Escape' && !el('budget-modal-shell')?.classList.contains('hidden')) {
             closeBudgetModal();
         }
     });
@@ -522,6 +600,527 @@ function openPeriodDetail(periodId) {
     const budgetId = state.legacyMode ? periodId : state.selectedMainBudgetId;
     const params = new URLSearchParams({ budgetId, periodId });
     window.location.href = `/budget-period.html?${params.toString()}`;
+}
+
+function openMainBudgetWizard() {
+    destroyMainWizardDatePicker();
+    const target = getDefaultAnnualTarget();
+    state.mainWizard = createMainWizardState({
+        name: `${target.periodLabel} Main Budget`,
+        periodLabel: target.periodLabel,
+        periodStart: target.periodStart,
+        periodEnd: target.periodEnd,
+        totalBudget: 0,
+        notes: '',
+        template: 'quarterly',
+        quarters: [],
+        step: 1
+    });
+    el('budget-wizard-backdrop')?.classList.remove('hidden');
+    el('budget-wizard-shell')?.classList.remove('hidden');
+    el('budget-wizard-shell')?.classList.add('flex');
+    document.body.classList.add('overflow-hidden');
+    renderMainBudgetWizard();
+}
+
+function closeMainBudgetWizard() {
+    if (state.mainWizard.saving) return;
+    destroyMainWizardDatePicker();
+    el('budget-wizard-shell')?.classList.add('hidden');
+    el('budget-wizard-shell')?.classList.remove('flex');
+    el('budget-wizard-backdrop')?.classList.add('hidden');
+    el('budget-wizard-error')?.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+}
+
+function destroyMainWizardDatePicker() {
+    if (state.mainWizard.datePicker?.destroy) state.mainWizard.datePicker.destroy();
+    state.mainWizard.datePicker = null;
+}
+
+function renderMainBudgetWizard() {
+    destroyMainWizardDatePicker();
+    el('budget-wizard-eyebrow').textContent = 'Main Budget';
+    el('budget-wizard-title').textContent = 'Create a main budget';
+    el('budget-wizard-subtitle').textContent = 'Set the annual envelope, then split it into quarterly period budgets.';
+    el('budget-wizard-progress').innerHTML = WIZARD_STEPS.map(step => `
+        <div class="h-1 rounded-full ${step.id <= state.mainWizard.step ? 'bg-slate-950' : 'bg-gray-200'}"></div>
+    `).join('');
+    el('budget-wizard-step').innerHTML = renderMainWizardStep();
+    wireMainWizardStepControls();
+    mountMainWizardDatePicker();
+    refreshMainWizardFooter();
+}
+
+function renderMainWizardStep() {
+    if (state.mainWizard.step === 1) return renderMainWizardPlanStep();
+    if (state.mainWizard.step === 2) return renderMainWizardSizingStep();
+    if (state.mainWizard.step === 3) {
+        ensureQuarterSubBudgets();
+        return renderMainWizardQuarterStep();
+    }
+    return renderMainWizardReviewStep();
+}
+
+function renderMainWizardPlanStep() {
+    return `
+        <div class="space-y-5">
+            <div class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <p class="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">Budget type</p>
+                <p class="mt-1 text-[14px] font-semibold text-slate-900">Main / Annual budget</p>
+            </div>
+            <div>
+                <label for="budget-wizard-name-input" class="mb-2 block text-[12px] font-bold text-gray-600">Budget name <span class="text-[#EA580C]">*</span></label>
+                <input id="budget-wizard-name-input" type="text" maxlength="120" value="${escapeHtml(state.mainWizard.name)}" placeholder="e.g. FY27 Operating Plan" class="h-11 w-full rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-semibold text-gray-900 outline-none transition-all focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
+            </div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div>
+                    <label for="budget-wizard-period-label-input" class="mb-2 block text-[12px] font-bold text-gray-600">Annual label <span class="text-[#EA580C]">*</span></label>
+                    <input id="budget-wizard-period-label-input" type="text" maxlength="120" value="${escapeHtml(state.mainWizard.periodLabel)}" class="h-11 w-full rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-semibold text-gray-900 outline-none transition-all focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
+                </div>
+                <div>
+                    <p class="mb-2 text-[12px] font-bold text-gray-600">Start</p>
+                    <div id="budget-wizard-start-display" class="flex h-11 items-center rounded-lg border border-gray-200 bg-gray-50 px-4 font-mono text-[13px] font-bold text-gray-700">${escapeHtml(state.mainWizard.periodStart || '—')}</div>
+                </div>
+                <div>
+                    <p class="mb-2 text-[12px] font-bold text-gray-600">End</p>
+                    <div id="budget-wizard-end-display" class="flex h-11 items-center rounded-lg border border-gray-200 bg-gray-50 px-4 font-mono text-[13px] font-bold text-gray-700">${escapeHtml(state.mainWizard.periodEnd || '—')}</div>
+                </div>
+            </div>
+            <div>
+                <label class="mb-2 block text-[12px] font-bold text-gray-600">Annual period <span class="text-[#EA580C]">*</span></label>
+                <div id="budget-wizard-date-picker"></div>
+                <p class="mt-2 text-[12px] text-gray-500">Use the shared FluxyOS date picker. Future planning dates are allowed for budgets.</p>
+            </div>
+            <div>
+                <label for="budget-wizard-notes-input" class="mb-2 block text-[12px] font-bold text-gray-600">Description / notes</label>
+                <textarea id="budget-wizard-notes-input" rows="3" maxlength="500" placeholder="Optional context for this main budget." class="w-full resize-none rounded-lg border border-gray-200 bg-white px-4 py-3 text-[14px] text-gray-900 outline-none transition-all focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">${escapeHtml(state.mainWizard.notes)}</textarea>
+            </div>
+        </div>
+    `;
+}
+
+function renderMainWizardSizingStep() {
+    return `
+        <div class="space-y-5">
+            <div>
+                <label for="budget-wizard-total-input" class="mb-2 block text-[12px] font-bold text-gray-600">Annual budget amount <span class="text-[#EA580C]">*</span></label>
+                <div class="flex h-12 items-center overflow-hidden rounded-lg border border-gray-200 bg-white focus-within:border-[#EA580C] focus-within:ring-2 focus:ring-orange-100">
+                    <span class="flex h-full items-center border-r border-gray-100 px-4 font-mono text-[14px] font-bold text-gray-400">Rp</span>
+                    <input id="budget-wizard-total-input" type="text" inputmode="numeric" value="${escapeHtml(formatRpInput(state.mainWizard.totalBudget))}" placeholder="0" class="h-full min-w-0 flex-1 border-0 px-4 font-mono text-[16px] font-bold text-gray-900 outline-none">
+                </div>
+                <p id="budget-wizard-total-helper" class="mt-2 text-[13px] text-gray-500">${formatRp(state.mainWizard.totalBudget)} over ${escapeHtml(state.mainWizard.periodLabel || 'this annual period')}</p>
+            </div>
+            <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-[13px] leading-6 text-gray-600">
+                This is the main annual envelope. The next step can split it into quarterly period budgets; allocation categories stay inside each period budget.
+            </div>
+        </div>
+    `;
+}
+
+function ensureQuarterSubBudgets() {
+    if (state.mainWizard.template !== 'quarterly') return;
+    if (state.mainWizard.quarters.length) return;
+    state.mainWizard.quarters = buildQuarterSubBudgets();
+}
+
+function renderMainWizardQuarterStep() {
+    const over = Math.max(0, getWizardQuarterTotal() - state.mainWizard.totalBudget);
+    return `
+        <div class="space-y-5">
+            <div>
+                <p class="mb-3 text-[13px] font-bold text-gray-600">Start from a template</p>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    ${renderQuarterTemplateCard('quarterly', 'Quarterly split', 'Create Q1, Q2, Q3, and Q4 period budgets under this main budget.')}
+                    ${renderQuarterTemplateCard('blank', 'Blank slate', 'Create the main budget now and add periods later.')}
+                </div>
+            </div>
+            <div>
+                <p class="mb-3 text-[13px] font-bold text-gray-600">Quarterly sub-budgets</p>
+                <div id="budget-wizard-quarter-rows" class="space-y-2">
+                    ${state.mainWizard.quarters.length ? state.mainWizard.quarters.map(renderQuarterSubBudgetRow).join('') : `
+                        <div class="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-[13px] text-gray-500">Blank slate selected. The annual budget will be created without period budgets.</div>
+                    `}
+                </div>
+            </div>
+            <div class="rounded-lg border ${over ? 'border-red-200 bg-red-50' : 'border-gray-100 bg-gray-50'} px-4 py-3">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-[13px] text-gray-600">Planned <span id="budget-wizard-quarter-sum" class="font-mono font-bold text-gray-900">${formatRp(getWizardQuarterTotal())}</span> / <span id="budget-wizard-total-display" class="font-mono font-bold text-gray-900">${formatRp(state.mainWizard.totalBudget)}</span></p>
+                    <p id="budget-wizard-quarter-status" class="font-mono text-[13px] font-bold ${over ? 'text-red-600' : getWizardQuarterRemaining() === 0 ? 'text-emerald-600' : 'text-gray-500'}">${over ? `Over by ${formatRp(over)}` : getWizardQuarterRemaining() === 0 ? 'Fully planned' : `${formatRp(getWizardQuarterRemaining())} not planned`}</p>
+                </div>
+                <div id="budget-wizard-preview-bar" class="mt-3">${quarterPreviewHtml({ compact: true })}</div>
+                <p id="budget-wizard-quarter-warning" class="${over ? '' : 'hidden'} mt-3 rounded-lg border border-red-200 bg-white px-3 py-2 text-[12px] font-medium text-red-700">${over ? `Quarterly sub-budgets exceed the annual budget by ${formatRp(over)}.` : ''}</p>
+            </div>
+        </div>
+    `;
+}
+
+function renderQuarterTemplateCard(value, title, copy) {
+    const active = state.mainWizard.template === value;
+    return `
+        <button type="button" data-template="${escapeHtml(value)}" class="relative rounded-lg border px-4 py-4 text-left transition-all ${active ? 'border-[#EA580C] bg-white ring-1 ring-[#EA580C]' : 'border-gray-200 bg-white hover:border-gray-300'}">
+            <span class="block pr-6 text-[13px] font-bold text-gray-900">${escapeHtml(title)}</span>
+            <span class="mt-2 block text-[13px] leading-5 text-gray-500">${escapeHtml(copy)}</span>
+            <span class="absolute right-4 top-4 h-4 w-4 rounded-full border ${active ? 'border-slate-950 bg-slate-950' : 'border-gray-300 bg-white'}"></span>
+        </button>
+    `;
+}
+
+function renderQuarterSubBudgetRow(row, index) {
+    return `
+        <div class="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 bg-white p-3 sm:grid-cols-12 sm:items-center" data-quarter-row="${index}">
+            <div class="flex items-center gap-3 sm:col-span-4">
+                <span class="h-3 w-3 flex-shrink-0 rounded-sm" style="background:${QUARTER_COLORS[index % QUARTER_COLORS.length]}"></span>
+                <input type="text" maxlength="120" data-field="name" value="${escapeHtml(row.name)}" placeholder="Quarter budget name" class="min-w-0 flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] font-bold text-gray-900 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
+            </div>
+            <input type="text" maxlength="120" data-field="periodLabel" value="${escapeHtml(row.periodLabel)}" class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] font-semibold text-gray-700 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100 sm:col-span-2">
+            <div class="grid grid-cols-2 gap-2 sm:col-span-3">
+                <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-[12px] font-bold text-gray-600">${escapeHtml(row.periodStart)}</div>
+                <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-[12px] font-bold text-gray-600">${escapeHtml(row.periodEnd)}</div>
+            </div>
+            <div class="flex items-center rounded-lg border border-gray-200 bg-gray-50 focus-within:border-[#EA580C] focus-within:ring-2 focus:ring-orange-100 sm:col-span-2">
+                <span class="px-3 font-mono text-[12px] font-bold text-gray-400">Rp</span>
+                <input type="text" inputmode="numeric" data-field="amount" value="${escapeHtml(formatRpInput(row.amount))}" placeholder="0" class="min-w-0 flex-1 bg-transparent px-2 py-2 text-right font-mono text-[13px] font-bold text-gray-900 outline-none">
+            </div>
+            <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-right font-mono text-[12px] font-bold text-gray-700 sm:col-span-1">${formatPercent(quarterPercent(row.amount))}</div>
+        </div>
+    `;
+}
+
+function renderMainWizardReviewStep() {
+    const planned = getWizardQuarterTotal();
+    const remaining = getWizardQuarterRemaining();
+    return `
+        <div class="space-y-5">
+            <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-4">
+                <p class="text-[14px] font-bold text-gray-900">Ready to create</p>
+                <p class="mt-1 text-[13px] leading-5 text-gray-500">FluxyOS will create one main annual budget and ${state.mainWizard.quarters.length} quarterly period budget${state.mainWizard.quarters.length === 1 ? '' : 's'}.</p>
+            </div>
+            <div class="divide-y divide-gray-100 text-[14px]">
+                ${renderReviewRow('Name', state.mainWizard.name)}
+                ${renderReviewRow('Budget type', 'Main / Annual budget')}
+                ${renderReviewRow('Annual period', `${state.mainWizard.periodLabel} · ${state.mainWizard.periodStart} - ${state.mainWizard.periodEnd}`)}
+                ${renderReviewRow('Annual budget', `${formatRp(state.mainWizard.totalBudget)} IDR`, true)}
+                ${renderReviewRow('Quarterly periods', `${state.mainWizard.quarters.length} period budget${state.mainWizard.quarters.length === 1 ? '' : 's'} · ${formatRp(planned)} planned · ${formatRp(remaining)} not planned`, true)}
+            </div>
+            <div>
+                <p class="mb-3 text-[13px] font-bold text-gray-600">Quarterly preview</p>
+                ${quarterPreviewHtml()}
+                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    ${state.mainWizard.quarters.length ? state.mainWizard.quarters.map((row, index) => `
+                        <div class="flex items-start gap-3 text-[13px]">
+                            <span class="mt-1 h-3 w-3 flex-shrink-0 rounded-sm" style="background:${QUARTER_COLORS[index % QUARTER_COLORS.length]}"></span>
+                            <div class="min-w-0 flex-1">
+                                <p class="font-semibold text-gray-700">${escapeHtml(row.name)}</p>
+                                <p class="mt-1 font-mono font-bold text-gray-900">${formatRp(row.amount)}</p>
+                                <p class="mt-1 text-[12px] text-gray-500">${escapeHtml(row.periodStart)} - ${escapeHtml(row.periodEnd)}</p>
+                            </div>
+                        </div>
+                    `).join('') : '<p class="text-[13px] text-gray-500">No period budgets will be created yet.</p>'}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderReviewRow(label, value, mono = false) {
+    return `
+        <div class="flex items-start justify-between gap-4 py-3">
+            <span class="text-[13px] font-semibold text-gray-500">${escapeHtml(label)}</span>
+            <span class="${mono ? 'font-mono ' : ''}text-right text-[13px] font-bold text-gray-900">${escapeHtml(value)}</span>
+        </div>
+    `;
+}
+
+function quarterPercent(amount) {
+    const total = Math.max(0, Number(state.mainWizard.totalBudget) || 0);
+    if (total <= 0) return 0;
+    return Math.max(0, (Number(amount) || 0) / total * 100);
+}
+
+function getQuarterSegments() {
+    const total = Math.max(0, Number(state.mainWizard.totalBudget) || 0);
+    if (total <= 0) return [];
+    const segments = (state.mainWizard.quarters || [])
+        .filter(row => Math.max(0, Number(row.amount) || 0) > 0)
+        .map((row, index) => ({
+            label: row.periodLabel || row.name || `Q${index + 1}`,
+            amount: Number(row.amount) || 0,
+            percent: quarterPercent(row.amount),
+            color: QUARTER_COLORS[index % QUARTER_COLORS.length]
+        }));
+    const remaining = getWizardQuarterRemaining();
+    if (remaining > 0) {
+        segments.push({
+            label: 'Not planned',
+            amount: remaining,
+            percent: quarterPercent(remaining),
+            color: '#E5E7EB',
+            unplanned: true
+        });
+    }
+    return segments;
+}
+
+function quarterPreviewHtml({ compact = false } = {}) {
+    const segments = getQuarterSegments();
+    if (!segments.length) {
+        return `<div class="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-4 text-center text-[12px] text-gray-500">No quarterly preview yet.</div>`;
+    }
+    return `
+        <div class="flex h-${compact ? '5' : '6'} w-full overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-200">
+            ${segments.map(seg => {
+                const label = seg.percent >= 12 ? escapeHtml(seg.label) : '';
+                return `
+                    <div class="flex min-w-[3px] items-center overflow-hidden px-2 ${seg.unplanned ? 'text-gray-500' : 'text-white'}"
+                        style="flex:0 0 ${Math.max(0, seg.percent)}%; background:${seg.color};"
+                        title="${escapeHtml(seg.label)} ${formatRp(seg.amount)}">
+                        <span class="truncate text-[11px] font-bold">${label}</span>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function wireMainWizardStepControls() {
+    el('budget-wizard-name-input')?.addEventListener('input', (event) => {
+        state.mainWizard.name = event.target.value;
+        refreshMainWizardFooter();
+    });
+    el('budget-wizard-period-label-input')?.addEventListener('input', (event) => {
+        state.mainWizard.periodLabel = event.target.value;
+        refreshMainWizardFooter();
+    });
+    el('budget-wizard-notes-input')?.addEventListener('input', (event) => {
+        state.mainWizard.notes = event.target.value;
+    });
+    el('budget-wizard-total-input')?.addEventListener('input', (event) => {
+        state.mainWizard.totalBudget = parseRp(event.target.value);
+        event.target.value = formatRpInput(state.mainWizard.totalBudget);
+        if (state.mainWizard.template === 'quarterly') {
+            state.mainWizard.quarters = buildQuarterSubBudgets();
+        }
+        refreshMainWizardFooter();
+    });
+    document.querySelectorAll('[data-template]').forEach(button => {
+        button.addEventListener('click', () => {
+            const value = button.dataset.template;
+            state.mainWizard.template = value === 'blank' ? 'blank' : 'quarterly';
+            state.mainWizard.quarters = state.mainWizard.template === 'blank' ? [] : buildQuarterSubBudgets();
+            renderMainBudgetWizard();
+        });
+    });
+    document.querySelectorAll('[data-quarter-row]').forEach(row => {
+        const index = Number(row.dataset.quarterRow);
+        row.querySelector('[data-field="name"]')?.addEventListener('input', (event) => {
+            state.mainWizard.quarters[index].name = event.target.value;
+            refreshMainWizardFooter();
+        });
+        row.querySelector('[data-field="periodLabel"]')?.addEventListener('input', (event) => {
+            state.mainWizard.quarters[index].periodLabel = event.target.value;
+            if (!state.mainWizard.quarters[index].name.trim()) state.mainWizard.quarters[index].name = `${event.target.value} Budget`;
+            refreshMainWizardFooter();
+        });
+        row.querySelector('[data-field="amount"]')?.addEventListener('input', (event) => {
+            state.mainWizard.quarters[index].amount = parseRp(event.target.value);
+            event.target.value = formatRpInput(state.mainWizard.quarters[index].amount);
+            refreshMainWizardFooter();
+        });
+    });
+}
+
+function mountMainWizardDatePicker() {
+    const host = el('budget-wizard-date-picker');
+    if (!host || !window.FluxyDateRangePicker?.mount) return;
+    state.mainWizard.datePicker = window.FluxyDateRangePicker.mount(host, {
+        start: state.mainWizard.periodStart,
+        end: state.mainWizard.periodEnd,
+        defaultStart: state.mainWizard.periodStart,
+        defaultEnd: state.mainWizard.periodEnd,
+        maxDate: '2099-12-31',
+        onChange: ({ start, end }) => {
+            state.mainWizard.periodStart = start;
+            state.mainWizard.periodEnd = end;
+            const startDate = parseDayKey(start);
+            if (startDate && !state.mainWizard.periodLabel.trim()) {
+                state.mainWizard.periodLabel = `FY${startDate.getFullYear()}`;
+            }
+            if (state.mainWizard.template === 'quarterly') {
+                state.mainWizard.quarters = buildQuarterSubBudgets();
+            }
+            const labelInput = el('budget-wizard-period-label-input');
+            if (labelInput) labelInput.value = state.mainWizard.periodLabel;
+            refreshMainWizardFooter();
+        }
+    });
+}
+
+function isMainWizardStepValid(step = state.mainWizard.step) {
+    const wizard = state.mainWizard;
+    const datesOk = /^\d{4}-\d{2}-\d{2}$/.test(wizard.periodStart)
+        && /^\d{4}-\d{2}-\d{2}$/.test(wizard.periodEnd)
+        && wizard.periodEnd > wizard.periodStart;
+    if (step === 1) {
+        return wizard.name.trim().length > 0 && wizard.periodLabel.trim().length > 0 && datesOk;
+    }
+    if (step === 2) return Math.round(Number(wizard.totalBudget) || 0) > 0;
+    if (step === 3) return areQuarterSubBudgetsValid();
+    return wizard.name.trim().length > 0
+        && wizard.periodLabel.trim().length > 0
+        && datesOk
+        && Math.round(Number(wizard.totalBudget) || 0) > 0
+        && areQuarterSubBudgetsValid();
+}
+
+function areQuarterSubBudgetsValid() {
+    const rows = state.mainWizard.quarters || [];
+    if (getWizardQuarterTotal() > state.mainWizard.totalBudget) return false;
+    return rows.every(row => {
+        const amount = Math.round(Math.max(0, Number(row.amount) || 0));
+        return row.name.trim().length > 0
+            && row.periodLabel.trim().length > 0
+            && /^\d{4}-\d{2}-\d{2}$/.test(row.periodStart)
+            && /^\d{4}-\d{2}-\d{2}$/.test(row.periodEnd)
+            && row.periodEnd > row.periodStart
+            && amount > 0
+            && Number.isFinite(amount);
+    });
+}
+
+function mainWizardValidationMessage() {
+    const wizard = state.mainWizard;
+    if (wizard.step === 1) {
+        if (!wizard.name.trim()) return 'Budget name is required.';
+        if (!wizard.periodLabel.trim()) return 'Annual label is required.';
+        if (!wizard.periodStart || !wizard.periodEnd) return 'Select a valid start and end date.';
+        if (wizard.periodEnd <= wizard.periodStart) return 'End date must be after start date.';
+    }
+    if (wizard.step === 2 && wizard.totalBudget <= 0) return 'Annual budget amount must be greater than zero.';
+    if (wizard.step >= 3) {
+        if (getWizardQuarterTotal() > wizard.totalBudget) return `Quarterly sub-budgets exceed the annual budget by ${formatRp(getWizardQuarterTotal() - wizard.totalBudget)}.`;
+        const badRow = wizard.quarters.find(row => !row.name.trim() || !row.periodLabel.trim() || Math.round(Number(row.amount) || 0) <= 0);
+        if (badRow) return 'Every quarterly sub-budget needs a name, label, and amount greater than zero.';
+    }
+    return '';
+}
+
+function refreshMainWizardFooter() {
+    const step = WIZARD_STEPS.find(s => s.id === state.mainWizard.step) || WIZARD_STEPS[0];
+    el('budget-wizard-step-label').textContent = `Step ${state.mainWizard.step} of 4 · ${step.label}`;
+    el('budget-wizard-back')?.classList.toggle('hidden', state.mainWizard.step === 1);
+    const primary = el('budget-wizard-primary');
+    const finalStep = state.mainWizard.step === 4;
+    const valid = isMainWizardStepValid();
+    if (primary) {
+        primary.disabled = state.mainWizard.saving || !valid;
+        primary.textContent = state.mainWizard.saving ? 'Saving...' : finalStep ? 'Create budget' : 'Continue';
+    }
+    const error = el('budget-wizard-error');
+    const message = valid ? '' : mainWizardValidationMessage();
+    if (error) {
+        error.textContent = message;
+        error.classList.toggle('hidden', !message);
+    }
+    const totalHelper = el('budget-wizard-total-helper');
+    if (totalHelper) totalHelper.textContent = `${formatRp(state.mainWizard.totalBudget)} over ${state.mainWizard.periodLabel || 'this annual period'}`;
+    if (el('budget-wizard-start-display')) el('budget-wizard-start-display').textContent = state.mainWizard.periodStart || '—';
+    if (el('budget-wizard-end-display')) el('budget-wizard-end-display').textContent = state.mainWizard.periodEnd || '—';
+    const plannedEl = el('budget-wizard-quarter-sum');
+    const totalEl = el('budget-wizard-total-display');
+    const statusEl = el('budget-wizard-quarter-status');
+    const warningEl = el('budget-wizard-quarter-warning');
+    const previewEl = el('budget-wizard-preview-bar');
+    const over = Math.max(0, getWizardQuarterTotal() - state.mainWizard.totalBudget);
+    if (plannedEl) plannedEl.textContent = formatRp(getWizardQuarterTotal());
+    if (totalEl) totalEl.textContent = formatRp(state.mainWizard.totalBudget);
+    if (statusEl) {
+        statusEl.textContent = over ? `Over by ${formatRp(over)}` : getWizardQuarterRemaining() === 0 ? 'Fully planned' : `${formatRp(getWizardQuarterRemaining())} not planned`;
+        statusEl.className = `font-mono text-[13px] font-bold ${over ? 'text-red-600' : getWizardQuarterRemaining() === 0 ? 'text-emerald-600' : 'text-gray-500'}`;
+    }
+    if (warningEl) {
+        warningEl.textContent = over ? `Quarterly sub-budgets exceed the annual budget by ${formatRp(over)}.` : '';
+        warningEl.classList.toggle('hidden', !over);
+    }
+    if (previewEl) previewEl.innerHTML = quarterPreviewHtml({ compact: true });
+}
+
+async function handleMainBudgetWizardSubmit(event) {
+    event.preventDefault();
+    if (!isMainWizardStepValid()) {
+        refreshMainWizardFooter();
+        return;
+    }
+    if (state.mainWizard.step < 4) {
+        if (state.mainWizard.step === 2 && state.mainWizard.template === 'quarterly' && !state.mainWizard.quarters.length) {
+            state.mainWizard.quarters = buildQuarterSubBudgets();
+        }
+        state.mainWizard.step += 1;
+        renderMainBudgetWizard();
+        return;
+    }
+    await saveMainBudgetWizard();
+}
+
+async function saveMainBudgetWizard() {
+    if (!isMainWizardStepValid(4) || state.mainWizard.saving) {
+        refreshMainWizardFooter();
+        return;
+    }
+    state.mainWizard.saving = true;
+    refreshMainWizardFooter();
+    try {
+        const wizard = state.mainWizard;
+        const result = await state.ds.addBudgetWithAllocations(state.user.uid, {
+            budget_id: null,
+            name: wizard.name.trim(),
+            budget_type: 'annual',
+            parent_budget_id: null,
+            period_type: 'yearly',
+            period_label: wizard.periodLabel.trim(),
+            period_start: parseDayKey(wizard.periodStart),
+            period_end: parseDayKey(wizard.periodEnd, true),
+            total_budget: Math.round(Math.max(0, Number(wizard.totalBudget) || 0)),
+            currency: 'IDR',
+            notes: wizard.notes.trim()
+        }, []);
+
+        const mainBudgetId = result?.budget?.id;
+        if (!mainBudgetId) throw new Error('Main budget was created without an id.');
+
+        for (const row of wizard.quarters) {
+            await state.ds.addBudgetWithAllocations(state.user.uid, {
+                budget_id: null,
+                name: row.name.trim(),
+                budget_type: 'period',
+                parent_budget_id: mainBudgetId,
+                period_type: 'quarterly',
+                period_label: row.periodLabel.trim(),
+                period_start: parseDayKey(row.periodStart),
+                period_end: parseDayKey(row.periodEnd, true),
+                total_budget: Math.round(Math.max(0, Number(row.amount) || 0)),
+                currency: 'IDR',
+                notes: ''
+            }, []);
+        }
+
+        state.selectedMainBudgetId = mainBudgetId;
+        window.showToast?.('Main budget created.', 'success');
+        state.mainWizard.saving = false;
+        closeMainBudgetWizard();
+        await loadAndRender();
+    } catch (error) {
+        console.error('Main budget save failed:', error);
+        state.mainWizard.saving = false;
+        const message = error?.message || 'Could not save this main budget. Please try again.';
+        window.showToast?.(message, 'error');
+        const errorEl = el('budget-wizard-error');
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        refreshMainWizardFooter();
+    }
 }
 
 function openBudgetModal(mode) {

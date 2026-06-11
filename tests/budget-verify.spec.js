@@ -74,7 +74,7 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
         expect(emptyVisible || contentVisible).toBe(true);
     });
 
-    test('B3: Main and period budget modals validate without allocation controls on /budget', async ({ page }) => {
+    test('B3: Main wizard and period modal validate on /budget', async ({ page }) => {
         const log = [];
         attachConsole(page, log);
         await page.goto('/budget.html');
@@ -89,21 +89,27 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
             ? '#budget-create-main-btn'
             : '#budget-empty-create-main';
         await page.click(mainTrigger);
-        await expect(page.locator('#budget-modal-shell')).toBeVisible();
+        await expect(page.locator('#budget-wizard-shell')).toBeVisible();
         await page.waitForTimeout(500); // let date picker mount
 
-        const initialName = await page.locator('#budget-modal-name').inputValue();
-        await page.fill('#budget-modal-name', '');
-        await expect(page.locator('#budget-modal-submit')).toBeDisabled();
-        await page.fill('#budget-modal-name', initialName || 'QA Main Budget');
-        await page.fill('#budget-modal-total', '1.000.000');
-        await expect(page.locator('#budget-modal-submit')).toBeEnabled();
-        await expect(page.locator('#budget-modal-body')).not.toContainText(/allocation/i);
-        await page.screenshot({ path: `${SHOTS_DIR}/B3a-main-modal.png`, fullPage: true });
+        const initialName = await page.locator('#budget-wizard-name-input').inputValue();
+        await page.fill('#budget-wizard-name-input', '');
+        await expect(page.locator('#budget-wizard-primary')).toBeDisabled();
+        await page.fill('#budget-wizard-name-input', initialName || 'QA Main Budget');
+        await expect(page.locator('#budget-wizard-primary')).toBeEnabled();
+        await page.click('#budget-wizard-primary');
+        await page.fill('#budget-wizard-total-input', '1.000.000');
+        await expect(page.locator('#budget-wizard-primary')).toBeEnabled();
+        await page.click('#budget-wizard-primary');
+        await expect(page.locator('#budget-wizard-step-label')).toContainText(/Step 3 of 4 · Categories/i);
+        await expect(page.locator('#budget-wizard-step')).toContainText(/Quarterly split/i);
+        await expect(page.locator('#budget-wizard-quarter-rows [data-quarter-row]')).toHaveCount(4);
+        await expect(page.locator('#budget-wizard-step')).not.toContainText(/Marketing|Infrastructure|Operations|SaaS/);
+        await page.screenshot({ path: `${SHOTS_DIR}/B3a-main-wizard.png`, fullPage: true });
 
-        await page.click('#budget-modal-close');
+        await page.click('#budget-wizard-close');
         await page.waitForTimeout(400);
-        const closed = await page.locator('#budget-modal-shell').evaluate(el => el.classList.contains('hidden'));
+        const closed = await page.locator('#budget-wizard-shell').evaluate(el => el.classList.contains('hidden'));
 
         if (await page.locator('#budget-new-period-btn').isEnabled().catch(() => false)) {
             await page.click('#budget-new-period-btn');

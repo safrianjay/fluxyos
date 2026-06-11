@@ -616,12 +616,14 @@ touched.
 | # | Check |
 |---|-------|
 | 1 | Account with no annual/main budget shows the empty state with title "Create your first main budget" and a primary "Create Budget" button |
-| 2 | Click "Create Budget" → modal opens for a main/annual budget only: name, label, date range, amount, notes; no allocation controls appear on `/budget` |
-| 3 | Modal Submit is disabled until: name present, total > 0, and period dates are valid |
-| 4 | Submitting a valid main budget creates one `users/{uid}/budgets/{id}` doc with `budget_type='annual'`, `period_type='yearly'`, `currency='IDR'`, raw numeric `total_budget`, and no `budget_allocations` docs |
-| 5 | `/budget` reloads into the Main Budget page: selector card, Annual Budget, Spent + Reserved, Not Planned Yet, Planned into periods progress, and Period budgets table |
-| 6 | Firestore: no global collection appears and no formatted strings like `"Rp100.000.000"` are stored |
-| 7 | Audit log written: `budget.created`; `budget.allocations_updated` may be present with `allocation_count=0` because the shared writer is reused |
+| 2 | Click "Create Budget" → the 4-step wizard opens for a main/annual budget only; there is no Period Budget choice on `/budget` |
+| 3 | Wizard Continue is disabled until each step is valid: Step 1 name/label/date range, Step 2 total > 0, Step 3 quarterly sub-budgets do not exceed the annual budget |
+| 4 | Step 3 "Categories" uses quarterly period sub-budgets (Q1-Q4) instead of functional allocation categories; it must not show Marketing/Infrastructure/Operations/SaaS allocation rows |
+| 5 | Submitting a valid main budget creates one `users/{uid}/budgets/{id}` doc with `budget_type='annual'`, `period_type='yearly'`, `currency='IDR'`, raw numeric `total_budget`, and no `budget_allocations` docs |
+| 6 | If the quarterly split is selected, submitting also creates quarterly `budget_type='period'` child budget docs with `parent_budget_id` equal to the new main budget and no allocation rows |
+| 7 | `/budget` reloads into the Main Budget page: selector card, Annual Budget, Spent + Reserved, Not Planned Yet, Planned into periods progress, and Period budgets table |
+| 8 | Firestore: no global collection appears and no formatted strings like `"Rp100.000.000"` are stored |
+| 9 | Audit log written: `budget.created`; `budget.allocations_updated` may be present with `allocation_count=0` because the shared writer is reused |
 
 #### K2b — Period-based budgets
 | # | Check |

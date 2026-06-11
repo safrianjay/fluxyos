@@ -309,7 +309,9 @@ settings/history compatibility.
 
 **Budget hierarchy rule:** `/budget` selects an explicit annual/main budget and
 lists only active period budgets whose `parent_budget_id` points to that main
-budget. `/budget-period?budgetId={mainBudgetId}&periodId={periodBudgetId}`
+budget. Its Create Budget wizard is main/annual-only and can create quarterly
+period budget children under the new annual budget; allocation categories are
+still managed later from `/budget-period`. `/budget-period?budgetId={mainBudgetId}&periodId={periodBudgetId}`
 selects an explicit period budget for allocation work. `getActiveBudget`
 remains for compatibility and returns the latest active period budget first,
 then falls back to any active budget.
