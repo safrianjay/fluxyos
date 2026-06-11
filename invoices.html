@@ -51,6 +51,17 @@
         @media (min-width: 1024px) {
             .invoice-preview-sticky { position: sticky; top: 16px; }
         }
+        /* Download PDF = browser print scoped to the invoice document only.
+           body.invoice-printing is set while the PDF modal prints. */
+        @media print {
+            body.invoice-printing { display: block !important; height: auto !important; overflow: visible !important; background: #fff !important; }
+            body.invoice-printing > *:not(#invoice-pdf-modal) { display: none !important; }
+            body.invoice-printing #invoice-pdf-modal { display: block !important; position: static !important; padding: 0 !important; }
+            body.invoice-printing #invoice-pdf-modal .pdf-modal-chrome { display: none !important; }
+            body.invoice-printing #invoice-pdf-modal section { position: static !important; max-height: none !important; max-width: none !important; width: 100% !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
+            body.invoice-printing #invoice-pdf-doc-host { overflow: visible !important; padding: 0 !important; background: #fff !important; }
+            body.invoice-printing .invoice-doc { border: 0 !important; box-shadow: none !important; border-radius: 0 !important; border-top: 3px solid #0B0F19 !important; }
+        }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
@@ -456,11 +467,15 @@
                                 <div id="detail-void-banner" class="mt-3 hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700"></div>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
+                                <button id="detail-pdf-btn" type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+                                    Preview PDF
+                                </button>
                                 <button id="detail-copy-btn" type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95">Copy summary</button>
-                                <button id="detail-email-btn" type="button" class="hidden h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95">
+                                <a id="detail-email-btn" href="#" target="_blank" rel="noopener" class="hidden h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95">
                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
                                     Send by email
-                                </button>
+                                </a>
                                 <button id="detail-sent-btn" type="button" class="hidden h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Mark as sent</button>
                                 <button id="detail-void-btn" type="button" class="hidden h-10 items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-4 text-[14px] font-bold text-red-600 shadow-sm transition-all hover:bg-red-50 active:scale-95">Void invoice</button>
                                 <button id="detail-edit-btn" type="button" class="hidden h-10 items-center justify-center gap-2 rounded-lg bg-[#EA580C] px-4 text-[14px] font-bold text-white shadow-sm transition-all hover:bg-[#D94E0B] active:scale-95">Edit invoice</button>
@@ -577,6 +592,30 @@
                 <button id="review-cancel" type="button" class="rounded-lg px-4 py-2.5 text-[14px] font-bold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">Cancel</button>
                 <button id="review-finalize-btn" type="button" class="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Finalize only</button>
                 <button id="review-finalize-send-btn" type="button" class="rounded-lg bg-[#EA580C] px-4 py-2.5 text-[14px] font-bold text-white shadow-sm transition-all hover:bg-[#D94E0B] active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500">Finalize and mark as sent</button>
+            </footer>
+        </section>
+    </div>
+
+    <!-- ============ PDF PREVIEW MODAL ============ -->
+    <div id="invoice-pdf-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="pdf-title">
+        <div class="pdf-modal-chrome absolute inset-0 bg-[#0B0F19]/50 backdrop-blur-[6px]" data-pdf-overlay></div>
+        <section class="relative flex max-h-[calc(100vh-3rem)] w-full max-w-[760px] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl">
+            <header class="pdf-modal-chrome flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 sm:px-6">
+                <div>
+                    <h2 id="pdf-title" class="text-[20px] font-semibold tracking-[-0.02em] text-gray-900">Invoice preview</h2>
+                    <p class="mt-0.5 text-[12px] text-gray-500">Download opens your browser's print dialog — choose "Save as PDF".</p>
+                </div>
+                <button id="pdf-close" type="button" class="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-700" aria-label="Close preview">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </header>
+            <div id="invoice-pdf-doc-host" class="min-h-0 flex-1 overflow-y-auto bg-gray-50/70 p-5 sm:p-6"></div>
+            <footer class="pdf-modal-chrome flex items-center justify-end gap-2 border-t border-gray-100 bg-gray-50 px-5 py-4 sm:px-6">
+                <button id="pdf-close-footer" type="button" class="rounded-lg px-4 py-2.5 text-[14px] font-bold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">Close</button>
+                <button id="pdf-download" type="button" class="inline-flex items-center justify-center gap-2 rounded-lg bg-[#EA580C] px-4 py-2.5 text-[14px] font-bold text-white shadow-sm transition-all hover:bg-[#D94E0B] active:scale-95">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
+                    Download PDF
+                </button>
             </footer>
         </section>
     </div>

@@ -832,7 +832,8 @@ Subscriptions, Budget, and Reports still render and their sidebar active states 
 | 23 | No invoice data appears for another authenticated user (data isolation) |
 | 24 | Browser console clean: no Firebase permission, CSP, CORS, or 404 errors on list, editor, review, detail, and void flows |
 | 25 | Existing pages still load and their flows work: Dashboard, Ledger, Revenue Sync, Bills, Subscriptions, Budgets, Reports, Settings; Add Transaction / Add Bill / Add Subscription unchanged |
-| 26 | "Send by email" shows only on open invoices with a customer email; it opens a mailto: draft (correct recipient, subject `Invoice {number} from {business}`, summary body with Rp amounts) and sends nothing from FluxyOS; hidden on draft/void and when email is missing |
+| 26 | "Send by email" shows only on open invoices with a customer email; it opens a mailto: draft via a `target="_blank"` anchor (correct recipient, subject `Invoice {number} from {business}`, summary body with Rp amounts), sends nothing from FluxyOS, triggers no CSP frame-src error, and does not strand the page-transition overlay; hidden on draft/void and when email is missing |
+| 27 | "Preview PDF" on the detail view opens a modal with the rendered invoice document (number, dates, bill-to, items, Rp totals, VOID marker on voided invoices); "Download PDF" opens the browser print dialog scoped to the document only (sidebar/topbar/modal chrome excluded), suggested filename is the invoice number, and the page recovers (print class removed) after the dialog closes |
 
 **Regression (shared files touched):** `sidebar-loader.js`, `db-service.js`, and
 `firestore.rules` were modified — run §3 Cross-Page Regression.

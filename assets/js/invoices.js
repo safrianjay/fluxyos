@@ -982,6 +982,10 @@ export function initInvoicesPage({ ds, user }) {
         const canEmail = invoice.status === 'open' && Boolean(invoice.customer_email);
         el('detail-email-btn').classList.toggle('hidden', !canEmail);
         el('detail-email-btn').classList.toggle('inline-flex', canEmail);
+        // target="_blank" mailto: a new browsing context fires no beforeunload
+        // here (no stranded page-transition overlay) and uses no iframe (no
+        // CSP frame-src violation).
+        el('detail-email-btn').href = canEmail ? buildInvoiceMailto(invoice, items) : '#';
         const canVoid = ['draft', 'open'].includes(invoice.status);
         el('detail-void-btn').classList.toggle('hidden', !canVoid);
         el('detail-void-btn').classList.toggle('inline-flex', canVoid);
@@ -1025,21 +1029,126 @@ export function initInvoicesPage({ ds, user }) {
 
     el('detail-email-btn').addEventListener('click', () => {
         if (!detailInvoice?.customer_email) return;
-        // Launch the mailto from a hidden iframe: a direct location/anchor
-        // navigation fires the page's beforeunload, which strands the global
-        // page-transition overlay because a mailto never actually unloads.
-        const url = buildInvoiceMailto(detailInvoice, detailItems);
-        const frame = document.createElement('iframe');
-        frame.style.display = 'none';
-        frame.src = url;
-        document.body.appendChild(frame);
-        window.setTimeout(() => frame.remove(), 3000);
         window.showToast?.(
             detailInvoice.sent_at
                 ? 'Email draft opened in your mail app.'
                 : 'Email draft opened in your mail app. Mark the invoice as sent once delivered.',
             'info'
         );
+    });
+
+    // ---------- PDF preview modal ----------
+    // Renders the invoice as a standalone document; Download PDF prints just
+    // the document via the browser's Save-as-PDF (no backend generation, and
+    // the app never claims the file was saved).
+    function buildInvoiceDocHTML(invoice, items) {
+        const due = formatDate(invoice.due_date);
+        const isVoid = invoice.status === 'void';
+        const amountDue = isVoid ? 0 : invoice.amount_due;
+        const itemRows = items.length
+            ? items.map(item => `
+                <tr class="border-b border-gray-100">
+                    <td class="py-2 text-gray-900">${esc(item.description)}</td>
+                    <td class="py-2 text-right invoice-doc-money text-gray-700">${formatQty(item.quantity)}</td>
+                    <td class="py-2 text-right invoice-doc-money text-gray-700">${formatRp(item.unit_price)}</td>
+                    <td class="py-2 text-right invoice-doc-money text-gray-900">${formatRp(item.amount)}</td>
+                </tr>`).join('')
+            : '<tr><td colspan="4" class="py-3 text-center text-gray-400">No line items</td></tr>';
+        const taxRow = Number(invoice.tax_amount) > 0
+            ? `<tr><td colspan="3" class="py-1.5 text-right text-gray-500">Tax${invoice.tax_rate_percent ? ` (${esc(invoice.tax_rate_percent)}%)` : ''}</td><td class="py-1.5 text-right text-gray-900">${formatRp(invoice.tax_amount)}</td></tr>`
+            : '';
+        return `
+            <div class="invoice-doc bg-white p-6 sm:p-8">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-[20px] font-semibold text-gray-900">Invoice</h3>
+                        ${isVoid ? '<p class="mt-1 text-[12px] font-bold uppercase tracking-[0.08em] text-red-600">Void</p>' : ''}
+                    </div>
+                    <p class="max-w-[45%] truncate text-right text-[14px] font-semibold text-gray-500">${esc(businessName)}</p>
+                </div>
+                <dl class="mt-5 space-y-1 text-[12px]">
+                    <div class="flex gap-3"><dt class="w-28 font-medium text-gray-500">Invoice number</dt><dd class="font-mono text-gray-900">${esc(invoice.invoice_number || '—')}</dd></div>
+                    <div class="flex gap-3"><dt class="w-28 font-medium text-gray-500">Issue date</dt><dd class="text-gray-900">${formatDate(invoice.issue_date)}</dd></div>
+                    <div class="flex gap-3"><dt class="w-28 font-medium text-gray-500">Due date</dt><dd class="text-gray-900">${due}</dd></div>
+                </dl>
+                <div class="mt-5 grid grid-cols-2 gap-4 text-[12px]">
+                    <div>
+                        <p class="font-semibold text-gray-900">From</p>
+                        <p class="mt-1 text-gray-600">${esc(businessName)}</p>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-900">Bill to</p>
+                        <p class="mt-1 text-gray-600">${esc(invoice.customer_name || 'Customer name')}</p>
+                        <p class="text-gray-500">${esc(invoice.customer_email || '')}</p>
+                    </div>
+                </div>
+                <p class="mt-6 text-[16px] font-semibold text-gray-900 invoice-doc-money">${formatRp(amountDue)} due ${due}</p>
+                ${invoice.memo ? `<p class="mt-2 text-[12px] text-gray-600">${esc(invoice.memo)}</p>` : ''}
+                <table class="mt-4 w-full text-[12px]">
+                    <thead>
+                        <tr class="border-b border-gray-300 text-left text-gray-500">
+                            <th class="py-2 font-medium">Description</th>
+                            <th class="py-2 text-right font-medium">Qty</th>
+                            <th class="py-2 text-right font-medium">Unit price</th>
+                            <th class="py-2 text-right font-medium">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>${itemRows}</tbody>
+                    <tfoot class="invoice-doc-money">
+                        <tr class="border-t border-gray-200">
+                            <td colspan="3" class="py-1.5 text-right text-gray-500">Subtotal</td>
+                            <td class="py-1.5 text-right text-gray-900">${formatRp(invoice.subtotal_amount)}</td>
+                        </tr>
+                        ${taxRow}
+                        <tr class="border-t border-gray-200">
+                            <td colspan="3" class="py-1.5 text-right text-gray-500">Total</td>
+                            <td class="py-1.5 text-right text-gray-900">${formatRp(invoice.total_amount)}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="3" class="py-1.5 text-right font-semibold text-gray-900">Amount due</td>
+                            <td class="py-1.5 text-right font-semibold text-gray-900">${formatRp(amountDue)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                ${invoice.footer ? `<p class="mt-8 border-t border-gray-100 pt-3 text-[12px] text-gray-500">${esc(invoice.footer)}</p>` : ''}
+                <p class="mt-3 text-[10px] uppercase tracking-[0.06em] text-gray-400">${esc(invoice.invoice_number || '')} · ${formatRp(amountDue)} due ${due}</p>
+            </div>`;
+    }
+
+    function openPdfModal() {
+        if (!detailInvoice) return;
+        el('invoice-pdf-doc-host').innerHTML = buildInvoiceDocHTML(detailInvoice, detailItems);
+        const modal = el('invoice-pdf-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closePdfModal() {
+        const modal = el('invoice-pdf-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    el('detail-pdf-btn').addEventListener('click', openPdfModal);
+    el('pdf-close').addEventListener('click', closePdfModal);
+    el('pdf-close-footer').addEventListener('click', closePdfModal);
+    document.querySelector('[data-pdf-overlay]').addEventListener('click', closePdfModal);
+
+    el('pdf-download').addEventListener('click', () => {
+        if (!detailInvoice) return;
+        const prevTitle = document.title;
+        // The document title becomes the suggested PDF filename.
+        if (detailInvoice.invoice_number) document.title = detailInvoice.invoice_number;
+        document.body.classList.add('invoice-printing');
+        const cleanup = () => {
+            document.body.classList.remove('invoice-printing');
+            document.title = prevTitle;
+        };
+        window.addEventListener('afterprint', cleanup, { once: true });
+        window.print();
+        window.setTimeout(cleanup, 1000);
     });
     el('detail-edit-btn').addEventListener('click', () => {
         if (detailInvoice) openEditor(detailInvoice.id, true);
@@ -1144,6 +1253,7 @@ export function initInvoicesPage({ ds, user }) {
         if (event.key !== 'Escape') return;
         if (!el('invoice-review-modal').classList.contains('hidden')) closeReviewModal();
         if (!el('invoice-void-modal').classList.contains('hidden')) closeVoidModal();
+        if (!el('invoice-pdf-modal').classList.contains('hidden')) closePdfModal();
     });
 
     // ---------- boot ----------

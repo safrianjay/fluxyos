@@ -1047,7 +1047,17 @@ terminal for the client.
 email" action (open invoices with a `customer_email`) opens the user's own
 mail client pre-filled with the invoice summary. FluxyOS has no email
 provider and never sends mail itself; "Mark as sent" remains the explicit
-delivery stamp (`sent_at` + `invoice.sent` audit).
+delivery stamp (`sent_at` + `invoice.sent` audit). Implementation note: the
+mailto launches from a `target="_blank"` anchor — a same-page mailto
+navigation fires `beforeunload` and strands the page-transition overlay,
+and a hidden iframe violates the production CSP `frame-src`.
+
+**PDF is browser-print only.** The detail view's "Preview PDF" modal renders
+the invoice document; "Download PDF" calls `window.print()` scoped via a
+`body.invoice-printing` print stylesheet so only the document prints
+(suggested filename = invoice number via a temporary `document.title`). Same
+contract as `report-preview.html`: the app cannot verify the user saved the
+file, so it never logs `downloaded: true`.
 
 **DataService methods:** `generateInvoiceNumber`, `getInvoices`, `getInvoice`,
 `getInvoiceItems`, `createInvoiceDraft` (invoice + items + audit in one
