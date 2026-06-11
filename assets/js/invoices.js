@@ -1034,7 +1034,7 @@ export function initInvoicesPage({ ds, user }) {
         window.showToast?.(
             detailInvoice.sent_at
                 ? 'Gmail compose opened in a new tab.'
-                : 'Gmail compose opened in a new tab. Mark the invoice as sent once delivered.',
+                : 'Gmail compose opened. To include the document, attach the PDF from Preview PDF → Download.',
             'info'
         );
     });
@@ -1120,6 +1120,12 @@ export function initInvoicesPage({ ds, user }) {
     function openPdfModal() {
         if (!detailInvoice) return;
         el('invoice-pdf-doc-host').innerHTML = buildInvoiceDocHTML(detailInvoice, detailItems);
+        // Download-then-email in one place: surface the Gmail draft from here
+        // too, so attaching the saved PDF is a drag away.
+        const canEmail = detailInvoice.status === 'open' && Boolean(detailInvoice.customer_email);
+        el('pdf-email-btn').classList.toggle('hidden', !canEmail);
+        el('pdf-email-btn').classList.toggle('inline-flex', canEmail);
+        el('pdf-email-btn').href = canEmail ? buildInvoiceGmailUrl(detailInvoice, detailItems) : '#';
         const modal = el('invoice-pdf-modal');
         modal.classList.remove('hidden');
         modal.classList.add('flex');
@@ -1137,6 +1143,10 @@ export function initInvoicesPage({ ds, user }) {
     el('pdf-close').addEventListener('click', closePdfModal);
     el('pdf-close-footer').addEventListener('click', closePdfModal);
     document.querySelector('[data-pdf-overlay]').addEventListener('click', closePdfModal);
+
+    el('pdf-email-btn').addEventListener('click', () => {
+        window.showToast?.('Gmail compose opened — drag the saved PDF into the email before sending.', 'info');
+    });
 
     el('pdf-download').addEventListener('click', () => {
         if (!detailInvoice) return;

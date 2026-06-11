@@ -834,6 +834,7 @@ Subscriptions, Budget, and Reports still render and their sidebar active states 
 | 25 | Existing pages still load and their flows work: Dashboard, Ledger, Revenue Sync, Bills, Subscriptions, Budgets, Reports, Settings; Add Transaction / Add Bill / Add Subscription unchanged |
 | 26 | "Send by email" shows only on open invoices with a customer email; it opens Gmail compose (`mail.google.com/mail/?view=cm`) in a new tab via a `target="_blank"` anchor (correct recipient, subject `Invoice {number} from {business}`, summary body with Rp amounts), sends nothing from FluxyOS, triggers no CSP frame-src error, and does not strand the page-transition overlay; hidden on draft/void and when email is missing |
 | 27 | "Preview PDF" on the detail view opens a modal with the rendered invoice document (number, dates, bill-to, items, Rp totals, VOID marker on voided invoices); "Download PDF" opens the browser print dialog scoped to the document only (sidebar/topbar/modal chrome excluded), suggested filename is the invoice number, and the page recovers (print class removed) after the dialog closes |
+| 28 | The PDF modal's "Open Gmail draft" button shows only for open invoices with a customer email (hidden on draft/void/no-email), opens the same Gmail compose URL in a new tab, and its toast tells the user to attach the saved PDF; attachments are never auto-added (browser limitation — provider-backed delivery is Phase 3) |
 
 **Regression (shared files touched):** `sidebar-loader.js`, `db-service.js`, and
 `firestore.rules` were modified — run §3 Cross-Page Regression.

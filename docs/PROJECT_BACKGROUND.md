@@ -1058,7 +1058,10 @@ the invoice document; "Download PDF" calls `window.print()` scoped via a
 `body.invoice-printing` print stylesheet so only the document prints
 (suggested filename = invoice number via a temporary `document.title`). Same
 contract as `report-preview.html`: the app cannot verify the user saved the
-file, so it never logs `downloaded: true`.
+file, so it never logs `downloaded: true`. The modal also surfaces an
+"Open Gmail draft" button (open + emailable invoices) so download-then-email
+happens in one place — the user attaches the saved PDF manually, because
+browsers do not allow websites to pre-attach files to a Gmail/mailto draft.
 
 **DataService methods:** `generateInvoiceNumber`, `getInvoices`, `getInvoice`,
 `getInvoiceItems`, `createInvoiceDraft` (invoice + items + audit in one
