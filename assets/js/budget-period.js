@@ -100,6 +100,10 @@ function formatPercent(val) {
     return val.toFixed(val >= 10 ? 0 : 1) + '%';
 }
 
+function getBudgetTitle(budget) {
+    return budget?.name || budget?.period_label || 'Operating Budget';
+}
+
 function escapeHtml(str) {
     if (str == null) return '';
     return String(str)
@@ -184,6 +188,13 @@ async function loadAndRender() {
 function selectExistingBudget(budgetId) {
     state.selectedBudgetId = budgetId || null;
     state.selectedTarget = null;
+    const selected = state.periodBudgets.find(b => b.id === state.selectedBudgetId);
+    if (selected?.parent_budget_id) state.selectedAnnualId = selected.parent_budget_id;
+    if (state.selectedBudgetId) {
+        const mainBudgetId = selected?.parent_budget_id || state.selectedAnnualId || state.selectedBudgetId;
+        const params = new URLSearchParams({ budgetId: mainBudgetId, periodId: state.selectedBudgetId });
+        window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+    }
     loadAndRender();
 }
 
@@ -214,7 +225,6 @@ function renderEmpty() {
     // Workspace header — structure with no budget yet, so a new user sees the
     // real page (and the onboarding tour can spotlight it) instead of a blank card.
     renderWorkspaceShell(null, []);
-    el('budget-name').textContent = 'Open a period budget';
     el('budget-period').textContent = 'No period set';
     el('budget-workspace-allocation-count').textContent = 'No budget yet';
     el('budget-status-pill')?.classList.add('hidden');
@@ -310,7 +320,6 @@ function renderNoPeriodState() {
     renderWorkspaceShell(null, []);
     renderPeriodSelector();
     const label = state.selectedTarget?.period_label || 'this period';
-    el('budget-name').textContent = label;
     el('budget-period').textContent = state.selectedTarget
         ? `${state.selectedTarget.period_start} - ${state.selectedTarget.period_end}`
         : '—';
@@ -406,7 +415,6 @@ function renderBudget(usage) {
     }
 
     renderAllocationMap(allocations, summary);
-    el('budget-name').textContent = budget.name || 'Operating Budget';
     el('budget-period').textContent = formatPeriod(budget);
     renderAllocationsTable(allocations);
     renderBudgetAttention(allocations, summary, unallocated);
@@ -484,7 +492,6 @@ function renderWorkspaceHeader(budget, allocations) {
     const allocationText = `${allocationCount} allocation${allocationCount === 1 ? '' : 's'}`;
     const updatedText = formatUpdatedAt(budget);
 
-    el('budget-name').textContent = budget.name || 'Operating Budget';
     el('budget-period').textContent = period;
     el('budget-period-type').textContent = formatPeriodType(budget.period_type);
     el('budget-workspace-allocation-count').textContent = allocationText;
@@ -500,14 +507,23 @@ function renderWorkspaceHeader(budget, allocations) {
 function renderPeriodSelector() {
     const select = el('budget-period-select');
     if (!select) return;
-    if (!state.periodBudgets.length) {
-        select.innerHTML = `<option value="">No period budgets yet</option>`;
+    const currentBudget = state.usage?.budget;
+    const budgets = [...(state.periodBudgets || [])];
+    if (currentBudget?.id && !budgets.some(b => b.id === currentBudget.id)) {
+        budgets.unshift(currentBudget);
+    }
+    if (!budgets.length) {
+        const fallback = state.selectedTarget?.period_label || 'Open a period budget';
+        select.innerHTML = `<option value="">${escapeHtml(fallback)}</option>`;
         select.disabled = true;
+        select.title = fallback;
     } else {
         select.disabled = false;
-        select.innerHTML = state.periodBudgets.map(b => `
-            <option value="${escapeHtml(b.id)}" ${b.id === state.selectedBudgetId ? 'selected' : ''}>${escapeHtml(b.period_label || b.name || 'Period budget')} · ${escapeHtml(formatPeriodType(b.period_type))}</option>
+        select.innerHTML = budgets.map(b => `
+            <option value="${escapeHtml(b.id)}" ${b.id === state.selectedBudgetId ? 'selected' : ''}>${escapeHtml(getBudgetTitle(b))}</option>
         `).join('');
+        const selected = budgets.find(b => b.id === state.selectedBudgetId) || budgets[0];
+        select.title = selected ? `Change period from ${getBudgetTitle(selected)}` : 'Change period';
     }
 }
 

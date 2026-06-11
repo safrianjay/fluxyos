@@ -205,7 +205,11 @@
                     <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-3 min-w-0">
-                                <h2 id="budget-name" class="max-w-full sm:max-w-[620px] xl:max-w-[520px] truncate text-2xl leading-tight font-bold text-gray-900">—</h2>
+                                <div class="relative inline-flex max-w-full sm:max-w-[620px] xl:max-w-[520px]">
+                                    <label for="budget-period-select" class="sr-only">Change period</label>
+                                    <select id="budget-period-select" class="inline-block h-8 w-max max-w-full appearance-none truncate rounded-lg border-0 bg-transparent py-0 pl-0 pr-8 text-2xl font-bold leading-tight text-gray-900 shadow-none outline-none transition-colors hover:text-[#EA580C] focus:text-gray-900 focus:ring-2 focus:ring-[#EA580C]/20"></select>
+                                    <svg class="pointer-events-none absolute right-1 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="m6 9 6 6 6-6"></path></svg>
+                                </div>
                                 <span id="budget-status-pill" class="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[12px] font-semibold text-gray-600 shadow-sm">
                                     <span class="h-1.5 w-1.5 rounded-full bg-slate-950"></span>
                                     Active
@@ -234,29 +238,17 @@
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
                                 Export
                             </button>
+                            <button id="budget-duplicate-btn" type="button" class="inline-flex h-10 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-colors hover:border-[#EA580C] hover:text-[#EA580C] active:scale-95 whitespace-nowrap">Duplicate</button>
+                            <button id="budget-create-period-btn" type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-colors hover:border-[#EA580C] hover:text-[#EA580C] active:scale-95 whitespace-nowrap">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                                New period
+                            </button>
                             <button id="budget-create-btn" type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-slate-800 active:scale-95 whitespace-nowrap">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                                 <span id="budget-create-btn-label">Edit Budget</span>
                             </button>
                         </div>
                     </div>
-
-                    <!-- Period switcher -->
-                    <section id="budget-period-switcher-card" class="bg-white rounded-[10px] border border-gray-200 shadow-sm px-4 py-3 sm:px-5 sm:py-4">
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                            <div class="min-w-0 sm:flex-1 sm:max-w-md">
-                                <label for="budget-period-select" class="text-[12px] font-bold uppercase tracking-wide text-gray-400">Viewing period</label>
-                                <select id="budget-period-select" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-[#EA580C]"></select>
-                            </div>
-                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                <button id="budget-duplicate-btn" type="button" class="inline-flex h-10 w-full items-center justify-center rounded-lg border border-gray-200 bg-white px-2.5 text-[12px] font-bold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors whitespace-nowrap sm:w-auto sm:px-3">Duplicate</button>
-                                <button id="budget-create-period-btn" type="button" class="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-slate-950 px-2 text-[12px] font-bold text-white hover:bg-slate-800 transition-colors whitespace-nowrap sm:w-auto sm:px-3.5">
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
-                                    New period
-                                </button>
-                            </div>
-                        </div>
-                    </section>
 
                     <div id="budget-no-period-state" class="hidden bg-white rounded-[10px] border border-gray-200 shadow-sm px-5 py-8 text-center">
                         <h3 id="budget-no-period-title" class="text-lg font-bold text-gray-900">No budget set for this period</h3>
