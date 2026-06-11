@@ -1033,6 +1033,39 @@ function allocationPercent(amount) {
     return Number.isFinite(pct) ? pct : 0;
 }
 
+function getWizardParentBudgetBalance() {
+    if (budgetWizardState.budgetType === 'annual') return null;
+    const parentId = budgetWizardState.parentBudgetId || state.selectedAnnualId;
+    if (!parentId) return null;
+    const parent = (state.annualBudgets || []).find(b => b.id === parentId);
+    if (!parent) return null;
+    const parentTotal = Math.max(0, Number(parent.total_budget) || 0);
+    const plannedOutsideThisPeriod = (state.periodBudgets || [])
+        .filter(b => b.parent_budget_id === parentId && b.id !== budgetWizardState.budgetId)
+        .reduce((sum, budget) => sum + Math.max(0, Number(budget.total_budget) || 0), 0);
+    const currentPeriodTotal = Math.max(0, Number(budgetWizardState.totalBudget) || 0);
+    const remainingAfterThisPeriod = parentTotal - plannedOutsideThisPeriod - currentPeriodTotal;
+    return {
+        parent,
+        parentTotal,
+        remainingAfterThisPeriod
+    };
+}
+
+function renderWizardParentBudgetHelper() {
+    const balance = getWizardParentBudgetBalance();
+    if (!balance) return 'Parent budget balance is unavailable for this period.';
+    const remainingClass = balance.remainingAfterThisPeriod < 0 ? 'text-red-600' : 'text-gray-900';
+    const remainingValue = balance.remainingAfterThisPeriod < 0
+        ? `-${formatRp(balance.remainingAfterThisPeriod)}`
+        : formatRp(balance.remainingAfterThisPeriod);
+    return `
+        <span>Parent total <span class="font-mono font-bold text-gray-900">${formatRp(balance.parentTotal)}</span></span>
+        <span class="hidden text-gray-300 sm:inline">·</span>
+        <span>Remaining balance <span class="font-mono font-bold ${remainingClass}">${remainingValue}</span></span>
+    `;
+}
+
 function formatAllocationPercent(amount) {
     const pct = allocationPercent(amount);
     if (pct >= 100) return pct.toFixed(0);
@@ -1519,7 +1552,7 @@ function renderWizardSizingStep() {
                     <span class="flex h-full items-center border-r border-gray-100 px-4 font-mono text-[14px] font-bold text-gray-400">Rp</span>
                     <input id="budget-wizard-total-input" type="text" inputmode="numeric" value="${escapeHtml(formatRpInput(budgetWizardState.totalBudget))}" placeholder="0" class="h-full min-w-0 flex-1 border-0 px-4 font-mono text-[16px] font-bold text-gray-900 outline-none">
                 </div>
-                <p id="budget-wizard-total-helper" class="mt-2 text-[13px] text-gray-500">${formatRp(budgetWizardState.totalBudget)} over ${escapeHtml(budgetWizardState.periodLabel || 'this period')}</p>
+                <p id="budget-wizard-total-helper" class="mt-2 flex flex-col gap-1 text-[13px] text-gray-500 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2">${renderWizardParentBudgetHelper()}</p>
             </div>
             <div>
                 <label class="mb-2 block text-[12px] font-bold text-gray-600">Currency</label>
@@ -1973,7 +2006,7 @@ function refreshWizardFooterAndComputed() {
         error.classList.toggle('hidden', !message);
     }
     const totalHelper = el('budget-wizard-total-helper');
-    if (totalHelper) totalHelper.textContent = `${formatRp(budgetWizardState.totalBudget)} over ${budgetWizardState.periodLabel || 'this period'}`;
+    if (totalHelper) totalHelper.innerHTML = renderWizardParentBudgetHelper();
     if (el('budget-wizard-start-display')) el('budget-wizard-start-display').textContent = budgetWizardState.periodStart || '—';
     if (el('budget-wizard-end-display')) el('budget-wizard-end-display').textContent = budgetWizardState.periodEnd || '—';
     const allocatedEl = el('budget-wizard-allocated-sum');
