@@ -763,6 +763,91 @@ state both render from `/payment-pending` (`?requestId=` optional); revisiting w
 Legacy `users/{uid}/billing/access` and `users/{uid}/payment_verifications/{id}`
 remain owner-readable migration inputs only. Customer writes are blocked.
 
+### 4l.1. Voucher Codes — `voucher_codes/{CODE}` + `voucher_redemptions/{paymentRequestId}`
+
+Percentage checkout discounts. Full spec:
+`docs/FLUXYOS_VOUCHER_CODE_IMPLEMENTATION_PLAN.md`. Managed from the internal
+console's **Vouchers** tab; applied on `/checkout` under Billing frequency.
+
+**Enforcement model (no billing backend):** client-side validation
+(`DataService.validateVoucherCode`) is UX only. The binding check is in
+`firestore.rules` at payment-request creation
+(`hasValidPaymentRequestVoucher`): rules `get()` the voucher doc themselves,
+re-check status/window/plan/frequency/usage, recompute
+`discount = subtotal * percent / 100`, and require — in the SAME commit — the
+`voucher_redemptions/{paymentRequestId}` doc and an exactly-+1
+`redemption_count` bump. A tampered client discount is rejected by Firestore.
+
+**Math contract (integer-exact, shared by `billing-config.js` and rules):**
+all plan subtotals are multiples of 10.000, so
+`discount = subtotal * percent / 100` and
+`tax = (subtotal - discount) * 11 / 100` are exact integers — PPN applies to
+the **discounted** subtotal; `total = subtotal - discount + tax`.
+`calculateBilling(planId, frequency, voucher?)` returns
+`voucherDiscountAmount` (0 when no voucher; no-voucher output unchanged).
+
+`voucher_codes/{CODE}` (doc id == normalized uppercase code, `^[A-Z0-9_-]{4,32}$`
+— unique by construction; rules allow `get` but deny `list`):
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `code` | string | Equals the doc id. |
+| `discount_type` | string | Locked to `"percentage"`. |
+| `discount_value` | number | Integer 1–100. Immutable after create. |
+| `status` | string | `active` / `disabled` / `expired`. |
+| `max_redemptions` | number \| null | `null` = unlimited. |
+| `redemption_count` | number | Server-checked +1 per checkout commit. |
+| `valid_from`, `valid_until` | Timestamp \| null | Local-day bounds from the console. |
+| `allowed_plan_ids` | string[] \| null | Subset of `core/growth/enterprise`; `null` = all. |
+| `allowed_billing_frequencies` | string[] \| null | Subset of `monthly/annually` (**`annually`**, never `annual`); `null` = both. |
+| `created_by`, `created_at`, `updated_at` | — | Console identity + server timestamps. |
+| `disabled_at`, `disabled_by` | — | Stamped on disable. |
+| `notes` | string \| null | Internal-only, ≤500. |
+
+`voucher_code_index/registry` — `{ codes: string[], updated_at }`; lets the
+console list vouchers (via per-code gets) since `list` is denied. Maintained by
+`arrayUnion` in the create batch.
+
+`voucher_redemptions/{paymentRequestId}` (doc id == the payment request id;
+created only inside the checkout transaction; doubles as the redemption audit
+record): `voucher_id`/`code`, `user_id` (must equal `auth.uid`),
+`checkout_session_id` (== doc id), `plan_id`, `billing_frequency`,
+`original_amount` (= subtotal), `discount_amount`, `final_amount`
+(= total incl. PPN), `currency: 'IDR'`, `status`
+(`reserved` → `redeemed` on internal `payment.verify`, or `cancelled`),
+`created_at`, `redeemed_at`. Raw integers only. Rules mirror every amount
+against the payment request written in the same commit via `getAfter()`.
+
+**Payment request voucher snapshot:** `billing_payment_requests` gains 4
+optional fields (`hasOnly`, not `hasAll`, so pre-voucher cached clients keep
+working): `voucher_id`, `voucher_code`, `voucher_discount_percent`,
+`voucher_discount_amount` — all `null` when no voucher. Immutable post-create
+(existing `affectedKeys` allow-lists).
+
+**DataService:** `normalizeVoucherCode`, `validateVoucherCode({ code, planId,
+billingFrequency })`, `getVoucherCode`, `getVoucherCodes` (registry fan-out),
+`createVoucherCode` (atomic: voucher + registry + `voucher.create` audit),
+`updateVoucherCode` (notes/valid_until/max_redemptions only),
+`disableVoucherCode` (`voucher.disable` audit), `getVoucherRedemptions`,
+`getAllVoucherRedemptions`, `markVoucherRedemptionsRedeemed(userId)` (called
+best-effort after the console's `payment.verify`). `createPaymentRequest`
+accepts an optional `voucher_code` and routes voucher checkouts through a
+`runTransaction` (read voucher + subscription → revalidate → write request +
+subscription + redemption + counter), so the last slot of a limited voucher
+can never be redeemed twice. Typed errors: `voucher-invalid`,
+`voucher-disabled`, `voucher-expired`, `voucher-not-started`,
+`voucher-usage-limit`, `voucher-plan-mismatch`, `voucher-frequency-mismatch`.
+
+**Security posture (MVP, same as `internal_users`):** voucher admin writes are
+field-validated but NOT identity-gated (the console has no Firebase identity);
+`voucher_redemptions` reads are open for the console. Known accepted gaps until
+custom-claims admin auth exists: anyone knowing the paths can create/disable
+vouchers or read redemption metadata, and any signed-in user can burn
+redemption slots via the bare +1 counter update (DoS only — never a bigger
+discount, because rules recompute the price from the voucher doc). Audit
+actions written to `internal_audit_logs` with `target_user_id` = the voucher
+code: `voucher.create`, `voucher.update`, `voucher.disable`.
+
 ### 4m. Accounting Mappings — `users/{userId}/accounting_mappings/{mappingId}`
 
 Accounting Center (Phase 1) saved category/type → accounting-account mappings.

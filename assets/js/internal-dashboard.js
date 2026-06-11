@@ -46,13 +46,22 @@ const PAYMENT_TONE = { verified: 'green', rejected: 'red', expired: 'red', under
 const ACCOUNT_TONE = { active: 'green', suspended: 'red', kyc_rejected: 'red', payment_verified: 'blue', kyc_approved: 'blue', payment_submitted: 'amber', payment_pending: 'amber', kyc_submitted: 'amber', kyc_incomplete: 'neutral', registered: 'neutral' };
 const ACCESS_TONE = { active: 'green', payment_verified: 'green', trial_active: 'blue', trial_expiring: 'amber', payment_submitted: 'amber', payment_pending: 'amber', trial_expired: 'red', suspended: 'red', trial_not_started: 'neutral' };
 
+// Voucher display maps
+const VOUCHER_PLAN_NAMES = { core: 'Core Ops', growth: 'Growth Engine', enterprise: 'Enterprise AI' };
+const VOUCHER_STATUS_TONE = { active: 'green', disabled: 'red', expired: 'neutral' };
+const REDEMPTION_STATUS_TONE = { reserved: 'amber', redeemed: 'green', cancelled: 'neutral', failed: 'red' };
+
 const state = {
     users: [],
     audit: [],
+    vouchers: [],
+    voucherRedemptions: [],
     loaded: false,
     loadError: false,
     activeTab: 'overview',
     drawerUserId: null,
+    // 'user' (review drawer) | 'voucher-create' | 'voucher-usage'
+    drawerMode: null,
     filters: { search: '', account: '', kyc: '', payment: '', access: '' }
 };
 
@@ -197,12 +206,16 @@ async function loadData() {
     state.loadError = false;
     renderLoading();
     try {
-        const [users, audit] = await Promise.all([
+        const [users, audit, vouchers, voucherRedemptions] = await Promise.all([
             ds.getInternalUsers({ limitCount: 200 }),
-            ds.getInternalAuditLogs(100).catch(() => [])
+            ds.getInternalAuditLogs(100).catch(() => []),
+            ds.getVoucherCodes().catch(() => []),
+            ds.getAllVoucherRedemptions({ limitCount: 1000 }).catch(() => [])
         ]);
         state.users = users || [];
         state.audit = audit || [];
+        state.vouchers = vouchers || [];
+        state.voucherRedemptions = voucherRedemptions || [];
         state.loaded = true;
         renderAll();
     } catch (err) {
@@ -231,10 +244,13 @@ function renderLoading() {
     $('kyc-tbody').innerHTML = shimmerRows(5);
     $('payment-tbody').innerHTML = shimmerRows(6);
     $('audit-tbody').innerHTML = shimmerRows(6);
-    ['users-state', 'kyc-state', 'payment-state', 'audit-state'].forEach(id => $(id).classList.add('hidden'));
-    $('overview-kpis').innerHTML = Array.from({ length: 4 }).map(() =>
+    $('vouchers-tbody').innerHTML = shimmerRows(9);
+    ['users-state', 'kyc-state', 'payment-state', 'audit-state', 'vouchers-state'].forEach(id => $(id).classList.add('hidden'));
+    const kpiShimmer = Array.from({ length: 4 }).map(() =>
         '<div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4"><div class="ishimmer h-3 w-20 mb-3"></div><div class="ishimmer h-6 w-12"></div></div>'
     ).join('');
+    $('overview-kpis').innerHTML = kpiShimmer;
+    $('voucher-kpis').innerHTML = kpiShimmer;
     $('overview-action-list').innerHTML = '<div class="px-5 py-4"><div class="ishimmer h-4 w-2/3"></div></div>';
 }
 
@@ -249,7 +265,7 @@ function stateBlock(message, sub) {
 }
 
 function renderError() {
-    const tbodies = { 'users-tbody': 'users-state', 'kyc-tbody': 'kyc-state', 'payment-tbody': 'payment-state', 'audit-tbody': 'audit-state' };
+    const tbodies = { 'users-tbody': 'users-state', 'kyc-tbody': 'kyc-state', 'payment-tbody': 'payment-state', 'audit-tbody': 'audit-state', 'vouchers-tbody': 'vouchers-state' };
     Object.entries(tbodies).forEach(([tb, st]) => {
         $(tb).innerHTML = '';
         const el = $(st);
@@ -257,6 +273,7 @@ function renderError() {
         el.innerHTML = stateBlock('Could not load internal data', 'Check your connection and try Refresh. If this persists, the internal index may need a backend sync.');
     });
     $('overview-kpis').innerHTML = '';
+    $('voucher-kpis').innerHTML = '';
     $('overview-action-list').innerHTML = stateBlock('Could not load internal data', 'Use Refresh to try again.');
 }
 
@@ -265,6 +282,7 @@ function renderAll() {
     renderUsersTab();
     renderKycTab();
     renderPaymentTab();
+    renderVouchersTab();
     renderAuditTab();
     renderTabCounts();
 }
@@ -499,7 +517,7 @@ function renderAuditTab() {
 
 function summarizeChange(before, after) {
     if (!after || typeof after !== 'object') return '—';
-    const keys = Object.keys(after).filter(k => ['account_status', 'kyc_status', 'payment_status'].includes(k));
+    const keys = Object.keys(after).filter(k => ['account_status', 'kyc_status', 'payment_status', 'status', 'discount_value'].includes(k));
     if (!keys.length) return '—';
     return keys.map(k => {
         const from = before && before[k] ? labelize(before[k]) : '—';
@@ -522,6 +540,361 @@ function setTabCount(id, n) {
 }
 
 // =============================================================================
+// Vouchers tab
+// =============================================================================
+function voucherDisplayStatus(v) {
+    if (v.status === 'active' && v.valid_until && toDate(v.valid_until) < new Date()) return 'expired';
+    return v.status || 'active';
+}
+
+function voucherValidityText(v) {
+    const from = v.valid_from ? fmtDate(v.valid_from) : null;
+    const until = v.valid_until ? fmtDate(v.valid_until) : null;
+    if (!from && !until) return 'Always';
+    if (from && until) return `${from} – ${until}`;
+    if (from) return `From ${from}`;
+    return `Until ${until}`;
+}
+
+function voucherPlansText(v) {
+    if (!Array.isArray(v.allowed_plan_ids) || !v.allowed_plan_ids.length) return 'All plans';
+    return v.allowed_plan_ids.map(id => VOUCHER_PLAN_NAMES[id] || id).join(', ');
+}
+
+function voucherFrequencyText(v) {
+    if (!Array.isArray(v.allowed_billing_frequencies) || !v.allowed_billing_frequencies.length
+        || v.allowed_billing_frequencies.length === 2) return 'Monthly & annual';
+    return v.allowed_billing_frequencies[0] === 'monthly' ? 'Monthly only' : 'Annual only';
+}
+
+function renderVouchersTab() {
+    // KPI cards — counted redemptions exclude cancelled ones.
+    const counted = state.voucherRedemptions.filter(r => r.status !== 'cancelled');
+    const now = Date.now();
+    const soonMs = 7 * 24 * 60 * 60 * 1000;
+    const activeCount = state.vouchers.filter(v => voucherDisplayStatus(v) === 'active').length;
+    const expiringSoon = state.vouchers.filter(v => {
+        if (voucherDisplayStatus(v) !== 'active' || !v.valid_until) return false;
+        const until = toDate(v.valid_until)?.getTime();
+        return until != null && until - now <= soonMs && until >= now;
+    }).length;
+    const discountGiven = counted.reduce((sum, r) => sum + (Number(r.discount_amount) || 0), 0);
+    const dot = { neutral: '#94A3B8', blue: '#1D4ED8', amber: '#D97706', green: '#16A34A', red: '#DC2626' };
+    const cards = [
+        { label: 'Active vouchers', value: String(activeCount), tone: 'green' },
+        { label: 'Total redemptions', value: String(counted.length), tone: 'blue' },
+        { label: 'Discount given', value: fmtMoney(discountGiven), tone: 'neutral' },
+        { label: 'Expiring soon', value: String(expiringSoon), tone: 'amber' }
+    ];
+    $('voucher-kpis').innerHTML = cards.map(c => `
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="w-1.5 h-1.5 rounded-full" style="background:${dot[c.tone]}"></span>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500">${escapeHtml(c.label)}</span>
+            </div>
+            <div class="mono text-[24px] font-semibold leading-none">${escapeHtml(c.value)}</div>
+        </div>`).join('');
+
+    const tbody = $('vouchers-tbody');
+    const stateEl = $('vouchers-state');
+    if (!state.vouchers.length) {
+        tbody.innerHTML = '';
+        stateEl.classList.remove('hidden');
+        stateEl.innerHTML = stateBlock('No voucher codes yet', 'Create a voucher to offer a percentage discount at checkout.');
+        return;
+    }
+    stateEl.classList.add('hidden');
+    tbody.innerHTML = state.vouchers.map(v => {
+        const display = voucherDisplayStatus(v);
+        const usage = `${v.redemption_count || 0} / ${v.max_redemptions == null ? '∞' : v.max_redemptions}`;
+        return `<tr class="hover:bg-gray-50/60">
+            <td class="px-5 py-3.5"><span class="vcode text-gray-900">${escapeHtml(v.code)}</span></td>
+            <td class="px-5 py-3.5 mono text-[13px] text-gray-700">${escapeHtml(String(v.discount_value))}%</td>
+            <td class="px-5 py-3.5">${badge(display, VOUCHER_STATUS_TONE)}</td>
+            <td class="px-5 py-3.5 mono text-[13px] text-gray-700">${escapeHtml(usage)}</td>
+            <td class="px-5 py-3.5 text-[13px] text-gray-600 whitespace-nowrap">${escapeHtml(voucherValidityText(v))}</td>
+            <td class="px-5 py-3.5 text-[13px] text-gray-600 max-w-[180px] truncate">${escapeHtml(voucherPlansText(v))}</td>
+            <td class="px-5 py-3.5 text-[13px] text-gray-600">${escapeHtml(v.created_by || '—')}</td>
+            <td class="px-5 py-3.5 text-[13px] text-gray-500">${fmtDate(v.created_at)}</td>
+            <td class="px-5 py-3.5 text-right whitespace-nowrap">
+                <button class="text-[13px] font-medium text-gray-500 hover:text-gray-900" data-voucher-copy="${escapeHtml(v.code)}">Copy</button>
+                <button class="text-[13px] font-semibold text-[#EA580C] hover:underline ml-3" data-voucher-usage="${escapeHtml(v.code)}">Usage</button>
+                ${v.status === 'active'
+                    ? `<button class="text-[13px] font-semibold text-red-600 hover:underline ml-3" data-voucher-disable="${escapeHtml(v.code)}">Disable</button>`
+                    : ''}
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+// ----- Create voucher drawer -----
+function generateVoucherCode() {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => alphabet[b % alphabet.length]).join('');
+}
+
+function openVoucherCreateDrawer() {
+    openDrawerShell('Create voucher', 'voucher-create');
+    const todayKey = window.FluxyDateRangePicker?.getDayKey?.() || '';
+    const dates = { from: null, until: null };
+
+    $('internal-drawer-body').innerHTML = `
+        <div class="flex flex-col gap-4">
+            <div>
+                <label class="vform-label" for="voucher-code-input">Voucher code</label>
+                <div class="flex gap-2">
+                    <input id="voucher-code-input" class="vform-input vcode" style="text-transform:uppercase" maxlength="32"
+                        placeholder="LAUNCH20" autocomplete="off" spellcheck="false">
+                    <button type="button" id="voucher-generate"
+                        class="flex-shrink-0 text-[13px] font-medium text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg px-3 hover:bg-gray-50 transition-colors">Generate</button>
+                </div>
+                <p class="text-[11px] text-gray-400 mt-1.5">4–32 characters: A–Z, 0–9, hyphen, underscore.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="vform-label" for="voucher-discount-input">Discount %</label>
+                    <input id="voucher-discount-input" class="vform-input mono" type="number" min="1" max="100" step="1" placeholder="20">
+                </div>
+                <div>
+                    <label class="vform-label" for="voucher-max-input">Max redemptions</label>
+                    <input id="voucher-max-input" class="vform-input mono" type="number" min="1" step="1" placeholder="Unlimited">
+                </div>
+            </div>
+            <div>
+                <label class="vform-check"><input type="checkbox" id="voucher-from-toggle"> Set start date</label>
+                <div id="voucher-from-picker" class="hidden mt-1"></div>
+            </div>
+            <div>
+                <label class="vform-check"><input type="checkbox" id="voucher-until-toggle"> Set expiry date</label>
+                <div id="voucher-until-picker" class="hidden mt-1"></div>
+                <p class="text-[11px] text-amber-600 mt-1.5" id="voucher-unlimited-warning">No expiry and unlimited redemptions can create uncontrolled discounts.</p>
+            </div>
+            <div>
+                <span class="vform-label">Applies to plans</span>
+                <label class="vform-check"><input type="checkbox" id="voucher-plan-all" checked> All plans</label>
+                <div id="voucher-plan-options" class="hidden pl-1">
+                    <label class="vform-check"><input type="checkbox" value="core" data-voucher-plan> Core Ops</label>
+                    <label class="vform-check"><input type="checkbox" value="growth" data-voucher-plan> Growth Engine</label>
+                    <label class="vform-check"><input type="checkbox" value="enterprise" data-voucher-plan> Enterprise AI</label>
+                </div>
+            </div>
+            <div>
+                <span class="vform-label">Applies to billing frequency</span>
+                <label class="vform-check"><input type="radio" name="voucher-frequency" value="" checked> Monthly &amp; annual</label>
+                <label class="vform-check"><input type="radio" name="voucher-frequency" value="monthly"> Monthly only</label>
+                <label class="vform-check"><input type="radio" name="voucher-frequency" value="annually"> Annual only</label>
+            </div>
+            <div>
+                <label class="vform-label" for="voucher-notes-input">Internal note (optional)</label>
+                <textarea id="voucher-notes-input" class="internal-note-input" rows="2" style="margin-top:0" placeholder="Campaign or reason — never shown to users"></textarea>
+            </div>
+            <p id="voucher-form-error" class="hidden text-[12px] text-red-600 font-medium"></p>
+            <button type="button" id="voucher-create-submit"
+                class="w-full bg-gray-900 hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-[14px] py-2.5 rounded-lg transition-colors active:scale-[.99]">Create voucher</button>
+        </div>`;
+
+    // Validity dates use the shared FluxyDateRangePicker (single-date mode, far
+    // maxDate so future expiry is selectable — same approach as bill due dates).
+    const mountVoucherDatePicker = (hostId, key) => {
+        dates[key] = todayKey;
+        window.FluxyDateRangePicker?.mount?.(`#${hostId}`, {
+            mode: 'single',
+            start: todayKey,
+            end: todayKey,
+            defaultStart: todayKey,
+            defaultEnd: todayKey,
+            maxDate: '2099-12-31',
+            onChange: ({ start }) => { dates[key] = start; }
+        });
+    };
+    const wireDateToggle = (toggleId, hostId, key) => {
+        let mounted = false;
+        $(toggleId).addEventListener('change', (e) => {
+            const on = e.target.checked;
+            $(hostId).classList.toggle('hidden', !on);
+            if (on && !mounted) { mountVoucherDatePicker(hostId, key); mounted = true; }
+            if (!on) dates[key] = null;
+            if (on && mounted && dates[key] == null) dates[key] = todayKey;
+        });
+    };
+    wireDateToggle('voucher-from-toggle', 'voucher-from-picker', 'from');
+    wireDateToggle('voucher-until-toggle', 'voucher-until-picker', 'until');
+
+    $('voucher-generate').addEventListener('click', () => {
+        $('voucher-code-input').value = generateVoucherCode();
+    });
+    $('voucher-code-input').addEventListener('input', (e) => {
+        e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+    });
+    $('voucher-plan-all').addEventListener('change', (e) => {
+        $('voucher-plan-options').classList.toggle('hidden', e.target.checked);
+    });
+    $('voucher-create-submit').addEventListener('click', () => submitVoucherCreate(dates));
+}
+
+// Day key ('YYYY-MM-DD') → local Date. Start dates use local midnight, expiry
+// dates the local end of day, so "valid until June 30" covers the whole day in
+// the admin's timezone (never UTC-midnight drift).
+function dayKeyToLocalDate(dayKey, endOfDay) {
+    if (!dayKey) return null;
+    const [y, m, d] = dayKey.split('-').map(Number);
+    return endOfDay ? new Date(y, m - 1, d, 23, 59, 59, 999) : new Date(y, m - 1, d, 0, 0, 0, 0);
+}
+
+async function submitVoucherCreate(dates) {
+    const errorEl = $('voucher-form-error');
+    const showError = (msg) => { errorEl.textContent = msg; errorEl.classList.remove('hidden'); };
+    errorEl.classList.add('hidden');
+
+    const code = ds.normalizeVoucherCode($('voucher-code-input').value);
+    if (!code) { showError('Enter a valid code: 4–32 characters, A–Z, 0–9, hyphen, underscore.'); return; }
+    const discountRaw = $('voucher-discount-input').value.trim();
+    const discountValue = Number(discountRaw);
+    if (!discountRaw || !Number.isInteger(discountValue) || discountValue < 1 || discountValue > 100) {
+        showError('Discount must be a whole number from 1 to 100.');
+        return;
+    }
+    const maxRaw = $('voucher-max-input').value.trim();
+    const maxRedemptions = maxRaw === '' ? null : Number(maxRaw);
+    if (maxRedemptions !== null && (!Number.isInteger(maxRedemptions) || maxRedemptions < 1)) {
+        showError('Max redemptions must be empty (unlimited) or a positive whole number.');
+        return;
+    }
+    const validFrom = $('voucher-from-toggle').checked ? dayKeyToLocalDate(dates.from, false) : null;
+    const validUntil = $('voucher-until-toggle').checked ? dayKeyToLocalDate(dates.until, true) : null;
+    if (validFrom && validUntil && validUntil <= validFrom) {
+        showError('Expiry date must be after the start date.');
+        return;
+    }
+    let allowedPlanIds = null;
+    if (!$('voucher-plan-all').checked) {
+        allowedPlanIds = Array.from(document.querySelectorAll('[data-voucher-plan]:checked')).map(el => el.value);
+        if (!allowedPlanIds.length) { showError('Select at least one plan, or choose All plans.'); return; }
+    }
+    const frequencyValue = document.querySelector('input[name="voucher-frequency"]:checked')?.value || '';
+    const allowedFrequencies = frequencyValue ? [frequencyValue] : null;
+
+    if (discountValue === 100) {
+        const ok = await window.showConfirmDialog({
+            title: 'Create a 100% discount voucher?',
+            body: `<strong>${escapeHtml(code)}</strong> will make checkout completely free for every redemption.`,
+            confirmLabel: 'Create 100% voucher',
+            tone: 'danger'
+        });
+        if (!ok) return;
+    } else if (discountValue > 50) {
+        const ok = await window.showConfirmDialog({
+            title: `Create a ${discountValue}% discount voucher?`,
+            body: `<strong>${escapeHtml(code)}</strong> discounts more than half the plan price. Double-check the percentage before creating it.`,
+            confirmLabel: 'Create voucher'
+        });
+        if (!ok) return;
+    }
+
+    const submitBtn = $('voucher-create-submit');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating...';
+    try {
+        await ds.createVoucherCode({
+            code,
+            discount_value: discountValue,
+            max_redemptions: maxRedemptions,
+            valid_from: validFrom,
+            valid_until: validUntil,
+            allowed_plan_ids: allowedPlanIds,
+            allowed_billing_frequencies: allowedFrequencies,
+            notes: $('voucher-notes-input').value,
+            created_by: ACTOR_USERNAME
+        }, { actor_username: ACTOR_USERNAME });
+        window.showToast(`Voucher ${code} created`, 'success');
+        closeDrawer();
+        await loadData();
+        switchTab('vouchers');
+    } catch (err) {
+        const copy = {
+            'voucher-exists': 'This voucher code already exists. Pick a different code.',
+            'invalid-voucher-code': 'Enter a valid code: 4–32 characters, A–Z, 0–9, hyphen, underscore.',
+            'invalid-discount-value': 'Discount must be a whole number from 1 to 100.',
+            'invalid-max-redemptions': 'Max redemptions must be empty (unlimited) or a positive whole number.',
+            'invalid-date-range': 'Expiry date must be after the start date.'
+        }[err?.message];
+        showError(copy || 'Could not create the voucher. Please try again.');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create voucher';
+    }
+}
+
+// ----- Disable + usage -----
+async function disableVoucher(code) {
+    const v = state.vouchers.find(x => x.code === code);
+    if (!v) return;
+    const ok = await window.showConfirmDialog({
+        title: 'Disable voucher?',
+        body: `<strong>${escapeHtml(code)}</strong> will stop working at checkout immediately. Past redemptions are kept.`,
+        confirmLabel: 'Disable voucher',
+        tone: 'danger'
+    });
+    if (!ok) return;
+    try {
+        await ds.disableVoucherCode(code, null, { actor_username: ACTOR_USERNAME });
+        window.showToast(`Voucher ${code} disabled`, 'success');
+        await loadData();
+        switchTab('vouchers');
+    } catch (err) {
+        console.error('[internal] voucher disable failed', err);
+        window.showToast('Could not disable the voucher. Please try again.', 'error');
+    }
+}
+
+function openVoucherUsageDrawer(code) {
+    const v = state.vouchers.find(x => x.code === code);
+    if (!v) return;
+    openDrawerShell(`Voucher ${code}`, 'voucher-usage');
+    const redemptions = state.voucherRedemptions.filter(r => r.voucher_id === code);
+    const usage = `${v.redemption_count || 0} / ${v.max_redemptions == null ? '∞' : v.max_redemptions}`;
+
+    const summary = `<div class="idrawer-section">
+        <h3 class="text-[12px] font-bold uppercase tracking-wider text-gray-500 mb-1">Voucher</h3>
+        ${row('Code', `<span class="vcode">${escapeHtml(v.code)}</span>`)}
+        ${row('Discount', `${escapeHtml(String(v.discount_value))}%`, true)}
+        ${row('Status', badge(voucherDisplayStatus(v), VOUCHER_STATUS_TONE))}
+        ${row('Usage', escapeHtml(usage), true)}
+        ${row('Validity', escapeHtml(voucherValidityText(v)))}
+        ${row('Plans', escapeHtml(voucherPlansText(v)))}
+        ${row('Billing frequency', escapeHtml(voucherFrequencyText(v)))}
+        ${row('Created by', escapeHtml(v.created_by || '—'))}
+        ${row('Created', fmtDate(v.created_at))}
+        ${v.notes ? row('Internal note', escapeHtml(v.notes)) : ''}
+    </div>`;
+
+    const list = redemptions.length
+        ? `<div class="flex flex-col">${redemptions.map(r => {
+            const user = findUser(r.user_id);
+            const name = user ? userDisplayName(user) : (r.user_id || '—');
+            return `<div class="flex items-center justify-between gap-3 py-2.5 border-b border-gray-100">
+                <div class="min-w-0">
+                    <div class="text-[13px] font-medium text-gray-900 truncate max-w-[200px]">${escapeHtml(name)}</div>
+                    <div class="text-[12px] text-gray-500">${escapeHtml(VOUCHER_PLAN_NAMES[r.plan_id] || r.plan_id || '—')} · ${escapeHtml(r.billing_frequency === 'annually' ? 'Annual' : 'Monthly')} · ${fmtDateTime(r.created_at)}</div>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="mono text-[13px] text-gray-700">−${fmtMoney(r.discount_amount)}</span>
+                    ${badge(r.status, REDEMPTION_STATUS_TONE)}
+                </div>
+            </div>`;
+        }).join('')}</div>`
+        : stateBlock('No redemptions yet', 'Checkout redemptions for this voucher will appear here.');
+
+    $('internal-drawer-body').innerHTML = `${summary}
+        <div class="idrawer-section">
+            <h3 class="text-[12px] font-bold uppercase tracking-wider text-gray-500 mb-1">Redemptions</h3>
+            ${list}
+        </div>`;
+}
+
+// =============================================================================
 // Tabs
 // =============================================================================
 function switchTab(tab) {
@@ -534,21 +907,30 @@ function switchTab(tab) {
 // =============================================================================
 // Review drawer
 // =============================================================================
-function openDrawer(userId) {
-    const u = findUser(userId);
-    if (!u) return;
-    state.drawerUserId = userId;
-    renderDrawer(u);
+// Shared slide-in shell — the user review drawer and the voucher drawers all
+// reuse #internal-drawer; the mode + title distinguish them.
+function openDrawerShell(title, mode) {
+    state.drawerMode = mode;
+    $('internal-drawer-title').textContent = title;
     const drawer = $('internal-drawer');
     drawer.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
     requestAnimationFrame(() => $('internal-drawer-panel').classList.remove('translate-x-full'));
 }
 
+function openDrawer(userId) {
+    const u = findUser(userId);
+    if (!u) return;
+    state.drawerUserId = userId;
+    renderDrawer(u);
+    openDrawerShell('Review user', 'user');
+}
+
 function closeDrawer() {
     $('internal-drawer-panel').classList.add('translate-x-full');
     document.body.classList.remove('overflow-hidden');
     state.drawerUserId = null;
+    state.drawerMode = null;
     setTimeout(() => $('internal-drawer').classList.add('hidden'), 300);
 }
 
@@ -813,6 +1195,11 @@ async function runAction(action, userId) {
             after: transition.after,
             reason: note || null
         });
+        // A verified payment settles the user's reserved voucher redemptions.
+        // Best-effort: a redemption-marking failure never blocks the verify.
+        if (action === 'payment.verify') {
+            try { await ds.markVoucherRedemptionsRedeemed(userId); } catch (_) { /* non-critical */ }
+        }
         window.showToast(`${cfg.label} done`, 'success');
         await loadData();
         if (state.drawerUserId === userId) {
@@ -848,12 +1235,15 @@ function initConsoleEvents() {
     fPayment.addEventListener('change', () => { state.filters.payment = fPayment.value; renderUsersTab(); });
     $('users-search').addEventListener('input', (e) => { state.filters.search = e.target.value; renderUsersTab(); });
 
+    // Vouchers
+    $('voucher-create-btn').addEventListener('click', openVoucherCreateDrawer);
+
     // Drawer
     $('internal-drawer-close').addEventListener('click', closeDrawer);
     $('internal-drawer-overlay').addEventListener('click', closeDrawer);
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.drawerUserId) closeDrawer(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && (state.drawerUserId || state.drawerMode)) closeDrawer(); });
 
-    // Delegated clicks: Review, Copy UID, drawer actions
+    // Delegated clicks: Review, Copy UID, voucher actions, drawer actions
     document.addEventListener('click', (e) => {
         const reviewBtn = e.target.closest('[data-review]');
         if (reviewBtn) { openDrawer(reviewBtn.dataset.review); return; }
@@ -864,6 +1254,17 @@ function initConsoleEvents() {
                 .catch(() => window.showToast('Could not copy UID', 'error'));
             return;
         }
+        const voucherCopyBtn = e.target.closest('[data-voucher-copy]');
+        if (voucherCopyBtn) {
+            navigator.clipboard?.writeText(voucherCopyBtn.dataset.voucherCopy)
+                .then(() => window.showToast('Voucher code copied', 'success'))
+                .catch(() => window.showToast('Could not copy the code', 'error'));
+            return;
+        }
+        const voucherUsageBtn = e.target.closest('[data-voucher-usage]');
+        if (voucherUsageBtn) { openVoucherUsageDrawer(voucherUsageBtn.dataset.voucherUsage); return; }
+        const voucherDisableBtn = e.target.closest('[data-voucher-disable]');
+        if (voucherDisableBtn) { disableVoucher(voucherDisableBtn.dataset.voucherDisable); return; }
         const actBtn = e.target.closest('[data-act]');
         if (actBtn && !actBtn.disabled && state.drawerUserId) {
             runAction(actBtn.dataset.act, state.drawerUserId);

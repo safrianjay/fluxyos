@@ -15,6 +15,18 @@
     <style>
         body { font-family: 'Inter', sans-serif; background: #F9FAFB; color: #0B0F19; }
         .mono { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+        /* Voucher CODES only (a code, not an amount — amounts stay .mono/Inter). */
+        .vcode { font-family: 'Fira Code', monospace; font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+
+        /* Voucher create drawer form */
+        .vform-label { display: block; font-size: 12px; font-weight: 500; color: #4B5563; margin-bottom: 6px; }
+        .vform-input {
+            width: 100%; border: 1px solid #E2E8F0; border-radius: 10px; padding: 9px 12px;
+            font-size: 14px; font-family: 'Inter', sans-serif; color: #0B0F19; box-sizing: border-box; background: #fff;
+        }
+        .vform-input:focus { outline: none; border-color: #EA580C; box-shadow: 0 0 0 3px rgba(234,88,12,.12); }
+        .vform-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #0B0F19; padding: 4px 0; cursor: pointer; }
+        .vform-check input { accent-color: #EA580C; width: 15px; height: 15px; }
 
         /* Status pills — semantic colors only (no orange backgrounds). */
         .ibadge {
@@ -142,6 +154,7 @@
                 <button class="itab" data-tab="users">Users</button>
                 <button class="itab" data-tab="kyc">KYC Review<span id="tab-count-kyc" class="itab-count hidden">0</span></button>
                 <button class="itab" data-tab="payment">Payment Review<span id="tab-count-payment" class="itab-count hidden">0</span></button>
+                <button class="itab" data-tab="vouchers">Vouchers</button>
                 <button class="itab" data-tab="audit">Audit</button>
             </div>
         </nav>
@@ -252,6 +265,39 @@
                 </div>
             </section>
 
+            <!-- ===== VOUCHERS ===== -->
+            <section id="panel-vouchers" class="itab-panel hidden">
+                <div class="flex items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h2 class="text-[16px] font-semibold leading-tight">Voucher codes</h2>
+                        <p class="text-[12px] text-gray-500">Create and manage checkout discounts for FluxyOS plans</p>
+                    </div>
+                    <button id="voucher-create-btn" class="bg-gray-900 hover:bg-gray-800 text-white text-[13px] font-semibold px-4 py-2.5 rounded-lg transition-colors active:scale-[.99] flex-shrink-0">Create voucher</button>
+                </div>
+                <div id="voucher-kpis" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"></div>
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Code</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Discount</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Usage</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Validity</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Plans</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Created by</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Created</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vouchers-tbody" class="divide-y divide-gray-100 text-[14px]"></tbody>
+                        </table>
+                    </div>
+                    <div id="vouchers-state" class="hidden"></div>
+                </div>
+            </section>
+
             <!-- ===== AUDIT ===== -->
             <section id="panel-audit" class="itab-panel hidden">
                 <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
@@ -285,7 +331,7 @@
         <div id="internal-drawer-overlay" class="absolute inset-0 bg-black/40"></div>
         <div id="internal-drawer-panel" class="absolute top-0 right-0 h-full w-full max-w-[440px] bg-white shadow-2xl flex flex-col translate-x-full">
             <div class="flex items-center justify-between px-5 h-16 border-b border-gray-200 flex-shrink-0">
-                <h2 class="text-[16px] font-bold">Review user</h2>
+                <h2 class="text-[16px] font-bold" id="internal-drawer-title">Review user</h2>
                 <button id="internal-drawer-close" class="text-gray-400 hover:text-gray-900 p-1 rounded-lg hover:bg-gray-50">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
@@ -297,6 +343,8 @@
     <!-- Shared dialog / toast helpers (classic script, must load before the module). -->
     <script src="assets/js/shared-dashboard.js"></script>
     <script src="assets/js/fluxy-select.js"></script>
+    <!-- Shared date picker (voucher validity dates in the create drawer). -->
+    <script src="assets/js/date-range-picker.js"></script>
     <script type="module" src="assets/js/internal-dashboard.js"></script>
 </body>
 </html>

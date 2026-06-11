@@ -36,6 +36,7 @@
                 <div class="price-breakdown">
                     <div class="breakdown-row"><span>Plan subtotal</span><span id="subtotal"></span></div>
                     <div class="breakdown-row"><span>Billing discount</span><span id="discount"></span></div>
+                    <div class="breakdown-row hidden" id="voucher-row"><span id="voucher-row-label">Voucher</span><span id="voucher-row-amount" class="voucher-row-amount"></span></div>
                     <div class="breakdown-row"><span>Estimated PPN</span><span id="tax"></span></div>
                     <div class="breakdown-row"><strong>Total due today</strong><strong id="total-due"></strong></div>
                 </div>
@@ -63,6 +64,24 @@
                             <div class="strong"><span id="annual-label"></span><span class="save-badge">Save 20%</span></div>
                         </button>
                     </div>
+                </section>
+                <section class="section">
+                    <h2 class="section-title">Voucher code</h2>
+                    <div class="voucher-input-row" id="voucher-input-row">
+                        <input id="voucher-input" class="voucher-input" type="text" placeholder="ENTER CODE"
+                               autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32"
+                               aria-label="Voucher code">
+                        <button class="voucher-apply" type="button" id="voucher-apply">Apply</button>
+                    </div>
+                    <div id="voucher-applied" class="voucher-applied hidden">
+                        <div class="voucher-applied-main">
+                            <span class="voucher-applied-code" id="voucher-applied-code"></span>
+                            <span class="voucher-applied-detail" id="voucher-applied-detail"></span>
+                        </div>
+                        <button class="voucher-remove" type="button" id="voucher-remove">Remove</button>
+                    </div>
+                    <p id="voucher-error" class="voucher-error hidden" role="alert"></p>
+                    <p id="voucher-success" class="voucher-success hidden" role="status"></p>
                 </section>
                 <section class="section">
                     <h2 class="section-title">Payment method</h2>

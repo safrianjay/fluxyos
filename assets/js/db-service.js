@@ -1,4 +1,4 @@
-import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, doc, Timestamp, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
@@ -2557,6 +2557,265 @@ class DataService {
         return payload;
     }
 
+    // ===== Voucher codes (checkout discounts; internal-console managed) =====
+    // Voucher docs live at voucher_codes/{CODE} (doc id == normalized uppercase
+    // code). Client-side validation here is UX only — the binding price check
+    // happens in firestore.rules at payment-request creation, which re-reads
+    // the voucher doc and recomputes the discount itself.
+
+    _voucherCodeDoc(code) {
+        return doc(this.db, `voucher_codes/${code}`);
+    }
+
+    _voucherRegistryDoc() {
+        return doc(this.db, 'voucher_code_index/registry');
+    }
+
+    _voucherRedemptionsCol() {
+        return collection(this.db, 'voucher_redemptions');
+    }
+
+    normalizeVoucherCode(value) {
+        const clean = String(value ?? '').trim().toUpperCase();
+        return /^[A-Z0-9_-]{4,32}$/.test(clean) ? clean : null;
+    }
+
+    // Returns null when the voucher is usable for the selection, otherwise one
+    // of: invalid | disabled | expired | not-started | usage-limit |
+    // plan-mismatch | frequency-mismatch.
+    _assessVoucherEligibility(voucher, { planId, billingFrequency, now = new Date() } = {}) {
+        if (!voucher || voucher.discount_type !== 'percentage') return 'invalid';
+        if (!Number.isInteger(voucher.discount_value) || voucher.discount_value < 1 || voucher.discount_value > 100) return 'invalid';
+        if (voucher.status === 'disabled') return 'disabled';
+        if (voucher.status === 'expired') return 'expired';
+        if (voucher.status !== 'active') return 'invalid';
+        if (voucher.valid_from && typeof voucher.valid_from.toDate === 'function' && voucher.valid_from.toDate() > now) return 'not-started';
+        if (voucher.valid_until && typeof voucher.valid_until.toDate === 'function' && voucher.valid_until.toDate() < now) return 'expired';
+        if (Array.isArray(voucher.allowed_plan_ids) && !voucher.allowed_plan_ids.includes(planId)) return 'plan-mismatch';
+        if (Array.isArray(voucher.allowed_billing_frequencies) && !voucher.allowed_billing_frequencies.includes(billingFrequency)) return 'frequency-mismatch';
+        if (voucher.max_redemptions != null && (voucher.redemption_count || 0) >= voucher.max_redemptions) return 'usage-limit';
+        return null;
+    }
+
+    async getVoucherCode(code) {
+        const normalized = this.normalizeVoucherCode(code);
+        if (!normalized) return null;
+        const snap = await getDoc(this._voucherCodeDoc(normalized));
+        return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    }
+
+    // Checkout apply-time validation (UX). Returns the computed amounts so the
+    // summary can render; the same math is re-enforced by rules on submit.
+    async validateVoucherCode({ code, planId, billingFrequency } = {}) {
+        const normalized = this.normalizeVoucherCode(code);
+        if (!normalized) return { valid: false, reason: 'invalid' };
+        const voucher = await this.getVoucherCode(normalized);
+        if (!voucher) return { valid: false, reason: 'invalid' };
+        const reason = this._assessVoucherEligibility(voucher, { planId, billingFrequency });
+        if (reason) return { valid: false, reason };
+        const calculation = calculateBilling(planId, billingFrequency, voucher);
+        return {
+            valid: true,
+            voucher,
+            code: normalized,
+            discountPercent: voucher.discount_value,
+            subtotalAmount: calculation.subtotalAmount,
+            discountAmount: calculation.voucherDiscountAmount,
+            taxAmount: calculation.estimatedTaxAmount,
+            totalAmount: calculation.totalAmount
+        };
+    }
+
+    // Internal console list. voucher_codes denies `list` queries, so codes are
+    // looked up through the registry doc and fanned out to per-code gets.
+    async getVoucherCodes() {
+        const registrySnap = await getDoc(this._voucherRegistryDoc());
+        const codes = registrySnap.exists() && Array.isArray(registrySnap.data().codes)
+            ? registrySnap.data().codes
+            : [];
+        if (!codes.length) return [];
+        const snaps = await Promise.all(codes.map((code) =>
+            getDoc(this._voucherCodeDoc(code)).catch(() => null)
+        ));
+        return snaps
+            .filter((snap) => snap && snap.exists())
+            .map((snap) => ({ id: snap.id, ...snap.data() }))
+            .sort((a, b) => (b.created_at?.toMillis?.() || 0) - (a.created_at?.toMillis?.() || 0));
+    }
+
+    // Internal console create. Voucher doc + registry entry + audit log commit
+    // atomically (same pattern as updateInternalUserStatus).
+    async createVoucherCode(data = {}, auditContext = {}) {
+        const code = this.normalizeVoucherCode(data.code);
+        if (!code) throw new Error('invalid-voucher-code');
+        const discountValue = Number(data.discount_value);
+        if (!Number.isInteger(discountValue) || discountValue < 1 || discountValue > 100) throw new Error('invalid-discount-value');
+        const maxRedemptions = data.max_redemptions == null || data.max_redemptions === ''
+            ? null
+            : Number(data.max_redemptions);
+        if (maxRedemptions !== null && (!Number.isInteger(maxRedemptions) || maxRedemptions < 1 || maxRedemptions > 100000)) {
+            throw new Error('invalid-max-redemptions');
+        }
+        const validFrom = data.valid_from instanceof Date ? Timestamp.fromDate(data.valid_from) : null;
+        const validUntil = data.valid_until instanceof Date ? Timestamp.fromDate(data.valid_until) : null;
+        if (validFrom && validUntil && validUntil.toMillis() <= validFrom.toMillis()) throw new Error('invalid-date-range');
+        const allowedPlanIds = Array.isArray(data.allowed_plan_ids) && data.allowed_plan_ids.length
+            ? data.allowed_plan_ids.filter((id) => ['core', 'growth', 'enterprise'].includes(id))
+            : null;
+        if (Array.isArray(data.allowed_plan_ids) && data.allowed_plan_ids.length && (!allowedPlanIds || !allowedPlanIds.length)) {
+            throw new Error('invalid-allowed-plans');
+        }
+        const allowedFrequencies = Array.isArray(data.allowed_billing_frequencies) && data.allowed_billing_frequencies.length
+            ? data.allowed_billing_frequencies.filter((freq) => ['monthly', 'annually'].includes(freq))
+            : null;
+        if (Array.isArray(data.allowed_billing_frequencies) && data.allowed_billing_frequencies.length
+            && (!allowedFrequencies || !allowedFrequencies.length)) {
+            throw new Error('invalid-allowed-frequencies');
+        }
+        const existing = await getDoc(this._voucherCodeDoc(code));
+        if (existing.exists()) throw new Error('voucher-exists');
+
+        const createdBy = this._stringOrDefault(data.created_by, 'fluxyos admin', 80);
+        const voucherPayload = {
+            code,
+            discount_type: 'percentage',
+            discount_value: discountValue,
+            status: 'active',
+            max_redemptions: maxRedemptions,
+            redemption_count: 0,
+            valid_from: validFrom,
+            valid_until: validUntil,
+            allowed_plan_ids: allowedPlanIds,
+            allowed_billing_frequencies: allowedFrequencies,
+            created_by: createdBy,
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp(),
+            disabled_at: null,
+            disabled_by: null,
+            notes: this._nullableString(data.notes, 500)
+        };
+        const batch = writeBatch(this.db);
+        batch.set(this._voucherCodeDoc(code), voucherPayload);
+        batch.set(this._voucherRegistryDoc(), {
+            codes: arrayUnion(code),
+            updated_at: serverTimestamp()
+        }, { merge: true });
+        batch.set(doc(collection(this.db, 'internal_audit_logs')), {
+            actor_uid: null,
+            actor_username: this._stringOrDefault(auditContext.actor_username, 'fluxyos admin', 80),
+            actor_role: 'internal_admin',
+            action: 'voucher.create',
+            target_user_id: code,
+            before: null,
+            after: {
+                code,
+                discount_value: discountValue,
+                max_redemptions: maxRedemptions,
+                status: 'active'
+            },
+            reason: this._nullableString(auditContext.reason, 500),
+            source: 'internal_dashboard',
+            created_at: serverTimestamp()
+        });
+        await batch.commit();
+        return { id: code, ...voucherPayload };
+    }
+
+    // Internal console edit. Only post-create-safe fields are editable; code,
+    // discount percent, and the redemption counter stay immutable (rules too).
+    async updateVoucherCode(code, patch = {}, auditContext = {}) {
+        const normalized = this.normalizeVoucherCode(code);
+        if (!normalized) throw new Error('invalid-voucher-code');
+        const existing = await this.getVoucherCode(normalized);
+        if (!existing) throw new Error('voucher-not-found');
+        const updatePayload = this._cleanDefined({
+            notes: 'notes' in patch ? this._nullableString(patch.notes, 500) : undefined,
+            valid_until: 'valid_until' in patch
+                ? (patch.valid_until instanceof Date ? Timestamp.fromDate(patch.valid_until) : null)
+                : undefined,
+            max_redemptions: 'max_redemptions' in patch
+                ? (patch.max_redemptions == null ? null : Number(patch.max_redemptions))
+                : undefined,
+            updated_at: serverTimestamp()
+        });
+        const batch = writeBatch(this.db);
+        batch.update(this._voucherCodeDoc(normalized), updatePayload);
+        batch.set(doc(collection(this.db, 'internal_audit_logs')), {
+            actor_uid: null,
+            actor_username: this._stringOrDefault(auditContext.actor_username, 'fluxyos admin', 80),
+            actor_role: 'internal_admin',
+            action: 'voucher.update',
+            target_user_id: normalized,
+            before: auditContext.before || null,
+            after: auditContext.after || null,
+            reason: this._nullableString(auditContext.reason, 500),
+            source: 'internal_dashboard',
+            created_at: serverTimestamp()
+        });
+        await batch.commit();
+        return updatePayload;
+    }
+
+    async disableVoucherCode(code, reason = null, auditContext = {}) {
+        const normalized = this.normalizeVoucherCode(code);
+        if (!normalized) throw new Error('invalid-voucher-code');
+        const existing = await this.getVoucherCode(normalized);
+        if (!existing) throw new Error('voucher-not-found');
+        if (existing.status === 'disabled') return existing;
+        const disabledBy = this._stringOrDefault(auditContext.actor_username, 'fluxyos admin', 80);
+        const batch = writeBatch(this.db);
+        batch.update(this._voucherCodeDoc(normalized), {
+            status: 'disabled',
+            disabled_at: serverTimestamp(),
+            disabled_by: disabledBy,
+            updated_at: serverTimestamp()
+        });
+        batch.set(doc(collection(this.db, 'internal_audit_logs')), {
+            actor_uid: null,
+            actor_username: disabledBy,
+            actor_role: 'internal_admin',
+            action: 'voucher.disable',
+            target_user_id: normalized,
+            before: { status: existing.status },
+            after: { status: 'disabled' },
+            reason: this._nullableString(reason, 500),
+            source: 'internal_dashboard',
+            created_at: serverTimestamp()
+        });
+        await batch.commit();
+        return { ...existing, status: 'disabled' };
+    }
+
+    async getVoucherRedemptions(voucherId) {
+        const normalized = this.normalizeVoucherCode(voucherId);
+        if (!normalized) return [];
+        const snapshot = await getDocs(query(this._voucherRedemptionsCol(), where('voucher_id', '==', normalized)));
+        return snapshot.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.created_at?.toMillis?.() || 0) - (a.created_at?.toMillis?.() || 0));
+    }
+
+    async getAllVoucherRedemptions({ limitCount = 1000 } = {}) {
+        const snapshot = await getDocs(query(this._voucherRedemptionsCol(), orderBy('created_at', 'desc'), limit(limitCount)));
+        return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    }
+
+    // Best-effort hook for the internal console's payment.verify action: a
+    // verified payment settles the user's reserved redemptions to redeemed.
+    async markVoucherRedemptionsRedeemed(userId) {
+        if (!userId) return 0;
+        const snapshot = await getDocs(query(
+            this._voucherRedemptionsCol(),
+            where('user_id', '==', userId),
+            where('status', '==', 'reserved')
+        ));
+        await Promise.all(snapshot.docs.map((d) => updateDoc(d.ref, {
+            status: 'redeemed',
+            redeemed_at: serverTimestamp()
+        })));
+        return snapshot.size;
+    }
+
     async createPaymentRequest(userId, paymentData = {}) {
         if (!userId) throw new Error('missing-user');
         if (!BILLING_PLANS[paymentData.plan_id]) throw new Error('invalid-plan');
@@ -2565,6 +2824,13 @@ class DataService {
         const billingFrequency = normalizeBillingFrequency(paymentData.billing_frequency);
         const paymentMethod = normalizePaymentMethod(paymentData.payment_method);
         if (!paymentMethod) throw new Error('invalid-payment-method');
+
+        // Optional voucher: a present-but-malformed code is an error (never
+        // silently bill full price after the UI showed a discount).
+        const voucherCode = paymentData.voucher_code == null || paymentData.voucher_code === ''
+            ? null
+            : this.normalizeVoucherCode(paymentData.voucher_code);
+        if (paymentData.voucher_code && !voucherCode) throw new Error('voucher-invalid');
 
         const calculation = calculateBilling(planId, billingFrequency);
         // QRIS uses a manual "pay the QR first" step: the request starts as
@@ -2586,6 +2852,19 @@ class DataService {
             if (existing && (existing.payment_status === 'awaiting_payment' || existing.payment_status === 'pending_verification')) {
                 return existing;
             }
+        }
+
+        // Voucher checkout commits through a transaction (request + subscription
+        // + redemption + counter together) so rules can cross-check the whole
+        // commit and the last-slot race stays safe.
+        if (voucherCode) {
+            return await this._createVoucherPaymentRequest(userId, {
+                planId,
+                billingFrequency,
+                paymentMethod,
+                paymentStatus,
+                voucherCode
+            });
         }
 
         const requestRef = doc(this._billingPaymentRequestsCol(userId));
@@ -2621,7 +2900,11 @@ class DataService {
             prev_plan_id: currentSubscription?.plan_id || null,
             prev_plan_name: currentSubscription?.plan_name || null,
             prev_status: currentSubscription?.status || null,
-            prev_billing_frequency: currentSubscription?.billing_frequency || null
+            prev_billing_frequency: currentSubscription?.billing_frequency || null,
+            voucher_id: null,
+            voucher_code: null,
+            voucher_discount_percent: null,
+            voucher_discount_amount: null
         };
 
         batch.set(requestRef, requestPayload);
@@ -2666,6 +2949,138 @@ class DataService {
             );
         } catch (_) { /* internal mirror is non-critical */ }
         return { id: requestRef.id, ...requestPayload };
+    }
+
+    // Voucher checkout. One transaction commits the payment request (with the
+    // voucher snapshot), the subscription transition, the voucher_redemptions
+    // doc, and the redemption_count bump together. Reads happen first (SDK
+    // requirement); on contention the transaction retries with fresh reads, so
+    // two users racing for the last slot of a limited voucher can never both
+    // succeed — the loser re-reads, fails eligibility, and gets
+    // voucher-usage-limit. Throws voucher-invalid | voucher-disabled |
+    // voucher-expired | voucher-not-started | voucher-usage-limit |
+    // voucher-plan-mismatch | voucher-frequency-mismatch.
+    async _createVoucherPaymentRequest(userId, { planId, billingFrequency, paymentMethod, paymentStatus, voucherCode }) {
+        const voucherRef = this._voucherCodeDoc(voucherCode);
+        const subscriptionRef = this._billingSubscriptionDoc(userId);
+        const result = await runTransaction(this.db, async (txn) => {
+            const voucherSnap = await txn.get(voucherRef);
+            if (!voucherSnap.exists()) throw new Error('voucher-invalid');
+            const voucher = voucherSnap.data();
+            const reason = this._assessVoucherEligibility(voucher, { planId, billingFrequency });
+            if (reason) throw new Error(`voucher-${reason}`);
+            const subscriptionSnap = await txn.get(subscriptionRef);
+            const prevSubscription = subscriptionSnap.exists() ? subscriptionSnap.data() : null;
+
+            const calculation = calculateBilling(planId, billingFrequency, voucher);
+            const requestRef = doc(this._billingPaymentRequestsCol(userId));
+            const requestPayload = {
+                plan_id: planId,
+                plan_name: calculation.plan.name,
+                billing_frequency: billingFrequency,
+                subtotal_amount: calculation.subtotalAmount,
+                estimated_tax_amount: calculation.estimatedTaxAmount,
+                total_amount: calculation.totalAmount,
+                currency: 'IDR',
+                payment_method: paymentMethod,
+                payment_status: paymentStatus,
+                provider: 'manual',
+                provider_payment_id: null,
+                provider_invoice_url: null,
+                submitted_at: serverTimestamp(),
+                verified_at: null,
+                failed_at: null,
+                expires_at: null,
+                user_confirmed_payment_at: null,
+                submitted_for_verification_at: null,
+                proof_document_id: null,
+                proof_file_name: null,
+                proof_uploaded_at: null,
+                created_at: serverTimestamp(),
+                updated_at: serverTimestamp(),
+                prev_plan_id: prevSubscription?.plan_id || null,
+                prev_plan_name: prevSubscription?.plan_name || null,
+                prev_status: prevSubscription?.status || null,
+                prev_billing_frequency: prevSubscription?.billing_frequency || null,
+                voucher_id: voucherCode,
+                voucher_code: voucherCode,
+                voucher_discount_percent: voucher.discount_value,
+                voucher_discount_amount: calculation.voucherDiscountAmount
+            };
+            txn.set(requestRef, requestPayload);
+
+            const subscriptionPayload = {
+                plan_id: planId,
+                plan_name: calculation.plan.name,
+                status: paymentStatus,
+                billing_frequency: billingFrequency,
+                current_payment_request_id: requestRef.id,
+                trial_started_at: prevSubscription?.trial_started_at || null,
+                trial_ends_at: prevSubscription?.trial_ends_at || null,
+                current_period_start: prevSubscription?.current_period_start || null,
+                current_period_end: prevSubscription?.current_period_end || null,
+                updated_at: serverTimestamp()
+            };
+            txn.set(subscriptionRef, subscriptionPayload);
+
+            txn.set(doc(collection(this.db, `users/${userId}/audit_logs`)), {
+                actor_uid: userId,
+                actor_role: null,
+                action: 'billing.payment_request_created',
+                target_collection: 'billing_payment_requests',
+                target_id: requestRef.id,
+                before: null,
+                after: {
+                    plan_id: planId,
+                    billing_frequency: billingFrequency,
+                    total_amount: calculation.totalAmount,
+                    currency: 'IDR',
+                    payment_method: paymentMethod,
+                    payment_status: paymentStatus,
+                    voucher_code: voucherCode,
+                    voucher_discount_amount: calculation.voucherDiscountAmount
+                },
+                reason: null,
+                source: 'dashboard',
+                created_at: serverTimestamp()
+            });
+
+            txn.set(doc(this._voucherRedemptionsCol(), requestRef.id), {
+                voucher_id: voucherCode,
+                code: voucherCode,
+                user_id: userId,
+                checkout_session_id: requestRef.id,
+                plan_id: planId,
+                billing_frequency: billingFrequency,
+                original_amount: calculation.subtotalAmount,
+                discount_amount: calculation.voucherDiscountAmount,
+                final_amount: calculation.totalAmount,
+                currency: 'IDR',
+                status: 'reserved',
+                created_at: serverTimestamp(),
+                redeemed_at: null
+            });
+
+            // Explicit value (not increment()): the transactional read makes it
+            // race-safe and it matches the rules' exact +1 check.
+            txn.update(voucherRef, {
+                redemption_count: (voucher.redemption_count || 0) + 1,
+                updated_at: serverTimestamp()
+            });
+
+            return {
+                request: { id: requestRef.id, ...requestPayload },
+                subscriptionPayload
+            };
+        });
+        try {
+            await this.syncInternalUserBillingSubscriptionIndex(
+                userId,
+                { id: 'current', ...result.subscriptionPayload },
+                result.request
+            );
+        } catch (_) { /* internal mirror is non-critical */ }
+        return result.request;
     }
 
     async getPaymentRequestById(userId, paymentRequestId) {

@@ -48,6 +48,7 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | User-scoped audit mirror (`users/{uid}/audit_logs`) | 📋 Planned | Needs backend/Admin SDK (console is unauthenticated) |
 | Legacy customer proof upload + `payment_verifications` | 🧊 Frozen legacy | Owner-readable migration input only; customer writes retired |
 | Trial/payment columns, filters, badges + drawer section in console | ✅ Shipped | Access status, trial remaining, trial dates; access filter |
+| Vouchers tab (create / table / disable / usage + `voucher.*` audit) | ✅ Shipped | KPI cards, random code generator, validity dates, plan/frequency scoping; disable instead of delete |
 
 ### Trial Access & Payment Banner
 | Feature | Status | Notes |
@@ -56,6 +57,7 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Shared access guard + slim trial/payment banner (`trial-access.js`) | ✅ Shipped | Canonical subscription states; wired once via `sidebar-loader.js` |
 | Expiry locks on add-record / CSV import / export / Fluxy AI / bank import | ✅ Shipped | Client-side (UX only) + canonical expired-trial modal |
 | Checkout `/checkout` + pending page `/payment-pending` | ✅ Shipped | Three packages, monthly/annual billing, metadata-only manual requests; no gateway |
+| Voucher codes at checkout (`voucher_codes` / `voucher_redemptions`) | ✅ Shipped | Percentage discount under Billing frequency; rules recompute the price server-side (`hasValidPaymentRequestVoucher`); race-safe redemption transaction |
 | Legacy `payment.html` | 🧊 Redirect | Routes to `/pricing`; proof-upload controller retired |
 | Trusted verification transition | 📋 Manual | Firebase Console for MVP; provider webhook/Admin SDK is the production path |
 | Server-side trial enforcement + per-feature usage counters | 📋 Planned | Hard enforcement (30 tx / 10 bills / 5 subs / 10 AI msgs / 3 uploads) needs backend/Cloud Functions |

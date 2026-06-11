@@ -146,6 +146,73 @@ body {
 .form-error { margin: 12px 0 0; color: #B91C1C; font-size: 13px; font-weight: 700; }
 .hidden { display: none; }
 
+/* Voucher code (applies after billing frequency, before payment method).
+   The code itself may use Fira Code (it is a code, not an amount); every
+   monetary value stays Inter tabular-nums per the design system. */
+.voucher-input-row { display: flex; gap: 10px; }
+.voucher-input {
+    flex: 1;
+    min-width: 0;
+    height: 48px;
+    padding: 0 14px;
+    border: 1px solid var(--checkout-border);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--checkout-text);
+    font: 600 14px 'Fira Code', monospace;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    transition: .18s ease;
+}
+.voucher-input::placeholder { color: #9CA3AF; font-weight: 500; }
+.voucher-input:focus { outline: none; border-color: var(--checkout-orange); box-shadow: 0 0 0 3px rgba(234, 88, 12, .12); }
+.voucher-apply {
+    flex: 0 0 auto;
+    min-width: 92px;
+    height: 48px;
+    padding: 0 18px;
+    border: 1px solid var(--checkout-border);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--checkout-text);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 800;
+    transition: .18s ease;
+}
+.voucher-apply:hover { border-color: #CBD5E1; background: #FAFAFA; }
+.voucher-apply:disabled { cursor: not-allowed; opacity: .58; }
+.voucher-applied {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid #BBF7D0;
+    border-radius: 12px;
+    background: #F0FDF4;
+}
+.voucher-applied-main { display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap; }
+.voucher-applied-code { color: #15803D; font: 700 14px 'Fira Code', monospace; letter-spacing: .06em; }
+.voucher-applied-detail { color: #166534; font-size: 13px; font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; }
+.voucher-remove {
+    flex: 0 0 auto;
+    border: 0;
+    background: none;
+    color: #B91C1C;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 2px;
+}
+.voucher-remove:hover { text-decoration: underline; }
+.voucher-error { margin: 10px 0 0; color: #B91C1C; font-size: 13px; font-weight: 600; }
+.voucher-success { margin: 10px 0 0; color: #15803D; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.voucher-row-amount { color: #4ADE80; }
+/* These set display:flex and are declared after .hidden, so they need their
+   own hidden override to lose the cascade tie. */
+.voucher-input-row.hidden, .voucher-applied.hidden { display: none; }
+
 @media (max-width: 1040px) {
     .checkout-shell { grid-template-columns: 1fr; }
     .summary-panel { padding: 32px; }

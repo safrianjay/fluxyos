@@ -118,7 +118,16 @@ export function getCheckoutSelection(search = '') {
     };
 }
 
-export function calculateBilling(planId, billingFrequency) {
+// Voucher percentage discount on the plan subtotal. All plan subtotals are
+// multiples of 10.000, so subtotal/100*percent is an exact integer — the same
+// integer math firestore.rules re-runs (`subtotal * percent / 100`), so client
+// and rules never disagree by a rounding step.
+export function calculateVoucherDiscountAmount(subtotalAmount, percent) {
+    const normalizedPercent = Number.isInteger(percent) && percent >= 1 && percent <= 100 ? percent : 0;
+    return (subtotalAmount / 100) * normalizedPercent;
+}
+
+export function calculateBilling(planId, billingFrequency, voucher = null) {
     const normalizedPlanId = normalizePlanId(planId);
     const normalizedBillingFrequency = normalizeBillingFrequency(billingFrequency);
     const plan = BILLING_PLANS[normalizedPlanId];
@@ -128,7 +137,12 @@ export function calculateBilling(planId, billingFrequency) {
     const subtotalAmount = normalizedBillingFrequency === 'annually'
         ? plan.annualMonthlyEquivalent * 12
         : plan.monthly;
-    const estimatedTaxAmount = Math.round(subtotalAmount * TAX_RATE);
+    const voucherDiscountAmount = voucher
+        ? calculateVoucherDiscountAmount(subtotalAmount, voucher.discount_value)
+        : 0;
+    // PPN applies to the discounted subtotal. (subtotal - discount) is always a
+    // multiple of 100, so the 11% is exact — identical to the rules check.
+    const estimatedTaxAmount = ((subtotalAmount - voucherDiscountAmount) / 100) * 11;
 
     return {
         plan,
@@ -136,8 +150,9 @@ export function calculateBilling(planId, billingFrequency) {
         billingFrequency: normalizedBillingFrequency,
         monthlyDisplayAmount,
         subtotalAmount,
+        voucherDiscountAmount,
         estimatedTaxAmount,
-        totalAmount: subtotalAmount + estimatedTaxAmount
+        totalAmount: subtotalAmount - voucherDiscountAmount + estimatedTaxAmount
     };
 }
 

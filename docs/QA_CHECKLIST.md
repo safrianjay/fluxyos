@@ -859,6 +859,77 @@ If no exception log is provided, anti-slop QA is considered failed.
 
 ---
 
+## Change Type — Voucher Codes & Checkout Discounts
+
+Run when touching the checkout voucher UI (`checkout.html` / `checkout.js` /
+`checkout.css`), voucher methods in `db-service.js`, `billing-config.js`
+voucher math, the internal console Vouchers tab, or the `voucher_*` /
+`billing_payment_requests` Firestore rules.
+
+**Checkout — apply/remove**
+- [ ] Voucher section renders directly under Billing frequency (before Payment
+  method) on desktop and at 375px with no horizontal overflow.
+- [ ] Empty Apply shows "Enter a voucher code first."; lowercase input
+  auto-uppercases; invalid characters are stripped; Enter applies.
+- [ ] Valid code → green applied chip (code, percent, −amount), success copy
+  "Voucher applied. You saved RpX.", and a "Voucher CODE −Rp…" row in the
+  summary between Billing discount and Estimated PPN.
+- [ ] Subtotal − discount + PPN math is exact: PPN is 11% of the **discounted**
+  subtotal; `summary-total`, `total-due`, and `checkout-payable-total` all match.
+- [ ] Remove restores the original totals and re-shows the input with the code kept.
+
+**Checkout — error states (each shows the exact inline copy, total unchanged)**
+- [ ] Unknown code → "This voucher code is not valid."
+- [ ] Expired (status or `valid_until` past) → "This voucher has expired."
+- [ ] Disabled → "This voucher is no longer available."
+- [ ] `redemption_count == max_redemptions` → "This voucher has already reached its usage limit."
+- [ ] Wrong plan → "This voucher is not available for this plan."
+- [ ] Wrong billing frequency → "This voucher is not available for this billing frequency."
+- [ ] Switching plan/frequency with an applied voucher revalidates: an
+  ineligible voucher is auto-removed with an inline message; an eligible one
+  stays applied with the discount amount recomputed.
+
+**Checkout — submit enforcement**
+- [ ] Submit with a voucher creates the payment request with the 4 voucher
+  fields, a `voucher_redemptions/{requestId}` doc (`status: reserved`), and an
+  exactly-+1 `redemption_count` bump — all in one commit.
+- [ ] Submit without a voucher writes the 4 voucher fields as `null` and is
+  otherwise byte-identical to the pre-voucher flow.
+- [ ] Forged values (edited JS: wrong `voucher_discount_amount`, bare discount
+  without `voucher_id`, tax on undiscounted subtotal) are DENIED by rules.
+- [ ] Two rapid submits / two users racing the last slot of a
+  `max_redemptions: 1` voucher → exactly one succeeds; the other sees the
+  usage-limit copy and the undiscounted total.
+- [ ] QRIS confirm-payment and cancel-payment still work on a voucher-bearing
+  request; `/payment-pending` shows the discounted total.
+- [ ] Firestore stores raw integer amounts only — never formatted `Rp` strings.
+
+**Internal console — Vouchers tab**
+- [ ] Vouchers tab sits between Payment Review and Audit; loads with shimmer,
+  has empty/error states, and the 4 KPI cards (Active, Total redemptions,
+  Discount given, Expiring soon ≤7 days) match seeded data.
+- [ ] Create drawer: Generate produces a valid code; duplicate code is blocked
+  with inline copy; discount 0/101/blank/text blocked; max redemptions must be
+  empty or a positive integer; expiry must be after start (dates use the shared
+  FluxyDateRangePicker, future dates allowed); >50% asks confirmation; 100%
+  asks a danger confirmation.
+- [ ] Created voucher appears in the table; Copy copies the code; the copied
+  code applies at checkout.
+- [ ] Disable asks the shared danger confirm dialog; the voucher stops working
+  at checkout immediately; status badge flips to disabled.
+- [ ] Usage drawer lists redemptions (user, plan, frequency, −amount, status
+  badge, time); reserved redemptions flip to redeemed after `payment.verify`
+  on that user.
+- [ ] Audit tab shows `voucher.create` / `voucher.disable` rows with the code
+  as target and a status/discount change summary.
+
+**Regression**
+- [ ] Pricing, login, dashboard, and the other internal console tabs still work.
+- [ ] Checkout without any voucher input behaves exactly as before.
+- [ ] No marketing footer on `/checkout` or `/internal`; console clean on both.
+
+---
+
 ## Change Type — Trial Access & Payment Banner
 
 Run when touching `assets/js/trial-access.js`, checkout/payment-pending pages,

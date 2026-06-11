@@ -265,6 +265,17 @@ service cloud.firestore {
         || (planId == 'enterprise' && planName == 'Enterprise AI');
     }
 
+    // Voucher discount snapshot on a payment request. The fields are optional
+    // (old cached clients omit them); absent/null means no voucher. When a
+    // voucher IS applied, hasValidPaymentRequestVoucher() re-derives every
+    // value from the canonical voucher doc, so this helper alone is never
+    // trusted for a discount.
+    function voucherDiscountOf(data) {
+      return ('voucher_discount_amount' in data) && data.voucher_discount_amount != null
+        ? data.voucher_discount_amount
+        : 0;
+    }
+
     function isValidBillingAmounts(data) {
       return (
           (data.plan_id == 'core' && data.billing_frequency == 'monthly' && data.subtotal_amount == 3500000)
@@ -274,7 +285,10 @@ service cloud.firestore {
           || (data.plan_id == 'enterprise' && data.billing_frequency == 'monthly' && data.subtotal_amount == 18000000)
           || (data.plan_id == 'enterprise' && data.billing_frequency == 'annually' && data.subtotal_amount == 172680000)
         )
-        && data.estimated_tax_amount == data.subtotal_amount * 11 / 100;
+        // PPN applies to the voucher-discounted subtotal. Every plan subtotal is
+        // a multiple of 10.000 and discounts are integer percents, so the
+        // integer math here is exact (no truncation) and matches the client.
+        && data.estimated_tax_amount == (data.subtotal_amount - voucherDiscountOf(data)) * 11 / 100;
     }
 
     function isValidBillingFrequency(frequency) {
@@ -348,6 +362,9 @@ service cloud.firestore {
           'prev_status',
           'prev_billing_frequency'
         ])
+        // Voucher snapshot fields are allowed but NOT required (hasOnly, not
+        // hasAll) so pre-voucher cached clients keep working. The new client
+        // always writes all four (null when no voucher is applied).
         && data.keys().hasOnly([
           'plan_id',
           'plan_name',
@@ -375,7 +392,11 @@ service cloud.firestore {
           'prev_plan_id',
           'prev_plan_name',
           'prev_status',
-          'prev_billing_frequency'
+          'prev_billing_frequency',
+          'voucher_id',
+          'voucher_code',
+          'voucher_discount_percent',
+          'voucher_discount_amount'
         ])
         && data.plan_id in ['core', 'growth', 'enterprise']
         && isValidBillingPlanName(data.plan_id, data.plan_name)
@@ -385,7 +406,7 @@ service cloud.firestore {
         && data.estimated_tax_amount is number
         && data.estimated_tax_amount >= 0
         && data.total_amount is number
-        && data.total_amount == data.subtotal_amount + data.estimated_tax_amount
+        && data.total_amount == data.subtotal_amount - voucherDiscountOf(data) + data.estimated_tax_amount
         && isValidBillingAmounts(data)
         && data.currency == 'IDR'
         && data.payment_method in ['qris', 'va', 'card', 'invoice']
@@ -430,6 +451,65 @@ service cloud.firestore {
           && data.prev_status == get(/databases/$(database)/documents/users/$(userId)/billing_subscription/current).data.status
           && data.prev_billing_frequency == get(/databases/$(database)/documents/users/$(userId)/billing_subscription/current).data.billing_frequency
         );
+    }
+
+    // True when the payment request carries no voucher at all (fields absent
+    // for pre-voucher cached clients, or all-null for the current client).
+    // Mixed null/non-null voucher fields fail both this and the applied branch.
+    function hasNoVoucherFields(data) {
+      return (!('voucher_id' in data) || data.voucher_id == null)
+        && (!('voucher_code' in data) || data.voucher_code == null)
+        && (!('voucher_discount_percent' in data) || data.voucher_discount_percent == null)
+        && (!('voucher_discount_amount' in data) || data.voucher_discount_amount == null);
+    }
+
+    // Server-enforced voucher redemption. The discount on a payment request is
+    // only accepted when, in the SAME commit:
+    //   1. the canonical voucher doc (voucher_codes/{CODE}, read pre-commit via
+    //      get()) is active, inside its validity window, allows the selected
+    //      plan + billing frequency, and still has redemption slots left;
+    //   2. the snapshot percent equals the voucher's discount_value and the
+    //      discount amount is recomputed here (subtotal * percent / 100 —
+    //      integer-exact, see isValidBillingAmounts);
+    //   3. the voucher's redemption_count is incremented by exactly 1
+    //      (checked via getAfter against the pre-commit value); and
+    //   4. a voucher_redemptions/{paymentRequestId} doc for this user + voucher
+    //      is created in the same commit (its own create rule mirrors the
+    //      amounts back against this payment request via getAfter).
+    // A client editing browser JS cannot forge any of these: the rules engine
+    // recomputes the price from the voucher doc it reads itself.
+    function hasValidPaymentRequestVoucher(userId, requestId, data) {
+      return hasNoVoucherFields(data)
+        || hasAppliedPaymentRequestVoucher(userId, requestId, data);
+    }
+
+    // `let` bindings keep the expression count low (rules evaluate at most
+    // 1000 expressions per request; repeating the full get() path in every
+    // condition blows that budget on this already-large create rule). A null
+    // voucher_id or missing voucher doc makes the binding error → deny, which
+    // is the correct outcome for mixed-null fields or unknown codes.
+    function hasAppliedPaymentRequestVoucher(userId, requestId, data) {
+      let voucher = get(/databases/$(database)/documents/voucher_codes/$(data.voucher_id)).data;
+      let voucherAfter = getAfter(/databases/$(database)/documents/voucher_codes/$(data.voucher_id)).data;
+      let redemptionAfter = getAfter(/databases/$(database)/documents/voucher_redemptions/$(requestId)).data;
+      return data.voucher_id is string
+        && data.voucher_id.matches('^[A-Z0-9_-]{4,32}$')
+        && data.voucher_code == data.voucher_id
+        && data.voucher_discount_percent is int
+        && data.voucher_discount_percent >= 1
+        && data.voucher_discount_percent <= 100
+        && voucher.status == 'active'
+        && voucher.discount_type == 'percentage'
+        && data.voucher_discount_percent == voucher.discount_value
+        && data.voucher_discount_amount == data.subtotal_amount * data.voucher_discount_percent / 100
+        && (voucher.valid_from == null || voucher.valid_from <= request.time)
+        && (voucher.valid_until == null || voucher.valid_until >= request.time)
+        && (voucher.allowed_plan_ids == null || data.plan_id in voucher.allowed_plan_ids)
+        && (voucher.allowed_billing_frequencies == null || data.billing_frequency in voucher.allowed_billing_frequencies)
+        && (voucher.max_redemptions == null || voucher.redemption_count < voucher.max_redemptions)
+        && voucherAfter.redemption_count == voucher.redemption_count + 1
+        && redemptionAfter.user_id == userId
+        && redemptionAfter.voucher_id == data.voucher_id;
     }
 
     // Owner-driven transition: a QRIS request moves awaiting_payment ->
@@ -1508,7 +1588,8 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId)
           && isValidBillingPaymentRequest(request.resource.data)
-          && hasValidPaymentRequestPrevSnapshot(userId, request.resource.data);
+          && hasValidPaymentRequestPrevSnapshot(userId, request.resource.data)
+          && hasValidPaymentRequestVoucher(userId, paymentRequestId, request.resource.data);
         // Owner may confirm a QRIS payment (awaiting_payment -> pending_verification)
         // or cancel an in-flight payment (-> canceled).
         allow update: if isOwner(userId)
@@ -2043,6 +2124,192 @@ service cloud.firestore {
         && (!('reason' in request.resource.data) || request.resource.data.reason == null
           || (request.resource.data.reason is string && request.resource.data.reason.size() <= 500));
       allow update, delete: if false;
+    }
+
+    // ===== Voucher codes (checkout discounts, internal-console managed) =====
+    // MVP_INTERNAL_ONLY_TEMPORARY — like internal_users above, admin writes are
+    // field-validated but NOT identity-gated, because the internal console has
+    // no Firebase identity. Known gaps until custom-claims admin auth exists:
+    //   - anyone who knows the paths can create/disable vouchers or read
+    //     redemptions (no financial gain: checkout math is still enforced by
+    //     hasValidPaymentRequestVoucher against the voucher doc itself);
+    //   - any signed-in user can burn redemption slots via the bare +1 counter
+    //     update (DoS on limited vouchers, never a bigger discount).
+
+    // Doc ID == the normalized uppercase code, so codes are unique by
+    // construction and checkout can validate with a single get() while `list`
+    // stays denied (no enumeration via queries).
+    function isValidVoucherCodeCreate(code, data) {
+      return code.matches('^[A-Z0-9_-]{4,32}$')
+        && data.keys().hasAll([
+          'code', 'discount_type', 'discount_value', 'status',
+          'max_redemptions', 'redemption_count', 'valid_from', 'valid_until',
+          'allowed_plan_ids', 'allowed_billing_frequencies',
+          'created_by', 'created_at', 'updated_at',
+          'disabled_at', 'disabled_by', 'notes'
+        ])
+        && data.keys().hasOnly([
+          'code', 'discount_type', 'discount_value', 'status',
+          'max_redemptions', 'redemption_count', 'valid_from', 'valid_until',
+          'allowed_plan_ids', 'allowed_billing_frequencies',
+          'created_by', 'created_at', 'updated_at',
+          'disabled_at', 'disabled_by', 'notes'
+        ])
+        && data.code == code
+        && data.discount_type == 'percentage'
+        && data.discount_value is int
+        && data.discount_value >= 1
+        && data.discount_value <= 100
+        && data.status == 'active'
+        && (data.max_redemptions == null
+          || (data.max_redemptions is int && data.max_redemptions >= 1 && data.max_redemptions <= 100000))
+        && data.redemption_count == 0
+        && (data.valid_from == null || data.valid_from is timestamp)
+        && (data.valid_until == null || data.valid_until is timestamp)
+        && (data.valid_from == null || data.valid_until == null || data.valid_until > data.valid_from)
+        && (data.allowed_plan_ids == null
+          || (data.allowed_plan_ids is list
+            && data.allowed_plan_ids.size() >= 1
+            && data.allowed_plan_ids.hasOnly(['core', 'growth', 'enterprise'])))
+        && (data.allowed_billing_frequencies == null
+          || (data.allowed_billing_frequencies is list
+            && data.allowed_billing_frequencies.size() >= 1
+            && data.allowed_billing_frequencies.hasOnly(['monthly', 'annually'])))
+        && data.created_by is string
+        && data.created_by.size() > 0
+        && data.created_by.size() <= 80
+        && data.created_at == request.time
+        && data.updated_at == request.time
+        && data.disabled_at == null
+        && data.disabled_by == null
+        && (data.notes == null || (data.notes is string && data.notes.size() <= 500));
+    }
+
+    // Checkout-side counter bump: only the counter (+updated_at) may change,
+    // exactly +1, never past the cap, only while active. The bump itself is
+    // tied to a real redemption by hasValidPaymentRequestVoucher in the same
+    // commit (see the counter-burn caveat in the banner above).
+    function isVoucherRedemptionIncrement(prev, next) {
+      return request.auth != null
+        && next.diff(prev).affectedKeys().hasOnly(['redemption_count', 'updated_at'])
+        && next.redemption_count == prev.redemption_count + 1
+        && (prev.max_redemptions == null || next.redemption_count <= prev.max_redemptions)
+        && prev.status == 'active'
+        && next.updated_at == request.time;
+    }
+
+    // Internal-console lifecycle edits. Code, discount percent, and the
+    // redemption counter are immutable here; disabling must stamp who/when.
+    function isValidVoucherAdminUpdate(prev, next) {
+      return next.diff(prev).affectedKeys().hasOnly([
+          'status', 'max_redemptions', 'valid_until', 'notes',
+          'disabled_at', 'disabled_by', 'updated_at'
+        ])
+        && next.status in ['active', 'disabled', 'expired']
+        && (
+          next.status == prev.status
+          || (next.status == 'disabled'
+            && next.disabled_at == request.time
+            && next.disabled_by is string
+            && next.disabled_by.size() > 0
+            && next.disabled_by.size() <= 80)
+          || (next.status == 'active' && prev.status == 'disabled')
+        )
+        && (next.max_redemptions == null
+          || (next.max_redemptions is int
+            && next.max_redemptions >= 1
+            && next.max_redemptions <= 100000
+            && next.max_redemptions >= next.redemption_count))
+        && (next.valid_until == null || next.valid_until is timestamp)
+        && (next.notes == null || (next.notes is string && next.notes.size() <= 500))
+        && next.updated_at == request.time;
+    }
+
+    match /voucher_codes/{voucherCode} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if isValidVoucherCodeCreate(voucherCode, request.resource.data);
+      allow update: if isVoucherRedemptionIncrement(resource.data, request.resource.data)
+        || isValidVoucherAdminUpdate(resource.data, request.resource.data);
+      allow delete: if false;
+    }
+
+    // Registry of existing codes so the internal console can list vouchers
+    // without a (denied) collection query. Maintained via arrayUnion in the
+    // same batch as each voucher create.
+    match /voucher_code_index/{indexId} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if indexId == 'registry'
+        && request.resource.data.keys().hasOnly(['codes', 'updated_at'])
+        && request.resource.data.codes is list
+        && request.resource.data.codes.size() <= 500
+        && request.resource.data.updated_at == request.time;
+      allow delete: if false;
+    }
+
+    // One redemption per payment request (doc ID == the payment request ID).
+    // Created only inside the checkout commit; its amounts must mirror the
+    // payment request written in the SAME commit, so it doubles as the
+    // tamper-proof redemption audit record.
+    function isValidVoucherRedemptionCreate(redemptionId, data) {
+      // `let` keeps the expression budget low (see hasAppliedPaymentRequestVoucher).
+      // Unauthenticated requests error on request.auth.uid in the path → deny.
+      let requestAfter = getAfter(/databases/$(database)/documents/users/$(request.auth.uid)/billing_payment_requests/$(redemptionId)).data;
+      return request.auth != null
+        && data.keys().hasAll([
+          'voucher_id', 'code', 'user_id', 'checkout_session_id',
+          'plan_id', 'billing_frequency',
+          'original_amount', 'discount_amount', 'final_amount', 'currency',
+          'status', 'created_at', 'redeemed_at'
+        ])
+        && data.keys().hasOnly([
+          'voucher_id', 'code', 'user_id', 'checkout_session_id',
+          'plan_id', 'billing_frequency',
+          'original_amount', 'discount_amount', 'final_amount', 'currency',
+          'status', 'created_at', 'redeemed_at'
+        ])
+        && data.voucher_id is string
+        && data.voucher_id.matches('^[A-Z0-9_-]{4,32}$')
+        && data.code == data.voucher_id
+        && data.user_id == request.auth.uid
+        && data.checkout_session_id == redemptionId
+        && data.plan_id in ['core', 'growth', 'enterprise']
+        && data.billing_frequency in ['monthly', 'annually']
+        && data.original_amount is number
+        && data.original_amount > 0
+        && data.discount_amount is number
+        && data.discount_amount >= 0
+        && data.final_amount is number
+        && data.final_amount >= 0
+        && data.currency == 'IDR'
+        && data.status == 'reserved'
+        && data.created_at == request.time
+        && data.redeemed_at == null
+        && requestAfter.voucher_id == data.voucher_id
+        && requestAfter.plan_id == data.plan_id
+        && requestAfter.billing_frequency == data.billing_frequency
+        && requestAfter.subtotal_amount == data.original_amount
+        && requestAfter.voucher_discount_amount == data.discount_amount
+        && requestAfter.total_amount == data.final_amount;
+    }
+
+    // Internal-console resolution after manual payment review. No Firebase
+    // identity exists on the console (see banner), so this is open like
+    // internal_users; the transition matrix is the only protection.
+    function isValidVoucherRedemptionStatusUpdate(prev, next) {
+      return prev.status == 'reserved'
+        && next.status in ['redeemed', 'cancelled']
+        && next.diff(prev).affectedKeys().hasOnly(['status', 'redeemed_at'])
+        && (next.status != 'redeemed' || next.redeemed_at == request.time)
+        && (next.status != 'cancelled' || next.redeemed_at == null);
+    }
+
+    match /voucher_redemptions/{redemptionId} {
+      allow read: if true;
+      allow create: if isValidVoucherRedemptionCreate(redemptionId, request.resource.data);
+      allow update: if isValidVoucherRedemptionStatusUpdate(resource.data, request.resource.data);
+      allow delete: if false;
     }
 
     match /{document=**} {

@@ -63,22 +63,26 @@ test.describe('authenticated checkout UI', () => {
             boxShadow: 'none'
         });
         await expect(page.locator('#summary-plan-name')).toHaveText('Growth Engine');
-        await expect(page.locator('#subtotal')).toHaveText('Rp 81.480.000');
-        await expect(page.locator('#tax')).toHaveText('Rp 8.962.800');
-        await expect(page.locator('#total-due')).toHaveText('Rp 90.442.800');
+        await expect(page.locator('#subtotal')).toHaveText('Rp81.480.000');
+        await expect(page.locator('#tax')).toHaveText('Rp8.962.800');
+        await expect(page.locator('#total-due')).toHaveText('Rp90.442.800');
         await expect(page.locator('.trust-row')).toContainText('Total amount to pay');
-        await expect(page.locator('#checkout-payable-total')).toHaveText('Rp 90.442.800');
+        await expect(page.locator('#checkout-payable-total')).toHaveText('Rp90.442.800');
 
         await page.locator('[data-plan="core"]').click();
         await page.locator('[data-billing="monthly"]').click();
         await expect(page).toHaveURL(/\/checkout\?plan=core&billing=monthly$/);
         await expect(page.locator('#summary-plan-name')).toHaveText('Core Ops');
-        await expect(page.locator('#total-due')).toHaveText('Rp 3.885.000');
-        await expect(page.locator('#checkout-payable-total')).toHaveText('Rp 3.885.000');
+        await expect(page.locator('#total-due')).toHaveText('Rp3.885.000');
+        await expect(page.locator('#checkout-payable-total')).toHaveText('Rp3.885.000');
 
         await page.locator('[data-method="card"]').click();
         await expect(page.locator('[data-payment-panel="card"]')).toContainText('never collects card number, CVC, or OTP');
-        await expect(page.locator('input')).toHaveCount(0);
+        // The voucher code input is the only input on the page — payment
+        // sections stay metadata-only (no card number/CVC/OTP fields).
+        await expect(page.locator('.payment-box input, .payment-methods input')).toHaveCount(0);
+        await expect(page.locator('input')).toHaveCount(1);
+        await expect(page.locator('input')).toHaveAttribute('id', 'voucher-input');
         await expect(page.locator('select')).toHaveCount(0);
         await page.screenshot({ path: testInfo.outputPath('checkout-desktop.png'), fullPage: true });
     });
@@ -247,5 +251,44 @@ test.describe('billing internal mirror wiring', () => {
         expect(commandAI).toContain('maybeShowTrialLimit');
         expect(documentAttachment).toContain('maybeShowPlanLimit');
         expect(bankImport).toContain('showSubscriptionLimitModal');
+    });
+});
+
+test.describe('checkout voucher UI', () => {
+    test('voucher section sits under billing frequency with normalized input', async ({ page }) => {
+        await page.goto('/checkout?plan=growth&billing=monthly');
+
+        // Placement: Billing frequency → Voucher code → Payment method.
+        const sectionTitles = await page.locator('.form-panel .section-title').allTextContents();
+        const billingIndex = sectionTitles.indexOf('Billing frequency');
+        const voucherIndex = sectionTitles.indexOf('Voucher code');
+        const methodIndex = sectionTitles.indexOf('Payment method');
+        expect(billingIndex).toBeGreaterThan(-1);
+        expect(voucherIndex).toBe(billingIndex + 1);
+        expect(methodIndex).toBe(voucherIndex + 1);
+
+        // Hidden until a voucher is applied.
+        await expect(page.locator('#voucher-row')).toBeHidden();
+        await expect(page.locator('#voucher-applied')).toBeHidden();
+
+        // Input normalizes to uppercase and strips invalid characters.
+        await page.locator('#voucher-input').fill('fluxy 20!');
+        await expect(page.locator('#voucher-input')).toHaveValue('FLUXY20');
+
+        // Empty apply shows the inline validation message without touching totals.
+        const totalBefore = await page.locator('#total-due').textContent();
+        await page.locator('#voucher-input').fill('');
+        await page.locator('#voucher-apply').click();
+        await expect(page.locator('#voucher-error')).toBeVisible();
+        await expect(page.locator('#voucher-error')).toHaveText('Enter a voucher code first.');
+        await expect(page.locator('#total-due')).toHaveText(totalBefore);
+    });
+
+    test('voucher section does not overflow at 375px', async ({ page }) => {
+        await page.setViewportSize({ width: 375, height: 900 });
+        await page.goto('/checkout?plan=growth&billing=monthly');
+        await expect(page.locator('#voucher-input')).toBeVisible();
+        await expect(page.locator('#voucher-apply')).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
 });
