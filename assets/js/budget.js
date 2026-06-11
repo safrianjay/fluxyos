@@ -597,9 +597,7 @@ function wirePageControls() {
 
 function openPeriodDetail(periodId) {
     if (!periodId || !state.selectedMainBudgetId) return;
-    const budgetId = state.legacyMode ? periodId : state.selectedMainBudgetId;
-    const params = new URLSearchParams({ budgetId, periodId });
-    window.location.href = `/budget-period.html?${params.toString()}`;
+    window.location.href = `/budget-period/${encodeURIComponent(periodId)}`;
 }
 
 function openMainBudgetWizard() {

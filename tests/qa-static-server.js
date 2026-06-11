@@ -50,6 +50,9 @@ function tryStat(file) {
 function resolveFile(reqPath) {
     if (reqPath === '/' || reqPath === '') reqPath = '/index.html';
     const decoded = decodeURIComponent(reqPath);
+    if (/^\/budget-period\/[^/]+\/?$/.test(decoded)) {
+        return path.join(ROOT, 'budget-period.html');
+    }
     const direct = safeJoin(ROOT, decoded);
     if (!direct) return null;
     let stat = tryStat(direct);

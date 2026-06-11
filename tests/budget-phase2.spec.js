@@ -37,8 +37,9 @@ async function openFirstPeriodDetail(page) {
     }, { timeout: 15000 });
     const firstPeriod = page.locator('#budget-period-body tr[data-action="open-period-detail"]').first();
     await expect(firstPeriod).toBeVisible();
+    const periodId = await firstPeriod.getAttribute('data-period-id');
     await firstPeriod.click();
-    await expect(page).toHaveURL(/budget-period\.html\?budgetId=.*periodId=/);
+    await expect(page).toHaveURL(new RegExp(`/budget-period/${periodId}$`));
     await suppressPaywall(page);
     await page.waitForFunction(() => {
         const c = document.getElementById('budget-content');

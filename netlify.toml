@@ -79,6 +79,11 @@
   status = 200
 
 [[redirects]]
+  from = "/budget-period/:periodId"
+  to = "/budget-period.html"
+  status = 200
+
+[[redirects]]
   from = "/"
   to = "/fluxyos.html"
   status = 200

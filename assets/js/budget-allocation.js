@@ -191,11 +191,7 @@ function renderHeader() {
 
     const back = el('allocation-back-link');
     if (back) {
-        const mainBudgetId = state.mainBudget?.id || budget.parent_budget_id || '';
-        const params = mainBudgetId
-            ? new URLSearchParams({ budgetId: mainBudgetId, periodId: budget.id })
-            : null;
-        back.href = params ? `/budget-period.html?${params.toString()}` : `/budget.html?budgetId=${encodeURIComponent(budget.id)}`;
+        back.href = `/budget-period/${encodeURIComponent(budget.id)}`;
         back.innerHTML = `
             <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
             <span class="truncate">Back to ${escapeHtml(budget.name || 'Period Budget')}</span>

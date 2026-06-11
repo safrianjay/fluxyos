@@ -216,8 +216,9 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
 
         const firstPeriod = page.locator('#budget-period-body tr[data-action="open-period-detail"]').first();
         if (await firstPeriod.count()) {
+            const periodId = await firstPeriod.getAttribute('data-period-id');
             await firstPeriod.click();
-            await expect(page).toHaveURL(/budget-period\.html\?budgetId=.*periodId=/);
+            await expect(page).toHaveURL(new RegExp(`/budget-period/${periodId}$`));
         }
     });
 
@@ -259,7 +260,7 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
             const { default: DataService } = await import('/assets/js/db-service.js');
             const ds = new DataService(app);
             const budget = await ds.getActiveBudget(auth.currentUser.uid);
-            return `/budget-period.html?budgetId=${encodeURIComponent(budget.parent_budget_id || budget.id)}&periodId=${encodeURIComponent(budget.id)}`;
+            return `/budget-period/${encodeURIComponent(budget.id)}`;
         });
         await page.goto(route);
         await page.waitForFunction(() => {

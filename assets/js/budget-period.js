@@ -115,24 +115,48 @@ function escapeHtml(str) {
 
 function el(id) { return document.getElementById(id); }
 
+function getBudgetPeriodPathId() {
+    const match = window.location.pathname.match(/^\/budget-period\/([^/?#]+)\/?$/);
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
+function budgetPeriodUrl(periodId) {
+    return `/budget-period/${encodeURIComponent(periodId)}`;
+}
+
+function replaceBudgetPeriodUrl(periodId, params = new URLSearchParams(window.location.search)) {
+    if (!periodId || !window.history?.replaceState) return;
+    const nextParams = new URLSearchParams(params);
+    nextParams.delete('budgetId');
+    nextParams.delete('periodId');
+    const query = nextParams.toString();
+    window.history.replaceState({}, '', `${budgetPeriodUrl(periodId)}${query ? `?${query}` : ''}`);
+}
+
 // ── Init ──────────────────────────────────────────────────────────────
 
 export function initBudgetPeriodPage({ ds, user }) {
     state.ds = ds;
     state.user = user;
     const params = new URLSearchParams(window.location.search);
+    const pathPeriodId = getBudgetPeriodPathId();
     const mainBudgetId = params.get('budgetId');
-    const periodBudgetId = params.get('periodId') || mainBudgetId;
-    if (mainBudgetId && params.get('periodId')) state.selectedAnnualId = mainBudgetId;
+    const queryPeriodId = params.get('periodId');
+    const periodBudgetId = pathPeriodId || queryPeriodId || mainBudgetId;
+    if (mainBudgetId && queryPeriodId && !pathPeriodId) state.selectedAnnualId = mainBudgetId;
     if (periodBudgetId) state.selectedBudgetId = periodBudgetId;
     wireDrawerControls();
     const shouldOpenWizard = params.get('create') === '1';
     loadAndRender().then(() => {
-        if (!shouldOpenWizard) return;
-        // Strip the param so a refresh doesn't reopen the wizard.
+        if (!shouldOpenWizard) {
+            if (state.selectedBudgetId) replaceBudgetPeriodUrl(state.selectedBudgetId, params);
+            return;
+        }
+        // Strip the param so a refresh doesn't reopen the wizard, and
+        // canonicalize legacy `.html?budgetId=...&periodId=...` links.
         params.delete('create');
-        const query = params.toString();
-        window.history.replaceState({}, '', window.location.pathname + (query ? `?${query}` : ''));
+        if (state.selectedBudgetId) replaceBudgetPeriodUrl(state.selectedBudgetId, params);
+        else window.history.replaceState?.({}, '', '/budget-period');
         if (state.usage?.budget) openBudgetWizard('edit');
         else openBudgetWizard('create', { budgetType: 'period' });
     });
@@ -191,9 +215,7 @@ function selectExistingBudget(budgetId) {
     const selected = state.periodBudgets.find(b => b.id === state.selectedBudgetId);
     if (selected?.parent_budget_id) state.selectedAnnualId = selected.parent_budget_id;
     if (state.selectedBudgetId) {
-        const mainBudgetId = selected?.parent_budget_id || state.selectedAnnualId || state.selectedBudgetId;
-        const params = new URLSearchParams({ budgetId: mainBudgetId, periodId: state.selectedBudgetId });
-        window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+        replaceBudgetPeriodUrl(state.selectedBudgetId);
     }
     loadAndRender();
 }

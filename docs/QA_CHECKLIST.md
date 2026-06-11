@@ -633,7 +633,7 @@ touched.
 | 3 | `New period` creates a `budget_type='period'` budget with `parent_budget_id` equal to the selected main budget and no allocation rows |
 | 4 | Period table columns are: Period, Period Budget, Used + Committed, Remaining, Usage, Status |
 | 5 | Period rows sort by `period_start` ascending and never show `NaN`, `Infinity`, or `-Infinity` |
-| 6 | Clicking a period row navigates to `/budget-period.html?budgetId={mainBudgetId}&periodId={periodBudgetId}` |
+| 6 | Clicking a period row navigates to `/budget-period/{periodBudgetId}`; legacy `.html?budgetId=...&periodId=...` links still load and canonicalize to the clean route |
 | 7 | Legacy budgets without `budget_type` or `period_label` still render with fallback labels wherever they are supported |
 | 8 | Budget date range controls use the shared FluxyOS date picker, not native browser date inputs |
 
