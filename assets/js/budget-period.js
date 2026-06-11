@@ -42,7 +42,6 @@ const state = {
     usage: null,         // { budget, allocations, summary, unallocated } or null
     annualBudgets: [],
     periodBudgets: [],
-    annualEnvelope: null,
     selectedAnnualId: null,
     selectedBudgetId: null,
     selectedTarget: null,
@@ -162,12 +161,6 @@ async function loadAndRender() {
             state.selectedBudgetId = state.selectedAnnualId;
         }
 
-        if (state.selectedAnnualId) {
-            state.annualEnvelope = await state.ds.calculateAnnualEnvelope?.(state.user.uid, state.selectedAnnualId);
-        } else {
-            state.annualEnvelope = null;
-        }
-
         if (state.selectedTarget && !state.selectedBudgetId) {
             state.usage = null;
             renderNoPeriodState();
@@ -230,7 +223,6 @@ function renderEmpty() {
     const updatedWrap = el('budget-workspace-updated-wrap');
     if (updatedWrap) updatedWrap.style.display = 'none';
 
-    renderAnnualEnvelope();
     renderPeriodSelector();
 
     // KPI strip at zero with guidance hints.
@@ -316,7 +308,6 @@ function renderNoPeriodState() {
     el('budget-no-period-state')?.classList.remove('hidden');
     el('budget-create-btn-label').textContent = 'Create Budget';
     renderWorkspaceShell(null, []);
-    renderAnnualEnvelope();
     renderPeriodSelector();
     const label = state.selectedTarget?.period_label || 'this period';
     el('budget-name').textContent = label;
@@ -344,7 +335,6 @@ function renderBudget(usage) {
 
     renderWorkspaceHeader(budget, allocations);
     renderPeriodBackLink(budget);
-    renderAnnualEnvelope();
     renderPeriodSelector();
 
     // ── KPI strip ───────────────────────────────────────────────────
@@ -505,58 +495,6 @@ function renderWorkspaceHeader(budget, allocations) {
     if (updatedWrap) updatedWrap.style.display = updatedText ? '' : 'none';
     const periodTypeWrap = el('budget-period-type-wrap');
     if (periodTypeWrap) periodTypeWrap.style.display = budget.period_type ? '' : 'none';
-}
-
-function renderAnnualEnvelope() {
-    const select = el('budget-annual-select');
-    const metrics = el('budget-annual-metrics');
-    if (!select || !metrics) return;
-
-    if (!state.annualBudgets.length) {
-        select.classList.add('hidden');
-        el('budget-annual-title').textContent = 'No annual budget set yet.';
-        el('budget-annual-subtitle').textContent = 'You can still manage monthly or quarterly budgets.';
-        metrics.innerHTML = '';
-        return;
-    }
-
-    select.classList.remove('hidden');
-    select.innerHTML = state.annualBudgets.map(b => `
-        <option value="${escapeHtml(b.id)}" ${b.id === state.selectedAnnualId ? 'selected' : ''}>${escapeHtml(b.period_label || b.name || 'Annual budget')}</option>
-    `).join('');
-
-    const envelope = state.annualEnvelope;
-    const annual = envelope?.annual_budget || state.annualBudgets.find(b => b.id === state.selectedAnnualId);
-    el('budget-annual-title').textContent = annual?.name || annual?.period_label || 'Annual Budget';
-    el('budget-annual-subtitle').textContent = formatPeriod(annual || {});
-    const yearly = Number(envelope?.yearly_budget) || 0;
-    const planned = Number(envelope?.planned_periods) || 0;
-    const open = Number(envelope?.unplanned_capacity) || 0;
-    const spent = Number(envelope?.spent_reserved_ytd) || 0;
-    const plannedPercent = yearly > 0 ? Math.max(0, Math.min(100, (planned / yearly) * 100)) : 0;
-    metrics.innerHTML = `
-        <div class="flex flex-col gap-0.5 text-[12px] sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
-            <span class="inline-flex items-center gap-1.5 font-semibold text-gray-600">
-                Planned into periods
-                <button type="button" class="metric-info" aria-label="Planned into periods: total of all period budgets created under this annual envelope." data-tooltip="The total of every monthly or quarterly budget you've created under this annual envelope — how much of the yearly budget already has a period plan.">?</button>
-            </span>
-            <span class="font-mono font-bold text-gray-900 whitespace-nowrap">${formatRp(planned)} <span class="font-semibold text-gray-400">of ${formatRp(yearly)}</span></span>
-        </div>
-        <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-gray-100">
-            <div class="h-full rounded-full bg-gray-800 transition-all" style="width: ${plannedPercent}%"></div>
-        </div>
-        <div class="mt-2 flex flex-col gap-1 text-[12px] text-gray-500 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
-            <span class="inline-flex items-center gap-1.5">
-                <span class="font-mono font-bold ${open < 0 ? 'text-red-600' : 'text-gray-700'}">${formatRp(open)}</span> still open to plan
-                <button type="button" class="metric-info" aria-label="Still open to plan: yearly budget minus what is planned into periods." data-tooltip="Yearly budget minus what's already planned into periods — how much of the year you can still carve into new monthly or quarterly budgets. Negative means your period budgets exceed the annual envelope.">?</button>
-            </span>
-            <span class="hidden text-gray-300 sm:inline">·</span>
-            <span class="inline-flex items-center gap-1.5">
-                <span class="font-mono font-bold text-gray-700">${formatRp(spent)}</span> spent or reserved this year
-                <button type="button" class="metric-info" aria-label="Spent or reserved this year: actual spend plus unpaid committed bills year-to-date." data-tooltip="Money already spent (recorded transactions) plus money reserved by unpaid bills and pending payables, totalled across this year up to today.">?</button>
-            </span>
-        </div>
-    `;
 }
 
 function renderPeriodSelector() {
@@ -897,10 +835,6 @@ function wireDrawerControls() {
     el('budget-create-period-btn')?.addEventListener('click', () => openBudgetWizard('create', { budgetType: 'period' }));
     el('budget-no-period-create')?.addEventListener('click', () => openBudgetWizard('create', { budgetType: 'period' }));
     el('budget-period-select')?.addEventListener('change', (e) => selectExistingBudget(e.target.value));
-    el('budget-annual-select')?.addEventListener('change', async (e) => {
-        state.selectedAnnualId = e.target.value || null;
-        await loadAndRender();
-    });
     el('budget-duplicate-btn')?.addEventListener('click', () => openBudgetWizard('duplicate'));
     el('budget-no-period-duplicate')?.addEventListener('click', () => openBudgetWizard('duplicate'));
     el('budget-refresh-btn')?.addEventListener('click', handleBudgetRefresh);
