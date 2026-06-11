@@ -651,7 +651,7 @@ touched.
 #### K4 — Edit & resave
 | # | Check |
 |---|-------|
-| 1 | On `/budget-period`, primary CTA reads "New allocation" and opens the period edit flow at the allocation step |
+| 1 | On `/budget-period`, primary CTA reads "Edit or assign budget" and opens the period edit flow at Step 1 without a budget-type selector |
 | 2 | Saving changed allocations archives existing allocations for that period (status flips to `archived` in Firestore) and writes the new set with `status='active'` |
 | 3 | Dashboard's `OpEx vs Budget` KPI continues to read the same `total_budget` after the new flow saves; settings-budget.html's history table still shows the same active row |
 

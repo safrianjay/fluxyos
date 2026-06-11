@@ -338,7 +338,7 @@ function renderBudget(usage) {
     el('budget-page-title')?.classList.add('hidden');
     el('budget-primary-workspace')?.classList.remove('hidden');
     el('budget-no-period-state')?.classList.add('hidden');
-    el('budget-create-btn-label').textContent = 'New allocation';
+    el('budget-create-btn-label').textContent = 'Edit or assign budget';
 
     const { budget, allocations, summary, unallocated } = usage;
 
@@ -845,10 +845,9 @@ function renderUnallocatedCard(unallocated) {
 
 function wireDrawerControls() {
     el('budget-create-btn').addEventListener('click', () => {
-        if (state.usage?.budget) openBudgetWizard('edit', { focusAllocations: true });
+        if (state.usage?.budget) openBudgetWizard('edit');
         else openBudgetWizard('create', { budgetType: 'period' });
     });
-    el('budget-create-period-btn')?.addEventListener('click', () => openBudgetWizard('create', { budgetType: 'period' }));
     el('budget-no-period-create')?.addEventListener('click', () => openBudgetWizard('create', { budgetType: 'period' }));
     el('budget-period-select')?.addEventListener('change', (e) => selectExistingBudget(e.target.value));
     el('budget-duplicate-btn')?.addEventListener('click', () => openBudgetWizard('duplicate'));
@@ -857,8 +856,8 @@ function wireDrawerControls() {
     el('budget-export-btn')?.addEventListener('click', handleBudgetExport);
     // The Assign Remaining Budget CTA lives inside the unassigned callout;
     // it's always in the DOM (hidden until needed) so we can wire it once.
-    // Reuses the Edit Budget flow — opening the wizard prefills allocation
-    // rows and shows the remaining-unallocated amount inline.
+    // Reuses the Edit Budget flow from step 1 so the user can review the
+    // period envelope before adjusting allocations.
     el('budget-assign-remaining-btn')?.addEventListener('click', () => openBudgetWizard('edit'));
     el('budget-wizard-close')?.addEventListener('click', closeBudgetWizard);
     el('budget-wizard-backdrop')?.addEventListener('click', closeBudgetWizard);
@@ -1125,15 +1124,6 @@ async function openBudgetWizard(mode = 'create', options = {}) {
 
     if (mode === 'edit' && state.usage?.budget) {
         prefillWizardFromBudget(state.usage.budget, state.usage.allocations || []);
-        if (options.focusAllocations) {
-            budgetWizardState.step = 3;
-            budgetWizardState.allocations.push({
-                name: '',
-                category: pickNextCategory(),
-                amount: 0,
-                sourceAllocationId: null
-            });
-        }
     } else if (mode === 'duplicate') {
         await prefillDuplicateWizard(options.sourceBudgetId);
     } else {
@@ -1376,15 +1366,6 @@ function renderWizardPlanStep() {
     return `
         <div class="space-y-5">
             ${isDuplicate ? renderDuplicateSourceSelect() : ''}
-            ${!isDuplicate ? `
-                <div>
-                    <label class="mb-2 block text-[12px] font-bold uppercase tracking-wider text-gray-400">Budget type</label>
-                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2" id="budget-wizard-budget-type">
-                        ${renderWizardChoiceButton('annual', 'Main / Annual budget', 'One yearly envelope for the business.', budgetWizardState.budgetType)}
-                        ${renderWizardChoiceButton('period', 'Period budget', 'A monthly, quarterly, or custom budget.', budgetWizardState.budgetType)}
-                    </div>
-                </div>
-            ` : ''}
             <div>
                 <label for="budget-wizard-name-input" class="mb-2 block text-[12px] font-bold text-gray-600">Budget name <span class="text-[#EA580C]">*</span></label>
                 <input id="budget-wizard-name-input" type="text" maxlength="120" value="${escapeHtml(budgetWizardState.name)}" placeholder="e.g. FY27 Operating Plan" class="h-11 w-full rounded-lg border border-gray-200 bg-white px-4 text-[15px] font-semibold text-gray-900 outline-none transition-all focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
