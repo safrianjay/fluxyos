@@ -56,6 +56,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Bills | `bill.html` | App | ✅ | **No** | ✅ |
 | Subscriptions | `subscription.html` | App | ✅ | **No** | ✅ |
 | Budgets | `budget.html` | App | ✅ | **No** | ✅ |
+| Invoices | `invoices.html` | App | ✅ | **No** | ✅ |
 | Accounting Center | `accounting.html` | App | ✅ | **No** | ✅ |
 | Accounting Records | `accounting-records.html` | App | ✅ | **No** | ✅ |
 | Reports & Exports | `reports.html` | App | ✅ | **No** | ✅ |
@@ -992,6 +993,71 @@ financial records are stored in Firestore.
 **Sidebar route:** `Balance Sheet` → `/balance-sheet`, under the Reporting group
 in `sidebar-loader.js` (active id `nav-balance-sheet`).
 
+### 4n. Invoices — `users/{userId}/invoices/{invoiceId}` (+ `items` subcollection)
+
+Customer invoices for the Operations → Invoices page (`invoices.html` +
+`assets/js/invoices.js`). Full spec: `docs/fluxyos_create_invoice_feature_plan.md`.
+
+**Accounting rule (critical):** a finalized (`open`) invoice is an **expected
+receivable only**. Finalizing NEVER creates a `users/{uid}/transactions` record,
+never marks anything paid, and never charges a customer. The `paid` status is
+reserved for a future reconciliation flow — the client cannot write `paid_at`
+(blocked by rules).
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `invoice_number` | string | `INV-YYYYMM-0001`, per-user, derived from the latest existing number (no global counters). Immutable after create. |
+| `status` | string | `draft` → `open` (finalize) → `void`. `paid` reserved. Delete is blocked — void instead. |
+| `currency` | string | Locked to `"IDR"` in v1. |
+| `customer_name` | string | May be empty on draft; required (size > 0) to finalize. |
+| `customer_email` | string \| null | Optional for draft/finalize; required for "Finalize and mark as sent". |
+| `customer_language` | string | Default `"English"`. |
+| `issue_date` | Timestamp | Defaults to draft-creation day. |
+| `due_date` | Timestamp \| null | Required to finalize. Derived from `due_terms`. |
+| `due_terms` | string | `due_on_receipt` \| `due_in_7_days` \| `due_in_14_days` \| `due_in_30_days` \| `custom`. |
+| `item_count` | number | Denormalized item count so the list renders without N subcollection reads. Must be > 0 to finalize. |
+| `subtotal_amount`, `tax_amount`, `discount_amount`, `total_amount`, `amount_due` | number | Raw integer Rupiah. Never formatted strings. `discount_amount` is always `0` in v1. |
+| `tax_rate_percent` | number \| null | Optional 0–100; `tax_amount = round(subtotal × rate / 100)`. |
+| `memo`, `footer` | string \| null | ≤500 chars each. Still editable on `open` invoices (metadata-only update). |
+| `payment_collection_method` | string | `request_payment` \| `manual_only`. No real payment processing in v1. |
+| `payment_link_enabled` | bool | Always `false` in v1. |
+| `payment_page_url` | null | Must be null in v1 (rules-enforced). |
+| `finalized_at`, `sent_at`, `voided_at` | Timestamp \| null | Stamped server-side on finalize / mark-sent / void. |
+| `paid_at` | null | Reserved; client writes blocked. |
+| `void_reason` | string \| null | Required (1–500 chars) when status becomes `void`. |
+| `created_at`/`updated_at`, `created_by`/`updated_by` | Timestamp / string | Server timestamps; pinned to `request.auth.uid`. |
+
+**Items subcollection** `users/{userId}/invoices/{invoiceId}/items/{itemId}`:
+`description` (1–240), `quantity` (> 0, ≤2 decimals), `unit_price` (raw integer),
+`amount` (= round(quantity × unit_price)), `position`, `created_at`, `updated_at`.
+Item writes/deletes are allowed only while the parent invoice is a draft
+(`getAfter`-checked, so the create-draft batch validates).
+
+**Status transitions (rules-enforced):** `draft → draft` (free edit),
+`draft → open` (finalize: customer name, due date, `item_count > 0`,
+`total_amount > 0`, `finalized_at == request.time`), `open → open`
+(metadata-only diff: `memo`/`footer`/`sent_at`), `draft|open → void`
+(requires `void_reason` + `voided_at == request.time`). `void`/`paid` are
+terminal for the client.
+
+**Overdue is display-only:** stored status stays `open`; the UI shows
+`Overdue` when `status == "open" && due_date < today && amount_due > 0`.
+
+**DataService methods:** `generateInvoiceNumber`, `getInvoices`, `getInvoice`,
+`getInvoiceItems`, `createInvoiceDraft` (invoice + items + audit in one
+`writeBatch`), `updateInvoiceDraft` (doc patch + item upsert/delete sync + audits
+in one batch), `addInvoiceItem`, `updateInvoiceItem`, `deleteInvoiceItem`,
+`finalizeInvoice(uid, id, { markSent })`, `recordInvoiceSent`,
+`voidInvoice(uid, id, reason)`.
+
+**Audit actions** (`target_collection: "invoices"`): `invoice.draft_created`,
+`invoice.draft_updated`, `invoice.item_added`, `invoice.item_updated`,
+`invoice.item_deleted`, `invoice.finalized`, `invoice.sent`, `invoice.voided`,
+plus `export.create` for the invoice CSV export.
+
+**Sidebar route:** `Invoices` → `/invoices`, Operations group directly under
+Budgets (active id `nav-invoices`).
+
 ---
 
 ## 5. Business Logic Rules
@@ -1238,6 +1304,7 @@ Sidebar is injected into every app page at `#sidebar`. Active item is detected b
 | Operations | Vendor Spend | Disabled button | `Soon` | 📋 Planned |
 | Operations | Receipt Capture | Disabled button | `Soon` | 📋 Planned |
 | Operations | Budgets | Link | `/budget` | ✅ Shipped Phase 1 |
+| Operations | Invoices | Link | `/invoices` | ✅ Shipped MVP |
 | Operations | Approvals | Disabled button | `Soon` | 📋 Planned |
 | Reporting | Reports & Exports | Link | `/reports` | ✅ Shipped MVP |
 | Reporting | Audit Log | Disabled button | `Soon` | 📋 Planned |

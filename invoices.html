@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Invoices</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <style>
+        .invoice-skeleton-line,
+        .invoice-skeleton-block {
+            display: block;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #E5E7EB 0%, #F8FAFC 48%, #E5E7EB 100%);
+            background-size: 220% 100%;
+            animation: invoiceSkeletonShimmer 1.35s ease-in-out infinite;
+        }
+        .invoice-skeleton-block { border-radius: 14px; }
+        @keyframes invoiceSkeletonShimmer {
+            0% { background-position: 220% 0; }
+            100% { background-position: -220% 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .invoice-skeleton-line,
+            .invoice-skeleton-block { animation: none; background: #E5E7EB; }
+        }
+        /* Invoice document preview — close to a real page, FluxyOS-neutral. */
+        .invoice-doc {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-top: 3px solid #0B0F19;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(11, 15, 25, 0.08);
+        }
+        .invoice-doc-money {
+            font-family: Inter, sans-serif;
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum";
+        }
+        /* Mobile sticky editor action bar. */
+        .invoice-mobile-actions {
+            position: sticky;
+            bottom: 0;
+            z-index: 25;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(6px);
+            border-top: 1px solid #E5E7EB;
+        }
+        @media (min-width: 1024px) {
+            .invoice-preview-sticky { position: sticky; top: 16px; }
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
+            <div class="flex items-center gap-4 flex-1">
+                <button class="md:hidden text-gray-500 hover:text-gray-900">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Fluxy AI
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-3 sm:p-5 lg:px-8 lg:pt-5 lg:pb-8">
+            <div class="max-w-7xl mx-auto space-y-4">
+
+                <!-- ============ LIST VIEW ============ -->
+                <div id="invoice-list-view">
+                    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Invoices</h1>
+                            <p class="text-[14px] text-gray-500 mt-0.5">Create invoices, track open receivables, and keep revenue collection visible.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="invoice-export-btn" type="button" disabled class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
+                                Export CSV
+                            </button>
+                            <button id="invoice-create-btn" type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#EA580C] px-4 text-[14px] font-bold text-white shadow-sm transition-all hover:bg-[#D94E0B] active:scale-95 whitespace-nowrap">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                                Create invoice
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Loading skeleton -->
+                    <div id="invoice-list-loading" class="mt-4 space-y-4" role="status" aria-live="polite" aria-busy="true">
+                        <span class="sr-only">Loading your invoices...</span>
+                        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"><span class="invoice-skeleton-line h-3 w-24"></span><span class="invoice-skeleton-line mt-4 h-7 w-32"></span></div>
+                            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"><span class="invoice-skeleton-line h-3 w-20"></span><span class="invoice-skeleton-line mt-4 h-7 w-28"></span></div>
+                            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"><span class="invoice-skeleton-line h-3 w-24"></span><span class="invoice-skeleton-line mt-4 h-7 w-36"></span></div>
+                            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"><span class="invoice-skeleton-line h-3 w-24"></span><span class="invoice-skeleton-line mt-4 h-7 w-28"></span></div>
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                            <span class="invoice-skeleton-line h-4 w-44"></span>
+                            <span class="invoice-skeleton-block mt-5 h-10 w-full"></span>
+                            <span class="invoice-skeleton-block mt-3 h-10 w-full"></span>
+                            <span class="invoice-skeleton-block mt-3 h-10 w-full"></span>
+                        </div>
+                    </div>
+
+                    <!-- Loaded content -->
+                    <div id="invoice-list-content" class="hidden mt-4 space-y-4">
+                        <!-- Summary cards -->
+                        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400">Open invoices</p>
+                                <p class="mt-2 text-[20px] font-semibold text-gray-900 font-mono" id="invoice-summary-open-count">0</p>
+                                <p class="mt-1 text-[12px] text-gray-500"><span class="font-mono" id="invoice-summary-open-amount">Rp0</span> awaiting payment</p>
+                            </div>
+                            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400">Drafts</p>
+                                <p class="mt-2 text-[20px] font-semibold text-gray-900 font-mono" id="invoice-summary-draft-count">0</p>
+                                <p class="mt-1 text-[12px] text-gray-500">Not yet finalized</p>
+                            </div>
+                            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400">Amount due</p>
+                                <p class="mt-2 text-[20px] font-semibold text-gray-900 font-mono" id="invoice-summary-due-amount">Rp0</p>
+                                <p class="mt-1 text-[12px] text-gray-500" id="invoice-summary-overdue-note">No overdue invoices</p>
+                            </div>
+                            <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400">Paid this month</p>
+                                <p class="mt-2 text-[20px] font-semibold text-gray-900 font-mono" id="invoice-summary-paid-amount">Rp0</p>
+                                <p class="mt-1 text-[12px] text-gray-500"><span class="font-mono" id="invoice-summary-paid-count">0</span> invoice(s) paid</p>
+                            </div>
+                        </div>
+
+                        <!-- Empty state -->
+                        <div id="invoice-empty-state" class="hidden rounded-xl border border-gray-200 bg-white px-6 py-14 text-center shadow-sm">
+                            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50 text-[#EA580C]">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>
+                            </div>
+                            <h2 class="mt-4 text-[16px] font-semibold text-gray-900">No invoices yet</h2>
+                            <p class="mx-auto mt-1.5 max-w-md text-[14px] text-gray-500">Create your first invoice to track receivables and payment requests. Finalized invoices appear as open receivables until payment is confirmed.</p>
+                            <button id="invoice-empty-create-btn" type="button" class="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#EA580C] px-4 text-[14px] font-bold text-white shadow-sm transition-all hover:bg-[#D94E0B] active:scale-95">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                                Create invoice
+                            </button>
+                        </div>
+
+                        <!-- Table -->
+                        <section id="invoice-table-card" class="fluxy-table-card hidden">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">All invoices</h2>
+                                    <p class="fluxy-table-subtitle">Open invoices count as expected receivables until you confirm payment.</p>
+                                </div>
+                            </div>
+                            <div class="fluxy-table-toolbar flex flex-col gap-2 sm:flex-row sm:items-center">
+                                <div class="relative flex-1 min-w-0">
+                                    <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"></path></svg>
+                                    <input id="invoice-search" type="text" placeholder="Search by number, customer, email, or status" class="h-9 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-[14px] text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C]">
+                                </div>
+                                <select id="invoice-status-filter" class="h-9 rounded-lg border border-gray-200 bg-white px-3 text-[12px] font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-[#EA580C] sm:w-44">
+                                    <option value="all">All statuses</option>
+                                    <option value="draft">Draft</option>
+                                    <option value="open">Open</option>
+                                    <option value="overdue">Overdue</option>
+                                    <option value="paid">Paid</option>
+                                    <option value="void">Void</option>
+                                </select>
+                            </div>
+                            <div class="fluxy-table-scroll">
+                                <table class="fluxy-table min-w-[860px]">
+                                    <thead>
+                                        <tr class="fluxy-table-header">
+                                            <th>Invoice</th>
+                                            <th>Customer</th>
+                                            <th class="fluxy-table-money">Amount due</th>
+                                            <th>Due date</th>
+                                            <th>Status</th>
+                                            <th>Updated</th>
+                                            <th class="text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="invoice-table-body"></tbody>
+                                </table>
+                            </div>
+                            <div id="invoice-pagination" class="fluxy-table-pagination hidden">
+                                <p id="invoice-page-summary" class="text-[12px] text-gray-500">Showing 0 of 0 invoices</p>
+                                <div class="flex items-center gap-2">
+                                    <button id="invoice-page-prev" type="button" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40">Previous</button>
+                                    <button id="invoice-page-next" type="button" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40">Next</button>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- ============ EDITOR VIEW ============ -->
+                <div id="invoice-editor-view" class="hidden">
+                    <!-- Editor topbar -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                        <div class="flex min-w-0 items-center gap-3">
+                            <button id="invoice-editor-back" type="button" class="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-700" aria-label="Back to invoices">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                            <div class="min-w-0 border-l border-gray-200 pl-3">
+                                <h1 id="invoice-editor-title" class="truncate text-[16px] font-semibold text-gray-900">Create invoice</h1>
+                                <p id="invoice-editor-status" class="text-[12px] text-gray-400">Not saved yet</p>
+                            </div>
+                        </div>
+                        <div class="hidden items-center gap-2 lg:flex">
+                            <button id="invoice-preview-toggle-desktop" type="button" class="inline-flex h-10 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95">Hide preview</button>
+                            <button id="invoice-save-draft-btn" type="button" class="inline-flex h-10 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Save draft</button>
+                            <button id="invoice-review-btn" type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#EA580C] px-4 text-[14px] font-bold text-white shadow-sm transition-all hover:bg-[#D94E0B] active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500">Review invoice</button>
+                        </div>
+                    </div>
+
+                    <div id="invoice-editor-grid" class="mt-4 grid gap-5 lg:grid-cols-2">
+                        <!-- LEFT: form -->
+                        <div class="space-y-5">
+                            <div class="rounded-xl border border-gray-200 bg-white shadow-sm divide-y divide-gray-100">
+
+                                <!-- Customer -->
+                                <section class="px-5 py-5 sm:px-6">
+                                    <h2 class="text-[14px] font-semibold text-gray-900">Customer</h2>
+                                    <p class="mt-0.5 text-[12px] text-gray-500">Who this invoice bills. Email is required only when you mark the invoice as sent.</p>
+                                    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                                        <div>
+                                            <label for="inv-customer-name" class="text-[12px] font-medium text-gray-700">Customer name <span class="text-red-500">*</span></label>
+                                            <input id="inv-customer-name" type="text" maxlength="160" placeholder="e.g. PT Maju Bersama" class="mt-1 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-[14px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C]">
+                                        </div>
+                                        <div>
+                                            <label for="inv-customer-email" class="text-[12px] font-medium text-gray-700">Customer email</label>
+                                            <input id="inv-customer-email" type="email" maxlength="160" placeholder="billing@customer.com" class="mt-1 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-[14px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C]">
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- Currency -->
+                                <section class="px-5 py-5 sm:px-6">
+                                    <h2 class="text-[14px] font-semibold text-gray-900">Currency</h2>
+                                    <div class="mt-3 flex h-10 w-full items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 sm:w-72">
+                                        <span class="text-[14px] font-medium text-gray-500">IDR — Indonesian Rupiah</span>
+                                        <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                    </div>
+                                    <p class="mt-2 text-[12px] text-gray-500">FluxyOS invoices currently use Indonesian Rupiah.</p>
+                                </section>
+
+                                <!-- Items -->
+                                <section class="px-5 py-5 sm:px-6">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div>
+                                            <h2 class="text-[14px] font-semibold text-gray-900">Items</h2>
+                                            <p class="mt-0.5 text-[12px] text-gray-500">Add one-time line items to this invoice.</p>
+                                        </div>
+                                        <button id="invoice-item-add" type="button" class="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-[12px] font-bold text-gray-700 transition-colors hover:border-[#EA580C] hover:text-[#EA580C]">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                                            Add item
+                                        </button>
+                                    </div>
+
+                                    <div id="invoice-items-list" class="mt-4 space-y-2"></div>
+                                    <p id="invoice-items-empty" class="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-4 text-center text-[12px] text-gray-500">No items yet. Add your first line item to build the invoice total.</p>
+
+                                    <!-- Inline item editor -->
+                                    <div id="invoice-item-form" class="mt-4 hidden rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                        <div class="flex items-center justify-between">
+                                            <h3 class="text-[12px] font-bold uppercase tracking-[0.06em] text-gray-500">Item details</h3>
+                                            <p class="text-[12px] text-gray-500"><span id="invoice-item-amount-hint" class="font-mono font-semibold text-gray-700">Rp0</span></p>
+                                        </div>
+                                        <div class="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_96px_minmax(0,180px)]">
+                                            <div>
+                                                <label for="inv-item-description" class="text-[12px] font-medium text-gray-700">Description <span class="text-red-500">*</span></label>
+                                                <input id="inv-item-description" type="text" maxlength="240" placeholder="e.g. Consulting service" class="mt-1 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-[14px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C]">
+                                            </div>
+                                            <div>
+                                                <label for="inv-item-qty" class="text-[12px] font-medium text-gray-700">Qty <span class="text-red-500">*</span></label>
+                                                <input id="inv-item-qty" type="text" inputmode="decimal" value="1" class="mt-1 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-[14px] text-gray-900 outline-none focus:ring-2 focus:ring-[#EA580C] font-mono">
+                                            </div>
+                                            <div>
+                                                <label for="inv-item-price" class="text-[12px] font-medium text-gray-700">Unit price (Rp) <span class="text-red-500">*</span></label>
+                                                <input id="inv-item-price" type="text" inputmode="numeric" placeholder="1.000.000" class="mt-1 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-[14px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C] font-mono">
+                                            </div>
+                                        </div>
+                                        <p id="invoice-item-form-error" class="mt-2 hidden text-[12px] font-medium text-red-600"></p>
+                                        <div class="mt-3 flex items-center justify-end gap-2">
+                                            <button id="invoice-item-cancel" type="button" class="rounded-lg px-3 py-2 text-[12px] font-bold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">Cancel</button>
+                                            <button id="invoice-item-save" type="button" class="rounded-lg bg-gray-900 px-3.5 py-2 text-[12px] font-bold text-white transition-all hover:bg-gray-800 active:scale-95">Save item</button>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- Payment collection -->
+                                <section class="px-5 py-5 sm:px-6">
+                                    <h2 class="text-[14px] font-semibold text-gray-900">Payment collection</h2>
+                                    <p class="mt-0.5 text-[12px] text-gray-500">FluxyOS tracks the invoice as an open receivable. It will not create revenue in your ledger until payment is confirmed.</p>
+                                    <div class="mt-4 space-y-2">
+                                        <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 transition-colors hover:bg-gray-50 has-[:checked]:border-[#EA580C] has-[:checked]:bg-orange-50/40">
+                                            <input type="radio" name="inv-payment-method" value="request_payment" checked class="mt-0.5 h-4 w-4 accent-[#EA580C]">
+                                            <span>
+                                                <span class="block text-[14px] font-medium text-gray-900">Request payment</span>
+                                                <span class="block text-[12px] text-gray-500">Ask the customer to pay by a specific date.</span>
+                                            </span>
+                                        </label>
+                                        <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 transition-colors hover:bg-gray-50 has-[:checked]:border-[#EA580C] has-[:checked]:bg-orange-50/40">
+                                            <input type="radio" name="inv-payment-method" value="manual_only" class="mt-0.5 h-4 w-4 accent-[#EA580C]">
+                                            <span>
+                                                <span class="block text-[14px] font-medium text-gray-900">Manual only</span>
+                                                <span class="block text-[12px] text-gray-500">Track the invoice internally without a payment request.</span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                                        <div>
+                                            <label for="inv-due-terms" class="text-[12px] font-medium text-gray-700">Payment due</label>
+                                            <select id="inv-due-terms" class="mt-1 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-[14px] text-gray-700 outline-none focus:ring-2 focus:ring-[#EA580C]">
+                                                <option value="due_on_receipt">Due on receipt</option>
+                                                <option value="due_in_7_days">Due in 7 days</option>
+                                                <option value="due_in_14_days">Due in 14 days</option>
+                                                <option value="due_in_30_days" selected>Due in 30 days</option>
+                                                <option value="custom">Custom date</option>
+                                            </select>
+                                        </div>
+                                        <div id="inv-custom-due-wrap" class="hidden">
+                                            <label class="text-[12px] font-medium text-gray-700">Custom due date</label>
+                                            <div id="inv-custom-due-picker" class="mt-1"></div>
+                                        </div>
+                                    </div>
+                                    <p id="invoice-due-hint" class="mt-2 text-[12px] text-gray-500"></p>
+                                </section>
+
+                                <!-- Additional options -->
+                                <section class="px-5 py-5 sm:px-6">
+                                    <h2 class="text-[14px] font-semibold text-gray-900">Additional options</h2>
+                                    <div class="mt-4 space-y-3">
+                                        <div>
+                                            <label for="inv-tax-rate" class="text-[12px] font-medium text-gray-700">Tax rate (%) <span class="font-normal text-gray-400">— optional</span></label>
+                                            <input id="inv-tax-rate" type="text" inputmode="decimal" placeholder="e.g. 11" class="mt-1 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-[14px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C] font-mono sm:w-40">
+                                        </div>
+                                        <div>
+                                            <label for="inv-memo" class="text-[12px] font-medium text-gray-700">Memo <span class="font-normal text-gray-400">— shows above the item table</span></label>
+                                            <textarea id="inv-memo" rows="2" maxlength="500" placeholder="Thank you for your business." class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C]"></textarea>
+                                        </div>
+                                        <div>
+                                            <label for="inv-footer" class="text-[12px] font-medium text-gray-700">Footer note</label>
+                                            <textarea id="inv-footer" rows="2" maxlength="500" placeholder="Payment details, bank account, or terms." class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C]"></textarea>
+                                        </div>
+                                        <div class="flex flex-wrap gap-2 pt-1">
+                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400">Tax ID · Planned</span>
+                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400">Custom fields · Planned</span>
+                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400">PDF email delivery · Planned</span>
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+                        </div>
+
+                        <!-- RIGHT: live preview -->
+                        <div id="invoice-preview-panel" class="hidden lg:block">
+                            <div class="invoice-preview-sticky">
+                                <div class="mb-2 flex items-center justify-between">
+                                    <h2 class="text-[12px] font-bold uppercase tracking-[0.06em] text-gray-500">Invoice preview</h2>
+                                    <span class="text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400">Email · Payment page — Coming later</span>
+                                </div>
+                                <div class="invoice-doc p-6 sm:p-8" id="invoice-preview-doc">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <h3 class="text-[20px] font-semibold text-gray-900">Invoice</h3>
+                                        <p id="pv-business" class="max-w-[45%] truncate text-right text-[14px] font-semibold text-gray-500">Your business</p>
+                                    </div>
+                                    <dl class="mt-5 space-y-1 text-[12px]">
+                                        <div class="flex gap-3"><dt class="w-28 font-medium text-gray-500">Invoice number</dt><dd id="pv-number" class="font-mono text-gray-900">—</dd></div>
+                                        <div class="flex gap-3"><dt class="w-28 font-medium text-gray-500">Issue date</dt><dd id="pv-issue-date" class="text-gray-900">—</dd></div>
+                                        <div class="flex gap-3"><dt class="w-28 font-medium text-gray-500">Due date</dt><dd id="pv-due-date" class="text-gray-900">—</dd></div>
+                                    </dl>
+                                    <div class="mt-5 grid grid-cols-2 gap-4 text-[12px]">
+                                        <div>
+                                            <p class="font-semibold text-gray-900">From</p>
+                                            <p id="pv-business-from" class="mt-1 text-gray-600">Your business</p>
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-gray-900">Bill to</p>
+                                            <p id="pv-customer-name" class="mt-1 text-gray-600">Customer name</p>
+                                            <p id="pv-customer-email" class="text-gray-500"></p>
+                                        </div>
+                                    </div>
+                                    <p class="mt-6 text-[16px] font-semibold text-gray-900 invoice-doc-money" id="pv-amount-line">Rp0 due —</p>
+                                    <p id="pv-memo" class="mt-2 hidden text-[12px] text-gray-600"></p>
+                                    <table class="mt-4 w-full text-[12px]">
+                                        <thead>
+                                            <tr class="border-b border-gray-300 text-left text-gray-500">
+                                                <th class="py-2 font-medium">Description</th>
+                                                <th class="py-2 text-right font-medium">Qty</th>
+                                                <th class="py-2 text-right font-medium">Unit price</th>
+                                                <th class="py-2 text-right font-medium">Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="pv-items-body"></tbody>
+                                        <tfoot class="invoice-doc-money">
+                                            <tr class="border-t border-gray-200">
+                                                <td colspan="3" class="py-1.5 text-right text-gray-500">Subtotal</td>
+                                                <td id="pv-subtotal" class="py-1.5 text-right text-gray-900">Rp0</td>
+                                            </tr>
+                                            <tr id="pv-tax-row" class="hidden">
+                                                <td colspan="3" class="py-1.5 text-right text-gray-500">Tax (<span id="pv-tax-rate">0</span>%)</td>
+                                                <td id="pv-tax" class="py-1.5 text-right text-gray-900">Rp0</td>
+                                            </tr>
+                                            <tr class="border-t border-gray-200">
+                                                <td colspan="3" class="py-1.5 text-right text-gray-500">Total</td>
+                                                <td id="pv-total" class="py-1.5 text-right text-gray-900">Rp0</td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="3" class="py-1.5 text-right font-semibold text-gray-900">Amount due</td>
+                                                <td id="pv-amount-due" class="py-1.5 text-right font-semibold text-gray-900">Rp0</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                    <p id="pv-footer" class="mt-8 hidden border-t border-gray-100 pt-3 text-[12px] text-gray-500"></p>
+                                    <p id="pv-doc-meta" class="mt-3 text-[10px] uppercase tracking-[0.06em] text-gray-400">— · Rp0 due —</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mobile preview toggle + sticky actions -->
+                    <div class="mt-4 lg:hidden">
+                        <button id="invoice-preview-toggle" type="button" class="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-[14px] font-bold text-gray-700 shadow-sm transition-colors hover:bg-gray-50">Show preview</button>
+                    </div>
+                    <div class="invoice-mobile-actions mt-4 -mx-3 flex items-center gap-2 px-3 py-3 sm:-mx-5 sm:px-5 lg:hidden">
+                        <button id="invoice-save-draft-btn-mobile" type="button" class="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-[14px] font-bold text-gray-700 shadow-sm transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Save draft</button>
+                        <button id="invoice-review-btn-mobile" type="button" class="flex-1 rounded-lg bg-[#EA580C] px-4 py-2.5 text-[14px] font-bold text-white shadow-sm transition-all active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500">Review invoice</button>
+                    </div>
+                </div>
+
+                <!-- ============ DETAIL VIEW ============ -->
+                <div id="invoice-detail-view" class="hidden">
+                    <button id="invoice-detail-back" type="button" class="inline-flex items-center gap-1.5 text-[12px] font-bold text-gray-500 transition-colors hover:text-gray-900">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m15 18-6-6 6-6"></path></svg>
+                        Back to invoices
+                    </button>
+
+                    <div class="mt-3 rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+                        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <h1 id="detail-number" class="text-2xl font-bold tracking-tight text-gray-900 font-mono">—</h1>
+                                    <span id="detail-status" class="fluxy-table-status fluxy-status-neutral">Draft</span>
+                                </div>
+                                <p class="mt-1.5 text-[14px] text-gray-500">Billed to <span id="detail-customer" class="font-medium text-gray-900">—</span> · <span id="detail-amount-due" class="font-mono font-semibold text-gray-900">Rp0</span> due</p>
+                                <div id="detail-void-banner" class="mt-3 hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700"></div>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button id="detail-copy-btn" type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95">Copy summary</button>
+                                <button id="detail-sent-btn" type="button" class="hidden h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Mark as sent</button>
+                                <button id="detail-void-btn" type="button" class="hidden h-10 items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-4 text-[14px] font-bold text-red-600 shadow-sm transition-all hover:bg-red-50 active:scale-95">Void invoice</button>
+                                <button id="detail-edit-btn" type="button" class="hidden h-10 items-center justify-center gap-2 rounded-lg bg-[#EA580C] px-4 text-[14px] font-bold text-white shadow-sm transition-all hover:bg-[#D94E0B] active:scale-95">Edit invoice</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+                        <!-- Items + totals -->
+                        <section class="fluxy-table-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">Line items</h2>
+                                    <p class="fluxy-table-subtitle">Amounts are stored as raw Rupiah integers.</p>
+                                </div>
+                            </div>
+                            <div class="fluxy-table-scroll">
+                                <table class="fluxy-table min-w-[520px]">
+                                    <thead>
+                                        <tr class="fluxy-table-header">
+                                            <th>Description</th>
+                                            <th class="fluxy-table-money">Qty</th>
+                                            <th class="fluxy-table-money">Unit price</th>
+                                            <th class="fluxy-table-money">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="detail-items-body"></tbody>
+                                    <tfoot>
+                                        <tr class="fluxy-table-row-total">
+                                            <td colspan="3" class="fluxy-table-cell fluxy-table-money">Subtotal</td>
+                                            <td id="detail-subtotal" class="fluxy-table-cell fluxy-table-money">Rp0</td>
+                                        </tr>
+                                        <tr id="detail-tax-row" class="fluxy-table-row-total hidden">
+                                            <td colspan="3" class="fluxy-table-cell fluxy-table-money">Tax</td>
+                                            <td id="detail-tax" class="fluxy-table-cell fluxy-table-money">Rp0</td>
+                                        </tr>
+                                        <tr class="fluxy-table-row-final">
+                                            <td colspan="3" class="fluxy-table-cell fluxy-table-money">Amount due</td>
+                                            <td id="detail-amount-due-2" class="fluxy-table-cell fluxy-table-money">Rp0</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </section>
+
+                        <!-- Meta -->
+                        <div class="space-y-4">
+                            <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                                <h2 class="text-[12px] font-bold uppercase tracking-[0.06em] text-gray-500">Summary</h2>
+                                <dl class="mt-3 space-y-2 text-[14px]">
+                                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Issue date</dt><dd id="detail-issue-date" class="text-gray-900">—</dd></div>
+                                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Due date</dt><dd id="detail-due-date" class="text-gray-900">—</dd></div>
+                                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Customer email</dt><dd id="detail-email" class="max-w-[60%] truncate text-gray-900">—</dd></div>
+                                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Currency</dt><dd class="text-gray-900">IDR</dd></div>
+                                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Collection</dt><dd id="detail-method" class="text-gray-900">—</dd></div>
+                                </dl>
+                                <div id="detail-memo-wrap" class="mt-4 hidden border-t border-gray-100 pt-3">
+                                    <p class="text-[12px] font-bold uppercase tracking-[0.06em] text-gray-500">Memo</p>
+                                    <p id="detail-memo" class="mt-1 text-[14px] text-gray-700"></p>
+                                </div>
+                                <div id="detail-footer-wrap" class="mt-4 hidden border-t border-gray-100 pt-3">
+                                    <p class="text-[12px] font-bold uppercase tracking-[0.06em] text-gray-500">Footer note</p>
+                                    <p id="detail-footer" class="mt-1 text-[14px] text-gray-700"></p>
+                                </div>
+                            </section>
+                            <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                                <h2 class="text-[12px] font-bold uppercase tracking-[0.06em] text-gray-500">Activity</h2>
+                                <ul id="detail-activity" class="mt-3 space-y-2 text-[12px] text-gray-600"></ul>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- ============ REVIEW MODAL ============ -->
+    <div id="invoice-review-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="review-title">
+        <div class="absolute inset-0 bg-[#0B0F19]/50 backdrop-blur-[6px]" data-review-overlay></div>
+        <section class="relative flex max-h-[calc(100vh-3rem)] w-full max-w-[880px] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl">
+            <header class="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 sm:px-6">
+                <div>
+                    <h2 id="review-title" class="text-[20px] font-semibold tracking-[-0.02em] text-gray-900">Review invoice</h2>
+                    <p class="mt-0.5 text-[12px] text-gray-500">Check the details below before finalizing.</p>
+                </div>
+                <button id="review-close" type="button" class="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-700" aria-label="Close review">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </header>
+            <div class="grid min-h-0 flex-1 gap-0 overflow-y-auto md:grid-cols-[320px_minmax(0,1fr)]">
+                <div class="border-b border-gray-100 px-5 py-4 sm:px-6 md:border-b-0 md:border-r">
+                    <dl class="space-y-2.5 text-[14px]">
+                        <div class="flex justify-between gap-3"><dt class="text-gray-500">Customer</dt><dd id="review-customer" class="max-w-[60%] truncate font-medium text-gray-900">—</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-gray-500">Email</dt><dd id="review-email" class="max-w-[60%] truncate text-gray-900">—</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-gray-500">Due date</dt><dd id="review-due" class="text-gray-900">—</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-gray-500">Items</dt><dd id="review-items-count" class="font-mono text-gray-900">0</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-gray-500">Amount due</dt><dd id="review-amount" class="font-mono font-semibold text-gray-900">Rp0</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-gray-500">Collection</dt><dd id="review-method" class="text-gray-900">Request payment</dd></div>
+                    </dl>
+                    <label class="mt-4 flex items-start gap-2.5 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                        <input type="checkbox" checked disabled class="mt-0.5 h-4 w-4 accent-[#EA580C]">
+                        <span class="text-[12px] text-gray-600">Track as open receivable after finalizing</span>
+                    </label>
+                    <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] text-amber-800">Finalizing makes this invoice an open receivable. It does not mark the invoice as paid and does not create a ledger transaction.</p>
+                    <p id="review-email-warning" class="mt-3 hidden rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-[12px] text-gray-600">Add a customer email to enable “Finalize and mark as sent”.</p>
+                    <p id="review-error" class="mt-3 hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-[12px] font-medium text-red-700"></p>
+                </div>
+                <div class="bg-gray-50/70 px-5 py-4 sm:px-6">
+                    <div id="review-preview-host"></div>
+                </div>
+            </div>
+            <footer class="flex flex-col gap-2 border-t border-gray-100 bg-gray-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+                <button id="review-cancel" type="button" class="rounded-lg px-4 py-2.5 text-[14px] font-bold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">Cancel</button>
+                <button id="review-finalize-btn" type="button" class="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Finalize only</button>
+                <button id="review-finalize-send-btn" type="button" class="rounded-lg bg-[#EA580C] px-4 py-2.5 text-[14px] font-bold text-white shadow-sm transition-all hover:bg-[#D94E0B] active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500">Finalize and mark as sent</button>
+            </footer>
+        </section>
+    </div>
+
+    <!-- ============ VOID MODAL ============ -->
+    <div id="invoice-void-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="void-title">
+        <div class="absolute inset-0 bg-[#0B0F19]/50 backdrop-blur-[6px]" data-void-overlay></div>
+        <section class="relative w-full max-w-[440px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl">
+            <div class="px-5 py-5 sm:px-6">
+                <h2 id="void-title" class="text-[20px] font-semibold tracking-[-0.02em] text-gray-900">Void this invoice?</h2>
+                <p class="mt-1 text-[14px] text-gray-500">A voided invoice is excluded from receivables and cannot be reopened. It stays visible for your records.</p>
+                <label for="void-reason" class="mt-4 block text-[12px] font-medium text-gray-700">Reason <span class="text-red-500">*</span></label>
+                <textarea id="void-reason" rows="3" maxlength="500" placeholder="e.g. Duplicate invoice, wrong customer, order cancelled." class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-red-500"></textarea>
+                <p id="void-error" class="mt-2 hidden text-[12px] font-medium text-red-600"></p>
+            </div>
+            <footer class="flex items-center justify-end gap-2 border-t border-gray-100 bg-gray-50 px-5 py-4 sm:px-6">
+                <button id="void-cancel" type="button" class="rounded-lg px-4 py-2.5 text-[14px] font-bold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">Cancel</button>
+                <button id="void-confirm" type="button" class="rounded-lg bg-red-600 px-4 py-2.5 text-[14px] font-bold text-white shadow-sm transition-all hover:bg-red-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Void invoice</button>
+            </footer>
+        </section>
+    </div>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/fluxy-select.js"></script>
+    <script src="assets/js/date-range-picker.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+        import { applyToPage } from './assets/js/onboarding-gate.js';
+        import { initInvoicesPage } from './assets/js/invoices.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.replace('/login');
+                return;
+            }
+            const gated = await applyToPage(user, { pageKey: 'invoices' });
+            if (gated) return;
+            initInvoicesPage({ ds, user });
+        });
+    </script>
+</body>
+</html>

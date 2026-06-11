@@ -803,6 +803,39 @@ banner/KPI, not the main card.
 modified — run §3 Cross-Page Regression and confirm Dashboard, Ledger, Bills,
 Subscriptions, Budget, and Reports still render and their sidebar active states work.
 
+### O. Invoices (invoices.html, invoices.js, db-service.js invoice methods, firestore.rules invoices + items, sidebar-loader.js)
+
+| # | Check |
+|---|---|
+| 1 | Opening `/invoices` while signed out redirects to `/login` within 2s |
+| 2 | After sign-in, `/invoices` renders with the shared sidebar and no marketing footer |
+| 3 | Sidebar Operations group shows Invoices directly under Budgets; active state uses orange accent on `/invoices` and does not affect Budgets |
+| 4 | Empty account shows the "No invoices yet" empty state with a Create invoice CTA; summary cards show `0` / `Rp0` (never fake data) |
+| 5 | Create invoice opens the workspace: left form + right sticky live preview on desktop |
+| 6 | Mobile 375px: single-column editor, preview hidden behind "Show preview", sticky bottom Save draft / Review invoice bar, no horizontal overflow |
+| 7 | Currency is locked to IDR (read-only) with helper copy |
+| 8 | Adding/editing/removing a line item recalculates subtotal, tax, total, and amount due live in the preview; empty items never break the preview or show NaN |
+| 9 | Unit price input formats with dots while typing but stores raw integers (verify `unit_price`/`amount` in Firestore are numbers like `1000000`) |
+| 10 | Save draft works with partial data (no customer, no items) and writes only under `users/{uid}/invoices`; items land under `.../invoices/{id}/items` |
+| 11 | Draft save shows "Draft saved at …" status; refresh restores the draft via `?edit={id}`; unsaved changes warn before leaving the editor |
+| 12 | Review invoice opens the modal; Finalize buttons are disabled with clear errors until customer name, due date, ≥1 item, and total > 0 exist |
+| 13 | "Finalize and mark as sent" is disabled without a customer email and the modal explains why |
+| 14 | Finalize only → status `open`, `finalized_at` set, `invoice.finalized` audit log written, success toast, detail view shown |
+| 15 | Finalize and mark as sent → additionally sets `sent_at` and writes `invoice.sent` |
+| 16 | Finalizing creates **no** record under `users/{uid}/transactions` |
+| 17 | Open invoice past its due date with amount due > 0 displays Overdue (stored status stays `open`) |
+| 18 | Void requires a reason, writes `invoice.voided` with the reason, and the invoice stays visible (delete is not available anywhere and is blocked by rules) |
+| 19 | Open invoices cannot be edited (Edit hidden; rules block amount/item changes); only memo/footer/mark-as-sent succeed on `open` |
+| 20 | Invoice search filters by number, customer, email, and status; status filter includes Overdue; pagination at 10 rows works |
+| 21 | CSV export contains raw integer amounts only (no `Rp`, no dots) and writes an `export.create` audit log before download; button disabled with no invoices |
+| 22 | Invoice numbers increment per user (`INV-YYYYMM-0001`, `-0002`, …) |
+| 23 | No invoice data appears for another authenticated user (data isolation) |
+| 24 | Browser console clean: no Firebase permission, CSP, CORS, or 404 errors on list, editor, review, detail, and void flows |
+| 25 | Existing pages still load and their flows work: Dashboard, Ledger, Revenue Sync, Bills, Subscriptions, Budgets, Reports, Settings; Add Transaction / Add Bill / Add Subscription unchanged |
+
+**Regression (shared files touched):** `sidebar-loader.js`, `db-service.js`, and
+`firestore.rules` were modified — run §3 Cross-Page Regression.
+
 ---
 
 ## 3. Cross-Page Regression (run when shared files are touched)

@@ -190,6 +190,7 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Vendor Spend | 📋 Planned | Visible as disabled `Soon`; no app page yet |
 | Receipt Capture | 📋 Planned | Visible as disabled `Soon`; no app page yet |
 | Budgets | ✅ Shipped Phase 2 | `/budget` — Main Budget page for annual envelopes, planned-into-periods progress, and clickable period budgets. `/budget-period` owns allocation/sub-budget management, excluded records, and budget activity. `/budget-allocation` is the allocation drill-in. Ledger and Bills still show budget chips with Assign / Restore actions, and every manual change writes a `budget_assignment.*` audit log. Approvals, hard enforcement, Pay Now, and AI auto-assign remain Phase 3. |
+| Invoices | ✅ Shipped MVP | `/invoices` — Operations entry directly under Budgets. See "Invoices" section below. |
 | Approvals | 📋 Planned | Visible as disabled `Soon`; no app page yet |
 | Reports & Exports | ✅ Shipped MVP | `/reports` — period filter, readiness score, preview drawer, CSV export, `export.create` audit log |
 | Audit Log | 📋 Planned | Visible as disabled `Soon`; no app page yet |
@@ -197,6 +198,23 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 
 Visible `Soon` entries communicate product direction only. They must stay
 disabled until a real authenticated app page and data contract exist.
+
+### Invoices (Operations)
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Invoices app page (`/invoices`) | ✅ Shipped MVP | Auth-guarded, sidebar entry under Operations directly below Budgets, no marketing footer |
+| Invoice list (summary cards, search, status filter, pagination) | ✅ Shipped MVP | Open / Drafts / Amount due / Paid this month cards; Overdue is display-only (`open` + past due + amount due > 0) |
+| Create/edit workspace (split form + live preview) | ✅ Shipped MVP | Stripe-benchmarked workflow, FluxyOS-native UI; preview hidden behind Show preview on mobile |
+| Draft save (`users/{uid}/invoices` + `items` subcollection) | ✅ Shipped MVP | Raw integer amounts; invoice + items + audit log committed in one `writeBatch` |
+| Review modal → Finalize only / Finalize and mark as sent | ✅ Shipped MVP | Finalize requires customer, due date, ≥1 item, total > 0; mark-as-sent additionally requires customer email |
+| Void with required reason (`invoice.voided` audit) | ✅ Shipped MVP | Delete is blocked in UI and Firestore rules |
+| Invoice CSV export (raw integers, `export.create` audit) | ✅ Shipped MVP | |
+| Per-user invoice numbers `INV-YYYYMM-0001` | ✅ Shipped MVP | Derived from latest existing number; no global counters |
+| Ledger transaction from finalization | 🚫 By design | A finalized invoice is an expected receivable only — it never auto-creates revenue |
+| Payment collection / gateway / payment page | 📋 Planned | `payment_collection_method` stored; no provider integration |
+| PDF generation + invoice email delivery | 📋 Planned | Mark-as-sent is a manual status stamp only in v1 |
+| Mark as paid + ledger reconciliation | 📋 Planned | `paid` status reserved; client writes of `paid_at` are blocked by rules |
+| Recurring invoices, multi-currency, customer database, discounts | 📋 Planned | Currency locked to IDR in v1; `discount_amount` stored as 0 |
 
 ---
 

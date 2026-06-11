@@ -1020,6 +1020,423 @@ class DataService {
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
 
+    // --- INVOICES (Create Invoice MVP) ---
+    // Owner-scoped customer invoices under users/{uid}/invoices with an
+    // items subcollection. Amounts are raw integer Rupiah — never formatted
+    // strings. A finalized (open) invoice is an expected receivable only:
+    // it NEVER creates a ledger transaction in v1.
+    // See docs/fluxyos_create_invoice_feature_plan.md.
+
+    _normalizeInvoiceItem(item = {}, index = 0) {
+        const description = this._stringOrDefault(item.description, '', 240);
+        if (!description) throw new Error('Item description is required.');
+        const quantity = Math.round((Number(item.quantity) || 0) * 100) / 100;
+        if (!(quantity > 0)) throw new Error('Item quantity must be greater than zero.');
+        const unitPrice = Math.round(Number(String(item.unit_price).replace(/[^\d]/g, '')) || 0);
+        if (!(unitPrice > 0)) throw new Error('Item unit price must be greater than zero.');
+        return {
+            description,
+            quantity,
+            unit_price: unitPrice,
+            amount: Math.round(quantity * unitPrice),
+            position: Number.isFinite(Number(item.position)) ? Number(item.position) : index
+        };
+    }
+
+    _calculateInvoiceTotals(items = [], taxRatePercent = null) {
+        const subtotal = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+        const rate = taxRatePercent == null ? null : Math.min(Math.max(Number(taxRatePercent) || 0, 0), 100);
+        const tax = rate ? Math.round(subtotal * rate / 100) : 0;
+        const discount = 0; // Discounts are out of scope for invoice v1.
+        const total = Math.max(subtotal + tax - discount, 0);
+        return {
+            subtotal_amount: subtotal,
+            tax_rate_percent: rate,
+            tax_amount: tax,
+            discount_amount: discount,
+            total_amount: total,
+            amount_due: total
+        };
+    }
+
+    _invoiceAuditSnapshot(invoice = {}) {
+        const keys = [
+            'invoice_number', 'status', 'currency', 'customer_name', 'customer_email',
+            'due_terms', 'item_count', 'subtotal_amount', 'tax_amount', 'discount_amount',
+            'total_amount', 'amount_due', 'payment_collection_method'
+        ];
+        const out = {};
+        keys.forEach(key => {
+            if (invoice && invoice[key] !== undefined) out[key] = invoice[key] ?? null;
+        });
+        return out;
+    }
+
+    _invoiceAuditRef(userId) {
+        return doc(collection(this.db, `users/${userId}/audit_logs`));
+    }
+
+    _invoiceAuditPayload(userId, action, targetId, { before = null, after = null, reason = null } = {}) {
+        return {
+            actor_uid: userId,
+            actor_role: null,
+            action,
+            target_collection: 'invoices',
+            target_id: targetId || '',
+            before,
+            after,
+            reason,
+            source: 'dashboard',
+            created_at: serverTimestamp()
+        };
+    }
+
+    // Builds the normalized invoice document payload (without items) from
+    // editor state. All amounts are recalculated server of record style here
+    // so the UI can never persist a stale or formatted total.
+    _normalizeInvoiceData(userId, invoiceData = {}, normalizedItems = []) {
+        const totals = this._calculateInvoiceTotals(
+            normalizedItems,
+            invoiceData.tax_rate_percent
+        );
+        const dueTermsAllowed = ['due_on_receipt', 'due_in_7_days', 'due_in_14_days', 'due_in_30_days', 'custom'];
+        return {
+            customer_name: this._stringOrDefault(invoiceData.customer_name, '', 160),
+            customer_email: invoiceData.customer_email
+                ? this._stringOrDefault(invoiceData.customer_email, '', 160) || null
+                : null,
+            customer_language: this._stringOrDefault(invoiceData.customer_language, 'English', 40),
+            currency: 'IDR',
+            issue_date: this._coerceTimestampOrNow(invoiceData.issue_date),
+            due_date: invoiceData.due_date ? this._coerceTimestampOrNow(invoiceData.due_date) : null,
+            due_terms: this._allowedValue(invoiceData.due_terms, dueTermsAllowed, 'due_in_30_days'),
+            item_count: normalizedItems.length,
+            ...totals,
+            memo: invoiceData.memo ? this._stringOrDefault(invoiceData.memo, '', 500) || null : null,
+            footer: invoiceData.footer ? this._stringOrDefault(invoiceData.footer, '', 500) || null : null,
+            payment_collection_method: this._allowedValue(
+                invoiceData.payment_collection_method,
+                ['request_payment', 'manual_only'],
+                'request_payment'
+            ),
+            payment_link_enabled: invoiceData.payment_link_enabled === true,
+            payment_page_url: null,
+            updated_at: serverTimestamp(),
+            updated_by: userId
+        };
+    }
+
+    // User-friendly per-user invoice number: INV-YYYYMM-0001. Zero-padded so
+    // lexical order matches chronological order; derived from the latest
+    // existing number (no global counters).
+    async generateInvoiceNumber(userId) {
+        const now = new Date();
+        const prefix = `INV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-`;
+        let sequence = 1;
+        try {
+            const q = query(
+                collection(this.db, `users/${userId}/invoices`),
+                orderBy('invoice_number', 'desc'),
+                limit(1)
+            );
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+                const latest = String(snapshot.docs[0].data().invoice_number || '');
+                if (latest.startsWith(prefix)) {
+                    const parsed = parseInt(latest.slice(prefix.length), 10);
+                    if (Number.isFinite(parsed)) sequence = parsed + 1;
+                }
+            }
+        } catch (e) {
+            // Fall through to a time-based suffix when the read fails — a
+            // unique-enough number is better than a blocked draft.
+            return `${prefix}${String(Date.now()).slice(-6)}`;
+        }
+        return `${prefix}${String(sequence).padStart(4, '0')}`;
+    }
+
+    async getInvoices(userId, limitCount = 100) {
+        const q = query(
+            collection(this.db, `users/${userId}/invoices`),
+            orderBy('created_at', 'desc'),
+            limit(limitCount)
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    async getInvoice(userId, invoiceId) {
+        const snap = await getDoc(doc(this.db, `users/${userId}/invoices/${invoiceId}`));
+        return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    }
+
+    async getInvoiceItems(userId, invoiceId) {
+        const q = query(
+            collection(this.db, `users/${userId}/invoices/${invoiceId}/items`),
+            orderBy('position', 'asc')
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    // Creates the draft invoice + its items + the audit log in ONE batch so a
+    // rules rejection leaves nothing half-written. invoiceData.items is the
+    // full editor item list.
+    async createInvoiceDraft(userId, invoiceData = {}) {
+        const items = (Array.isArray(invoiceData.items) ? invoiceData.items : [])
+            .map((item, index) => this._normalizeInvoiceItem(item, index));
+        const invoiceRef = doc(collection(this.db, `users/${userId}/invoices`));
+        const invoiceNumber = invoiceData.invoice_number || await this.generateInvoiceNumber(userId);
+        const payload = {
+            invoice_number: this._stringOrDefault(invoiceNumber, '', 40),
+            status: 'draft',
+            ...this._normalizeInvoiceData(userId, invoiceData, items),
+            finalized_at: null,
+            sent_at: null,
+            paid_at: null,
+            voided_at: null,
+            void_reason: null,
+            created_at: serverTimestamp(),
+            created_by: userId
+        };
+
+        const batch = writeBatch(this.db);
+        batch.set(invoiceRef, payload);
+        items.forEach(item => {
+            batch.set(doc(collection(this.db, `users/${userId}/invoices/${invoiceRef.id}/items`)), {
+                ...item,
+                created_at: serverTimestamp(),
+                updated_at: serverTimestamp()
+            });
+        });
+        batch.set(
+            this._invoiceAuditRef(userId),
+            this._invoiceAuditPayload(userId, 'invoice.draft_created', invoiceRef.id, {
+                after: this._invoiceAuditSnapshot({ ...payload, invoice_number: payload.invoice_number })
+            })
+        );
+        await batch.commit();
+        return { id: invoiceRef.id, invoice_number: payload.invoice_number };
+    }
+
+    // Updates a draft invoice and syncs its item subcollection (upsert kept
+    // rows, delete removed rows) in one batch, with per-item audit logs.
+    async updateInvoiceDraft(userId, invoiceId, invoiceData = {}) {
+        const existing = await this.getInvoice(userId, invoiceId);
+        if (!existing) throw new Error('Invoice not found.');
+        if (existing.status !== 'draft') throw new Error('Only draft invoices can be edited.');
+        const existingItems = await this.getInvoiceItems(userId, invoiceId);
+        const existingById = new Map(existingItems.map(item => [item.id, item]));
+
+        const incoming = (Array.isArray(invoiceData.items) ? invoiceData.items : [])
+            .map((item, index) => ({ id: item.id || null, ...this._normalizeInvoiceItem(item, index) }));
+
+        const payload = this._normalizeInvoiceData(userId, invoiceData, incoming);
+        const batch = writeBatch(this.db);
+        batch.update(doc(this.db, `users/${userId}/invoices/${invoiceId}`), payload);
+
+        const keptIds = new Set();
+        incoming.forEach(item => {
+            const { id, ...fields } = item;
+            if (id && existingById.has(id)) {
+                keptIds.add(id);
+                batch.set(doc(this.db, `users/${userId}/invoices/${invoiceId}/items/${id}`), {
+                    ...fields,
+                    created_at: existingById.get(id).created_at,
+                    updated_at: serverTimestamp()
+                });
+                batch.set(
+                    this._invoiceAuditRef(userId),
+                    this._invoiceAuditPayload(userId, 'invoice.item_updated', invoiceId, {
+                        before: { description: existingById.get(id).description, amount: existingById.get(id).amount },
+                        after: { description: fields.description, amount: fields.amount }
+                    })
+                );
+            } else {
+                batch.set(doc(collection(this.db, `users/${userId}/invoices/${invoiceId}/items`)), {
+                    ...fields,
+                    created_at: serverTimestamp(),
+                    updated_at: serverTimestamp()
+                });
+                batch.set(
+                    this._invoiceAuditRef(userId),
+                    this._invoiceAuditPayload(userId, 'invoice.item_added', invoiceId, {
+                        after: { description: fields.description, amount: fields.amount }
+                    })
+                );
+            }
+        });
+        existingItems.forEach(item => {
+            if (!keptIds.has(item.id)) {
+                batch.delete(doc(this.db, `users/${userId}/invoices/${invoiceId}/items/${item.id}`));
+                batch.set(
+                    this._invoiceAuditRef(userId),
+                    this._invoiceAuditPayload(userId, 'invoice.item_deleted', invoiceId, {
+                        before: { description: item.description, amount: item.amount }
+                    })
+                );
+            }
+        });
+        batch.set(
+            this._invoiceAuditRef(userId),
+            this._invoiceAuditPayload(userId, 'invoice.draft_updated', invoiceId, {
+                before: this._invoiceAuditSnapshot(existing),
+                after: this._invoiceAuditSnapshot({ ...existing, ...payload, status: 'draft' })
+            })
+        );
+        await batch.commit();
+        return { id: invoiceId };
+    }
+
+    async addInvoiceItem(userId, invoiceId, itemData = {}) {
+        const item = this._normalizeInvoiceItem(itemData, Number(itemData.position) || 0);
+        const batch = writeBatch(this.db);
+        batch.set(doc(collection(this.db, `users/${userId}/invoices/${invoiceId}/items`)), {
+            ...item,
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        });
+        batch.set(
+            this._invoiceAuditRef(userId),
+            this._invoiceAuditPayload(userId, 'invoice.item_added', invoiceId, {
+                after: { description: item.description, amount: item.amount }
+            })
+        );
+        await batch.commit();
+    }
+
+    async updateInvoiceItem(userId, invoiceId, itemId, itemData = {}) {
+        const existingSnap = await getDoc(doc(this.db, `users/${userId}/invoices/${invoiceId}/items/${itemId}`));
+        if (!existingSnap.exists()) throw new Error('Invoice item not found.');
+        const existing = existingSnap.data();
+        const item = this._normalizeInvoiceItem(itemData, Number(itemData.position) || 0);
+        const batch = writeBatch(this.db);
+        batch.set(doc(this.db, `users/${userId}/invoices/${invoiceId}/items/${itemId}`), {
+            ...item,
+            created_at: existing.created_at,
+            updated_at: serverTimestamp()
+        });
+        batch.set(
+            this._invoiceAuditRef(userId),
+            this._invoiceAuditPayload(userId, 'invoice.item_updated', invoiceId, {
+                before: { description: existing.description, amount: existing.amount },
+                after: { description: item.description, amount: item.amount }
+            })
+        );
+        await batch.commit();
+    }
+
+    async deleteInvoiceItem(userId, invoiceId, itemId) {
+        const existingSnap = await getDoc(doc(this.db, `users/${userId}/invoices/${invoiceId}/items/${itemId}`));
+        const existing = existingSnap.exists() ? existingSnap.data() : {};
+        const batch = writeBatch(this.db);
+        batch.delete(doc(this.db, `users/${userId}/invoices/${invoiceId}/items/${itemId}`));
+        batch.set(
+            this._invoiceAuditRef(userId),
+            this._invoiceAuditPayload(userId, 'invoice.item_deleted', invoiceId, {
+                before: { description: existing.description ?? null, amount: existing.amount ?? null }
+            })
+        );
+        await batch.commit();
+    }
+
+    // Finalize: draft -> open. Validates required fields, stamps finalized_at
+    // (and sent_at when markSent), and writes the audit log(s) in the same
+    // batch. NEVER creates a ledger transaction — an open invoice is an
+    // expected receivable only.
+    async finalizeInvoice(userId, invoiceId, { markSent = false } = {}) {
+        const invoice = await this.getInvoice(userId, invoiceId);
+        if (!invoice) throw new Error('Invoice not found.');
+        if (invoice.status !== 'draft') throw new Error('Only draft invoices can be finalized.');
+        if (!invoice.customer_name) throw new Error('Customer name is required before finalizing.');
+        if (!invoice.due_date) throw new Error('Due date is required before finalizing.');
+        if (!(invoice.item_count > 0)) throw new Error('Add at least one line item before finalizing.');
+        if (!(invoice.total_amount > 0)) throw new Error('Invoice total must be greater than zero.');
+        if (markSent && !invoice.customer_email) {
+            throw new Error('Customer email is required to mark the invoice as sent.');
+        }
+
+        const patch = {
+            status: 'open',
+            finalized_at: serverTimestamp(),
+            updated_at: serverTimestamp(),
+            updated_by: userId
+        };
+        if (markSent) patch.sent_at = serverTimestamp();
+
+        const batch = writeBatch(this.db);
+        batch.update(doc(this.db, `users/${userId}/invoices/${invoiceId}`), patch);
+        batch.set(
+            this._invoiceAuditRef(userId),
+            this._invoiceAuditPayload(userId, 'invoice.finalized', invoiceId, {
+                before: this._invoiceAuditSnapshot(invoice),
+                after: this._invoiceAuditSnapshot({ ...invoice, status: 'open' })
+            })
+        );
+        if (markSent) {
+            batch.set(
+                this._invoiceAuditRef(userId),
+                this._invoiceAuditPayload(userId, 'invoice.sent', invoiceId, {
+                    after: { invoice_number: invoice.invoice_number ?? null, customer_email: invoice.customer_email ?? null }
+                })
+            );
+        }
+        await batch.commit();
+        return { id: invoiceId };
+    }
+
+    // Records that an already-open invoice was sent outside FluxyOS (no email
+    // provider exists in v1 — this is a manual status stamp only).
+    async recordInvoiceSent(userId, invoiceId) {
+        const invoice = await this.getInvoice(userId, invoiceId);
+        if (!invoice) throw new Error('Invoice not found.');
+        if (invoice.status !== 'open') throw new Error('Only open invoices can be marked as sent.');
+        const batch = writeBatch(this.db);
+        batch.update(doc(this.db, `users/${userId}/invoices/${invoiceId}`), {
+            sent_at: serverTimestamp(),
+            updated_at: serverTimestamp(),
+            updated_by: userId
+        });
+        batch.set(
+            this._invoiceAuditRef(userId),
+            this._invoiceAuditPayload(userId, 'invoice.sent', invoiceId, {
+                after: { invoice_number: invoice.invoice_number ?? null, customer_email: invoice.customer_email ?? null }
+            })
+        );
+        await batch.commit();
+        return { id: invoiceId };
+    }
+
+    // Void instead of delete. Requires a reason; paid invoices cannot be
+    // voided in v1 (no paid flow exists yet anyway).
+    async voidInvoice(userId, invoiceId, reason = null) {
+        const cleanReason = this._stringOrDefault(reason, '', 500);
+        if (!cleanReason) throw new Error('A reason is required to void an invoice.');
+        const invoice = await this.getInvoice(userId, invoiceId);
+        if (!invoice) throw new Error('Invoice not found.');
+        if (!['draft', 'open'].includes(invoice.status)) {
+            throw new Error('Only draft or open invoices can be voided.');
+        }
+        const batch = writeBatch(this.db);
+        batch.update(doc(this.db, `users/${userId}/invoices/${invoiceId}`), {
+            status: 'void',
+            voided_at: serverTimestamp(),
+            void_reason: cleanReason,
+            updated_at: serverTimestamp(),
+            updated_by: userId
+        });
+        batch.set(
+            this._invoiceAuditRef(userId),
+            this._invoiceAuditPayload(userId, 'invoice.voided', invoiceId, {
+                before: this._invoiceAuditSnapshot(invoice),
+                after: this._invoiceAuditSnapshot({ ...invoice, status: 'void' }),
+                reason: cleanReason
+            })
+        );
+        await batch.commit();
+        return { id: invoiceId };
+    }
+
     // --- ACCOUNTING CENTER (Phase 1) ---
     // Read-only accounting-readiness layer over existing operational records.
     // Computes a deterministic readiness score, a cleanup queue, an account
