@@ -49,7 +49,8 @@
             border-top: 1px solid #E5E7EB;
         }
         @media (min-width: 1024px) {
-            .invoice-preview-sticky { position: sticky; top: 16px; }
+            /* Clear the sticky editor header so the preview pins just below it. */
+            .invoice-preview-sticky { position: sticky; top: 88px; }
         }
         /* Download PDF = browser print scoped to the invoice document only.
            body.invoice-printing is set while the PDF modal prints. */
@@ -219,8 +220,11 @@
 
                 <!-- ============ EDITOR VIEW ============ -->
                 <div id="invoice-editor-view" class="hidden">
-                    <!-- Editor header (no card background; back lives in the topbar) -->
-                    <div class="flex flex-wrap items-center justify-between gap-3">
+                    <!-- Editor header (no card background; back lives in the topbar).
+                         Sticks to the top so the actions stay reachable while the
+                         form scrolls, alongside the sticky invoice preview. The
+                         page-colored background keeps it invisible (not a card). -->
+                    <div class="invoice-editor-header sticky top-0 z-20 -mx-3 flex flex-wrap items-center justify-between gap-3 bg-gray-50 px-3 py-3 sm:-mx-5 sm:px-5 lg:-mx-8 lg:px-8">
                         <div class="min-w-0">
                             <h1 id="invoice-editor-title" class="truncate text-2xl font-bold tracking-tight text-gray-900">Create invoice</h1>
                             <p id="invoice-editor-status" class="text-[14px] text-gray-500 mt-0.5">Not saved yet</p>
