@@ -1219,7 +1219,7 @@ class DataService {
         return { id: invoiceRef.id, invoice_number: payload.invoice_number };
     }
 
-    // Updates an editable invoice and syncs its item subcollection (upsert kept
+    // Updates a draft invoice and syncs its item subcollection (upsert kept
     // rows, delete removed rows) in one batch, with per-item audit logs.
     async updateInvoiceDraft(userId, invoiceId, invoiceData = {}) {
         const existing = await this.getInvoice(userId, invoiceId);
@@ -1411,8 +1411,59 @@ class DataService {
         return { id: invoiceId };
     }
 
+    // Mark paid: open -> paid, ONLY on explicit user confirmation. Creates the
+    // linked income ledger transaction (full invoice total, category Revenue),
+    // stamps paid_at + linked_transaction_id, and writes the audit log — all in
+    // one batch so a rules rejection leaves nothing half-written. Paid is
+    // terminal: no edit, void, or un-pay path exists after this.
+    async markInvoicePaid(userId, invoiceId, { paymentDate = null } = {}) {
+        const invoice = await this.getInvoice(userId, invoiceId);
+        if (!invoice) throw new Error('Invoice not found.');
+        if (invoice.status !== 'open') throw new Error('Only open invoices can be marked as paid.');
+        const amount = Math.round(Number(invoice.total_amount) || 0);
+        if (!(amount > 0)) throw new Error('Invoice total must be greater than zero.');
+
+        const txRef = doc(collection(this.db, `users/${userId}/transactions`));
+        const transaction = {
+            amount,
+            vendor_name: invoice.customer_name,
+            category: 'Revenue',
+            type: 'income',
+            status: 'Completed',
+            icon: '💰',
+            timestamp: this._coerceTimestampOrNow(paymentDate),
+            invoice_number: invoice.invoice_number ?? null,
+            notes: `Payment for invoice ${invoice.invoice_number || invoiceId}`,
+            created_at: serverTimestamp()
+        };
+        if (invoice.issue_date) transaction.invoice_date = invoice.issue_date;
+
+        const batch = writeBatch(this.db);
+        batch.set(txRef, transaction);
+        batch.update(doc(this.db, `users/${userId}/invoices/${invoiceId}`), {
+            status: 'paid',
+            paid_at: serverTimestamp(),
+            linked_transaction_id: txRef.id,
+            updated_at: serverTimestamp(),
+            updated_by: userId
+        });
+        batch.set(
+            this._invoiceAuditRef(userId),
+            this._invoiceAuditPayload(userId, 'invoice.mark_paid', invoiceId, {
+                before: this._invoiceAuditSnapshot(invoice),
+                after: {
+                    invoice_number: invoice.invoice_number ?? null,
+                    amount,
+                    transaction_id: txRef.id
+                }
+            })
+        );
+        await batch.commit();
+        return { id: invoiceId, transactionId: txRef.id };
+    }
+
     // Void instead of delete. Requires a reason; paid invoices cannot be
-    // voided in v1 (no paid flow exists yet anyway).
+    // voided (terminal status), and the rules block it as well.
     async voidInvoice(userId, invoiceId, reason = null) {
         const cleanReason = this._stringOrDefault(reason, '', 500);
         if (!cleanReason) throw new Error('A reason is required to void an invoice.');

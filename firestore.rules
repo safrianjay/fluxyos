@@ -1471,6 +1471,7 @@ service cloud.firestore {
           'finalized_at',
           'sent_at',
           'paid_at',
+          'linked_transaction_id',
           'voided_at',
           'void_reason',
           'created_at',
@@ -1531,7 +1532,10 @@ service cloud.firestore {
         && (!('payment_page_url' in data) || data.payment_page_url == null)
         && (!('finalized_at' in data) || data.finalized_at == null || data.finalized_at is timestamp)
         && (!('sent_at' in data) || data.sent_at == null || data.sent_at is timestamp)
-        && (!('paid_at' in data) || data.paid_at == null)
+        && (!('paid_at' in data) || data.paid_at == null || data.paid_at is timestamp)
+        && (!('linked_transaction_id' in data)
+          || data.linked_transaction_id == null
+          || (data.linked_transaction_id is string && data.linked_transaction_id.size() <= 160))
         && (!('voided_at' in data) || data.voided_at == null || data.voided_at is timestamp)
         && (!('void_reason' in data)
           || data.void_reason == null
@@ -1543,6 +1547,8 @@ service cloud.firestore {
         && data.status == 'draft'
         && (!('finalized_at' in data) || data.finalized_at == null)
         && (!('sent_at' in data) || data.sent_at == null)
+        && (!('paid_at' in data) || data.paid_at == null)
+        && (!('linked_transaction_id' in data) || data.linked_transaction_id == null)
         && (!('voided_at' in data) || data.voided_at == null)
         && (!('void_reason' in data) || data.void_reason == null)
         && data.created_at == request.time
@@ -1564,6 +1570,8 @@ service cloud.firestore {
           (existingData.status == 'draft'
             && data.status == 'draft'
             && (!('finalized_at' in data) || data.finalized_at == null)
+            && (!('paid_at' in data) || data.paid_at == null)
+            && (!('linked_transaction_id' in data) || data.linked_transaction_id == null)
             && (!('voided_at' in data) || data.voided_at == null))
           // Finalize: draft -> open. Requires customer, due date, items, total.
           || (existingData.status == 'draft'
@@ -1574,6 +1582,8 @@ service cloud.firestore {
             && data.item_count > 0
             && data.due_date is timestamp
             && (!('sent_at' in data) || data.sent_at == null || data.sent_at == request.time)
+            && (!('paid_at' in data) || data.paid_at == null)
+            && (!('linked_transaction_id' in data) || data.linked_transaction_id == null)
             && (!('voided_at' in data) || data.voided_at == null))
           // Finalize-only edits: an open invoice that has NOT been sent stays
           // editable in full. It remains open + unsent and keeps finalized_at;
@@ -1583,6 +1593,8 @@ service cloud.firestore {
             && data.status == 'open'
             && data.finalized_at == existingData.finalized_at
             && (!('sent_at' in data) || data.sent_at == null)
+            && (!('paid_at' in data) || data.paid_at == null)
+            && (!('linked_transaction_id' in data) || data.linked_transaction_id == null)
             && (!('voided_at' in data) || data.voided_at == null)
             && data.customer_name.size() > 0
             && data.total_amount > 0
@@ -1592,6 +1604,16 @@ service cloud.firestore {
           || (existingData.status == 'open'
             && data.status == 'open'
             && data.diff(existingData).affectedKeys().hasOnly(['memo', 'footer', 'sent_at', 'updated_at', 'updated_by']))
+          // Mark paid: open -> paid. Stamps paid_at and links the income
+          // ledger transaction created in the same batch. Terminal: no edit,
+          // void, or un-pay path exists after this.
+          || (existingData.status == 'open'
+            && data.status == 'paid'
+            && data.paid_at == request.time
+            && data.linked_transaction_id is string
+            && data.linked_transaction_id.size() > 0
+            && data.diff(existingData).affectedKeys().hasOnly(
+                 ['status', 'paid_at', 'linked_transaction_id', 'updated_at', 'updated_by']))
           // Void instead of delete: draft/open -> void with a required reason.
           || (data.status == 'void'
             && data.voided_at == request.time

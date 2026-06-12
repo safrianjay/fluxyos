@@ -474,7 +474,11 @@
                                 </a>
                                 <button id="detail-sent-btn" type="button" class="hidden h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Mark as sent</button>
                                 <button id="detail-void-btn" type="button" class="hidden h-10 items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-4 text-[14px] font-bold text-red-600 shadow-sm transition-all hover:bg-red-50 active:scale-95">Void invoice</button>
-                                <button id="detail-edit-btn" type="button" class="hidden h-10 items-center justify-center gap-2 rounded-lg bg-[#EA580C] px-4 text-[14px] font-bold text-white shadow-sm transition-all hover:bg-[#D94E0B] active:scale-95">Edit invoice</button>
+                                <button id="detail-edit-btn" type="button" class="hidden h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95">Edit invoice</button>
+                                <button id="detail-paid-btn" type="button" class="hidden h-10 items-center justify-center gap-2 rounded-lg bg-[#EA580C] px-4 text-[14px] font-bold text-white shadow-sm transition-all hover:bg-[#D94E0B] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+                                    Mark payment completed
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -634,6 +638,29 @@
             <footer class="flex items-center justify-end gap-2 border-t border-gray-100 bg-gray-50 px-5 py-4 sm:px-6">
                 <button id="void-cancel" type="button" class="rounded-lg px-4 py-2.5 text-[14px] font-bold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">Cancel</button>
                 <button id="void-confirm" type="button" class="rounded-lg bg-red-600 px-4 py-2.5 text-[14px] font-bold text-white shadow-sm transition-all hover:bg-red-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Void invoice</button>
+            </footer>
+        </section>
+    </div>
+
+    <!-- ============ MARK PAID MODAL ============ -->
+    <div id="invoice-paid-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="paid-title">
+        <div class="absolute inset-0 bg-[#0B0F19]/50 backdrop-blur-[6px]" data-paid-overlay></div>
+        <section class="relative flex max-h-[calc(100vh-3rem)] w-full max-w-[440px] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl">
+            <div class="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+                <h2 id="paid-title" class="text-[20px] font-semibold tracking-[-0.02em] text-gray-900">Mark payment as completed?</h2>
+                <p class="mt-1 text-[14px] text-gray-500">FluxyOS records this as Revenue income in your ledger. A paid invoice can no longer be edited or voided.</p>
+                <dl class="mt-4 space-y-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-3 text-[14px]">
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Invoice</dt><dd id="paid-number" class="font-mono text-gray-900">—</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Customer</dt><dd id="paid-customer" class="max-w-[60%] truncate font-medium text-gray-900">—</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Amount received</dt><dd id="paid-amount" class="font-mono font-semibold text-gray-900">Rp0</dd></div>
+                </dl>
+                <label class="mt-4 block text-[12px] font-medium text-gray-700">Payment date</label>
+                <div id="paid-date-picker" class="mt-1"></div>
+                <p id="paid-error" class="mt-2 hidden text-[12px] font-medium text-red-600"></p>
+            </div>
+            <footer class="flex items-center justify-end gap-2 border-t border-gray-100 bg-gray-50 px-5 py-4 sm:px-6">
+                <button id="paid-cancel" type="button" class="rounded-lg px-4 py-2.5 text-[14px] font-bold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">Cancel</button>
+                <button id="paid-confirm" type="button" class="rounded-lg bg-[#EA580C] px-4 py-2.5 text-[14px] font-bold text-white shadow-sm transition-all hover:bg-[#D94E0B] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Mark as paid</button>
             </footer>
         </section>
     </div>

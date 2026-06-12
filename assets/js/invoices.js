@@ -306,7 +306,7 @@ export function initInvoicesPage({ ds, user }) {
                             <span class="fluxy-table-cell-primary">${esc(invoice.customer_name || 'No customer yet')}</span>
                             <span class="fluxy-table-cell-meta">${esc(invoice.customer_email || '')}</span>
                         </td>
-                        <td class="fluxy-table-cell fluxy-table-money">${formatRp(invoice.status === 'void' ? 0 : invoice.amount_due)}</td>
+                        <td class="fluxy-table-cell fluxy-table-money">${formatRp(['void', 'paid'].includes(invoice.status) ? 0 : invoice.amount_due)}</td>
                         <td class="fluxy-table-cell">${formatDate(invoice.due_date)}</td>
                         <td class="fluxy-table-cell">${statusBadgeHTML(shown)}</td>
                         <td class="fluxy-table-cell">${formatDate(invoice.updated_at)}</td>
@@ -1008,7 +1008,7 @@ export function initInvoicesPage({ ds, user }) {
         el('detail-number').textContent = invoice.invoice_number || '—';
         el('detail-status').outerHTML = statusBadgeHTML(shown).replace('<span', '<span id="detail-status"');
         el('detail-customer').textContent = invoice.customer_name || 'No customer';
-        el('detail-amount-due').textContent = formatRp(invoice.status === 'void' ? 0 : invoice.amount_due);
+        el('detail-amount-due').textContent = formatRp(['void', 'paid'].includes(invoice.status) ? 0 : invoice.amount_due);
 
         const voidBanner = el('detail-void-banner');
         if (invoice.status === 'void') {
@@ -1035,6 +1035,10 @@ export function initInvoicesPage({ ds, user }) {
         const canVoid = ['draft', 'open'].includes(invoice.status);
         el('detail-void-btn').classList.toggle('hidden', !canVoid);
         el('detail-void-btn').classList.toggle('inline-flex', canVoid);
+        // Payment can be recorded on any open invoice (incl. displayed-overdue).
+        const canMarkPaid = invoice.status === 'open';
+        el('detail-paid-btn').classList.toggle('hidden', !canMarkPaid);
+        el('detail-paid-btn').classList.toggle('inline-flex', canMarkPaid);
 
         el('detail-items-body').innerHTML = items.length
             ? items.map(item => `
@@ -1048,7 +1052,7 @@ export function initInvoicesPage({ ds, user }) {
         el('detail-subtotal').textContent = formatRp(invoice.subtotal_amount);
         el('detail-tax-row').classList.toggle('hidden', !(Number(invoice.tax_amount) > 0));
         el('detail-tax').textContent = formatRp(invoice.tax_amount);
-        el('detail-amount-due-2').textContent = formatRp(invoice.status === 'void' ? 0 : invoice.amount_due);
+        el('detail-amount-due-2').textContent = formatRp(['void', 'paid'].includes(invoice.status) ? 0 : invoice.amount_due);
 
         el('detail-issue-date').textContent = formatDate(invoice.issue_date);
         el('detail-due-date').textContent = formatDate(invoice.due_date);
@@ -1066,6 +1070,7 @@ export function initInvoicesPage({ ds, user }) {
         if (invoice.created_at) activity.push(`Draft created · ${formatDate(invoice.created_at)} ${formatTime(invoice.created_at)}`);
         if (invoice.finalized_at) activity.push(`Finalized · ${formatDate(invoice.finalized_at)} ${formatTime(invoice.finalized_at)}`);
         if (invoice.sent_at) activity.push(`Marked as sent · ${formatDate(invoice.sent_at)} ${formatTime(invoice.sent_at)}`);
+        if (invoice.paid_at) activity.push(`Payment completed · ${formatDate(invoice.paid_at)} ${formatTime(invoice.paid_at)}`);
         if (invoice.voided_at) activity.push(`Voided · ${formatDate(invoice.voided_at)} ${formatTime(invoice.voided_at)}`);
         el('detail-activity').innerHTML = activity.map(line => `<li class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-gray-300"></span>${esc(line)}</li>`).join('')
             || '<li class="text-gray-400">No activity yet.</li>';
@@ -1089,7 +1094,8 @@ export function initInvoicesPage({ ds, user }) {
     function buildInvoiceDocHTML(invoice, items) {
         const due = formatDate(invoice.due_date);
         const isVoid = invoice.status === 'void';
-        const amountDue = isVoid ? 0 : invoice.amount_due;
+        const isPaid = invoice.status === 'paid';
+        const amountDue = (isVoid || isPaid) ? 0 : invoice.amount_due;
         const itemRows = items.length
             ? items.map(item => `
                 <tr class="border-b border-gray-100">
@@ -1108,6 +1114,7 @@ export function initInvoicesPage({ ds, user }) {
                     <div>
                         <h3 class="text-[20px] font-semibold text-gray-900">Invoice</h3>
                         ${isVoid ? '<p class="mt-1 text-[12px] font-bold uppercase tracking-[0.08em] text-red-600">Void</p>' : ''}
+                        ${isPaid ? '<p class="mt-1 text-[12px] font-bold uppercase tracking-[0.08em] text-[#16A34A]">Paid</p>' : ''}
                     </div>
                     <p class="max-w-[45%] truncate text-right text-[14px] font-semibold text-gray-500">${esc(businessName)}</p>
                 </div>
@@ -1218,7 +1225,7 @@ export function initInvoicesPage({ ds, user }) {
             `Status: ${displayStatus(inv)}`,
             `Issue date: ${formatDate(inv.issue_date)}`,
             `Due date: ${formatDate(inv.due_date)}`,
-            `Amount due: ${formatRp(inv.status === 'void' ? 0 : inv.amount_due)}`
+            `Amount due: ${formatRp(['void', 'paid'].includes(inv.status) ? 0 : inv.amount_due)}`
         ].join('\n');
         try {
             await navigator.clipboard.writeText(summary);
@@ -1306,10 +1313,77 @@ export function initInvoicesPage({ ds, user }) {
         }
     });
 
+    // ---------- mark paid modal ----------
+    // Records the payment: invoice open -> paid + one linked income ledger
+    // transaction (category Revenue, full total) in a single batch.
+    let paidDatePicker = null;
+    let paidDateKey = null;
+
+    function openPaidModal() {
+        if (!detailInvoice) return;
+        const picker = window.FluxyDateRangePicker;
+        paidDateKey = picker.getDayKey();
+        el('paid-number').textContent = detailInvoice.invoice_number || '—';
+        el('paid-customer').textContent = detailInvoice.customer_name || '—';
+        el('paid-amount').textContent = formatRp(detailInvoice.total_amount);
+        el('paid-error').classList.add('hidden');
+        if (!paidDatePicker) {
+            paidDatePicker = picker.mount(el('paid-date-picker'), {
+                mode: 'single',
+                start: paidDateKey,
+                maxDate: picker.getDayKey(),
+                onChange: ({ start }) => { paidDateKey = start; }
+            });
+        } else {
+            paidDatePicker.setRange(paidDateKey);
+        }
+        const modal = el('invoice-paid-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closePaidModal() {
+        const modal = el('invoice-paid-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    el('detail-paid-btn').addEventListener('click', openPaidModal);
+    el('paid-cancel').addEventListener('click', closePaidModal);
+    document.querySelector('[data-paid-overlay]').addEventListener('click', closePaidModal);
+
+    el('paid-confirm').addEventListener('click', async (event) => {
+        if (!detailInvoice) return;
+        // Capture before any await — event.currentTarget is null post-dispatch.
+        const btn = event.currentTarget;
+        btn.disabled = true;
+        try {
+            const paymentDate = paidDateKey
+                ? window.FluxyDateRangePicker.parseDayKey(paidDateKey)
+                : new Date();
+            const result = await ds.markInvoicePaid(uid, detailInvoice.id, { paymentDate });
+            closePaidModal();
+            window.showToast?.(`Payment recorded — ${formatRp(detailInvoice.total_amount)} added to your ledger as Revenue.`, 'success');
+            invoicesLoaded = false;
+            await loadInvoices();
+            openDetail(result.id, false);
+        } catch (error) {
+            console.error('[invoices] mark paid failed', error);
+            const errorNode = el('paid-error');
+            errorNode.textContent = error?.message || 'Could not record the payment. Try again.';
+            errorNode.classList.remove('hidden');
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
     document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return;
         if (!el('invoice-review-modal').classList.contains('hidden')) closeReviewModal();
         if (!el('invoice-void-modal').classList.contains('hidden')) closeVoidModal();
+        if (!el('invoice-paid-modal').classList.contains('hidden')) closePaidModal();
         if (!el('invoice-pdf-modal').classList.contains('hidden')) closePdfModal();
     });
 

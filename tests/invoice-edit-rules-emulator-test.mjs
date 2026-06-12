@@ -14,7 +14,7 @@
 import { initializeApp } from 'firebase/app';
 import {
     getFirestore, connectFirestoreEmulator, doc, collection,
-    setDoc, updateDoc, deleteDoc, serverTimestamp
+    setDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch, Timestamp
 } from 'firebase/firestore';
 import { getAuth, connectAuthEmulator, signInAnonymously } from 'firebase/auth';
 
@@ -162,6 +162,93 @@ async function main() {
         updated_at: serverTimestamp(),
         updated_by: uid
     }));
+
+    console.log('\n— mark paid: forgery attempts must be DENIED —');
+    await expectOutcome('forge paid_at without status change', false, () => updateDoc(invRef, {
+        paid_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        updated_by: uid
+    }));
+    await expectOutcome('open -> paid without linked_transaction_id', false, () => updateDoc(invRef, {
+        status: 'paid',
+        paid_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        updated_by: uid
+    }));
+
+    const draftRef = doc(db, `users/${uid}/invoices/inv_paid_draft_test`);
+    await expectOutcome('create second draft invoice', true, () => setDoc(draftRef, {
+        ...invoiceCreatePayload(uid),
+        invoice_number: 'INV-202606-0002'
+    }));
+    await expectOutcome('draft -> paid (must finalize first)', false, () => updateDoc(draftRef, {
+        status: 'paid',
+        paid_at: serverTimestamp(),
+        linked_transaction_id: 'tx_fake',
+        updated_at: serverTimestamp(),
+        updated_by: uid
+    }));
+
+    console.log('\n— mark paid: open -> paid batch (invoice + income transaction) —');
+    const txRef = doc(collection(db, `users/${uid}/transactions`));
+    await expectOutcome('mark paid batch: tx create + invoice update', true, () => {
+        const batch = writeBatch(db);
+        batch.set(txRef, {
+            amount: 2000000,
+            vendor_name: 'PT Maju Bersama (rev)',
+            category: 'Revenue',
+            type: 'income',
+            status: 'Completed',
+            icon: '💰',
+            timestamp: Timestamp.fromDate(new Date()),
+            invoice_number: 'INV-202606-0001',
+            notes: 'Payment for invoice INV-202606-0001',
+            created_at: serverTimestamp()
+        });
+        batch.update(invRef, {
+            status: 'paid',
+            paid_at: serverTimestamp(),
+            linked_transaction_id: txRef.id,
+            updated_at: serverTimestamp(),
+            updated_by: uid
+        });
+        return batch.commit();
+    });
+
+    console.log('\n— after paid: everything is terminal —');
+    await expectOutcome('full edit after paid', false, () => updateDoc(invRef, {
+        customer_name: 'Hacker Co',
+        updated_at: serverTimestamp(),
+        updated_by: uid
+    }));
+    await expectOutcome('memo metadata edit after paid', false, () => updateDoc(invRef, {
+        memo: 'late note',
+        updated_at: serverTimestamp(),
+        updated_by: uid
+    }));
+    await expectOutcome('void after paid', false, () => updateDoc(invRef, {
+        status: 'void',
+        voided_at: serverTimestamp(),
+        void_reason: 'changed my mind',
+        updated_at: serverTimestamp(),
+        updated_by: uid
+    }));
+    await expectOutcome('un-pay (paid -> open)', false, () => updateDoc(invRef, {
+        status: 'open',
+        paid_at: null,
+        linked_transaction_id: null,
+        updated_at: serverTimestamp(),
+        updated_by: uid
+    }));
+    await expectOutcome('item update after paid', false, () => updateDoc(itemRef, {
+        description: 'tampered post-paid',
+        quantity: 1,
+        unit_price: 1,
+        amount: 1,
+        updated_at: serverTimestamp()
+    }));
+    await expectOutcome('item create after paid', false, () => setDoc(doc(itemsCol, 'item4'), itemPayload({ description: 'Late add', position: 3 })));
+    await expectOutcome('item delete after paid', false, () => deleteDoc(itemRef));
 
     console.log(`\n──────── ${passed} passed, ${failed} failed ────────`);
     process.exit(failed ? 1 : 0);

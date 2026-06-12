@@ -83,6 +83,21 @@ test('invoices: finalize-only edit affordance + mark-as-sent regression', async 
     await expect(page.locator('#detail-sent-btn')).toBeHidden();
     await expect(page.locator('#detail-edit-btn')).toBeHidden();
 
+    // --- Mark payment completed (open -> paid + ledger transaction) ---
+    await expect(page.locator('#detail-paid-btn')).toBeVisible();
+    await page.locator('#detail-paid-btn').click();
+    await expect(page.locator('#invoice-paid-modal')).toBeVisible();
+    await expect(page.locator('#paid-amount')).toContainText(/^Rp/);
+    await page.locator('#paid-confirm').click();
+
+    // Paid is terminal: green badge, payment activity, all mutating actions gone.
+    await expect(page.locator('#detail-activity')).toContainText(/Payment completed/i, { timeout: 15000 });
+    await expect(page.locator('#detail-status')).toContainText(/paid/i);
+    await expect(page.locator('#detail-paid-btn')).toBeHidden();
+    await expect(page.locator('#detail-void-btn')).toBeHidden();
+    await expect(page.locator('#detail-edit-btn')).toBeHidden();
+    await expect(page.locator('#detail-sent-btn')).toBeHidden();
+
     // --- Back button returns to the list ---
     await page.locator('#invoice-detail-back').click();
     await expect(page.locator('#invoice-list-view')).toBeVisible();
