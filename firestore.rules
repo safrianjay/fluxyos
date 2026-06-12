@@ -1410,6 +1410,11 @@ service cloud.firestore {
         && (!('budget_exclusion_reason' in data) || data.budget_exclusion_reason == null || (data.budget_exclusion_reason is string && data.budget_exclusion_reason.size() <= 500));
     }
 
+    function preservesLegacyRecordDate(data, existingData) {
+      return !('date' in data)
+        || (('date' in existingData) && data.date == existingData.date);
+    }
+
     function isValidBudgetCreate(data) {
       return isValidBudget(data)
         && data.created_at == request.time
@@ -1945,6 +1950,7 @@ service cloud.firestore {
             'type',
             'status',
             'icon',
+            'date',
             'timestamp',
             'created_at',
             'receipt_url',
@@ -1991,6 +1997,7 @@ service cloud.firestore {
             'void_reason'
           ])
           && isValidTransactionRecordUpdate(request.resource.data, resource.data)
+          && preservesLegacyRecordDate(request.resource.data, resource.data)
           && isValidTransactionBudgetFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
@@ -2051,6 +2058,7 @@ service cloud.firestore {
             'status',
             'icon',
             'timestamp',
+            'date',
             'due_date',
             'source',
             'created_via',
@@ -2079,6 +2087,7 @@ service cloud.firestore {
             'budget_exclusion_reason'
           ])
           && isValidBaseRecordUpdate(request.resource.data, resource.data)
+          && preservesLegacyRecordDate(request.resource.data, resource.data)
           && (!('due_date' in request.resource.data) || request.resource.data.due_date is timestamp)
           && (!('payment_status' in request.resource.data) || request.resource.data.payment_status in ['unpaid', 'paid', 'overdue', 'unknown'])
           && (!('invoice_status' in request.resource.data) || request.resource.data.invoice_status in ['attached'])

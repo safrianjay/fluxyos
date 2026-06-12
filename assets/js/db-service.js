@@ -6630,6 +6630,10 @@ class DataService {
             budget_assignment_updated_at: serverTimestamp(),
             budget_assignment_updated_by: userId
         };
+        if (targetCollection === 'transactions') {
+            payload.updated_at = serverTimestamp();
+            payload.updated_by = userId;
+        }
 
         const batch = writeBatch(this.db);
         batch.update(ref, payload);
