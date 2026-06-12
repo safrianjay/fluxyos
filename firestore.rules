@@ -1575,6 +1575,19 @@ service cloud.firestore {
             && data.due_date is timestamp
             && (!('sent_at' in data) || data.sent_at == null || data.sent_at == request.time)
             && (!('voided_at' in data) || data.voided_at == null))
+          // Finalize-only edits: an open invoice that has NOT been sent stays
+          // editable in full. It remains open + unsent and keeps finalized_at;
+          // the same required-field checks as finalize apply.
+          || (existingData.status == 'open'
+            && (!('sent_at' in existingData) || existingData.sent_at == null)
+            && data.status == 'open'
+            && data.finalized_at == existingData.finalized_at
+            && (!('sent_at' in data) || data.sent_at == null)
+            && (!('voided_at' in data) || data.voided_at == null)
+            && data.customer_name.size() > 0
+            && data.total_amount > 0
+            && data.item_count > 0
+            && data.due_date is timestamp)
           // Open invoices: metadata-only edits (memo/footer/record sent).
           || (existingData.status == 'open'
             && data.status == 'open'
@@ -1622,10 +1635,13 @@ service cloud.firestore {
     }
 
     // Items can only be written while the parent invoice is (or becomes, in
-    // the same batch) a draft. getAfter sees post-commit state so the
-    // create-draft batch (invoice + items together) validates correctly.
+    // the same batch) editable: a draft, or a finalized-but-unsent ("finalize
+    // only") open invoice. getAfter sees post-commit state so the create-draft
+    // batch (invoice + items together) validates correctly.
     function invoiceIsDraftAfterWrite(userId, invoiceId) {
-      return getAfter(/databases/$(database)/documents/users/$(userId)/invoices/$(invoiceId)).data.status == 'draft';
+      let inv = getAfter(/databases/$(database)/documents/users/$(userId)/invoices/$(invoiceId)).data;
+      return inv.status == 'draft'
+        || (inv.status == 'open' && (!('sent_at' in inv) || inv.sent_at == null));
     }
 
     function isValidBankStatementImport(data) {

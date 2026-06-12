@@ -819,7 +819,7 @@ Subscriptions, Budget, and Reports still render and their sidebar active states 
 | 8 | Adding/editing/removing a line item recalculates subtotal, tax, total, and amount due live in the preview; empty items never break the preview or show NaN |
 | 9 | Unit price input formats with dots while typing but stores raw integers (verify `unit_price`/`amount` in Firestore are numbers like `1000000`) |
 | 10 | Save draft works with partial data (no customer, no items) and writes only under `users/{uid}/invoices`; items land under `.../invoices/{id}/items` |
-| 11 | Draft save shows "Draft saved at …" status; refresh restores the draft via `?edit={id}`; unsaved changes warn before leaving the editor |
+| 11 | Draft save shows "Draft saved at …" status; unsent finalized edits show "Saved at …"; refresh restores the editor via `?edit={id}`; unsaved changes warn before leaving the editor |
 | 12 | Review invoice opens the modal; Finalize buttons are disabled with clear errors until customer name, due date, ≥1 item, and total > 0 exist |
 | 13 | "Finalize and mark as sent" is disabled without a customer email and the modal explains why |
 | 14 | Finalize only → status `open`, `finalized_at` set, `invoice.finalized` audit log written, success toast, detail view shown |
@@ -827,7 +827,7 @@ Subscriptions, Budget, and Reports still render and their sidebar active states 
 | 16 | Finalizing creates **no** record under `users/{uid}/transactions` |
 | 17 | Open invoice past its due date with amount due > 0 displays Overdue (stored status stays `open`) |
 | 18 | Void requires a reason, writes `invoice.voided` with the reason, and the invoice stays visible (delete is not available anywhere and is blocked by rules) |
-| 19 | Open invoices cannot be edited (Edit hidden; rules block amount/item changes); only memo/footer/mark-as-sent succeed on `open` |
+| 19 | Finalized-but-unsent open invoices remain editable (amount/item changes allowed, `finalized_at` preserved); after `sent_at` exists, full editing is hidden/blocked and only memo/footer metadata edits succeed |
 | 20 | Invoice search filters by number, customer, email, and status; status filter includes Overdue; pagination at 10 rows works |
 | 21 | CSV export contains raw integer amounts only (no `Rp`, no dots) and writes an `export.create` audit log before download; button disabled with no invoices |
 | 22 | Invoice numbers increment per user (`INV-YYYYMM-0001`, `-0002`, …) |

@@ -1219,12 +1219,16 @@ class DataService {
         return { id: invoiceRef.id, invoice_number: payload.invoice_number };
     }
 
-    // Updates a draft invoice and syncs its item subcollection (upsert kept
+    // Updates an editable invoice and syncs its item subcollection (upsert kept
     // rows, delete removed rows) in one batch, with per-item audit logs.
     async updateInvoiceDraft(userId, invoiceId, invoiceData = {}) {
         const existing = await this.getInvoice(userId, invoiceId);
         if (!existing) throw new Error('Invoice not found.');
-        if (existing.status !== 'draft') throw new Error('Only draft invoices can be edited.');
+        // Drafts are editable; a finalized invoice stays editable only while it
+        // is "finalize only" — open and not yet marked sent. Editing preserves
+        // the existing status (an open invoice is not reverted to draft).
+        const editable = existing.status === 'draft' || (existing.status === 'open' && !existing.sent_at);
+        if (!editable) throw new Error('Only draft or unsent finalized invoices can be edited.');
         const existingItems = await this.getInvoiceItems(userId, invoiceId);
         const existingById = new Map(existingItems.map(item => [item.id, item]));
 
@@ -1281,7 +1285,7 @@ class DataService {
             this._invoiceAuditRef(userId),
             this._invoiceAuditPayload(userId, 'invoice.draft_updated', invoiceId, {
                 before: this._invoiceAuditSnapshot(existing),
-                after: this._invoiceAuditSnapshot({ ...existing, ...payload, status: 'draft' })
+                after: this._invoiceAuditSnapshot({ ...existing, ...payload, status: existing.status })
             })
         );
         await batch.commit();

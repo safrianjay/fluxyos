@@ -403,8 +403,11 @@ export function initInvoicesPage({ ds, user }) {
                 openList(true);
                 return;
             }
-            if (invoice.status !== 'draft') {
-                window.showToast?.('Only draft invoices can be edited.', 'info');
+            // Drafts are always editable; a finalized invoice stays editable
+            // only while it is "finalize only" (open and not yet marked sent).
+            const editableOpen = invoice.status === 'open' && !invoice.sent_at;
+            if (invoice.status !== 'draft' && !editableOpen) {
+                window.showToast?.('Only draft or unsent invoices can be edited.', 'info');
                 openDetail(invoiceId, true);
                 return;
             }
@@ -416,6 +419,7 @@ export function initInvoicesPage({ ds, user }) {
             }
             editor.invoiceId = invoice.id;
             editor.invoiceNumber = invoice.invoice_number || null;
+            editor.status = invoice.status || 'draft';
             editor.customerName = invoice.customer_name || '';
             editor.customerEmail = invoice.customer_email || '';
             editor.items = items.map(item => ({
@@ -453,9 +457,23 @@ export function initInvoicesPage({ ds, user }) {
         }
 
         hydrateEditorForm();
+        applyEditorMode();
         showView('editor');
         updateEditorStatus();
         updatePreview();
+    }
+
+    // A finalized-but-unsent invoice reuses the editor, but there is no second
+    // "finalize" step — the primary action just saves the changes in place.
+    function applyEditorMode() {
+        const editingOpen = editor.status === 'open';
+        el('invoice-editor-title').textContent = editor.invoiceId ? 'Edit invoice' : 'Create invoice';
+        const primaryLabel = editingOpen ? 'Save changes' : 'Review invoice';
+        el('invoice-review-btn').textContent = primaryLabel;
+        el('invoice-review-btn-mobile').textContent = primaryLabel;
+        ['invoice-save-draft-btn', 'invoice-save-draft-btn-mobile'].forEach((id) => {
+            el(id).classList.toggle('hidden', editingOpen);
+        });
     }
 
     function hydrateEditorForm() {
@@ -492,7 +510,7 @@ export function initInvoicesPage({ ds, user }) {
         const node = el('invoice-editor-status');
         if (editor.saving) node.textContent = 'Saving…';
         else if (editor.dirty) node.textContent = 'Unsaved changes';
-        else if (editor.lastSavedAt) node.textContent = `Draft saved at ${formatTime(editor.lastSavedAt)}`;
+        else if (editor.lastSavedAt) node.textContent = `${editor.status === 'open' ? 'Saved' : 'Draft saved'} at ${formatTime(editor.lastSavedAt)}`;
         else node.textContent = 'Not saved yet';
     }
 
@@ -783,7 +801,7 @@ export function initInvoicesPage({ ds, user }) {
             editor.lastSavedAt = new Date();
             invoicesLoaded = false;
             loadInvoices();
-            if (!silent) window.showToast?.('Invoice draft saved.', 'success');
+            if (!silent) window.showToast?.(editor.status === 'open' ? 'Invoice changes saved.' : 'Invoice draft saved.', 'success');
             return true;
         } catch (error) {
             console.error('[invoices] save draft failed', error);
@@ -861,6 +879,18 @@ export function initInvoicesPage({ ds, user }) {
     }
 
     async function handleReviewClick() {
+        // Editing a finalized-but-unsent invoice: no review/finalize step, just
+        // persist the edits (the invoice stays open) and return to the detail view.
+        if (editor.status === 'open') {
+            const errors = finalizeValidationErrors();
+            if (errors.length) {
+                window.showToast?.(errors[0], 'error');
+                return;
+            }
+            const saved = await saveDraft();
+            if (saved) openDetail(editor.invoiceId, true);
+            return;
+        }
         updatePreview();
         openReviewModal();
     }
@@ -976,8 +1006,10 @@ export function initInvoicesPage({ ds, user }) {
             voidBanner.classList.add('hidden');
         }
 
-        el('detail-edit-btn').classList.toggle('hidden', invoice.status !== 'draft');
-        el('detail-edit-btn').classList.toggle('inline-flex', invoice.status === 'draft');
+        // Editable while a draft, or while finalized-but-unsent ("finalize only").
+        const canEdit = invoice.status === 'draft' || (invoice.status === 'open' && !invoice.sent_at);
+        el('detail-edit-btn').classList.toggle('hidden', !canEdit);
+        el('detail-edit-btn').classList.toggle('inline-flex', canEdit);
         const canMarkSent = invoice.status === 'open' && !invoice.sent_at;
         el('detail-sent-btn').classList.toggle('hidden', !canMarkSent);
         el('detail-sent-btn').classList.toggle('inline-flex', canMarkSent);
@@ -1187,6 +1219,9 @@ export function initInvoicesPage({ ds, user }) {
 
     el('detail-sent-btn').addEventListener('click', async (event) => {
         if (!detailInvoice) return;
+        // Capture the button before awaiting — event.currentTarget is null once
+        // the click has finished dispatching (i.e. after the confirm dialog).
+        const btn = event.currentTarget;
         const ok = await window.showConfirmDialog({
             title: 'Mark this invoice as sent?',
             body: `FluxyOS records that <strong>${esc(detailInvoice.invoice_number)}</strong> was delivered to the customer. No email is sent from FluxyOS in this version.`,
@@ -1195,7 +1230,6 @@ export function initInvoicesPage({ ds, user }) {
             tone: 'default'
         });
         if (!ok) return;
-        const btn = event.currentTarget;
         btn.disabled = true;
         try {
             await ds.recordInvoiceSent(uid, detailInvoice.id);

@@ -1024,7 +1024,7 @@ reserved for a future reconciliation flow — the client cannot write `paid_at`
 | `item_count` | number | Denormalized item count so the list renders without N subcollection reads. Must be > 0 to finalize. |
 | `subtotal_amount`, `tax_amount`, `discount_amount`, `total_amount`, `amount_due` | number | Raw integer Rupiah. Never formatted strings. `discount_amount` is always `0` in v1. |
 | `tax_rate_percent` | number \| null | Optional 0–100; `tax_amount = round(subtotal × rate / 100)`. |
-| `memo`, `footer` | string \| null | ≤500 chars each. Still editable on `open` invoices (metadata-only update). |
+| `memo`, `footer` | string \| null | ≤500 chars each. Still editable on `open` invoices. |
 | `payment_collection_method` | string | `request_payment` \| `manual_only`. No real payment processing in v1. |
 | `payment_link_enabled` | bool | Always `false` in v1. |
 | `payment_page_url` | null | Must be null in v1 (rules-enforced). |
@@ -1036,15 +1036,18 @@ reserved for a future reconciliation flow — the client cannot write `paid_at`
 **Items subcollection** `users/{userId}/invoices/{invoiceId}/items/{itemId}`:
 `description` (1–240), `quantity` (> 0, ≤2 decimals), `unit_price` (raw integer),
 `amount` (= round(quantity × unit_price)), `position`, `created_at`, `updated_at`.
-Item writes/deletes are allowed only while the parent invoice is a draft
-(`getAfter`-checked, so the create-draft batch validates).
+Item writes/deletes are allowed only while the parent invoice is editable: a
+draft, or a finalized-but-unsent open invoice (`sent_at == null`). This is
+`getAfter`-checked, so the create-draft batch validates.
 
 **Status transitions (rules-enforced):** `draft → draft` (free edit),
 `draft → open` (finalize: customer name, due date, `item_count > 0`,
-`total_amount > 0`, `finalized_at == request.time`), `open → open`
-(metadata-only diff: `memo`/`footer`/`sent_at`), `draft|open → void`
-(requires `void_reason` + `voided_at == request.time`). `void`/`paid` are
-terminal for the client.
+`total_amount > 0`, `finalized_at == request.time`), unsent `open → open`
+(full invoice edit while `sent_at == null`, preserving `finalized_at`), `open
+→ open` mark-sent/metadata-only diff (`memo`/`footer`/`sent_at`), and
+`draft|open → void` (requires `void_reason` + `voided_at == request.time`).
+After `sent_at` exists, full editing is blocked and only memo/footer remain.
+`void`/`paid` are terminal for the client.
 
 **Overdue is display-only:** stored status stays `open`; the UI shows
 `Overdue` when `status == "open" && due_date < today && amount_due > 0`.
@@ -1071,8 +1074,9 @@ browsers do not allow websites to pre-attach files to a Gmail/mailto draft.
 
 **DataService methods:** `generateInvoiceNumber`, `getInvoices`, `getInvoice`,
 `getInvoiceItems`, `createInvoiceDraft` (invoice + items + audit in one
-`writeBatch`), `updateInvoiceDraft` (doc patch + item upsert/delete sync + audits
-in one batch), `addInvoiceItem`, `updateInvoiceItem`, `deleteInvoiceItem`,
+`writeBatch`), `updateInvoiceDraft` (doc patch + item upsert/delete sync +
+audits in one batch for drafts and unsent finalized invoices), `addInvoiceItem`,
+`updateInvoiceItem`, `deleteInvoiceItem`,
 `finalizeInvoice(uid, id, { markSent })`, `recordInvoiceSent`,
 `voidInvoice(uid, id, reason)`.
 
