@@ -49,8 +49,8 @@
             border-top: 1px solid #E5E7EB;
         }
         @media (min-width: 1024px) {
-            /* Clear the sticky editor actions bar so the preview pins below it. */
-            .invoice-preview-sticky { position: sticky; top: 64px; }
+            /* Clear the sticky editor actions so the preview pins below them. */
+            .invoice-preview-sticky { position: sticky; top: 48px; }
         }
         /* Download PDF = browser print scoped to the invoice document only.
            body.invoice-printing is set while the PDF modal prints. */
@@ -225,10 +225,10 @@
                         <h1 id="invoice-editor-title" class="truncate text-2xl font-bold tracking-tight text-gray-900">Create invoice</h1>
                         <p id="invoice-editor-status" class="text-[14px] text-gray-500 mt-0.5">Not saved yet</p>
                     </div>
-                    <!-- Editor actions: ONLY these stick (alongside the sticky invoice
-                         preview), so they stay reachable while the form scrolls. The
-                         page-colored background keeps the pinned bar invisible (not a card). -->
-                    <div class="invoice-editor-actions sticky top-0 z-20 -mx-3 mt-3 hidden items-center justify-end gap-2 bg-gray-50 px-3 py-2 sm:-mx-5 sm:px-5 lg:-mx-8 lg:px-8 lg:flex">
+                    <!-- Editor actions: pulled up onto the title's line so they sit
+                         top-right aligned with the title, but ONLY these stick (the
+                         title scrolls away). No card/background — bare buttons. -->
+                    <div class="invoice-editor-actions sticky top-0 z-20 hidden items-center justify-end gap-2 lg:-mt-12 lg:flex">
                         <button id="invoice-preview-toggle-desktop" type="button" class="inline-flex h-10 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95">Hide preview</button>
                         <button id="invoice-save-draft-btn" type="button" class="inline-flex h-10 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Save draft</button>
                         <button id="invoice-review-btn" type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#EA580C] px-4 text-[14px] font-bold text-white shadow-sm transition-all hover:bg-[#D94E0B] active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500">Review invoice</button>
