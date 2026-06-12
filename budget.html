@@ -29,18 +29,6 @@
             font-feature-settings: "tnum";
             letter-spacing: 0;
         }
-        .main-budget-selector {
-            min-height: 76px;
-            border: 1px solid #E2E8F0;
-            border-radius: 10px;
-            background: #F8FAFC;
-            transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
-        }
-        .main-budget-selector:focus-within {
-            border-color: #EA580C;
-            box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.12);
-            background: #FFFFFF;
-        }
         .budget-progress-track {
             height: 10px;
             overflow: hidden;
@@ -55,9 +43,6 @@
         }
         .budget-modal-shell {
             max-height: calc(100vh - 2rem);
-        }
-        @media (max-width: 640px) {
-            .main-budget-selector { min-height: 88px; }
         }
     </style>
 </head>
@@ -94,12 +79,9 @@
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M20 8a8 8 0 00-13.66-3.66L4 6m16 12l-2.34 1.66A8 8 0 014 16"></path></svg>
                             Refresh
                         </button>
-                        <button id="budget-create-main-btn" type="button" class="inline-flex h-10 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-colors hover:border-[#EA580C] hover:text-[#EA580C] active:scale-95">
-                            Create Budget
-                        </button>
-                        <button id="budget-new-period-btn" type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-slate-800 active:scale-95">
+                        <button id="budget-create-main-btn" type="button" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-slate-800 active:scale-95">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
-                            New period
+                            Create Budget
                         </button>
                     </div>
                 </div>
@@ -128,14 +110,8 @@
 
                             <div class="mt-4 max-w-sm">
                                 <label for="budget-main-select" class="sr-only">Main budget</label>
-                                <div class="main-budget-selector relative flex items-center gap-3 px-4 py-3">
-                                    <div class="min-w-0 flex-1">
-                                        <p id="budget-main-name" class="truncate text-[16px] font-semibold leading-tight text-slate-950">—</p>
-                                        <p id="budget-main-period" class="mt-1 truncate text-[12px] font-medium text-slate-500">—</p>
-                                    </div>
-                                    <svg class="main-budget-selector-chevron h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-                                    <select id="budget-main-select" class="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Change main budget"></select>
-                                </div>
+                                <select id="budget-main-select" aria-label="Change main budget"></select>
+                                <p id="budget-main-period" class="mt-2 text-[12px] font-medium text-slate-500">—</p>
                             </div>
 
                             <div class="mt-6 grid gap-4 md:grid-cols-3">
@@ -276,6 +252,7 @@
 
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/fluxy-select.js"></script>
     <script src="assets/js/date-range-picker.js"></script>
 
     <script type="module">

@@ -414,7 +414,6 @@ function renderMainBudget() {
     const spentReserved = Math.max(0, Number(envelope.spent_reserved_ytd) || 0);
     const plannedPercent = annualTotal > 0 ? clampPercent((planned / annualTotal) * 100) : 0;
 
-    el('budget-main-name').textContent = budget.name || budget.period_label || 'Main Budget';
     el('budget-main-period').textContent = formatPeriod(budget);
     el('budget-annual-total').textContent = formatRp(annualTotal);
     el('budget-spent-reserved').textContent = formatRp(spentReserved);
@@ -451,13 +450,12 @@ function renderMainBudgetSelect() {
 
 function renderPeriodActions() {
     const disabled = state.legacyMode;
-    [el('budget-new-period-btn'), el('budget-table-new-period-btn')].forEach((button) => {
-        if (!button) return;
-        button.disabled = disabled;
-        button.title = disabled ? 'Create a main budget before adding new period budgets.' : '';
-        button.classList.toggle('cursor-not-allowed', disabled);
-        button.classList.toggle('opacity-60', disabled);
-    });
+    const button = el('budget-table-new-period-btn');
+    if (!button) return;
+    button.disabled = disabled;
+    button.title = disabled ? 'Create a main budget before adding new period budgets.' : '';
+    button.classList.toggle('cursor-not-allowed', disabled);
+    button.classList.toggle('opacity-60', disabled);
 }
 
 function renderPeriodTable() {
@@ -560,7 +558,6 @@ function renderPeriodMobileCard(row) {
 function wirePageControls() {
     el('budget-refresh-btn')?.addEventListener('click', loadAndRender);
     el('budget-create-main-btn')?.addEventListener('click', openMainBudgetWizard);
-    el('budget-new-period-btn')?.addEventListener('click', () => openBudgetModal('period'));
     el('budget-table-new-period-btn')?.addEventListener('click', () => openBudgetModal('period'));
     el('budget-main-select')?.addEventListener('change', (event) => {
         state.selectedMainBudgetId = event.target.value || null;
