@@ -1216,25 +1216,6 @@ export function initInvoicesPage({ ds, user }) {
         if (detailInvoice) openEditor(detailInvoice.id, true);
     });
 
-    el('detail-copy-btn').addEventListener('click', async () => {
-        if (!detailInvoice) return;
-        const inv = detailInvoice;
-        const summary = [
-            `Invoice ${inv.invoice_number}`,
-            `Billed to: ${inv.customer_name || '—'}${inv.customer_email ? ` (${inv.customer_email})` : ''}`,
-            `Status: ${displayStatus(inv)}`,
-            `Issue date: ${formatDate(inv.issue_date)}`,
-            `Due date: ${formatDate(inv.due_date)}`,
-            `Amount due: ${formatRp(['void', 'paid'].includes(inv.status) ? 0 : inv.amount_due)}`
-        ].join('\n');
-        try {
-            await navigator.clipboard.writeText(summary);
-            window.showToast?.('Invoice summary copied.', 'success');
-        } catch {
-            window.showToast?.('Could not copy to clipboard.', 'error');
-        }
-    });
-
     el('detail-sent-btn').addEventListener('click', async (event) => {
         if (!detailInvoice) return;
         // Capture the button before awaiting — event.currentTarget is null once
