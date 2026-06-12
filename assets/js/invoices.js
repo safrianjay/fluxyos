@@ -162,8 +162,26 @@ export function initInvoicesPage({ ds, user }) {
         Object.entries(views).forEach(([key, node]) => {
             if (node) node.classList.toggle('hidden', key !== name);
         });
+        // The back-to-list link lives in the sticky topbar (top-left of the
+        // page) and only shows on the editor + detail sub-views.
+        const back = el('invoice-topbar-back');
+        if (back) {
+            const showBack = name === 'editor' || name === 'detail';
+            back.classList.toggle('hidden', !showBack);
+            back.classList.toggle('inline-flex', showBack);
+        }
         document.querySelector('main .overflow-y-auto')?.scrollTo({ top: 0 });
     }
+
+    // Topbar back link: from the editor it honors the unsaved-changes guard,
+    // from the detail view it returns straight to the list.
+    el('invoice-topbar-back').addEventListener('click', async () => {
+        if (!views.editor.classList.contains('hidden')) {
+            if (!(await confirmLeaveEditor())) return;
+            editor.dirty = false;
+        }
+        openList(true);
+    });
 
     async function routeFromUrl(push = false) {
         const params = new URLSearchParams(window.location.search);
@@ -815,12 +833,6 @@ export function initInvoicesPage({ ds, user }) {
     el('invoice-save-draft-btn').addEventListener('click', () => saveDraft());
     el('invoice-save-draft-btn-mobile').addEventListener('click', () => saveDraft());
 
-    el('invoice-editor-back').addEventListener('click', async () => {
-        if (!(await confirmLeaveEditor())) return;
-        editor.dirty = false;
-        openList(true);
-    });
-
     // ---------- review modal ----------
     function finalizeValidationErrors() {
         const errors = [];
@@ -1059,7 +1071,6 @@ export function initInvoicesPage({ ds, user }) {
             || '<li class="text-gray-400">No activity yet.</li>';
     }
 
-    el('invoice-detail-back').addEventListener('click', () => openList(true));
 
     el('detail-email-btn').addEventListener('click', () => {
         if (!detailInvoice?.customer_email) return;

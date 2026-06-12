@@ -73,9 +73,13 @@
 
     <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
         <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
-            <div class="flex items-center gap-4 flex-1">
+            <div class="flex items-center gap-4 flex-1 min-w-0">
                 <button class="md:hidden text-gray-500 hover:text-gray-900">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <button id="invoice-topbar-back" type="button" class="hidden min-w-0 items-center gap-2 text-[14px] font-semibold text-gray-500 transition-colors hover:text-gray-900">
+                    <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    <span class="truncate">Back to invoices</span>
                 </button>
             </div>
             <div class="flex items-center gap-4">
@@ -215,16 +219,11 @@
 
                 <!-- ============ EDITOR VIEW ============ -->
                 <div id="invoice-editor-view" class="hidden">
-                    <!-- Editor topbar -->
-                    <div class="sticky -top-3 z-20 -mx-3 -mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-white px-3 py-3 sm:-top-5 sm:-mx-5 sm:px-5 lg:-mx-8 lg:px-8">
-                        <div class="flex min-w-0 items-center gap-3">
-                            <button id="invoice-editor-back" type="button" class="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-700" aria-label="Back to invoices">
-                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M15 19l-7-7 7-7"></path></svg>
-                            </button>
-                            <div class="min-w-0">
-                                <h1 id="invoice-editor-title" class="truncate text-[18px] font-bold tracking-[-0.015em] text-[#0B0F19]">Create invoice</h1>
-                                <p id="invoice-editor-status" class="text-[12px] text-gray-400">Not saved yet</p>
-                            </div>
+                    <!-- Editor header (no card background; back lives in the topbar) -->
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <h1 id="invoice-editor-title" class="truncate text-2xl font-bold tracking-tight text-gray-900">Create invoice</h1>
+                            <p id="invoice-editor-status" class="text-[14px] text-gray-500 mt-0.5">Not saved yet</p>
                         </div>
                         <div class="hidden items-center gap-2 lg:flex">
                             <button id="invoice-preview-toggle-desktop" type="button" class="inline-flex h-10 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50 active:scale-95">Hide preview</button>
@@ -451,12 +450,7 @@
 
                 <!-- ============ DETAIL VIEW ============ -->
                 <div id="invoice-detail-view" class="hidden">
-                    <button id="invoice-detail-back" type="button" class="-ml-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[14px] font-semibold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m15 18-6-6 6-6"></path></svg>
-                        Back to invoices
-                    </button>
-
-                    <div class="mt-3 rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+                    <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
                         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-3">

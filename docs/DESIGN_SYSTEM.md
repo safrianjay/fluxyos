@@ -450,6 +450,25 @@ Do not restyle native `<select>` with one-off CSS arrows, and do not call
     may keep an in-page document header — `<h1>` (24px page-title step) + one-line
     description + generated date — scoped to print only via `bs-print-only`. See
     `balance-sheet.html`.
+- **Back navigation lives in the topbar (top-left).** Any "Back to X" navigation
+  on an authenticated app page is a **text link in the sticky 64px topbar**,
+  pinned top-left immediately after the mobile menu button: a left-chevron
+  (`h-4 w-4`, `M15 19l-7-7 7-7`) + label, `14px / 600`, `text-gray-500
+  hover:text-gray-900`. **Canonical implementation:** the "Back to Main Budget"
+  link in `budget-period.html`. Never place a back affordance as an in-content
+  button, and never nest it inside a card/panel header. On multi-view pages
+  (an editor/detail sub-view inside one page, e.g. `invoices.html`) toggle this
+  single topbar link per view — show it on the sub-views, hide it on the list —
+  rather than rendering separate per-view back buttons.
+- **Page-action (CTA) rows have no card/background of their own.** The primary/
+  secondary page actions for a screen or sub-view live either in the topbar
+  right (preferred) or on a **transparent** in-content header row alongside the
+  in-page `<h1>` title (`.fluxy-page-header` pattern — title left, actions
+  right). Do **not** wrap a page-header/CTA row in its own white card, bordered
+  bar, or sticky panel (`bg-white border ... shadow`); that reads as an extra
+  floating component. Cards are for content grouping, not for holding the page's
+  own action buttons. (Reference: the `invoices.html` create/edit header — title
+  + Save/Review actions on the bare page, back link in the topbar.)
 - **Dashboard/App Sidebar IA**: All dashboard/app pages use the centralized `sidebar-loader.js` grouped menu:
   - `Command`: Overview, Fluxy AI.
   - `Money Movement`: Transactions, Revenue Sync, Bills, Subscriptions.
