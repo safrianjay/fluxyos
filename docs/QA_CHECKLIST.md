@@ -688,7 +688,7 @@ Firestore rules, the transaction or bill budget fields, `budget-period.html` /
 
 | # | Check |
 |---|-------|
-| 1 | Allocation detail page opens when an allocation row on `/budget-period` is clicked. Header shows name + status badge + stat strip + variance explanation. Related Transactions and Related Bills sections list rows from the current period. |
+| 1 | Allocation detail page opens at `/budget-allocation/{allocationId}` when an allocation row on `/budget-period` is clicked. Legacy `.html?budgetId=...&periodId=...&allocationId=...` links still load and canonicalize to the clean route. Header shows name + status badge + stat strip + variance explanation. Related Transactions and Related Bills sections list rows from the current period. |
 | 2 | Unallocated records section renders only when records exist. Each row shows date / type / vendor / category / amount / suggested allocation / Assign + Exclude actions. |
 | 3 | Excluded records section is collapsed by default; toggling expands it. Each row shows the exclusion reason and a Restore action. |
 | 4 | Budget activity section on `/budget-period` renders only when audit logs exist for this period budget. Each row shows timestamp, action label, target collection, and the user-entered reason. |

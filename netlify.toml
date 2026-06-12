@@ -84,6 +84,11 @@
   status = 200
 
 [[redirects]]
+  from = "/budget-allocation/:allocationId"
+  to = "/budget-allocation.html"
+  status = 200
+
+[[redirects]]
   from = "/"
   to = "/fluxyos.html"
   status = 200

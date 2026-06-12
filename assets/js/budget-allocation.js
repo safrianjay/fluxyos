@@ -95,6 +95,25 @@ function getQueryParam(name) {
     return new URLSearchParams(window.location.search).get(name);
 }
 
+function getBudgetAllocationPathId() {
+    const match = window.location.pathname.match(/^\/budget-allocation\/([^/?#]+)\/?$/);
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
+function budgetAllocationUrl(allocationId) {
+    return `/budget-allocation/${encodeURIComponent(allocationId)}`;
+}
+
+function replaceBudgetAllocationUrl(allocationId, params = new URLSearchParams(window.location.search)) {
+    if (!allocationId || !window.history?.replaceState) return;
+    const nextParams = new URLSearchParams(params);
+    nextParams.delete('budgetId');
+    nextParams.delete('periodId');
+    nextParams.delete('allocationId');
+    const query = nextParams.toString();
+    window.history.replaceState({}, '', `${budgetAllocationUrl(allocationId)}${query ? `?${query}` : ''}`);
+}
+
 function emptyMatchedData() {
     return {
         transactions: [],
@@ -114,31 +133,27 @@ export function initBudgetAllocationPage({ ds, user }) {
 }
 
 async function loadAndRender() {
-    const mainBudgetId = getQueryParam('budgetId');
-    const periodId = getQueryParam('periodId') || mainBudgetId;
-    const allocationId = getQueryParam('allocationId');
-    if (!periodId || !allocationId) {
+    const params = new URLSearchParams(window.location.search);
+    const allocationId = getBudgetAllocationPathId() || getQueryParam('allocationId');
+    if (!allocationId) {
         renderFatalState('Allocation detail could not be opened.', 'Return to Budget Overview.');
         return;
     }
 
     try {
-        const [budget, allocation, mainBudget] = await Promise.all([
-            state.ds.getBudget(state.user.uid, periodId),
-            state.ds.getBudgetAllocation(state.user.uid, allocationId),
-            mainBudgetId && mainBudgetId !== periodId
-                ? state.ds.getBudget(state.user.uid, mainBudgetId)
-                : Promise.resolve(null)
-        ]);
-
+        const allocation = await state.ds.getBudgetAllocation(state.user.uid, allocationId);
+        if (!allocation?.parent_budget_id) {
+            renderFatalState('Allocation not found.', 'Return to Budget Overview.');
+            return;
+        }
+        const budget = await state.ds.getBudget(state.user.uid, allocation.parent_budget_id);
         if (!budget) {
             renderFatalState('Budget not found.', 'Return to Budget Overview.');
             return;
         }
-        if (!allocation || allocation.parent_budget_id !== budget.id) {
-            renderFatalState('Allocation not found.', 'Return to Budget Overview.');
-            return;
-        }
+        const mainBudget = budget.parent_budget_id
+            ? await state.ds.getBudget(state.user.uid, budget.parent_budget_id)
+            : null;
 
         state.mainBudget = mainBudget || null;
         state.budget = budget;
@@ -146,6 +161,7 @@ async function loadAndRender() {
         state.data = await state.ds.getMatchedAllocationRecords(state.user.uid, budget, allocation);
         state.selectedGroup = null;
         renderPage();
+        replaceBudgetAllocationUrl(allocation.id, params);
     } catch (error) {
         console.error('Allocation drill-in failed:', error);
         renderFatalState('Allocation detail could not be opened.', 'Refresh and try again.');

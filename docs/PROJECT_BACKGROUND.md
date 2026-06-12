@@ -328,6 +328,10 @@ Category-scoped sub-budgets that detail how a selected period `budgets` doc is
 split into operational areas (e.g. Marketing, Infrastructure, Operations, SaaS).
 Created from the Period Budget Detail page, not from the `/budget` Main Budget
 page. `parent_budget_id` must point to the period budget document.
+`/budget-allocation/{allocationId}` opens allocation detail by reading the
+allocation first, then deriving the period budget from `parent_budget_id`.
+Legacy `/budget-allocation.html?budgetId={mainBudgetId}&periodId={periodBudgetId}&allocationId={allocationId}`
+links remain readable and canonicalize in-browser to the clean route.
 
 | Field | Type | Notes |
 |-------|------|-------|

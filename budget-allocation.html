@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FluxyOS | Budget Allocation</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
-    <link rel="stylesheet" href="assets/css/platform-learning.css">
+    <link rel="stylesheet" href="/assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="/assets/css/platform-learning.css">
     <style>
         body { font-family: Inter, sans-serif; }
         .allocation-kpi-cell {
@@ -191,16 +191,16 @@
         </div>
     </main>
 
-    <script src="assets/js/sidebar-loader.js"></script>
-    <script src="assets/js/shared-dashboard.js"></script>
-    <script src="assets/js/fluxy-select.js"></script>
+    <script src="/assets/js/sidebar-loader.js"></script>
+    <script src="/assets/js/shared-dashboard.js"></script>
+    <script src="/assets/js/fluxy-select.js"></script>
 
     <script type="module">
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import DataService from './assets/js/db-service.js';
-        import { applyToPage } from './assets/js/onboarding-gate.js';
-        import { initBudgetAllocationPage } from './assets/js/budget-allocation.js';
+        import DataService from '/assets/js/db-service.js';
+        import { applyToPage } from '/assets/js/onboarding-gate.js';
+        import { initBudgetAllocationPage } from '/assets/js/budget-allocation.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",

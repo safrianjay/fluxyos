@@ -46,7 +46,7 @@ All notable changes to FluxyOS are recorded here, newest first.
 ### Changed (Budget Phase 2)
 - **`firestore.rules`** — additive: `isValidTransactionBudgetFields` validator added and wired into transactions create + update; `isValidBillBudgetFields` extended with 4 new fields and enum expansion; bills/transactions `hasOnly` allowlists extended. All Phase 2 writers must set `budget_assignment_updated_by == request.auth.uid` (rule-pinned).
 - **`getBudgetUsage` resolver-based refactor** — totals now route through `resolveRecordAssignment` so manual assignment / exclusion override category matching. Return shape unchanged; existing callers (the Phase 1 Budget page summary) keep working.
-- **Allocation rows on `/budget-period` are clickable** — each row routes to `/budget-allocation.html` with main, period, and allocation context plus a deterministic variance explanation line under the allocation name.
+- **Allocation rows on `/budget-period` are clickable** — each row routes to `/budget-allocation/{allocationId}` with reloadable allocation context plus a deterministic variance explanation line under the allocation name. Legacy `.html?budgetId=...&periodId=...&allocationId=...` links remain readable.
 
 ### Added
 - **Budgets app page** (`/budget`) — Main Budget control surface. Annual/main selector, annual total, spent + reserved, not planned yet, planned-into-periods progress, and clickable Period budgets table. Sidebar Budgets entry promoted from disabled `Soon` to a real link.

@@ -848,11 +848,7 @@ function renderAttentionItem(alert) {
 function openAllocationDrillIn(allocationId) {
     const periodId = state.usage?.budget?.id || state.selectedBudgetId;
     if (!allocationId || !periodId) return;
-    const mainBudgetId = state.usage?.budget?.parent_budget_id || state.selectedAnnualId || '';
-    const params = mainBudgetId
-        ? new URLSearchParams({ budgetId: mainBudgetId, periodId, allocationId })
-        : new URLSearchParams({ budgetId: periodId, allocationId });
-    window.location.href = `budget-allocation.html?${params.toString()}`;
+    window.location.href = `/budget-allocation/${encodeURIComponent(allocationId)}`;
 }
 
 function renderUnallocatedCard(unallocated) {

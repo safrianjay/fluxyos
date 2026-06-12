@@ -54,8 +54,9 @@ test('P1: allocation row opens the full-page allocation drill-in', async ({ page
     // First allocation row (variance text means we need to wait for render)
     const firstRow = page.locator('#budget-alloc-body tr[data-action="open-allocation-drill-in"]').first();
     await expect(firstRow).toBeVisible();
+    const allocationId = await firstRow.getAttribute('data-allocation-id');
     await firstRow.click();
-    await expect(page).toHaveURL(/budget-allocation\.html\?budgetId=.*periodId=.*allocationId=/);
+    await expect(page).toHaveURL(new RegExp(`/budget-allocation/${allocationId}$`));
     await expect(page.locator('#budget-detail-drawer')).toHaveCount(0);
     await page.waitForFunction(() => {
         const c = document.getElementById('allocation-content');
@@ -73,8 +74,9 @@ test('P1b: allocation stacked-bar segment opens the full-page drill-in', async (
     await openFirstPeriodDetail(page);
     const firstSegment = page.locator('#budget-allocation-bar [data-action="open-allocation-drill-in"]').first();
     await expect(firstSegment).toBeVisible();
+    const allocationId = await firstSegment.getAttribute('data-allocation-id');
     await firstSegment.click();
-    await expect(page).toHaveURL(/budget-allocation\.html\?budgetId=.*periodId=.*allocationId=/);
+    await expect(page).toHaveURL(new RegExp(`/budget-allocation/${allocationId}$`));
     await page.waitForFunction(() => {
         const c = document.getElementById('allocation-content');
         return c && !c.classList.contains('hidden');

@@ -53,6 +53,9 @@ function resolveFile(reqPath) {
     if (/^\/budget-period\/[^/]+\/?$/.test(decoded)) {
         return path.join(ROOT, 'budget-period.html');
     }
+    if (/^\/budget-allocation\/[^/]+\/?$/.test(decoded)) {
+        return path.join(ROOT, 'budget-allocation.html');
+    }
     const direct = safeJoin(ROOT, decoded);
     if (!direct) return null;
     let stat = tryStat(direct);

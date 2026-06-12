@@ -39,7 +39,7 @@ test('budget-allocation page renders bars + compact rows + header back button', 
     console.log('[alloc] ids:', ids);
     expect(ids.allocationId).toBeTruthy();
 
-    await page.goto(`/budget-allocation.html?budgetId=${ids.budgetId}&periodId=${ids.periodId}&allocationId=${ids.allocationId}`);
+    await page.goto(`/budget-allocation/${ids.allocationId}`);
     await page.waitForFunction(() => {
         const c = document.getElementById('allocation-content');
         return c && !c.classList.contains('hidden');
