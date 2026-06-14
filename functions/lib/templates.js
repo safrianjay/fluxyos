@@ -83,7 +83,7 @@ function layout({ previewText, heading, paragraphsHtml, cta, footnote, logoUrl }
           </tr>
           <tr>
             <td class="fx-pad" style="padding:8px 36px 30px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;">
                 ${para}
                 ${button(cta)}
               </table>
@@ -133,7 +133,7 @@ function notePara(locale, note) {
     if (!note) return null;
     const label = locale === 'id' ? 'Catatan peninjau' : 'Reviewer note';
     return {
-        html: `<span style="display:block;border-left:3px solid ${ORANGE};background:#FFF7ED;padding:10px 14px;border-radius:6px;color:${INK};"><strong>${label}:</strong> ${escapeHtml(note)}</span>`,
+        html: `<span style="display:block;background:#F9FAFB;border:1px solid #EEF0F3;padding:12px 14px;border-radius:8px;color:${INK};"><strong>${label}:</strong> ${escapeHtml(note)}</span>`,
         text: `${label}: ${note}`,
     };
 }
@@ -402,6 +402,7 @@ const COPY = {
                 paragraphs: [
                     { html: greet('id', d.name), text: d.name ? `Halo ${d.name},` : 'Halo,' },
                     { html: `Masa uji coba gratis Anda berakhir${when ? ` pada ${when}` : ' sebentar lagi'}. Pilih paket agar dashboard, AI, dan ekspor Anda tetap berjalan tanpa terganggu.`, text: `Masa uji coba gratis Anda berakhir${d.trialEndsLabel ? ` pada ${d.trialEndsLabel}` : ' sebentar lagi'}. Pilih paket agar dashboard, AI, dan ekspor Anda tetap berjalan tanpa terganggu.` },
+                    ...(d.offer && d.offer.code ? [offerBox('id', d.offer, d.baseUrl)] : []),
                 ],
                 cta: { label: 'Pilih paket', url },
                 footnote: TRANSACTIONAL_FOOTNOTE.id,
@@ -413,6 +414,7 @@ const COPY = {
             paragraphs: [
                 { html: greet('en', d.name), text: d.name ? `Hi ${d.name},` : 'Hi there,' },
                 { html: `Your free trial ends${when ? ` on ${when}` : ' soon'}. Pick a plan to keep your dashboards, AI, and exports running without interruption.`, text: `Your free trial ends${d.trialEndsLabel ? ` on ${d.trialEndsLabel}` : ' soon'}. Pick a plan to keep your dashboards, AI, and exports running without interruption.` },
+                ...(d.offer && d.offer.code ? [offerBox('en', d.offer, d.baseUrl)] : []),
             ],
             cta: { label: 'Choose a plan', url },
             footnote: TRANSACTIONAL_FOOTNOTE.en,

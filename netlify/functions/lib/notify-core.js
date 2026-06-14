@@ -156,7 +156,7 @@ async function sweepTrialEnding(db, { logger = console } = {}) {
             if (!to) continue;
             const locale = await resolveUserLocale(db, uid);
             const dayKey = new Date(ends).toISOString().slice(0, 10);
-            const r = await sendNotificationEmail({ db, uid, to, eventKey: `trial_ending_${dayKey}`, templateKey: 'trial_ending', locale, data: { name: null, planName: d.plan_name || null, trialEndsLabel: formatDate(ends, locale), baseUrl: APP_BASE_URL }, logger });
+            const r = await sendNotificationEmail({ db, uid, to, eventKey: `trial_ending_${dayKey}`, templateKey: 'trial_ending', locale, data: { name: null, planName: d.plan_name || null, trialEndsLabel: formatDate(ends, locale), baseUrl: APP_BASE_URL, offer: WELCOME_OFFER }, logger });
             if (r && r.sent) sent += 1;
         } catch (e) {
             (logger.error || console.error)('sweepTrialEnding: user failed', { uid, error: e.message });
