@@ -19,6 +19,14 @@ Delete accounts one at a time when this cleanup is required.
 
 ## Email notifications (Resend)
 
+> **Two paths exist — run only ONE** (both together double-send):
+> 1. **This Cloud Functions path** — event-driven, instant, needs **Blaze**.
+> 2. **Netlify Scheduled Functions** (`netlify/functions/NOTIFICATIONS.md`) —
+>    no Blaze, ~5-min latency, needs a Firebase service-account key. Use this
+>    when a Blaze billing card isn't available.
+>
+> Both reuse the same `functions/lib` templates/sender, so emails are identical.
+
 Transactional/notification emails are sent from Cloud Functions via
 [Resend](https://resend.com). Auth emails (verify, password reset) are NOT here —
 those are handled by Firebase Auth directly from `login.html`.
