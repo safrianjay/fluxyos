@@ -215,6 +215,8 @@
                 <span class="font-bold text-lg tracking-tight text-gray-900">FluxyOS</span>
             </a>
 
+            <!-- SIGN-IN VIEW -->
+            <div id="signin-view">
             <!-- Headers -->
             <div class="mb-5">
                 <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Sign in to your account</h1>
@@ -254,7 +256,7 @@
                     <div>
                         <div class="flex items-center justify-between mb-1">
                             <label for="password" class="block text-[12px] font-bold text-gray-700">Password</label>
-                            <a href="#" class="text-[11px] font-bold text-gray-500 hover:text-gray-900 transition-colors">Forgot password?</a>
+                            <a id="forgot-password-link" href="#" class="text-[11px] font-bold text-gray-500 hover:text-gray-900 transition-colors">Forgot password?</a>
                         </div>
                         <input id="password" name="password" type="password" placeholder="••••••••" required 
                             class="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[13px] focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all shadow-sm placeholder-gray-400">
@@ -265,6 +267,35 @@
                     Sign In
                 </button>
             </form>
+            </div>
+            <!-- /SIGN-IN VIEW -->
+
+            <!-- EMAIL VERIFICATION VIEW -->
+            <div id="verify-view" class="hidden">
+                <div class="mb-5">
+                    <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Verify your email</h1>
+                    <p class="mt-1 text-[13px] text-gray-500">
+                        We sent a verification link to
+                        <span id="verify-email" class="font-bold text-gray-900">your email</span>.
+                        Open it to activate your account, then continue.
+                    </p>
+                </div>
+
+                <p id="verify-status" class="hidden mb-4 rounded-lg border px-3 py-2 text-[12px] font-medium" role="status"></p>
+
+                <button id="verify-continue-btn" type="button" class="w-full flex justify-center py-2.5 px-4 rounded-lg shadow-sm text-[13px] font-bold text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-colors">
+                    I've verified — continue
+                </button>
+
+                <button id="verify-resend-btn" type="button" class="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-gray-200">
+                    Resend verification email
+                </button>
+
+                <div class="pt-4 text-center">
+                    <a id="verify-skip-link" href="#" class="text-[12px] font-bold text-gray-500 hover:text-gray-900 transition-colors">Continue without verifying &rarr;</a>
+                </div>
+            </div>
+            <!-- /EMAIL VERIFICATION VIEW -->
 
             <!-- Footer -->
             <div class="pt-6 text-center">
@@ -282,6 +313,8 @@
         import {
             getAuth,
             signInWithEmailAndPassword,
+            sendPasswordResetEmail,
+            sendEmailVerification,
             GoogleAuthProvider,
             signInWithPopup,
             signInWithRedirect,
@@ -315,9 +348,15 @@
             let googleOriginalText = googleBtn?.innerHTML || '';
             let submitOriginalText = submitBtn?.innerText || 'Sign In';
             const authMessage = document.createElement('p');
-            authMessage.className = 'hidden mb-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-[12px] font-medium text-red-700';
+            authMessage.className = 'hidden mb-4 rounded-lg border px-3 py-2 text-[12px] font-medium';
             authMessage.setAttribute('role', 'alert');
             googleBtn?.insertAdjacentElement('afterend', authMessage);
+
+            const MESSAGE_TONES = {
+                error: 'border-red-100 bg-red-50 text-red-700',
+                success: 'border-green-100 bg-green-50 text-green-700',
+                info: 'border-gray-200 bg-gray-50 text-gray-700',
+            };
 
             const setAuthControlsLocked = (locked, activeControl = null) => {
                 authInFlight = locked;
@@ -339,7 +378,10 @@
                 if (submitBtn) submitBtn.innerText = submitOriginalText;
             };
 
-            const showAuthMessage = (message) => {
+            const showAuthMessage = (message, tone = 'error') => {
+                Object.values(MESSAGE_TONES).forEach((cls) => authMessage.classList.remove(...cls.split(' ')));
+                (MESSAGE_TONES[tone] || MESSAGE_TONES.error).split(' ').forEach((cls) => authMessage.classList.add(cls));
+                authMessage.setAttribute('role', tone === 'error' ? 'alert' : 'status');
                 authMessage.textContent = message;
                 authMessage.classList.remove('hidden');
             };
@@ -357,18 +399,148 @@
                 return "Google sign-in failed. Please try again.";
             };
 
+            // ---- Password reset (Forgot password) ----
+            const forgotLink = document.getElementById('forgot-password-link');
+            if (forgotLink) {
+                forgotLink.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    if (authInFlight) return;
+                    const email = (emailInput?.value || '').trim();
+                    if (!email) {
+                        showAuthMessage('Enter your work email above, then tap Forgot password.', 'info');
+                        emailInput?.focus();
+                        return;
+                    }
+                    clearAuthMessage();
+                    forgotLink.textContent = 'Sending...';
+                    try {
+                        await sendPasswordResetEmail(auth, email);
+                    } catch (error) {
+                        if (error?.code === 'auth/invalid-email') {
+                            showAuthMessage("That doesn't look like a valid email address.", 'error');
+                            forgotLink.textContent = 'Forgot password?';
+                            return;
+                        }
+                        // Don't leak whether the account exists (auth/user-not-found etc.).
+                        if (error?.code !== 'auth/user-not-found') {
+                            console.warn('Password reset error:', error);
+                        }
+                    }
+                    showAuthMessage(`If an account exists for ${email}, a password reset link is on its way. Check your inbox.`, 'success');
+                    forgotLink.textContent = 'Forgot password?';
+                });
+            }
+
+            // ---- Email verification view ----
+            const signinView = document.getElementById('signin-view');
+            const verifyView = document.getElementById('verify-view');
+            const verifyEmailEl = document.getElementById('verify-email');
+            const verifyStatusEl = document.getElementById('verify-status');
+            const verifyContinueBtn = document.getElementById('verify-continue-btn');
+            const verifyResendBtn = document.getElementById('verify-resend-btn');
+            const verifySkipLink = document.getElementById('verify-skip-link');
+            let verificationEmailSent = false;
+            let resendCooldown = false;
+
+            const setVerifyStatus = (message, tone = 'info') => {
+                if (!verifyStatusEl) return;
+                verifyStatusEl.className = 'mb-4 rounded-lg border px-3 py-2 text-[12px] font-medium ' + (MESSAGE_TONES[tone] || MESSAGE_TONES.info);
+                verifyStatusEl.textContent = message;
+                verifyStatusEl.classList.remove('hidden');
+            };
+
+            const goToApp = async (user) => {
+                const redirected = await redirectIfRequired(user);
+                if (redirected) return;
+                window.location.href = '/dashboard';
+            };
+
+            const sendVerification = async (user) => {
+                try {
+                    await sendEmailVerification(user);
+                    verificationEmailSent = true;
+                    setVerifyStatus(`Verification link sent to ${user.email}.`, 'success');
+                } catch (error) {
+                    console.warn('Verification send error:', error);
+                    if (error?.code === 'auth/too-many-requests') {
+                        setVerifyStatus('Too many attempts. Wait a few minutes before requesting another link.', 'error');
+                    } else {
+                        setVerifyStatus('Could not send the email just now. Try Resend in a moment.', 'error');
+                    }
+                }
+            };
+
+            const showVerifyView = (user) => {
+                if (verifyEmailEl) verifyEmailEl.textContent = user.email || 'your email';
+                signinView?.classList.add('hidden');
+                verifyView?.classList.remove('hidden');
+                if (!verificationEmailSent) sendVerification(user);
+            };
+
+            verifyResendBtn?.addEventListener('click', async () => {
+                if (resendCooldown || !auth.currentUser) return;
+                resendCooldown = true;
+                verifyResendBtn.disabled = true;
+                const original = verifyResendBtn.textContent;
+                verifyResendBtn.textContent = 'Sending...';
+                await sendVerification(auth.currentUser);
+                let secs = 30;
+                verifyResendBtn.textContent = `Resend in ${secs}s`;
+                const timer = setInterval(() => {
+                    secs -= 1;
+                    if (secs <= 0) {
+                        clearInterval(timer);
+                        resendCooldown = false;
+                        verifyResendBtn.disabled = false;
+                        verifyResendBtn.textContent = original;
+                    } else {
+                        verifyResendBtn.textContent = `Resend in ${secs}s`;
+                    }
+                }, 1000);
+            });
+
+            verifyContinueBtn?.addEventListener('click', async () => {
+                if (!auth.currentUser) return;
+                verifyContinueBtn.disabled = true;
+                const original = verifyContinueBtn.textContent;
+                verifyContinueBtn.textContent = 'Checking...';
+                try {
+                    await auth.currentUser.reload();
+                } catch (error) {
+                    console.warn('Reload error:', error);
+                }
+                if (auth.currentUser.emailVerified) {
+                    setVerifyStatus('Email verified. Taking you in...', 'success');
+                    await goToApp(auth.currentUser);
+                } else {
+                    setVerifyStatus('Not verified yet. Open the link in your inbox, then try again.', 'error');
+                    verifyContinueBtn.disabled = false;
+                    verifyContinueBtn.textContent = original;
+                }
+            });
+
+            verifySkipLink?.addEventListener('click', async (e) => {
+                e.preventDefault();
+                if (auth.currentUser) await goToApp(auth.currentUser);
+            });
+
+            const routeUser = async (user) => {
+                const isPasswordUser = user.providerData?.some((p) => p.providerId === 'password');
+                if (isPasswordUser && !user.emailVerified) {
+                    showVerifyView(user);
+                    return;
+                }
+                await goToApp(user);
+            };
+
             getRedirectResult(auth).catch((error) => {
                 console.warn("Redirect Result Error:", error);
                 showAuthMessage(getAuthErrorMessage(error));
             });
 
-            // Handle Auth State (Auto-Redirect)
+            // Handle Auth State (Auto-Redirect + verification gate)
             onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    const redirected = await redirectIfRequired(user);
-                    if (redirected) return;
-                    window.location.href = '/dashboard';
-                }
+                if (user) routeUser(user);
             });
 
             // Google Login (Popup Method - Better for Mobile/SSO)
