@@ -37,3 +37,6 @@ test-results/
 playwright-report/
 tests/.auth/
 blob-report/
+
+# Functions local smoke output
+functions/.smoke/
