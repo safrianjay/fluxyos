@@ -36,7 +36,7 @@ function button(cta) {
 
 function layout({ previewText, heading, paragraphsHtml, cta, footnote, logoUrl }) {
     const para = (paragraphsHtml || [])
-        .map((html) => `<tr><td style="padding:0 0 16px;color:${INK};font-size:15px;line-height:1.62;">${html}</td></tr>`)
+        .map((html) => `<tr><td class="fx-body" style="padding:0 0 16px;color:${INK};font-size:16px;line-height:1.6;">${html}</td></tr>`)
         .join('');
     const logo = logoUrl
         ? `<img src="${escapeHtml(logoUrl)}" width="32" height="32" alt="" style="display:block;border:0;outline:none;text-decoration:none;">`
@@ -51,6 +51,13 @@ function layout({ previewText, heading, paragraphsHtml, cta, footnote, logoUrl }
   <meta name="x-apple-disable-message-reformatting">
   <meta name="color-scheme" content="light only">
   <title>${escapeHtml(heading)}</title>
+  <style>
+    @media only screen and (max-width:480px){
+      .fx-body{font-size:17px !important;line-height:1.6 !important;}
+      .fx-h1{font-size:25px !important;}
+      .fx-pad{padding-left:20px !important;padding-right:20px !important;}
+    }
+  </style>
 </head>
 <body style="margin:0;padding:0;background:${CANVAS};-webkit-font-smoothing:antialiased;">
   <span style="display:none!important;opacity:0;color:transparent;height:0;width:0;overflow:hidden;mso-hide:all;">${escapeHtml(previewText || heading)}</span>
@@ -59,7 +66,7 @@ function layout({ previewText, heading, paragraphsHtml, cta, footnote, logoUrl }
       <td align="center">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:92%;background:#ffffff;border:1px solid ${BORDER};border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,0.04);">
           <tr>
-            <td style="padding:28px 36px 18px;">
+            <td class="fx-pad" style="padding:28px 36px 18px;">
               <table role="presentation" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="padding-right:10px;vertical-align:middle;">${logo}</td>
@@ -70,12 +77,12 @@ function layout({ previewText, heading, paragraphsHtml, cta, footnote, logoUrl }
           </tr>
           ${hairline}
           <tr>
-            <td style="padding:24px 36px 6px;">
-              <h1 style="margin:0;font-size:23px;line-height:1.25;font-weight:700;letter-spacing:-0.015em;color:${NAVY};">${escapeHtml(heading)}</h1>
+            <td class="fx-pad" style="padding:24px 36px 6px;">
+              <h1 class="fx-h1" style="margin:0;font-size:24px;line-height:1.25;font-weight:700;letter-spacing:-0.015em;color:${NAVY};">${escapeHtml(heading)}</h1>
             </td>
           </tr>
           <tr>
-            <td style="padding:8px 36px 30px;">
+            <td class="fx-pad" style="padding:8px 36px 30px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 ${para}
                 ${button(cta)}
@@ -84,8 +91,8 @@ function layout({ previewText, heading, paragraphsHtml, cta, footnote, logoUrl }
           </tr>
           ${hairline}
           <tr>
-            <td style="padding:20px 36px 26px;">
-              <p style="margin:0;color:${MUTED};font-size:12px;line-height:1.55;">${footnote || ''}</p>
+            <td class="fx-pad" style="padding:20px 36px 26px;">
+              <p style="margin:0;color:${MUTED};font-size:13px;line-height:1.55;">${footnote || ''}</p>
             </td>
           </tr>
         </table>
@@ -137,7 +144,7 @@ function setupBox(locale) {
         ? { title: 'Selesaikan pengaturan akun Anda', body: 'Lengkapi verifikasi bisnis (KYC) dan proses onboarding untuk membuka seluruh fitur workspace Anda.' }
         : { title: 'Finish setting up your account', body: 'Complete your business verification (KYC) and onboarding to unlock your full workspace.' };
     return {
-        html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F9FAFB;border:1px solid #EEF0F3;border-radius:12px;"><tr><td style="padding:16px 18px;"><div style="font-size:14px;font-weight:600;color:${NAVY};margin:0 0 4px;">${t.title}</div><div style="font-size:14px;color:#374151;line-height:1.55;">${t.body}</div></td></tr></table>`,
+        html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:#F9FAFB;border:1px solid #EEF0F3;border-radius:12px;"><tr><td style="padding:16px 18px;"><div style="font-size:15px;font-weight:600;color:${NAVY};margin:0 0 4px;">${t.title}</div><div style="font-size:15px;color:#374151;line-height:1.55;">${t.body}</div></td></tr></table>`,
         text: `${t.title} — ${t.body}`,
     };
 }
@@ -179,9 +186,9 @@ function askAiCard(locale) {
     const t = locale === 'id'
         ? { title: 'Tanya Fluxy AI', qs: ['Berapa pengeluaran software saya bulan ini?', 'Tagihan mana yang sudah jatuh tempo?', 'Bisakah saya menutupi pengeluaran bulan depan?'] }
         : { title: 'Ask Fluxy AI', qs: ['How much did I spend on software this month?', 'Which bills are overdue?', "Can I cover next month's expenses?"] };
-    const lines = t.qs.map((q) => `<div style="font-size:14px;color:#374151;line-height:1.5;margin:0 0 8px;">&ldquo;${escapeHtml(q)}&rdquo;</div>`).join('');
+    const lines = t.qs.map((q) => `<div style="font-size:15px;color:#374151;line-height:1.5;margin:0 0 8px;">&ldquo;${escapeHtml(q)}&rdquo;</div>`).join('');
     return {
-        html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:#F9FAFB;border:1px solid #EEF0F3;border-radius:12px;"><tr><td style="padding:16px 18px;"><div style="font-size:15px;font-weight:700;color:${NAVY};margin:0 0 10px;">🤖 ${escapeHtml(t.title)}</div>${lines}</td></tr></table>`,
+        html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:#F9FAFB;border:1px solid #EEF0F3;border-radius:12px;"><tr><td style="padding:16px 18px;"><div style="font-size:16px;font-weight:700;color:${NAVY};margin:0 0 10px;">🤖 ${escapeHtml(t.title)}</div>${lines}</td></tr></table>`,
         text: `${t.title}: ${t.qs.map((q) => `"${q}"`).join(' ')}`,
     };
 }
