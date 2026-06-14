@@ -136,22 +136,44 @@ function setupBox(locale) {
     };
 }
 
-// Accent promo box featuring a voucher code (config-driven, see WELCOME_OFFER_*).
+// Voucher-ticket promo (config-driven, see WELCOME_OFFER_*). Navy ticket with a
+// dashed perforation between the big discount and the code + claim link.
 function offerBox(locale, offer, baseUrl) {
     const pct = Number(offer.percent) || 0;
     const code = escapeHtml(offer.code);
     const terms = offer.terms ? escapeHtml(offer.terms) : (locale === 'id' ? 'paket tahunan' : 'annual plans');
     const t = locale === 'id'
-        ? { eyebrow: 'Penawaran eksklusif', line: `Dapatkan <strong>diskon ${pct}%</strong> untuk ${terms} dengan kode`, cta: 'Lihat paket tahunan' }
-        : { eyebrow: 'Exclusive offer', line: `Get <strong>${pct}% off</strong> ${terms} with code`, cta: 'See annual plans' };
+        ? { eyebrow: 'Penawaran eksklusif', off: 'DISKON', useCode: 'Pakai kode', cta: 'Klaim diskon Anda' }
+        : { eyebrow: 'Exclusive offer', off: 'OFF', useCode: 'Use code', cta: 'Claim your discount' };
+    const big = `<span style="font-size:40px;font-weight:800;letter-spacing:-0.02em;color:${ORANGE};">${pct}%</span>`;
+    const discount = locale === 'id'
+        ? `<span style="font-size:15px;font-weight:700;color:#ffffff;">${t.off}</span> ${big}`
+        : `${big} <span style="font-size:16px;font-weight:700;color:#ffffff;">${t.off}</span>`;
+    const html =
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:${NAVY};border-radius:14px;"><tr>`
+        + `<td style="padding:18px 6px 18px 20px;width:46%;vertical-align:middle;">`
+            + `<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${ORANGE};margin:0 0 4px;">${t.eyebrow}</div>`
+            + `<div style="line-height:1;">${discount}</div>`
+            + `<div style="font-size:12px;color:#C7CBD3;margin-top:5px;">${terms}</div>`
+        + `</td>`
+        + `<td style="width:1px;padding:0;"><div style="border-left:2px dashed rgba(255,255,255,0.35);height:80px;font-size:0;line-height:0;">&nbsp;</div></td>`
+        + `<td style="padding:18px 20px 18px 8px;width:54%;vertical-align:middle;text-align:center;">`
+            + `<div style="font-size:11px;color:#C7CBD3;margin:0 0 6px;">${t.useCode}</div>`
+            + `<span style="display:inline-block;background:#ffffff;border-radius:8px;padding:8px 14px;font-size:16px;font-weight:800;letter-spacing:0.06em;color:${NAVY};">${code}</span>`
+            + `<div style="margin-top:10px;"><a href="${escapeHtml(baseUrl)}/pricing" style="font-size:13px;font-weight:700;color:${ORANGE};text-decoration:none;">${t.cta} &rarr;</a></div>`
+        + `</td></tr></table>`;
+    return { html, text: `${t.eyebrow}: ${pct}% off ${terms} — use code ${offer.code} at ${baseUrl}/pricing` };
+}
+
+// "Ask Fluxy AI" prompt card (welcome email).
+function askAiCard(locale) {
+    const t = locale === 'id'
+        ? { title: 'Tanya Fluxy AI', qs: ['Berapa pengeluaran software saya bulan ini?', 'Tagihan mana yang sudah jatuh tempo?', 'Bisakah saya menutupi pengeluaran bulan depan?'] }
+        : { title: 'Ask Fluxy AI', qs: ['How much did I spend on software this month?', 'Which bills are overdue?', "Can I cover next month's expenses?"] };
+    const lines = t.qs.map((q) => `<div style="font-size:14px;color:#374151;line-height:1.5;margin:0 0 8px;">&ldquo;${escapeHtml(q)}&rdquo;</div>`).join('');
     return {
-        html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFF7ED;border:1px solid #FFE2C7;border-radius:12px;"><tr><td style="padding:18px;">`
-            + `<div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${ORANGE};margin:0 0 8px;">${t.eyebrow}</div>`
-            + `<div style="font-size:15px;color:${INK};line-height:1.5;margin:0 0 12px;">${t.line}</div>`
-            + `<span style="display:inline-block;background:#ffffff;border:1px dashed ${ORANGE};border-radius:8px;padding:9px 16px;font-size:16px;font-weight:700;letter-spacing:0.08em;color:${NAVY};">${code}</span>`
-            + `<div style="margin-top:12px;"><a href="${escapeHtml(baseUrl)}/pricing" style="font-size:14px;font-weight:600;color:${ORANGE};text-decoration:none;">${t.cta} &rarr;</a></div>`
-            + `</td></tr></table>`,
-        text: `${t.eyebrow}: ${pct}% off ${terms} — use code ${offer.code} at ${baseUrl}/pricing`,
+        html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:#F9FAFB;border:1px solid #EEF0F3;border-radius:12px;"><tr><td style="padding:16px 18px;"><div style="font-size:15px;font-weight:700;color:${NAVY};margin:0 0 10px;">🤖 ${escapeHtml(t.title)}</div>${lines}</td></tr></table>`,
+        text: `${t.title}: ${t.qs.map((q) => `"${q}"`).join(' ')}`,
     };
 }
 
@@ -168,19 +190,26 @@ const COPY = {
             ? { label: locale === 'id' ? 'Buka dashboard' : 'Open your dashboard', url: `${d.baseUrl}/dashboard` }
             : { label: locale === 'id' ? 'Selesaikan verifikasi & pengaturan' : 'Complete verification & setup', url: `${d.baseUrl}/onboarding` };
 
+        const line = (s) => ({ html: s, text: s });
         const paragraphs = [];
         if (locale === 'id') {
             paragraphs.push({ html: greet('id', d.name), text: d.name ? `Halo ${d.name},` : 'Halo,' });
-            paragraphs.push({ html: 'Akun Anda sudah siap. FluxyOS menyatukan buku besar, tagihan, pendapatan, dan AI dalam satu ruang kerja keuangan.', text: 'Akun Anda sudah siap. FluxyOS menyatukan buku besar, tagihan, pendapatan, dan AI dalam satu ruang kerja keuangan.' });
+            paragraphs.push(line('Ruang kerja keuangan Anda hampir siap.'));
+            paragraphs.push(line('Sebagian besar bisnis bukan kesulitan karena kekurangan data. Mereka kesulitan karena informasi keuangannya tersebar di spreadsheet, invoice, rekening koran, dan berbagai alat yang tidak terhubung.'));
+            paragraphs.push(line('FluxyOS menyatukan semuanya di satu tempat, sehingga Anda bisa melihat dari mana uang masuk, ke mana perginya, dan apa yang perlu diperhatikan.'));
             if (!setupComplete) paragraphs.push(setupBox('id'));
+            paragraphs.push(askAiCard('id'));
             if (d.offer && d.offer.code) paragraphs.push(offerBox('id', d.offer, d.baseUrl));
-            return { subject: 'Selamat datang di FluxyOS', heading: 'Selamat datang di FluxyOS', paragraphs, cta, footnote: TRANSACTIONAL_FOOTNOTE.id };
+            return { subject: 'Selamat datang di FluxyOS', heading: 'Selamat datang di FluxyOS 👋', paragraphs, cta, footnote: TRANSACTIONAL_FOOTNOTE.id };
         }
         paragraphs.push({ html: greet('en', d.name), text: d.name ? `Hi ${d.name},` : 'Hi there,' });
-        paragraphs.push({ html: 'Your account is ready. FluxyOS brings your ledgers, bills, revenue, and AI into one finance workspace.', text: 'Your account is ready. FluxyOS brings your ledgers, bills, revenue, and AI into one finance workspace.' });
+        paragraphs.push(line('Your finance workspace is almost ready.'));
+        paragraphs.push(line("Most businesses don't struggle because they lack data. They struggle because their financial information is scattered across spreadsheets, invoices, bank statements, and disconnected tools."));
+        paragraphs.push(line("FluxyOS brings everything together in one place, so you can see where money is coming from, where it's going, and what needs attention."));
         if (!setupComplete) paragraphs.push(setupBox('en'));
+        paragraphs.push(askAiCard('en'));
         if (d.offer && d.offer.code) paragraphs.push(offerBox('en', d.offer, d.baseUrl));
-        return { subject: 'Welcome to FluxyOS', heading: 'Welcome to FluxyOS', paragraphs, cta, footnote: TRANSACTIONAL_FOOTNOTE.en };
+        return { subject: 'Welcome to FluxyOS', heading: 'Welcome to FluxyOS 👋', paragraphs, cta, footnote: TRANSACTIONAL_FOOTNOTE.en };
     },
 
     kyc_approved(locale, d) {
