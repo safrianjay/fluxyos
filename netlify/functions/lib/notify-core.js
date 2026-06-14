@@ -32,6 +32,11 @@ const WELCOME_AFTER = process.env.WELCOME_AFTER ? Date.parse(process.env.WELCOME
 // the idempotency log is ever lost.
 const NOTIFY_AFTER = process.env.NOTIFY_AFTER ? Date.parse(process.env.NOTIFY_AFTER) : WELCOME_AFTER;
 
+// Optional promo featured in the welcome email. Disabled when no code is set.
+const WELCOME_OFFER = process.env.WELCOME_OFFER_CODE
+    ? { code: process.env.WELCOME_OFFER_CODE, percent: Number(process.env.WELCOME_OFFER_PERCENT || 0), terms: process.env.WELCOME_OFFER_TERMS || '' }
+    : null;
+
 const KYC_TEMPLATES = { approved: 'kyc_approved', needs_revision: 'kyc_needs_revision', rejected: 'kyc_rejected' };
 const PAYMENT_TEMPLATES = { verified: 'payment_verified', rejected: 'payment_rejected' };
 
@@ -93,7 +98,17 @@ async function reconcileInternalUsers(db, { logger = console, limit = 500 } = {}
             const note = u.last_internal_note || null;
 
             if (welcomeEligible(u)) {
-                const r = await sendNotificationEmail({ db, uid, to, eventKey: 'welcome', templateKey: 'welcome', locale, data: { name, baseUrl: APP_BASE_URL }, logger });
+                const r = await sendNotificationEmail({
+                    db, uid, to, eventKey: 'welcome', templateKey: 'welcome', locale,
+                    data: {
+                        name,
+                        baseUrl: APP_BASE_URL,
+                        kycComplete: u.kyc_status === 'approved',
+                        onboardingComplete: !!u.onboarding_completed,
+                        offer: WELCOME_OFFER,
+                    },
+                    logger,
+                });
                 if (r && r.sent) sent += 1;
             }
 

@@ -125,6 +125,36 @@ function notePara(locale, note) {
     };
 }
 
+// Neutral "finish your KYC + onboarding" callout for the welcome email.
+function setupBox(locale) {
+    const t = locale === 'id'
+        ? { title: 'Selesaikan pengaturan akun Anda', body: 'Lengkapi verifikasi bisnis (KYC) dan proses onboarding untuk membuka seluruh fitur workspace Anda.' }
+        : { title: 'Finish setting up your account', body: 'Complete your business verification (KYC) and onboarding to unlock your full workspace.' };
+    return {
+        html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F9FAFB;border:1px solid #EEF0F3;border-radius:12px;"><tr><td style="padding:16px 18px;"><div style="font-size:14px;font-weight:600;color:${NAVY};margin:0 0 4px;">${t.title}</div><div style="font-size:14px;color:#374151;line-height:1.55;">${t.body}</div></td></tr></table>`,
+        text: `${t.title} — ${t.body}`,
+    };
+}
+
+// Accent promo box featuring a voucher code (config-driven, see WELCOME_OFFER_*).
+function offerBox(locale, offer, baseUrl) {
+    const pct = Number(offer.percent) || 0;
+    const code = escapeHtml(offer.code);
+    const terms = offer.terms ? escapeHtml(offer.terms) : (locale === 'id' ? 'paket tahunan' : 'annual plans');
+    const t = locale === 'id'
+        ? { eyebrow: 'Penawaran eksklusif', line: `Dapatkan <strong>diskon ${pct}%</strong> untuk ${terms} dengan kode`, cta: 'Lihat paket tahunan' }
+        : { eyebrow: 'Exclusive offer', line: `Get <strong>${pct}% off</strong> ${terms} with code`, cta: 'See annual plans' };
+    return {
+        html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFF7ED;border:1px solid #FFE2C7;border-radius:12px;"><tr><td style="padding:18px;">`
+            + `<div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${ORANGE};margin:0 0 8px;">${t.eyebrow}</div>`
+            + `<div style="font-size:15px;color:${INK};line-height:1.5;margin:0 0 12px;">${t.line}</div>`
+            + `<span style="display:inline-block;background:#ffffff;border:1px dashed ${ORANGE};border-radius:8px;padding:9px 16px;font-size:16px;font-weight:700;letter-spacing:0.08em;color:${NAVY};">${code}</span>`
+            + `<div style="margin-top:12px;"><a href="${escapeHtml(baseUrl)}/pricing" style="font-size:14px;font-weight:600;color:${ORANGE};text-decoration:none;">${t.cta} &rarr;</a></div>`
+            + `</td></tr></table>`,
+        text: `${t.eyebrow}: ${pct}% off ${terms} — use code ${offer.code} at ${baseUrl}/pricing`,
+    };
+}
+
 const TRANSACTIONAL_FOOTNOTE = {
     en: 'You are receiving this because it relates to your FluxyOS account. Need help? Reply to this email.',
     id: 'Anda menerima email ini karena terkait akun FluxyOS Anda. Butuh bantuan? Balas email ini.',
@@ -132,31 +162,25 @@ const TRANSACTIONAL_FOOTNOTE = {
 
 const COPY = {
     welcome(locale, d) {
-        const url = `${d.baseUrl}/dashboard`;
+        // Show the "finish setup" block until both KYC and onboarding are done.
+        const setupComplete = d.kycComplete === true && d.onboardingComplete === true;
+        const cta = setupComplete
+            ? { label: locale === 'id' ? 'Buka dashboard' : 'Open your dashboard', url: `${d.baseUrl}/dashboard` }
+            : { label: locale === 'id' ? 'Selesaikan verifikasi & pengaturan' : 'Complete verification & setup', url: `${d.baseUrl}/onboarding` };
+
+        const paragraphs = [];
         if (locale === 'id') {
-            return {
-                subject: 'Selamat datang di FluxyOS',
-                heading: 'Selamat datang di FluxyOS',
-                paragraphs: [
-                    { html: greet('id', d.name), text: d.name ? `Halo ${d.name},` : 'Halo,' },
-                    { html: 'Akun Anda sudah siap. FluxyOS menyatukan buku besar, tagihan, pendapatan, dan AI dalam satu ruang kerja keuangan.', text: 'Akun Anda sudah siap. FluxyOS menyatukan buku besar, tagihan, pendapatan, dan AI dalam satu ruang kerja keuangan.' },
-                    { html: 'Masuk dan hubungkan data pertama Anda untuk melihat angka bisnis Anda hidup.', text: 'Masuk dan hubungkan data pertama Anda untuk melihat angka bisnis Anda hidup.' },
-                ],
-                cta: { label: 'Buka dashboard', url },
-                footnote: TRANSACTIONAL_FOOTNOTE.id,
-            };
+            paragraphs.push({ html: greet('id', d.name), text: d.name ? `Halo ${d.name},` : 'Halo,' });
+            paragraphs.push({ html: 'Akun Anda sudah siap. FluxyOS menyatukan buku besar, tagihan, pendapatan, dan AI dalam satu ruang kerja keuangan.', text: 'Akun Anda sudah siap. FluxyOS menyatukan buku besar, tagihan, pendapatan, dan AI dalam satu ruang kerja keuangan.' });
+            if (!setupComplete) paragraphs.push(setupBox('id'));
+            if (d.offer && d.offer.code) paragraphs.push(offerBox('id', d.offer, d.baseUrl));
+            return { subject: 'Selamat datang di FluxyOS', heading: 'Selamat datang di FluxyOS', paragraphs, cta, footnote: TRANSACTIONAL_FOOTNOTE.id };
         }
-        return {
-            subject: 'Welcome to FluxyOS',
-            heading: 'Welcome to FluxyOS',
-            paragraphs: [
-                { html: greet('en', d.name), text: d.name ? `Hi ${d.name},` : 'Hi there,' },
-                { html: 'Your account is ready. FluxyOS brings your ledgers, bills, revenue, and AI into one finance workspace.', text: 'Your account is ready. FluxyOS brings your ledgers, bills, revenue, and AI into one finance workspace.' },
-                { html: 'Jump in and connect your first data to see your numbers come to life.', text: 'Jump in and connect your first data to see your numbers come to life.' },
-            ],
-            cta: { label: 'Open your dashboard', url },
-            footnote: TRANSACTIONAL_FOOTNOTE.en,
-        };
+        paragraphs.push({ html: greet('en', d.name), text: d.name ? `Hi ${d.name},` : 'Hi there,' });
+        paragraphs.push({ html: 'Your account is ready. FluxyOS brings your ledgers, bills, revenue, and AI into one finance workspace.', text: 'Your account is ready. FluxyOS brings your ledgers, bills, revenue, and AI into one finance workspace.' });
+        if (!setupComplete) paragraphs.push(setupBox('en'));
+        if (d.offer && d.offer.code) paragraphs.push(offerBox('en', d.offer, d.baseUrl));
+        return { subject: 'Welcome to FluxyOS', heading: 'Welcome to FluxyOS', paragraphs, cta, footnote: TRANSACTIONAL_FOOTNOTE.en };
     },
 
     kyc_approved(locale, d) {
