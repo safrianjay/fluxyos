@@ -519,6 +519,39 @@ const COPY = {
             footnote: TRANSACTIONAL_FOOTNOTE.en,
         };
     },
+
+    // Immediate acknowledgement when a payment is submitted (pending_verification).
+    payment_under_review(locale, d) {
+        const plan = d.planName ? escapeHtml(String(d.planName)) : null;
+        const amount = (d.amount != null && Number.isFinite(Number(d.amount))) ? formatRupiah(d.amount) : null;
+        const url = d.requestId ? `${d.baseUrl}/payment-pending?requestId=${encodeURIComponent(d.requestId)}` : `${d.baseUrl}/settings-billing`;
+        if (locale === 'id') {
+            const detail = (plan ? ` untuk paket ${plan}` : '') + (amount ? ` (${amount})` : '');
+            return {
+                subject: 'Pembayaran diterima — sedang kami verifikasi',
+                heading: 'Pembayaran diterima',
+                paragraphs: [
+                    { html: greet('id', d.name), text: d.name ? `Halo ${d.name},` : 'Halo,' },
+                    { html: `Terima kasih! Kami telah menerima pembayaran Anda${detail} dan tim kami sedang memverifikasinya. Anda akan menerima konfirmasi begitu pembayaran disetujui — biasanya dalam beberapa jam.`, text: `Terima kasih! Kami telah menerima pembayaran Anda${plan ? ` untuk paket ${d.planName}` : ''}${amount ? ` (${amount})` : ''} dan tim kami sedang memverifikasinya. Anda akan menerima konfirmasi begitu pembayaran disetujui — biasanya dalam beberapa jam.` },
+                    { html: 'Tidak ada tindakan yang diperlukan dari Anda.', text: 'Tidak ada tindakan yang diperlukan dari Anda.' },
+                ],
+                cta: { label: 'Lihat status pembayaran', url },
+                footnote: TRANSACTIONAL_FOOTNOTE.id,
+            };
+        }
+        const detail = (plan ? ` for the ${plan} plan` : '') + (amount ? ` (${amount})` : '');
+        return {
+            subject: "Payment received — we're verifying it",
+            heading: 'Payment received',
+            paragraphs: [
+                { html: greet('en', d.name), text: d.name ? `Hi ${d.name},` : 'Hi there,' },
+                { html: `Thanks! We've received your payment${detail} and our team is verifying it now. You'll get a confirmation as soon as it's approved — usually within a few hours.`, text: `Thanks! We've received your payment${plan ? ` for the ${d.planName} plan` : ''}${amount ? ` (${amount})` : ''} and our team is verifying it now. You'll get a confirmation as soon as it's approved — usually within a few hours.` },
+                { html: 'No action is needed from you.', text: 'No action is needed from you.' },
+            ],
+            cta: { label: 'View payment status', url },
+            footnote: TRANSACTIONAL_FOOTNOTE.en,
+        };
+    },
 };
 
 // Build a renderable email. locale is "en" | "id"; falls back to "en".

@@ -1,17 +1,20 @@
 'use strict';
 
-// Scheduled hourly. Reminds users who selected a plan and reached the QRIS
-// screen but haven't completed payment (billing_payment_requests still
-// awaiting_payment). Schedule-only; gated by NOTIFY_ENABLED.
+// Scheduled every 5 minutes. Two billing-payment nudges:
+//  - submitted (pending_verification) → "Payment received — under review" (near-immediate)
+//  - still on the QR screen (awaiting_payment, 3–26h old) → "finish your payment"
+// Schedule-only; gated by NOTIFY_ENABLED.
 const { schedule } = require('@netlify/functions');
-const { initAdmin, sweepPendingPayments } = require('./lib/notify-core');
+const { initAdmin, sweepSubmittedPayments, sweepPendingPayments } = require('./lib/notify-core');
 
-exports.handler = schedule('30 * * * *', async () => {
+exports.handler = schedule('*/5 * * * *', async () => {
     if (process.env.NOTIFY_ENABLED !== 'true') {
         console.log('payment-reminders skipped: NOTIFY_ENABLED !== "true"');
         return { statusCode: 200, body: 'disabled' };
     }
     const db = initAdmin();
-    const result = await sweepPendingPayments(db, { now: new Date(), logger: console });
-    return { statusCode: 200, body: JSON.stringify(result) };
+    const now = new Date();
+    const received = await sweepSubmittedPayments(db, { now, logger: console });
+    const pending = await sweepPendingPayments(db, { now, logger: console });
+    return { statusCode: 200, body: JSON.stringify({ received, pending }) };
 });
