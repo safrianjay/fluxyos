@@ -1152,7 +1152,39 @@ service cloud.firestore {
         || (settingsDoc == 'import_rules' && isValidImportRulesSettings(data))
         || (settingsDoc == 'ai' && isValidAISettings(data))
         || (settingsDoc == 'whatsapp' && isValidWhatsAppSettings(data))
-        || (settingsDoc == 'reports' && isValidReportsSettings(data));
+        || (settingsDoc == 'reports' && isValidReportsSettings(data))
+        || (settingsDoc == 'email_preferences' && isValidEmailPreferencesSettings(data));
+    }
+
+    // Weekly Financial Digest preferences (users/{uid}/settings/email_preferences).
+    // Enums/bools/bounds only — no secrets. See docs/PROJECT_BACKGROUND.md §4e.
+    function isValidEmailPreferencesSettings(data) {
+      return data.keys().hasOnly([
+          'weekly_digest_enabled', 'delivery_day', 'delivery_hour', 'timezone', 'metrics', 'updated_at'
+        ])
+        && data.keys().hasAll([
+          'weekly_digest_enabled', 'delivery_day', 'delivery_hour', 'timezone', 'metrics', 'updated_at'
+        ])
+        && data.weekly_digest_enabled is bool
+        && data.delivery_day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+        && data.delivery_hour is int && data.delivery_hour >= 0 && data.delivery_hour <= 23
+        && data.timezone is string && data.timezone.size() > 0 && data.timezone.size() <= 64
+        && data.metrics is map
+        && data.metrics.keys().hasOnly([
+          'financial_health', 'cash_position', 'bills', 'budgets', 'revenue', 'expenses', 'subscriptions', 'vendors'
+        ])
+        && data.metrics.keys().hasAll([
+          'financial_health', 'cash_position', 'bills', 'budgets', 'revenue', 'expenses', 'subscriptions', 'vendors'
+        ])
+        && data.metrics.financial_health is bool
+        && data.metrics.cash_position is bool
+        && data.metrics.bills is bool
+        && data.metrics.budgets is bool
+        && data.metrics.revenue is bool
+        && data.metrics.expenses is bool
+        && data.metrics.subscriptions is bool
+        && data.metrics.vendors is bool
+        && isValidSettingsTimestamp(data);
     }
 
     function isValidTourId(tourId) {
@@ -2261,7 +2293,7 @@ service cloud.firestore {
 
       match /settings/{settingsDoc} {
         allow read: if isOwner(userId)
-          && settingsDoc in ['company', 'finance', 'import_rules', 'ai', 'whatsapp', 'reports'];
+          && settingsDoc in ['company', 'finance', 'import_rules', 'ai', 'whatsapp', 'reports', 'email_preferences'];
         allow create, update: if isOwner(userId)
           && isValidSettingsDoc(settingsDoc, request.resource.data);
         allow delete: if false;

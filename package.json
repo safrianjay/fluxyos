@@ -1,7 +1,8 @@
 {
   "scripts": {
     "postinstall": "git config core.hooksPath .githooks 2>/dev/null || true",
-    "smoke:notify": "node scripts/notify-smoke.js"
+    "smoke:notify": "node scripts/notify-smoke.js",
+    "smoke:digest": "node scripts/digest-smoke.js"
   },
   "dependencies": {
     "@netlify/functions": "^2.8.2",

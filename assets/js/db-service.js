@@ -405,7 +405,7 @@ class DataService {
 
     // --- SETTINGS ---
     async getUserSettings(userId) {
-        const docIds = ['company', 'finance', 'import_rules', 'ai', 'whatsapp'];
+        const docIds = ['company', 'finance', 'import_rules', 'ai', 'whatsapp', 'email_preferences'];
         const entries = await Promise.all(docIds.map(async (docId) => {
             const snap = await getDoc(this._settingsDoc(userId, docId));
             return [docId, snap.exists() ? snap.data() : {}];
@@ -497,6 +497,31 @@ class DataService {
             updated_at: serverTimestamp()
         });
         await setDoc(this._settingsDoc(userId, 'ai'), payload, { merge: true });
+        return payload;
+    }
+
+    async saveEmailPreferences(userId, data) {
+        const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        const hour = Number(data.delivery_hour);
+        const m = data.metrics || {};
+        const payload = this._cleanDefined({
+            weekly_digest_enabled: data.weekly_digest_enabled !== false,
+            delivery_day: this._allowedValue(data.delivery_day, days, 'monday'),
+            delivery_hour: Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : 9,
+            timezone: this._stringOrDefault(data.timezone, 'Asia/Jakarta', 64),
+            metrics: {
+                financial_health: m.financial_health !== false,
+                cash_position: m.cash_position !== false,
+                bills: m.bills !== false,
+                budgets: m.budgets !== false,
+                revenue: m.revenue !== false,
+                expenses: m.expenses !== false,
+                subscriptions: m.subscriptions !== false,
+                vendors: m.vendors !== false
+            },
+            updated_at: serverTimestamp()
+        });
+        await setDoc(this._settingsDoc(userId, 'email_preferences'), payload, { merge: true });
         return payload;
     }
 
@@ -7223,6 +7248,22 @@ class DataService {
             reports: {
                 arr_source: 'none',
                 recurring_revenue_category_ids: []
+            },
+            email_preferences: {
+                weekly_digest_enabled: true,
+                delivery_day: 'monday',
+                delivery_hour: 9,
+                timezone: 'Asia/Jakarta',
+                metrics: {
+                    financial_health: true,
+                    cash_position: true,
+                    bills: true,
+                    budgets: true,
+                    revenue: true,
+                    expenses: true,
+                    subscriptions: true,
+                    vendors: true
+                }
             }
         };
         return defaults[docId] || {};

@@ -390,4 +390,6 @@ function buildEmail(templateKey, locale, data) {
     return { subject: c.subject, html, text };
 }
 
-module.exports = { buildEmail };
+// `layout` + brand tokens are exported so the Weekly Digest builder
+// (functions/lib/digest-template.js) renders on the same shell/header/footer.
+module.exports = { buildEmail, layout, BRAND: { NAVY, ORANGE, INK, MUTED, BORDER, CANVAS } };

@@ -34,7 +34,7 @@ function isAlreadyExists(err) {
  * Cloud Functions event id so redelivery dedupes, but distinct transitions
  * each send once).
  */
-async function sendNotificationEmail({ db, uid, to, eventKey, templateKey, locale, data, logger }) {
+async function sendNotificationEmail({ db, uid, to, eventKey, templateKey, locale, data, logger, prebuilt }) {
     const log = logger || console;
     if (!to) {
         log.warn?.('Skip email: no recipient', { uid, templateKey });
@@ -44,7 +44,7 @@ async function sendNotificationEmail({ db, uid, to, eventKey, templateKey, local
     const logRef = db.doc(`users/${uid}/mail_log/${eventKey}`);
     try {
         await logRef.create({
-            template: templateKey,
+            template: templateKey || (prebuilt && prebuilt.template) || 'custom',
             to,
             locale: locale || 'en',
             status: 'sending',
@@ -60,7 +60,9 @@ async function sendNotificationEmail({ db, uid, to, eventKey, templateKey, local
 
     let providerId = null;
     try {
-        const { subject, html, text } = buildEmail(templateKey, locale, data);
+        // `prebuilt` lets callers (e.g. the Weekly Digest) supply their own
+        // rendered email while still reusing idempotency + audit + Resend.
+        const { subject, html, text } = prebuilt || buildEmail(templateKey, locale, data);
         const res = await getResend().emails.send({
             from: EMAIL_FROM,
             to,

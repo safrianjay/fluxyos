@@ -3167,6 +3167,27 @@ function numOrZero(n) {
     return typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
 }
 
+// Additive export surface for the Weekly Financial Digest (netlify/functions/
+// weekly-digest.js → lib/digest-core.js). Exposes the deterministic finance
+// engine + AI narrator so the digest reuses them verbatim. The live `handler`
+// is unaffected — this only adds a second export object.
+exports.digest = {
+    buildQuestionPlan,
+    executeFinancePlan,
+    buildPlannedDeterministicAnswer,
+    calculateDataCoverage,
+    validateFinanceAnswer,
+    callOpenAIFinanceAnalyst,
+    comparePeriods,
+    startOfWeek,
+    endOfWeek,
+    buildPeriod,
+    previousEquivalentPeriod,
+    toDateKey,
+    todayJakarta,
+    addDays,
+};
+
 exports.__test__ = {
     billEvidenceFromExtraction,
     receiptEvidenceFromExtraction,

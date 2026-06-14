@@ -46,7 +46,9 @@ sweep turns those into emails within ~5 minutes. Logic lives in `lib/notify-core
    | `DEFAULT_LOCALE` | `en` or `id` |
    | `WELCOME_AFTER` | **deploy timestamp**, ISO (e.g. `2026-06-14T12:00:00Z`) — only users created after this get a welcome email. Set it to "now" at first deploy so existing users are never emailed. |
    | `NOTIFY_AFTER` | KYC/payment recency cutoff, ISO. A decision is emailed only if its review timestamp is ≥ this. Defaults to `WELCOME_AFTER` if unset. Set to "now" so pre-existing decisions are never back-emailed. |
-   | `NOTIFY_ENABLED` | **kill switch — default off.** Both sweeps run **only** when this is exactly `"true"`. Anything else (incl. unset) = paused. |
+   | `NOTIFY_ENABLED` | **kill switch — default off.** Both notification sweeps run **only** when this is exactly `"true"`. Anything else (incl. unset) = paused. |
+   | `DIGEST_ENABLED` | **Weekly digest kill switch — default off.** `weekly-digest.js` runs only when this is exactly `"true"`. |
+   | `OPENAI_API_KEY` | Used by the Weekly Digest's AI narrator (already set for `api.js`). Without it the digest falls back to a deterministic narrative. |
 
    These are secrets — set them in Netlify, never commit them.
 
@@ -89,3 +91,26 @@ failure rollback + retry.
   of instantly.
 - **Cost/scale:** each sweep scans `internal_users` (capped at 500/run). Fine for
   MVP; for large user bases, switch to Blaze + the event-driven Cloud Functions.
+
+---
+
+## Weekly Financial Digest (`weekly-digest.js`)
+
+A per-user AI-narrated weekly summary, separate from the notification sweeps.
+
+- **Schedule:** hourly (`0 * * * *`). For each roster user it reads
+  `users/{uid}/settings/email_preferences` (missing doc = enabled defaults:
+  Monday / 09:00 / all metrics) and sends only when the user's **local** weekday
+  + hour match `delivery_day` / `delivery_hour` in their `timezone`.
+- **Idempotency:** `users/{uid}/mail_log/weekly_digest_{ISOyear}_W{week}` — one
+  digest per user per ISO week.
+- **Data:** reuses the deterministic finance engine + AI narrator from
+  `api.js` (`exports.digest`). Every number is computed deterministically; OpenAI
+  only narrates. Reads transactions/bills/subscriptions/budgets via Admin SDK.
+- **Content:** dynamic sections per the user's `metrics`; AI Insights +
+  Recommended Actions always render. Low-activity weeks send **summary-only**
+  (AI summary + actions); accounts with zero finance records are skipped.
+- **Audit:** `weekly_digest.generated` / `.sent` / `.failed`.
+- **Enable:** set `DIGEST_ENABLED=true`. Code lives in `lib/digest-core.js`;
+  the email builder is `functions/lib/digest-template.js`. Local test:
+  `npm run smoke:digest` (mocked, sends nothing).
