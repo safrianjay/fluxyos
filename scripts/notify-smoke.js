@@ -22,7 +22,7 @@ process.env.RESEND_API_KEY = 're_smoke_dummy';
 const admin = require('firebase-admin');
 Object.defineProperty(admin, 'auth', { configurable: true, value: () => ({ getUser: async () => { throw new Error('no auth in smoke'); } }) });
 
-const { reconcileInternalUsers, sweepTrialEnding } = require('./_notify-core');
+const { reconcileInternalUsers, sweepTrialEnding } = require('../netlify/functions/lib/notify-core');
 
 const ts = (ms) => ({ toMillis: () => ms });
 const NOW = Date.now();

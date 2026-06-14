@@ -17,9 +17,9 @@
 const admin = require('firebase-admin');
 
 // Reuse the committed Cloud Functions logic verbatim.
-const { sendNotificationEmail } = require('../../functions/lib/email');
-const { resolveUserLocale } = require('../../functions/lib/locale');
-const { formatDate, firstName } = require('../../functions/lib/format');
+const { sendNotificationEmail } = require('../../../functions/lib/email');
+const { resolveUserLocale } = require('../../../functions/lib/locale');
+const { formatDate, firstName } = require('../../../functions/lib/format');
 
 const APP_BASE_URL = process.env.APP_BASE_URL || 'https://fluxyos.com';
 

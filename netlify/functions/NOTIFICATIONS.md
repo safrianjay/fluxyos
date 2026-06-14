@@ -16,7 +16,7 @@ Use this OR the Cloud Functions path, not both (running both double-sends).
 
 Both are **schedule-only** (no public HTTP), so there's no email-relay endpoint
 to abuse. The internal console keeps writing status as it already does; the
-sweep turns those into emails within ~5 minutes. Logic lives in `_notify-core.js`.
+sweep turns those into emails within ~5 minutes. Logic lives in `lib/notify-core.js`.
 
 - **Idempotency/audit:** identical to the Cloud Functions path — each send
   `.create()`s `users/{uid}/mail_log/{eventKey}` (Admin SDK bypasses rules),
