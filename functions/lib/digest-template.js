@@ -50,7 +50,7 @@ function tonePill(text, tone) {
 
 // Centered KPI card (benchmark style).
 function metricCard({ icon, eyebrow, title, value, valueColor, badgeHtml, sub }) {
-    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD_BG};border:1px solid ${CARD_BORDER};border-radius:12px;"><tr><td style="padding:18px;text-align:center;">`
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:${CARD_BG};border:1px solid ${CARD_BORDER};border-radius:12px;"><tr><td style="padding:18px;text-align:center;">`
         + `<div style="font-size:11px;font-weight:600;letter-spacing:0.04em;color:${MUTED};margin:0 0 6px;">${icon ? icon + '&nbsp;' : ''}${escapeHtml(eyebrow || '')}</div>`
         + (title ? `<div style="font-size:13px;font-weight:600;color:#6B7280;margin:0 0 6px;">${escapeHtml(title)}</div>` : '')
         + `<div style="font-size:28px;font-weight:800;letter-spacing:-0.02em;color:${valueColor || NAVY};line-height:1.1;margin:0 0 8px;font-variant-numeric:tabular-nums;">${value}</div>`
@@ -61,7 +61,7 @@ function metricCard({ icon, eyebrow, title, value, valueColor, badgeHtml, sub })
 
 // Hero metric (largest, orange) — the headline number.
 function heroCard({ icon, eyebrow, value, badgeHtml, sub }) {
-    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:1px solid ${CARD_BORDER};border-radius:12px;"><tr><td style="padding:22px 18px;text-align:center;">`
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:#FFFFFF;border:1px solid ${CARD_BORDER};border-radius:12px;"><tr><td style="padding:22px 18px;text-align:center;">`
         + `<div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${MUTED};margin:0 0 8px;">${icon ? icon + '&nbsp;' : ''}${escapeHtml(eyebrow || '')}</div>`
         + `<div style="margin:0 0 8px;"><span style="font-size:34px;font-weight:800;letter-spacing:-0.025em;color:${ORANGE};line-height:1;font-variant-numeric:tabular-nums;">${value}</span>`
         + (badgeHtml ? `&nbsp;&nbsp;${badgeHtml}` : '') + `</div>`
@@ -74,7 +74,7 @@ function tableCard(title, icon, headers, rows) {
     if (!rows || !rows.length) return '';
     const head = `<tr>${headers.map((h, i) => `<th align="${i === 0 ? 'left' : 'right'}" style="font-size:11px;font-weight:700;color:${MUTED};text-transform:uppercase;letter-spacing:0.04em;padding:0 0 8px;border-bottom:1px solid ${CARD_BORDER};">${escapeHtml(h)}</th>`).join('')}</tr>`;
     const body = rows.map((r) => `<tr>${r.map((c, i) => `<td align="${i === 0 ? 'left' : 'right'}" style="font-size:13px;color:${i === 0 ? INK : NAVY};font-weight:${i === 0 ? 500 : 600};padding:9px 0;border-bottom:1px solid ${ROW_BORDER};font-variant-numeric:tabular-nums;">${c}</td>`).join('')}</tr>`).join('');
-    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD_BG};border:1px solid ${CARD_BORDER};border-radius:12px;"><tr><td style="padding:16px 18px;">`
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:${CARD_BG};border:1px solid ${CARD_BORDER};border-radius:12px;"><tr><td style="padding:16px 18px;">`
         + `<div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${MUTED};margin:0 0 10px;">${icon ? icon + '&nbsp;' : ''}${escapeHtml(title)}</div>`
         + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${head}${body}</table>`
         + `</td></tr></table>`;
@@ -91,7 +91,7 @@ function bullets(items, locale, emptyText) {
 }
 
 function card(title, icon, innerHtml) {
-    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD_BG};border:1px solid ${CARD_BORDER};border-radius:12px;"><tr><td style="padding:16px 18px;">`
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:${CARD_BG};border:1px solid ${CARD_BORDER};border-radius:12px;"><tr><td style="padding:16px 18px;">`
         + `<div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${MUTED};margin:0 0 10px;">${icon ? icon + '&nbsp;' : ''}${escapeHtml(title)}</div>`
         + innerHtml + `</td></tr></table>`;
 }
