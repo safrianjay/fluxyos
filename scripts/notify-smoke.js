@@ -17,6 +17,8 @@ global.fetch = async (url, opts) => {
     return new Response(JSON.stringify({ id: 'mock_' + Math.random().toString(36).slice(2, 8) }), { status: 200, headers: { 'content-type': 'application/json' } });
 };
 process.env.RESEND_API_KEY = 're_smoke_dummy';
+// KYC/payment recency cutoff at 1h ago — reviews older than this must be suppressed.
+process.env.NOTIFY_AFTER = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
 // admin.auth() has no default app in smoke — force the internal-index fallback.
 const admin = require('firebase-admin');
@@ -90,6 +92,19 @@ async function main() {
     const before = sentMessages.length;
     const r2 = await reconcileInternalUsers(db, { logger: silent });
     check('reconcile run #2 fully deduped (idempotent)', r2.sent === 0 && sentMessages.length === before, `sent=${r2.sent}`);
+
+    // ---- NOTIFY_AFTER recency cutoff (anti-backfill) ----
+    const dbc = makeDb({
+        internalUsers: [
+            // Reviewed 10 days ago (< cutoff) -> must be suppressed even though notifiable.
+            { id: 'uOld', email: 'old@example.com', created_at: ts(NOW - 10 * 24 * H), kyc_status: 'approved', kyc_reviewed_at: ts(NOW - 10 * 24 * H), payment_status: 'verified', payment_reviewed_at: ts(NOW - 10 * 24 * H) },
+            // Reviewed just now (>= cutoff) -> sends kyc + payment (2).
+            { id: 'uNew', email: 'new@example.com', created_at: ts(NOW - 10 * 24 * H), kyc_status: 'approved', kyc_reviewed_at: ts(NOW), payment_status: 'verified', payment_reviewed_at: ts(NOW) },
+        ],
+    });
+    const c1 = await reconcileInternalUsers(dbc, { logger: silent });
+    check('cutoff: old-review user fully suppressed', ![...dbc._docs.keys()].some((k) => k.startsWith('users/uOld/mail_log/')));
+    check('cutoff: new-review user sent kyc+payment (2)', c1.sent === 2, `sent=${c1.sent}`);
 
     // ---- trial-ending sweep ----
     const db2 = makeDb({

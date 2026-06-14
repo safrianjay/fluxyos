@@ -27,6 +27,11 @@ const APP_BASE_URL = process.env.APP_BASE_URL || 'https://fluxyos.com';
 const WELCOME_MAX_AGE_MS = Number(process.env.WELCOME_MAX_AGE_MS || 2 * 60 * 60 * 1000); // 2h
 const WELCOME_AFTER = process.env.WELCOME_AFTER ? Date.parse(process.env.WELCOME_AFTER) : null;
 
+// KYC/payment recency cutoff — never email a decision reviewed before this.
+// Defaults to WELCOME_AFTER so one env protects every backfill vector even if
+// the idempotency log is ever lost.
+const NOTIFY_AFTER = process.env.NOTIFY_AFTER ? Date.parse(process.env.NOTIFY_AFTER) : WELCOME_AFTER;
+
 const KYC_TEMPLATES = { approved: 'kyc_approved', needs_revision: 'kyc_needs_revision', rejected: 'kyc_rejected' };
 const PAYMENT_TEMPLATES = { verified: 'payment_verified', rejected: 'payment_rejected' };
 
@@ -62,6 +67,15 @@ function welcomeEligible(u) {
     return Date.now() - created <= WELCOME_MAX_AGE_MS;
 }
 
+// True when a KYC/payment review is recent enough to notify. With a cutoff set,
+// the review timestamp must exist AND be >= cutoff, so legacy or pre-cutoff
+// decisions are never back-emailed even on an empty idempotency log.
+function passesNotifyCutoff(ts) {
+    if (!NOTIFY_AFTER) return true;
+    const m = toMillis(ts);
+    return m != null && m >= NOTIFY_AFTER;
+}
+
 // Welcome + KYC + payment, derived from the internal index. Per-user failures
 // are isolated so one bad row never aborts the sweep.
 async function reconcileInternalUsers(db, { logger = console, limit = 500 } = {}) {
@@ -84,16 +98,18 @@ async function reconcileInternalUsers(db, { logger = console, limit = 500 } = {}
             }
 
             const kycTemplate = KYC_TEMPLATES[u.kyc_status];
-            if (kycTemplate) {
+            if (kycTemplate && passesNotifyCutoff(u.kyc_reviewed_at)) {
                 const r = await sendNotificationEmail({ db, uid, to, eventKey: eventKey('kyc', u.kyc_status, u.kyc_reviewed_at), templateKey: kycTemplate, locale, data: { name, baseUrl: APP_BASE_URL, reviewerNote: note }, logger });
                 if (r && r.sent) sent += 1;
             }
 
             const paymentTemplate = PAYMENT_TEMPLATES[u.payment_status];
             if (paymentTemplate) {
-                const ts = u.payment_verified_at || u.payment_submitted_at;
-                const r = await sendNotificationEmail({ db, uid, to, eventKey: eventKey('payment', u.payment_status, ts), templateKey: paymentTemplate, locale, data: { name, baseUrl: APP_BASE_URL, planName: u.plan_id || null, amount: u.payment_amount != null ? u.payment_amount : null, reviewerNote: note }, logger });
-                if (r && r.sent) sent += 1;
+                const ts = u.payment_reviewed_at || u.payment_verified_at || u.payment_submitted_at;
+                if (passesNotifyCutoff(ts)) {
+                    const r = await sendNotificationEmail({ db, uid, to, eventKey: eventKey('payment', u.payment_status, ts), templateKey: paymentTemplate, locale, data: { name, baseUrl: APP_BASE_URL, planName: u.plan_id || null, amount: u.payment_amount != null ? u.payment_amount : null, reviewerNote: note }, logger });
+                    if (r && r.sent) sent += 1;
+                }
             }
         } catch (e) {
             (logger.error || console.error)('reconcileInternalUsers: user failed', { uid, error: e.message });

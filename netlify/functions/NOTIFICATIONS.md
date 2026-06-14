@@ -45,6 +45,7 @@ sweep turns those into emails within ~5 minutes. Logic lives in `lib/notify-core
    | `APP_BASE_URL` | `https://fluxyos.com` |
    | `DEFAULT_LOCALE` | `en` or `id` |
    | `WELCOME_AFTER` | **deploy timestamp**, ISO (e.g. `2026-06-14T12:00:00Z`) — only users created after this get a welcome email. Set it to "now" at first deploy so existing users are never emailed. |
+   | `NOTIFY_AFTER` | KYC/payment recency cutoff, ISO. A decision is emailed only if its review timestamp is ≥ this. Defaults to `WELCOME_AFTER` if unset. Set to "now" so pre-existing decisions are never back-emailed. |
    | `NOTIFY_ENABLED` | **kill switch — default off.** Both sweeps run **only** when this is exactly `"true"`. Anything else (incl. unset) = paused. |
 
    These are secrets — set them in Netlify, never commit them.
@@ -54,14 +55,19 @@ sweep turns those into emails within ~5 minutes. Logic lives in `lib/notify-core
 `NOTIFY_ENABLED` must be `"true"` for either sweep to do anything. Flip it to
 anything else to **instantly pause** all sending (next scheduled run no-ops).
 
-**Before first enabling on a project that already has data:** the reconcile
-sweep emails the *current* KYC/payment status of every `internal_users` row. On
-an empty `mail_log` that means it back-emails every already-approved/rejected
-user. The `mail_log` for existing statuses must be **seeded as already-sent**
-first (a one-time Admin script writing `users/{uid}/mail_log/{eventKey}` for each
-current notifiable status). Once seeded, only genuinely new changes send.
-`WELCOME_AFTER` already protects welcome; this is the equivalent guard for
-KYC/payment.
+**Backfill protection (two layers):** the reconcile sweep emails the *current*
+KYC/payment status of every `internal_users` row, so without guards it would
+back-email every already-approved/rejected user on an empty `mail_log`.
+
+1. **`NOTIFY_AFTER` cutoff (structural).** The internal console stamps
+   `kyc_reviewed_at` / `payment_reviewed_at` on **every** KYC/payment decision,
+   and the sweep only emails a decision whose review timestamp is ≥ `NOTIFY_AFTER`.
+   Set `NOTIFY_AFTER` to "now" and pre-existing decisions can never be emailed —
+   even if `mail_log` is empty.
+2. **`mail_log` idempotency.** Each send is recorded so it never repeats.
+
+`WELCOME_AFTER` is the equivalent cutoff for welcome (by `created_at`). With both
+cutoffs set to deploy time, re-enabling on populated data is safe by construction.
 
 4. **Deploy** by pushing to `main` (Netlify auto-deploys). The scheduled
    functions register automatically from the `schedule()` wrapper; confirm them

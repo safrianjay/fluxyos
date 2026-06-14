@@ -1184,7 +1184,11 @@ async function runAction(action, userId) {
     // Build the Firestore payload. Server timestamps + note are added here so the
     // before/after audit snapshot stays free of serverTimestamp sentinels.
     const payload = { ...transition.payload };
-    if (action === 'kyc.approve') payload.kyc_reviewed_at = serverTimestamp();
+    // Stamp a review timestamp on EVERY KYC/payment decision (not just
+    // approve/verify) so notification sweeps can gate on recency and never
+    // back-email an old decision. See netlify/functions/NOTIFICATIONS.md (NOTIFY_AFTER).
+    if (action.startsWith('kyc.')) payload.kyc_reviewed_at = serverTimestamp();
+    if (action.startsWith('payment.')) payload.payment_reviewed_at = serverTimestamp();
     if (action === 'payment.verify') payload.payment_verified_at = serverTimestamp();
     if (note) payload.last_internal_note = note;
 
