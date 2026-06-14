@@ -402,7 +402,10 @@ const COPY = {
                 paragraphs: [
                     { html: greet('id', d.name), text: d.name ? `Halo ${d.name},` : 'Halo,' },
                     { html: `Masa uji coba gratis Anda berakhir${when ? ` pada ${when}` : ' sebentar lagi'}. Pilih paket agar dashboard, AI, dan ekspor Anda tetap berjalan tanpa terganggu.`, text: `Masa uji coba gratis Anda berakhir${d.trialEndsLabel ? ` pada ${d.trialEndsLabel}` : ' sebentar lagi'}. Pilih paket agar dashboard, AI, dan ekspor Anda tetap berjalan tanpa terganggu.` },
-                    ...(d.offer && d.offer.code ? [offerBox('id', d.offer, d.baseUrl)] : []),
+                    ...(d.offer && d.offer.code ? [
+                        { html: 'Tapi tenang — kami siapkan sesuatu yang spesial agar Anda bisa lanjut tanpa beban:', text: 'Tapi tenang — kami siapkan sesuatu yang spesial agar Anda bisa lanjut tanpa beban:' },
+                        offerBox('id', d.offer, d.baseUrl),
+                    ] : []),
                 ],
                 cta: { label: 'Pilih paket', url },
                 footnote: TRANSACTIONAL_FOOTNOTE.id,
@@ -414,7 +417,10 @@ const COPY = {
             paragraphs: [
                 { html: greet('en', d.name), text: d.name ? `Hi ${d.name},` : 'Hi there,' },
                 { html: `Your free trial ends${when ? ` on ${when}` : ' soon'}. Pick a plan to keep your dashboards, AI, and exports running without interruption.`, text: `Your free trial ends${d.trialEndsLabel ? ` on ${d.trialEndsLabel}` : ' soon'}. Pick a plan to keep your dashboards, AI, and exports running without interruption.` },
-                ...(d.offer && d.offer.code ? [offerBox('en', d.offer, d.baseUrl)] : []),
+                ...(d.offer && d.offer.code ? [
+                    { html: "But don't worry — we've got something special to keep you going:", text: "But don't worry — we've got something special to keep you going:" },
+                    offerBox('en', d.offer, d.baseUrl),
+                ] : []),
             ],
             cta: { label: 'Choose a plan', url },
             footnote: TRANSACTIONAL_FOOTNOTE.en,
