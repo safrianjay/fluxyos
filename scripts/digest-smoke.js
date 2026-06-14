@@ -78,21 +78,22 @@ async function main() {
     const html1 = r1.prebuilt.html;
     check('dry run produced a digest', !!r1.prebuilt && /weekly digest/i.test(r1.prebuilt.subject));
     check('has data → not summary-only', r1.summaryOnly === false);
-    check('renders Executive summary + Financial health + Recommended actions', /Executive summary/.test(html1) && /Financial health/.test(html1) && /Recommended actions/.test(html1));
+    check('renders Executive summary + Revenue + Recommended actions', ['Executive summary', 'Revenue', 'Recommended actions'].every((s) => html1.includes(s)));
     check('renders Rp amounts (real numbers)', /Rp[0-9.]/.test(html1));
-    check('renders Cash position + Bills + Revenue + Expenses + Subscriptions', ['Cash position', 'Bills', 'Revenue', 'Expenses', 'Subscriptions'].every((s) => html1.includes(s)));
+    check('renders all KPI/table sections', ['Cash', 'Bills', 'Subscriptions', 'Top vendors', 'Top spending categories', 'Profitability'].every((s) => html1.includes(s)));
+    check('renders colored change pills (▲/▼)', /▲|▼/.test(html1));
 
     // 2) Disabled metrics are omitted (test unique card titles).
     const r2 = await generateWeeklyDigest(db1, 'uX', { metrics: { ...ALL, subscriptions: false, vendors: false }, email: 'x@example.com' }, { now: NOW, logger: silent, dryRun: true });
     check('disabled Subscriptions card omitted', !r2.prebuilt.html.includes('Subscriptions'));
     check('disabled Top vendors card omitted', !r2.prebuilt.html.includes('Top vendors'));
-    check('enabled Financial health still present', r2.prebuilt.html.includes('Financial health'));
+    check('enabled financial-health cards still present', r2.prebuilt.html.includes('Profitability'));
 
     // 3) Low-activity week (records exist, none this week) → summary-only.
     const db3 = makeDb({ colls: financeSeed('uY', NOW.getTime() - 40 * D) });
     const r3 = await generateWeeklyDigest(db3, 'uY', { metrics: ALL, email: 'y@example.com' }, { now: NOW, logger: silent, dryRun: true });
     check('low-activity → summary-only', r3.summaryOnly === true);
-    check('summary-only omits data sections, keeps summary + actions', !r3.prebuilt.html.includes('Financial health') && r3.prebuilt.html.includes('Executive summary') && r3.prebuilt.html.includes('Recommended actions'));
+    check('summary-only omits data sections, keeps summary + actions', !r3.prebuilt.html.includes('Cash') && !r3.prebuilt.html.includes('Top vendors') && r3.prebuilt.html.includes('Executive summary') && r3.prebuilt.html.includes('Recommended actions'));
 
     // 4) Zero records ever → skipped.
     const db4 = makeDb({ colls: {} });
