@@ -203,25 +203,30 @@ function shouldDeliverNow(prefs, now) {
     return lp.weekday === (prefs.delivery_day || 'monday') && lp.hour === (Number.isInteger(prefs.delivery_hour) ? prefs.delivery_hour : 9);
 }
 
-// Hourly sweep: enumerate the roster, send to users whose local delivery slot is now.
-async function runWeeklyDigestSweep(db, { now = new Date(), logger = console, limit = 1000 } = {}) {
+// Roster sweep. The scheduler calls it with defaults (send to users whose local
+// delivery slot is now). `force` sends to ALL enabled users regardless of slot
+// (one-time broadcast); `dryRun` counts without sending. Idempotency + zero-record
+// skips always apply.
+async function runWeeklyDigestSweep(db, { now = new Date(), logger = console, limit = 1000, force = false, dryRun = false } = {}) {
     const snap = await db.collection('internal_users').limit(limit).get();
-    let due = 0; let sent = 0;
+    let due = 0; let sent = 0; let wouldSend = 0; let skippedNoRecords = 0;
     for (const doc of snap.docs) {
         const uid = doc.id;
         const u = doc.data() || {};
         try {
             const prefs = await getEffectivePrefs(db, uid, u);
-            if (!shouldDeliverNow(prefs, now)) continue;
+            if (!prefs.weekly_digest_enabled) continue;
+            if (!force && !shouldDeliverNow(prefs, now)) continue;
             due += 1;
-            const r = await generateWeeklyDigest(db, uid, prefs, { now, logger });
-            if (r && r.sent) sent += 1;
+            const r = await generateWeeklyDigest(db, uid, prefs, { now, logger, dryRun });
+            if (dryRun) { if (r && r.prebuilt) wouldSend += 1; else if (r && r.skipped === 'no_records') skippedNoRecords += 1; }
+            else if (r && r.sent) sent += 1;
         } catch (e) {
             (logger.error || console.error)('weekly digest: user failed', { uid, error: e.message });
         }
     }
-    (logger.info || console.log)('weekly digest sweep complete', { scanned: snap.size, due, sent });
-    return { scanned: snap.size, due, sent };
+    (logger.info || console.log)('weekly digest sweep complete', { scanned: snap.size, due, sent, wouldSend, skippedNoRecords, force, dryRun });
+    return { scanned: snap.size, due, sent, wouldSend, skippedNoRecords };
 }
 
 module.exports = { generateWeeklyDigest, getEffectivePrefs, shouldDeliverNow, runWeeklyDigestSweep, isoWeekKey, DEFAULT_METRICS };
