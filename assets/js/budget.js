@@ -392,11 +392,100 @@ function renderEmptyState() {
     if (!empty) return;
     empty.classList.remove('hidden');
     empty.innerHTML = `
-        <div class="flex flex-col items-center justify-center px-6 py-16 text-center">
-            <h2 class="text-[18px] font-bold text-gray-900">Create your first main budget</h2>
-            <p class="mt-2 max-w-md text-[14px] leading-6 text-gray-500">Start with an annual budget, then split it into monthly, quarterly, or custom working periods.</p>
-            <button id="budget-empty-create-main" type="button" class="mt-6 inline-flex h-10 items-center justify-center rounded-lg bg-slate-950 px-4 text-[14px] font-bold text-white transition-colors hover:bg-slate-800">Create Budget</button>
-        </div>
+        <section class="main-budget-card overflow-hidden">
+            <div class="p-5 sm:p-7">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <p class="budget-caps">Main Budget</p>
+                        <h2 class="mt-3 text-[18px] font-bold text-gray-900">Create your first main budget</h2>
+                        <p class="mt-2 max-w-xl text-[14px] leading-6 text-gray-500">Start with an annual budget, then split it into monthly, quarterly, or custom working periods.</p>
+                    </div>
+                    <button id="budget-empty-create-main" type="button" class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-lg bg-slate-950 px-4 text-[14px] font-bold text-white transition-colors hover:bg-slate-800 active:scale-95">Create Budget</button>
+                </div>
+
+                <div class="mt-5 max-w-sm rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3">
+                    <p class="text-[12px] font-bold uppercase tracking-[0.1em] text-slate-400">Selected main budget</p>
+                    <p class="mt-1 text-[14px] font-semibold text-slate-700">No main budget yet</p>
+                    <p class="mt-1 text-[12px] text-slate-500">Annual date range will appear here after setup.</p>
+                </div>
+
+                <div class="mt-6 grid gap-4 md:grid-cols-3">
+                    <article class="rounded-[10px] border border-slate-200 bg-slate-50 px-5 py-4">
+                        <p class="budget-caps">Annual Budget</p>
+                        <p class="budget-number mt-3 text-[20px] font-semibold leading-none text-slate-400">—</p>
+                        <p class="mt-2 text-[12px] text-slate-500">Waiting for the annual envelope.</p>
+                    </article>
+                    <article class="rounded-[10px] border border-slate-200 bg-slate-50 px-5 py-4">
+                        <p class="budget-caps">Spent + Reserved</p>
+                        <p class="budget-number mt-3 text-[20px] font-semibold leading-none text-slate-400">—</p>
+                        <p class="mt-2 text-[12px] text-slate-500">Actuals and bills will roll up here.</p>
+                    </article>
+                    <article class="rounded-[10px] border border-slate-200 bg-slate-50 px-5 py-4">
+                        <p class="budget-caps">Not Planned Yet</p>
+                        <p class="budget-number mt-3 text-[20px] font-semibold leading-none text-slate-400">—</p>
+                        <p class="mt-2 text-[12px] text-slate-500">Unsplit budget appears after creation.</p>
+                    </article>
+                </div>
+
+                <div class="mt-7">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <h2 class="text-[16px] font-semibold text-slate-900">Planned into periods</h2>
+                            <p class="mt-2 text-[14px] leading-6 text-slate-500">Your monthly, quarterly, or custom working budgets will show progress against the main budget here.</p>
+                        </div>
+                        <p class="budget-number text-[14px] font-bold text-slate-400">No plan yet</p>
+                    </div>
+                    <div class="budget-progress-track mt-5">
+                        <div class="budget-progress-fill bg-slate-200" style="width: 0%"></div>
+                    </div>
+                    <div class="mt-4 flex flex-col gap-2 text-[14px] text-slate-500 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-8">
+                        <span><strong class="budget-number text-slate-400">—</strong> planned into periods</span>
+                        <span><strong class="budget-number text-slate-400">—</strong> not planned yet</span>
+                        <span><strong class="budget-number text-slate-400">—</strong> spent or reserved this year</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="fluxy-table-card">
+            <div class="fluxy-table-card-header">
+                <div>
+                    <h2 class="fluxy-table-title">Period budgets</h2>
+                    <p class="fluxy-table-subtitle">Split the main budget into monthly, quarterly, or custom working budgets.</p>
+                </div>
+                <div class="fluxy-table-actions">
+                    <button type="button" class="inline-flex h-10 cursor-not-allowed items-center justify-center whitespace-nowrap rounded-lg bg-slate-200 px-4 text-[14px] font-bold text-slate-500" disabled>New period</button>
+                </div>
+            </div>
+            <div class="hidden md:block fluxy-table-scroll">
+                <table class="fluxy-table min-w-[900px]">
+                    <thead>
+                        <tr class="fluxy-table-header">
+                            <th class="w-[30%]">Period</th>
+                            <th class="fluxy-table-money w-[15%]">Period Budget</th>
+                            <th class="fluxy-table-money w-[17%]">Used + Committed</th>
+                            <th class="fluxy-table-money w-[15%]">Remaining</th>
+                            <th class="w-[13%]">Usage</th>
+                            <th class="w-[10%]">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="6" class="fluxy-table-loading-cell">
+                                <div class="py-4">
+                                    <p class="font-semibold text-gray-700">No period budgets yet</p>
+                                    <p class="mt-1 text-[12px] font-normal text-gray-400">Create a main budget first, then add monthly, quarterly, or custom periods.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-5 py-8 text-center md:hidden">
+                <p class="text-[14px] font-semibold text-gray-700">No period budgets yet</p>
+                <p class="mt-1 text-[12px] text-gray-400">Create a main budget first, then add monthly, quarterly, or custom periods.</p>
+            </div>
+        </section>
     `;
     el('budget-empty-create-main')?.addEventListener('click', openMainBudgetWizard);
 }
