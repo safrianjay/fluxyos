@@ -136,33 +136,44 @@ function setupBox(locale) {
     };
 }
 
-// Voucher-ticket promo (config-driven, see WELCOME_OFFER_*). Navy ticket with a
-// dashed perforation between the big discount and the code + claim link.
+// Voucher-ticket promo (config-driven, see WELCOME_OFFER_*). Gradient navy ticket
+// with punch-hole notches on the dashed perforation and a validity strip.
 function offerBox(locale, offer, baseUrl) {
     const pct = Number(offer.percent) || 0;
     const code = escapeHtml(offer.code);
+    const validDays = Number(offer.validDays) || 14;
     const terms = offer.terms ? escapeHtml(offer.terms) : (locale === 'id' ? 'paket tahunan' : 'annual plans');
     const t = locale === 'id'
-        ? { eyebrow: 'Penawaran eksklusif', off: 'DISKON', useCode: 'Pakai kode', cta: 'Klaim diskon Anda' }
-        : { eyebrow: 'Exclusive offer', off: 'OFF', useCode: 'Use code', cta: 'Claim your discount' };
-    const big = `<span style="font-size:40px;font-weight:800;letter-spacing:-0.02em;color:${ORANGE};">${pct}%</span>`;
+        ? { eyebrow: 'Penawaran terbatas', off: 'DISKON', useCode: 'Pakai kode', cta: 'Klaim diskon Anda', valid: `Berlaku ${validDays} hari setelah daftar` }
+        : { eyebrow: 'Limited offer', off: 'OFF', useCode: 'Use code', cta: 'Claim your discount', valid: `Valid for ${validDays} days after signup` };
+    const big = `<span style="font-size:42px;font-weight:800;letter-spacing:-0.02em;color:${ORANGE};">${pct}%</span>`;
     const discount = locale === 'id'
         ? `<span style="font-size:15px;font-weight:700;color:#ffffff;">${t.off}</span> ${big}`
         : `${big} <span style="font-size:16px;font-weight:700;color:#ffffff;">${t.off}</span>`;
+    // Punch holes blend with the white card behind the ticket.
+    const hole = '<div style="width:12px;height:12px;border-radius:50%;background:#ffffff;line-height:12px;font-size:0;">&nbsp;</div>';
     const html =
-        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:${NAVY};border-radius:14px;"><tr>`
-        + `<td style="padding:18px 6px 18px 20px;width:46%;vertical-align:middle;">`
-            + `<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${ORANGE};margin:0 0 4px;">${t.eyebrow}</div>`
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${NAVY}" style="width:100%;background:${NAVY};background-image:linear-gradient(135deg,#0B0F19 0%,#1A2138 100%);border-radius:14px;"><tr>`
+        + `<td style="padding:18px 4px 12px 20px;width:44%;vertical-align:middle;">`
+            + `<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${ORANGE};margin:0 0 5px;">🎟️ ${escapeHtml(t.eyebrow)}</div>`
             + `<div style="line-height:1;">${discount}</div>`
             + `<div style="font-size:12px;color:#C7CBD3;margin-top:5px;">${terms}</div>`
         + `</td>`
-        + `<td style="width:1px;padding:0;"><div style="border-left:2px dashed rgba(255,255,255,0.35);height:80px;font-size:0;line-height:0;">&nbsp;</div></td>`
-        + `<td style="padding:18px 20px 18px 8px;width:54%;vertical-align:middle;text-align:center;">`
+        + `<td align="center" valign="middle" style="width:22px;padding:0;">`
+            + `<table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr><td align="center">`
+                + hole
+                + '<div style="width:0;border-left:2px dashed rgba(255,255,255,0.4);height:46px;margin:2px auto;font-size:0;line-height:0;">&nbsp;</div>'
+                + hole
+            + `</td></tr></table>`
+        + `</td>`
+        + `<td style="padding:18px 20px 12px 6px;width:54%;vertical-align:middle;text-align:center;">`
             + `<div style="font-size:11px;color:#C7CBD3;margin:0 0 6px;">${t.useCode}</div>`
             + `<span style="display:inline-block;background:#ffffff;border-radius:8px;padding:8px 14px;font-size:16px;font-weight:800;letter-spacing:0.06em;color:${NAVY};">${code}</span>`
             + `<div style="margin-top:10px;"><a href="${escapeHtml(baseUrl)}/pricing" style="font-size:13px;font-weight:700;color:${ORANGE};text-decoration:none;">${t.cta} &rarr;</a></div>`
-        + `</td></tr></table>`;
-    return { html, text: `${t.eyebrow}: ${pct}% off ${terms} — use code ${offer.code} at ${baseUrl}/pricing` };
+        + `</td></tr>`
+        + `<tr><td colspan="3" style="padding:0 20px 14px;"><div style="border-top:1px dashed rgba(255,255,255,0.18);padding-top:10px;text-align:center;font-size:11px;color:#9AA1AC;">⏳ ${escapeHtml(t.valid)}</div></td></tr>`
+        + `</table>`;
+    return { html, text: `${t.eyebrow}: ${pct}% off ${terms} — code ${offer.code} (${t.valid}) — ${baseUrl}/pricing` };
 }
 
 // "Ask Fluxy AI" prompt card (welcome email).

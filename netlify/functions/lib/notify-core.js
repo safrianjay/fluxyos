@@ -34,7 +34,7 @@ const NOTIFY_AFTER = process.env.NOTIFY_AFTER ? Date.parse(process.env.NOTIFY_AF
 
 // Optional promo featured in the welcome email. Disabled when no code is set.
 const WELCOME_OFFER = process.env.WELCOME_OFFER_CODE
-    ? { code: process.env.WELCOME_OFFER_CODE, percent: Number(process.env.WELCOME_OFFER_PERCENT || 0), terms: process.env.WELCOME_OFFER_TERMS || '' }
+    ? { code: process.env.WELCOME_OFFER_CODE, percent: Number(process.env.WELCOME_OFFER_PERCENT || 0), terms: process.env.WELCOME_OFFER_TERMS || '', validDays: Number(process.env.WELCOME_OFFER_VALID_DAYS || 14) }
     : null;
 
 const KYC_TEMPLATES = { approved: 'kyc_approved', needs_revision: 'kyc_needs_revision', rejected: 'kyc_rejected' };
