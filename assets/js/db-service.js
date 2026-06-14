@@ -2899,6 +2899,27 @@ class DataService {
         });
     }
 
+    // Queue a "send weekly digest now" job for the Netlify worker to execute.
+    // mode: 'send' broadcasts to all enabled users; 'dryRun' only counts.
+    async requestDigestBroadcast(mode = 'send', requestedBy = 'fluxyos admin') {
+        const ref = await addDoc(collection(this.db, 'internal_digest_jobs'), {
+            mode: mode === 'dryRun' ? 'dryRun' : 'send',
+            status: 'pending',
+            requested_by: this._stringOrDefault(requestedBy, 'fluxyos admin', 80),
+            requested_at: serverTimestamp(),
+            started_at: null,
+            finished_at: null,
+            result: null,
+            error: null
+        });
+        return ref.id;
+    }
+
+    async getDigestBroadcastJob(jobId) {
+        const snap = await getDoc(doc(this.db, `internal_digest_jobs/${jobId}`));
+        return snap.exists() ? { id: jobId, ...snap.data() } : null;
+    }
+
     async getInternalAuditLogs(limitCount = 100) {
         const q = query(
             collection(this.db, 'internal_audit_logs'),

@@ -2427,6 +2427,25 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Weekly digest broadcast jobs (internal-console "Send digest now"). The
+    // console writes a pending job; the Netlify worker (Admin SDK + OpenAI)
+    // executes it. MVP_INTERNAL_ONLY_TEMPORARY — open + field-validated, like
+    // internal_users. The worker can only send the legit weekly digest (deduped
+    // per ISO week), so the abuse ceiling is "trigger this week's digest early".
+    match /internal_digest_jobs/{jobId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasOnly([
+            'mode', 'status', 'requested_by', 'requested_at', 'started_at', 'finished_at', 'result', 'error'
+          ])
+        && request.resource.data.mode in ['dryRun', 'send']
+        && request.resource.data.status in ['pending', 'processing', 'done', 'failed']
+        && request.resource.data.requested_by is string
+        && request.resource.data.requested_by.size() <= 80
+        && (request.resource.data.error == null
+          || (request.resource.data.error is string && request.resource.data.error.size() <= 500));
+      allow delete: if false;
+    }
+
     match /internal_audit_logs/{auditLogId} {
       allow read: if true;
       allow create: if request.resource.data.source == 'internal_dashboard'

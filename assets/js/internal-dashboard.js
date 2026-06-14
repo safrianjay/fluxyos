@@ -1217,11 +1217,49 @@ async function runAction(action, userId) {
 }
 
 // =============================================================================
+// Queue a weekly-digest broadcast; a Netlify worker executes it within ~2 min.
+async function sendDigestBroadcast() {
+    const btn = $('internal-digest-send');
+    const ok = await window.showConfirmDialog?.({
+        title: 'Send weekly digest now?',
+        body: 'This broadcasts <strong>this week’s digest</strong> to all enabled users. Accounts with no finance data are skipped, and each user is only sent once per ISO week. It runs in the background within ~2 minutes.',
+        confirmLabel: 'Send to all',
+        cancelLabel: 'Cancel',
+        tone: 'default'
+    });
+    if (!ok) return;
+    if (btn) btn.disabled = true;
+    try {
+        const jobId = await ds.requestDigestBroadcast('send', 'fluxyos admin');
+        window.showToast?.('Digest broadcast queued — sending within ~2 minutes…', 'success');
+        const started = Date.now();
+        let done = null;
+        while (Date.now() - started < 4 * 60 * 1000) {
+            await new Promise(r => setTimeout(r, 10000));
+            const job = await ds.getDigestBroadcastJob(jobId);
+            if (job && (job.status === 'done' || job.status === 'failed')) { done = job; break; }
+        }
+        if (!done) {
+            window.showToast?.('Digest queued. It will send shortly — see the Audit tab for results.', 'success');
+        } else if (done.status === 'failed') {
+            window.showToast?.('Digest broadcast failed: ' + (done.error || 'unknown error'), 'error');
+        } else {
+            const r = done.result || {};
+            window.showToast?.(`Digest sent to ${r.sent || 0} user(s) · ${r.skippedNoRecords || 0} skipped (no data).`, 'success');
+        }
+    } catch (e) {
+        window.showToast?.('Could not queue the digest broadcast. Try again.', 'error');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
 // Wiring
 // =============================================================================
 function initConsoleEvents() {
     $('internal-signout').addEventListener('click', signOut);
     $('internal-refresh').addEventListener('click', () => loadData());
+    $('internal-digest-send')?.addEventListener('click', sendDigestBroadcast);
 
     document.querySelectorAll('.itab').forEach(btn => {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
