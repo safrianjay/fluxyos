@@ -15,15 +15,21 @@ const CANVAS = '#F3F4F6';
 
 function button(cta) {
     if (!cta || !cta.url) return '';
+    // Full-width, bulletproof (Outlook-safe) button — matches the content width.
     return `
             <tr>
-              <td style="padding:10px 0 6px;">
-                <a href="${escapeHtml(cta.url)}"
-                   style="display:inline-block;background:${NAVY};color:#ffffff;text-decoration:none;
-                          font-weight:600;font-size:14px;line-height:1;padding:14px 26px;border-radius:10px;
-                          letter-spacing:-0.005em;">
-                  ${escapeHtml(cta.label)}
-                </a>
+              <td style="padding:12px 0 6px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td align="center" bgcolor="${NAVY}" style="background:${NAVY};border-radius:10px;">
+                      <a href="${escapeHtml(cta.url)}"
+                         style="display:block;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;
+                                line-height:1;padding:15px 20px;letter-spacing:-0.005em;">
+                        ${escapeHtml(cta.label)}
+                      </a>
+                    </td>
+                  </tr>
+                </table>
               </td>
             </tr>`;
 }
@@ -150,23 +156,15 @@ function offerBox(locale, offer, baseUrl) {
     const discount = locale === 'id'
         ? `<span style="font-size:15px;font-weight:700;color:#ffffff;">${t.off}</span> ${big}`
         : `${big} <span style="font-size:16px;font-weight:700;color:#ffffff;">${t.off}</span>`;
-    // Punch holes blend with the white card behind the ticket.
-    const hole = '<div style="width:12px;height:12px;border-radius:50%;background:#ffffff;line-height:12px;font-size:0;">&nbsp;</div>';
     const html =
         `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${NAVY}" style="width:100%;background:${NAVY};background-image:linear-gradient(135deg,#0B0F19 0%,#1A2138 100%);border-radius:14px;"><tr>`
-        + `<td style="padding:18px 4px 12px 20px;width:44%;vertical-align:middle;">`
+        + `<td style="padding:18px 6px 12px 20px;width:46%;vertical-align:middle;">`
             + `<div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${ORANGE};margin:0 0 5px;">🎟️ ${escapeHtml(t.eyebrow)}</div>`
             + `<div style="line-height:1;">${discount}</div>`
             + `<div style="font-size:12px;color:#C7CBD3;margin-top:5px;">${terms}</div>`
         + `</td>`
-        + `<td align="center" valign="middle" style="width:22px;padding:0;">`
-            + `<table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr><td align="center">`
-                + hole
-                + '<div style="width:0;border-left:2px dashed rgba(255,255,255,0.4);height:46px;margin:2px auto;font-size:0;line-height:0;">&nbsp;</div>'
-                + hole
-            + `</td></tr></table>`
-        + `</td>`
-        + `<td style="padding:18px 20px 12px 6px;width:54%;vertical-align:middle;text-align:center;">`
+        + `<td style="width:1px;padding:0;"><div style="border-left:2px dashed rgba(255,255,255,0.35);height:84px;font-size:0;line-height:0;">&nbsp;</div></td>`
+        + `<td style="padding:18px 20px 12px 8px;width:54%;vertical-align:middle;text-align:center;">`
             + `<div style="font-size:11px;color:#C7CBD3;margin:0 0 6px;">${t.useCode}</div>`
             + `<span style="display:inline-block;background:#ffffff;border-radius:8px;padding:8px 14px;font-size:16px;font-weight:800;letter-spacing:0.06em;color:${NAVY};">${code}</span>`
             + `<div style="margin-top:10px;"><a href="${escapeHtml(baseUrl)}/pricing" style="font-size:13px;font-weight:700;color:${ORANGE};text-decoration:none;">${t.cta} &rarr;</a></div>`
@@ -205,18 +203,18 @@ const COPY = {
         const paragraphs = [];
         if (locale === 'id') {
             paragraphs.push({ html: greet('id', d.name), text: d.name ? `Halo ${d.name},` : 'Halo,' });
-            paragraphs.push(line('Ruang kerja keuangan Anda hampir siap.'));
-            paragraphs.push(line('Sebagian besar bisnis bukan kesulitan karena kekurangan data. Mereka kesulitan karena informasi keuangannya tersebar di spreadsheet, invoice, rekening koran, dan berbagai alat yang tidak terhubung.'));
-            paragraphs.push(line('FluxyOS menyatukan semuanya di satu tempat, sehingga Anda bisa melihat dari mana uang masuk, ke mana perginya, dan apa yang perlu diperhatikan.'));
+            paragraphs.push({ html: 'Ruang kerja keuangan Anda <strong>hampir siap</strong>.', text: 'Ruang kerja keuangan Anda hampir siap.' });
+            paragraphs.push({ html: 'Sebagian besar bisnis bukan kesulitan karena <strong>kekurangan data</strong>. Mereka kesulitan karena informasi keuangannya <strong>tersebar di spreadsheet, invoice, rekening koran, dan berbagai alat yang tidak terhubung</strong>.', text: 'Sebagian besar bisnis bukan kesulitan karena kekurangan data. Mereka kesulitan karena informasi keuangannya tersebar di spreadsheet, invoice, rekening koran, dan berbagai alat yang tidak terhubung.' });
+            paragraphs.push({ html: 'FluxyOS <strong>menyatukan semuanya di satu tempat</strong>, sehingga Anda bisa melihat <strong>dari mana uang masuk</strong>, <strong>ke mana perginya</strong>, dan <strong>apa yang perlu diperhatikan</strong>.', text: 'FluxyOS menyatukan semuanya di satu tempat, sehingga Anda bisa melihat dari mana uang masuk, ke mana perginya, dan apa yang perlu diperhatikan.' });
             if (!setupComplete) paragraphs.push(setupBox('id'));
             paragraphs.push(askAiCard('id'));
             if (d.offer && d.offer.code) paragraphs.push(offerBox('id', d.offer, d.baseUrl));
             return { subject: 'Selamat datang di FluxyOS', heading: 'Selamat datang di FluxyOS 👋', paragraphs, cta, footnote: TRANSACTIONAL_FOOTNOTE.id };
         }
         paragraphs.push({ html: greet('en', d.name), text: d.name ? `Hi ${d.name},` : 'Hi there,' });
-        paragraphs.push(line('Your finance workspace is almost ready.'));
-        paragraphs.push(line("Most businesses don't struggle because they lack data. They struggle because their financial information is scattered across spreadsheets, invoices, bank statements, and disconnected tools."));
-        paragraphs.push(line("FluxyOS brings everything together in one place, so you can see where money is coming from, where it's going, and what needs attention."));
+        paragraphs.push({ html: 'Your finance workspace is <strong>almost ready</strong>.', text: 'Your finance workspace is almost ready.' });
+        paragraphs.push({ html: "Most businesses don't struggle because they <strong>lack data</strong>. They struggle because their financial information is <strong>scattered across spreadsheets, invoices, bank statements, and disconnected tools</strong>.", text: "Most businesses don't struggle because they lack data. They struggle because their financial information is scattered across spreadsheets, invoices, bank statements, and disconnected tools." });
+        paragraphs.push({ html: "FluxyOS <strong>brings everything together in one place</strong>, so you can see <strong>where money is coming from</strong>, <strong>where it's going</strong>, and <strong>what needs attention</strong>.", text: "FluxyOS brings everything together in one place, so you can see where money is coming from, where it's going, and what needs attention." });
         if (!setupComplete) paragraphs.push(setupBox('en'));
         paragraphs.push(askAiCard('en'));
         if (d.offer && d.offer.code) paragraphs.push(offerBox('en', d.offer, d.baseUrl));
