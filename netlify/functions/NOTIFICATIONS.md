@@ -45,8 +45,23 @@ sweep turns those into emails within ~5 minutes. Logic lives in `lib/notify-core
    | `APP_BASE_URL` | `https://fluxyos.com` |
    | `DEFAULT_LOCALE` | `en` or `id` |
    | `WELCOME_AFTER` | **deploy timestamp**, ISO (e.g. `2026-06-14T12:00:00Z`) — only users created after this get a welcome email. Set it to "now" at first deploy so existing users are never emailed. |
+   | `NOTIFY_ENABLED` | **kill switch — default off.** Both sweeps run **only** when this is exactly `"true"`. Anything else (incl. unset) = paused. |
 
    These are secrets — set them in Netlify, never commit them.
+
+## ⚠️ Kill switch & first-enable safety
+
+`NOTIFY_ENABLED` must be `"true"` for either sweep to do anything. Flip it to
+anything else to **instantly pause** all sending (next scheduled run no-ops).
+
+**Before first enabling on a project that already has data:** the reconcile
+sweep emails the *current* KYC/payment status of every `internal_users` row. On
+an empty `mail_log` that means it back-emails every already-approved/rejected
+user. The `mail_log` for existing statuses must be **seeded as already-sent**
+first (a one-time Admin script writing `users/{uid}/mail_log/{eventKey}` for each
+current notifiable status). Once seeded, only genuinely new changes send.
+`WELCOME_AFTER` already protects welcome; this is the equivalent guard for
+KYC/payment.
 
 4. **Deploy** by pushing to `main` (Netlify auto-deploys). The scheduled
    functions register automatically from the `schedule()` wrapper; confirm them
