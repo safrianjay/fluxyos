@@ -166,6 +166,52 @@ async function sweepTrialEnding(db, { logger = console } = {}) {
     return { candidates: snap.size, sent };
 }
 
+// Billing / repayment reminders + account-locked, off billing_subscription/current.
+// Fires by calendar-day offset from current_period_end: 7d before (upcoming),
+// 1d before (due_soon), 3d after (overdue), 7d after (account_locked). Renewed
+// subs move period_end forward, so overdue/lock only hit genuinely-unpaid users.
+// Idempotent per period-end date + phase.
+async function sweepBillingReminders(db, { now = new Date(), logger = console } = {}) {
+    const DAY = 24 * 60 * 60 * 1000;
+    const dateKey = (ms) => new Date(ms).toISOString().slice(0, 10);
+    const midnightUTC = (ms) => { const dt = new Date(ms); return Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()); };
+    const todayMid = midnightUTC(now.getTime());
+
+    const snap = await db.collectionGroup('billing_subscription').get();
+    let sent = 0;
+    for (const doc of snap.docs) {
+        if (doc.id !== 'current') continue;
+        const d = doc.data() || {};
+        if (String(d.status || '') === 'trialing') continue; // trials use trial_ending
+        const endMs = d.current_period_end && d.current_period_end.toMillis ? d.current_period_end.toMillis() : null;
+        if (!endMs) continue;
+        const diffDays = Math.round((midnightUTC(endMs) - todayMid) / DAY);
+
+        let templateKey = 'billing_reminder'; let phase = null;
+        if (diffDays === 7) phase = 'upcoming';
+        else if (diffDays === 1) phase = 'due_soon';
+        else if (diffDays === -3) phase = 'overdue';
+        else if (diffDays === -7) { templateKey = 'account_locked'; }
+        else continue;
+
+        const uid = doc.ref.parent.parent && doc.ref.parent.parent.id;
+        if (!uid) continue;
+        try {
+            const to = await resolveUserEmail(db, uid);
+            if (!to) continue;
+            const locale = await resolveUserLocale(db, uid);
+            const eventKey = phase ? `billing_${phase}_${dateKey(endMs)}` : `account_locked_${dateKey(endMs)}`;
+            const data = { name: null, baseUrl: APP_BASE_URL, phase, planName: d.plan_name || null, amount: d.payment_amount != null ? d.payment_amount : null, dueLabel: formatDate(endMs, locale) };
+            const r = await sendNotificationEmail({ db, uid, to, eventKey, templateKey, locale, data, logger });
+            if (r && r.sent) sent += 1;
+        } catch (e) {
+            (logger.error || console.error)('sweepBillingReminders: user failed', { uid, error: e.message });
+        }
+    }
+    (logger.info || console.log)('sweepBillingReminders complete', { candidates: snap.size, sent });
+    return { candidates: snap.size, sent };
+}
+
 // Email lookup: Auth first, then the internal index.
 async function resolveUserEmail(db, uid) {
     try {
@@ -179,4 +225,4 @@ async function resolveUserEmail(db, uid) {
     return null;
 }
 
-module.exports = { initAdmin, reconcileInternalUsers, sweepTrialEnding, resolveUserEmail, KYC_TEMPLATES, PAYMENT_TEMPLATES };
+module.exports = { initAdmin, reconcileInternalUsers, sweepTrialEnding, sweepBillingReminders, resolveUserEmail, KYC_TEMPLATES, PAYMENT_TEMPLATES };

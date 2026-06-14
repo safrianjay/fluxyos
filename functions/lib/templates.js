@@ -426,6 +426,64 @@ const COPY = {
             footnote: TRANSACTIONAL_FOOTNOTE.en,
         };
     },
+
+    // Billing / repayment reminder. `phase`: 'upcoming' (7d before), 'due_soon'
+    // (1d before), 'overdue' (3d after the period ended without payment).
+    billing_reminder(locale, d) {
+        const plan = d.planName ? escapeHtml(String(d.planName)) : null;
+        const amount = (d.amount != null && Number.isFinite(Number(d.amount))) ? formatRupiah(d.amount) : null;
+        const when = d.dueLabel ? escapeHtml(d.dueLabel) : null;
+        const phase = d.phase || 'upcoming';
+        const checkout = `${d.baseUrl}/checkout`;
+        const billing = `${d.baseUrl}/settings-billing`;
+        if (locale === 'id') {
+            const detail = (plan ? `paket ${plan} Anda` : 'langganan Anda') + (amount ? ` (${amount})` : '');
+            const P = {
+                upcoming: { subject: 'Langganan FluxyOS Anda diperpanjang dalam 7 hari', heading: 'Perpanjangan dalam 7 hari', body: `${detail} akan diperpanjang${when ? ` pada ${when}` : ' minggu depan'}. Siapkan pembayaran agar dashboard, AI, dan ekspor Anda tetap berjalan tanpa terganggu.`, cta: 'Tinjau tagihan', url: billing },
+                due_soon: { subject: 'Langganan FluxyOS Anda diperpanjang besok', heading: 'Perpanjangan besok', body: `${detail} diperpanjang${when ? ` pada ${when}` : ' besok'}. Selesaikan pembayaran sekarang agar tidak ada gangguan akses.`, cta: 'Bayar sekarang', url: checkout },
+                overdue: { subject: 'Tindakan diperlukan: pembayaran FluxyOS Anda terlambat', heading: 'Pembayaran Anda terlambat', body: `Pembayaran untuk ${detail} jatuh tempo${when ? ` pada ${when}` : ''} dan kini <strong>terlambat</strong>. Bayar sekarang untuk mencegah akun Anda terkunci.`, cta: 'Bayar sekarang', url: checkout },
+            };
+            const p = P[phase] || P.upcoming;
+            return { subject: p.subject, heading: p.heading, paragraphs: [{ html: greet('id', d.name), text: d.name ? `Halo ${d.name},` : 'Halo,' }, { html: p.body, text: p.body.replace(/<[^>]+>/g, '') }], cta: { label: p.cta, url: p.url }, footnote: TRANSACTIONAL_FOOTNOTE.id };
+        }
+        const detail = (plan ? `your ${plan} plan` : 'your subscription') + (amount ? ` (${amount})` : '');
+        const Cap = detail.charAt(0).toUpperCase() + detail.slice(1);
+        const P = {
+            upcoming: { subject: 'Your FluxyOS plan renews in 7 days', heading: 'Your plan renews in 7 days', body: `${Cap} renews${when ? ` on ${when}` : ' next week'}. Make sure your payment is ready so your dashboards, AI, and exports keep running.`, cta: 'Review billing', url: billing },
+            due_soon: { subject: 'Your FluxyOS plan renews tomorrow', heading: 'Your plan renews tomorrow', body: `${Cap} renews${when ? ` on ${when}` : ' tomorrow'}. Complete your payment now to avoid any interruption.`, cta: 'Pay now', url: checkout },
+            overdue: { subject: 'Action needed: your FluxyOS payment is overdue', heading: 'Your payment is overdue', body: `Payment for ${detail} was due${when ? ` on ${when}` : ''} and is now <strong>overdue</strong>. Pay now to avoid your account being locked.`, cta: 'Pay now', url: checkout },
+        };
+        const p = P[phase] || P.upcoming;
+        return { subject: p.subject, heading: p.heading, paragraphs: [{ html: greet('en', d.name), text: d.name ? `Hi ${d.name},` : 'Hi there,' }, { html: p.body, text: p.body.replace(/<[^>]+>/g, '') }], cta: { label: p.cta, url: p.url }, footnote: TRANSACTIONAL_FOOTNOTE.en };
+    },
+
+    account_locked(locale, d) {
+        const url = `${d.baseUrl}/checkout`;
+        if (locale === 'id') {
+            return {
+                subject: 'Akun FluxyOS Anda terkunci',
+                heading: 'Akun Anda terkunci',
+                paragraphs: [
+                    { html: greet('id', d.name), text: d.name ? `Halo ${d.name},` : 'Halo,' },
+                    { html: 'Karena pembayaran belum kami terima, akun FluxyOS Anda kini <strong>terkunci</strong> dan akses dijeda sementara.', text: 'Karena pembayaran belum kami terima, akun FluxyOS Anda kini terkunci dan akses dijeda sementara.' },
+                    { html: 'Data Anda tetap aman. Aktifkan kembali kapan saja dengan menyelesaikan pembayaran.', text: 'Data Anda tetap aman. Aktifkan kembali kapan saja dengan menyelesaikan pembayaran.' },
+                ],
+                cta: { label: 'Aktifkan kembali', url },
+                footnote: TRANSACTIONAL_FOOTNOTE.id,
+            };
+        }
+        return {
+            subject: 'Your FluxyOS account is locked',
+            heading: 'Your account is locked',
+            paragraphs: [
+                { html: greet('en', d.name), text: d.name ? `Hi ${d.name},` : 'Hi there,' },
+                { html: "We haven't received your payment, so your FluxyOS account is now <strong>locked</strong> and access is paused.", text: "We haven't received your payment, so your FluxyOS account is now locked and access is paused." },
+                { html: 'Your data is safe — reactivate any time by completing your payment.', text: 'Your data is safe — reactivate any time by completing your payment.' },
+            ],
+            cta: { label: 'Reactivate account', url },
+            footnote: TRANSACTIONAL_FOOTNOTE.en,
+        };
+    },
 };
 
 // Build a renderable email. locale is "en" | "id"; falls back to "en".
