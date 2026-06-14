@@ -484,6 +484,41 @@ const COPY = {
             footnote: TRANSACTIONAL_FOOTNOTE.en,
         };
     },
+
+    // "Finish your QRIS payment" reminder — fired when a payment request (new
+    // plan, repayment, or upgrade) is still awaiting_payment. CTA goes straight
+    // back to the QR screen via /payment-pending?requestId=.
+    payment_pending_reminder(locale, d) {
+        const plan = d.planName ? escapeHtml(String(d.planName)) : null;
+        const amount = (d.amount != null && Number.isFinite(Number(d.amount))) ? formatRupiah(d.amount) : null;
+        const url = d.requestId ? `${d.baseUrl}/payment-pending?requestId=${encodeURIComponent(d.requestId)}` : `${d.baseUrl}/payment-pending`;
+        if (locale === 'id') {
+            const detail = (plan ? `paket ${plan}` : 'paket Anda') + (amount ? ` (${amount})` : '');
+            return {
+                subject: 'Selesaikan pembayaran FluxyOS Anda',
+                heading: 'Tinggal satu langkah lagi',
+                paragraphs: [
+                    { html: greet('id', d.name), text: d.name ? `Halo ${d.name},` : 'Halo,' },
+                    { html: `Anda sudah memilih ${detail} dan QRIS pembayaran sudah siap. Scan kode QR untuk menyelesaikan pembayaran.`, text: `Anda sudah memilih ${plan ? `paket ${d.planName}` : 'paket Anda'}${amount ? ` (${amount})` : ''} dan QRIS pembayaran sudah siap. Scan kode QR untuk menyelesaikan pembayaran.` },
+                    { html: 'Selesaikan dalam <strong>24 jam</strong> agar paket Anda langsung aktif. Sudah membayar? Abaikan email ini — kami akan segera memverifikasi.', text: 'Selesaikan dalam 24 jam agar paket Anda langsung aktif. Sudah membayar? Abaikan email ini — kami akan segera memverifikasi.' },
+                ],
+                cta: { label: 'Buka pembayaran QRIS', url },
+                footnote: TRANSACTIONAL_FOOTNOTE.id,
+            };
+        }
+        const detail = (plan ? `the ${plan} plan` : 'your plan') + (amount ? ` (${amount})` : '');
+        return {
+            subject: 'Complete your FluxyOS payment',
+            heading: "You're one step away",
+            paragraphs: [
+                { html: greet('en', d.name), text: d.name ? `Hi ${d.name},` : 'Hi there,' },
+                { html: `You selected ${detail} and your QRIS payment is ready. Scan the QR code to finish.`, text: `You selected ${plan ? `the ${d.planName} plan` : 'your plan'}${amount ? ` (${amount})` : ''} and your QRIS payment is ready. Scan the QR code to finish.` },
+                { html: 'Complete it within <strong>24 hours</strong> to activate your plan right away. Already paid? You can ignore this — we’ll confirm shortly.', text: 'Complete it within 24 hours to activate your plan right away. Already paid? You can ignore this — we’ll confirm shortly.' },
+            ],
+            cta: { label: 'Open QRIS payment', url },
+            footnote: TRANSACTIONAL_FOOTNOTE.en,
+        };
+    },
 };
 
 // Build a renderable email. locale is "en" | "id"; falls back to "en".

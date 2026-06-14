@@ -212,6 +212,39 @@ async function sweepBillingReminders(db, { now = new Date(), logger = console } 
     return { candidates: snap.size, sent };
 }
 
+// "Finish your QRIS payment" reminder — payment requests still awaiting_payment
+// (new plan / repayment / upgrade). Sent once per request, a few hours after it
+// was created and before the ~24h window closes. CTA returns to the QR screen.
+async function sweepPendingPayments(db, { now = new Date(), logger = console } = {}) {
+    const HOUR = 60 * 60 * 1000;
+    const snap = await db.collectionGroup('billing_payment_requests').where('status', '==', 'awaiting_payment').get();
+    let sent = 0;
+    for (const doc of snap.docs) {
+        const d = doc.data() || {};
+        const createdMs = d.created_at && d.created_at.toMillis ? d.created_at.toMillis() : null;
+        if (!createdMs) continue;
+        const ageH = (now.getTime() - createdMs) / HOUR;
+        if (ageH < 3 || ageH > 26) continue;
+        const uid = doc.ref.parent.parent && doc.ref.parent.parent.id;
+        if (!uid) continue;
+        try {
+            const to = await resolveUserEmail(db, uid);
+            if (!to) continue;
+            const locale = await resolveUserLocale(db, uid);
+            const r = await sendNotificationEmail({
+                db, uid, to, eventKey: `payment_pending_${doc.id}`, templateKey: 'payment_pending_reminder', locale,
+                data: { name: null, baseUrl: APP_BASE_URL, requestId: doc.id, planName: d.plan_name || d.plan_id || null, amount: d.amount != null ? d.amount : null },
+                logger,
+            });
+            if (r && r.sent) sent += 1;
+        } catch (e) {
+            (logger.error || console.error)('sweepPendingPayments: request failed', { reqId: doc.id, error: e.message });
+        }
+    }
+    (logger.info || console.log)('sweepPendingPayments complete', { candidates: snap.size, sent });
+    return { candidates: snap.size, sent };
+}
+
 // Email lookup: Auth first, then the internal index.
 async function resolveUserEmail(db, uid) {
     try {
@@ -225,4 +258,4 @@ async function resolveUserEmail(db, uid) {
     return null;
 }
 
-module.exports = { initAdmin, reconcileInternalUsers, sweepTrialEnding, sweepBillingReminders, resolveUserEmail, KYC_TEMPLATES, PAYMENT_TEMPLATES };
+module.exports = { initAdmin, reconcileInternalUsers, sweepTrialEnding, sweepBillingReminders, sweepPendingPayments, resolveUserEmail, KYC_TEMPLATES, PAYMENT_TEMPLATES };
