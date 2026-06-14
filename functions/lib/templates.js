@@ -17,63 +17,77 @@ function button(cta) {
     if (!cta || !cta.url) return '';
     return `
             <tr>
-              <td style="padding:8px 0 4px;">
+              <td style="padding:10px 0 6px;">
                 <a href="${escapeHtml(cta.url)}"
                    style="display:inline-block;background:${NAVY};color:#ffffff;text-decoration:none;
-                          font-weight:600;font-size:14px;line-height:1;padding:13px 22px;border-radius:10px;">
+                          font-weight:600;font-size:14px;line-height:1;padding:14px 26px;border-radius:10px;
+                          letter-spacing:-0.005em;">
                   ${escapeHtml(cta.label)}
                 </a>
               </td>
             </tr>`;
 }
 
-function layout({ previewText, heading, paragraphsHtml, cta, footnote }) {
+function layout({ previewText, heading, paragraphsHtml, cta, footnote, logoUrl }) {
     const para = (paragraphsHtml || [])
-        .map((html) => `<tr><td style="padding:0 0 14px;color:${INK};font-size:15px;line-height:1.6;">${html}</td></tr>`)
+        .map((html) => `<tr><td style="padding:0 0 16px;color:${INK};font-size:15px;line-height:1.62;">${html}</td></tr>`)
         .join('');
+    const logo = logoUrl
+        ? `<img src="${escapeHtml(logoUrl)}" width="32" height="32" alt="" style="display:block;border:0;outline:none;text-decoration:none;">`
+        : '';
+    const hairline = `<tr><td style="padding:0 36px;"><div style="height:1px;background:#EEF0F3;line-height:1px;font-size:0;">&nbsp;</div></td></tr>`;
 
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="color-scheme" content="light">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="color-scheme" content="light only">
   <title>${escapeHtml(heading)}</title>
 </head>
-<body style="margin:0;padding:0;background:${CANVAS};">
-  <span style="display:none!important;opacity:0;color:transparent;height:0;width:0;overflow:hidden;">${escapeHtml(previewText || heading)}</span>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CANVAS};padding:24px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif;">
+<body style="margin:0;padding:0;background:${CANVAS};-webkit-font-smoothing:antialiased;">
+  <span style="display:none!important;opacity:0;color:transparent;height:0;width:0;overflow:hidden;mso-hide:all;">${escapeHtml(previewText || heading)}</span>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${CANVAS}" style="background:${CANVAS};padding:28px 0;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
     <tr>
       <td align="center">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:92%;background:#ffffff;border:1px solid ${BORDER};border-top:3px solid ${ORANGE};border-radius:14px;overflow:hidden;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:92%;background:#ffffff;border:1px solid ${BORDER};border-top:3px solid ${ORANGE};border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,0.04);">
           <tr>
-            <td style="padding:26px 32px 0;">
-              <span style="font-size:18px;font-weight:700;letter-spacing:-0.01em;color:${NAVY};">Fluxy<span style="color:${ORANGE};">OS</span></span>
+            <td style="padding:28px 36px 18px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding-right:10px;vertical-align:middle;">${logo}</td>
+                  <td style="vertical-align:middle;font-size:19px;font-weight:700;letter-spacing:-0.01em;color:${NAVY};">Fluxy<span style="color:${ORANGE};">OS</span></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          ${hairline}
+          <tr>
+            <td style="padding:24px 36px 6px;">
+              <h1 style="margin:0;font-size:23px;line-height:1.25;font-weight:700;letter-spacing:-0.015em;color:${NAVY};">${escapeHtml(heading)}</h1>
             </td>
           </tr>
           <tr>
-            <td style="padding:18px 32px 8px;">
-              <h1 style="margin:0;font-size:22px;line-height:1.25;font-weight:700;letter-spacing:-0.01em;color:${NAVY};">${escapeHtml(heading)}</h1>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:8px 32px 26px;">
+            <td style="padding:8px 36px 30px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 ${para}
                 ${button(cta)}
               </table>
             </td>
           </tr>
+          ${hairline}
           <tr>
-            <td style="padding:18px 32px 26px;border-top:1px solid ${BORDER};">
-              <p style="margin:0;color:${MUTED};font-size:12px;line-height:1.5;">${footnote || ''}</p>
+            <td style="padding:20px 36px 26px;">
+              <p style="margin:0;color:${MUTED};font-size:12px;line-height:1.55;">${footnote || ''}</p>
             </td>
           </tr>
         </table>
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:92%;">
           <tr>
-            <td style="padding:16px 8px;text-align:center;color:${MUTED};font-size:11px;line-height:1.5;">
-              FluxyOS &middot; Financial operations, streamlined.
+            <td style="padding:18px 12px 4px;text-align:center;color:#9AA1AC;font-size:11px;line-height:1.6;">
+              <strong style="color:${MUTED};font-weight:600;">FluxyOS</strong> — Financial operations, streamlined.<br>
+              Jakarta, Indonesia &middot; <a href="https://fluxyos.com" style="color:#9AA1AC;text-decoration:underline;">fluxyos.com</a>
             </td>
           </tr>
         </table>
@@ -345,7 +359,9 @@ function buildEmail(templateKey, locale, data) {
     const c = fn(loc, data || {});
     const paragraphsHtml = c.paragraphs.map((p) => p.html);
     const paragraphsText = c.paragraphs.map((p) => p.text);
-    const html = layout({ previewText: c.subject, heading: c.heading, paragraphsHtml, cta: c.cta, footnote: c.footnote });
+    const baseUrl = (data && data.baseUrl) || 'https://fluxyos.com';
+    const logoUrl = `${baseUrl}/assets/images/email-logo.png`;
+    const html = layout({ previewText: c.subject, heading: c.heading, paragraphsHtml, cta: c.cta, footnote: c.footnote, logoUrl });
     const text = toText({ heading: c.heading, paragraphsText, cta: c.cta, footnote: c.footnote });
     return { subject: c.subject, html, text };
 }
