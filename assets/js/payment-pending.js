@@ -293,6 +293,13 @@ function bindQrisActions(request) {
                 proof = { proofDocumentId: uploaded.documentId, proofFileName: uploaded.fileName };
             }
             await data.submitPaymentRequestForVerification(currentUser.uid, request.id, proof);
+            // Fire-and-forget: instant "Payment received — under review" email.
+            // The 5-min payment sweep is an idempotent backstop if this misses.
+            currentUser.getIdToken().then((token) => fetch('/.netlify/functions/notify-payment-submitted', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ requestId: request.id }),
+            })).catch(() => {});
             pendingProofFile = null;
             render(
                 { status: 'pending_verification', plan_name: request.plan_name, plan_id: request.plan_id, billing_frequency: request.billing_frequency },
