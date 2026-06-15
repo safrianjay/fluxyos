@@ -500,7 +500,7 @@ const COPY = {
                 paragraphs: [
                     { html: greet('id', d.name), text: d.name ? `Halo ${d.name},` : 'Halo,' },
                     { html: `Anda sudah memilih ${detail} dan QRIS pembayaran sudah siap. Scan kode QR untuk menyelesaikan pembayaran.`, text: `Anda sudah memilih ${plan ? `paket ${d.planName}` : 'paket Anda'}${amount ? ` (${amount})` : ''} dan QRIS pembayaran sudah siap. Scan kode QR untuk menyelesaikan pembayaran.` },
-                    { html: 'Selesaikan dalam <strong>24 jam</strong> agar paket Anda langsung aktif. Sudah membayar? Abaikan email ini — kami akan segera memverifikasi.', text: 'Selesaikan dalam 24 jam agar paket Anda langsung aktif. Sudah membayar? Abaikan email ini — kami akan segera memverifikasi.' },
+                    { html: 'Selesaikan <strong>sebelum kode QR Anda kedaluwarsa</strong> agar paket Anda langsung aktif. Sudah membayar? Abaikan email ini — kami akan segera memverifikasi.', text: 'Selesaikan sebelum kode QR Anda kedaluwarsa agar paket Anda langsung aktif. Sudah membayar? Abaikan email ini — kami akan segera memverifikasi.' },
                 ],
                 cta: { label: 'Buka pembayaran QRIS', url },
                 footnote: TRANSACTIONAL_FOOTNOTE.id,
@@ -513,7 +513,7 @@ const COPY = {
             paragraphs: [
                 { html: greet('en', d.name), text: d.name ? `Hi ${d.name},` : 'Hi there,' },
                 { html: `You selected ${detail} and your QRIS payment is ready. Scan the QR code to finish.`, text: `You selected ${plan ? `the ${d.planName} plan` : 'your plan'}${amount ? ` (${amount})` : ''} and your QRIS payment is ready. Scan the QR code to finish.` },
-                { html: 'Complete it within <strong>24 hours</strong> to activate your plan right away. Already paid? You can ignore this — we’ll confirm shortly.', text: 'Complete it within 24 hours to activate your plan right away. Already paid? You can ignore this — we’ll confirm shortly.' },
+                { html: 'Complete it <strong>before your QR code expires</strong> to activate your plan. Already paid? You can ignore this — we’ll confirm shortly.', text: 'Complete it before your QR code expires to activate your plan. Already paid? You can ignore this — we’ll confirm shortly.' },
             ],
             cta: { label: 'Open QRIS payment', url },
             footnote: TRANSACTIONAL_FOOTNOTE.en,

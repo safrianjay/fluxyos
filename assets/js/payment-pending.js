@@ -70,9 +70,25 @@ async function loadStatusSnapshot() {
     return { subscription, request, reviewReason };
 }
 
+const notifiedAwaitingRequests = new Set();
+// Email the user a "continue your payment" link the moment they land on the QR
+// screen, so they can resume even if they close the tab. Once per request; the
+// server function + mail_log dedupe against the 5-min backstop sweep.
+function maybeNotifyAwaitingPayment(request) {
+    if (!request || !request.id || request.payment_status !== 'awaiting_payment') return;
+    if (!currentUser || notifiedAwaitingRequests.has(request.id)) return;
+    notifiedAwaitingRequests.add(request.id);
+    currentUser.getIdToken().then((token) => fetch('/.netlify/functions/notify-payment-submitted', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ requestId: request.id }),
+    })).catch(() => {});
+}
+
 async function refreshStatus() {
     if (!currentUser?.uid) return;
     const { subscription, request, reviewReason } = await loadStatusSnapshot();
+    maybeNotifyAwaitingPayment(request);
     route(subscription, request, reviewReason);
 }
 

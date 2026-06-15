@@ -12,7 +12,7 @@
     },
     {
       "collectionGroup": "billing_payment_requests",
-      "fieldPath": "status",
+      "fieldPath": "payment_status",
       "indexes": [
         { "order": "ASCENDING", "queryScope": "COLLECTION" },
         { "order": "DESCENDING", "queryScope": "COLLECTION" },

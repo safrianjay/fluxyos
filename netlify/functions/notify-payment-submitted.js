@@ -40,14 +40,21 @@ exports.handler = async (event) => {
         const snap = await db.doc(`users/${uid}/billing_payment_requests/${requestId}`).get();
         if (!snap.exists) return { statusCode: 200, headers: cors, body: JSON.stringify({ skipped: 'not_found' }) };
         const d = snap.data() || {};
-        if (String(d.status || '') !== 'pending_verification') return { statusCode: 200, headers: cors, body: JSON.stringify({ skipped: 'not_pending' }) };
+        const status = String(d.payment_status || '');
+
+        // Submitted → "Payment received"; on the QR screen → "Finish your payment".
+        // Same mail_log keys as the sweeps, so the sweeps stay idempotent backstops.
+        let templateKey; let eventKey;
+        if (status === 'pending_verification') { templateKey = 'payment_under_review'; eventKey = `payment_received_${requestId}`; }
+        else if (status === 'awaiting_payment') { templateKey = 'payment_pending_reminder'; eventKey = `payment_pending_${requestId}`; }
+        else return { statusCode: 200, headers: cors, body: JSON.stringify({ skipped: 'not_applicable' }) };
 
         const locale = await resolveUserLocale(db, uid);
         const r = await sendNotificationEmail({
-            db, uid, to, eventKey: `payment_received_${requestId}`, templateKey: 'payment_under_review', locale,
-            data: { name: null, baseUrl: APP_BASE_URL, requestId, planName: d.plan_name || d.plan_id || null, amount: d.amount != null ? d.amount : null },
+            db, uid, to, eventKey, templateKey, locale,
+            data: { name: null, baseUrl: APP_BASE_URL, requestId, planName: d.plan_name || d.plan_id || null, amount: d.total_amount != null ? d.total_amount : null },
         });
-        return { statusCode: 200, headers: cors, body: JSON.stringify({ result: r.sent ? 'sent' : (r.skipped || 'ok') }) };
+        return { statusCode: 200, headers: cors, body: JSON.stringify({ result: r.sent ? 'sent' : (r.skipped || 'ok'), status }) };
     } catch (e) {
         return { statusCode: 200, headers: cors, body: JSON.stringify({ error: String(e.message).slice(0, 120) }) };
     }

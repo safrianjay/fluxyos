@@ -217,7 +217,7 @@ async function sweepBillingReminders(db, { now = new Date(), logger = console } 
 // was created and before the ~24h window closes. CTA returns to the QR screen.
 async function sweepPendingPayments(db, { now = new Date(), logger = console } = {}) {
     const HOUR = 60 * 60 * 1000;
-    const snap = await db.collectionGroup('billing_payment_requests').where('status', '==', 'awaiting_payment').get();
+    const snap = await db.collectionGroup('billing_payment_requests').where('payment_status', '==', 'awaiting_payment').get();
     let sent = 0;
     for (const doc of snap.docs) {
         const d = doc.data() || {};
@@ -233,7 +233,7 @@ async function sweepPendingPayments(db, { now = new Date(), logger = console } =
             const locale = await resolveUserLocale(db, uid);
             const r = await sendNotificationEmail({
                 db, uid, to, eventKey: `payment_pending_${doc.id}`, templateKey: 'payment_pending_reminder', locale,
-                data: { name: null, baseUrl: APP_BASE_URL, requestId: doc.id, planName: d.plan_name || d.plan_id || null, amount: d.amount != null ? d.amount : null },
+                data: { name: null, baseUrl: APP_BASE_URL, requestId: doc.id, planName: d.plan_name || d.plan_id || null, amount: d.total_amount != null ? d.total_amount : null },
                 logger,
             });
             if (r && r.sent) sent += 1;
@@ -250,7 +250,7 @@ async function sweepPendingPayments(db, { now = new Date(), logger = console } =
 // back-emailed on first run; one email per request.
 async function sweepSubmittedPayments(db, { now = new Date(), logger = console } = {}) {
     const HOUR = 60 * 60 * 1000;
-    const snap = await db.collectionGroup('billing_payment_requests').where('status', '==', 'pending_verification').get();
+    const snap = await db.collectionGroup('billing_payment_requests').where('payment_status', '==', 'pending_verification').get();
     let sent = 0;
     for (const doc of snap.docs) {
         const d = doc.data() || {};
@@ -265,7 +265,7 @@ async function sweepSubmittedPayments(db, { now = new Date(), logger = console }
             const locale = await resolveUserLocale(db, uid);
             const r = await sendNotificationEmail({
                 db, uid, to, eventKey: `payment_received_${doc.id}`, templateKey: 'payment_under_review', locale,
-                data: { name: null, baseUrl: APP_BASE_URL, requestId: doc.id, planName: d.plan_name || d.plan_id || null, amount: d.amount != null ? d.amount : null },
+                data: { name: null, baseUrl: APP_BASE_URL, requestId: doc.id, planName: d.plan_name || d.plan_id || null, amount: d.total_amount != null ? d.total_amount : null },
                 logger,
             });
             if (r && r.sent) sent += 1;
