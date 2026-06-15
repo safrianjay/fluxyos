@@ -7,7 +7,10 @@ import { BILLING_PLANS, calculateBilling, formatIDR, getCheckoutSelection, isSal
 // Contact Sales flow if someone deep-links /checkout?plan=enterprise.
 function annualSavingsPercent(plan) {
     if (!plan || typeof plan.monthly !== 'number' || !plan.annualMonthlyEquivalent) return 0;
-    return Math.round((1 - plan.annualMonthlyEquivalent / plan.monthly) * 100);
+    // Capped at 20% so the displayed discount label stays consistent with the
+    // "Save up to 20%" pricing banner (Starter's real saving is 23%; the actual
+    // discounted price is unchanged — only the advertised label is capped).
+    return Math.min(20, Math.round((1 - plan.annualMonthlyEquivalent / plan.monthly) * 100));
 }
 
 const FIREBASE_CONFIG = {
