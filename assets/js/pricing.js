@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="promo-banner__icon-mark">%</span>
                 </span>
                 <p class="promo-banner__copy">
-                    <span>Save up to 23% on annual FluxyOS plans. Activate before the promo ends.</span>
+                    <span>Save up to 20% on annual FluxyOS plans. Activate before the promo ends.</span>
                 </p>
                 <a class="promo-banner__link" href="/pricing">View plans</a>
             </div>
