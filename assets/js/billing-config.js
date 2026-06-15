@@ -17,44 +17,66 @@ export const QRIS_PAYMENT_INFO = {
     currency: 'IDR'
 };
 
+// Single source of truth for plan pricing. Self-serve plans carry `monthly` +
+// `annualMonthlyEquivalent` (raw integer Rupiah; annual subtotal is the
+// equivalent × 12). Enterprise AI is sales-led: it has NO public/self-serve
+// amount (`salesLed: true`), only a `startingFrom` display anchor and a
+// Contact Sales flow — never a checkout. firestore.rules `isValidBillingAmounts`
+// mirrors the self-serve amounts below and must change in lockstep.
 export const BILLING_PLANS = {
+    starter: {
+        id: 'starter',
+        name: 'Starter',
+        monthly: 1290000,
+        annualMonthlyEquivalent: 990000,
+        description: 'For founders, freelancers, and small teams running finance in one place.',
+        benefits: [
+            'Transactions, Bills & Budgeting',
+            'Basic Reporting',
+            '1 user',
+            'Limited AI usage',
+            'Limited document processing'
+        ]
+    },
     core: {
         id: 'core',
         name: 'Core Ops',
-        monthly: 3500000,
+        monthly: 3490000,
         annualMonthlyEquivalent: 2790000,
-        description: 'For scaling businesses needing a unified source of truth.',
+        description: 'For growing operational teams with dedicated finance and admin.',
         benefits: [
-            'Global Ledger with automated reconciliation',
-            'Up to 3 marketplaces active sync',
-            'Standard Bank API integrations',
-            'Basic reports and financial visibility'
+            'Everything in Starter',
+            'Multi-user with approval workflow',
+            'Advanced reports',
+            'Higher AI usage limits',
+            'Higher document processing limits'
         ]
     },
     growth: {
         id: 'growth',
         name: 'Growth Engine',
-        monthly: 8500000,
-        annualMonthlyEquivalent: 6790000,
-        description: 'Complete financial control and high-velocity gateway sync for growing businesses.',
+        monthly: 6990000,
+        annualMonthlyEquivalent: 5590000,
+        description: 'For scaling companies that need forecasting and AI financial analysis.',
         benefits: [
             'Everything in Core Ops',
-            'Payment Gateways up to 150 transactions/sec',
-            'Active Spending Control rules',
-            'Multi-entity support up to 5 entities'
+            'AI Finance Analyst & forecasting',
+            'Department budgeting & advanced insights',
+            'API access',
+            'Gateway integrations'
         ]
     },
     enterprise: {
         id: 'enterprise',
         name: 'Enterprise AI',
-        monthly: 18000000,
-        annualMonthlyEquivalent: 14390000,
-        description: 'Advanced AI forecasting and unlimited infrastructure limits.',
+        salesLed: true,
+        startingFrom: 15000000,
+        description: 'Unlimited AI and processing with SSO, dedicated support, and custom limits.',
         benefits: [
-            'Everything in Growth Engine',
-            'Financial Projections via AI Modeling',
-            'Unlimited entities and API connections',
-            'Dedicated Technical Success Manager'
+            'Unlimited AI usage & processing',
+            'SSO & WhatsApp AI Assistant',
+            'Dedicated onboarding & priority support',
+            'Custom integrations & limits'
         ]
     }
 };
@@ -62,20 +84,27 @@ export const BILLING_PLANS = {
 export const MB = 1024 * 1024;
 export const GB = 1024 * MB;
 
-// Plan seat / storage / AI limits surfaced on the Billing & plan settings page
-// and reused by client/API guards. `storage_limit_bytes` is the canonical quota
-// value; `storage_limit_gb` remains for existing GB-oriented display/tests.
+// Plan seat / storage / AI / document limits surfaced on the Billing & plan
+// settings page and reused by client/API guards. `storage_limit_bytes` is the
+// canonical storage quota; `storage_limit_gb` remains for GB-oriented
+// display/tests. `ai_chat_limit` / `doc_processing_limit` are per-month quotas
+// for self-serve plans (scope `'plan'`, reset monthly) — `null` means unlimited.
+// The trial keeps its lifetime AI cap of 3 (scope `'trial'`). These numbers are
+// tunable business constants; the firestore.rules per-plan limit map mirrors
+// `ai_chat_limit` / `doc_processing_limit` and must change in lockstep.
 export const PLAN_LIMITS = {
-    trial:      { tier: 'trial',      seat_limit: 1,  storage_limit_bytes: 5 * MB,  storage_limit_gb: null, ai_chat_limit: 3, ai_chat_scope: 'trial' },
-    basic:      { tier: 'basic',      seat_limit: 5,  storage_limit_bytes: 5 * GB,  storage_limit_gb: 5, ai_chat_limit: null, ai_chat_scope: 'plan' },
-    core:       { tier: 'basic',      seat_limit: 5,  storage_limit_bytes: 5 * GB,  storage_limit_gb: 5, ai_chat_limit: null, ai_chat_scope: 'plan' },
-    growth:     { tier: 'growth',     seat_limit: 10, storage_limit_bytes: 10 * GB, storage_limit_gb: 10, ai_chat_limit: null, ai_chat_scope: 'plan' },
-    enterprise: { tier: 'enterprise', seat_limit: 50, storage_limit_bytes: 50 * GB, storage_limit_gb: 50, ai_chat_limit: null, ai_chat_scope: 'plan', storage_note: 'Unlimited storage available on custom agreement.' }
+    trial:      { tier: 'trial',      seat_limit: 1,  storage_limit_bytes: 5 * MB,  storage_limit_gb: null, ai_chat_limit: 3,   ai_chat_scope: 'trial', doc_processing_limit: null },
+    starter:    { tier: 'starter',    seat_limit: 1,  storage_limit_bytes: 2 * GB,  storage_limit_gb: 2,    ai_chat_limit: 25,  ai_chat_scope: 'plan',  doc_processing_limit: 25 },
+    basic:      { tier: 'basic',      seat_limit: 5,  storage_limit_bytes: 5 * GB,  storage_limit_gb: 5,    ai_chat_limit: 150, ai_chat_scope: 'plan',  doc_processing_limit: 150 },
+    core:       { tier: 'basic',      seat_limit: 5,  storage_limit_bytes: 5 * GB,  storage_limit_gb: 5,    ai_chat_limit: 150, ai_chat_scope: 'plan',  doc_processing_limit: 150 },
+    growth:     { tier: 'growth',     seat_limit: 10, storage_limit_bytes: 10 * GB, storage_limit_gb: 10,   ai_chat_limit: 750, ai_chat_scope: 'plan',  doc_processing_limit: 750 },
+    enterprise: { tier: 'enterprise', seat_limit: 50, storage_limit_bytes: 50 * GB, storage_limit_gb: 50,   ai_chat_limit: null, ai_chat_scope: 'plan',  doc_processing_limit: null, storage_note: 'Unlimited storage available on custom agreement.' }
 };
 
 // Display name fallbacks for plan ids that are not in BILLING_PLANS (e.g. trial).
 export const PLAN_DISPLAY_NAMES = {
     trial: 'Trial',
+    starter: 'Starter',
     basic: 'Basic',
     core: 'Core Ops',
     growth: 'Growth Engine',
@@ -127,10 +156,30 @@ export function calculateVoucherDiscountAmount(subtotalAmount, percent) {
     return (subtotalAmount / 100) * normalizedPercent;
 }
 
+// Sales-led plans (Enterprise AI) have no self-serve price, so there is nothing
+// to compute — callers must treat a `salesLed` result as "Contact Sales" and
+// never build a checkout/payment request from it.
+export function isSalesLedPlan(planId) {
+    return BILLING_PLANS[planId]?.salesLed === true;
+}
+
 export function calculateBilling(planId, billingFrequency, voucher = null) {
     const normalizedPlanId = normalizePlanId(planId);
     const normalizedBillingFrequency = normalizeBillingFrequency(billingFrequency);
     const plan = BILLING_PLANS[normalizedPlanId];
+    if (plan.salesLed || typeof plan.monthly !== 'number') {
+        return {
+            plan,
+            planId: normalizedPlanId,
+            billingFrequency: normalizedBillingFrequency,
+            salesLed: true,
+            monthlyDisplayAmount: null,
+            subtotalAmount: null,
+            voucherDiscountAmount: 0,
+            estimatedTaxAmount: null,
+            totalAmount: null
+        };
+    }
     const monthlyDisplayAmount = normalizedBillingFrequency === 'annually'
         ? plan.annualMonthlyEquivalent
         : plan.monthly;

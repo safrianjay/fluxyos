@@ -569,6 +569,9 @@ class DataService {
     async uploadDocument(userId, file, options = {}) {
         if (!options.bypassPlanLimit) {
             await this.assertCanUseStorage(userId, file?.size || 0, { source: 'document' });
+            // Monthly document-processing quota (payment-proof uploads bypass via
+            // bypassPlanLimit so a user can always activate their subscription).
+            await this.assertCanProcessDocument(userId, 1, { source: options.source || 'document' });
         }
         const { getStorage, ref, uploadBytes, getDownloadURL } =
             await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
@@ -3337,6 +3340,9 @@ class DataService {
     async createPaymentRequest(userId, paymentData = {}) {
         if (!userId) throw new Error('missing-user');
         if (!BILLING_PLANS[paymentData.plan_id]) throw new Error('invalid-plan');
+        // Sales-led plans (Enterprise AI) have no self-serve amount — they are
+        // provisioned through Contact Sales, never a checkout payment request.
+        if (BILLING_PLANS[paymentData.plan_id].salesLed) throw new Error('sales-led-plan');
         if (!['monthly', 'annually'].includes(paymentData.billing_frequency)) throw new Error('invalid-billing-frequency');
         const planId = normalizePlanId(paymentData.plan_id);
         const billingFrequency = normalizeBillingFrequency(paymentData.billing_frequency);
@@ -4045,7 +4051,8 @@ class DataService {
             storage_limit_gb: null,
             storage_note: null,
             ai_chat_limit: null,
-            ai_chat_scope: null
+            ai_chat_scope: null,
+            doc_processing_limit: null
         };
         return {
             seat_limit: limits.seat_limit ?? null,
@@ -4054,6 +4061,7 @@ class DataService {
             storage_note: limits.storage_note || null,
             ai_chat_limit: limits.ai_chat_limit ?? null,
             ai_chat_scope: limits.ai_chat_scope || null,
+            doc_processing_limit: limits.doc_processing_limit ?? null,
             tier: limits.tier || null
         };
     }
@@ -4137,6 +4145,7 @@ class DataService {
             plan_description: BILLING_PLANS[planId]?.description || null,
             billing_cycle: billingFrequency,
             price_amount: priceAmount,
+            sales_led: BILLING_PLANS[planId]?.salesLed === true,
             currency: 'IDR',
             seat_limit: catalog.seat_limit,
             storage_limit_gb: catalog.storage_limit_gb,
@@ -4199,6 +4208,34 @@ class DataService {
         return d.getTime();
     }
 
+    // `YYYY-MM` in Asia/Jakarta — must match the brain endpoint's monthKeyJakarta
+    // so the client reads the same `ai_chat_<YYYY-MM>` counter the server writes.
+    _currentMonthKey() {
+        const jakarta = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+        return `${jakarta.getFullYear()}-${String(jakarta.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    // Client preflight for monthly document-processing quota. Mirrors the
+    // storage preflight model (assertCanUseStorage): not fully race-proof, but
+    // it blocks the common over-limit case before an upload. `null` limit =
+    // unlimited (enterprise) or unmetered scope (trial is storage-bound).
+    async assertCanProcessDocument(userId, incomingCount = 1, options = {}) {
+        if (!userId) throw new Error('Please sign in again before uploading.');
+        const entitlements = await this.getBillingEntitlements(userId);
+        const limit = Number(entitlements.doc_processing_limit);
+        if (!Number.isFinite(limit) || limit <= 0) return true;
+        const usage = await this.getBillingUsage(userId);
+        if (!usage.documents_this_month?.available) return true; // never block on an unavailable count
+        const used = Math.max(0, Number(usage.documents_this_month.count) || 0);
+        if (used + incomingCount <= limit) return true;
+        const err = new Error('Your plan’s monthly document processing limit has been reached. Upgrade your plan to process more documents.');
+        err.code = 'doc_processing_limit_reached';
+        err.limit = limit;
+        err.used = used;
+        err.source = options.source || 'document';
+        throw err;
+    }
+
     async getBillingUsage(userId) {
         const usage = {
             storage: { bytes: 0, available: false },
@@ -4209,6 +4246,10 @@ class DataService {
         };
         if (!userId) return usage;
         const monthStartMs = this._startOfCurrentMonthMs();
+        const entitlements = await this.getBillingEntitlements(userId).catch(() => null);
+        const aiLimit = entitlements?.ai_chat_limit ?? null;
+        const aiScope = entitlements?.ai_chat_scope || 'trial';
+        const docLimit = entitlements?.doc_processing_limit ?? null;
 
         // Storage + document uploads share one bounded read of the documents
         // collection so we never invent numbers or double-read.
@@ -4232,7 +4273,7 @@ class DataService {
                 });
             } catch (_) { /* optional source */ }
             usage.storage = { bytes, available: true };
-            usage.documents_this_month = { count: docsThisMonth, available: true };
+            usage.documents_this_month = { count: docsThisMonth, available: true, limit: docLimit };
         } catch (_) { /* leave as unavailable — never fabricate */ }
 
         // Report exports this month (bounded recent read, filtered client-side).
@@ -4243,10 +4284,14 @@ class DataService {
         } catch (_) { /* leave as unavailable */ }
 
         try {
-            const aiSnap = await getDoc(doc(this.db, `users/${userId}/usage_limits/ai_chat_trial`));
+            // Trial uses the lifetime `ai_chat_trial` counter; paid plans use the
+            // per-month `ai_chat_<YYYY-MM>` counter written by the brain endpoint.
+            const aiDocId = aiScope === 'plan' ? `ai_chat_${this._currentMonthKey()}` : 'ai_chat_trial';
+            const aiSnap = await getDoc(doc(this.db, `users/${userId}/usage_limits/${aiDocId}`));
             const count = aiSnap.exists() ? Number((aiSnap.data() || {}).count) : 0;
             usage.ai_questions_this_month = {
                 count: Number.isFinite(count) ? Math.max(0, count) : 0,
+                limit: aiLimit,
                 available: true
             };
         } catch (_) { /* leave as unavailable */ }

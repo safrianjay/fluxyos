@@ -47,7 +47,7 @@ const ACCOUNT_TONE = { active: 'green', suspended: 'red', kyc_rejected: 'red', p
 const ACCESS_TONE = { active: 'green', payment_verified: 'green', trial_active: 'blue', trial_expiring: 'amber', payment_submitted: 'amber', payment_pending: 'amber', trial_expired: 'red', suspended: 'red', trial_not_started: 'neutral' };
 
 // Voucher display maps
-const VOUCHER_PLAN_NAMES = { core: 'Core Ops', growth: 'Growth Engine', enterprise: 'Enterprise AI' };
+const VOUCHER_PLAN_NAMES = { starter: 'Starter', core: 'Core Ops', growth: 'Growth Engine', enterprise: 'Enterprise AI' };
 const VOUCHER_STATUS_TONE = { active: 'green', disabled: 'red', expired: 'neutral' };
 const REDEMPTION_STATUS_TONE = { reserved: 'amber', redeemed: 'green', cancelled: 'neutral', failed: 'red' };
 
@@ -675,6 +675,7 @@ function openVoucherCreateDrawer() {
                 <span class="vform-label">Applies to plans</span>
                 <label class="vform-check"><input type="checkbox" id="voucher-plan-all" checked> All plans</label>
                 <div id="voucher-plan-options" class="hidden pl-1">
+                    <label class="vform-check"><input type="checkbox" value="starter" data-voucher-plan> Starter</label>
                     <label class="vform-check"><input type="checkbox" value="core" data-voucher-plan> Core Ops</label>
                     <label class="vform-check"><input type="checkbox" value="growth" data-voucher-plan> Growth Engine</label>
                     <label class="vform-check"><input type="checkbox" value="enterprise" data-voucher-plan> Enterprise AI</label>

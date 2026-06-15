@@ -496,9 +496,11 @@
                         <span class="bill-amount text-2xl font-bold text-gray-900">${escapeHtml(formatIDR(o.price_amount))}</span>
                         <span class="text-[13px] text-gray-500">/ month${o.billing_cycle === 'annually' ? ' (billed yearly)' : ''}</span>
                    </div>`
-                : (o.status === 'trialing'
-                    ? `<div class="text-[15px] font-bold text-gray-900">Free trial</div>`
-                    : `<div class="text-[15px] font-bold text-gray-900">No active price</div>`);
+                : (o.sales_led
+                    ? `<div class="text-[15px] font-bold text-gray-900">Custom pricing</div>`
+                    : (o.status === 'trialing'
+                        ? `<div class="text-[15px] font-bold text-gray-900">Free trial</div>`
+                        : `<div class="text-[15px] font-bold text-gray-900">No active price</div>`));
 
             const seatLimit = Number.isFinite(o.seat_limit) ? o.seat_limit : null;
             const storageLimit = storageLimitLabel(o);
@@ -619,6 +621,8 @@
             const storageLimitBytes = Number.isFinite(o.storage_limit_bytes) ? o.storage_limit_bytes : null;
             const storageLimit = storageLimitLabel(o);
             const aiLimit = Number.isFinite(o.ai_chat_limit) ? o.ai_chat_limit : null;
+            const aiScope = o.ai_chat_scope || null;
+            const docLimit = Number.isFinite(usage.documents_this_month?.limit) ? usage.documents_this_month.limit : null;
             const rows = [];
 
             // 1. Team seats
@@ -641,22 +645,31 @@
                 rows.push(usageRow('Storage', 'No plan', 'Choose a plan to see storage limits.', null));
             }
 
-            // 3. AI questions
+            // 3. AI chats — trial = lifetime cap; paid plans = per-month limit.
+            const aiIsTrial = aiScope === 'trial';
             if (hasPlan && aiLimit && usage.ai_questions_this_month?.available) {
                 const used = Number(usage.ai_questions_this_month.count) || 0;
-                rows.push(usageRow('AI chats', `${used} of ${aiLimit} trial chats used`, 'Trial AI access unlocks after subscription activation.', pct(used, aiLimit)));
+                rows.push(usageRow('AI chats',
+                    aiIsTrial ? `${used} of ${aiLimit} trial chats used` : `${used} of ${aiLimit} this month`,
+                    aiIsTrial ? 'Trial AI access unlocks after subscription activation.' : 'Fluxy AI chats used this month on your plan.',
+                    pct(used, aiLimit)));
             } else if (hasPlan && aiLimit) {
-                rows.push(usageRow('AI chats', `${aiLimit} trial chats`, 'Usage tracking is being prepared.', null));
+                rows.push(usageRow('AI chats', aiIsTrial ? `${aiLimit} trial chats` : `${aiLimit} per month`, 'Usage tracking is being prepared.', null));
             } else if (hasPlan) {
-                rows.push(usageRow('AI chats', 'Included with plan', 'Full Fluxy AI access is active on this plan.', null));
+                rows.push(usageRow('AI chats', 'Unlimited', 'Full Fluxy AI access is active on this plan.', null));
             } else {
                 rows.push(usageRow('AI chats', 'No plan', 'Choose a plan to use Fluxy AI.', null));
             }
 
-            // 4. Document uploads (real current-month count)
-            rows.push(usage.documents_this_month && usage.documents_this_month.available
-                ? usageRow('Document uploads', `${usage.documents_this_month.count} this month`, 'Receipts, invoices, and proofs uploaded this month.', null)
-                : usageRow('Document uploads', 'Being prepared', 'Usage tracking is being prepared.', null));
+            // 4. Document processing (real current-month count + per-plan limit)
+            if (usage.documents_this_month && usage.documents_this_month.available) {
+                const used = Number(usage.documents_this_month.count) || 0;
+                rows.push(docLimit
+                    ? usageRow('Document processing', `${used} of ${docLimit} this month`, 'Receipts, invoices, and proofs processed this month.', pct(used, docLimit))
+                    : usageRow('Document processing', `${used} this month`, hasPlan ? 'Unlimited document processing on this plan.' : 'Receipts, invoices, and proofs processed this month.', null));
+            } else {
+                rows.push(usageRow('Document processing', 'Being prepared', 'Usage tracking is being prepared.', null));
+            }
 
             // 5. Report exports (real current-month count)
             rows.push(usage.report_exports_this_month && usage.report_exports_this_month.available
@@ -711,7 +724,15 @@
             body.innerHTML = rows.map((inv) => {
                 const st = STATUS[inv.status] || ['—', 'gray'];
                 const planName = PLAN_DISPLAY_NAMES[inv.plan_id] || BILLING_PLANS[inv.plan_id]?.name || (inv.plan_id ? capitalize(inv.plan_id) : '—');
+                const frequency = inv.billing_frequency === 'annually' ? 'Annual' : (inv.billing_frequency === 'monthly' ? 'Monthly' : null);
                 const amount = Number.isFinite(Number(inv.amount)) ? formatIDR(Number(inv.amount)) : '—';
+                // Monthly-equivalent line for annual invoices (canonical plan value, else total ÷ 12).
+                const monthlyEquivalent = inv.billing_frequency === 'annually'
+                    ? (Number.isFinite(Number(inv.monthly_equivalent_amount))
+                        ? Number(inv.monthly_equivalent_amount)
+                        : (BILLING_PLANS[inv.plan_id]?.annualMonthlyEquivalent
+                            ?? (Number.isFinite(Number(inv.amount)) ? Math.round(Number(inv.amount) / 12) : null)))
+                    : null;
                 const number = inv.invoice_number || inv.id || '—';
                 const date = inv.invoice_date ? formatDate(inv.invoice_date) : '—';
                 const action = (typeof inv.provider_invoice_url === 'string' && /^https:\/\//i.test(inv.provider_invoice_url))
@@ -722,8 +743,11 @@
                     <td class="px-5 py-3.5 text-[13px] font-semibold text-gray-800">${escapeHtml(number)}</td>
                     <td class="px-5 py-3.5 text-[13px] text-gray-600">${escapeHtml(date)}</td>
                     <td class="px-5 py-3.5">${badge(st[0], st[1])}</td>
-                    <td class="px-5 py-3.5 text-right"><span class="bill-amount text-[13px] font-semibold text-gray-900">${escapeHtml(amount)}</span></td>
-                    <td class="px-5 py-3.5 text-[13px] text-gray-600">${escapeHtml(planName)}</td>
+                    <td class="px-5 py-3.5 text-right">
+                        <span class="bill-amount text-[13px] font-semibold text-gray-900">${escapeHtml(amount)}</span>
+                        ${monthlyEquivalent != null ? `<span class="block bill-amount text-[11px] text-gray-400">${escapeHtml(formatIDR(monthlyEquivalent))}/mo equiv.</span>` : ''}
+                    </td>
+                    <td class="px-5 py-3.5 text-[13px] text-gray-600">${escapeHtml(planName)}${frequency ? `<span class="block text-[11px] text-gray-400">${escapeHtml(frequency)}</span>` : ''}</td>
                     <td class="px-5 py-3.5 text-right">${action}</td>
                 </tr>`;
             }).join('');

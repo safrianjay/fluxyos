@@ -24,16 +24,19 @@ test.afterEach(async ({ page }) => {
 });
 
 test.describe('authenticated checkout UI', () => {
-    test('pricing toggle rewrites each checkout CTA', async ({ page }) => {
+    test('pricing toggle rewrites each self-serve CTA; enterprise is sales-led', async ({ page }) => {
         await page.goto('/pricing');
+        await expect(page.locator('[data-checkout-plan="starter"]')).toHaveAttribute('href', '/checkout?plan=starter&billing=annually');
         await expect(page.locator('[data-checkout-plan="core"]')).toHaveAttribute('href', '/checkout?plan=core&billing=annually');
         await expect(page.locator('[data-checkout-plan="growth"]')).toHaveAttribute('href', '/checkout?plan=growth&billing=annually');
-        await expect(page.locator('[data-checkout-plan="enterprise"]')).toHaveAttribute('href', '/checkout?plan=enterprise&billing=annually');
+        // Enterprise AI is sales-led: no checkout CTA, a Contact Sales link instead.
+        await expect(page.locator('[data-checkout-plan="enterprise"]')).toHaveCount(0);
+        await expect(page.locator('a[href="/contact-sales"]')).toContainText('Contact Sales');
 
         await page.locator('#billing-toggle').click();
+        await expect(page.locator('[data-checkout-plan="starter"]')).toHaveAttribute('href', '/checkout?plan=starter&billing=monthly');
         await expect(page.locator('[data-checkout-plan="core"]')).toHaveAttribute('href', '/checkout?plan=core&billing=monthly');
         await expect(page.locator('[data-checkout-plan="growth"]')).toHaveAttribute('href', '/checkout?plan=growth&billing=monthly');
-        await expect(page.locator('[data-checkout-plan="enterprise"]')).toHaveAttribute('href', '/checkout?plan=enterprise&billing=monthly');
     });
 
     test('checkout switches package, billing, and metadata-only method panels', async ({ page }, testInfo) => {
@@ -63,18 +66,18 @@ test.describe('authenticated checkout UI', () => {
             boxShadow: 'none'
         });
         await expect(page.locator('#summary-plan-name')).toHaveText('Growth Engine');
-        await expect(page.locator('#subtotal')).toHaveText('Rp81.480.000');
-        await expect(page.locator('#tax')).toHaveText('Rp8.962.800');
-        await expect(page.locator('#total-due')).toHaveText('Rp90.442.800');
+        await expect(page.locator('#subtotal')).toHaveText('Rp67.080.000');
+        await expect(page.locator('#tax')).toHaveText('Rp7.378.800');
+        await expect(page.locator('#total-due')).toHaveText('Rp74.458.800');
         await expect(page.locator('.trust-row')).toContainText('Total amount to pay');
-        await expect(page.locator('#checkout-payable-total')).toHaveText('Rp90.442.800');
+        await expect(page.locator('#checkout-payable-total')).toHaveText('Rp74.458.800');
 
         await page.locator('[data-plan="core"]').click();
         await page.locator('[data-billing="monthly"]').click();
         await expect(page).toHaveURL(/\/checkout\?plan=core&billing=monthly$/);
         await expect(page.locator('#summary-plan-name')).toHaveText('Core Ops');
-        await expect(page.locator('#total-due')).toHaveText('Rp3.885.000');
-        await expect(page.locator('#checkout-payable-total')).toHaveText('Rp3.885.000');
+        await expect(page.locator('#total-due')).toHaveText('Rp3.873.900');
+        await expect(page.locator('#checkout-payable-total')).toHaveText('Rp3.873.900');
 
         await page.locator('[data-method="card"]').click();
         await expect(page.locator('[data-payment-panel="card"]')).toContainText('never collects card number, CVC, or OTP');
@@ -236,15 +239,25 @@ test.describe('billing internal mirror wiring', () => {
         expect(rules).toContain('isValidTrialAIUsageUpdate');
         expect(rules).toContain("limitId == 'ai_chat_trial'");
         expect(rules).toContain('data.count == existingData.count + 1');
+        // Per-plan monthly AI counter (real numeric gating backstop).
+        expect(rules).toContain('isValidPlanAIUsageCreate');
+        expect(rules).toContain('planMonthlyAiLimit');
+        expect(rules).toContain("limitId.matches('ai_chat_[0-9]{4}-[0-9]{2}')");
+        // Per-plan monthly document-processing guard.
+        expect(dbService).toContain('async assertCanProcessDocument');
+        expect(dbService).toContain('doc_processing_limit_reached');
+        expect(netlifyApi).toContain('PLAN_AI_MONTHLY_LIMITS');
         expect(rules).toContain('respectsTrialStorageSingleFileLimit');
         expect(storageRules).toContain('respectsTrialStorageSingleFileLimit');
         expect(storageRules).toContain('firestore.get(/databases/(default)/documents/users/$(userId)/billing_subscription/current)');
 
-        expect(netlifyApi).toContain('consumeTrialAIQuotaIfNeeded');
+        expect(netlifyApi).toContain('consumeAIQuotaIfNeeded');
         expect(netlifyApi).toContain('trial_ai_limit_reached');
+        expect(netlifyApi).toContain('ai_limit_reached');
         expect(netlifyApi).toContain("patchUserDocument(uid, token, 'usage_limits', 'ai_chat_trial'");
-        expect(fastApi).toContain('_consume_trial_ai_quota');
+        expect(fastApi).toContain('_consume_ai_quota');
         expect(fastApi).toContain('trial_ai_limit_reached');
+        expect(fastApi).toContain('_PLAN_AI_MONTHLY_LIMITS');
 
         expect(trialAccess).toContain('showSubscriptionLimitModal');
         expect(sidebarAI).toContain('maybeShowTrialLimit');

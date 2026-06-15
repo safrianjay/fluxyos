@@ -90,15 +90,15 @@
       "@context": "https://schema.org",
       "@type": "Product",
       "name": "FluxyOS",
-      "description": "AI-powered Finance Operations System with live ledgers, vendor spend controls, receipt capture, revenue sync, dynamic budgeting, and AI finance agents.",
+      "description": "FluxyOS is a finance operating system for scaling businesses, with an AI Finance Analyst, budget control, bill operations, and cash flow intelligence.",
       "brand": {
         "@type": "Brand",
         "name": "FluxyOS"
       },
       "offers": {
         "@type": "AggregateOffer",
-        "lowPrice": "2790000",
-        "highPrice": "14390000",
+        "lowPrice": "990000",
+        "highPrice": "5590000",
         "priceCurrency": "IDR",
         "offerCount": "3",
         "availability": "https://schema.org/InStock",
@@ -465,7 +465,7 @@
                 </button>
                 <span class="text-[13px] font-bold text-white flex items-center gap-2 transition-colors" id="label-annual">
                     Annually 
-                    <span class="px-2 py-0.5 rounded bg-green-500/20 text-green-400 text-[10px] uppercase tracking-wider">Save 20%</span>
+                    <span class="px-2 py-0.5 rounded bg-green-500/20 text-green-400 text-[10px] uppercase tracking-wider">Save up to 23%</span>
                 </span>
             </div>
         </div>
@@ -475,24 +475,22 @@
     <!-- PRICING CARDS SECTION                      -->
     <!-- ========================================== -->
     <div class="relative z-20 max-w-7xl mx-auto px-6 lg:px-8 -mt-24 mb-24">
-        <div class="grid md:grid-cols-3 gap-6 lg:gap-8 items-start">
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-6 items-start">
 
-            <!-- TIER 1: Core Ops -->
+            <!-- TIER 1: Starter -->
             <div class="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 flex flex-col h-full relative overflow-hidden">
                 <div class="mb-6">
-                    <h3 class="text-lg font-bold text-gray-900 tracking-tight">Core Ops</h3>
-                    <p class="text-[13px] text-gray-500 mt-2 h-10">For scaling businesses needing a unified source of truth.</p>
+                    <h3 class="text-lg font-bold text-gray-900 tracking-tight">Starter</h3>
+                    <p class="text-[13px] text-gray-500 mt-2 h-10">For founders, freelancers, and small teams running finance in one place.</p>
                 </div>
-                
+
                 <div class="mb-6 pb-6 border-b border-gray-100">
                     <div class="flex flex-col">
-                        <!-- Slash Price (Fixed height to prevent jumping) -->
                         <div class="h-5 mb-1">
-                            <span class="slash-price text-gray-400 line-through text-sm font-mono font-medium transition-opacity duration-300">Rp 3.500.000</span>
+                            <span class="slash-price text-gray-400 line-through text-sm tabular-nums font-medium transition-opacity duration-300">Rp1.290.000</span>
                         </div>
-                        <!-- Active Price -->
                         <div class="flex items-baseline gap-1.5">
-                            <span class="active-price text-3xl font-bold text-gray-900 font-mono tracking-tight" data-monthly="Rp 3.500.000" data-annual="Rp 2.790.000">Rp 2.790.000</span>
+                            <span class="active-price text-3xl font-bold text-gray-900 tabular-nums tracking-tight" data-monthly="Rp1.290.000" data-annual="Rp990.000">Rp990.000</span>
                             <span class="text-[13px] font-medium text-gray-500">/ mo</span>
                         </div>
                     </div>
@@ -501,19 +499,64 @@
                 <ul class="space-y-4 mb-8 flex-grow text-[13px] text-gray-600">
                     <li class="flex items-start gap-3">
                         <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span><strong class="text-gray-900">Global Ledger</strong> with automated reconciliation</span>
+                        <span><strong class="text-gray-900">Transactions, Bills & Budgeting</strong></span>
                     </li>
                     <li class="flex items-start gap-3">
                         <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span>Up to <strong class="text-gray-900">3 Marketplaces</strong> active sync</span>
+                        <span>Basic reporting</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span>Standard Bank API integrations</span>
+                        <span><strong class="text-gray-900">1 user</strong></span>
                     </li>
-                    <li class="flex items-start gap-3 opacity-50">
-                        <svg class="w-5 h-5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        <span>No Spending Control rules</span>
+                    <li class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span>Limited AI usage & document processing</span>
+                    </li>
+                </ul>
+
+                <a href="/checkout?plan=starter&billing=annually" data-checkout-plan="starter" class="block text-center w-full py-2.5 px-4 rounded-lg text-[13px] font-bold text-gray-700 bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all focus:outline-none focus:ring-2 focus:ring-gray-200">
+                    Choose Starter
+                </a>
+            </div>
+
+            <!-- TIER 2: Core Ops -->
+            <div class="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 flex flex-col h-full relative overflow-hidden">
+                <div class="mb-6">
+                    <h3 class="text-lg font-bold text-gray-900 tracking-tight">Core Ops</h3>
+                    <p class="text-[13px] text-gray-500 mt-2 h-10">For growing operational teams with dedicated finance and admin.</p>
+                </div>
+
+                <div class="mb-6 pb-6 border-b border-gray-100">
+                    <div class="flex flex-col">
+                        <!-- Slash Price (Fixed height to prevent jumping) -->
+                        <div class="h-5 mb-1">
+                            <span class="slash-price text-gray-400 line-through text-sm tabular-nums font-medium transition-opacity duration-300">Rp3.490.000</span>
+                        </div>
+                        <!-- Active Price -->
+                        <div class="flex items-baseline gap-1.5">
+                            <span class="active-price text-3xl font-bold text-gray-900 tabular-nums tracking-tight" data-monthly="Rp3.490.000" data-annual="Rp2.790.000">Rp2.790.000</span>
+                            <span class="text-[13px] font-medium text-gray-500">/ mo</span>
+                        </div>
+                    </div>
+                </div>
+
+                <ul class="space-y-4 mb-8 flex-grow text-[13px] text-gray-600">
+                    <li class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span>Everything in Starter, plus:</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span><strong class="text-gray-900">Multi-user</strong> with approval workflow</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span>Advanced reports</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span>Higher AI usage & document processing limits</span>
                     </li>
                 </ul>
 
@@ -522,7 +565,7 @@
                 </a>
             </div>
 
-            <!-- TIER 2: Growth Engine -->
+            <!-- TIER 3: Growth Engine -->
             <div class="bg-[#0B1527] rounded-2xl shadow-[0_20px_50px_rgba(234,88,12,0.15)] border border-[#EA580C]/40 p-8 flex flex-col h-full relative overflow-hidden transform md:-translate-y-4">
                 <!-- Floating Glow Element -->
                 <div class="absolute top-0 right-0 -translate-y-1/2 translate-x-1/3 w-48 h-48 bg-[#EA580C] blur-[60px] opacity-20 rounded-full z-0 float-slow"></div>
@@ -537,16 +580,16 @@
                         Growth Engine
                         <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     </h3>
-                    <p class="text-[13px] text-gray-400 mt-2 h-10">Complete financial control and high-velocity gateway sync.</p>
+                    <p class="text-[13px] text-gray-400 mt-2 h-10">For scaling companies that need forecasting and AI financial analysis.</p>
                 </div>
-                
+
                 <div class="relative z-10 mb-6 pb-6 border-b border-gray-700/50">
                     <div class="flex flex-col">
                         <div class="h-5 mb-1">
-                            <span class="slash-price text-gray-500 line-through text-sm font-mono font-medium transition-opacity duration-300">Rp 8.500.000</span>
+                            <span class="slash-price text-gray-500 line-through text-sm tabular-nums font-medium transition-opacity duration-300">Rp6.990.000</span>
                         </div>
                         <div class="flex items-baseline gap-1.5">
-                            <span class="active-price text-3xl font-bold text-white font-mono tracking-tight" data-monthly="Rp 8.500.000" data-annual="Rp 6.790.000">Rp 6.790.000</span>
+                            <span class="active-price text-3xl font-bold text-white tabular-nums tracking-tight" data-monthly="Rp6.990.000" data-annual="Rp5.590.000">Rp5.590.000</span>
                             <span class="text-[13px] font-medium text-gray-400">/ mo</span>
                         </div>
                     </div>
@@ -559,15 +602,15 @@
                     </li>
                     <li class="flex items-start gap-3">
                         <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span><strong class="text-white">Payment Gateways</strong> (Up to 150 Txns/sec)</span>
+                        <span><strong class="text-white">AI Finance Analyst</strong> & forecasting</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span>Active <strong class="text-white">Spending Control</strong> rules</span>
+                        <span>Department budgeting & advanced insights</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span>Multi-entity support (Up to 5 entities)</span>
+                        <span><strong class="text-white">API access</strong> & gateway integrations</span>
                     </li>
                 </ul>
 
@@ -576,20 +619,20 @@
                 </a>
             </div>
 
-            <!-- TIER 3: Enterprise AI -->
+            <!-- TIER 4: Enterprise AI (sales-led) -->
             <div class="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 flex flex-col h-full relative overflow-hidden">
                 <div class="mb-6">
                     <h3 class="text-lg font-bold text-gray-900 tracking-tight">Enterprise AI</h3>
-                    <p class="text-[13px] text-gray-500 mt-2 h-10">Advanced AI forecasting and unlimited infrastructure limits.</p>
+                    <p class="text-[13px] text-gray-500 mt-2 h-10">Unlimited AI and processing with SSO, dedicated support, and custom limits.</p>
                 </div>
-                
+
                 <div class="mb-6 pb-6 border-b border-gray-100">
                     <div class="flex flex-col">
                         <div class="h-5 mb-1">
-                            <span class="slash-price text-gray-400 line-through text-sm font-mono font-medium transition-opacity duration-300">Rp 18.000.000</span>
+                            <span class="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">Custom Pricing</span>
                         </div>
                         <div class="flex items-baseline gap-1.5">
-                            <span class="active-price text-3xl font-bold text-gray-900 font-mono tracking-tight" data-monthly="Rp 18.000.000" data-annual="Rp 14.390.000">Rp 14.390.000</span>
+                            <span class="text-2xl font-bold text-gray-900 tabular-nums tracking-tight">Starting from Rp15.000.000</span>
                             <span class="text-[13px] font-medium text-gray-500">/ mo</span>
                         </div>
                     </div>
@@ -597,25 +640,25 @@
 
                 <ul class="space-y-4 mb-8 flex-grow text-[13px] text-gray-600">
                     <li class="flex items-start gap-3">
-                        <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span>Everything in Growth, plus:</span>
-                    </li>
-                    <li class="flex items-start gap-3">
                         <svg class="w-5 h-5 text-[#EA580C] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                        <span><strong class="text-gray-900">Financial Projections</strong> via AI Modeling</span>
+                        <span><strong class="text-gray-900">Unlimited AI usage</strong> & processing</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span>Unlimited entities & API connections</span>
+                        <span>SSO & WhatsApp AI Assistant</span>
                     </li>
                     <li class="flex items-start gap-3">
                         <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        <span>Dedicated Technical Success Manager</span>
+                        <span>Dedicated onboarding & priority support</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span>Custom integrations & limits</span>
                     </li>
                 </ul>
 
-                <a href="/checkout?plan=enterprise&billing=annually" data-checkout-plan="enterprise" class="block text-center w-full py-2.5 px-4 rounded-lg text-[13px] font-bold text-white bg-gray-900 hover:bg-gray-800 shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900">
-                    Choose Enterprise AI
+                <a href="/contact-sales" class="block text-center w-full py-2.5 px-4 rounded-lg text-[13px] font-bold text-white bg-gray-900 hover:bg-gray-800 shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900">
+                    Contact Sales
                 </a>
             </div>
 

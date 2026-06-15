@@ -785,31 +785,78 @@ def _should_use_trial_ai_quota(subscription: Dict[str, Any] | None) -> bool:
         "trialing", "awaiting_payment", "pending_verification", "payment_failed", "expired"
     }
 
-def _consume_trial_ai_quota(uid: str, token: str) -> Dict[str, Any] | None:
+# Per-plan monthly Fluxy AI chat limits. MUST stay in lockstep with
+# PLAN_AI_MONTHLY_LIMITS in netlify/functions/api.js and ai_chat_limit in
+# assets/js/billing-config.js. None = unlimited (enterprise).
+_PLAN_AI_MONTHLY_LIMITS = {"starter": 25, "basic": 150, "core": 150, "growth": 750, "enterprise": None}
+
+
+def _active_paid_plan_id(subscription: Dict[str, Any] | None) -> str | None:
+    if not subscription or not subscription.get("status"):
+        return None
+    if subscription.get("status") in {"active", "cancel_scheduled"} \
+            and subscription.get("plan_id") and subscription.get("plan_id") != "trial":
+        return subscription.get("plan_id")
+    return None
+
+
+def _consume_ai_quota(uid: str, token: str) -> Dict[str, Any] | None:
+    """Enforce the Fluxy AI chat quota before answering. Trial-scope users keep
+    the lifetime cap of 3 (doc ``ai_chat_trial``); active paid plans get a
+    per-month counter (``ai_chat_<YYYY-MM>``). Enterprise / unknown plans are
+    unlimited (returns None)."""
     try:
         subscription = _fetch_document(uid, token, "billing_subscription", "current")
     except Exception:
         subscription = None
-    if not _should_use_trial_ai_quota(subscription):
+
+    if _should_use_trial_ai_quota(subscription):
+        limit_count = 3
+        try:
+            existing = _fetch_document(uid, token, "usage_limits", "ai_chat_trial")
+        except Exception:
+            existing = None
+        used = max(0, int(existing.get("count", 0) if existing else 0))
+        if used >= limit_count:
+            return {"blocked": True, "used": used, "limit": limit_count, "scope": "trial"}
+        try:
+            _patch_document(uid, token, "usage_limits", "ai_chat_trial", {
+                "metric": "ai_chat_requests",
+                "scope": "trial",
+                "count": used + 1,
+                "limit": limit_count,
+            })
+            return {"blocked": False, "used": used + 1, "limit": limit_count, "scope": "trial"}
+        except Exception:
+            return {"blocked": True, "used": used, "limit": limit_count, "scope": "trial"}
+
+    plan_id = _active_paid_plan_id(subscription)
+    if not plan_id:
         return None
-    limit_count = 3
+    limit_count = _PLAN_AI_MONTHLY_LIMITS.get(plan_id)
+    if limit_count is None:
+        return None  # enterprise / unlimited
+
+    period = _today_jakarta().strftime("%Y-%m")
+    doc_id = f"ai_chat_{period}"
     try:
-        existing = _fetch_document(uid, token, "usage_limits", "ai_chat_trial")
+        existing = _fetch_document(uid, token, "usage_limits", doc_id)
     except Exception:
         existing = None
     used = max(0, int(existing.get("count", 0) if existing else 0))
     if used >= limit_count:
-        return {"blocked": True, "used": used, "limit": limit_count}
+        return {"blocked": True, "used": used, "limit": limit_count, "scope": "plan"}
     try:
-        _patch_document(uid, token, "usage_limits", "ai_chat_trial", {
+        _patch_document(uid, token, "usage_limits", doc_id, {
             "metric": "ai_chat_requests",
-            "scope": "trial",
+            "scope": "plan",
+            "period": period,
             "count": used + 1,
             "limit": limit_count,
         })
-        return {"blocked": False, "used": used + 1, "limit": limit_count}
+        return {"blocked": False, "used": used + 1, "limit": limit_count, "scope": "plan"}
     except Exception:
-        return {"blocked": True, "used": used, "limit": limit_count}
+        return {"blocked": True, "used": used, "limit": limit_count, "scope": "plan"}
 
 def _fetch_collection_safe(uid: str, token: str, collection_name: str, page_size: int = 1000) -> tuple[List[Dict[str, Any]], str | None]:
     try:
@@ -1201,17 +1248,22 @@ async def brain_chat(request: ChatRequest, _user=Depends(verify_firebase_token))
     chat_id = request.chat_id.strip()[:128] if isinstance(request.chat_id, str) and request.chat_id.strip() else None
     uid = _user.get("user_id") or _user.get("sub")
     token = _user.get("_id_token")
-    trial_quota = _consume_trial_ai_quota(uid, token) if uid and token else None
-    if trial_quota and trial_quota.get("blocked"):
+    ai_quota = _consume_ai_quota(uid, token) if uid and token else None
+    if ai_quota and ai_quota.get("blocked"):
+        is_trial = ai_quota.get("scope") == "trial"
         return JSONResponse(
             status_code=402,
             content={
                 "success": False,
                 "error": {
-                    "code": "trial_ai_limit_reached",
-                    "message": "Your trial includes 3 Fluxy AI chats. Activate your subscription to keep chatting.",
-                    "used": trial_quota.get("used"),
-                    "limit": trial_quota.get("limit"),
+                    "code": "trial_ai_limit_reached" if is_trial else "ai_limit_reached",
+                    "message": (
+                        "Your trial includes 3 Fluxy AI chats. Activate your subscription to keep chatting."
+                        if is_trial
+                        else f"You've reached your plan's monthly Fluxy AI limit of {ai_quota.get('limit')}. Upgrade your plan for a higher limit."
+                    ),
+                    "used": ai_quota.get("used"),
+                    "limit": ai_quota.get("limit"),
                 },
             },
         )

@@ -256,11 +256,12 @@ service cloud.firestore {
     }
 
     function isValidBillingPlan(planId) {
-      return planId in ['trial', 'core', 'growth', 'enterprise'];
+      return planId in ['trial', 'starter', 'core', 'growth', 'enterprise'];
     }
 
     function isValidBillingPlanName(planId, planName) {
       return (planId == 'trial' && planName == 'Trial')
+        || (planId == 'starter' && planName == 'Starter')
         || (planId == 'core' && planName == 'Core Ops')
         || (planId == 'growth' && planName == 'Growth Engine')
         || (planId == 'enterprise' && planName == 'Enterprise AI');
@@ -277,14 +278,18 @@ service cloud.firestore {
         : 0;
     }
 
+    // Self-serve plan subtotals. Mirrors `BILLING_PLANS` in assets/js/billing-config.js
+    // (monthly = `monthly`; annually = `annualMonthlyEquivalent` × 12). Enterprise AI
+    // is sales-led — it has NO self-serve amount, so no enterprise branch exists here
+    // and a self-serve enterprise payment request is rejected.
     function isValidBillingAmounts(data) {
       return (
-          (data.plan_id == 'core' && data.billing_frequency == 'monthly' && data.subtotal_amount == 3500000)
+          (data.plan_id == 'starter' && data.billing_frequency == 'monthly' && data.subtotal_amount == 1290000)
+          || (data.plan_id == 'starter' && data.billing_frequency == 'annually' && data.subtotal_amount == 11880000)
+          || (data.plan_id == 'core' && data.billing_frequency == 'monthly' && data.subtotal_amount == 3490000)
           || (data.plan_id == 'core' && data.billing_frequency == 'annually' && data.subtotal_amount == 33480000)
-          || (data.plan_id == 'growth' && data.billing_frequency == 'monthly' && data.subtotal_amount == 8500000)
-          || (data.plan_id == 'growth' && data.billing_frequency == 'annually' && data.subtotal_amount == 81480000)
-          || (data.plan_id == 'enterprise' && data.billing_frequency == 'monthly' && data.subtotal_amount == 18000000)
-          || (data.plan_id == 'enterprise' && data.billing_frequency == 'annually' && data.subtotal_amount == 172680000)
+          || (data.plan_id == 'growth' && data.billing_frequency == 'monthly' && data.subtotal_amount == 6990000)
+          || (data.plan_id == 'growth' && data.billing_frequency == 'annually' && data.subtotal_amount == 67080000)
         )
         // PPN applies to the voucher-discounted subtotal. Every plan subtotal is
         // a multiple of 10.000 and discounts are integer percents, so the
@@ -399,7 +404,7 @@ service cloud.firestore {
           'voucher_discount_percent',
           'voucher_discount_amount'
         ])
-        && data.plan_id in ['core', 'growth', 'enterprise']
+        && data.plan_id in ['starter', 'core', 'growth', 'enterprise']
         && isValidBillingPlanName(data.plan_id, data.plan_name)
         && data.billing_frequency in ['monthly', 'annually']
         && data.subtotal_amount is number
@@ -429,7 +434,7 @@ service cloud.firestore {
         && data.created_at == request.time
         && data.updated_at == request.time
         // Prior-subscription snapshot (used to safely restore state on cancel).
-        && (data.prev_plan_id == null || data.prev_plan_id in ['trial', 'core', 'growth', 'enterprise'])
+        && (data.prev_plan_id == null || data.prev_plan_id in ['trial', 'starter', 'core', 'growth', 'enterprise'])
         && (data.prev_plan_name == null || (data.prev_plan_name is string && data.prev_plan_name.size() <= 60))
         && (data.prev_status == null || data.prev_status in ['trialing', 'awaiting_payment', 'pending_verification', 'active', 'past_due', 'expired', 'payment_failed'])
         && (data.prev_billing_frequency == null || data.prev_billing_frequency in ['monthly', 'annually']);
@@ -558,7 +563,7 @@ service cloud.firestore {
 
     function isCheckoutSubscriptionWrite(userId, data) {
       return data.status == 'pending_verification'
-        && data.plan_id in ['core', 'growth', 'enterprise']
+        && data.plan_id in ['starter', 'core', 'growth', 'enterprise']
         && data.billing_frequency in ['monthly', 'annually']
         && data.current_payment_request_id is string
         && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(data.current_payment_request_id)).data.plan_id == data.plan_id
@@ -643,7 +648,7 @@ service cloud.firestore {
     // awaiting_payment request (cross-checked in the same commit).
     function isCheckoutAwaitingPaymentWrite(userId, data) {
       return data.status == 'awaiting_payment'
-        && data.plan_id in ['core', 'growth', 'enterprise']
+        && data.plan_id in ['starter', 'core', 'growth', 'enterprise']
         && data.billing_frequency in ['monthly', 'annually']
         && data.current_payment_request_id is string
         && getAfter(/databases/$(database)/documents/users/$(userId)/billing_payment_requests/$(data.current_payment_request_id)).data.plan_id == data.plan_id
@@ -687,7 +692,7 @@ service cloud.firestore {
       return (prev.status == 'awaiting_payment' || prev.status == 'pending_verification')
         && prev.current_payment_request_id is string
         && data.status == 'active'
-        && data.plan_id in ['core', 'growth', 'enterprise']
+        && data.plan_id in ['starter', 'core', 'growth', 'enterprise']
         && data.billing_frequency in ['monthly', 'annually']
         && data.current_payment_request_id == null
         && data.trial_started_at == prev.trial_started_at
@@ -987,6 +992,56 @@ service cloud.firestore {
         && isValidTrialAIUsage(data)
         && data.metric == existingData.metric
         && data.scope == existingData.scope
+        && data.limit == existingData.limit
+        && data.count == existingData.count + 1;
+    }
+
+    // Per-plan monthly Fluxy AI counter (`ai_chat_<YYYY-MM>`). The limit is
+    // re-derived from the user's ACTIVE subscription plan via get(), so a client
+    // cannot inflate it. Mirrors PLAN_AI_MONTHLY_LIMITS in netlify/functions/api.js
+    // and ai_chat_limit in assets/js/billing-config.js. Enterprise (unlimited)
+    // writes no counter, so it has no entry here.
+    function planMonthlyAiLimit(planId) {
+      return planId == 'starter' ? 25
+        : (planId == 'core' || planId == 'basic') ? 150
+        : planId == 'growth' ? 750
+        : -1;
+    }
+
+    function activePlanAiLimit(userId) {
+      let path = /databases/$(database)/documents/users/$(userId)/billing_subscription/current;
+      let sub = exists(path) ? get(path).data : null;
+      return (sub != null && (sub.status == 'active' || sub.status == 'cancel_scheduled'))
+        ? planMonthlyAiLimit(sub.plan_id)
+        : -1;
+    }
+
+    function isValidPlanAIUsageShape(userId, data) {
+      let limit = activePlanAiLimit(userId);
+      return data.keys().hasAll(['metric', 'scope', 'period', 'count', 'limit'])
+        && data.keys().hasOnly(['metric', 'scope', 'period', 'count', 'limit'])
+        && data.metric == 'ai_chat_requests'
+        && data.scope == 'plan'
+        && data.period is string
+        && limit > 0
+        && data.limit == limit
+        && data.count is number
+        && data.count >= 1
+        && data.count <= limit;
+    }
+
+    function isValidPlanAIUsageCreate(limitId, userId, data) {
+      return limitId.matches('ai_chat_[0-9]{4}-[0-9]{2}')
+        && isValidPlanAIUsageShape(userId, data)
+        && data.count == 1;
+    }
+
+    function isValidPlanAIUsageUpdate(limitId, userId, data, existingData) {
+      return limitId.matches('ai_chat_[0-9]{4}-[0-9]{2}')
+        && isValidPlanAIUsageShape(userId, data)
+        && data.metric == existingData.metric
+        && data.scope == existingData.scope
+        && data.period == existingData.period
         && data.limit == existingData.limit
         && data.count == existingData.count + 1;
     }
@@ -2285,9 +2340,11 @@ service cloud.firestore {
       match /usage_limits/{limitId} {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId)
-          && isValidTrialAIUsageCreate(limitId, request.resource.data);
+          && (isValidTrialAIUsageCreate(limitId, request.resource.data)
+            || isValidPlanAIUsageCreate(limitId, userId, request.resource.data));
         allow update: if isOwner(userId)
-          && isValidTrialAIUsageUpdate(limitId, request.resource.data, resource.data);
+          && (isValidTrialAIUsageUpdate(limitId, request.resource.data, resource.data)
+            || isValidPlanAIUsageUpdate(limitId, userId, request.resource.data, resource.data));
         allow delete: if false;
       }
 
@@ -2504,7 +2561,7 @@ service cloud.firestore {
         && (data.allowed_plan_ids == null
           || (data.allowed_plan_ids is list
             && data.allowed_plan_ids.size() >= 1
-            && data.allowed_plan_ids.hasOnly(['core', 'growth', 'enterprise'])))
+            && data.allowed_plan_ids.hasOnly(['starter', 'core', 'growth', 'enterprise'])))
         && (data.allowed_billing_frequencies == null
           || (data.allowed_billing_frequencies is list
             && data.allowed_billing_frequencies.size() >= 1
@@ -2608,7 +2665,7 @@ service cloud.firestore {
         && data.code == data.voucher_id
         && data.user_id == request.auth.uid
         && data.checkout_session_id == redemptionId
-        && data.plan_id in ['core', 'growth', 'enterprise']
+        && data.plan_id in ['starter', 'core', 'growth', 'enterprise']
         && data.billing_frequency in ['monthly', 'annually']
         && data.original_amount is number
         && data.original_amount > 0

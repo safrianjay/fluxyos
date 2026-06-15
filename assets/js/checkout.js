@@ -1,7 +1,14 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import DataService from "./db-service.js";
-import { BILLING_PLANS, calculateBilling, formatIDR, getCheckoutSelection } from "./billing-config.js";
+import { BILLING_PLANS, calculateBilling, formatIDR, getCheckoutSelection, isSalesLedPlan } from "./billing-config.js";
+
+// Sales-led plans (Enterprise AI) have no self-serve checkout — bounce to the
+// Contact Sales flow if someone deep-links /checkout?plan=enterprise.
+function annualSavingsPercent(plan) {
+    if (!plan || typeof plan.monthly !== 'number' || !plan.annualMonthlyEquivalent) return 0;
+    return Math.round((1 - plan.annualMonthlyEquivalent / plan.monthly) * 100);
+}
 
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -17,6 +24,9 @@ const app = getApps().length === 0 ? initializeApp(FIREBASE_CONFIG) : getApps()[
 const auth = getAuth(app);
 const data = new DataService(app);
 const initial = getCheckoutSelection(window.location.search);
+if (isSalesLedPlan(initial.planId)) {
+    window.location.replace('/contact-sales');
+}
 let selectedPlan = initial.planId;
 let selectedBilling = initial.billingFrequency;
 let selectedMethod = 'qris';
@@ -54,7 +64,7 @@ function updateUrl() {
 }
 
 function renderPlanOptions() {
-    $('plan-options').innerHTML = Object.values(BILLING_PLANS).map((plan) => `
+    $('plan-options').innerHTML = Object.values(BILLING_PLANS).filter((plan) => !plan.salesLed).map((plan) => `
         <button class="plan-option${plan.id === selectedPlan ? ' active' : ''}" type="button" data-plan="${plan.id}">
             <div class="plan-option-header">
                 <div>
@@ -119,7 +129,7 @@ function updateCheckout() {
     $('summary-copy').textContent = `You will be billed ${selectedBilling === 'annually' ? 'annually' : 'monthly'} for FluxyOS ${plan.name}. Estimated PPN is shown before payment.`;
     $('summary-benefits').innerHTML = plan.benefits.map((benefit) => `<li><span class="summary-tick">&#10003;</span><span>${escapeHtml(benefit)}</span></li>`).join('');
     $('subtotal').textContent = formatIDR(calculation.subtotalAmount);
-    $('discount').textContent = selectedBilling === 'annually' ? 'Save 20%' : 'Not applied';
+    $('discount').textContent = selectedBilling === 'annually' ? `Save ${annualSavingsPercent(plan)}%` : 'Not applied';
     $('tax').textContent = formatIDR(calculation.estimatedTaxAmount);
     $('total-due').textContent = formatIDR(calculation.totalAmount);
     $('checkout-payable-total').textContent = formatIDR(calculation.totalAmount);

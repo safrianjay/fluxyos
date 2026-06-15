@@ -1005,6 +1005,23 @@ billing methods in `db-service.js`, or canonical billing Firestore rules.
   import are blocked with the canonical expired-trial dialog (no `alert`/`confirm`).
 - [ ] Existing records remain readable (not deleted/hidden).
 
+**Pricing & plans (post-migration)**
+- [ ] Pricing page shows 4 cards: Starter (Rp1.290.000/Rp990.000), Core Ops
+  (Rp3.490.000/Rp2.790.000), Growth Engine (Rp6.990.000/Rp5.590.000), and
+  Enterprise AI as "Custom Pricing — Starting from Rp15.000.000/month".
+- [ ] Monthly/annual toggle flips Starter/Core/Growth prices + slash prices;
+  Enterprise card is unaffected (no toggle data) and its CTA is "Contact Sales" →
+  `/contact-sales`.
+- [ ] `/contact-sales` loads with header + footer, the Netlify lead form validates,
+  and submitting shows the inline success state. Valid JSON-LD; in `sitemap.xml`.
+- [ ] `/checkout?plan=enterprise` redirects to `/contact-sales`; Enterprise is not a
+  selectable checkout option.
+- [ ] No legacy plan amounts (the pre-migration Core/Growth/Enterprise monthly
+  prices) appear anywhere in UI, code, rules, emails, or docs.
+- [ ] Plan limits: Starter exceeding 25 AI chats / 25 documents in a month is blocked
+  with upgrade copy; storage cap (2 GB) enforced. Settings → Billing usage bars show
+  the per-plan AI and document limits.
+
 **Checkout and payment status**
 - [ ] `/checkout` logged out redirects to `/login`; invalid query values fall back to
   Growth Engine annually.

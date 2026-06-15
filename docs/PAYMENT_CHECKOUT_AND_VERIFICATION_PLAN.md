@@ -39,13 +39,28 @@ Packages:
 
 | Plan | Monthly | Annual monthly equivalent |
 |------|--------:|--------------------------:|
-| Core Ops | Rp 3.500.000 | Rp 2.790.000 |
-| Growth Engine | Rp 8.500.000 | Rp 6.790.000 |
-| Enterprise AI | Rp 18.000.000 | Rp 14.390.000 |
+| Starter | Rp1.290.000 | Rp990.000 |
+| Core Ops | Rp3.490.000 | Rp2.790.000 |
+| Growth Engine | Rp6.990.000 | Rp5.590.000 |
+| Enterprise AI | Sales-led — "Starting from Rp15.000.000/month" | — |
 
 Annual subtotal is `annualMonthlyEquivalent * 12`. Estimated PPN is
 `Math.round(subtotal * 0.11)`. Amounts are stored as raw numbers with
 `currency: "IDR"`.
+
+**Enterprise AI is sales-led** (`salesLed: true` in `BILLING_PLANS`): it has no
+self-serve checkout amount and is provisioned via the `/contact-sales` flow, so
+it is intentionally absent from `isValidBillingAmounts` and from the checkout
+plan options. `calculateBilling('enterprise', …)` returns null amounts.
+
+**Per-plan limits (tunable constants in `assets/js/billing-config.js`):** seats
+1/5/10/50, storage 2/5/10/50 GB, monthly AI chats 25/150/750/unlimited, and
+monthly document processing 25/150/750/unlimited for Starter/Core/Growth/
+Enterprise. Trial keeps its lifetime cap of 3 AI chats. The brain endpoint
+(`netlify/functions/api.js` `consumeAIQuotaIfNeeded`) enforces the AI quota
+server-side via `usage_limits/ai_chat_<YYYY-MM>`; `firestore.rules`
+(`planMonthlyAiLimit`) is the plan-aware backstop. Document processing is a
+client preflight (`DataService.assertCanProcessDocument`).
 
 Selectable methods are `qris`, `va`, `card`, and `invoice`. They create manual
 pending requests only. No PAN, CVC, OTP, bank-account number, provider secret,

@@ -435,26 +435,66 @@ function shouldUseTrialAIQuota(subscription) {
         || ['trialing', 'awaiting_payment', 'pending_verification', 'payment_failed', 'expired'].includes(subscription.status);
 }
 
-async function consumeTrialAIQuotaIfNeeded(uid, token) {
-    const subscription = await fetchUserDocument(uid, token, 'billing_subscription', 'current').catch(() => null);
-    if (!shouldUseTrialAIQuota(subscription)) return null;
-    const limit = 3;
-    const existing = await fetchUserDocument(uid, token, 'usage_limits', 'ai_chat_trial').catch(() => null);
-    const used = Math.max(0, Number(existing?.count) || 0);
-    if (used >= limit) {
-        return { blocked: true, used, limit };
+// Per-plan monthly Fluxy AI chat limits. MUST stay in lockstep with
+// `PLAN_LIMITS[*].ai_chat_limit` in assets/js/billing-config.js and the
+// `planMonthlyAiLimit` map in firestore.rules. `null` = unlimited (enterprise).
+const PLAN_AI_MONTHLY_LIMITS = { starter: 25, basic: 150, core: 150, growth: 750, enterprise: null };
+
+function monthKeyJakarta() {
+    const date = todayJakarta();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function activePaidPlanId(subscription) {
+    if (!subscription || !subscription.status) return null;
+    if ((subscription.status === 'active' || subscription.status === 'cancel_scheduled')
+        && subscription.plan_id && subscription.plan_id !== 'trial') {
+        return subscription.plan_id;
     }
+    return null;
+}
+
+// Enforces the Fluxy AI chat quota before answering. Trial-scope users keep the
+// lifetime cap of 3 (doc `ai_chat_trial`); active paid plans get a per-month
+// counter (`ai_chat_<YYYY-MM>`) sized by PLAN_AI_MONTHLY_LIMITS. Enterprise
+// (null limit) and unknown plans are unlimited (returns null = no enforcement).
+async function consumeAIQuotaIfNeeded(uid, token) {
+    const subscription = await fetchUserDocument(uid, token, 'billing_subscription', 'current').catch(() => null);
+
+    if (shouldUseTrialAIQuota(subscription)) {
+        const limit = 3;
+        const existing = await fetchUserDocument(uid, token, 'usage_limits', 'ai_chat_trial').catch(() => null);
+        const used = Math.max(0, Number(existing?.count) || 0);
+        if (used >= limit) return { blocked: true, used, limit, scope: 'trial' };
+        try {
+            await patchUserDocument(uid, token, 'usage_limits', 'ai_chat_trial', {
+                metric: 'ai_chat_requests', scope: 'trial', count: used + 1, limit,
+            });
+            return { blocked: false, used: used + 1, limit, scope: 'trial' };
+        } catch (error) {
+            console.error('[brain/chat] trial AI quota write failed:', error?.message || error);
+            return { blocked: true, used, limit, scope: 'trial' };
+        }
+    }
+
+    const planId = activePaidPlanId(subscription);
+    if (!planId) return null;
+    const limit = PLAN_AI_MONTHLY_LIMITS[planId];
+    if (limit == null) return null; // enterprise / unlimited
+
+    const period = monthKeyJakarta();
+    const docId = `ai_chat_${period}`;
+    const existing = await fetchUserDocument(uid, token, 'usage_limits', docId).catch(() => null);
+    const used = Math.max(0, Number(existing?.count) || 0);
+    if (used >= limit) return { blocked: true, used, limit, scope: 'plan' };
     try {
-        await patchUserDocument(uid, token, 'usage_limits', 'ai_chat_trial', {
-            metric: 'ai_chat_requests',
-            scope: 'trial',
-            count: used + 1,
-            limit,
+        await patchUserDocument(uid, token, 'usage_limits', docId, {
+            metric: 'ai_chat_requests', scope: 'plan', period, count: used + 1, limit,
         });
-        return { blocked: false, used: used + 1, limit };
+        return { blocked: false, used: used + 1, limit, scope: 'plan' };
     } catch (error) {
-        console.error('[brain/chat] trial AI quota write failed:', error?.message || error);
-        return { blocked: true, used, limit };
+        console.error('[brain/chat] plan AI quota write failed:', error?.message || error);
+        return { blocked: true, used, limit, scope: 'plan' };
     }
 }
 
@@ -2160,15 +2200,18 @@ exports.handler = async (event) => {
         if (parsed.error) return jsonResponse(headers, 400, { success: false, error: { code: 'invalid_json', message: parsed.error } });
         const uid = getUid(user);
         if (!uid) return jsonResponse(headers, 401, { success: false, error: { code: 'unauthenticated', message: 'Invalid user session' } });
-        const trialQuota = await consumeTrialAIQuotaIfNeeded(uid, token);
-        if (trialQuota?.blocked) {
+        const aiQuota = await consumeAIQuotaIfNeeded(uid, token);
+        if (aiQuota?.blocked) {
+            const isTrial = aiQuota.scope === 'trial';
             return jsonResponse(headers, 402, {
                 success: false,
                 error: {
-                    code: 'trial_ai_limit_reached',
-                    message: 'Your trial includes 3 Fluxy AI chats. Activate your subscription to keep chatting.',
-                    used: trialQuota.used,
-                    limit: trialQuota.limit,
+                    code: isTrial ? 'trial_ai_limit_reached' : 'ai_limit_reached',
+                    message: isTrial
+                        ? 'Your trial includes 3 Fluxy AI chats. Activate your subscription to keep chatting.'
+                        : `You've reached your plan's monthly Fluxy AI limit of ${aiQuota.limit}. Upgrade your plan for a higher limit.`,
+                    used: aiQuota.used,
+                    limit: aiQuota.limit,
                 },
             });
         }
