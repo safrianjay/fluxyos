@@ -24,7 +24,10 @@ Object.defineProperty(admin, 'auth', { configurable: true, value: () => ({ getUs
 
 const { generateWeeklyDigest, shouldDeliverNow, runWeeklyDigestSweep, getEffectivePrefs } = require('../netlify/functions/lib/digest-core');
 
+const finance = require('../netlify/functions/api').digest;
 const NOW = new Date();
+// A timestamp guaranteed inside the digest period (last completed week).
+const IN_PERIOD = finance.startOfWeek(NOW).getTime() - 3 * 24 * 60 * 60 * 1000;
 const ts = (ms) => ({ seconds: Math.floor(ms / 1000) });
 const D = 24 * 60 * 60 * 1000;
 
@@ -73,7 +76,7 @@ const ALL = { financial_health: true, cash_position: true, bills: true, budgets:
 
 async function main() {
     // 1) Rich week → full digest (dry run).
-    const db1 = makeDb({ colls: financeSeed('uX', NOW.getTime()) });
+    const db1 = makeDb({ colls: financeSeed('uX', IN_PERIOD) });
     const r1 = await generateWeeklyDigest(db1, 'uX', { metrics: ALL, name: 'Andi', email: 'x@example.com' }, { now: NOW, logger: silent, dryRun: true });
     const html1 = r1.prebuilt.html;
     check('dry run produced a digest', !!r1.prebuilt && /weekly digest/i.test(r1.prebuilt.subject));
@@ -101,7 +104,7 @@ async function main() {
     check('zero-records account skipped', r4.skipped === 'no_records');
 
     // 5) Real send + idempotency + audit.
-    const db5 = makeDb({ colls: financeSeed('uS', NOW.getTime()) });
+    const db5 = makeDb({ colls: financeSeed('uS', IN_PERIOD) });
     const s1 = await generateWeeklyDigest(db5, 'uS', { metrics: ALL, email: 's@example.com' }, { now: NOW, logger: silent });
     check('send → sent', s1.sent === true);
     check('mail_log keyed by ISO week', [...db5._docs.keys()].some((k) => /users\/uS\/mail_log\/weekly_digest_\d{4}_W\d{2}/.test(k)));
@@ -124,7 +127,7 @@ async function main() {
     const dbSweep = makeDb({
         colls: {
             internal_users: [{ id: 'uS2', email: 's2@example.com', display_name: 'Sweep User' }],
-            ...financeSeed('uS2', NOW.getTime()),
+            ...financeSeed('uS2', IN_PERIOD),
         },
         docs: { 'users/uS2/settings/email_preferences': { weekly_digest_enabled: true, delivery_day: wd, delivery_hour: hr, timezone: tz, metrics: ALL } },
     });

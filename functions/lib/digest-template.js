@@ -106,7 +106,7 @@ const L = {
     en: {
         heading: 'Your weekly financial digest',
         intro: (name) => (name ? `Hi ${escapeHtml(name)},` : 'Hi there,') + ' here is how your business performed this week.',
-        summary: 'Executive summary', vsLast: 'vs last week',
+        summary: 'Executive summary', vsLast: 'vs previous week',
         revenue: 'Revenue', opex: 'Operating expenses', margin: 'Gross margin', profitability: 'Profitability', spend: 'Spend',
         cash: 'Cash', payables: 'Upcoming payables', receivables: 'pending receivables',
         bills: 'Bills', unpaidBills: 'Unpaid bills', billsSub: (n, overdue, due) => `${n} unpaid · ${overdue} overdue · ${due} due soon`,
@@ -121,7 +121,7 @@ const L = {
     id: {
         heading: 'Ringkasan keuangan mingguan Anda',
         intro: (name) => (name ? `Halo ${escapeHtml(name)},` : 'Halo,') + ' berikut performa bisnis Anda minggu ini.',
-        summary: 'Ringkasan eksekutif', vsLast: 'vs minggu lalu',
+        summary: 'Ringkasan eksekutif', vsLast: 'vs minggu sebelumnya',
         revenue: 'Pendapatan', opex: 'Beban operasional', margin: 'Margin kotor', profitability: 'Profitabilitas', spend: 'Pengeluaran',
         cash: 'Kas', payables: 'Utang akan datang', receivables: 'piutang tertunda',
         bills: 'Tagihan', unpaidBills: 'Tagihan belum dibayar', billsSub: (n, overdue, due) => `${n} belum dibayar · ${overdue} terlambat · ${due} segera jatuh tempo`,

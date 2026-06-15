@@ -111,7 +111,11 @@ async function generateWeeklyDigest(db, uid, prefs = {}, { now = new Date(), log
         return { skipped: 'no_records' };
     }
 
-    const period = finance.buildPeriod('rolling', 'this week', finance.startOfWeek(now), finance.endOfWeek(now));
+    // Recap the last COMPLETED week — the 7 days before the current week starts
+    // (e.g. on Mon Jun 15 → Jun 8–14), NOT the in-progress/future current week.
+    // Comparison = the week before that.
+    const thisWeekStart = finance.startOfWeek(now);
+    const period = finance.buildPeriod('rolling', 'last week', finance.addDays(thisWeekStart, -7), finance.addDays(thisWeekStart, -1));
     const comparisonPeriod = finance.previousEquivalentPeriod(period);
     const plan = finance.buildQuestionPlan({
         intent: 'period_performance', period, comparison_period: comparisonPeriod, filters: {},
