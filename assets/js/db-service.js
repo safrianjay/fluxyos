@@ -2892,6 +2892,17 @@ class DataService {
         return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     }
 
+    // Console workflow status for a lead. firestore.rules restricts the update to
+    // status + status_updated_at only (core lead fields stay immutable).
+    async updateSalesLeadStatus(leadId, status) {
+        if (!['new', 'contacted', 'closed', 'spam'].includes(status)) throw new Error('invalid-status');
+        await updateDoc(doc(this.db, `sales_leads/${leadId}`), {
+            status,
+            status_updated_at: serverTimestamp()
+        });
+        return { id: leadId, status };
+    }
+
     subscribeInternalUser(userId, onChange, onError) {
         if (!userId) return () => {};
         return onSnapshot(this._internalUserDoc(userId), (snap) => {

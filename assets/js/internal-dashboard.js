@@ -559,10 +559,13 @@ function renderLeadsTab() {
         return;
     }
     stateEl.classList.add('hidden');
+    const LEAD_STATUSES = [['new', 'New'], ['contacted', 'Contacted'], ['closed', 'Closed'], ['spam', 'Spam']];
     // Lead fields are public, anonymous input — always escapeHtml before render.
     tbody.innerHTML = state.leads.map(l => {
         const email = escapeHtml(l.email || '');
-        const isNew = (l.status || 'new') === 'new';
+        const status = l.status || 'new';
+        const isNew = status === 'new';
+        const options = LEAD_STATUSES.map(([v, label]) => `<option value="${v}"${v === status ? ' selected' : ''}>${label}</option>`).join('');
         return `<tr class="hover:bg-gray-50/60 align-top">
             <td class="px-5 py-3.5 whitespace-nowrap text-[13px] text-gray-600">${isNew ? '<span class="inline-block w-1.5 h-1.5 rounded-full bg-[#EA580C] mr-1.5 align-middle"></span>' : ''}${escapeHtml(fmtDateTime(l.created_at))}</td>
             <td class="px-5 py-3.5 text-[14px] font-medium text-gray-900">${escapeHtml(l.name || '—')}</td>
@@ -570,8 +573,27 @@ function renderLeadsTab() {
             <td class="px-5 py-3.5 text-[13px] text-gray-700">${escapeHtml(l.company || '—')}</td>
             <td class="px-5 py-3.5 text-[13px] text-gray-700 whitespace-nowrap">${escapeHtml(l.team_size || '—')}</td>
             <td class="px-5 py-3.5 text-[13px] text-gray-600 max-w-md"><div style="white-space:pre-wrap;word-break:break-word">${escapeHtml(l.message || '—')}</div></td>
+            <td class="px-5 py-3.5"><select data-lead-status="${escapeHtml(l.id)}" class="text-[13px] border border-gray-300 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-[#EA580C]/40">${options}</select></td>
         </tr>`;
     }).join('');
+}
+
+// Delegated status change for a lead (rules allow status-only updates).
+async function onLeadStatusChange(sel) {
+    const id = sel.dataset.leadStatus;
+    const status = sel.value;
+    sel.disabled = true;
+    try {
+        await ds.updateSalesLeadStatus(id, status);
+        const lead = state.leads.find(l => l.id === id);
+        if (lead) lead.status = status;
+        renderLeadsTab();
+        renderTabCounts();
+        window.showToast?.('Lead status updated', 'success');
+    } catch (_) {
+        sel.disabled = false;
+        window.showToast?.('Could not update lead status', 'error');
+    }
 }
 
 // =============================================================================
@@ -1315,6 +1337,12 @@ function initConsoleEvents() {
 
     // Vouchers
     $('voucher-create-btn').addEventListener('click', openVoucherCreateDrawer);
+
+    // Sales Leads: delegated status change.
+    document.addEventListener('change', (e) => {
+        const sel = e.target.closest('[data-lead-status]');
+        if (sel) onLeadStatusChange(sel);
+    });
 
     // Drawer
     $('internal-drawer-close').addEventListener('click', closeDrawer);

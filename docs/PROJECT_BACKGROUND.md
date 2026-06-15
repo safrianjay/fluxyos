@@ -647,11 +647,17 @@ sales-led). The page POSTs to the `submit-contact-sales` Netlify function, which
 honeypot-filters + validates and writes the lead via the **Admin SDK** (bypasses
 rules). `firestore.rules` therefore allows open `read` (the credential-gated
 console reads it unauthenticated, same MVP posture as `internal_users`) and
-denies **all** client writes — so the public collection can't be spammed
-directly. Fields: `name`, `email`, `company`, `team_size`, `message`, `status`
-(`new`), `source` (`contact-sales`), `plan_interest` (`enterprise`),
-`user_agent`, `created_at`. Surfaced read-only in the console's **Sales Leads**
-tab via `DataService.getSalesLeads({ limitCount })`.
+denies client `create`/`delete`. The credential-gated console may `update`
+**only** the workflow `status` (rule restricts the diff to `status` +
+`status_updated_at`, `status in [new, contacted, closed, spam]`), so core lead
+fields stay immutable and the collection can't be spammed or wiped. Fields:
+`name`, `email`, `company`, `team_size`, `message`, `status` (`new`→`contacted`/
+`closed`/`spam`), `source` (`contact-sales`), `plan_interest` (`enterprise`),
+`user_agent`, `created_at`, `status_updated_at`. Surfaced in the console's
+**Sales Leads** tab via `DataService.getSalesLeads({ limitCount })` +
+`updateSalesLeadStatus(leadId, status)`. The function also fires best-effort
+new-lead alerts: Resend email to `SALES_ALERT_EMAIL` and/or a Slack message to
+`SLACK_WEBHOOK_URL` (each gated by its own env; missing config = silent skip).
 
 **Trial mirror (added):** `internal_users/{uid}` also carries `access_status`,
 `trial_started_at`, `trial_ends_at`, `trial_days_remaining`, and

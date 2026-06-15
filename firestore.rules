@@ -2491,7 +2491,13 @@ service cloud.firestore {
     // tab), same MVP_INTERNAL_ONLY posture as internal_users.
     match /sales_leads/{leadId} {
       allow read: if true;
-      allow create, update, delete: if false;
+      // Lead content is written ONLY by the Admin SDK (function) — create/delete
+      // stay denied so the public collection can't be spammed or wiped. The
+      // credential-gated console may flip ONLY the workflow status on an
+      // existing lead; all core fields are immutable.
+      allow create, delete: if false;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'status_updated_at'])
+        && request.resource.data.status in ['new', 'contacted', 'closed', 'spam'];
     }
 
     // Weekly digest broadcast jobs (internal-console "Send digest now"). The

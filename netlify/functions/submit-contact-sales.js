@@ -8,6 +8,51 @@
 // client writes to sales_leads, which keeps the public collection spam-proof.
 const admin = require('firebase-admin');
 const { initAdmin } = require('./lib/notify-core');
+const { Resend } = require('resend');
+
+const APP_BASE_URL = process.env.APP_BASE_URL || 'https://fluxyos.com';
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// Best-effort new-lead alerts. Each channel is independent and gated by its own
+// env vars; a missing config is a silent skip and a send failure never affects
+// the lead write or the HTTP response.
+async function notifyNewLead(lead) {
+    const lines = [
+        `Name: ${lead.name}`,
+        `Email: ${lead.email}`,
+        `Company: ${lead.company}`,
+        `Team size: ${lead.team_size || '—'}`,
+        `Message: ${lead.message || '—'}`,
+    ];
+
+    // 1) Email via Resend (to SALES_ALERT_EMAIL).
+    const alertEmail = process.env.SALES_ALERT_EMAIL;
+    if (alertEmail && process.env.RESEND_API_KEY) {
+        try {
+            const resend = new Resend(process.env.RESEND_API_KEY);
+            await resend.emails.send({
+                from: process.env.EMAIL_FROM || 'FluxyOS <notifications@fluxyos.com>',
+                to: alertEmail,
+                reply_to: lead.email,
+                subject: `New Enterprise lead — ${lead.company}`,
+                html: `<h2 style="margin:0 0 12px">New Contact Sales lead</h2>
+                    <p style="margin:0 0 16px;color:#374151">${lines.map((l) => escapeHtml(l)).join('<br>')}</p>
+                    <a href="${APP_BASE_URL}/internal" style="display:inline-block;background:#0B0F19;color:#fff;text-decoration:none;padding:10px 16px;border-radius:8px">Open Sales Leads</a>`,
+            });
+        } catch (e) { console.error('[contact-sales] email alert failed:', e && e.message ? e.message : e); }
+    }
+
+    // 2) Slack (to SLACK_WEBHOOK_URL).
+    if (process.env.SLACK_WEBHOOK_URL) {
+        try {
+            await fetch(process.env.SLACK_WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: `:briefcase: *New Enterprise lead*\n${lines.join('\n')}\n<${APP_BASE_URL}/internal|Open Sales Leads>` }),
+            });
+        } catch (e) { console.error('[contact-sales] slack alert failed:', e && e.message ? e.message : e); }
+    }
+}
 
 const ALLOWED = [
     'https://fluxyos.com', 'https://www.fluxyos.com',
@@ -64,6 +109,8 @@ exports.handler = async (event) => {
             user_agent: str(event.headers['user-agent'] || event.headers['User-Agent'], 400) || null,
             created_at: admin.firestore.FieldValue.serverTimestamp(),
         });
+        // Fire alerts after the lead is safely stored (best-effort, never throws).
+        await notifyNewLead({ name, email, company, team_size: teamSize, message }).catch(() => {});
         return { statusCode: 200, headers: cors, body: JSON.stringify({ ok: true, id: ref.id }) };
     } catch (err) {
         console.error('[contact-sales] lead write failed:', err && err.message ? err.message : err);
