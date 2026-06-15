@@ -20,7 +20,9 @@ async function notifyNewLead(lead) {
     const lines = [
         `Name: ${lead.name}`,
         `Email: ${lead.email}`,
+        `WhatsApp: ${lead.whatsapp || '—'}`,
         `Company: ${lead.company}`,
+        `Business type: ${lead.business_type || '—'}`,
         `Team size: ${lead.team_size || '—'}`,
         `Message: ${lead.message || '—'}`,
     ];
@@ -87,11 +89,14 @@ exports.handler = async (event) => {
 
     const name = str(data.name, 120);
     const email = str(data.email, 200);
+    const whatsapp = str(data.whatsapp, 40);
     const company = str(data.company, 160);
+    const businessType = str(data.business_type, 60);
     const teamSize = TEAM_SIZES.includes(data.team_size) ? data.team_size : '';
     const message = str(data.message, 2000);
 
-    if (!name || !email || !isEmail(email) || !company) {
+    const whatsappDigits = (whatsapp.match(/\d/g) || []).length;
+    if (!name || !email || !isEmail(email) || !whatsapp || whatsappDigits < 6 || !company || !businessType) {
         return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'invalid_input' }) };
     }
 
@@ -100,7 +105,9 @@ exports.handler = async (event) => {
         const ref = await db.collection('sales_leads').add({
             name,
             email,
+            whatsapp,
             company,
+            business_type: businessType,
             team_size: teamSize || null,
             message: message || null,
             status: 'new',
@@ -110,7 +117,7 @@ exports.handler = async (event) => {
             created_at: admin.firestore.FieldValue.serverTimestamp(),
         });
         // Fire alerts after the lead is safely stored (best-effort, never throws).
-        await notifyNewLead({ name, email, company, team_size: teamSize, message }).catch(() => {});
+        await notifyNewLead({ name, email, whatsapp, company, business_type: businessType, team_size: teamSize, message }).catch(() => {});
         return { statusCode: 200, headers: cors, body: JSON.stringify({ ok: true, id: ref.id }) };
     } catch (err) {
         console.error('[contact-sales] lead write failed:', err && err.message ? err.message : err);

@@ -563,6 +563,8 @@ function renderLeadsTab() {
     // Lead fields are public, anonymous input — always escapeHtml before render.
     tbody.innerHTML = state.leads.map(l => {
         const email = escapeHtml(l.email || '');
+        const wa = escapeHtml(l.whatsapp || '');
+        const waDigits = (l.whatsapp || '').replace(/[^0-9]/g, '');
         const status = l.status || 'new';
         const isNew = status === 'new';
         const options = LEAD_STATUSES.map(([v, label]) => `<option value="${v}"${v === status ? ' selected' : ''}>${label}</option>`).join('');
@@ -570,7 +572,9 @@ function renderLeadsTab() {
             <td class="px-5 py-3.5 whitespace-nowrap text-[13px] text-gray-600">${isNew ? '<span class="inline-block w-1.5 h-1.5 rounded-full bg-[#EA580C] mr-1.5 align-middle"></span>' : ''}${escapeHtml(fmtDateTime(l.created_at))}</td>
             <td class="px-5 py-3.5 text-[14px] font-medium text-gray-900">${escapeHtml(l.name || '—')}</td>
             <td class="px-5 py-3.5 text-[13px]">${email ? `<a href="mailto:${email}" class="text-[#EA580C] hover:underline">${email}</a>` : '—'}</td>
+            <td class="px-5 py-3.5 text-[13px] whitespace-nowrap">${wa ? `<a href="https://wa.me/${waDigits}" target="_blank" rel="noopener noreferrer" class="text-[#EA580C] hover:underline">${wa}</a>` : '—'}</td>
             <td class="px-5 py-3.5 text-[13px] text-gray-700">${escapeHtml(l.company || '—')}</td>
+            <td class="px-5 py-3.5 text-[13px] text-gray-700 whitespace-nowrap">${escapeHtml(l.business_type || '—')}</td>
             <td class="px-5 py-3.5 text-[13px] text-gray-700 whitespace-nowrap">${escapeHtml(l.team_size || '—')}</td>
             <td class="px-5 py-3.5 text-[13px] text-gray-600 max-w-md"><div style="white-space:pre-wrap;word-break:break-word">${escapeHtml(l.message || '—')}</div></td>
             <td class="px-5 py-3.5"><select data-lead-status="${escapeHtml(l.id)}" class="text-[13px] border border-gray-300 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-[#EA580C]/40">${options}</select></td>

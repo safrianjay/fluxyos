@@ -651,7 +651,8 @@ denies client `create`/`delete`. The credential-gated console may `update`
 **only** the workflow `status` (rule restricts the diff to `status` +
 `status_updated_at`, `status in [new, contacted, closed, spam]`), so core lead
 fields stay immutable and the collection can't be spammed or wiped. Fields:
-`name`, `email`, `company`, `team_size`, `message`, `status` (`new`→`contacted`/
+`name`, `email`, `whatsapp`, `company`, `business_type`, `team_size`, `message`,
+`status` (`new`→`contacted`/
 `closed`/`spam`), `source` (`contact-sales`), `plan_interest` (`enterprise`),
 `user_agent`, `created_at`, `status_updated_at`. Surfaced in the console's
 **Sales Leads** tab via `DataService.getSalesLeads({ limitCount })` +
