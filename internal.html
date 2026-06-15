@@ -159,6 +159,7 @@
                 <button class="itab" data-tab="kyc">KYC Review<span id="tab-count-kyc" class="itab-count hidden">0</span></button>
                 <button class="itab" data-tab="payment">Payment Review<span id="tab-count-payment" class="itab-count hidden">0</span></button>
                 <button class="itab" data-tab="vouchers">Vouchers</button>
+                <button class="itab" data-tab="leads">Sales Leads<span id="tab-count-leads" class="itab-count hidden">0</span></button>
                 <button class="itab" data-tab="audit">Audit</button>
             </div>
         </nav>
@@ -299,6 +300,34 @@
                         </table>
                     </div>
                     <div id="vouchers-state" class="hidden"></div>
+                </div>
+            </section>
+
+            <!-- ===== SALES LEADS ===== -->
+            <section id="panel-leads" class="itab-panel hidden">
+                <div class="flex items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h2 class="text-[16px] font-semibold leading-tight">Sales leads</h2>
+                        <p class="text-[12px] text-gray-500">Enterprise AI enquiries submitted from the public Contact Sales page</p>
+                    </div>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Received</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Work email</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Company</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Team size</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Message</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leads-tbody" class="divide-y divide-gray-100 text-[14px]"></tbody>
+                        </table>
+                    </div>
+                    <div id="leads-state" class="hidden"></div>
                 </div>
             </section>
 

@@ -151,10 +151,9 @@
                 <h2 class="text-xl font-bold text-gray-900 mb-1">Tell us about your team</h2>
                 <p class="text-[14px] text-gray-500 mb-8">All fields help us route you to the right specialist.</p>
 
-                <form name="contact-sales" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/contact-sales" id="contact-sales-form" class="space-y-5">
-                    <input type="hidden" name="form-name" value="contact-sales">
-                    <p class="hidden">
-                        <label>Don't fill this out if you're human: <input name="bot-field"></label>
+                <form method="POST" action="/.netlify/functions/submit-contact-sales" id="contact-sales-form" class="space-y-5">
+                    <p class="hidden" aria-hidden="true">
+                        <label>Don't fill this out if you're human: <input name="bot-field" tabindex="-1" autocomplete="off"></label>
                     </p>
 
                     <div>
@@ -192,6 +191,7 @@
                     <button type="submit" id="contact-submit" class="w-full py-3 px-4 rounded-lg text-[14px] font-bold text-white bg-gray-900 hover:bg-gray-800 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 active:scale-[0.99]">
                         Contact Sales
                     </button>
+                    <p id="contact-error" class="hidden text-[13px] text-red-600 text-center">Something went wrong sending your enquiry. Please try again or email sales@fluxyos.com.</p>
                     <p class="text-[12px] text-gray-400 text-center">We'll only use your details to respond to this enquiry.</p>
                 </form>
 
@@ -208,30 +208,34 @@
     </main>
 
     <script>
-      // Progressive enhancement: submit the Netlify form via fetch so we can show
-      // an inline success state without a full page redirect. Falls back to a
-      // normal POST if JS is unavailable. Netlify still registers the form from
-      // the static markup above (data-netlify="true").
+      // Submit the lead to the submit-contact-sales Netlify function, which
+      // writes it to Firestore (sales_leads) via the Admin SDK so it shows up in
+      // the Internal Operations Console → Sales Leads tab. Shows an inline
+      // success/error state without a page redirect.
       (function () {
         const form = document.getElementById('contact-sales-form');
         if (!form) return;
         form.addEventListener('submit', async (e) => {
           e.preventDefault();
           const btn = document.getElementById('contact-submit');
+          const err = document.getElementById('contact-error');
+          err.classList.add('hidden');
           btn.disabled = true;
           btn.textContent = 'Sending…';
           try {
-            const body = new URLSearchParams(new FormData(form)).toString();
-            await fetch('/', {
+            const payload = Object.fromEntries(new FormData(form).entries());
+            const res = await fetch(form.getAttribute('action'), {
               method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
             });
+            if (!res.ok) throw new Error('bad_status');
             form.classList.add('hidden');
             document.getElementById('contact-success').classList.remove('hidden');
           } catch (_) {
-            // On failure, fall back to a native submit so the lead is never lost.
-            form.submit();
+            btn.disabled = false;
+            btn.textContent = 'Contact Sales';
+            err.classList.remove('hidden');
           }
         });
       })();

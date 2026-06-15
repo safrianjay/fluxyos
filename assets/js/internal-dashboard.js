@@ -56,6 +56,7 @@ const state = {
     audit: [],
     vouchers: [],
     voucherRedemptions: [],
+    leads: [],
     loaded: false,
     loadError: false,
     activeTab: 'overview',
@@ -206,16 +207,18 @@ async function loadData() {
     state.loadError = false;
     renderLoading();
     try {
-        const [users, audit, vouchers, voucherRedemptions] = await Promise.all([
+        const [users, audit, vouchers, voucherRedemptions, leads] = await Promise.all([
             ds.getInternalUsers({ limitCount: 200 }),
             ds.getInternalAuditLogs(100).catch(() => []),
             ds.getVoucherCodes().catch(() => []),
-            ds.getAllVoucherRedemptions({ limitCount: 1000 }).catch(() => [])
+            ds.getAllVoucherRedemptions({ limitCount: 1000 }).catch(() => []),
+            ds.getSalesLeads({ limitCount: 200 }).catch(() => [])
         ]);
         state.users = users || [];
         state.audit = audit || [];
         state.vouchers = vouchers || [];
         state.voucherRedemptions = voucherRedemptions || [];
+        state.leads = leads || [];
         state.loaded = true;
         renderAll();
     } catch (err) {
@@ -283,6 +286,7 @@ function renderAll() {
     renderKycTab();
     renderPaymentTab();
     renderVouchersTab();
+    renderLeadsTab();
     renderAuditTab();
     renderTabCounts();
 }
@@ -529,14 +533,45 @@ function summarizeChange(before, after) {
 function renderTabCounts() {
     const kycCount = state.users.filter(x => x.kyc_status === 'submitted' || x.kyc_status === 'needs_revision').length;
     const payCount = state.users.filter(x => ['submitted', 'under_review', 'pending'].includes(x.payment_status)).length;
+    const newLeads = state.leads.filter(l => (l.status || 'new') === 'new').length;
     setTabCount('tab-count-kyc', kycCount);
     setTabCount('tab-count-payment', payCount);
+    setTabCount('tab-count-leads', newLeads);
 }
 
 function setTabCount(id, n) {
     const el = $(id);
     if (n > 0) { el.textContent = n; el.classList.remove('hidden'); }
     else { el.classList.add('hidden'); }
+}
+
+// =============================================================================
+// Sales leads tab (read-only — public Contact Sales enquiries)
+// =============================================================================
+function renderLeadsTab() {
+    const tbody = $('leads-tbody');
+    const stateEl = $('leads-state');
+    if (!tbody) return;
+    if (!state.leads.length) {
+        tbody.innerHTML = '';
+        stateEl.classList.remove('hidden');
+        stateEl.innerHTML = '<div class="px-5 py-12 text-center text-[13px] text-gray-500">No sales leads yet. Enquiries from <span class="font-medium">/contact-sales</span> appear here.</div>';
+        return;
+    }
+    stateEl.classList.add('hidden');
+    // Lead fields are public, anonymous input — always escapeHtml before render.
+    tbody.innerHTML = state.leads.map(l => {
+        const email = escapeHtml(l.email || '');
+        const isNew = (l.status || 'new') === 'new';
+        return `<tr class="hover:bg-gray-50/60 align-top">
+            <td class="px-5 py-3.5 whitespace-nowrap text-[13px] text-gray-600">${isNew ? '<span class="inline-block w-1.5 h-1.5 rounded-full bg-[#EA580C] mr-1.5 align-middle"></span>' : ''}${escapeHtml(fmtDateTime(l.created_at))}</td>
+            <td class="px-5 py-3.5 text-[14px] font-medium text-gray-900">${escapeHtml(l.name || '—')}</td>
+            <td class="px-5 py-3.5 text-[13px]">${email ? `<a href="mailto:${email}" class="text-[#EA580C] hover:underline">${email}</a>` : '—'}</td>
+            <td class="px-5 py-3.5 text-[13px] text-gray-700">${escapeHtml(l.company || '—')}</td>
+            <td class="px-5 py-3.5 text-[13px] text-gray-700 whitespace-nowrap">${escapeHtml(l.team_size || '—')}</td>
+            <td class="px-5 py-3.5 text-[13px] text-gray-600 max-w-md"><div style="white-space:pre-wrap;word-break:break-word">${escapeHtml(l.message || '—')}</div></td>
+        </tr>`;
+    }).join('');
 }
 
 // =============================================================================

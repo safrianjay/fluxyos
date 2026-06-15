@@ -2484,6 +2484,16 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Public Contact Sales leads. Written ONLY by the Admin SDK (the
+    // submit-contact-sales Netlify function), which bypasses rules — so all
+    // client writes are denied, keeping the public collection spam-proof. Read
+    // is open for the credential-gated Internal Operations Console (Sales Leads
+    // tab), same MVP_INTERNAL_ONLY posture as internal_users.
+    match /sales_leads/{leadId} {
+      allow read: if true;
+      allow create, update, delete: if false;
+    }
+
     // Weekly digest broadcast jobs (internal-console "Send digest now"). The
     // console writes a pending job; the Netlify worker (Admin SDK + OpenAI)
     // executes it. MVP_INTERNAL_ONLY_TEMPORARY — open + field-validated, like

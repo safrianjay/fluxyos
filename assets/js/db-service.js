@@ -2880,6 +2880,18 @@ class DataService {
         return snap.exists() ? { id: snap.id, ...snap.data() } : null;
     }
 
+    // Public Contact Sales leads (written by the submit-contact-sales Netlify
+    // function via the Admin SDK). Read-only surface for the internal console.
+    async getSalesLeads({ limitCount = 200 } = {}) {
+        const q = query(
+            collection(this.db, 'sales_leads'),
+            orderBy('created_at', 'desc'),
+            limit(limitCount)
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
     subscribeInternalUser(userId, onChange, onError) {
         if (!userId) return () => {};
         return onSnapshot(this._internalUserDoc(userId), (snap) => {

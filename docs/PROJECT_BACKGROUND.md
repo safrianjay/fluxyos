@@ -640,6 +640,19 @@ audit log), `addInternalAuditLog`, `getInternalAuditLogs(limitCount = 100)`,
 statuses, audit actions) are specified in `docs/internal_operations_console_plan.md`
 §18.
 
+#### `sales_leads/{leadId}` (open read; client writes blocked — Admin SDK only)
+
+Public **Contact Sales** enquiries from `/contact-sales` (Enterprise AI is
+sales-led). The page POSTs to the `submit-contact-sales` Netlify function, which
+honeypot-filters + validates and writes the lead via the **Admin SDK** (bypasses
+rules). `firestore.rules` therefore allows open `read` (the credential-gated
+console reads it unauthenticated, same MVP posture as `internal_users`) and
+denies **all** client writes — so the public collection can't be spammed
+directly. Fields: `name`, `email`, `company`, `team_size`, `message`, `status`
+(`new`), `source` (`contact-sales`), `plan_interest` (`enterprise`),
+`user_agent`, `created_at`. Surfaced read-only in the console's **Sales Leads**
+tab via `DataService.getSalesLeads({ limitCount })`.
+
 **Trial mirror (added):** `internal_users/{uid}` also carries `access_status`,
 `trial_started_at`, `trial_ends_at`, `trial_days_remaining`, and
 `payment_proof_file_name` so the console can show trial/payment status (see §4k).
