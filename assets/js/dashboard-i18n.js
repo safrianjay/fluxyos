@@ -2537,7 +2537,20 @@
         ". You can still save it, but this allocation will be marked Exceeded.": ". Anda tetap dapat menyimpannya, tetapi alokasi ini akan ditandai Terlampaui.",
         "A draft import is created in review status — no transactions are written and no balances change.": "Draf impor dibuat dengan status tinjauan — tidak ada transaksi yang ditulis dan tidak ada saldo yang berubah.",
         "AI suggests. You confirm. FluxyOS saves.": "AI menyarankan. Anda mengonfirmasi. FluxyOS menyimpan.",
-        "logged on: Confirm Export in the Reports drawer": "dicatat saat: Konfirmasi Ekspor di laci Laporan"
+        "logged on: Confirm Export in the Reports drawer": "dicatat saat: Konfirmasi Ekspor di laci Laporan",
+
+        // ── Full report preview page (report-preview.html / report-preview.js) ─
+        "Report Preview": "Pratinjau Laporan",
+        "FluxyOS | Report Preview": "FluxyOS | Pratinjau Laporan",
+        "Download CSV Bundle": "Unduh Bundel CSV",
+        "Back to Reports": "Kembali ke Laporan",
+        "Generating your report preview": "Membuat pratinjau laporan Anda",
+        "Reading your selected period and assembling sections from your FluxyOS records.": "Membaca periode terpilih Anda dan menyusun bagian-bagian dari catatan FluxyOS Anda.",
+        "No report preview found": "Pratinjau laporan tidak ditemukan",
+        "Go back to Reports & Exports and click": "Kembali ke Laporan & Ekspor dan klik",
+        "from the preview drawer to load a report here.": "dari laci pratinjau untuk memuat laporan di sini.",
+        "What data supports the report, what was excluded, and what source files exist for row-level review.": "Data apa yang mendukung laporan, apa yang dikecualikan, dan berkas sumber apa yang ada untuk tinjauan tingkat baris.",
+        "Year-end net result outlook": "Proyeksi hasil bersih akhir tahun"
     };
 
     // ─────────────────────────────────────────────────────────────────────────
