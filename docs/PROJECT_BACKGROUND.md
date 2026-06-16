@@ -130,6 +130,14 @@ drawer). "Auto-match by category" writes nothing (preserves the fallback);
 "Don't track against budget" writes `budget_match_method/status: 'excluded'`.
 The transaction create rule already allows these keys — no rules change.
 
+**Cash impact at creation.** The Add Transaction drawer and the Ledger
+transaction editor share one cash-impact control (`window.FluxyCashImpact`):
+Actual / Pending / No-impact + direction (in/out) + optional bank-account link.
+So `cash_direction` and `cash_account_id` are now user-chosen at creation
+(previously direction was inferred from type and the account was always null).
+`pending_payable`/`pending_receivable` stay forced-pending and `transfer` stays
+neutral (control hidden, helper note shown).
+
 **Ordering:** `timestamp DESC` (newest first). Default limit: 50. Dashboard preview: 5.
 
 ### 4b. Bills — `users/{userId}/bills`

@@ -2281,20 +2281,9 @@
                 ? (FBP ? FBP.EXCLUDE_VALUE : '__exclude__')
                 : (row.budget_allocation_id || '');
 
-            // Current cash-impact state
-            const hasCashFields = row.cash_effective !== undefined || row.cash_status !== undefined;
-            let initImpact = 'not_classified';
-            if (hasCashFields) {
-                if (row.cash_effective === true) initImpact = 'actual';
-                else if (row.cash_status === 'pending') initImpact = 'pending';
-                else initImpact = 'no_impact';
-            }
-            const initDirection = row.cash_direction === 'out' ? 'out' : 'in';
-            const initAccountId = row.cash_account_id || '';
-            const accountOptions = bankAccounts
-                .filter(a => a.status === 'active')
-                .map(a => `<option value="${escapeHtml(a.id)}" ${a.id === initAccountId ? 'selected' : ''}>${escapeHtml(a.account_name || a.bank_name || a.id)}</option>`)
-                .join('');
+            // Current cash-impact state (rendered via the shared FluxyCashImpact control)
+            const FCI = window.FluxyCashImpact;
+            const cashInit = FCI ? FCI.stateFromRecord(row) : { impact: 'not_classified', direction: 'in', accountId: '' };
             const allocSectionHtml = `
                 <div id="tx-edit-allocation-section" class="${(FBP && FBP.isExpenseLike(normalizedType) && allocationCtx.budget) ? '' : 'hidden'}">
                     <label for="tx-edit-allocation" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Budget allocation</label>
@@ -2336,31 +2325,7 @@
                         <input type="date" id="tx-edit-date" required value="${escapeHtml(initialDate)}" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
                     </div>
                     ${allocSectionHtml}
-                    <div class="pt-4 border-t border-gray-100">
-                        <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Cash impact</p>
-                        <div class="grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1" id="cash-impact-selector">
-                            <button type="button" data-cash-impact="actual"    class="cash-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${initImpact === 'actual' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">Actual</button>
-                            <button type="button" data-cash-impact="pending"   class="cash-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${initImpact === 'pending' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">Pending</button>
-                            <button type="button" data-cash-impact="no_impact" class="cash-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${initImpact === 'no_impact' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">No impact</button>
-                        </div>
-                    </div>
-                    <div id="cash-direction-field" class="${initImpact === 'actual' ? '' : 'hidden'}">
-                        <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Direction</p>
-                        <div class="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" id="cash-direction-selector">
-                            <button type="button" data-cash-dir="in"  class="cash-dir-btn rounded-lg px-3 py-2 text-[12px] font-bold transition-all ${initDirection !== 'out' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">Cash in</button>
-                            <button type="button" data-cash-dir="out" class="cash-dir-btn rounded-lg px-3 py-2 text-[12px] font-bold transition-all ${initDirection === 'out' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">Cash out</button>
-                        </div>
-                    </div>
-                    <div>
-                        <label for="cash-account-select" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Link cash account <span class="normal-case font-normal">(optional)</span></label>
-                        ${bankAccounts.length
-                            ? `<select id="cash-account-select" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]">
-                                <option value="">No account linked</option>
-                                ${accountOptions}
-                               </select>`
-                            : `<p class="text-[13px] text-gray-500 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl">No bank accounts added yet. Add one in Settings → Cash &amp; Bank Accounts.</p>`
-                        }
-                    </div>
+                    <div id="tx-edit-cash-control" class="space-y-3 pt-4 border-t border-gray-100"></div>
                     <div class="pt-4 border-t border-gray-100">
                         <label for="tx-edit-reason" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reason for change <span class="normal-case font-normal text-red-500">*</span></label>
                         <textarea id="tx-edit-reason" required maxlength="500" rows="2" placeholder="What changed and why? (recorded in the audit log)" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]"></textarea>
@@ -2380,34 +2345,13 @@
                 amountInput.value = digits ? Number(digits).toLocaleString('id-ID') : '';
             });
 
-            // Cash-impact segmented controls
-            let selectedImpact = initImpact;
-            let selectedDirection = initDirection === 'out' ? 'out' : 'in';
-            const refreshImpactBtns = () => {
-                document.querySelectorAll('.cash-impact-btn').forEach(btn => {
-                    const active = btn.dataset.cashImpact === selectedImpact;
-                    btn.className = `cash-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`;
-                });
-                document.getElementById('cash-direction-field')?.classList.toggle('hidden', selectedImpact !== 'actual');
-            };
-            const refreshDirBtns = () => {
-                document.querySelectorAll('.cash-dir-btn').forEach(btn => {
-                    const active = btn.dataset.cashDir === selectedDirection;
-                    btn.className = `cash-dir-btn rounded-lg px-3 py-2 text-[12px] font-bold transition-all ${active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`;
-                });
-            };
-            document.getElementById('cash-impact-selector')?.addEventListener('click', (e) => {
-                const btn = e.target.closest('.cash-impact-btn');
-                if (!btn) return;
-                selectedImpact = btn.dataset.cashImpact || selectedImpact;
-                refreshImpactBtns();
-            });
-            document.getElementById('cash-direction-selector')?.addEventListener('click', (e) => {
-                const btn = e.target.closest('.cash-dir-btn');
-                if (!btn) return;
-                selectedDirection = btn.dataset.cashDir || selectedDirection;
-                refreshDirBtns();
-            });
+            // Cash-impact control (shared with the Add Transaction drawer)
+            const cashControlEl = document.getElementById('tx-edit-cash-control');
+            let cashCtl = null;
+            if (FCI && cashControlEl) {
+                cashControlEl.innerHTML = FCI.buildHtml({ impact: cashInit.impact, direction: cashInit.direction, accountId: cashInit.accountId, bankAccounts });
+                cashCtl = FCI.wire(cashControlEl, { impact: cashInit.impact, direction: cashInit.direction });
+            }
 
             // Budget allocation: visible for expense-like types with a budget; reload on type/date change
             const allocSection = document.getElementById('tx-edit-allocation-section');
@@ -2451,26 +2395,15 @@
                         date: parseDateInputValue(dateInput?.value || '')
                     }, reason);
 
-                    // 2) Cash impact — only when it changed.
-                    let cashEffective = false, cashStatus = 'none', cashDirection = 'none', cashMatchStatus = 'unmatched', cashEffectiveAt = null;
-                    if (selectedImpact === 'actual') {
-                        cashEffective = true; cashStatus = 'actual'; cashDirection = selectedDirection; cashMatchStatus = 'manual'; cashEffectiveAt = row.timestamp || null;
-                    } else if (selectedImpact === 'pending') {
-                        cashStatus = 'pending';
-                    }
-                    const accountId = document.getElementById('cash-account-select')?.value || '';
-                    const cashChanged = selectedImpact !== initImpact
-                        || (selectedImpact === 'actual' && cashDirection !== (row.cash_direction || 'in'))
-                        || accountId !== (row.cash_account_id || '');
-                    if (cashChanged) {
-                        await ds.updateTransactionCashImpact(u.uid, row.id, {
-                            cash_effective: cashEffective,
-                            cash_status: cashStatus,
-                            cash_direction: cashDirection,
-                            cash_account_id: accountId || null,
-                            cash_match_status: cashMatchStatus,
-                            cash_effective_at: cashEffectiveAt
-                        }, reason);
+                    // 2) Cash impact — only when the user changed it.
+                    if (cashCtl && FCI) {
+                        const cs = cashCtl.getState();
+                        const cashChanged = cs.impact !== cashInit.impact
+                            || (cs.impact === 'actual' && cs.direction !== (row.cash_direction || 'in'))
+                            || (cs.accountId || '') !== (row.cash_account_id || '');
+                        if (cashChanged && cs.impact !== 'not_classified') {
+                            await ds.updateTransactionCashImpact(u.uid, row.id, FCI.derive(cs, row.timestamp || null), reason);
+                        }
                     }
 
                     // 3) Budget allocation — only for expense-like types with a budget, when the user changed it.

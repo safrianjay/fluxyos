@@ -424,6 +424,16 @@ and `buildAssignmentFields({ budget, allocationId })` returns the `budget_*`
 fields to merge onto the create payload. Already used by the Add Transaction
 drawer, CSV bulk apply-to-all, and AI receipt capture.
 
+**Cash-impact control.** Likewise, never hand-roll the cash-impact segmented
+control — reuse `window.FluxyCashImpact` (`assets/js/shared-dashboard.js`):
+`buildHtml({ impact, direction, accountId, bankAccounts })` renders the
+Actual / Pending / No-impact segmented control + direction (in/out) + optional
+bank-account link, `wire(root, { impact, direction, onChange })` returns a
+controller (`getState` / `setImpact` / `setDirection`), `stateFromRecord(row)`
+reads the editable state from an existing record, and `derive(state, timestamp)`
+returns the `cash_*` fields. Shared by the Add Transaction drawer and the Ledger
+transaction editor so the two stay identical.
+
 ---
 
 ## 📐 Layout & Spacing

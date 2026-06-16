@@ -400,6 +400,104 @@ window.FluxyBudgetPicker = (function () {
     return { EXPENSE_LIKE_TYPES, EXCLUDE_VALUE, isExpenseLike, loadForDate, buildOptionsHtml, buildAssignmentFields };
 })();
 
+// Shared cash-impact control used by both the Add Transaction drawer and the
+// Ledger transaction editor, so the two never drift. Renders a segmented
+// Actual / Pending / No impact control + direction (in/out) + optional bank
+// account link, and derives the cash_* fields from the chosen state.
+window.FluxyCashImpact = (function () {
+    const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    // Render the control markup into a container. `bankAccounts` is optional;
+    // when empty, a "no accounts" note replaces the account select.
+    function buildHtml({ impact = 'actual', direction = 'in', accountId = '', bankAccounts = [] } = {}) {
+        const accounts = (bankAccounts || []).filter(a => a.status === 'active');
+        const accountOptions = accounts
+            .map(a => `<option value="${esc(a.id)}" ${a.id === accountId ? 'selected' : ''}>${esc(a.account_name || a.bank_name || a.id)}</option>`)
+            .join('');
+        const impactBtn = (v, label) =>
+            `<button type="button" data-cash-impact="${v}" class="fci-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${impact === v ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">${label}</button>`;
+        const dirBtn = (v, label, on) =>
+            `<button type="button" data-cash-dir="${v}" class="fci-dir-btn rounded-lg px-3 py-2 text-[12px] font-bold transition-all ${on ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">${label}</button>`;
+        return `
+            <div>
+                <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Cash impact</p>
+                <div class="grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1" data-fci="impact">
+                    ${impactBtn('actual', 'Actual')}${impactBtn('pending', 'Pending')}${impactBtn('no_impact', 'No impact')}
+                </div>
+            </div>
+            <div data-fci="direction-field" class="${impact === 'actual' ? '' : 'hidden'}">
+                <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Direction</p>
+                <div class="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" data-fci="direction">
+                    ${dirBtn('in', 'Cash in', direction !== 'out')}${dirBtn('out', 'Cash out', direction === 'out')}
+                </div>
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Link cash account <span class="normal-case font-normal">(optional)</span></label>
+                ${bankAccounts && bankAccounts.length
+                    ? `<select data-fci="account" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]"><option value="">No account linked</option>${accountOptions}</select>`
+                    : `<p class="text-[13px] text-gray-500 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl">No bank accounts added yet. Add one in Settings → Cash &amp; Bank Accounts.</p>`}
+            </div>`;
+    }
+
+    // Attach interactions within `root`. Returns a controller:
+    //   getState() -> { impact, direction, accountId }
+    //   setImpact(v) / setDirection(v) for programmatic defaults (e.g. on type change)
+    // `impact: 'not_classified'` is allowed as an initial "nothing selected" state.
+    function wire(root, { impact = 'actual', direction = 'in', onChange } = {}) {
+        let selectedImpact = impact;
+        let selectedDirection = direction === 'out' ? 'out' : 'in';
+        const refresh = () => {
+            root.querySelectorAll('.fci-impact-btn').forEach(b => {
+                const on = b.dataset.cashImpact === selectedImpact;
+                b.className = `fci-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${on ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`;
+            });
+            root.querySelector('[data-fci="direction-field"]')?.classList.toggle('hidden', selectedImpact !== 'actual');
+            root.querySelectorAll('.fci-dir-btn').forEach(b => {
+                const on = b.dataset.cashDir === selectedDirection;
+                b.className = `fci-dir-btn rounded-lg px-3 py-2 text-[12px] font-bold transition-all ${on ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`;
+            });
+        };
+        root.querySelector('[data-fci="impact"]')?.addEventListener('click', (e) => {
+            const b = e.target.closest('.fci-impact-btn'); if (!b) return;
+            selectedImpact = b.dataset.cashImpact || selectedImpact; refresh(); onChange?.('impact');
+        });
+        root.querySelector('[data-fci="direction"]')?.addEventListener('click', (e) => {
+            const b = e.target.closest('.fci-dir-btn'); if (!b) return;
+            selectedDirection = b.dataset.cashDir || selectedDirection; refresh(); onChange?.('direction');
+        });
+        refresh();
+        return {
+            getState: () => ({ impact: selectedImpact, direction: selectedDirection, accountId: root.querySelector('[data-fci="account"]')?.value || '' }),
+            setImpact: (v) => { selectedImpact = v; refresh(); },
+            setDirection: (v) => { selectedDirection = v === 'out' ? 'out' : 'in'; refresh(); }
+        };
+    }
+
+    // Read the editable starting state from an existing record. `impact` is
+    // 'not_classified' when the record has no cash fields yet.
+    function stateFromRecord(row) {
+        const has = !!row && (row.cash_effective !== undefined || row.cash_status !== undefined);
+        let impact = 'not_classified';
+        if (has) impact = row.cash_effective === true ? 'actual' : (row.cash_status === 'pending' ? 'pending' : 'no_impact');
+        return { impact, classified: has, direction: row?.cash_direction === 'out' ? 'out' : 'in', accountId: row?.cash_account_id || '' };
+    }
+
+    // Derive the cash_* fields from a control state. `timestamp` feeds
+    // cash_effective_at when the money has actually moved.
+    function derive(state, timestamp) {
+        const s = state || {};
+        if (s.impact === 'actual') {
+            return { cash_effective: true, cash_status: 'actual', cash_direction: s.direction === 'out' ? 'out' : 'in', cash_account_id: s.accountId || null, cash_source: 'manual', cash_match_status: 'manual', cash_effective_at: timestamp || null };
+        }
+        if (s.impact === 'pending') {
+            return { cash_effective: false, cash_status: 'pending', cash_direction: 'none', cash_account_id: s.accountId || null, cash_source: 'manual', cash_match_status: 'unmatched', cash_effective_at: null };
+        }
+        return { cash_effective: false, cash_status: 'none', cash_direction: 'none', cash_account_id: null, cash_source: 'manual', cash_match_status: 'unmatched', cash_effective_at: null };
+    }
+
+    return { buildHtml, wire, derive, stateFromRecord };
+})();
+
 window.showAddTransactionModal = function(options = {}) {
     // Trial/payment access guard: block record creation once the trial has expired
     // or while payment is pending verification. Fails open if state isn't loaded.
@@ -509,19 +607,8 @@ window.showAddTransactionModal = function(options = {}) {
                         </div>
                         ` : ''}
                         ${context === 'transaction' ? `
-                        <div id="tx-cash-impact-section" class="hidden space-y-2">
-                            <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Cash impact</p>
-                            <p class="mt-1 text-[13px] font-medium text-gray-700">Has this money already moved?</p>
-                            <div class="mt-2 grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1">
-                                <button type="button" id="tx-cash-btn-received"
-                                    class="rounded-lg px-3 py-2 text-[12px] font-bold transition-all bg-white text-gray-900 shadow-sm">
-                                    Already received / paid
-                                </button>
-                                <button type="button" id="tx-cash-btn-pending"
-                                    class="rounded-lg px-3 py-2 text-[12px] font-bold transition-all text-gray-500 hover:text-gray-900">
-                                    Still pending
-                                </button>
-                            </div>
+                        <div id="tx-cash-impact-section" class="hidden space-y-3">
+                            <div id="tx-cash-impact-control" class="space-y-3"></div>
                         </div>
                         <div id="tx-cash-impact-helper" class="hidden rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[12px] text-blue-800"></div>
                         ` : ''}
@@ -713,8 +800,9 @@ window.showAddTransactionModal = function(options = {}) {
     let txAllocationContext = null; // { budget, allocations } | null — transaction allocation picker
     let txAllocationReload = null;  // () => Promise, re-fetches allocations on date change
     let bulkAllocationContext = null; // { budget, allocations } | null — CSV apply-to-all
-    let cashImpactSelection = 'received';
+    let cashController = null;        // FluxyCashImpact controller for the rich cash control
     let cashImpactUserTouched = false;
+    let cashBankAccounts = [];        // loaded once per drawer open
     let csvImportState = {
         file: null,
         csvText: '',
@@ -1060,14 +1148,21 @@ window.showAddTransactionModal = function(options = {}) {
     if (context === 'transaction') {
         const cashSection = document.getElementById('tx-cash-impact-section');
         const cashHelper = document.getElementById('tx-cash-impact-helper');
-        const cashBtnReceived = document.getElementById('tx-cash-btn-received');
-        const cashBtnPending = document.getElementById('tx-cash-btn-pending');
+        const cashControl = document.getElementById('tx-cash-impact-control');
+        const FCI = window.FluxyCashImpact;
+        const inboundType = (t) => ['income', 'revenue', 'refund', 'pending_receivable'].includes(t);
 
-        const refreshCashBtnStyles = () => {
-            if (!cashBtnReceived || !cashBtnPending) return;
-            const isReceived = cashImpactSelection === 'received';
-            cashBtnReceived.className = `rounded-lg px-3 py-2 text-[12px] font-bold transition-all ${isReceived ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`;
-            cashBtnPending.className = `rounded-lg px-3 py-2 text-[12px] font-bold transition-all ${!isReceived ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`;
+        const renderCashControl = () => {
+            if (!FCI || !cashControl) return;
+            const prev = cashController?.getState?.();
+            const typeVal = typeSelectEl?.value || defaultType;
+            const state = prev || {
+                impact: typeVal === 'adjustment' ? 'pending' : 'actual',
+                direction: inboundType(typeVal) ? 'in' : 'out',
+                accountId: ''
+            };
+            cashControl.innerHTML = FCI.buildHtml({ ...state, bankAccounts: cashBankAccounts });
+            cashController = FCI.wire(cashControl, { impact: state.impact, direction: state.direction, onChange: () => { cashImpactUserTouched = true; } });
         };
 
         const updateCashImpactSection = () => {
@@ -1089,27 +1184,30 @@ window.showAddTransactionModal = function(options = {}) {
                 return;
             }
             cashSection.classList.remove('hidden');
-            if (!cashImpactUserTouched) {
-                cashImpactSelection = typeVal === 'adjustment' ? 'pending' : 'received';
-                refreshCashBtnStyles();
+            if (!cashImpactUserTouched && cashController) {
+                cashController.setImpact(typeVal === 'adjustment' ? 'pending' : 'actual');
+                cashController.setDirection(inboundType(typeVal) ? 'in' : 'out');
             }
         };
 
-        cashBtnReceived?.addEventListener('click', () => {
-            cashImpactSelection = 'received';
-            cashImpactUserTouched = true;
-            refreshCashBtnStyles();
-        });
-        cashBtnPending?.addEventListener('click', () => {
-            cashImpactSelection = 'pending';
-            cashImpactUserTouched = true;
-            refreshCashBtnStyles();
-        });
+        renderCashControl();
         typeSelectEl?.addEventListener('change', () => {
             cashImpactUserTouched = false;
             updateCashImpactSection();
         });
         updateCashImpactSection();
+
+        // Load bank accounts, then re-render the control (state preserved) so the
+        // optional account link becomes available.
+        (async () => {
+            try {
+                const { ds, user } = await getTransactionDataService();
+                if (user && typeof ds.getBankAccounts === 'function') {
+                    cashBankAccounts = (await ds.getBankAccounts(user.uid)) || [];
+                    if (cashBankAccounts.length) { renderCashControl(); updateCashImpactSection(); }
+                }
+            } catch (_) {}
+        })();
     }
 
     // Budget impact preview (Phase 1.5) — bill drawer only. Prefetches the
@@ -1621,7 +1719,7 @@ window.showAddTransactionModal = function(options = {}) {
     // Derives the 7 optional cash-impact fields for a transaction.
     // Only called for context === 'transaction'. Does NOT touch bank_accounts
     // or bank_balance_snapshots — Phase 1 only annotates the transaction record.
-    function buildCashImpactFields(txType, selection, txTimestamp) {
+    function buildCashImpactFields(txType, cashState, txTimestamp) {
         if (['pending_receivable', 'pending_payable'].includes(txType)) {
             return {
                 cash_effective: false,
@@ -1644,27 +1742,10 @@ window.showAddTransactionModal = function(options = {}) {
                 cash_effective_at: null
             };
         }
-        if (selection === 'received') {
-            const isInbound = ['income', 'revenue', 'refund'].includes(txType);
-            return {
-                cash_effective: true,
-                cash_status: 'actual',
-                cash_direction: isInbound ? 'in' : 'out',
-                cash_account_id: null,
-                cash_source: 'manual',
-                cash_match_status: 'manual',
-                cash_effective_at: txTimestamp
-            };
-        }
-        return {
-            cash_effective: false,
-            cash_status: 'pending',
-            cash_direction: 'none',
-            cash_account_id: null,
-            cash_source: 'manual',
-            cash_match_status: 'unmatched',
-            cash_effective_at: null
-        };
+        // Normal types: derive from the shared cash-impact control's state.
+        const inbound = ['income', 'revenue', 'refund'].includes(txType);
+        const state = cashState || { impact: 'actual', direction: inbound ? 'in' : 'out', accountId: '' };
+        return window.FluxyCashImpact.derive(state, txTimestamp);
     }
 
     // Form Submission
@@ -1766,7 +1847,7 @@ window.showAddTransactionModal = function(options = {}) {
             // Append optional cash-impact fields for transaction context.
             // Does not write to bank_accounts or bank_balance_snapshots.
             if (context === 'transaction') {
-                Object.assign(data, buildCashImpactFields(txType, cashImpactSelection, data.timestamp));
+                Object.assign(data, buildCashImpactFields(txType, cashController?.getState?.() || null, data.timestamp));
             }
 
             // Shared document attachment (Phase 1):
