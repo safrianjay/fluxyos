@@ -2198,7 +2198,27 @@
         "Your workspace": "Ruang kerja Anda",
         "No budget": "Tidak ada anggaran",
         "Old due dates": "Tanggal jatuh tempo lama",
-        "On Track": "Sesuai Rencana"
+        "On Track": "Sesuai Rencana",
+        "Net": "Bersih",
+        "Spend": "Pengeluaran",
+
+        // ── KPI card tooltips (data-tooltip values) ──────────────────────────
+        "Total income recorded in the selected period. Includes completed income and legacy revenue records.": "Total pemasukan yang tercatat dalam periode terpilih. Termasuk pemasukan yang selesai dan catatan pendapatan lama.",
+        "Total amount across revenue rows in the selected period. Includes income, revenue, refund, and pending receivable rows.": "Jumlah total seluruh baris pendapatan dalam periode terpilih. Termasuk baris pemasukan, pendapatan, pengembalian dana, dan piutang tertunda.",
+        "Net cash from all transactions you marked 'Already received / paid'. Updates immediately when you add transactions. Bank cash balance shows your real bank account if connected.": "Kas bersih dari semua transaksi yang Anda tandai 'Sudah diterima / dibayar'. Diperbarui seketika saat Anda menambah transaksi. Saldo kas bank menampilkan rekening bank Anda yang sebenarnya jika terhubung.",
+        "Operating spend in the selected period vs the monthly slice of your active budget. Quarterly budgets divide by 3, yearly by 12 — the full period total still shows on the Budgets page.": "Pengeluaran operasional dalam periode terpilih vs porsi bulanan dari anggaran aktif Anda. Anggaran kuartalan dibagi 3, tahunan dibagi 12 — total periode penuh tetap tampil di halaman Anggaran.",
+        "Revenue left after operating expenses, shown as a percentage. Higher usually means healthier operating room.": "Pendapatan yang tersisa setelah beban operasional, ditampilkan sebagai persentase. Makin tinggi biasanya berarti ruang operasional yang lebih sehat.",
+        "30-day cash outlook: bank cash + receivables due soon - payables due soon.": "Proyeksi kas 30 hari: kas bank + piutang yang segera jatuh tempo − utang yang segera jatuh tempo.",
+        "Money expected to go out from pending payable records and open obligations in the selected period.": "Uang yang diperkirakan keluar dari catatan utang tertunda dan kewajiban terbuka dalam periode terpilih.",
+        "Distinct revenue sources detected from the channel field in this period. Rows without a source count as Unknown channel.": "Sumber pendapatan berbeda yang terdeteksi dari kolom saluran pada periode ini. Baris tanpa sumber dihitung sebagai saluran Tidak Dikenal.",
+        "Revenue rows dated today in the selected workspace data. Useful for checking whether today has fresh revenue activity.": "Baris pendapatan bertanggal hari ini dalam data ruang kerja terpilih. Berguna untuk memeriksa apakah hari ini ada aktivitas pendapatan baru.",
+        "Clean rows ratio: revenue rows without review flags divided by all revenue rows in the selected period.": "Rasio baris bersih: baris pendapatan tanpa penanda tinjauan dibagi seluruh baris pendapatan dalam periode terpilih.",
+        "Rows flagged for duplicate channel, duplicate amount and date, missing receipt, refund, or no channel. Click the card to jump to those rows.": "Baris yang ditandai karena saluran ganda, jumlah dan tanggal ganda, struk hilang, pengembalian dana, atau tanpa saluran. Klik kartu untuk melompat ke baris tersebut.",
+        "The total amount you can spend during this period. Set when you create the period budget; everything else on this page is measured against it.": "Jumlah total yang dapat Anda belanjakan selama periode ini. Ditetapkan saat Anda membuat anggaran periode; semua hal lain di halaman ini diukur terhadapnya.",
+        "Used is money already recorded in transactions. Committed is money reserved by unpaid bills and pending payables. Both reduce what is remaining.": "Terpakai adalah uang yang sudah tercatat di transaksi. Terkomitmen adalah uang yang dicadangkan oleh tagihan belum dibayar dan utang tertunda. Keduanya mengurangi sisa.",
+        "Budget left after recorded spend and unpaid committed bills are subtracted from this period budget.": "Anggaran yang tersisa setelah pengeluaran tercatat dan tagihan terkomitmen yang belum dibayar dikurangi dari anggaran periode ini.",
+        "How much of this period budget has been split into category allocations like Marketing, Operations, Infrastructure, or SaaS. Each allocation tracks its own spend.": "Berapa banyak anggaran periode ini yang telah dibagi ke alokasi kategori seperti Marketing, Operasional, Infrastruktur, atau SaaS. Setiap alokasi melacak pengeluarannya sendiri.",
+        "No forecast model is applied here. This card shows the current plan baseline from existing period budget totals.": "Tidak ada model peramalan yang diterapkan di sini. Kartu ini menampilkan baseline rencana saat ini dari total anggaran periode yang ada."
     };
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -2299,7 +2319,7 @@
     // User-facing attribute text the text-node walker can't reach (search
     // placeholders, filter aria-labels, tooltips, image alts). Idempotent: a
     // translated value misses the dictionary next pass, so it never loops.
-    var ATTR_TARGETS = ['placeholder', 'aria-label', 'title', 'alt'];
+    var ATTR_TARGETS = ['placeholder', 'aria-label', 'title', 'alt', 'data-tooltip'];
     function translateAttributes(root) {
         ATTR_TARGETS.forEach(function (attr) {
             var els = root.querySelectorAll('[' + attr + ']');
