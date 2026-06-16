@@ -62,7 +62,7 @@ function toDateObj(value) {
 function formatDate(value) {
     const date = toDateObj(value);
     if (!date) return '—';
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return date.toLocaleDateString((window.FluxyI18n?.locale?.()||'en-US'), { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatTime(value) {

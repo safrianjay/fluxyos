@@ -34,11 +34,11 @@
     }
 
     function formatMonthLabel(dayKey) {
-        return parseDayKey(dayKey).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        return parseDayKey(dayKey).toLocaleDateString((window.FluxyI18n?.locale?.()||'en-US'), { month: 'short', year: 'numeric' });
     }
 
     function formatDayLabel(dayKey) {
-        return parseDayKey(dayKey).toLocaleDateString('en-US', {
+        return parseDayKey(dayKey).toLocaleDateString((window.FluxyI18n?.locale?.()||'en-US'), {
             month: 'short',
             day: 'numeric',
             year: 'numeric'
@@ -172,7 +172,7 @@
         function renderMonth(container, title, monthStartKey) {
             const monthStart = parseDayKey(monthStartKey);
             const month = monthStart.getMonth();
-            title.textContent = monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            title.textContent = monthStart.toLocaleDateString((window.FluxyI18n?.locale?.()||'en-US'), { month: 'long', year: 'numeric' });
             const weekdays = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
             const firstGridDate = new Date(monthStart);
             firstGridDate.setDate(firstGridDate.getDate() - ((firstGridDate.getDay() + 6) % 7));

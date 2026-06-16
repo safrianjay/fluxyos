@@ -187,8 +187,10 @@ Indonesia mixed with everyday English (Slack, dashboard, invoice, online shop).
 | **P3** | `login.html` | ~150 | Auth flow strings. |
 
 **App pages** (`dashboard.html`, `bill.html`, `subscription.html`, `ledger.html`,
-`integration.html`) are out of scope for this plan — they live behind auth and
-will be tackled separately when in-app i18n is built.
+`integration.html`, and the rest of the authenticated dashboard) are localized
+**separately** with their own in-app engine and a **formal** register — see
+§12 below. They use a runtime DOM-walker (not `/id/` mirror files), because the
+dashboard is a JS-driven app, not static marketing HTML.
 
 ---
 
@@ -357,3 +359,75 @@ A page is "fully localized" when:
 - [ ] No layout breakage at mobile / tablet / desktop widths
 - [ ] Native speaker has read through and approved tone
 - [ ] Page loads HTTP 200 at the expected URL
+
+---
+
+## 12. App / Dashboard Localization (formal register)
+
+The authenticated dashboard is localized differently from the marketing site.
+
+### Architecture
+
+- **Engine:** `assets/js/dashboard-i18n.js` — a self-contained sibling of the
+  landing `assets/js/i18n.js`. It walks text nodes and swaps English → Indonesian
+  using its own dictionary, runs a small `PATTERNS` list for interpolated strings
+  ("Menampilkan 1–10 dari 58 catatan"), and re-translates async-injected DOM
+  (sidebar, entry drawers, dialogs, toasts, re-rendered tables) via a
+  `MutationObserver`.
+- **Why a runtime walker, not `/id/` mirror files:** the dashboard is a JS-driven
+  app whose text is largely generated at runtime; static mirror files (the
+  marketing approach) don't fit. SEO is irrelevant behind auth.
+- **Shared key:** it uses the same `localStorage('fluxyos-lang')` key as the
+  landing engine, so a user's choice carries across the whole product. This key is
+  the **single source of truth** for rendering. (It is *not* mirrored to the
+  Firestore `finance` settings doc — that doc is field-locked by `firestore.rules`
+  `hasOnly([...])`, so adding a field there would require a rules change.)
+- **Entry point:** `settings-language.html` (a dedicated **Language & Region**
+  page, linked from a tile on the Settings hub) calls
+  `window.FluxyI18n.setLang('id' | 'en')`. Switching to `id` translates in place;
+  switching to `en` reloads.
+- **Public API:** `window.FluxyI18n` exposes `getLang`, `setLang`, `t(key, vars)`,
+  `locale()`, and `formatDate(date, options)`.
+- **Dates:** display-only date helpers (the shared date-range picker, plus the
+  per-page record-date formatters in `invoices.js`, `accounting-records.js`,
+  `balance-sheet.js`, `budget.js`) format through `window.FluxyI18n.locale()` so
+  months render in Indonesian. **Date strings that get *stored*** (e.g.
+  `period_label` written by `budget-period.js` / `report-builder.js`) stay English
+  to avoid mixed-language data in Firestore.
+- **Fluxy AI:** `ai-chat.js` sends the active `language` in the `/brain/chat`
+  request body; `netlify/functions/api.js` threads it through, instructs the
+  OpenAI analyst to answer in formal Bahasa Indonesia (grounded on the
+  deterministic baseline), and ships Bahasa variants of the fixed safety messages
+  (refusal, no-data, data-unavailable).
+
+### Tone — formal finance register (distinct from the landing casual tone)
+
+The landing dictionary is casual ("Beres", "Kelompokkan"). The dashboard register
+is **formal** — the Bahasa an accountant or business owner expects.
+
+| English | Dashboard (formal) | Landing (casual) |
+|---|---|---|
+| Pronoun | **Anda** | Anda |
+| Done / Completed | **Selesai** | Beres |
+| Categorize | **Kategori / Kategorikan** | Kelompokkan |
+| Reconciled | **Terekonsiliasi** | Cocokkan |
+| Transaction | **Transaksi** | Transaksi |
+| Due date | **Jatuh tempo** | — |
+| Settings | **Pengaturan** | — |
+
+Recurring dashboard finance glossary: Transaksi, Pendapatan (Revenue), Pemasukan
+(Income), Pengeluaran (Expense), Saldo, Anggaran (Budget), Alokasi (Allocation),
+Arus kas (Cash flow), Rekonsiliasi, Jatuh tempo (Due), Tagihan (Bill), Langganan
+(Subscription), Faktur/Invoice (keep "Invoice"), Neraca (Balance Sheet), Buku
+Besar (Ledger), Pajak (Tax), Lunas (Paid), Tertunda (Pending). Brand/product
+names (FluxyOS, Fluxy AI, Revenue Sync, Vendor Spend, Receipt Capture, Dynamic
+Budgeting) and common loanwords (dashboard, invoice, email, CSV, upload,
+WhatsApp) stay English.
+
+### Maintenance rule (pair-edit)
+
+When you add or change user-facing English copy on an app page, **add the matching
+formal key to the `ID` dictionary in `assets/js/dashboard-i18n.js`** in the same
+commit (mirrors the landing pair-edit rule). Any English string with no dictionary
+key (or pattern) simply renders untranslated — QA each page at lang = `id` to find
+and backfill gaps.

@@ -133,6 +133,9 @@
                         message: text,
                         page_context: getPageContext(),
                         period: getCurrentPeriod(),
+                        // App display language (set in Settings → Language & Region).
+                        // The brain replies in Bahasa Indonesia when this is 'id'.
+                        language: (window.FluxyI18n && window.FluxyI18n.getLang()) || 'en',
                     }),
                 });
                 const data = await response.json().catch(() => ({}));

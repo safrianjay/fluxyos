@@ -112,7 +112,7 @@ function parseDayKey(dayKey, endOfDay = false) {
 function formatDate(value) {
     const date = budgetDate(value);
     if (!date) return '—';
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString((window.FluxyI18n?.locale?.()||'en-US'), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function formatPeriod(budget) {
@@ -160,7 +160,7 @@ function getDefaultPeriodTarget(date = new Date()) {
     const d = budgetDate(date) || new Date();
     const start = new Date(d.getFullYear(), d.getMonth(), 1);
     const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-    const label = start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const label = start.toLocaleDateString((window.FluxyI18n?.locale?.()||'en-US'), { month: 'long', year: 'numeric' });
     return {
         periodType: 'monthly',
         periodLabel: label,

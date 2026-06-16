@@ -103,7 +103,7 @@ function formatPercent(value) {
 function formatDate(dayKey) {
     const date = parseDayKey(dayKey);
     if (!date) return 'No date';
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return date.toLocaleDateString((window.FluxyI18n?.locale?.()||'en-US'), { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function titleCaseToken(value) {
