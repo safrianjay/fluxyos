@@ -369,11 +369,19 @@ The authenticated dashboard is localized differently from the marketing site.
 ### Architecture
 
 - **Engine:** `assets/js/dashboard-i18n.js` — a self-contained sibling of the
-  landing `assets/js/i18n.js`. It walks text nodes and swaps English → Indonesian
-  using its own dictionary, runs a small `PATTERNS` list for interpolated strings
-  ("Menampilkan 1–10 dari 58 catatan"), and re-translates async-injected DOM
-  (sidebar, entry drawers, dialogs, toasts, re-rendered tables) via a
-  `MutationObserver`.
+  landing `assets/js/i18n.js`. It walks text nodes **and** the display attributes
+  `placeholder` / `aria-label` / `title` / `alt` (so search boxes, filter labels,
+  and tooltips translate too), swaps English → Indonesian using its own dictionary
+  (~2,000 entries), runs a `PATTERNS` list for interpolated strings ("Menampilkan
+  1–10 dari 58 catatan", "Langkah 1 dari 4 · …", "Menampilkan N tagihan"), and
+  re-translates async-injected DOM (sidebar, entry drawers, dialogs, toasts,
+  re-rendered tables) via a `MutationObserver`.
+- **Coverage report:** a re-runnable Node harvester (kept in `/tmp` during dev)
+  extracts candidate UI strings (static text nodes + the 4 attributes + JS string
+  literals) across app pages and lists what's missing from the dictionary, with an
+  ignore-list for non-UI strings (console logs, dev-thrown errors, SVG path data,
+  pricing-tier brand names, stored enum values). Run it after any copy change to
+  drive remaining English toward zero.
 - **Why a runtime walker, not `/id/` mirror files:** the dashboard is a JS-driven
   app whose text is largely generated at runtime; static mirror files (the
   marketing approach) don't fit. SEO is irrelevant behind auth.
@@ -422,7 +430,18 @@ Arus kas (Cash flow), Rekonsiliasi, Jatuh tempo (Due), Tagihan (Bill), Langganan
 Besar (Ledger), Pajak (Tax), Lunas (Paid), Tertunda (Pending). Brand/product
 names (FluxyOS, Fluxy AI, Revenue Sync, Vendor Spend, Receipt Capture, Dynamic
 Budgeting) and common loanwords (dashboard, invoice, email, CSV, upload,
-WhatsApp) stay English.
+WhatsApp) stay English. Pricing-tier names (Starter, Core Ops, Growth Engine,
+Enterprise AI) also stay English.
+
+**Accounting / financial-statement glossary (Indonesian):** Accounts Receivable →
+Piutang Usaha; Accounts Payable → Utang Usaha; Income Statement → Laporan Laba
+Rugi; Cash Flow → Arus Kas; Gross Profit → Laba Kotor; Net Income → Laba Bersih;
+Operating Income → Laba Operasional; COGS / Cost of Revenue → Harga Pokok
+Penjualan; Operating Expenses → Beban Operasional; Assets → Aset; Liabilities →
+Liabilitas; Equity → Ekuitas; Net Position → Posisi Bersih; Marketing /
+Infrastructure / Operations / Tax Expense → Beban Pemasaran / Beban Infrastruktur
+/ Beban Operasional / Beban Pajak; Other Income / Other Expense → Pendapatan Lain
+/ Beban Lain. "P&L" is kept as-is in compact labels.
 
 ### Maintenance rule (pair-edit)
 

@@ -173,7 +173,9 @@
             const monthStart = parseDayKey(monthStartKey);
             const month = monthStart.getMonth();
             title.textContent = monthStart.toLocaleDateString((window.FluxyI18n?.locale?.()||'en-US'), { month: 'long', year: 'numeric' });
-            const weekdays = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+            const weekdays = (window.FluxyI18n?.getLang?.() === 'id')
+                ? ['Sn', 'Sl', 'Rb', 'Km', 'Jm', 'Sb', 'Mg']
+                : ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
             const firstGridDate = new Date(monthStart);
             firstGridDate.setDate(firstGridDate.getDate() - ((firstGridDate.getDay() + 6) % 7));
             let html = weekdays.map(day => `<div class="text-[12px] font-bold text-gray-900">${day}</div>`).join('');
