@@ -1813,12 +1813,10 @@
                 const budgetChip = badge ? `
                     <div class="mt-1.5 flex items-center gap-2 flex-wrap">
                         <span class="fluxy-table-status ${badge.cls}">${escapeHtml(badge.label)}</span>
-                        <button type="button" class="fluxy-table-action" data-fluxy-budget-action="${badge.action}" data-record-type="transactions" data-record-id="${escapeHtml(row.id)}" data-vendor="${escapeHtml(vendorName)}" data-amount-text="${escapeHtml(amountText)}" data-current-allocation-id="${escapeHtml(badge.allocationId || '')}">${badge.action === 'restore' ? 'Restore' : 'Assign'}</button>
                     </div>` : '';
                 const cashChip = cashBadge ? `
                     <div class="mt-1 flex items-center gap-1.5 flex-wrap">
                         <span class="fluxy-table-status ${cashBadge.cls}">${escapeHtml(cashBadge.label)}</span>
-                        <button type="button" class="fluxy-table-action" data-cash-edit-id="${escapeHtml(row.id)}">Edit</button>
                     </div>` : '';
                 return `
                 <tr class="fluxy-table-row fluxy-table-row-clickable ${isVoided ? 'bg-gray-50/70 text-gray-400' : ''}" data-ledger-id="${escapeHtml(row.id)}">
@@ -1969,50 +1967,6 @@
                 event.preventDefault();
                 event.stopPropagation();
                 setLedgerVendorFilter(vendorBtn.dataset.vendorName || '');
-                return;
-            }
-
-            const cashEditBtn = event.target.closest('[data-cash-edit-id]');
-            if (cashEditBtn) {
-                event.preventDefault();
-                event.stopPropagation();
-                const txId = cashEditBtn.dataset.cashEditId || '';
-                const row  = window.__ledgerRowMap[txId] || findLedgerTransactionById(txId);
-                if (!row) { window.showToast?.('Transaction not found in current view.', 'info'); return; }
-                document.body.classList.add('overflow-hidden');
-                (async () => {
-                    try {
-                        const user = auth.currentUser;
-                        const fresh = user ? await ds.getTransactionById(user.uid, txId) : null;
-                        window.openTxDetailDrawer(fresh || row);
-                        window.setTimeout(() => renderCashImpactEditPanel(fresh || row), 320);
-                    } catch (_) {
-                        window.openTxDetailDrawer(row);
-                        window.setTimeout(() => renderCashImpactEditPanel(row), 320);
-                    }
-                })();
-                return;
-            }
-
-            const budgetBtn = event.target.closest('[data-fluxy-budget-action]');
-            if (budgetBtn) {
-                event.preventDefault();
-                event.stopPropagation();
-                if (!ledgerBudgetCtx?.activeBudget || !window.FluxyBudgetAssignment?.open) {
-                    window.showToast?.('Create a budget first to assign records.', 'info');
-                    return;
-                }
-                window.FluxyBudgetAssignment.open({
-                    action: budgetBtn.dataset.fluxyBudgetAction,
-                    recordType: budgetBtn.dataset.recordType,
-                    recordId: budgetBtn.dataset.recordId,
-                    vendor: budgetBtn.dataset.vendor,
-                    amountText: budgetBtn.dataset.amountText,
-                    currentAllocationId: budgetBtn.dataset.currentAllocationId || null,
-                    budgetId: ledgerBudgetCtx.activeBudget.id,
-                    allocations: ledgerBudgetCtx.allocations || [],
-                    onDone: () => window.loadLedger()
-                });
                 return;
             }
 
@@ -2266,19 +2220,20 @@
                 ${attachHtml}
                 ${!isVoided ? (() => {
                     const cb = getLedgerCashBadge(row);
-                    return `<div class="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
-                        <div class="flex items-center justify-between gap-3">
-                            <div>
-                                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Cash impact</p>
-                                <span class="mt-1 inline-flex items-center rounded border px-2 py-1 text-[11px] font-bold uppercase ${cb.cls}">${escapeHtml(cb.label)}</span>
-                            </div>
-                            <button type="button" id="tx-detail-cash-edit-btn" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">Edit</button>
+                    const bb = window.__resolveLedgerBudgetBadge?.(row);
+                    return `<div class="rounded-xl border border-gray-200 bg-gray-50/60 p-4 space-y-3">
+                        <div>
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Cash impact</p>
+                            <span class="mt-1 inline-flex items-center rounded border px-2 py-1 text-[11px] font-bold uppercase ${cb.cls}">${escapeHtml(cb.label)}</span>
                         </div>
+                        ${bb ? `<div>
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Budget allocation</p>
+                            <span class="mt-1 inline-flex items-center rounded border px-2 py-1 text-[11px] font-bold uppercase ${bb.cls}">${escapeHtml(bb.label)}</span>
+                        </div>` : ''}
+                        <p class="text-[11px] text-gray-400">Change these from "Edit transaction".</p>
                     </div>`;
                 })() : ''}
             `;
-
-            document.getElementById('tx-detail-cash-edit-btn')?.addEventListener('click', () => renderCashImpactEditPanel(row));
 
             actions.innerHTML = isVoided
                 ? `<button type="button" onclick="window.closeTxDetailDrawer()" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Close</button>`
@@ -2296,7 +2251,7 @@
             if (!row.receipt_url && !isVoided) _wireDetailAttachInput(row);
         }
 
-        function renderTxEditForm(row) {
+        async function renderTxEditForm(row) {
             const content = document.getElementById('tx-detail-content');
             const actions = document.getElementById('tx-detail-footer-actions');
             document.getElementById('tx-detail-eyebrow').textContent = 'Finance entry';
@@ -2307,6 +2262,46 @@
             const typeOptions = ['income', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending_payable'];
             if (!typeOptions.includes(normalizedType)) typeOptions.push(normalizedType);
             const statusOptions = ['Completed', 'Missing Receipt', 'Pending', 'Upcoming', 'Reconciled', 'Cancelled'];
+            const initialDate = getTransactionDateInputValue(row);
+
+            // Load bank accounts (cash) + budget allocations for the row's date (best-effort).
+            const editUser = auth.currentUser;
+            let bankAccounts = [];
+            try { if (editUser) bankAccounts = (await ds.getBankAccounts(editUser.uid)) || []; } catch (_) {}
+
+            const FBP = window.FluxyBudgetPicker;
+            let allocationCtx = { budget: null, allocations: [] };
+            const loadAllocations = async (typeForLoad, whenDate) => {
+                if (!FBP || !editUser || !FBP.isExpenseLike(typeForLoad)) { allocationCtx = { budget: null, allocations: [] }; return; }
+                allocationCtx = await FBP.loadForDate(ds, editUser.uid, whenDate);
+            };
+            await loadAllocations(normalizedType, row.timestamp || initialDate);
+            // Current allocation selection from the row state
+            const curAllocation = row.budget_match_status === 'excluded'
+                ? (FBP ? FBP.EXCLUDE_VALUE : '__exclude__')
+                : (row.budget_allocation_id || '');
+
+            // Current cash-impact state
+            const hasCashFields = row.cash_effective !== undefined || row.cash_status !== undefined;
+            let initImpact = 'not_classified';
+            if (hasCashFields) {
+                if (row.cash_effective === true) initImpact = 'actual';
+                else if (row.cash_status === 'pending') initImpact = 'pending';
+                else initImpact = 'no_impact';
+            }
+            const initDirection = row.cash_direction === 'out' ? 'out' : 'in';
+            const initAccountId = row.cash_account_id || '';
+            const accountOptions = bankAccounts
+                .filter(a => a.status === 'active')
+                .map(a => `<option value="${escapeHtml(a.id)}" ${a.id === initAccountId ? 'selected' : ''}>${escapeHtml(a.account_name || a.bank_name || a.id)}</option>`)
+                .join('');
+            const allocSectionHtml = `
+                <div id="tx-edit-allocation-section" class="${(FBP && FBP.isExpenseLike(normalizedType) && allocationCtx.budget) ? '' : 'hidden'}">
+                    <label for="tx-edit-allocation" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Budget allocation</label>
+                    <select id="tx-edit-allocation" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                        ${FBP ? FBP.buildOptionsHtml(allocationCtx.allocations, curAllocation) : ''}
+                    </select>
+                </div>`;
 
             content.innerHTML = `
                 <form id="tx-edit-form" class="space-y-5">
@@ -2338,67 +2333,15 @@
                     </div>
                     <div>
                         <label for="tx-edit-date" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Transaction Date</label>
-                        <input type="date" id="tx-edit-date" required value="${escapeHtml(getTransactionDateInputValue(row))}" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                        <input type="date" id="tx-edit-date" required value="${escapeHtml(initialDate)}" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
                     </div>
-                </form>
-            `;
-            actions.innerHTML = `
-                <div class="flex gap-2">
-                    <button id="tx-edit-cancel-btn" type="button" class="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
-                    <button id="tx-edit-save-btn" type="submit" form="tx-edit-form" class="flex-1 rounded-xl bg-gray-900 px-4 py-3 text-[14px] font-bold text-white hover:bg-gray-800 transition-colors">Save changes</button>
-                </div>
-            `;
-
-            const amountInput = document.getElementById('tx-edit-amount');
-            amountInput?.addEventListener('input', () => {
-                const digits = amountInput.value.replace(/[^\d]/g, '');
-                amountInput.value = digits ? Number(digits).toLocaleString('id-ID') : '';
-            });
-            document.getElementById('tx-edit-cancel-btn')?.addEventListener('click', () => renderTxDetailView(row));
-            document.getElementById('tx-edit-form')?.addEventListener('submit', async (event) => {
-                event.preventDefault();
-                await saveEditedTransaction(row);
-            });
-        }
-
-        async function renderCashImpactEditPanel(row) {
-            const content = document.getElementById('tx-detail-content');
-            const actions = document.getElementById('tx-detail-footer-actions');
-            document.getElementById('tx-detail-eyebrow').textContent = 'Cash impact';
-            document.getElementById('tx-detail-vendor').textContent = row.vendor_name || '—';
-            if (!content || !actions) return;
-
-            // Load bank accounts for optional linking (best-effort; empty list on failure)
-            let bankAccounts = [];
-            try {
-                const user = auth.currentUser;
-                if (user) bankAccounts = (await ds.getBankAccounts(user.uid)) || [];
-            } catch (_) {}
-
-            // Determine current state
-            const hasCashFields   = row.cash_effective !== undefined || row.cash_status !== undefined;
-            let initImpact   = 'not_classified';
-            if (hasCashFields) {
-                if (row.cash_effective === true)  initImpact = 'actual';
-                else if (row.cash_status === 'pending') initImpact = 'pending';
-                else initImpact = 'no_impact';
-            }
-            const initDirection  = row.cash_direction || 'in';
-            const initAccountId  = row.cash_account_id || '';
-
-            const accountOptions = bankAccounts
-                .filter(a => a.status === 'active')
-                .map(a => `<option value="${escapeHtml(a.id)}" ${a.id === initAccountId ? 'selected' : ''}>${escapeHtml(a.account_name || a.bank_name || a.id)}</option>`)
-                .join('');
-
-            content.innerHTML = `
-                <form id="tx-cash-edit-form" class="space-y-5">
-                    <div>
+                    ${allocSectionHtml}
+                    <div class="pt-4 border-t border-gray-100">
                         <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Cash impact</p>
                         <div class="grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1" id="cash-impact-selector">
-                            <button type="button" data-cash-impact="actual"         class="cash-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${initImpact === 'actual'         ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">Actual</button>
-                            <button type="button" data-cash-impact="pending"        class="cash-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${initImpact === 'pending'        ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">Pending</button>
-                            <button type="button" data-cash-impact="no_impact"      class="cash-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${initImpact === 'no_impact'      ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">No impact</button>
+                            <button type="button" data-cash-impact="actual"    class="cash-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${initImpact === 'actual' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">Actual</button>
+                            <button type="button" data-cash-impact="pending"   class="cash-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${initImpact === 'pending' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">Pending</button>
+                            <button type="button" data-cash-impact="no_impact" class="cash-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${initImpact === 'no_impact' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}">No impact</button>
                         </div>
                     </div>
                     <div id="cash-direction-field" class="${initImpact === 'actual' ? '' : 'hidden'}">
@@ -2415,43 +2358,44 @@
                                 <option value="">No account linked</option>
                                 ${accountOptions}
                                </select>`
-                            : `<p class="text-[13px] text-gray-500 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl">No bank accounts added yet. Add one in Settings → Cash & Bank Accounts.</p>`
+                            : `<p class="text-[13px] text-gray-500 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl">No bank accounts added yet. Add one in Settings → Cash &amp; Bank Accounts.</p>`
                         }
                     </div>
-                    <div>
-                        <label for="cash-reason-input" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reason for change <span class="normal-case font-normal text-red-500">*</span></label>
-                        <input type="text" id="cash-reason-input" required maxlength="500" placeholder="Why are you changing this cash status?" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]">
+                    <div class="pt-4 border-t border-gray-100">
+                        <label for="tx-edit-reason" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reason for change <span class="normal-case font-normal text-red-500">*</span></label>
+                        <textarea id="tx-edit-reason" required maxlength="500" rows="2" placeholder="What changed and why? (recorded in the audit log)" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]"></textarea>
                     </div>
                 </form>
             `;
-
             actions.innerHTML = `
                 <div class="flex gap-2">
-                    <button id="cash-edit-cancel-btn" type="button" class="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
-                    <button id="cash-edit-save-btn" type="submit" form="tx-cash-edit-form" class="flex-1 rounded-xl bg-gray-900 px-4 py-3 text-[14px] font-bold text-white hover:bg-gray-800 transition-colors">Save cash impact</button>
+                    <button id="tx-edit-cancel-btn" type="button" class="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                    <button id="tx-edit-save-btn" type="submit" form="tx-edit-form" class="flex-1 rounded-xl bg-gray-900 px-4 py-3 text-[14px] font-bold text-white hover:bg-gray-800 transition-colors">Save changes</button>
                 </div>
             `;
 
-            // Segmented button interaction
-            let selectedImpact    = initImpact;
-            let selectedDirection = initDirection !== 'out' ? 'in' : 'out';
+            const amountInput = document.getElementById('tx-edit-amount');
+            amountInput?.addEventListener('input', () => {
+                const digits = amountInput.value.replace(/[^\d]/g, '');
+                amountInput.value = digits ? Number(digits).toLocaleString('id-ID') : '';
+            });
 
-            function refreshImpactBtns() {
+            // Cash-impact segmented controls
+            let selectedImpact = initImpact;
+            let selectedDirection = initDirection === 'out' ? 'out' : 'in';
+            const refreshImpactBtns = () => {
                 document.querySelectorAll('.cash-impact-btn').forEach(btn => {
                     const active = btn.dataset.cashImpact === selectedImpact;
                     btn.className = `cash-impact-btn rounded-lg px-2 py-2 text-[12px] font-bold transition-all ${active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`;
                 });
-                const dirField = document.getElementById('cash-direction-field');
-                if (dirField) dirField.classList.toggle('hidden', selectedImpact !== 'actual');
-            }
-
-            function refreshDirBtns() {
+                document.getElementById('cash-direction-field')?.classList.toggle('hidden', selectedImpact !== 'actual');
+            };
+            const refreshDirBtns = () => {
                 document.querySelectorAll('.cash-dir-btn').forEach(btn => {
                     const active = btn.dataset.cashDir === selectedDirection;
                     btn.className = `cash-dir-btn rounded-lg px-3 py-2 text-[12px] font-bold transition-all ${active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`;
                 });
-            }
-
+            };
             document.getElementById('cash-impact-selector')?.addEventListener('click', (e) => {
                 const btn = e.target.closest('.cash-impact-btn');
                 if (!btn) return;
@@ -2465,99 +2409,93 @@
                 refreshDirBtns();
             });
 
-            document.getElementById('cash-edit-cancel-btn')?.addEventListener('click', () => renderTxDetailView(row));
+            // Budget allocation: visible for expense-like types with a budget; reload on type/date change
+            const allocSection = document.getElementById('tx-edit-allocation-section');
+            const allocSelect = document.getElementById('tx-edit-allocation');
+            const typeSelect = document.getElementById('tx-edit-type');
+            const dateInput = document.getElementById('tx-edit-date');
+            let allocTouched = false;
+            allocSelect?.addEventListener('change', () => { allocTouched = true; });
+            const refreshAllocSection = async () => {
+                if (!FBP || !allocSection || !allocSelect) return;
+                const t = typeSelect?.value || normalizedType;
+                await loadAllocations(t, dateInput?.value || initialDate);
+                allocSelect.innerHTML = FBP.buildOptionsHtml(allocationCtx.allocations, allocTouched ? (allocSelect.value || '') : curAllocation);
+                allocSection.classList.toggle('hidden', !(FBP.isExpenseLike(t) && allocationCtx.budget));
+            };
+            typeSelect?.addEventListener('change', refreshAllocSection);
+            dateInput?.addEventListener('change', refreshAllocSection);
 
-            document.getElementById('tx-cash-edit-form')?.addEventListener('submit', async (event) => {
+            document.getElementById('tx-edit-cancel-btn')?.addEventListener('click', () => renderTxDetailView(row));
+
+            document.getElementById('tx-edit-form')?.addEventListener('submit', async (event) => {
                 event.preventDefault();
-                const reason = document.getElementById('cash-reason-input')?.value?.trim() || '';
-                if (!reason) {
-                    window.showToast?.('Please enter a reason for the cash impact change.', 'error');
-                    return;
-                }
+                const reason = document.getElementById('tx-edit-reason')?.value?.trim() || '';
+                if (!reason) { window.showToast?.('Please enter a reason for this change.', 'error'); return; }
 
-                const confirmed = await window.showConfirmDialog({
-                    title: 'Update cash impact?',
-                    body: 'This changes how the transaction is counted in Ledger cash movement. It will not update your real Bank Cash Balance.',
-                    confirmLabel: 'Update cash impact',
-                    cancelLabel: 'Cancel',
-                    tone: 'default',
-                    icon: 'info'
-                });
-                if (!confirmed) return;
-
-                const saveBtn = document.getElementById('cash-edit-save-btn');
-                const origLabel = saveBtn?.textContent || 'Save cash impact';
-                if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
-
+                const saveBtn = document.getElementById('tx-edit-save-btn');
+                const originalLabel = saveBtn?.textContent || 'Save changes';
                 try {
-                    const user = auth.currentUser;
-                    if (!user) throw new Error('Session expired.');
+                    const u = auth.currentUser;
+                    if (!u) throw new Error('Session expired.');
+                    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
 
-                    // Build payload from selected options
-                    let cashEffective = false;
-                    let cashStatus    = 'none';
-                    let cashDirection = 'none';
-                    let cashMatchStatus = 'unmatched';
-                    let cashEffectiveAt = null;
-                    const accountId   = document.getElementById('cash-account-select')?.value || null;
+                    // 1) Basic fields — always saved from the edit form.
+                    const finalType = typeSelect?.value || normalizedType;
+                    await ds.updateTransaction(u.uid, row.id, {
+                        amount: amountInput?.value || '',
+                        vendor_name: document.getElementById('tx-edit-vendor')?.value || '',
+                        category: document.getElementById('tx-edit-category')?.value || '',
+                        type: finalType,
+                        status: document.getElementById('tx-edit-status')?.value || '',
+                        date: parseDateInputValue(dateInput?.value || '')
+                    }, reason);
 
+                    // 2) Cash impact — only when it changed.
+                    let cashEffective = false, cashStatus = 'none', cashDirection = 'none', cashMatchStatus = 'unmatched', cashEffectiveAt = null;
                     if (selectedImpact === 'actual') {
-                        cashEffective   = true;
-                        cashStatus      = 'actual';
-                        cashDirection   = selectedDirection;
-                        cashMatchStatus = 'manual';
-                        cashEffectiveAt = row.timestamp || null;
+                        cashEffective = true; cashStatus = 'actual'; cashDirection = selectedDirection; cashMatchStatus = 'manual'; cashEffectiveAt = row.timestamp || null;
                     } else if (selectedImpact === 'pending') {
-                        cashEffective   = false;
-                        cashStatus      = 'pending';
-                        cashDirection   = 'none';
-                        cashMatchStatus = 'unmatched';
+                        cashStatus = 'pending';
+                    }
+                    const accountId = document.getElementById('cash-account-select')?.value || '';
+                    const cashChanged = selectedImpact !== initImpact
+                        || (selectedImpact === 'actual' && cashDirection !== (row.cash_direction || 'in'))
+                        || accountId !== (row.cash_account_id || '');
+                    if (cashChanged) {
+                        await ds.updateTransactionCashImpact(u.uid, row.id, {
+                            cash_effective: cashEffective,
+                            cash_status: cashStatus,
+                            cash_direction: cashDirection,
+                            cash_account_id: accountId || null,
+                            cash_match_status: cashMatchStatus,
+                            cash_effective_at: cashEffectiveAt
+                        }, reason);
                     }
 
-                    const payload = {
-                        cash_effective:   cashEffective,
-                        cash_status:      cashStatus,
-                        cash_direction:   cashDirection,
-                        cash_account_id:  accountId || null,
-                        cash_match_status: cashMatchStatus,
-                        cash_effective_at: cashEffectiveAt
-                    };
+                    // 3) Budget allocation — only for expense-like types with a budget, when the user changed it.
+                    if (allocTouched && FBP && FBP.isExpenseLike(finalType) && allocationCtx.budget) {
+                        const newAlloc = allocSelect?.value || '';
+                        if (newAlloc !== curAllocation) {
+                            const budgetId = allocationCtx.budget.id;
+                            if (newAlloc === FBP.EXCLUDE_VALUE) {
+                                await ds.excludeTransactionFromBudget(u.uid, row.id, { budgetId, reason });
+                            } else if (newAlloc) {
+                                await ds.updateTransactionBudgetAssignment(u.uid, row.id, { budgetId, allocationId: newAlloc, reason });
+                            } else {
+                                await ds.restoreBudgetAssignment(u.uid, 'transactions', row.id, { reason, budgetId });
+                            }
+                        }
+                    }
 
-                    const updated = await ds.updateTransactionCashImpact(user.uid, row.id, payload, reason);
-                    syncTransactionInMemory(updated);
-                    applyLedgerMonthFilter();
-                    window.showToast?.('Cash impact updated.', 'success');
-                    renderTxDetailView(updated);
+                    window.closeTxDetailDrawer();
+                    window.showToast('Transaction updated.', 'success');
+                    await window.loadLedger();
                 } catch (err) {
-                    window.showToast?.(friendlyLedgerError(err, 'Could not update cash impact. Try again.'), 'error');
-                    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = origLabel; }
+                    window.showToast(friendlyLedgerError(err), 'error');
+                    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
                 }
             });
-        }
-
-        async function saveEditedTransaction(row) {
-            const saveBtn = document.getElementById('tx-edit-save-btn');
-            const originalLabel = saveBtn?.textContent || 'Save changes';
-            try {
-                const user = auth.currentUser;
-                if (!user) throw new Error('Session expired.');
-                if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
-                const patch = {
-                    amount: document.getElementById('tx-edit-amount')?.value || '',
-                    vendor_name: document.getElementById('tx-edit-vendor')?.value || '',
-                    category: document.getElementById('tx-edit-category')?.value || '',
-                    type: document.getElementById('tx-edit-type')?.value || '',
-                    status: document.getElementById('tx-edit-status')?.value || '',
-                    date: parseDateInputValue(document.getElementById('tx-edit-date')?.value || '')
-                };
-                await ds.updateTransaction(user.uid, row.id, patch, 'Edited from ledger');
-                window.closeTxDetailDrawer();
-                window.showToast('Transaction updated.', 'success');
-                await window.loadLedger();
-            } catch (err) {
-                window.showToast(friendlyLedgerError(err), 'error');
-                if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
-            }
         }
 
         async function voidActiveTransaction(row) {
