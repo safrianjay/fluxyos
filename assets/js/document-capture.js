@@ -72,6 +72,7 @@
         pickers: { primary: null, invoice: null },
         dates: { primary: null, invoice: null },
         errorMessage: null,
+        allocationContext: null, // { budget, allocations } | null — transaction allocation picker
     };
 
     function $(id) { return document.getElementById(id); }
@@ -395,6 +396,16 @@
             </div>
         ` : '';
 
+        const allocationBlock = state.mode === 'transaction' ? `
+            <div id="scan-allocation-wrap" class="hidden">
+                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Budget allocation</label>
+                <select name="budget_allocation"
+                        class="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                    <option value="">Auto-match by category</option>
+                </select>
+            </div>
+        ` : '';
+
         const footerNote = state.mode === 'bill'
             ? 'This bill will be saved as a <span class="font-mono">pending_payable</span>. No ledger transaction will be created.'
             : state.mode === 'subscription'
@@ -430,6 +441,8 @@
 
                 ${typeStatusBlock}
 
+                ${allocationBlock}
+
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">${escapeHtml(cfg.primaryDateLabel)} ${confidenceMark(dateConfidence)}</label>
@@ -460,6 +473,31 @@
         mountReviewDatePickers();
         wireReviewHandlers();
         updateSaveEnabled();
+        mountReviewAllocationPicker();
+    }
+
+    // Budget allocation picker for the receipt-capture review (transaction mode).
+    // Loads allocations for the transaction date so the user can pin the expense
+    // to a specific allocation at save, instead of reassigning it from the Budget
+    // page later. Hidden when no active budget covers the date.
+    async function mountReviewAllocationPicker() {
+        if (state.mode !== 'transaction' || !window.FluxyBudgetPicker) return;
+        const wrap = $('scan-allocation-wrap');
+        const select = $('scan-review-form')?.querySelector('select[name="budget_allocation"]');
+        if (!wrap || !select) return;
+        try {
+            const ctx = getContext();
+            const uid = ctx?.auth?.currentUser?.uid;
+            if (!ctx?.ds || !uid) return;
+            const when = state.dates.primary || window.FluxyDateRangePicker?.getDayKey?.() || new Date();
+            state.allocationContext = await window.FluxyBudgetPicker.loadForDate(ctx.ds, uid, when);
+            select.innerHTML = window.FluxyBudgetPicker.buildOptionsHtml(
+                state.allocationContext.allocations, select.value || ''
+            );
+            wrap.classList.toggle('hidden', !(state.allocationContext && state.allocationContext.budget));
+        } catch (_) {
+            state.allocationContext = { budget: null, allocations: [] };
+        }
     }
 
     function mountReviewDatePickers() {
@@ -492,6 +530,7 @@
                 onChange: ({ start }) => {
                     state.dates.primary = start;
                     updateSaveEnabled();
+                    mountReviewAllocationPicker();
                 },
             });
         }
@@ -905,6 +944,14 @@
         } else {
             if (primaryDate) payload.timestamp = primaryDate;
             if (invoiceDate) payload.invoice_date = invoiceDate;
+            // Pin to the user-selected budget allocation (expense-like types only).
+            if (window.FluxyBudgetPicker && window.FluxyBudgetPicker.isExpenseLike(type)
+                && state.allocationContext?.budget) {
+                Object.assign(payload, window.FluxyBudgetPicker.buildAssignmentFields({
+                    budget: state.allocationContext.budget,
+                    allocationId: String(fd.get('budget_allocation') || '')
+                }));
+            }
         }
 
         const duplicate = await findPossibleDuplicate(ctx, user.uid, payload);

@@ -318,6 +318,88 @@ window.showReasonDialog = function(options = {}) {
     });
 };
 
+// Shared budget-allocation picker used by the record-transaction entry points
+// (Add Transaction drawer, CSV bulk apply-to-all, AI receipt capture). Lets the
+// user pin a transaction to a specific budget allocation at creation time so
+// they don't have to reassign it from the Budget page afterward. Budgets are
+// category-scoped spend buckets, so this only applies to expense-like types.
+window.FluxyBudgetPicker = (function () {
+    const EXPENSE_LIKE_TYPES = ['expense', 'fee', 'tax', 'pending_payable'];
+    const EXCLUDE_VALUE = '__exclude__';
+
+    function isExpenseLike(type) {
+        return EXPENSE_LIKE_TYPES.includes(String(type || '').trim());
+    }
+
+    // Fetch the budget covering `dateValue` plus its allocations (with usage).
+    // Returns { budget, allocations }; { budget: null, allocations: [] } when no
+    // active budget covers the date or anything fails (the picker stays hidden).
+    async function loadForDate(ds, uid, dateValue) {
+        try {
+            if (!ds || !uid) return { budget: null, allocations: [] };
+            const budget = typeof ds.getBudgetForDate === 'function'
+                ? await ds.getBudgetForDate(uid, dateValue)
+                : await ds.getActiveBudget(uid);
+            if (!budget) return { budget: null, allocations: [] };
+            const usage = await ds.getBudgetUsage(uid, budget.id);
+            return { budget: usage?.budget || budget, allocations: usage?.allocations || [] };
+        } catch (err) {
+            console.warn('Budget allocation load failed:', err);
+            return { budget: null, allocations: [] };
+        }
+    }
+
+    function escapeOption(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function fmtRp(n) {
+        return 'Rp' + Math.max(0, Math.round(Number(n) || 0)).toLocaleString('id-ID');
+    }
+
+    // Build the <option> markup. `selectedId` preserves the current choice across
+    // re-populations (e.g. when the transaction date changes).
+    function buildOptionsHtml(allocations, selectedId) {
+        const sel = selectedId || '';
+        const opts = [`<option value=""${sel === '' ? ' selected' : ''}>Auto-match by category</option>`];
+        (allocations || []).forEach((a) => {
+            if (!a || !a.id) return;
+            const remaining = a.remaining_amount != null ? a.remaining_amount : a.allocated_amount;
+            const label = `${a.name || 'Allocation'} — ${fmtRp(remaining)} left`;
+            opts.push(`<option value="${a.id}"${sel === a.id ? ' selected' : ''}>${escapeOption(label)}</option>`);
+        });
+        opts.push(`<option value="${EXCLUDE_VALUE}"${sel === EXCLUDE_VALUE ? ' selected' : ''}>Don't track against budget</option>`);
+        return opts.join('');
+    }
+
+    // Translate a picker selection into the budget-* fields to merge onto a
+    // transaction payload before create. Empty object = write nothing (keeps the
+    // legacy category auto-match behavior). Mirrors the manual-assignment field
+    // set in DataService.updateTransactionBudgetAssignment.
+    function buildAssignmentFields({ budget, allocationId }) {
+        if (!budget || !budget.id) return {};
+        const value = allocationId || '';
+        if (value === '') return {};
+        if (value === EXCLUDE_VALUE) {
+            return {
+                budget_id: budget.id,
+                budget_allocation_id: null,
+                budget_match_method: 'excluded',
+                budget_match_status: 'excluded'
+            };
+        }
+        return {
+            budget_id: budget.id,
+            budget_allocation_id: value,
+            budget_match_method: 'manual',
+            budget_match_status: 'matched',
+            budget_match_confidence: 1
+        };
+    }
+
+    return { EXPENSE_LIKE_TYPES, EXCLUDE_VALUE, isExpenseLike, loadForDate, buildOptionsHtml, buildAssignmentFields };
+})();
+
 window.showAddTransactionModal = function(options = {}) {
     // Trial/payment access guard: block record creation once the trial has expired
     // or while payment is pending verification. Fails open if state isn't loaded.
@@ -418,6 +500,15 @@ window.showAddTransactionModal = function(options = {}) {
                         </div>
                         ${context === 'bill' ? `<div id="tx-budget-preview" class="hidden rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600"></div>` : ''}
                         ${context === 'transaction' ? `
+                        <div id="tx-allocation-section" class="hidden">
+                            <label for="tx-allocation" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Budget allocation</label>
+                            <select id="tx-allocation" name="allocation" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                                <option value="">Auto-match by category</option>
+                            </select>
+                            <p class="mt-2 text-[12px] text-gray-500">Pin this expense to a budget allocation now, or leave it to match by category.</p>
+                        </div>
+                        ` : ''}
+                        ${context === 'transaction' ? `
                         <div id="tx-cash-impact-section" class="hidden space-y-2">
                             <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Cash impact</p>
                             <p class="mt-1 text-[13px] font-medium text-gray-700">Has this money already moved?</p>
@@ -508,6 +599,16 @@ window.showAddTransactionModal = function(options = {}) {
                                 </select>
                                 <p id="tx-bulk-status-note" class="hidden rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[12px] text-blue-800"></p>
                             </div>
+                        </div>
+                        <div id="tx-bulk-allocation-card" class="hidden rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+                            <div>
+                                <p class="text-[13px] font-bold text-gray-900">Budget allocation</p>
+                                <p class="text-[11px] text-gray-500">Apply one allocation to every expense row — income rows stay unallocated</p>
+                            </div>
+                            <select id="tx-bulk-allocation-select"
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]">
+                                <option value="">Match by category (default)</option>
+                            </select>
                         </div>
                         <div class="rounded-xl border border-gray-200 bg-white p-4">
                             <div class="flex items-center justify-between mb-3">
@@ -609,6 +710,9 @@ window.showAddTransactionModal = function(options = {}) {
     let selectedEntryDate = todayKey;
     let updateSelectedCsvDateState = updateDateWarning;
     let bulkStatusOverride = null;
+    let txAllocationContext = null; // { budget, allocations } | null — transaction allocation picker
+    let txAllocationReload = null;  // () => Promise, re-fetches allocations on date change
+    let bulkAllocationContext = null; // { budget, allocations } | null — CSV apply-to-all
     let cashImpactSelection = 'received';
     let cashImpactUserTouched = false;
     let csvImportState = {
@@ -644,6 +748,7 @@ window.showAddTransactionModal = function(options = {}) {
                     selectedEntryDate = start;
                     updateSingleSubmitState();
                     if (context === 'bill' && typeof renderBillBudgetPreview === 'function') renderBillBudgetPreview();
+                    if (context === 'transaction' && typeof txAllocationReload === 'function') txAllocationReload();
                 }
             });
 
@@ -1103,6 +1208,58 @@ window.showAddTransactionModal = function(options = {}) {
         }
     }
 
+    // Budget allocation picker (transaction context). Lets the user pin the
+    // expense to a specific allocation at creation, so they don't reassign it
+    // from the Budget page later. Only shown for expense-like types when an
+    // active budget covers the selected transaction date.
+    if (context === 'transaction') {
+        const allocSection = document.getElementById('tx-allocation-section');
+        const allocSelect = document.getElementById('tx-allocation');
+        const allocTypeSel = document.getElementById('tx-type');
+
+        const allocApplies = () => !!window.FluxyBudgetPicker
+            && window.FluxyBudgetPicker.isExpenseLike(allocTypeSel?.value);
+
+        const refreshAllocVisibility = () => {
+            if (!allocSection) return;
+            const show = !!(txAllocationContext && txAllocationContext.budget) && allocApplies();
+            allocSection.classList.toggle('hidden', !show);
+        };
+
+        txAllocationReload = async () => {
+            if (!window.FluxyBudgetPicker || !allocSelect) return;
+            try {
+                const { ds, user } = await getTransactionDataService();
+                const when = parseLocalDateKey(selectedEntryDate) || new Date();
+                txAllocationContext = await window.FluxyBudgetPicker.loadForDate(ds, user.uid, when);
+                allocSelect.innerHTML = window.FluxyBudgetPicker.buildOptionsHtml(
+                    txAllocationContext.allocations, allocSelect.value || ''
+                );
+            } catch (_) {
+                txAllocationContext = { budget: null, allocations: [] };
+            }
+            refreshAllocVisibility();
+        };
+
+        allocTypeSel?.addEventListener('change', refreshAllocVisibility);
+        // Initial load. Also seeds the CSV bulk apply-to-all picker, which always
+        // targets the current-period budget (independent of the single-entry date,
+        // which can change later). One fetch serves both.
+        txAllocationReload().then(() => {
+            if (!supportsBulkCsv || !window.FluxyBudgetPicker) return;
+            bulkAllocationContext = txAllocationContext;
+            const bulkSel = document.getElementById('tx-bulk-allocation-select');
+            const bulkCard = document.getElementById('tx-bulk-allocation-card');
+            const hasBudget = !!(bulkAllocationContext && bulkAllocationContext.budget);
+            if (bulkSel) {
+                bulkSel.innerHTML = window.FluxyBudgetPicker.buildOptionsHtml(
+                    (bulkAllocationContext && bulkAllocationContext.allocations) || [], ''
+                );
+            }
+            if (bulkCard) bulkCard.classList.toggle('hidden', !hasBudget);
+        });
+    }
+
     function getCurrentBillCategory() {
         const sel = categorySelect?.value || '';
         if (sel === 'Others') {
@@ -1537,6 +1694,18 @@ window.showAddTransactionModal = function(options = {}) {
                 const csvText = csvImportState.csvText || await file.text();
                 const { ds, user, Timestamp } = await getTransactionDataService();
                 const transactions = parseBulkTransactions(csvText, todayKey, Timestamp, bulkStatusOverride);
+                // Apply the chosen budget allocation to expense-like rows only.
+                // Income/refund rows are left to category match (or unallocated).
+                const bulkAllocId = document.getElementById('tx-bulk-allocation-select')?.value || '';
+                if (bulkAllocId && bulkAllocationContext?.budget && window.FluxyBudgetPicker) {
+                    const allocFields = window.FluxyBudgetPicker.buildAssignmentFields({
+                        budget: bulkAllocationContext.budget,
+                        allocationId: bulkAllocId
+                    });
+                    transactions.forEach((row) => {
+                        if (window.FluxyBudgetPicker.isExpenseLike(row.type)) Object.assign(row, allocFields);
+                    });
+                }
                 btn.innerText = `Uploading ${transactions.length}...`;
                 await ds.addTransactions(user.uid, transactions);
                 setCsvFeedback(`${transactions.length} transactions imported successfully.`, 'success');
@@ -1686,6 +1855,15 @@ window.showAddTransactionModal = function(options = {}) {
                     if (window.loadSubscriptions) await window.loadSubscriptions();
                     window.showToast("Subscription successfully activated!", "success");
                 } else {
+                    // Attach the user-selected budget allocation (Auto / specific
+                    // allocation / Exclude). No-op when no active budget or "Auto".
+                    if (txAllocationContext?.budget && window.FluxyBudgetPicker
+                        && window.FluxyBudgetPicker.isExpenseLike(txType)) {
+                        Object.assign(data, window.FluxyBudgetPicker.buildAssignmentFields({
+                            budget: txAllocationContext.budget,
+                            allocationId: document.getElementById('tx-allocation')?.value || ''
+                        }));
+                    }
                     const txRef = await ds.addTransaction(user.uid, data);
                     if (attachedDocId && txRef?.id) {
                         try { await ds.linkDocumentTarget(user.uid, attachedDocId, 'transactions', txRef.id); } catch (_) {}

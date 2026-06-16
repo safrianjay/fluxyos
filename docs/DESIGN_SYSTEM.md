@@ -414,6 +414,16 @@ Contract / rules:
 Do not restyle native `<select>` with one-off CSS arrows, and do not call
 `window.alert`-style native pickers.
 
+**Budget allocation picker.** When a record-entry flow needs to let the user pin
+a transaction to a budget allocation, reuse `window.FluxyBudgetPicker`
+(`assets/js/shared-dashboard.js`) rather than hand-rolling the dropdown:
+`loadForDate(ds, uid, date)` fetches the covering budget + allocations,
+`buildOptionsHtml(allocations, selectedId)` renders the `<option>`s ("Auto-match
+by category" → each allocation with `Rp…left` → "Don't track against budget"),
+and `buildAssignmentFields({ budget, allocationId })` returns the `budget_*`
+fields to merge onto the create payload. Already used by the Add Transaction
+drawer, CSV bulk apply-to-all, and AI receipt capture.
+
 ---
 
 ## 📐 Layout & Spacing

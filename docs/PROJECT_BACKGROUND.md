@@ -117,6 +117,19 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 All 9 budget fields, all 7 Phase 1 cash-impact fields, and all 3 Phase 2 cash-assignment audit fields are optional. Legacy transactions without them keep
 working — `DataService.resolveRecordAssignment` falls back to category match.
 
+**Creation-time allocation picker.** The three record-transaction entry points —
+the Add Transaction drawer, the CSV bulk "apply allocation to all rows" control,
+and the AI receipt-capture review — now let the user pin an expense to a specific
+allocation *at create time* via the shared `window.FluxyBudgetPicker` helper
+(`assets/js/shared-dashboard.js`). Shown only for expense-like types
+(`expense`/`fee`/`tax`/`pending_payable`) when an active budget covers the
+selected date. Picking an allocation writes `budget_id`, `budget_allocation_id`,
+`budget_match_method: 'manual'`, `budget_match_status: 'matched'`,
+`budget_match_confidence: 1` (no audit log on create, mirroring the Add Bill
+drawer). "Auto-match by category" writes nothing (preserves the fallback);
+"Don't track against budget" writes `budget_match_method/status: 'excluded'`.
+The transaction create rule already allows these keys — no rules change.
+
 **Ordering:** `timestamp DESC` (newest first). Default limit: 50. Dashboard preview: 5.
 
 ### 4b. Bills — `users/{userId}/bills`
