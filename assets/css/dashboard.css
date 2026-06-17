@@ -931,8 +931,8 @@
 /* Two-column layout */
 .overview-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 20px;
+    grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 320px);
+    gap: clamp(16px, 1.4vw, 20px);
     align-items: start;
 }
 
@@ -2162,8 +2162,9 @@
 .status-badge.is-warning { background: #FEF3C7; color: #92400E; }
 .status-badge.is-danger { background: #FEE2E2; color: #B91C1C; }
 
-/* Workbench responsive */
-@media (max-width: 1440px) {
+/* Workbench responsive — keep the sidebar + 3-col KPI layout down to laptop
+   widths (MacBook Air ~1470/1304); only collapse below 1200px (tablets). */
+@media (max-width: 1200px) {
     .overview-layout {
         grid-template-columns: 1fr;
     }
@@ -2358,7 +2359,7 @@
     font-style: italic;
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1200px) {
     .metric-cell-mini { min-height: 208px; }
 }
 
