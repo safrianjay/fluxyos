@@ -552,6 +552,42 @@ const COPY = {
             footnote: TRANSACTIONAL_FOOTNOTE.en,
         };
     },
+
+    // One-time product-update announcement: Bahasa Indonesia is now available.
+    // Bilingual BY DESIGN (English first, Bahasa Indonesia below) — it announces
+    // the language itself, so every recipient sees both regardless of locale.
+    announce_id_language(_locale, d) {
+        const baseUrl = d.baseUrl || 'https://fluxyos.com';
+        const settingsUrl = `${baseUrl}/settings-language`;
+        const eyebrow = (t) => ({
+            html: `<div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${ORANGE};margin:0 0 2px;">${escapeHtml(t)}</div>`,
+            text: t.toUpperCase(),
+        });
+        const divider = (label) => ({
+            html: `<div style="border-top:1px solid #EEF0F3;margin:6px 0 0;"></div><div style="text-align:center;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:${NAVY};padding-top:16px;">${escapeHtml(label)}</div>`,
+            text: `— ${label} —`,
+        });
+        const line = (html, text) => ({ html, text: text != null ? text : html.replace(/<[^>]+>/g, '') });
+        return {
+            subject: 'FluxyOS now speaks Bahasa Indonesia 🇮🇩 · Kini hadir dalam Bahasa Indonesia',
+            heading: 'FluxyOS now speaks Bahasa Indonesia',
+            paragraphs: [
+                eyebrow('New enhancement release'),
+                // ---- English ----
+                line('Hi there,'),
+                line('Good news — FluxyOS is now available in <strong>Bahasa Indonesia</strong>. Your whole workspace, including the dashboard, reports, and Fluxy AI, can now speak Bahasa.'),
+                line('To switch, open <strong>Settings &rarr; Language &amp; Region</strong> and choose <strong>Bahasa Indonesia</strong>. The interface changes instantly, and your amounts always stay in Rupiah (Rp).', 'To switch, open Settings → Language & Region and choose Bahasa Indonesia. The interface changes instantly, and your amounts always stay in Rupiah (Rp).'),
+                // ---- divider ----
+                divider('🇮🇩 Bahasa Indonesia'),
+                // ---- Indonesian ----
+                line('Halo,'),
+                line('Kabar baik — FluxyOS kini tersedia dalam <strong>Bahasa Indonesia</strong>. Seluruh workspace Anda, termasuk dashboard, laporan, dan Fluxy AI, kini bisa berbahasa Indonesia.'),
+                line('Untuk mengganti, buka <strong>Pengaturan &rarr; Bahasa &amp; Wilayah</strong> lalu pilih <strong>Bahasa Indonesia</strong>. Tampilan langsung berubah, dan nominal tetap dalam Rupiah (Rp).', 'Untuk mengganti, buka Pengaturan → Bahasa & Wilayah lalu pilih Bahasa Indonesia. Tampilan langsung berubah, dan nominal tetap dalam Rupiah (Rp).'),
+            ],
+            cta: { label: 'Change language · Ganti bahasa', url: settingsUrl },
+            footnote: "You're receiving this FluxyOS product update because you have an account. · Anda menerima pembaruan produk FluxyOS ini karena memiliki akun.",
+        };
+    },
 };
 
 // Build a renderable email. locale is "en" | "id"; falls back to "en".

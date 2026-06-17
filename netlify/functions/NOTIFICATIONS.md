@@ -49,6 +49,7 @@ sweep turns those into emails within ~5 minutes. Logic lives in `lib/notify-core
    | `NOTIFY_ENABLED` | **kill switch — default off.** Both notification sweeps run **only** when this is exactly `"true"`. Anything else (incl. unset) = paused. |
    | `DIGEST_ENABLED` | **Weekly digest kill switch — default off.** `weekly-digest.js` runs only when this is exactly `"true"`. |
    | `OPENAI_API_KEY` | Used by the Weekly Digest's AI narrator (already set for `api.js`). Without it the digest falls back to a deterministic narrative. |
+   | `ANNOUNCE_ID_LANG_ENABLED` | **One-time broadcast kill switch — default off.** Arms `announce-id-language.js` only when exactly `"true"`. Independent of `NOTIFY_ENABLED`/`DIGEST_ENABLED` — arming it does not un-pause the sweeps. |
 
    These are secrets — set them in Netlify, never commit them.
 
@@ -114,3 +115,29 @@ A per-user AI-narrated weekly summary, separate from the notification sweeps.
 - **Enable:** set `DIGEST_ENABLED=true`. Code lives in `lib/digest-core.js`;
   the email builder is `functions/lib/digest-template.js`. Local test:
   `npm run smoke:digest` (mocked, sends nothing).
+
+---
+
+## One-time broadcasts (`announce-id-language.js`)
+
+An ad-hoc product-update blast to the **whole** `internal_users` roster, used to
+announce the Bahasa Indonesia release. The bilingual email (English first,
+Bahasa Indonesia below) is the `announce_id_language` template in
+`functions/lib/templates.js`.
+
+- **Schedule:** `*/5 * * * *`, but **no-ops unless armed** by
+  `ANNOUNCE_ID_LANG_ENABLED=true` (its own switch — does not touch the sweeps).
+- **Exactly-once / no backfill:** each send keys
+  `users/{uid}/mail_log/announce_id_language_v1` via `.create()`. A re-run or two
+  overlapping runs can never double-send, and a user is emailed once *ever*,
+  independent of signup date — so there's no backfill vector even on an empty log.
+- **Run it:**
+  1. Send yourself a test first (set your own row, or temporarily point the
+     roster query at a test uid) and eyeball the email.
+  2. Set `ANNOUNCE_ID_LANG_ENABLED=true`.
+  3. Watch the function log for `{ scanned, sent, skipped, failed }`. When a run
+     reports `sent: 0`, everyone has it — the broadcast is done.
+  4. Set `ANNOUNCE_ID_LANG_ENABLED=false` (or unset) to disarm.
+- **Re-announce (rare):** bump the `EVENT_KEY` version suffix in the function to
+  intentionally send to everyone again.
+- **Local logic test:** `node scripts/announce-smoke.js` (mocked, sends nothing).
