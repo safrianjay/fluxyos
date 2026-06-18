@@ -153,24 +153,31 @@ async function extractWithClaude(buffer, mediaType) {
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
     const client = new Anthropic({ apiKey });
 
+    // Force structured extraction via a tool call (GA on the stable endpoint;
+    // structured-output `output_config` is beta-only in this SDK version).
     const stream = client.messages.stream({
         model: AI_MODEL,
         max_tokens: 32000,
         system: SYSTEM_PROMPT,
-        output_config: { format: { type: 'json_schema', schema: STRUCTURED_SCHEMA } },
+        tools: [{
+            name: 'record_statement',
+            description: 'Record the extracted bank-statement metadata and every transaction row.',
+            input_schema: STRUCTURED_SCHEMA,
+        }],
+        tool_choice: { type: 'tool', name: 'record_statement' },
         messages: [{
             role: 'user',
             content: [
                 { type: 'document', source: { type: 'base64', media_type: mediaType, data: buffer.toString('base64') } },
-                { type: 'text', text: 'Extract the statement metadata and all transaction rows as structured JSON.' },
+                { type: 'text', text: 'Extract the statement metadata and all transaction rows. Call record_statement with the result.' },
             ],
         }],
     });
     const message = await stream.finalMessage();
     if (message.stop_reason === 'refusal') throw new Error('extraction_refused');
-    const text = (message.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
-    let parsed;
-    try { parsed = JSON.parse(text); } catch (_) { throw new Error('extraction_unparseable'); }
+    const toolUse = (message.content || []).find((b) => b.type === 'tool_use' && b.name === 'record_statement');
+    if (!toolUse || !toolUse.input) throw new Error('extraction_no_tool_use');
+    const parsed = toolUse.input;
 
     const meta = parsed.statement_metadata || {};
     const rows = (Array.isArray(parsed.transactions) ? parsed.transactions : []).map((r) => ({
@@ -400,12 +407,10 @@ exports.handler = async (event) => {
         const mime = String(draft.file_mime_type || '');
         const name = String(draft.file_name || '').toLowerCase();
 
-        let extracted;
-        if (mime === 'application/pdf' || name.endsWith('.pdf')) {
-            extracted = await extractWithClaude(buffer, 'application/pdf');
-        } else {
-            extracted = extractFromSpreadsheet(buffer);
-        }
+        const isPdf = mime === 'application/pdf' || name.endsWith('.pdf');
+        console.log('[bank-statement-extract] start', importId, '| pdf:', isPdf, '| model:', AI_MODEL);
+        const extracted = isPdf ? await extractWithClaude(buffer, 'application/pdf') : extractFromSpreadsheet(buffer);
+        console.log('[bank-statement-extract] extracted rows:', extracted.rows.length);
 
         const recon = reconcile(extracted.metadata, extracted.rows);
         await detectDuplicates(db, uid, extracted.rows, extracted.metadata);
@@ -414,7 +419,7 @@ exports.handler = async (event) => {
         return { statusCode: 200, body: 'ok' };
     } catch (err) {
         const msg = err && err.message ? err.message : String(err);
-        console.error('[bank-statement-extract] failed:', msg);
+        console.error('[bank-statement-extract] failed:', (err && err.status) || '', msg);
         if (draftRef) {
             try {
                 await draftRef.update({
