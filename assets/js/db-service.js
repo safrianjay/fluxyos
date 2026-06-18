@@ -564,9 +564,13 @@ class DataService {
     }
 
     async updateTransactionReceipt(userId, txId, receiptUrl) {
+        // updated_at must be refreshed to request.time, else the transaction
+        // update rule rejects any record that has already been edited.
         await updateDoc(doc(this.db, `users/${userId}/transactions/${txId}`), {
             receipt_url: receiptUrl,
-            status: 'Completed'
+            status: 'Completed',
+            updated_at: serverTimestamp(),
+            updated_by: userId
         });
     }
 
@@ -660,7 +664,9 @@ class DataService {
     async updateTransactionType(userId, txId, newType, newIcon) {
         await updateDoc(doc(this.db, `users/${userId}/transactions/${txId}`), {
             type: newType,
-            icon: newIcon
+            icon: newIcon,
+            updated_at: serverTimestamp(),
+            updated_by: userId
         });
     }
 
