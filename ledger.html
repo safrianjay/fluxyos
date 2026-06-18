@@ -1263,7 +1263,11 @@
 
         function isUncategorizedIssue(record) {
             const category = normalizeLedgerValue(record?.category);
-            return !category || ['uncategorized', 'unknown', 'unspecified', 'others'].includes(category);
+            // Only empty or sentinel "no category" placeholders count as an issue.
+            // "Others" is a deliberate user choice (and a valid category label), so a
+            // record categorized as Others is considered resolved and must leave the
+            // Needs-your-attention table.
+            return !category || ['uncategorized', 'unknown', 'unspecified'].includes(category);
         }
 
         function hasApprovalSignal(record) {
@@ -1957,6 +1961,10 @@
                 window.showToast?.('That transaction is not in the currently loaded ledger range.', 'info');
                 return;
             }
+            // The ledger table is paginated, so the record behind this issue may
+            // live on a later page. Page the table to it first; otherwise the row
+            // isn't in the DOM and the highlight never appears.
+            ledgerPaginator.goToRow(t => t.id === row.id);
             highlightLedgerRow(row.id);
             document.body.classList.add('overflow-hidden');
             window.openTxDetailDrawer(row);

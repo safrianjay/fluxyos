@@ -2148,7 +2148,18 @@ window.createTablePaginator = function({ pageSize = 20, label = 'records', pagin
             if (fn) renderFn = fn;
             _refresh();
         },
-        refresh() { _refresh(); }
+        refresh() { _refresh(); },
+        // Jump to the page that contains the first row matching `predicate`,
+        // then re-render so the row is actually in the DOM (e.g. so a caller
+        // can scroll to / highlight it). Returns true when a match was paged to.
+        goToRow(predicate) {
+            if (typeof predicate !== 'function') return false;
+            const idx = rows.findIndex(predicate);
+            if (idx < 0) return false;
+            currentPage = Math.floor(idx / pageSize) + 1;
+            _refresh();
+            return true;
+        }
     };
 };
 
