@@ -2089,7 +2089,11 @@ service cloud.firestore {
             'is_voided',
             'voided_at',
             'voided_by',
-            'void_reason'
+            'void_reason',
+            'bank_statement_import_id',
+            'bank_statement_row_id',
+            'imported_at',
+            'bank_account_id'
           ])
           && isValidTransactionRecordUpdate(request.resource.data, resource.data)
           && preservesLegacyRecordDate(request.resource.data, resource.data)
