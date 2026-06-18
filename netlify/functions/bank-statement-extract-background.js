@@ -150,6 +150,8 @@ const SYSTEM_PROMPT = [
     '- Dates as YYYY-MM-DD. If a field is genuinely absent, return null and add a short note to validation_notes. Never invent bank, account, or balance values.',
 ].join('\n');
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 // Pull the structured JSON string out of a Responses API payload.
 function extractResponseText(payload) {
     if (typeof payload?.output_text === 'string' && payload.output_text) return payload.output_text;
@@ -171,38 +173,56 @@ async function extractWithOpenAI(buffer, mediaType, fileName) {
     if (!apiKey) throw new Error('OPENAI_API_KEY not set');
     const dataUrl = `data:${mediaType};base64,${buffer.toString('base64')}`;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 240000); // background fn; allow long statements
-    let res;
-    try {
-        res = await fetch('https://api.openai.com/v1/responses', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-            signal: controller.signal,
-            body: JSON.stringify({
-                model: AI_MODEL,
-                max_output_tokens: 32000,
-                input: [
-                    { role: 'system', content: [{ type: 'input_text', text: SYSTEM_PROMPT }] },
-                    {
-                        role: 'user',
-                        content: [
-                            { type: 'input_text', text: 'Extract the statement metadata and all transaction rows as structured JSON.' },
-                            { type: 'input_file', filename: fileName || 'statement.pdf', file_data: dataUrl },
-                        ],
-                    },
+    const body = JSON.stringify({
+        model: AI_MODEL,
+        max_output_tokens: 32000,
+        input: [
+            { role: 'system', content: [{ type: 'input_text', text: SYSTEM_PROMPT }] },
+            {
+                role: 'user',
+                content: [
+                    { type: 'input_text', text: 'Extract the statement metadata and all transaction rows as structured JSON.' },
+                    { type: 'input_file', filename: fileName || 'statement.pdf', file_data: dataUrl },
                 ],
-                text: { format: { type: 'json_schema', name: 'bank_statement', schema: STRUCTURED_SCHEMA, strict: true } },
-            }),
-        });
-    } finally {
-        clearTimeout(timeout);
+            },
+        ],
+        text: { format: { type: 'json_schema', name: 'bank_statement', schema: STRUCTURED_SCHEMA, strict: true } },
+    });
+
+    // Retry transient gateway errors (429 / 5xx, incl. Cloudflare 520) and aborts.
+    let payload = null;
+    let lastErr = '';
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 240000); // background fn; allow long statements
+        let res;
+        try {
+            res = await fetch('https://api.openai.com/v1/responses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                signal: controller.signal,
+                body,
+            });
+        } catch (e) {
+            lastErr = `network ${e && e.message ? e.message : e}`;
+            if (attempt < 3) { await sleep(attempt * 2500); continue; }
+            throw new Error(`OpenAI request failed after retries: ${lastErr}`);
+        } finally {
+            clearTimeout(timeout);
+        }
+        if (res.status === 429 || res.status >= 500) {
+            lastErr = `HTTP ${res.status}`;
+            console.warn('[bank-statement-extract] transient', lastErr, 'attempt', attempt);
+            if (attempt < 3) { await sleep(attempt * 2500); continue; }
+            throw new Error(`OpenAI transient error after retries: ${lastErr}`);
+        }
+        if (!res.ok) {
+            const errText = await res.text().catch(() => '');
+            throw new Error(`OpenAI HTTP ${res.status}: ${errText.slice(0, 200)}`);
+        }
+        payload = await res.json();
+        break;
     }
-    if (!res.ok) {
-        const errText = await res.text().catch(() => '');
-        throw new Error(`OpenAI HTTP ${res.status}: ${errText.slice(0, 200)}`);
-    }
-    const payload = await res.json();
     if (payload?.status === 'incomplete') {
         throw new Error(`extraction_incomplete:${payload?.incomplete_details?.reason || 'unknown'}`);
     }
