@@ -2,7 +2,8 @@
     // 1. Load Global Assets (AI Chat & CSS)
     const assets = [
         { type: 'link', rel: 'stylesheet', href: '/assets/css/ai-chat.css' },
-        { type: 'script', src: '/assets/js/ai-chat.js' }
+        { type: 'script', src: '/assets/js/ai-chat.js' },
+        { type: 'script', src: '/assets/js/connection-guard.js' }
     ];
 
     assets.forEach(asset => {

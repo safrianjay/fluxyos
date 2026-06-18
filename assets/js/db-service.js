@@ -1,4 +1,4 @@
-import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
@@ -78,7 +78,15 @@ const INCOME_STATEMENT_OPEX_TYPES = ['expense', 'fee', 'tax', 'pending_payable']
 class DataService {
     constructor(app) {
         this.app = app;
-        this.db = getFirestore(app);
+        // Auto-detect long polling: when an ad/privacy blocker (or proxy) kills
+        // Firestore's streaming WebChannel, the SDK falls back to long polling,
+        // which dodges some blocker filter rules. initializeFirestore must run
+        // before any getFirestore() and only once per app — guard with getFirestore.
+        try {
+            this.db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+        } catch (_) {
+            this.db = getFirestore(app);
+        }
         this._storage = null;
     }
 
