@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080" role="img" aria-labelledby="title desc">
+  <title id="title">FluxyOS — Own the Stack</title>
+  <desc id="desc">When invoices, bills, and budgets pile up, FluxyOS clears them — one AI finance command center for Indonesian SMBs.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B0F19"/>
+      <stop offset="0.55" stop-color="#111827"/>
+      <stop offset="1" stop-color="#1F2937"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.74" cy="0.22" r="0.7">
+      <stop offset="0" stop-color="#7C3AED" stop-opacity="0.42"/>
+      <stop offset="0.5" stop-color="#EA580C" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#0B0F19" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="46" height="46" patternUnits="userSpaceOnUse">
+      <path d="M 46 0 L 0 0 0 46" fill="none" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1080" height="1080" fill="url(#bg)"/>
+  <rect width="1080" height="1080" fill="url(#glow)"/>
+  <rect width="1080" height="1080" fill="url(#grid)"/>
+  <circle cx="900" cy="120" r="220" fill="#7C3AED" opacity="0.10"/>
+  <circle cx="980" cy="980" r="200" fill="#EA580C" opacity="0.12"/>
+
+  <!-- Top-left: FluxyOS logo lockup -->
+  <g transform="translate(72 60) scale(1.18)">
+    <rect x="0" y="0" width="58" height="58" rx="12" fill="#FFFFFF"/>
+    <g transform="translate(2 0)">
+      <path d="M 10 9 L 48 9 L 39 18 L 19 18 L 19 49 L 10 49 Z" fill="#0B0F19"/>
+      <path d="M 25 27 L 39 27 L 30 36 L 25 36 Z" fill="#0B0F19"/>
+    </g>
+    <text x="78" y="39" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="800" letter-spacing="0">FluxyOS</text>
+  </g>
+
+  <!-- Top-right: eyebrow program-style block -->
+  <g font-family="Inter, Arial, sans-serif" text-anchor="end">
+    <text x="1008" y="88" fill="#D1D5DB" font-size="22" font-weight="600" letter-spacing="2">AI FINANCE OPERATIONS FOR</text>
+    <text x="1008" y="124" fill="#FFFFFF" font-size="32" font-weight="800" letter-spacing="0.5">INDONESIAN SMBs</text>
+  </g>
+  <g transform="translate(866 142)">
+    <rect x="0" y="0" width="142" height="36" rx="18" fill="#EA580C" fill-opacity="0.10" stroke="#EA580C" stroke-width="1.5"/>
+    <text x="71" y="24" text-anchor="middle" fill="#FDBA74" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="1.5">FLUXY AI</text>
+  </g>
+
+  <!-- Soft shadow under the document stack -->
+  <ellipse cx="610" cy="660" rx="240" ry="44" fill="#000000" opacity="0.38" filter="url(#soft)"/>
+
+  <!-- Document stack (invoice/bill pile) -->
+  <g transform="translate(450 214) rotate(-4 160 200)">
+    <!-- back sheets give thickness -->
+    <rect x="22" y="20" width="320" height="400" rx="18" fill="#8C95A6"/>
+    <rect x="12" y="11" width="320" height="400" rx="18" fill="#B8C0CC"/>
+    <rect x="3" y="3" width="320" height="400" rx="18" fill="#E2E6EC"/>
+    <!-- front sheet -->
+    <rect x="0" y="0" width="320" height="400" rx="18" fill="#FFFFFF"/>
+    <!-- invoice content mock -->
+    <rect x="30" y="32" width="78" height="16" rx="8" fill="#EA580C" fill-opacity="0.9"/>
+    <rect x="224" y="32" width="66" height="12" rx="6" fill="#0B0F19" fill-opacity="0.16"/>
+    <rect x="30" y="72" width="166" height="14" rx="7" fill="#0B0F19" fill-opacity="0.30"/>
+    <rect x="30" y="96" width="116" height="10" rx="5" fill="#0B0F19" fill-opacity="0.14"/>
+    <!-- line items -->
+    <rect x="30" y="142" width="148" height="11" rx="5.5" fill="#0B0F19" fill-opacity="0.16"/>
+    <rect x="226" y="142" width="64" height="11" rx="5.5" fill="#0B0F19" fill-opacity="0.20"/>
+    <rect x="30" y="176" width="176" height="11" rx="5.5" fill="#0B0F19" fill-opacity="0.16"/>
+    <rect x="238" y="176" width="52" height="11" rx="5.5" fill="#0B0F19" fill-opacity="0.20"/>
+    <rect x="30" y="210" width="136" height="11" rx="5.5" fill="#0B0F19" fill-opacity="0.16"/>
+    <rect x="230" y="210" width="60" height="11" rx="5.5" fill="#0B0F19" fill-opacity="0.20"/>
+    <rect x="30" y="244" width="160" height="11" rx="5.5" fill="#0B0F19" fill-opacity="0.16"/>
+    <rect x="242" y="244" width="48" height="11" rx="5.5" fill="#0B0F19" fill-opacity="0.20"/>
+    <!-- divider -->
+    <rect x="30" y="294" width="260" height="2" rx="1" fill="#0B0F19" fill-opacity="0.10"/>
+    <!-- total row -->
+    <rect x="30" y="322" width="88" height="14" rx="7" fill="#0B0F19" fill-opacity="0.34"/>
+    <rect x="198" y="320" width="92" height="18" rx="9" fill="#16A34A" fill-opacity="0.85"/>
+  </g>
+
+  <!-- Hero tag: BOOKS CLOSED (loop on right, hangs at top of the fan) -->
+  <g transform="translate(232 223) rotate(-6 244 43)">
+    <ellipse cx="244" cy="43" rx="12" ry="16" fill="none" stroke="#0B0F19" stroke-width="6"/>
+    <rect x="0" y="6" width="226" height="74" rx="16" fill="#0B0F19" stroke="#EA580C" stroke-width="3"/>
+    <circle cx="206" cy="43" r="7" fill="none" stroke="#FDBA74" stroke-width="3"/>
+    <text x="22" y="40" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="800" letter-spacing="0.5">BOOKS</text>
+    <text x="22" y="68" fill="#FDBA74" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="800" letter-spacing="0.5">CLOSED</text>
+    <!-- barcode -->
+    <g fill="#EA580C">
+      <rect x="132" y="22" width="3" height="18"/>
+      <rect x="138" y="22" width="2" height="18"/>
+      <rect x="143" y="22" width="4" height="18"/>
+      <rect x="150" y="22" width="2" height="18"/>
+      <rect x="155" y="22" width="3" height="18"/>
+      <rect x="161" y="22" width="2" height="18"/>
+      <rect x="166" y="22" width="4" height="18"/>
+    </g>
+    <!-- up-right arrow -->
+    <path d="M134 66 L170 50 M170 50 L158 48 M170 50 L168 62" fill="none" stroke="#FDBA74" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Small fanned tags: INVOICE / BILL / BUDGET (loop on right, cascading down-left) -->
+  <g transform="translate(290 319) rotate(-13 156 29)">
+    <ellipse cx="156" cy="29" rx="10" ry="13" fill="none" stroke="#0B0F19" stroke-width="5"/>
+    <rect x="0" y="4" width="150" height="50" rx="12" fill="#FAFAF9" stroke="#EA580C" stroke-width="2.5"/>
+    <circle cx="124" cy="29" r="5" fill="none" stroke="#9AA3B2" stroke-width="2.5"/>
+    <text x="66" y="37" text-anchor="middle" fill="#0B0F19" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="1">INVOICE</text>
+  </g>
+  <g transform="translate(280 387) rotate(-19 156 29)">
+    <ellipse cx="156" cy="29" rx="10" ry="13" fill="none" stroke="#0B0F19" stroke-width="5"/>
+    <rect x="0" y="4" width="150" height="50" rx="12" fill="#FAFAF9" stroke="#EA580C" stroke-width="2.5"/>
+    <circle cx="124" cy="29" r="5" fill="none" stroke="#9AA3B2" stroke-width="2.5"/>
+    <text x="66" y="37" text-anchor="middle" fill="#0B0F19" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="1">BILL</text>
+  </g>
+  <g transform="translate(274 455) rotate(-25 156 29)">
+    <ellipse cx="156" cy="29" rx="10" ry="13" fill="none" stroke="#0B0F19" stroke-width="5"/>
+    <rect x="0" y="4" width="150" height="50" rx="12" fill="#FAFAF9" stroke="#EA580C" stroke-width="2.5"/>
+    <circle cx="124" cy="29" r="5" fill="none" stroke="#9AA3B2" stroke-width="2.5"/>
+    <text x="66" y="37" text-anchor="middle" fill="#0B0F19" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="1">BUDGET</text>
+  </g>
+
+  <!-- Headline -->
+  <g font-family="Inter, Arial, sans-serif" text-anchor="end" fill="#FFFFFF" font-weight="800">
+    <text x="1008" y="782" font-size="104" letter-spacing="-2">OWN THE</text>
+    <text x="1008" y="890" font-size="104" letter-spacing="-2">STACK</text>
+  </g>
+
+  <!-- Subtext -->
+  <g font-family="Inter, Arial, sans-serif" text-anchor="end" fill="#D1D5DB" font-size="25" font-weight="500">
+    <text x="1008" y="944">When invoices, bills, and budgets pile up,</text>
+    <text x="1008" y="978">FluxyOS clears them — one AI finance</text>
+    <text x="1008" y="1012">command center for Indonesian SMBs.</text>
+  </g>
+
+  <!-- Domain -->
+  <text x="72" y="1014" fill="#9CA3AF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="600">fluxyos.com</text>
+</svg>

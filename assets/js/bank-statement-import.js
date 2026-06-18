@@ -46,7 +46,7 @@
     const REVIEW_TYPES = ['income', 'expense', 'transfer', 'refund', 'fee', 'tax'];
     const REVIEW_CATEGORIES = ['Revenue', 'Marketing', 'Infrastructure', 'Operations', 'SaaS', 'Others'];
     const PAGE_SIZE = 25;
-    const EXTRACTION_TIMEOUT_MS = 5 * 60 * 1000;
+    const EXTRACTION_TIMEOUT_MS = 8 * 60 * 1000;
     const MANUAL_REVIEW_MESSAGE = 'This statement needs manual review. We detected the file but could not extract reliable rows. Try a clearer PDF or a CSV/XLSX export from your bank.';
 
     let standaloneMounted = null;
@@ -180,7 +180,7 @@
             <div class="flex h-full flex-col items-center justify-center py-12 text-center">
                 <div class="h-10 w-10 animate-spin rounded-full border-2 border-gray-200 border-t-[#EA580C]"></div>
                 <p class="mt-4 text-[14px] font-bold text-gray-900">Reading statement…</p>
-                <p class="mt-1 text-[12px] text-gray-500">Detecting account, balances, and transaction rows. This can take a minute for long statements.</p>
+                <p class="mt-1 text-[12px] text-gray-500">Detecting account, balances, and transaction rows. A long statement can take a few minutes — keep this open.</p>
                 <p class="mt-3 text-[12px] text-gray-400">${escapeHtml(ctx.draft?.file_name || ctx.file?.name || 'Your statement')}</p>
             </div>`;
     }
