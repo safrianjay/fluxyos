@@ -2156,6 +2156,7 @@
         "View plans": "Lihat paket",
         "Void reason is required.": "Alasan pembatalan wajib diisi.",
         "Voided transactions cannot be edited.": "Transaksi yang dibatalkan tidak dapat diubah.",
+        "Your browser blocked the Firestore save. Disable your ad blocker or privacy shield for FluxyOS, then try again.": "Browser Anda memblokir penyimpanan Firestore. Matikan ad blocker atau privacy shield untuk FluxyOS, lalu coba lagi.",
         "We could not check this voucher. Please try again.": "Kami tidak dapat memeriksa voucher ini. Silakan coba lagi.",
         "We could not submit your payment request. Please try again.": "Kami tidak dapat mengirim permintaan pembayaran Anda. Silakan coba lagi.",
         "We couldn't read this document clearly. Try a sharper image or enter the details manually.": "Kami tidak dapat membaca dokumen ini dengan jelas. Coba gambar yang lebih tajam atau masukkan detail secara manual.",

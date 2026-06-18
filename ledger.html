@@ -2147,8 +2147,18 @@
         function friendlyLedgerError(err, fallback = 'Could not save this transaction. Try again in a moment.') {
             const code = String(err?.code || '');
             const message = String(err?.message || '');
-            if (code.includes('permission') || message.toLowerCase().includes('permission')) return 'Permission denied. Check your access and try again.';
-            if (message.toLowerCase().includes('session')) return 'Session expired. Please log in again.';
+            const lowerMessage = message.toLowerCase();
+            if (
+                code.includes('unavailable')
+                || lowerMessage.includes('blocked_by_client')
+                || lowerMessage.includes('err_blocked_by_client')
+                || lowerMessage.includes('client is offline')
+                || lowerMessage.includes('network')
+            ) {
+                return 'Your browser blocked the Firestore save. Disable your ad blocker or privacy shield for FluxyOS, then try again.';
+            }
+            if (code.includes('permission') || lowerMessage.includes('permission')) return 'Permission denied. Check your access and try again.';
+            if (lowerMessage.includes('session')) return 'Session expired. Please log in again.';
             return message || fallback;
         }
 
@@ -2426,6 +2436,7 @@
                     window.showToast('Transaction updated.', 'success');
                     await window.loadLedger();
                 } catch (err) {
+                    console.error('Transaction update failed:', err);
                     window.showToast(friendlyLedgerError(err), 'error');
                     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
                 }
