@@ -1,30 +1,26 @@
 // FluxyOS — Connection guard.
 //
 // An ad/privacy blocker (uBlock, AdGuard, Brave Shields, …) can block Firestore's
-// realtime connection at the browser level (net::ERR_BLOCKED_BY_CLIENT). The app
-// can't override the extension, so instead we DETECT the block and show a clear,
-// non-technical banner that guides the user to fix it — rather than leaving them
-// stuck on cryptic "permission denied" save errors.
+// realtime connection at the browser level (net::ERR_BLOCKED_BY_CLIENT), which
+// silently breaks saves/live updates — a dead end for non-technical users who
+// can't be expected to configure their browser. The app can't override the
+// extension, so instead we DETECT the failure and show a clear, non-technical
+// banner that guides the user to fix it.
 //
-// Detection: a one-shot no-cors probe to the exact Firestore channel endpoint the
-// blocklists target. If the extension blocks it, fetch rejects (and the real SDK
-// connection is blocked too); a reachable server resolves (even on an error
-// status, since the response is opaque under no-cors).
+// Detection is REACTIVE (no extra network requests, so it never adds console
+// noise on a healthy load): the Firestore SDK logs a console warning/error when
+// it can't reach the backend ("Could not reach Cloud Firestore backend",
+// "WebChannelConnection ... transport errored", "client is offline"). We
+// intercept those and surface the banner only when the connection is genuinely
+// blocked — the exact moment the user would otherwise hit cryptic save errors.
 (function () {
     if (window.__fluxyConnGuard) return;
     window.__fluxyConnGuard = true;
 
-    var PROJECT = 'fluxyos';
     var DISMISS_KEY = 'fluxy_conn_block_dismissed';
-    var CHANNEL_URL = 'https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel'
-        + '?database=projects%2F' + PROJECT + '%2Fdatabases%2F(default)&gsessionid=probe&VER=8&RID=0&t=1';
+    var shown = false;
 
-    function probeBlocked() {
-        // Resolves true if the channel endpoint is blocked client-side.
-        return fetch(CHANNEL_URL, { method: 'GET', mode: 'no-cors', cache: 'no-store', credentials: 'omit' })
-            .then(function () { return false; })
-            .catch(function () { return true; });
-    }
+    var FAILURE_RE = /could not reach cloud firestore backend|webchannelconnection .* transport errored|client is offline|failed to reach/i;
 
     function buildBanner() {
         var bar = document.createElement('div');
@@ -60,7 +56,10 @@
     }
 
     function showBanner() {
-        if (document.getElementById('fluxy-conn-banner')) return;
+        if (shown || document.getElementById('fluxy-conn-banner')) return;
+        try { if (sessionStorage.getItem(DISMISS_KEY)) return; } catch (_) {}
+        if (!document.body) { document.addEventListener('DOMContentLoaded', showBanner); return; }
+        shown = true;
         var bar = buildBanner();
         document.body.appendChild(bar);
         bar.querySelector('#fluxy-conn-how').onclick = function () {
@@ -74,15 +73,16 @@
         };
     }
 
-    function check() {
-        if (!navigator.onLine) return;
-        try { if (sessionStorage.getItem(DISMISS_KEY)) return; } catch (_) {}
-        probeBlocked().then(function (blocked) { if (blocked) showBanner(); });
+    function inspect(args) {
+        try {
+            var msg = Array.prototype.map.call(args, function (a) { return typeof a === 'string' ? a : (a && a.message) || ''; }).join(' ');
+            if (FAILURE_RE.test(msg)) showBanner();
+        } catch (_) { /* never let detection break logging */ }
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', check);
-    } else {
-        check();
-    }
+    // Intercept the SDK's connection-failure logs without swallowing them.
+    ['error', 'warn'].forEach(function (level) {
+        var orig = console[level] ? console[level].bind(console) : function () {};
+        console[level] = function () { inspect(arguments); return orig.apply(console, arguments); };
+    });
 })();
