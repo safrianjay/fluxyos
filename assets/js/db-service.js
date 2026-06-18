@@ -5500,6 +5500,127 @@ class DataService {
         };
     }
 
+    // Kick off backend extraction for an uploaded draft. The background function
+    // returns 202 and writes the parsed rows + metadata straight to Firestore, so
+    // the caller watches the draft doc (watchBankStatementImport) for the result.
+    async requestBankStatementExtraction(importId, idToken) {
+        if (!importId) throw new Error('importId required');
+        if (!idToken) throw new Error('idToken required');
+        const res = await fetch('/api/v1/bank-statements/extract', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+            body: JSON.stringify({ importId })
+        });
+        // Background functions reply 202 with no body; treat any 2xx as accepted.
+        if (!res.ok && res.status !== 202) throw new Error(`extraction_request_failed_${res.status}`);
+        return true;
+    }
+
+    // Live-subscribe to a draft so the panel can react to extraction_status flips.
+    // Returns the unsubscribe function.
+    watchBankStatementImport(userId, importId, callback) {
+        if (!userId || !importId || typeof callback !== 'function') return () => {};
+        const ref = doc(this.db, `users/${userId}/bank_statement_imports/${importId}`);
+        return onSnapshot(ref, (snap) => {
+            callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+        }, () => callback(null));
+    }
+
+    // Single-row review edit (select/ignore, edited suggestions). created_at is
+    // never sent, so the rules' immutability check on it holds.
+    async updateBankStatementRow(userId, importId, rowId, data = {}) {
+        if (!userId || !importId || !rowId) throw new Error('userId, importId and rowId required');
+        const ref = doc(this.db, `users/${userId}/bank_statement_imports/${importId}/rows/${rowId}`);
+        const allowed = {};
+        if ('selected_for_import' in data) allowed.selected_for_import = data.selected_for_import !== false;
+        if ('suggested_vendor_name' in data) allowed.suggested_vendor_name = this._nullableString(data.suggested_vendor_name, 160);
+        if ('suggested_category' in data) allowed.suggested_category = this._nullableString(data.suggested_category, 80);
+        if ('suggested_type' in data) allowed.suggested_type = this._nullableString(data.suggested_type, 40);
+        if ('match_status' in data) {
+            allowed.match_status = this._allowedValue(data.match_status,
+                ['new', 'possible_duplicate', 'matched_existing', 'ignored', 'needs_review'], 'new');
+        }
+        if ('review_status' in data) {
+            allowed.review_status = this._allowedValue(data.review_status,
+                ['pending', 'confirmed', 'ignored'], 'pending');
+        }
+        if (Object.keys(allowed).length === 0) return { id: rowId };
+        await updateDoc(ref, allowed);
+        return { id: rowId, ...allowed };
+    }
+
+    // Confirm-to-ledger: create a transaction for each selected, not-yet-imported
+    // row and link them back. Mirrors addTransactions' batched-write pattern;
+    // chunked under the 500-op batch limit. Idempotent — rows already carrying a
+    // created_transaction_id are skipped. Cash-balance update is Phase 3.
+    async confirmBankStatementImport(userId, importId, rows = []) {
+        if (!userId || !importId) throw new Error('userId and importId required');
+        const importable = (Array.isArray(rows) ? rows : []).filter(r =>
+            r && r.selected_for_import !== false && r.review_status !== 'ignored'
+            && !r.created_transaction_id && ((Number(r.credit) || 0) > 0 || (Number(r.debit) || 0) > 0));
+
+        const txCol = collection(this.db, `users/${userId}/transactions`);
+        const importPath = `users/${userId}/bank_statement_imports/${importId}`;
+        let created = 0;
+
+        // ~200 rows/batch keeps ops (tx create + row update = 2 each) under 500.
+        for (let i = 0; i < importable.length; i += 200) {
+            const batch = writeBatch(this.db);
+            importable.slice(i, i + 200).forEach((row) => {
+                const credit = Math.round(Math.abs(Number(row.credit) || 0));
+                const debit = Math.round(Math.abs(Number(row.debit) || 0));
+                const isIncome = credit > 0 && !(debit > 0);
+                const amount = credit > 0 ? credit : debit;
+                const type = ['income', 'expense', 'transfer', 'refund', 'fee', 'tax'].includes(row.suggested_type)
+                    ? row.suggested_type : (isIncome ? 'income' : 'expense');
+                const vendor = (row.suggested_vendor_name || row.description_raw || 'Bank statement').toString().trim().slice(0, 160);
+                const category = ['Revenue', 'Marketing', 'Infrastructure', 'Operations', 'SaaS', 'Others'].includes(row.suggested_category)
+                    ? row.suggested_category : (type === 'income' || type === 'refund' ? 'Revenue' : 'Operations');
+
+                const txRef = doc(txCol);
+                batch.set(txRef, {
+                    amount,
+                    vendor_name: vendor,
+                    category,
+                    type,
+                    status: 'Completed',
+                    icon: (type === 'income' || type === 'refund') ? '💰' : '💸',
+                    timestamp: row.transaction_date ? this._coerceTimestampOrNow(row.transaction_date) : serverTimestamp(),
+                    created_at: serverTimestamp(),
+                    source: 'bank_statement_import',
+                    bank_statement_import_id: importId,
+                    bank_statement_row_id: row.id,
+                    imported_at: serverTimestamp()
+                });
+                batch.update(doc(this.db, `${importPath}/rows/${row.id}`), {
+                    created_transaction_id: txRef.id,
+                    review_status: 'confirmed'
+                });
+                created += 1;
+            });
+            await batch.commit();
+        }
+
+        // Mark the draft imported and log the action (best-effort).
+        await updateDoc(doc(this.db, importPath), {
+            review_status: 'imported',
+            confirmed_at: serverTimestamp(),
+            imported_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        });
+        try {
+            await this.addAuditLog(userId, {
+                action: 'bank_statement.import_confirmed',
+                target_collection: 'bank_statement_imports',
+                target_id: importId,
+                after: { imported_transactions: created },
+                source: 'dashboard'
+            });
+        } catch (_) { /* non-fatal */ }
+
+        return { created };
+    }
+
     async archiveBudget(userId, budgetId, reason = null) {
         if (!userId || !budgetId) throw new Error('userId and budgetId required');
         const ref = doc(this.db, `users/${userId}/budgets/${budgetId}`);

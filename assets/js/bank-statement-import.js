@@ -1,15 +1,18 @@
-// FluxyOS — Bank Statement Import drawer/panel (Phase 1)
+// FluxyOS — Bank Statement Import drawer/panel
 // Spec: docs/BANK_STATEMENT_IMPORT_AUTOMATION_PLAN.md
 //
-// Phase 1 scope:
+// Scope:
 //   • Accept PDF, CSV, XLS, XLSX (validated by mime + extension + size).
 //   • Upload the file to users/{uid}/bank_statement_imports/{importId}/{fileName}
 //     and create a review draft in Firestore with review_status: "draft".
-//   • Show detection summary and review table only when extraction data exists.
-//     Until the backend parser is connected, the panel shows a clear
-//     "Extraction not connected" state — it never fabricates bank data.
-//   • Provide a "Reject draft" action that flips review_status to "rejected".
-//   • Never create transactions. Never update a bank account balance.
+//   • Trigger backend extraction (bank-statement-extract-background): the panel
+//     watches the draft until extraction_status flips to completed/failed, then
+//     renders the detected metadata + an interactive review table. It never
+//     fabricates bank data — a failed extraction shows a manual-review message.
+//   • Let the user select/edit rows and Confirm Import to create linked ledger
+//     transactions (DataService.confirmBankStatementImport). "Reject draft"
+//     flips review_status to "rejected".
+//   • Never update a bank account balance (Phase 3).
 //
 // Two ways to use this module:
 //   window.FluxyBankStatementImport.open({ app, auth, ds, user })
@@ -35,10 +38,27 @@
 
     const STATE_DEFAULT = 'default';
     const STATE_UPLOADING = 'uploading';
+    const STATE_PROCESSING = 'processing';
     const STATE_UPLOADED = 'uploaded';
+    const STATE_IMPORTED = 'imported';
     const STATE_ERROR = 'error';
 
+    const REVIEW_TYPES = ['income', 'expense', 'transfer', 'refund', 'fee', 'tax'];
+    const REVIEW_CATEGORIES = ['Revenue', 'Marketing', 'Infrastructure', 'Operations', 'SaaS', 'Others'];
+    const PAGE_SIZE = 25;
+    const EXTRACTION_TIMEOUT_MS = 5 * 60 * 1000;
+    const MANUAL_REVIEW_MESSAGE = 'This statement needs manual review. We detected the file but could not extract reliable rows. Try a clearer PDF or a CSV/XLSX export from your bank.';
+
     let standaloneMounted = null;
+
+    // True for any row that money actually flows on and the user kept selected.
+    function isImportableRow(row) {
+        return row && row.selected_for_import !== false && row.review_status !== 'ignored'
+            && !row.created_transaction_id && ((Number(row.credit) || 0) > 0 || (Number(row.debit) || 0) > 0);
+    }
+    function selectedCount(rows) {
+        return (Array.isArray(rows) ? rows : []).filter(isImportableRow).length;
+    }
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -140,7 +160,7 @@
                     <ul class="mt-2 space-y-1.5 list-disc pl-4">
                         <li>FluxyOS uploads the file to your private storage under <span class="font-mono text-[11px]">users/&lt;you&gt;/bank_statement_imports/</span>.</li>
                         <li>A draft import is created in review status — no transactions are written and no balances change.</li>
-                        <li>You will see the detection summary and review table when the parser is connected.</li>
+                        <li>FluxyOS reads the statement, then shows a review table where you pick the rows to import.</li>
                     </ul>
                 </div>
             </div>`;
@@ -152,6 +172,28 @@
                 <div class="h-10 w-10 animate-spin rounded-full border-2 border-gray-200 border-t-[#EA580C]"></div>
                 <p class="mt-4 text-[14px] font-bold text-gray-900">Uploading statement…</p>
                 <p class="mt-1 text-[12px] text-gray-500">${escapeHtml(ctx.file?.name || 'Your file')} is being stored securely.</p>
+            </div>`;
+    }
+
+    function processingStepMarkup(ctx) {
+        return `
+            <div class="flex h-full flex-col items-center justify-center py-12 text-center">
+                <div class="h-10 w-10 animate-spin rounded-full border-2 border-gray-200 border-t-[#EA580C]"></div>
+                <p class="mt-4 text-[14px] font-bold text-gray-900">Reading statement…</p>
+                <p class="mt-1 text-[12px] text-gray-500">Detecting account, balances, and transaction rows. This can take a minute for long statements.</p>
+                <p class="mt-3 text-[12px] text-gray-400">${escapeHtml(ctx.draft?.file_name || ctx.file?.name || 'Your statement')}</p>
+            </div>`;
+    }
+
+    function importedStepMarkup(ctx) {
+        const count = ctx.importedCount || 0;
+        return `
+            <div class="flex h-full flex-col items-center justify-center py-12 text-center">
+                <span class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                </span>
+                <p class="mt-4 text-[14px] font-bold text-gray-900">${count} transaction${count === 1 ? '' : 's'} imported</p>
+                <p class="mt-1 text-[12px] text-gray-500">They are now in your Ledger, tagged as imported from this statement. Balances were not changed.</p>
             </div>`;
     }
 
@@ -169,10 +211,28 @@
             </div>`;
     }
 
+    function matchBadge(status) {
+        if (status === 'possible_duplicate') return '<span class="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">Possible duplicate</span>';
+        if (status === 'needs_review') return '<span class="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">Needs review</span>';
+        if (status === 'matched_existing') return '<span class="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">Matched</span>';
+        return '<span class="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-bold text-gray-600">New</span>';
+    }
+
+    function optionList(values, selected) {
+        return values.map(v => `<option value="${escapeHtml(v)}"${v === selected ? ' selected' : ''}>${escapeHtml(v)}</option>`).join('');
+    }
+
     function uploadedStepMarkup(ctx) {
         const draft = ctx.draft || {};
-        const hasExtraction = draft.extraction_status === 'completed' && draft.row_count > 0;
         const rows = Array.isArray(ctx.rows) ? ctx.rows : [];
+        const dupCount = draft.duplicate_count ?? rows.filter(r => r.match_status === 'possible_duplicate').length;
+
+        const balanceWarn = draft.balance_check_status === 'failed'
+            ? `<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-800">
+                    <p class="font-bold text-[12px]">Balance check did not reconcile</p>
+                    <p class="mt-1">Opening + money in − money out doesn't equal the closing balance, so some rows may be missing or misread. Review before importing.</p>
+                </div>`
+            : '';
 
         const summary = `
             <div class="rounded-xl border border-gray-200 bg-white p-4">
@@ -181,7 +241,7 @@
                         <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Import draft</p>
                         <p class="mt-1 text-[14px] font-bold text-gray-900">${escapeHtml(draft.file_name || ctx.file?.name || 'Bank statement')}</p>
                     </div>
-                    <span class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">${escapeHtml(draft.review_status || 'draft')}</span>
+                    <span class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">${escapeHtml(draft.review_status || 'ready_to_import')}</span>
                 </div>
                 <div class="mt-3">
                     ${summaryRow('Detected bank', escapeHtml(draft.bank_name || 'Not detected'))}
@@ -189,70 +249,86 @@
                     ${summaryRow('Period', `${escapeHtml(formatDate(draft.statement_start_date))} – ${escapeHtml(formatDate(draft.statement_end_date))}`)}
                     ${summaryRow('Opening balance', escapeHtml(draft.opening_balance == null ? 'Not detected' : formatIDR(draft.opening_balance)))}
                     ${summaryRow('Closing balance', escapeHtml(draft.closing_balance == null ? 'Not detected' : formatIDR(draft.closing_balance)))}
-                    ${summaryRow('Rows detected', escapeHtml(String(draft.row_count ?? 0)))}
+                    ${summaryRow('Rows detected', escapeHtml(String(draft.row_count ?? rows.length)))}
                     ${summaryRow('Balance check', badgeForStatus(draft.balance_check_status))}
-                    ${summaryRow('Possible duplicates', escapeHtml(String(draft.duplicate_count ?? 0)))}
+                    ${summaryRow('Possible duplicates', escapeHtml(String(dupCount)))}
                     ${summaryRow('Needs review', escapeHtml(String(draft.needs_review_count ?? 0)))}
                 </div>
             </div>`;
 
-        const extractionStub = !hasExtraction
-            ? `<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-800">
-                    <p class="font-bold text-[12px]">Automated extraction is not connected yet</p>
-                    <p class="mt-1">Your file is stored safely under your private user scope and the draft is recorded for review. The detection summary and review table will populate once the FluxyOS parser is connected. No transactions or balances will be changed.</p>
-                </div>`
-            : '';
+        const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+        const page = Math.min(ctx.page || 0, totalPages - 1);
+        const start = page * PAGE_SIZE;
+        const pageRows = rows.slice(start, start + PAGE_SIZE);
 
         const tableHeader = `
             <thead class="bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-500">
                 <tr>
+                    <th class="px-3 py-2 text-left">Import</th>
                     <th class="px-3 py-2 text-left">Date</th>
                     <th class="px-3 py-2 text-left">Description</th>
                     <th class="px-3 py-2 text-right">Money in</th>
                     <th class="px-3 py-2 text-right">Money out</th>
                     <th class="px-3 py-2 text-right">Balance</th>
-                    <th class="px-3 py-2 text-left">Suggested type</th>
-                    <th class="px-3 py-2 text-left">Suggested category</th>
-                    <th class="px-3 py-2 text-left">Match status</th>
-                    <th class="px-3 py-2 text-left">Action</th>
+                    <th class="px-3 py-2 text-left">Type</th>
+                    <th class="px-3 py-2 text-left">Category</th>
+                    <th class="px-3 py-2 text-left">Match</th>
                 </tr>
             </thead>`;
 
         const tableBody = rows.length === 0
-            ? `<tbody><tr><td colspan="9" class="px-3 py-6 text-center text-[12px] text-gray-400">No rows extracted yet. The review table appears when the parser returns rows.</td></tr></tbody>`
-            : `<tbody class="divide-y divide-gray-100 text-[12px]">${rows.map(row => `
-                <tr>
+            ? `<tbody><tr><td colspan="9" class="px-3 py-6 text-center text-[12px] text-gray-400">No rows were extracted from this statement.</td></tr></tbody>`
+            : `<tbody class="divide-y divide-gray-100 text-[12px]">${pageRows.map(row => {
+                const selected = isImportableRow(row);
+                return `
+                <tr data-bsi-row="${escapeHtml(row.id)}"${row.match_status === 'possible_duplicate' ? ' class="bg-amber-50/40"' : ''}>
+                    <td class="px-3 py-2"><input type="checkbox" data-bsi-select class="h-4 w-4 rounded border-gray-300 text-[#EA580C] focus:ring-[#EA580C]"${selected ? ' checked' : ''}></td>
                     <td class="px-3 py-2 whitespace-nowrap text-gray-700">${escapeHtml(formatDate(row.transaction_date))}</td>
-                    <td class="px-3 py-2 text-gray-900">${escapeHtml(row.description_raw || '')}</td>
-                    <td class="px-3 py-2 text-right font-mono text-emerald-700">${row.credit ? escapeHtml(formatIDR(row.credit)) : '—'}</td>
-                    <td class="px-3 py-2 text-right font-mono text-gray-900">${row.debit ? escapeHtml(formatIDR(row.debit)) : '—'}</td>
-                    <td class="px-3 py-2 text-right font-mono text-gray-700">${row.running_balance != null ? escapeHtml(formatIDR(row.running_balance)) : '—'}</td>
-                    <td class="px-3 py-2 text-gray-700">${escapeHtml(row.suggested_type || '—')}</td>
-                    <td class="px-3 py-2 text-gray-700">${escapeHtml(row.suggested_category || '—')}</td>
-                    <td class="px-3 py-2 text-gray-700">${escapeHtml(row.match_status || 'new')}</td>
-                    <td class="px-3 py-2 text-gray-400">—</td>
-                </tr>`).join('')}</tbody>`;
+                    <td class="px-3 py-2 text-gray-900 max-w-[220px] truncate" title="${escapeHtml(row.description_raw || '')}">${escapeHtml(row.description_raw || '')}</td>
+                    <td class="px-3 py-2 text-right tabular-nums text-emerald-700">${row.credit ? escapeHtml(formatIDR(row.credit)) : '—'}</td>
+                    <td class="px-3 py-2 text-right tabular-nums text-gray-900">${row.debit ? escapeHtml(formatIDR(row.debit)) : '—'}</td>
+                    <td class="px-3 py-2 text-right tabular-nums text-gray-700">${row.running_balance != null ? escapeHtml(formatIDR(row.running_balance)) : '—'}</td>
+                    <td class="px-3 py-2"><select data-bsi-type class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[12px]">${optionList(REVIEW_TYPES, row.suggested_type)}</select></td>
+                    <td class="px-3 py-2"><select data-bsi-cat class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[12px]">${optionList(REVIEW_CATEGORIES, row.suggested_category)}</select></td>
+                    <td class="px-3 py-2">${matchBadge(row.match_status)}</td>
+                </tr>`; }).join('')}</tbody>`;
+
+        const pagination = rows.length > PAGE_SIZE
+            ? `<div class="flex items-center justify-between border-t border-gray-100 px-4 py-2.5 text-[12px] text-gray-500">
+                    <span>Showing ${start + 1}–${Math.min(start + PAGE_SIZE, rows.length)} of ${rows.length}</span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" data-bsi-prev class="rounded-lg border border-gray-200 px-2.5 py-1 font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40" ${page === 0 ? 'disabled' : ''}>Prev</button>
+                        <button type="button" data-bsi-next class="rounded-lg border border-gray-200 px-2.5 py-1 font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40" ${page >= totalPages - 1 ? 'disabled' : ''}>Next</button>
+                    </div>
+                </div>`
+            : '';
+
+        const dupNote = dupCount > 0
+            ? `<button type="button" data-bsi-skip-dupes class="text-[12px] font-bold text-[#EA580C] hover:underline">Skip ${dupCount} possible duplicate${dupCount === 1 ? '' : 's'}</button>`
+            : '';
 
         const reviewTable = `
             <div class="rounded-xl border border-gray-200 bg-white">
                 <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3">
                     <div>
                         <p class="text-[13px] font-bold text-gray-900">Review table</p>
-                        <p class="text-[12px] text-gray-500">Rows are read-only in Phase 1.</p>
+                        <p class="text-[12px] text-gray-500">Tick the rows to import; adjust type or category before confirming. Nothing is saved until you confirm.</p>
                     </div>
+                    ${dupNote}
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-[820px] text-left">
+                    <table class="w-full min-w-[860px] text-left">
                         ${tableHeader}
                         ${tableBody}
                     </table>
                 </div>
+                ${pagination}
             </div>`;
 
         return `
             <div class="space-y-5">
                 ${summary}
-                ${extractionStub}
+                ${balanceWarn}
                 ${reviewTable}
             </div>`;
     }
@@ -270,17 +346,26 @@
         if (ctx.state === STATE_UPLOADING) {
             return `<button type="button" disabled class="ml-auto rounded-xl bg-gray-200 px-5 py-3 text-[13px] font-bold text-gray-500">Uploading…</button>`;
         }
+        if (ctx.state === STATE_PROCESSING) {
+            return `<button type="button" disabled class="ml-auto rounded-xl bg-gray-200 px-5 py-3 text-[13px] font-bold text-gray-500">Reading statement…</button>`;
+        }
+        if (ctx.state === STATE_IMPORTED) {
+            const closeBtn = showStandaloneClose
+                ? `<button type="button" data-bsi-close class="ml-auto rounded-xl bg-[#EA580C] px-5 py-3 text-[13px] font-bold text-white transition-colors hover:bg-[#D44400] active:scale-95">Done</button>`
+                : `<span class="ml-auto text-[12px] font-bold text-emerald-600">Import complete</span>`;
+            return closeBtn;
+        }
         if (ctx.state === STATE_UPLOADED) {
             const rejectBtn = ctx.draft?.review_status === 'rejected'
                 ? `<span class="text-[12px] font-bold text-gray-500">Draft rejected</span>`
                 : `<button type="button" data-bsi-reject class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-[13px] font-bold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95">Reject draft</button>`;
-            const closeBtn = showStandaloneClose
-                ? `<button type="button" data-bsi-close class="ml-auto rounded-xl border border-gray-200 bg-white px-4 py-2 text-[13px] font-bold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95">Close</button>`
-                : '';
+            const count = selectedCount(ctx.rows);
+            const confirmDisabled = count === 0 || ctx.draft?.review_status === 'rejected';
+            const confirmClass = confirmDisabled ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-[#EA580C] text-white hover:bg-[#D44400]';
             return `
                 ${rejectBtn}
-                ${closeBtn || '<span class="ml-auto"></span>'}
-                <button type="button" disabled class="rounded-xl bg-gray-200 px-5 py-3 text-[13px] font-bold text-gray-500" title="Phase 2 — coming soon">Confirm Import (Phase 2)</button>
+                <span class="ml-auto mr-1 text-[12px] text-gray-500">${count} selected</span>
+                <button type="button" data-bsi-confirm ${confirmDisabled ? 'disabled' : ''} class="rounded-xl px-5 py-3 text-[13px] font-bold transition-colors active:scale-95 ${confirmClass}">Confirm Import</button>
             `;
         }
         if (ctx.state === STATE_ERROR) {
@@ -308,7 +393,9 @@
     function renderContent(ctx) {
         if (!ctx.contentEl || !ctx.footerEl) return;
         if (ctx.state === STATE_UPLOADING) ctx.contentEl.innerHTML = uploadingStepMarkup(ctx);
+        else if (ctx.state === STATE_PROCESSING) ctx.contentEl.innerHTML = processingStepMarkup(ctx);
         else if (ctx.state === STATE_UPLOADED) ctx.contentEl.innerHTML = uploadedStepMarkup(ctx);
+        else if (ctx.state === STATE_IMPORTED) ctx.contentEl.innerHTML = importedStepMarkup(ctx);
         else if (ctx.state === STATE_ERROR) ctx.contentEl.innerHTML = errorStepMarkup(ctx);
         else ctx.contentEl.innerHTML = uploadStepMarkup(ctx);
         ctx.footerEl.innerHTML = footerMarkup(ctx);
@@ -350,10 +437,53 @@
         ctx.footerEl.querySelectorAll('[data-bsi-reject]').forEach(btn => {
             btn.onclick = () => rejectDraft(ctx);
         });
+        ctx.footerEl.querySelectorAll('[data-bsi-confirm]').forEach(btn => {
+            btn.onclick = () => runConfirm(ctx);
+        });
         ctx.footerEl.querySelectorAll('[data-bsi-retry]').forEach(btn => {
             btn.onclick = () => {
+                if (ctx.canRetryExtraction && ctx.draft?.id) { startExtraction(ctx); return; }
                 ctx.state = STATE_DEFAULT;
                 ctx.errorMessage = '';
+                ctx.canRetryExtraction = false;
+                renderContent(ctx);
+            };
+        });
+
+        // Review-table interactions (in-memory; persisted to Firestore on confirm).
+        const findRow = (el) => {
+            const id = el.closest('[data-bsi-row]')?.getAttribute('data-bsi-row');
+            return (ctx.rows || []).find(r => r.id === id);
+        };
+        ctx.contentEl.querySelectorAll('[data-bsi-select]').forEach(cb => {
+            cb.onchange = () => {
+                const row = findRow(cb);
+                if (row) { row.selected_for_import = cb.checked; ctx.ds?.updateBankStatementRow?.(ctx.user?.uid, ctx.draft?.id, row.id, { selected_for_import: cb.checked }).catch(() => {}); }
+                ctx.footerEl.innerHTML = footerMarkup(ctx);
+                attachStepHandlers(ctx);
+            };
+        });
+        ctx.contentEl.querySelectorAll('[data-bsi-type]').forEach(sel => {
+            sel.onchange = () => {
+                const row = findRow(sel);
+                if (row) { row.suggested_type = sel.value; ctx.ds?.updateBankStatementRow?.(ctx.user?.uid, ctx.draft?.id, row.id, { suggested_type: sel.value }).catch(() => {}); }
+            };
+        });
+        ctx.contentEl.querySelectorAll('[data-bsi-cat]').forEach(sel => {
+            sel.onchange = () => {
+                const row = findRow(sel);
+                if (row) { row.suggested_category = sel.value; ctx.ds?.updateBankStatementRow?.(ctx.user?.uid, ctx.draft?.id, row.id, { suggested_category: sel.value }).catch(() => {}); }
+            };
+        });
+        ctx.contentEl.querySelectorAll('[data-bsi-prev]').forEach(btn => {
+            btn.onclick = () => { ctx.page = Math.max(0, (ctx.page || 0) - 1); renderContent(ctx); };
+        });
+        ctx.contentEl.querySelectorAll('[data-bsi-next]').forEach(btn => {
+            btn.onclick = () => { ctx.page = (ctx.page || 0) + 1; renderContent(ctx); };
+        });
+        ctx.contentEl.querySelectorAll('[data-bsi-skip-dupes]').forEach(btn => {
+            btn.onclick = () => {
+                (ctx.rows || []).forEach(r => { if (r.match_status === 'possible_duplicate') r.selected_for_import = false; });
                 renderContent(ctx);
             };
         });
@@ -399,10 +529,8 @@
 
             const refreshed = await ctx.ds.getBankStatementImport(user.uid, draft.id);
             ctx.draft = refreshed || { ...draft, storage_path: uploadResult.storagePath };
-            ctx.rows = await ctx.ds.getBankStatementRows(user.uid, draft.id);
-            ctx.state = STATE_UPLOADED;
-            renderContent(ctx);
-            window.showToast?.('Bank statement uploaded as a draft. Nothing has been saved to your ledger.', 'success');
+            // Hand off to backend extraction; the panel watches the draft for the result.
+            await startExtraction(ctx);
         } catch (error) {
             console.warn('Bank statement import failed:', error?.message || error);
             if (String(error?.code || '').includes('storage_limit')) {
@@ -420,10 +548,98 @@
         }
     }
 
+    function stopWatch(ctx) {
+        if (ctx._unwatch) { try { ctx._unwatch(); } catch (_) {} ctx._unwatch = null; }
+        if (ctx._timeout) { clearTimeout(ctx._timeout); ctx._timeout = null; }
+    }
+
+    // Trigger backend extraction and watch the draft until it completes or fails.
+    async function startExtraction(ctx) {
+        const user = resolveUser(ctx);
+        if (!user || !ctx.ds || !ctx.draft?.id) return;
+        ctx.user = user;
+        stopWatch(ctx);
+        ctx.canRetryExtraction = false;
+        ctx.state = STATE_PROCESSING;
+        renderContent(ctx);
+
+        try {
+            const idToken = await user.getIdToken();
+            await ctx.ds.requestBankStatementExtraction(ctx.draft.id, idToken);
+        } catch (error) {
+            ctx.state = STATE_ERROR;
+            ctx.errorMessage = MANUAL_REVIEW_MESSAGE;
+            ctx.canRetryExtraction = true;
+            renderContent(ctx);
+            return;
+        }
+
+        ctx._unwatch = ctx.ds.watchBankStatementImport(user.uid, ctx.draft.id, (draft) => {
+            onDraftUpdate(ctx, draft);
+        });
+        ctx._timeout = setTimeout(() => {
+            if (ctx.state === STATE_PROCESSING) {
+                stopWatch(ctx);
+                ctx.state = STATE_ERROR;
+                ctx.errorMessage = 'Extraction is taking longer than expected. Try again, or use a CSV/XLSX export from your bank.';
+                ctx.canRetryExtraction = true;
+                renderContent(ctx);
+            }
+        }, EXTRACTION_TIMEOUT_MS);
+    }
+
+    async function onDraftUpdate(ctx, draft) {
+        if (!draft) return;
+        ctx.draft = draft;
+        if (draft.extraction_status === 'completed') {
+            stopWatch(ctx);
+            try { ctx.rows = await ctx.ds.getBankStatementRows(ctx.user.uid, ctx.draft.id); }
+            catch (_) { ctx.rows = []; }
+            ctx.page = 0;
+            ctx.state = STATE_UPLOADED;
+            renderContent(ctx);
+            window.showToast?.('Statement read. Review the rows, then confirm to import.', 'success');
+        } else if (draft.extraction_status === 'failed') {
+            stopWatch(ctx);
+            ctx.state = STATE_ERROR;
+            ctx.errorMessage = MANUAL_REVIEW_MESSAGE;
+            ctx.canRetryExtraction = true;
+            renderContent(ctx);
+        }
+        // 'pending' / 'processing' keep the spinner up.
+    }
+
+    async function runConfirm(ctx) {
+        const user = resolveUser(ctx);
+        if (!user || !ctx.ds || !ctx.draft?.id) return;
+        const count = selectedCount(ctx.rows);
+        if (count === 0) return;
+        const dupSkipped = (ctx.rows || []).filter(r => r.match_status === 'possible_duplicate' && !isImportableRow(r)).length;
+        const body = `This adds <strong>${count}</strong> transaction${count === 1 ? '' : 's'} to your Ledger`
+            + (dupSkipped ? `, skipping <strong>${dupSkipped}</strong> possible duplicate${dupSkipped === 1 ? '' : 's'}` : '')
+            + '. Balances are not changed and this can be edited in the Ledger afterwards.';
+        const ok = await (window.showConfirmDialog
+            ? window.showConfirmDialog({ title: 'Import these transactions?', body, confirmLabel: 'Confirm Import', cancelLabel: 'Cancel', tone: 'default' })
+            : Promise.resolve(window.confirm(`Import ${count} transactions?`)));
+        if (!ok) return;
+        try {
+            const result = await ctx.ds.confirmBankStatementImport(user.uid, ctx.draft.id, ctx.rows);
+            ctx.importedCount = result?.created ?? count;
+            ctx.state = STATE_IMPORTED;
+            renderContent(ctx);
+            window.showToast?.(`${ctx.importedCount} transaction${ctx.importedCount === 1 ? '' : 's'} imported to your Ledger.`, 'success');
+            window.dispatchEvent(new CustomEvent('fluxy:bank-statement-imported', { detail: { count: ctx.importedCount } }));
+        } catch (error) {
+            console.warn('Bank statement confirm failed:', error?.message || error);
+            window.showToast?.('Could not import the transactions. Try again.', 'error');
+        }
+    }
+
     async function rejectDraft(ctx) {
         const user = resolveUser(ctx);
         if (!ctx.draft?.id || !user || !ctx.ds) return;
         try {
+            stopWatch(ctx);
             await ctx.ds.updateBankStatementImport(user.uid, ctx.draft.id, {
                 review_status: 'rejected'
             });
@@ -467,6 +683,7 @@
         });
         return {
             destroy: () => {
+                stopWatch(ctx);
                 contentEl.innerHTML = '';
                 footerEl.innerHTML = '';
             },
@@ -488,7 +705,7 @@
                     <div class="min-w-0">
                         <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Bank statement</p>
                         <h3 id="bsi-title" class="mt-1 text-lg font-bold text-gray-900">Import Bank Statement</h3>
-                        <p class="mt-1 text-[12px] text-gray-500">Phase 1 · draft &amp; review only. Nothing is saved to your ledger or bank balance without explicit confirmation.</p>
+                        <p class="mt-1 text-[12px] text-gray-500">Upload, review the extracted rows, then confirm. Nothing is saved to your ledger or bank balance without explicit confirmation.</p>
                     </div>
                     <button type="button" data-bsi-close class="flex-shrink-0 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600" aria-label="Close">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -514,7 +731,7 @@
             if (event.target.closest?.('[data-bsi-close]')) closeDrawer();
         });
 
-        mount({
+        wrapper.__bsiController = mount({
             contentEl: wrapper.querySelector('#bsi-content'),
             footerEl: wrapper.querySelector('#bsi-footer'),
             app: options.app,
@@ -536,6 +753,7 @@
         if (wrapper.__bsiEscapeHandler) {
             document.removeEventListener('keydown', wrapper.__bsiEscapeHandler);
         }
+        try { wrapper.__bsiController?.destroy(); } catch (_) {}
         setTimeout(() => {
             if (wrapper && wrapper.parentElement) wrapper.parentElement.removeChild(wrapper);
         }, 280);

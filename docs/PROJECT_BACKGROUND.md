@@ -535,8 +535,36 @@ flow). The secondary entry point on the Overview Bank Cash Balance card
 is reserved for Phase 3.
 
 The draft is never auto-converted into ledger transactions and never
-updates a `bank_accounts.latest_balance`. Confirm and reject flows are
-deferred to Phase 2 (transactions) and Phase 3 (balance).
+updates a `bank_accounts.latest_balance`. **Extraction and the Phase 2
+confirm-to-ledger flow are now built**; the bank-account/balance update
+(Phase 3) is still deferred.
+
+**Extraction (built).** After upload the client calls the Netlify
+*background* function `bank-statement-extract-background.js` (route
+`POST /api/v1/bank-statements/extract`, mapped in `netlify.toml`). It runs
+detached: server-side Storage download via Admin SDK (no large base64 request
+body), then parses the file — **PDF via Claude document input**
+(`@anthropic-ai/sdk`, model from `BANK_STATEMENT_AI_MODEL`, default
+`claude-haiku-4-5`; requires `ANTHROPIC_API_KEY`), **CSV/XLSX deterministically
+via SheetJS** — runs the balance-equation + per-row running-balance checks,
+flags possible duplicates against existing `transactions`, and writes the
+`rows` subcollection + patches the draft (`extraction_status: 'completed'`,
+metadata, counts, `balance_check_status`). The model only returns JSON; the
+function does every read/write and never logs statement contents. Requires a
+Netlify plan with Background Functions.
+
+**Confirm-to-ledger (built, Phase 2).** The Ledger Scan/Import → Bank
+Statement panel watches the draft (`extraction_status` flips), renders an
+interactive review table (select/ignore rows, edit suggested type/category,
+skip duplicates), and on **Confirm Import** calls
+`DataService.confirmBankStatementImport`, which batch-creates one transaction
+per selected row and links them. Imported transactions carry
+`source: 'bank_statement_import'`, `bank_statement_import_id`,
+`bank_statement_row_id`, and `imported_at` (plus optional `bank_account_id`) —
+the transaction create rule + `isValidAICaptureMetadata` allow these keys and
+the new `source` value. Each row gets `created_transaction_id` +
+`review_status: 'confirmed'`; the draft becomes `imported`. Idempotent — rows
+that already carry a `created_transaction_id` are skipped on re-confirm.
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -570,16 +598,17 @@ holds extracted lines with `row_index`, `transaction_date`, `posting_date`,
 `users/{userId}/bank_statement_imports/{importId}/{fileName}` with a 10 MB
 ceiling. Allowed content types: PDF, CSV, XLS, XLSX.
 
-**Audit:** `bank_statement.import_created` is written on draft creation
-(`target_collection: "bank_statement_imports"`). Phase 2/3 add
-`bank_statement.import_confirmed`, `transaction.create_from_bank_statement`,
-and `bank_account.balance_updated`.
+**Audit:** `bank_statement.import_created` is written on draft creation, and
+`bank_statement.import_confirmed` on confirm-to-ledger (both
+`target_collection: "bank_statement_imports"`). Phase 3 adds
+`bank_account.balance_updated`.
 
 `DataService` exposes `createBankStatementImport`, `getBankStatementImport`,
 `listBankStatementImports`, `updateBankStatementImport`,
-`addBankStatementRows`, `getBankStatementRows`, and
-`uploadBankStatementFile`. The shared UI lives in
-`assets/js/bank-statement-import.js` and is exposed as
+`addBankStatementRows`, `getBankStatementRows`, `uploadBankStatementFile`,
+`requestBankStatementExtraction`, `watchBankStatementImport`,
+`updateBankStatementRow`, and `confirmBankStatementImport`. The shared UI lives
+in `assets/js/bank-statement-import.js` and is exposed as
 `window.FluxyBankStatementImport`.
 
 ### 4j. Internal Operations Console (Phase 1 MVP)

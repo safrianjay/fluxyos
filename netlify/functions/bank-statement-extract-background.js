@@ -1,0 +1,431 @@
+'use strict';
+
+// Bank Statement Import — extraction worker (Phase 2).
+//
+// A Netlify *background* function (name ends `-background`, ~15-min budget) so a
+// large multi-page statement can be parsed without hitting the 10s synchronous
+// limit. The client POSTs { importId } here right after uploading the file to
+// Storage; Netlify returns 202 immediately and this runs detached. We write the
+// result straight back to Firestore (the client watches the draft doc), so the
+// return value is irrelevant.
+//
+// Flow: verify the caller's Firebase ID token -> load THEIR draft -> mark it
+// processing -> download the stored file via the Admin SDK -> extract (Claude
+// reads the PDF directly; CSV/XLSX parsed deterministically with SheetJS) ->
+// validate balances -> flag possible duplicates against the existing ledger ->
+// write the rows subcollection + patch the draft. The model only ever returns
+// JSON; this function does every read/write. Statement contents are never logged.
+
+const admin = require('firebase-admin');
+const Anthropic = require('@anthropic-ai/sdk');
+const XLSX = require('xlsx');
+const { initAdmin } = require('./lib/notify-core');
+
+const STORAGE_BUCKET = process.env.FIREBASE_STORAGE_BUCKET || 'fluxyos.firebasestorage.app';
+// Default to Haiku: this runs on every upload, and the deterministic balance
+// reconciliation below catches extraction errors regardless of model. Set
+// BANK_STATEMENT_AI_MODEL=claude-sonnet-4-6 for higher accuracy on dense tables.
+const AI_MODEL = process.env.BANK_STATEMENT_AI_MODEL || 'claude-haiku-4-5';
+const MANUAL_REVIEW_MESSAGE = 'This statement needs manual review. We detected the file but could not extract reliable rows.';
+
+const ALLOWED_CATEGORIES = ['Revenue', 'Marketing', 'Infrastructure', 'Operations', 'SaaS', 'Others'];
+const ALLOWED_TYPES = ['income', 'expense', 'transfer', 'refund', 'fee', 'tax'];
+
+// ---- Rupiah / value helpers ------------------------------------------------
+
+// Parse an Indonesian-formatted money cell into a raw integer (dots = thousands,
+// comma = decimals). Returns null when there is no parseable number.
+function parseRupiah(value) {
+    if (value == null || value === '') return null;
+    if (typeof value === 'number') return Math.round(Math.abs(value));
+    const cleaned = String(value).replace(/[^0-9,.-]/g, '');
+    if (!cleaned || cleaned === '-' || cleaned === '.' || cleaned === ',') return null;
+    const lastComma = cleaned.lastIndexOf(',');
+    const lastDot = cleaned.lastIndexOf('.');
+    let normalized;
+    if (lastComma > lastDot) {
+        // 1.234.567,89 -> 1234567.89
+        normalized = cleaned.replace(/\./g, '').replace(',', '.');
+    } else {
+        // 1,234,567.89 or 1.234.567 (dot as thousands when 3-digit groups)
+        normalized = cleaned.replace(/,/g, '');
+        const parts = normalized.split('.');
+        if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+            normalized = normalized.replace(/\./g, '');
+        }
+    }
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? Math.round(Math.abs(parsed)) : null;
+}
+
+// Coerce many date shapes (ISO, dd/mm/yyyy, Excel serial) to a JS Date or null.
+function toDate(value) {
+    if (!value) return null;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+    if (typeof value === 'number') {
+        // Excel serial date (days since 1899-12-30).
+        const d = XLSX.SSF ? XLSX.SSF.parse_date_code(value) : null;
+        if (d) return new Date(Date.UTC(d.y, d.m - 1, d.d));
+    }
+    const s = String(value).trim();
+    let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    m = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/);
+    if (m) {
+        const yr = m[3].length === 2 ? 2000 + +m[3] : +m[3];
+        return new Date(Date.UTC(yr, +m[2] - 1, +m[1])); // dd/mm/yyyy (Indonesian)
+    }
+    const parsed = new Date(s);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+const tsFromDate = (d) => (d ? admin.firestore.Timestamp.fromDate(d) : null);
+
+function normalizeCategory(cat, type) {
+    if (typeof cat === 'string' && ALLOWED_CATEGORIES.includes(cat)) return cat;
+    return type === 'income' || type === 'refund' ? 'Revenue' : 'Operations';
+}
+function normalizeType(type, debit, credit) {
+    if (typeof type === 'string' && ALLOWED_TYPES.includes(type)) return type;
+    return (credit > 0 && !(debit > 0)) ? 'income' : 'expense';
+}
+
+// ---- Extraction: PDF via Claude -------------------------------------------
+
+const STRUCTURED_SCHEMA = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+        statement_metadata: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+                bank_name: { type: ['string', 'null'] },
+                account_holder: { type: ['string', 'null'] },
+                account_number_masked: { type: ['string', 'null'] },
+                statement_start_date: { type: ['string', 'null'] },
+                statement_end_date: { type: ['string', 'null'] },
+                opening_balance: { type: ['number', 'null'] },
+                closing_balance: { type: ['number', 'null'] },
+            },
+            required: ['bank_name', 'account_holder', 'account_number_masked', 'statement_start_date', 'statement_end_date', 'opening_balance', 'closing_balance'],
+        },
+        transactions: {
+            type: 'array',
+            items: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                    transaction_date: { type: ['string', 'null'] },
+                    description_raw: { type: ['string', 'null'] },
+                    debit: { type: ['number', 'null'] },
+                    credit: { type: ['number', 'null'] },
+                    running_balance: { type: ['number', 'null'] },
+                    suggested_vendor_name: { type: ['string', 'null'] },
+                    suggested_category: { type: ['string', 'null'], enum: [...ALLOWED_CATEGORIES, null] },
+                    suggested_type: { type: ['string', 'null'], enum: [...ALLOWED_TYPES, null] },
+                    confidence: { type: ['number', 'null'] },
+                },
+                required: ['transaction_date', 'description_raw', 'debit', 'credit', 'running_balance', 'suggested_vendor_name', 'suggested_category', 'suggested_type', 'confidence'],
+            },
+        },
+        validation_notes: { type: 'array', items: { type: 'string' } },
+    },
+    required: ['statement_metadata', 'transactions', 'validation_notes'],
+};
+
+const SYSTEM_PROMPT = [
+    'You are a bank-statement extraction engine for an Indonesian finance platform.',
+    'Extract the account/period metadata and EVERY transaction row from the statement, in order.',
+    'Rules:',
+    '- Amounts are raw integers in IDR. Indonesian formatting uses "." as the thousands separator and "," for decimals (e.g. "1.234.567,00" = 1234567). Strip formatting and return whole-Rupiah integers. Never return formatted strings.',
+    '- A row has either a debit (money out / Debet / Keluar) or a credit (money in / Kredit / Masuk); put 0 for the side that is empty.',
+    '- The opening balance is often a "Saldo Awal" line; map it to opening_balance, not a transaction row.',
+    '- Counterparty / "Berita:" / description text that wraps onto the line below belongs to the transaction above — merge it into description_raw.',
+    '- Map direction to suggested_type: money-in -> "income"; money-out -> "expense"; bank admin fee -> "fee"; pajak/tax -> "tax"; transfer to own account -> "transfer"; refund received -> "refund".',
+    '- suggested_category must be one of Revenue, Marketing, Infrastructure, Operations, SaaS, Others (or null). Use Revenue for income.',
+    '- account_number_masked must be masked (e.g. "****7877"); never return a full account number.',
+    '- Dates as YYYY-MM-DD. If a field is genuinely absent, return null and add a short note to validation_notes. Never invent bank, account, or balance values.',
+].join('\n');
+
+async function extractWithClaude(buffer, mediaType) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
+    const client = new Anthropic({ apiKey });
+
+    const stream = client.messages.stream({
+        model: AI_MODEL,
+        max_tokens: 32000,
+        system: SYSTEM_PROMPT,
+        output_config: { format: { type: 'json_schema', schema: STRUCTURED_SCHEMA } },
+        messages: [{
+            role: 'user',
+            content: [
+                { type: 'document', source: { type: 'base64', media_type: mediaType, data: buffer.toString('base64') } },
+                { type: 'text', text: 'Extract the statement metadata and all transaction rows as structured JSON.' },
+            ],
+        }],
+    });
+    const message = await stream.finalMessage();
+    if (message.stop_reason === 'refusal') throw new Error('extraction_refused');
+    const text = (message.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+    let parsed;
+    try { parsed = JSON.parse(text); } catch (_) { throw new Error('extraction_unparseable'); }
+
+    const meta = parsed.statement_metadata || {};
+    const rows = (Array.isArray(parsed.transactions) ? parsed.transactions : []).map((r) => ({
+        transaction_date: toDate(r.transaction_date),
+        description_raw: r.description_raw || null,
+        debit: r.debit == null ? 0 : Math.round(Math.abs(Number(r.debit) || 0)),
+        credit: r.credit == null ? 0 : Math.round(Math.abs(Number(r.credit) || 0)),
+        running_balance: r.running_balance == null ? null : Math.round(Number(r.running_balance)),
+        suggested_vendor_name: r.suggested_vendor_name || null,
+        suggested_category: r.suggested_category || null,
+        suggested_type: r.suggested_type || null,
+        confidence: typeof r.confidence === 'number' ? Math.max(0, Math.min(1, r.confidence)) : null,
+    }));
+    return {
+        metadata: {
+            bank_name: meta.bank_name || null,
+            account_holder: meta.account_holder || null,
+            account_number_masked: meta.account_number_masked || null,
+            statement_start_date: toDate(meta.statement_start_date),
+            statement_end_date: toDate(meta.statement_end_date),
+            opening_balance: meta.opening_balance == null ? null : Math.round(Number(meta.opening_balance)),
+            closing_balance: meta.closing_balance == null ? null : Math.round(Number(meta.closing_balance)),
+        },
+        rows,
+    };
+}
+
+// ---- Extraction: CSV / XLSX via SheetJS (deterministic) --------------------
+
+const HEADER_HINTS = {
+    date: ['tgl', 'tanggal', 'date', 'posting', 'transaction date', 'tgl trans'],
+    description: ['uraian', 'description', 'keterangan', 'desc', 'berita', 'remark', 'narrative'],
+    debit: ['debet', 'debit', 'keluar', 'dr', 'withdrawal'],
+    credit: ['kredit', 'credit', 'masuk', 'cr', 'deposit'],
+    balance: ['saldo', 'balance', 'running'],
+};
+
+function matchColumn(headers, hints) {
+    for (let i = 0; i < headers.length; i++) {
+        const h = String(headers[i] || '').toLowerCase().trim();
+        if (hints.some((hint) => h.includes(hint))) return i;
+    }
+    return -1;
+}
+
+function extractFromSpreadsheet(buffer) {
+    const wb = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const grid = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, defval: '' });
+    if (!grid.length) throw new Error('empty_spreadsheet');
+
+    // Find the header row (the first row that maps a date + at least one amount column).
+    let headerIdx = -1; let cols = null;
+    for (let i = 0; i < Math.min(grid.length, 25); i++) {
+        const c = {
+            date: matchColumn(grid[i], HEADER_HINTS.date),
+            description: matchColumn(grid[i], HEADER_HINTS.description),
+            debit: matchColumn(grid[i], HEADER_HINTS.debit),
+            credit: matchColumn(grid[i], HEADER_HINTS.credit),
+            balance: matchColumn(grid[i], HEADER_HINTS.balance),
+        };
+        if (c.date >= 0 && (c.debit >= 0 || c.credit >= 0)) { headerIdx = i; cols = c; break; }
+    }
+    if (headerIdx < 0 || !cols) throw new Error('no_header');
+
+    const rows = [];
+    for (let i = headerIdx + 1; i < grid.length; i++) {
+        const r = grid[i];
+        const date = toDate(r[cols.date]);
+        const debit = cols.debit >= 0 ? (parseRupiah(r[cols.debit]) || 0) : 0;
+        const credit = cols.credit >= 0 ? (parseRupiah(r[cols.credit]) || 0) : 0;
+        if (!date && !debit && !credit) continue; // skip blank / summary lines
+        rows.push({
+            transaction_date: date,
+            description_raw: cols.description >= 0 ? String(r[cols.description] || '').trim().slice(0, 500) || null : null,
+            debit, credit,
+            running_balance: cols.balance >= 0 ? parseRupiah(r[cols.balance]) : null,
+            suggested_vendor_name: null, suggested_category: null, suggested_type: null, confidence: null,
+        });
+    }
+    if (!rows.length) throw new Error('no_rows');
+    return { metadata: { bank_name: null, account_holder: null, account_number_masked: null, statement_start_date: null, statement_end_date: null, opening_balance: null, closing_balance: null }, rows };
+}
+
+// ---- Validation + duplicate detection -------------------------------------
+
+function reconcile(metadata, rows) {
+    let totalDebit = 0; let totalCredit = 0;
+    rows.forEach((r) => { totalDebit += r.debit || 0; totalCredit += r.credit || 0; });
+
+    let balanceCheck = 'unavailable';
+    if (metadata.opening_balance != null && metadata.closing_balance != null) {
+        balanceCheck = (metadata.opening_balance + totalCredit - totalDebit === metadata.closing_balance) ? 'passed' : 'failed';
+    }
+    // Per-row running balance check.
+    let runningCheck = 'unavailable';
+    const haveRunning = rows.length > 0 && rows.every((r) => r.running_balance != null);
+    if (haveRunning && metadata.opening_balance != null) {
+        runningCheck = 'passed';
+        let prev = metadata.opening_balance;
+        for (const r of rows) {
+            const expected = prev + (r.credit || 0) - (r.debit || 0);
+            if (expected !== r.running_balance) { runningCheck = 'failed'; r._running_mismatch = true; }
+            prev = r.running_balance;
+        }
+    }
+    return { totalDebit, totalCredit, balanceCheck, runningCheck };
+}
+
+// Flag rows that look like an existing ledger transaction: same amount + same
+// direction within +/- 2 days. Reads only the statement period to stay cheap.
+async function detectDuplicates(db, uid, rows, metadata) {
+    const start = metadata.statement_start_date || rows.map((r) => r.transaction_date).filter(Boolean).sort((a, b) => a - b)[0];
+    const end = metadata.statement_end_date || rows.map((r) => r.transaction_date).filter(Boolean).sort((a, b) => b - a)[0];
+    if (!start || !end) return;
+    let existing = [];
+    try {
+        const snap = await db.collection(`users/${uid}/transactions`)
+            .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(new Date(start.getTime() - 2 * 86400000)))
+            .where('timestamp', '<=', admin.firestore.Timestamp.fromDate(new Date(end.getTime() + 2 * 86400000)))
+            .get();
+        existing = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    } catch (_) { return; }
+    const DAY = 86400000;
+    for (const r of rows) {
+        if (!r.transaction_date) continue;
+        const amount = r.credit > 0 ? r.credit : r.debit;
+        const incoming = r.credit > 0;
+        const hit = existing.find((tx) => {
+            const txMs = tx.timestamp && tx.timestamp.toMillis ? tx.timestamp.toMillis() : null;
+            if (txMs == null) return false;
+            if (Math.abs(txMs - r.transaction_date.getTime()) > 2 * DAY) return false;
+            if (Math.round(Math.abs(Number(tx.amount) || 0)) !== amount) return false;
+            const txIncome = ['income', 'revenue', 'refund', 'pending_receivable'].includes(String(tx.type));
+            return txIncome === incoming;
+        });
+        if (hit) { r._duplicate = true; r._matched_transaction_id = hit.id; }
+    }
+}
+
+// ---- Firestore write -------------------------------------------------------
+
+async function writeResults(db, draftRef, metadata, rows, recon) {
+    const FV = admin.firestore.FieldValue;
+    const rowsCol = draftRef.collection('rows');
+    let duplicateCount = 0; let needsReviewCount = 0;
+
+    // Chunk row writes (Admin batch hard limit = 500 ops).
+    for (let i = 0; i < rows.length; i += 450) {
+        const batch = db.batch();
+        rows.slice(i, i + 450).forEach((r, j) => {
+            const isDup = !!r._duplicate;
+            const needsReview = !!r._running_mismatch || (!r.transaction_date) || (r.debit === 0 && r.credit === 0);
+            if (isDup) duplicateCount += 1;
+            if (needsReview && !isDup) needsReviewCount += 1;
+            const type = normalizeType(r.suggested_type, r.debit, r.credit);
+            batch.set(rowsCol.doc(), {
+                row_index: i + j,
+                transaction_date: tsFromDate(r.transaction_date),
+                posting_date: null,
+                description_raw: r.description_raw ? String(r.description_raw).slice(0, 500) : null,
+                debit: r.debit || 0,
+                credit: r.credit || 0,
+                running_balance: r.running_balance == null ? null : r.running_balance,
+                suggested_vendor_name: r.suggested_vendor_name ? String(r.suggested_vendor_name).slice(0, 160) : null,
+                suggested_category: normalizeCategory(r.suggested_category, type),
+                suggested_type: type,
+                match_status: isDup ? 'possible_duplicate' : (needsReview ? 'needs_review' : 'new'),
+                matched_transaction_id: r._matched_transaction_id || null,
+                confidence: r.confidence,
+                selected_for_import: !isDup, // duplicates default to OFF
+                review_status: 'pending',
+                created_transaction_id: null,
+                created_at: FV.serverTimestamp(),
+            });
+        });
+        await batch.commit();
+    }
+
+    await draftRef.update({
+        extraction_status: 'completed',
+        review_status: recon.balanceCheck === 'failed' || needsReviewCount > 0 ? 'needs_review' : 'ready_to_import',
+        bank_name: metadata.bank_name,
+        account_holder: metadata.account_holder,
+        account_number_masked: metadata.account_number_masked,
+        statement_start_date: tsFromDate(metadata.statement_start_date),
+        statement_end_date: tsFromDate(metadata.statement_end_date),
+        opening_balance: metadata.opening_balance,
+        closing_balance: metadata.closing_balance,
+        total_debit: recon.totalDebit,
+        total_credit: recon.totalCredit,
+        row_count: rows.length,
+        balance_check_status: recon.balanceCheck,
+        running_balance_check_status: recon.runningCheck,
+        duplicate_count: duplicateCount,
+        needs_review_count: needsReviewCount,
+        updated_at: FV.serverTimestamp(),
+    });
+}
+
+// ---- Handler ---------------------------------------------------------------
+
+exports.handler = async (event) => {
+    if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method not allowed' };
+
+    let db; let draftRef = null;
+    try {
+        const authz = (event.headers && (event.headers.authorization || event.headers.Authorization)) || '';
+        const token = authz.startsWith('Bearer ') ? authz.slice(7) : '';
+        if (!token) return { statusCode: 401, body: 'missing token' };
+
+        db = initAdmin();
+        const decoded = await admin.auth().verifyIdToken(token);
+        const uid = decoded.uid;
+        const importId = String((JSON.parse(event.body || '{}').importId) || '').slice(0, 200);
+        if (!importId) return { statusCode: 400, body: 'missing importId' };
+
+        draftRef = db.doc(`users/${uid}/bank_statement_imports/${importId}`);
+        const snap = await draftRef.get();
+        if (!snap.exists) return { statusCode: 404, body: 'not found' };
+        const draft = snap.data() || {};
+        if (!draft.storage_path) { await draftRef.update({ extraction_status: 'failed', updated_at: admin.firestore.FieldValue.serverTimestamp() }); return { statusCode: 400, body: 'no file' }; }
+
+        await draftRef.update({ extraction_status: 'processing', updated_at: admin.firestore.FieldValue.serverTimestamp() });
+
+        const [buffer] = await admin.storage().bucket(STORAGE_BUCKET).file(draft.storage_path).download();
+        const mime = String(draft.file_mime_type || '');
+        const name = String(draft.file_name || '').toLowerCase();
+
+        let extracted;
+        if (mime === 'application/pdf' || name.endsWith('.pdf')) {
+            extracted = await extractWithClaude(buffer, 'application/pdf');
+        } else {
+            extracted = extractFromSpreadsheet(buffer);
+        }
+
+        const recon = reconcile(extracted.metadata, extracted.rows);
+        await detectDuplicates(db, uid, extracted.rows, extracted.metadata);
+        await writeResults(db, draftRef, extracted.metadata, extracted.rows, recon);
+
+        return { statusCode: 200, body: 'ok' };
+    } catch (err) {
+        const msg = err && err.message ? err.message : String(err);
+        console.error('[bank-statement-extract] failed:', msg);
+        if (draftRef) {
+            try {
+                await draftRef.update({
+                    extraction_status: 'failed',
+                    review_status: 'needs_review',
+                    updated_at: admin.firestore.FieldValue.serverTimestamp(),
+                });
+            } catch (_) { /* ignore */ }
+        }
+        return { statusCode: 200, body: msg };
+    }
+};
+
+exports.MANUAL_REVIEW_MESSAGE = MANUAL_REVIEW_MESSAGE;

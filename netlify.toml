@@ -73,6 +73,13 @@
   status = 301
   force = true
 
+# Bank statement extraction runs as a background function (async, ~15-min budget).
+# Must precede the /api/v1/* catch-all below.
+[[redirects]]
+  from = "/api/v1/bank-statements/extract"
+  to = "/.netlify/functions/bank-statement-extract-background"
+  status = 200
+
 [[redirects]]
   from = "/api/v1/*"
   to = "/.netlify/functions/api/:splat"

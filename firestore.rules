@@ -110,7 +110,7 @@ service cloud.firestore {
     }
 
     function isValidAICaptureMetadata(data) {
-      return (!('source' in data) || data.source in ['bill_scan', 'transaction_scan', 'subscription_scan'])
+      return (!('source' in data) || data.source in ['bill_scan', 'transaction_scan', 'subscription_scan', 'bank_statement_import'])
         && (!('created_via' in data) || data.created_via in ['ai_bill_capture', 'ai_transaction_capture', 'ai_subscription_capture'])
         && (!('extraction_status' in data) || data.extraction_status == 'reviewed')
         && (!('extraction_source' in data) || data.extraction_source is string)
@@ -125,7 +125,11 @@ service cloud.firestore {
         && (!('source_file_size_bytes' in data) || data.source_file_size_bytes == null || data.source_file_size_bytes is number)
         && (!('payment_reference' in data) || data.payment_reference == null || data.payment_reference is string)
         && (!('notes' in data) || data.notes == null || data.notes is string)
-        && (!('billing_cycle' in data) || data.billing_cycle in ['monthly', 'annual', 'weekly', 'quarterly', 'unknown']);
+        && (!('billing_cycle' in data) || data.billing_cycle in ['monthly', 'annual', 'weekly', 'quarterly', 'unknown'])
+        && (!('bank_statement_import_id' in data) || data.bank_statement_import_id is string)
+        && (!('bank_statement_row_id' in data) || data.bank_statement_row_id is string)
+        && (!('imported_at' in data) || data.imported_at == null || data.imported_at is timestamp)
+        && (!('bank_account_id' in data) || data.bank_account_id == null || data.bank_account_id is string);
     }
 
     function isValidAuditLog(data) {
@@ -2021,7 +2025,11 @@ service cloud.firestore {
             'cash_account_id',
             'cash_source',
             'cash_match_status',
-            'cash_effective_at'
+            'cash_effective_at',
+            'bank_statement_import_id',
+            'bank_statement_row_id',
+            'imported_at',
+            'bank_account_id'
           ])
           && isValidBaseRecord(request.resource.data)
           && (!('created_at' in request.resource.data) || request.resource.data.created_at == request.time)
