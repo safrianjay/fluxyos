@@ -1,6 +1,10 @@
 [build]
   publish = "."
   functions = "netlify/functions"
+  # Pin the build + functions runtime so pdfjs-dist (Node >=20, used by the bank
+  # statement extractor) runs on a supported runtime.
+  [build.environment]
+    NODE_VERSION = "20"
 
 # Security headers — applied to every response
 [[headers]]
