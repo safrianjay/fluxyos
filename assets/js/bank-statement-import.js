@@ -175,13 +175,37 @@
             </div>`;
     }
 
-    function processingStepMarkup(ctx) {
+    function processingStepMarkup() {
+        // Reuse the shared scan loader (glow + floating dots) from the
+        // Receipt/Invoice flow — classes live in shared-dashboard.css.
         return `
-            <div class="flex h-full flex-col items-center justify-center py-12 text-center">
-                <div class="h-10 w-10 animate-spin rounded-full border-2 border-gray-200 border-t-[#EA580C]"></div>
-                <p class="mt-4 text-[14px] font-bold text-gray-900">Reading statement…</p>
-                <p class="mt-1 text-[12px] text-gray-500">Detecting account, balances, and transaction rows. This usually takes under a minute — keep this open.</p>
-                <p class="mt-3 text-[12px] text-gray-400">${escapeHtml(ctx.draft?.file_name || ctx.file?.name || 'Your statement')}</p>
+            <div class="relative overflow-hidden rounded-2xl bg-white border border-gray-100">
+                <div class="absolute -inset-12 scan-loader-bg-purple opacity-25 blur-2xl"></div>
+                <div class="absolute inset-0" style="background: radial-gradient(ellipse at center, rgba(255,255,255,0) 30%, rgba(255,255,255,0.92) 78%);"></div>
+
+                <span class="scan-star scan-star-lg" style="top:14%; left:12%; animation-delay: 0s;"></span>
+                <span class="scan-star" style="top:22%; right:14%; animation-delay: 0.7s;"></span>
+                <span class="scan-star scan-star-sm" style="top:8%; left:46%; animation-delay: 1.1s;"></span>
+                <span class="scan-star scan-star-sm" style="top:46%; left:6%; animation-delay: 1.6s;"></span>
+                <span class="scan-star" style="bottom:24%; right:10%; animation-delay: 0.4s;"></span>
+                <span class="scan-star scan-star-sm" style="bottom:14%; left:24%; animation-delay: 1.3s;"></span>
+                <span class="scan-star scan-star-lg" style="bottom:10%; right:30%; animation-delay: 0.2s;"></span>
+                <span class="scan-star scan-star-sm" style="top:52%; right:7%; animation-delay: 0.9s;"></span>
+                <span class="scan-star scan-star-sm" style="bottom:6%; left:50%; animation-delay: 1.8s;"></span>
+
+                <div class="relative flex flex-col items-center justify-center py-14 px-6 text-center">
+                    <div class="relative w-36 h-36 flex items-center justify-center">
+                        <div class="absolute inset-0 rounded-full scan-loader-halo-purple opacity-70 blur-2xl"></div>
+                        <div class="absolute inset-3 rounded-full scan-loader-halo-purple opacity-55 blur-md"></div>
+                        <div class="relative scan-loader-pulse">
+                            <div class="w-20 h-20 rounded-2xl bg-white shadow-xl ring-1 ring-violet-100 flex items-center justify-center">
+                                <img src="assets/images/favicon.svg" alt="" class="w-12 h-12 scan-loader-spin" aria-hidden="true" onerror="this.style.display='none'">
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-[13px] font-semibold text-gray-900 mt-6">Reading your statement with AI…</p>
+                    <p class="text-[12px] text-gray-500 mt-1">This usually takes under a minute — keep this open.</p>
+                </div>
             </div>`;
     }
 
