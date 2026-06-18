@@ -543,10 +543,11 @@ confirm-to-ledger flow are now built**; the bank-account/balance update
 *background* function `bank-statement-extract-background.js` (route
 `POST /api/v1/bank-statements/extract`, mapped in `netlify.toml`). It runs
 detached: server-side Storage download via Admin SDK (no large base64 request
-body), then parses the file — **PDF via Claude document input**
-(`@anthropic-ai/sdk`, model from `BANK_STATEMENT_AI_MODEL`, default
-`claude-haiku-4-5`; requires `ANTHROPIC_API_KEY`), **CSV/XLSX deterministically
-via SheetJS** — runs the balance-equation + per-row running-balance checks,
+body), then parses the file — **PDF via OpenAI** (Responses API with PDF file
+input + strict `json_schema`, the same `OPENAI_API_KEY` that powers bill
+scanning; model from `BANK_STATEMENT_AI_MODEL`, default `gpt-4.1-mini` for its
+32K output window), **CSV/XLSX deterministically via SheetJS** — runs the
+balance-equation + per-row running-balance checks,
 flags possible duplicates against existing `transactions`, and writes the
 `rows` subcollection + patches the draft (`extraction_status: 'completed'`,
 metadata, counts, `balance_check_status`). The model only returns JSON; the

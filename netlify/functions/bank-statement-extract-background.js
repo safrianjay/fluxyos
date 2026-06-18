@@ -10,22 +10,24 @@
 // return value is irrelevant.
 //
 // Flow: verify the caller's Firebase ID token -> load THEIR draft -> mark it
-// processing -> download the stored file via the Admin SDK -> extract (Claude
-// reads the PDF directly; CSV/XLSX parsed deterministically with SheetJS) ->
-// validate balances -> flag possible duplicates against the existing ledger ->
-// write the rows subcollection + patch the draft. The model only ever returns
-// JSON; this function does every read/write. Statement contents are never logged.
+// processing -> download the stored file via the Admin SDK -> extract (OpenAI
+// reads the PDF directly via the Responses API; CSV/XLSX parsed deterministically
+// with SheetJS) -> validate balances -> flag possible duplicates against the
+// existing ledger -> write the rows subcollection + patch the draft. The model
+// only ever returns JSON; this function does every read/write. Statement
+// contents are never logged.
 
 const admin = require('firebase-admin');
-const Anthropic = require('@anthropic-ai/sdk');
 const XLSX = require('xlsx');
 const { initAdmin } = require('./lib/notify-core');
 
 const STORAGE_BUCKET = process.env.FIREBASE_STORAGE_BUCKET || 'fluxyos.firebasestorage.app';
-// Default to Haiku: this runs on every upload, and the deterministic balance
-// reconciliation below catches extraction errors regardless of model. Set
-// BANK_STATEMENT_AI_MODEL=claude-sonnet-4-6 for higher accuracy on dense tables.
-const AI_MODEL = process.env.BANK_STATEMENT_AI_MODEL || 'claude-haiku-4-5';
+// PDF extraction uses OpenAI (the same key that powers bill scanning), reading
+// the PDF directly via the Responses API. The deterministic balance
+// reconciliation below catches extraction errors regardless of model. Default
+// gpt-4.1-mini for its 32K output window (a long statement's row JSON can exceed
+// gpt-4o-mini's 16K cap and truncate); override with BANK_STATEMENT_AI_MODEL.
+const AI_MODEL = process.env.BANK_STATEMENT_AI_MODEL || 'gpt-4.1-mini';
 const MANUAL_REVIEW_MESSAGE = 'This statement needs manual review. We detected the file but could not extract reliable rows.';
 
 const ALLOWED_CATEGORIES = ['Revenue', 'Marketing', 'Infrastructure', 'Operations', 'SaaS', 'Others'];
@@ -122,8 +124,8 @@ const STRUCTURED_SCHEMA = {
                     credit: { type: ['number', 'null'] },
                     running_balance: { type: ['number', 'null'] },
                     suggested_vendor_name: { type: ['string', 'null'] },
-                    suggested_category: { type: ['string', 'null'], enum: [...ALLOWED_CATEGORIES, null] },
-                    suggested_type: { type: ['string', 'null'], enum: [...ALLOWED_TYPES, null] },
+                    suggested_category: { type: ['string', 'null'] },
+                    suggested_type: { type: ['string', 'null'] },
                     confidence: { type: ['number', 'null'] },
                 },
                 required: ['transaction_date', 'description_raw', 'debit', 'credit', 'running_balance', 'suggested_vendor_name', 'suggested_category', 'suggested_type', 'confidence'],
@@ -148,36 +150,66 @@ const SYSTEM_PROMPT = [
     '- Dates as YYYY-MM-DD. If a field is genuinely absent, return null and add a short note to validation_notes. Never invent bank, account, or balance values.',
 ].join('\n');
 
-async function extractWithClaude(buffer, mediaType) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
-    const client = new Anthropic({ apiKey });
+// Pull the structured JSON string out of a Responses API payload.
+function extractResponseText(payload) {
+    if (typeof payload?.output_text === 'string' && payload.output_text) return payload.output_text;
+    const output = payload?.output;
+    if (!Array.isArray(output)) return null;
+    for (const item of output) {
+        const content = item?.content;
+        if (!Array.isArray(content)) continue;
+        for (const part of content) {
+            if (typeof part?.text === 'string') return part.text;
+            if (typeof part?.text?.value === 'string') return part.text.value;
+        }
+    }
+    return null;
+}
 
-    // Force structured extraction via a tool call (GA on the stable endpoint;
-    // structured-output `output_config` is beta-only in this SDK version).
-    const stream = client.messages.stream({
-        model: AI_MODEL,
-        max_tokens: 32000,
-        system: SYSTEM_PROMPT,
-        tools: [{
-            name: 'record_statement',
-            description: 'Record the extracted bank-statement metadata and every transaction row.',
-            input_schema: STRUCTURED_SCHEMA,
-        }],
-        tool_choice: { type: 'tool', name: 'record_statement' },
-        messages: [{
-            role: 'user',
-            content: [
-                { type: 'document', source: { type: 'base64', media_type: mediaType, data: buffer.toString('base64') } },
-                { type: 'text', text: 'Extract the statement metadata and all transaction rows. Call record_statement with the result.' },
-            ],
-        }],
-    });
-    const message = await stream.finalMessage();
-    if (message.stop_reason === 'refusal') throw new Error('extraction_refused');
-    const toolUse = (message.content || []).find((b) => b.type === 'tool_use' && b.name === 'record_statement');
-    if (!toolUse || !toolUse.input) throw new Error('extraction_no_tool_use');
-    const parsed = toolUse.input;
+async function extractWithOpenAI(buffer, mediaType, fileName) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error('OPENAI_API_KEY not set');
+    const dataUrl = `data:${mediaType};base64,${buffer.toString('base64')}`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 240000); // background fn; allow long statements
+    let res;
+    try {
+        res = await fetch('https://api.openai.com/v1/responses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+            signal: controller.signal,
+            body: JSON.stringify({
+                model: AI_MODEL,
+                max_output_tokens: 32000,
+                input: [
+                    { role: 'system', content: [{ type: 'input_text', text: SYSTEM_PROMPT }] },
+                    {
+                        role: 'user',
+                        content: [
+                            { type: 'input_text', text: 'Extract the statement metadata and all transaction rows as structured JSON.' },
+                            { type: 'input_file', filename: fileName || 'statement.pdf', file_data: dataUrl },
+                        ],
+                    },
+                ],
+                text: { format: { type: 'json_schema', name: 'bank_statement', schema: STRUCTURED_SCHEMA, strict: true } },
+            }),
+        });
+    } finally {
+        clearTimeout(timeout);
+    }
+    if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(`OpenAI HTTP ${res.status}: ${errText.slice(0, 200)}`);
+    }
+    const payload = await res.json();
+    if (payload?.status === 'incomplete') {
+        throw new Error(`extraction_incomplete:${payload?.incomplete_details?.reason || 'unknown'}`);
+    }
+    const text = extractResponseText(payload);
+    if (!text) throw new Error('extraction_empty');
+    let parsed;
+    try { parsed = JSON.parse(text); } catch (_) { throw new Error('extraction_unparseable'); }
 
     const meta = parsed.statement_metadata || {};
     const rows = (Array.isArray(parsed.transactions) ? parsed.transactions : []).map((r) => ({
@@ -409,7 +441,7 @@ exports.handler = async (event) => {
 
         const isPdf = mime === 'application/pdf' || name.endsWith('.pdf');
         console.log('[bank-statement-extract] start', importId, '| pdf:', isPdf, '| model:', AI_MODEL);
-        const extracted = isPdf ? await extractWithClaude(buffer, 'application/pdf') : extractFromSpreadsheet(buffer);
+        const extracted = isPdf ? await extractWithOpenAI(buffer, 'application/pdf', draft.file_name) : extractFromSpreadsheet(buffer);
         console.log('[bank-statement-extract] extracted rows:', extracted.rows.length);
 
         const recon = reconcile(extracted.metadata, extracted.rows);
