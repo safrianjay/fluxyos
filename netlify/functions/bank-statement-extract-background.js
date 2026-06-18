@@ -10,12 +10,12 @@
 // return value is irrelevant.
 //
 // Flow: verify the caller's Firebase ID token -> load THEIR draft -> mark it
-// processing -> download the stored file via the Admin SDK -> extract (OpenAI
-// reads the PDF directly via the Responses API; CSV/XLSX parsed deterministically
-// with SheetJS) -> validate balances -> flag possible duplicates against the
-// existing ledger -> write the rows subcollection + patch the draft. The model
-// only ever returns JSON; this function does every read/write. Statement
-// contents are never logged.
+// processing -> download the stored file via the Admin SDK -> extract (text-based
+// PDFs: local pdfjs text + parallel per-chunk OpenAI calls; scanned PDFs: one
+// vision call; CSV/XLSX: deterministic SheetJS) -> validate balances -> flag
+// possible duplicates against the existing ledger -> write the rows subcollection
+// + patch the draft. The model only ever returns JSON; this function does every
+// read/write. Statement contents are never logged.
 
 const admin = require('firebase-admin');
 const XLSX = require('xlsx');
@@ -92,26 +92,25 @@ function normalizeType(type, debit, credit) {
     return (credit > 0 && !(debit > 0)) ? 'income' : 'expense';
 }
 
-// ---- Extraction: PDF via Claude -------------------------------------------
+// ---- Extraction: PDF via OpenAI -------------------------------------------
+//
+// Fast path: bank statement PDFs are almost always text-based, so we extract the
+// page text locally (pdfjs, ~1s) and run several SMALL OpenAI calls in PARALLEL
+// — one per ~5-page chunk — instead of one slow vision pass over the whole file.
+// This takes extraction from ~3 minutes to well under a minute. Scanned/image
+// PDFs (no extractable text) fall back to the single vision call.
 
-const STRUCTURED_SCHEMA = {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const CHUNK_PAGES = 4; // pages per parallel extraction call (smaller = more parallelism = faster wall-clock)
+
+// Slim per-chunk row schema — only the fields the model must read off the page.
+// suggested_type/vendor/category are derived deterministically in JS afterward,
+// which keeps output tokens (and latency) down.
+const ROWS_SCHEMA = {
     type: 'object',
     additionalProperties: false,
     properties: {
-        statement_metadata: {
-            type: 'object',
-            additionalProperties: false,
-            properties: {
-                bank_name: { type: ['string', 'null'] },
-                account_holder: { type: ['string', 'null'] },
-                account_number_masked: { type: ['string', 'null'] },
-                statement_start_date: { type: ['string', 'null'] },
-                statement_end_date: { type: ['string', 'null'] },
-                opening_balance: { type: ['number', 'null'] },
-                closing_balance: { type: ['number', 'null'] },
-            },
-            required: ['bank_name', 'account_holder', 'account_number_masked', 'statement_start_date', 'statement_end_date', 'opening_balance', 'closing_balance'],
-        },
         transactions: {
             type: 'array',
             items: {
@@ -123,34 +122,56 @@ const STRUCTURED_SCHEMA = {
                     debit: { type: ['number', 'null'] },
                     credit: { type: ['number', 'null'] },
                     running_balance: { type: ['number', 'null'] },
-                    suggested_vendor_name: { type: ['string', 'null'] },
-                    suggested_category: { type: ['string', 'null'] },
-                    suggested_type: { type: ['string', 'null'] },
-                    confidence: { type: ['number', 'null'] },
                 },
-                required: ['transaction_date', 'description_raw', 'debit', 'credit', 'running_balance', 'suggested_vendor_name', 'suggested_category', 'suggested_type', 'confidence'],
+                required: ['transaction_date', 'description_raw', 'debit', 'credit', 'running_balance'],
             },
         },
+    },
+    required: ['transactions'],
+};
+
+const METADATA_SCHEMA = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+        bank_name: { type: ['string', 'null'] },
+        account_holder: { type: ['string', 'null'] },
+        account_number_masked: { type: ['string', 'null'] },
+        statement_start_date: { type: ['string', 'null'] },
+        statement_end_date: { type: ['string', 'null'] },
+        opening_balance: { type: ['number', 'null'] },
+        closing_balance: { type: ['number', 'null'] },
+    },
+    required: ['bank_name', 'account_holder', 'account_number_masked', 'statement_start_date', 'statement_end_date', 'opening_balance', 'closing_balance'],
+};
+
+// Full schema for the whole-file vision fallback (scanned PDFs).
+const VISION_SCHEMA = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+        statement_metadata: METADATA_SCHEMA,
+        transactions: ROWS_SCHEMA.properties.transactions,
         validation_notes: { type: 'array', items: { type: 'string' } },
     },
     required: ['statement_metadata', 'transactions', 'validation_notes'],
 };
 
-const SYSTEM_PROMPT = [
-    'You are a bank-statement extraction engine for an Indonesian finance platform.',
-    'Extract the account/period metadata and EVERY transaction row from the statement, in order.',
-    'Rules:',
-    '- Amounts are raw integers in IDR. Indonesian formatting uses "." as the thousands separator and "," for decimals (e.g. "1.234.567,00" = 1234567). Strip formatting and return whole-Rupiah integers. Never return formatted strings.',
-    '- A row has either a debit (money out / Debet / Keluar) or a credit (money in / Kredit / Masuk); put 0 for the side that is empty.',
-    '- The opening balance is often a "Saldo Awal" line; map it to opening_balance, not a transaction row.',
-    '- Counterparty / "Berita:" / description text that wraps onto the line below belongs to the transaction above — merge it into description_raw.',
-    '- Map direction to suggested_type: money-in -> "income"; money-out -> "expense"; bank admin fee -> "fee"; pajak/tax -> "tax"; transfer to own account -> "transfer"; refund received -> "refund".',
-    '- suggested_category must be one of Revenue, Marketing, Infrastructure, Operations, SaaS, Others (or null). Use Revenue for income.',
-    '- account_number_masked must be masked (e.g. "****7877"); never return a full account number.',
-    '- Dates as YYYY-MM-DD. If a field is genuinely absent, return null and add a short note to validation_notes. Never invent bank, account, or balance values.',
+const ROWS_PROMPT = [
+    'You extract transaction rows from the raw text of an Indonesian bank statement.',
+    'Return EVERY transaction row in order. Rules:',
+    '- Amounts are raw integers in IDR. Strip thousands dots and cents (e.g. "1.234.567,00" and "1,234,567.14" both -> 1234567). Never return formatted strings.',
+    '- Each row has either a debit (DEBET / money out / Keluar) or a credit (KREDIT / money in / Masuk). Put 0 for the empty side.',
+    '- Merge wrapped counterparty / "Berita:" / name lines into description_raw of the row they belong to.',
+    '- IGNORE repeated page headers, column headers (TGL/URAIAN/DEBET/KREDIT/SALDO), bank/account header blocks, and any "Saldo Awal" opening-balance line — those are not transactions.',
+    '- Dates as YYYY-MM-DD. Use the running balance (SALDO) column for running_balance.',
 ].join('\n');
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const METADATA_PROMPT = [
+    'Extract only the header metadata from this Indonesian bank statement text.',
+    'Fields: bank_name, account_holder, account_number_masked (MASK it, e.g. "****7877" — never the full number), statement_start_date and statement_end_date (YYYY-MM-DD), opening_balance (the "Saldo Awal" value as a raw IDR integer — strip dots/cents).',
+    'closing_balance: return null. Return null for any field that is genuinely absent. Never invent values.',
+].join('\n');
 
 // Pull the structured JSON string out of a Responses API payload.
 function extractResponseText(payload) {
@@ -168,33 +189,24 @@ function extractResponseText(payload) {
     return null;
 }
 
-async function extractWithOpenAI(buffer, mediaType, fileName) {
+// One OpenAI Responses call with strict json_schema output + retry on transient
+// gateway errors (429 / 5xx incl. Cloudflare 520, network aborts). Returns the
+// parsed object.
+async function callOpenAI(input, schema, schemaName, maxOut) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('OPENAI_API_KEY not set');
-    const dataUrl = `data:${mediaType};base64,${buffer.toString('base64')}`;
-
     const body = JSON.stringify({
         model: AI_MODEL,
-        max_output_tokens: 32000,
-        input: [
-            { role: 'system', content: [{ type: 'input_text', text: SYSTEM_PROMPT }] },
-            {
-                role: 'user',
-                content: [
-                    { type: 'input_text', text: 'Extract the statement metadata and all transaction rows as structured JSON.' },
-                    { type: 'input_file', filename: fileName || 'statement.pdf', file_data: dataUrl },
-                ],
-            },
-        ],
-        text: { format: { type: 'json_schema', name: 'bank_statement', schema: STRUCTURED_SCHEMA, strict: true } },
+        max_output_tokens: maxOut,
+        input,
+        text: { format: { type: 'json_schema', name: schemaName, schema, strict: true } },
     });
 
-    // Retry transient gateway errors (429 / 5xx, incl. Cloudflare 520) and aborts.
     let payload = null;
     let lastErr = '';
     for (let attempt = 1; attempt <= 3; attempt++) {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 240000); // background fn; allow long statements
+        const timeout = setTimeout(() => controller.abort(), 240000);
         let res;
         try {
             res = await fetch('https://api.openai.com/v1/responses', {
@@ -228,21 +240,65 @@ async function extractWithOpenAI(buffer, mediaType, fileName) {
     }
     const text = extractResponseText(payload);
     if (!text) throw new Error('extraction_empty');
-    let parsed;
-    try { parsed = JSON.parse(text); } catch (_) { throw new Error('extraction_unparseable'); }
+    try { return JSON.parse(text); } catch (_) { throw new Error('extraction_unparseable'); }
+}
 
-    const meta = parsed.statement_metadata || {};
-    const rows = (Array.isArray(parsed.transactions) ? parsed.transactions : []).map((r) => ({
+function deriveType(description, debit, credit) {
+    const d = String(description || '').toLowerCase();
+    if (/pajak|\btax\b|pph|ppn/.test(d)) return 'tax';
+    if (/biaya admin|admin fee|\bfee\b|charge|biaya/.test(d)) return 'fee';
+    return (credit > 0 && !(debit > 0)) ? 'income' : 'expense';
+}
+
+// Normalize a slim model row into the shape the rest of the function consumes.
+// suggested_* are derived here (vendor falls back to the description at confirm).
+function normalizeRow(r) {
+    const debit = r.debit == null ? 0 : Math.round(Math.abs(Number(r.debit) || 0));
+    const credit = r.credit == null ? 0 : Math.round(Math.abs(Number(r.credit) || 0));
+    const desc = r.description_raw ? String(r.description_raw).trim() : null;
+    return {
         transaction_date: toDate(r.transaction_date),
-        description_raw: r.description_raw || null,
-        debit: r.debit == null ? 0 : Math.round(Math.abs(Number(r.debit) || 0)),
-        credit: r.credit == null ? 0 : Math.round(Math.abs(Number(r.credit) || 0)),
+        description_raw: desc,
+        debit,
+        credit,
         running_balance: r.running_balance == null ? null : Math.round(Number(r.running_balance)),
-        suggested_vendor_name: r.suggested_vendor_name || null,
-        suggested_category: r.suggested_category || null,
-        suggested_type: r.suggested_type || null,
-        confidence: typeof r.confidence === 'number' ? Math.max(0, Math.min(1, r.confidence)) : null,
-    }));
+        suggested_vendor_name: null,
+        suggested_category: null,
+        suggested_type: deriveType(desc, debit, credit),
+        confidence: null,
+    };
+}
+
+async function extractPdfText(buffer) {
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(buffer), useSystemFonts: true, isEvalSupported: false }).promise;
+    const pages = [];
+    for (let i = 1; i <= doc.numPages; i++) {
+        const page = await doc.getPage(i);
+        const tc = await page.getTextContent();
+        pages.push(tc.items.map((it) => it.str).join(' '));
+    }
+    try { await doc.destroy(); } catch (_) { /* ignore */ }
+    return pages;
+}
+
+// Whole-file vision fallback (scanned / image-only PDFs).
+async function extractWithOpenAIVision(buffer, mediaType, fileName) {
+    const dataUrl = `data:${mediaType};base64,${buffer.toString('base64')}`;
+    const input = [
+        { role: 'system', content: [{ type: 'input_text', text: `${METADATA_PROMPT}\n\n${ROWS_PROMPT}` }] },
+        {
+            role: 'user',
+            content: [
+                { type: 'input_text', text: 'Extract statement_metadata and all transaction rows as structured JSON.' },
+                { type: 'input_file', filename: fileName || 'statement.pdf', file_data: dataUrl },
+            ],
+        },
+    ];
+    const parsed = await callOpenAI(input, VISION_SCHEMA, 'bank_statement', 32000);
+    const meta = parsed.statement_metadata || {};
+    const rows = (Array.isArray(parsed.transactions) ? parsed.transactions : []).map(normalizeRow);
+    const lastBal = [...rows].reverse().find((r) => r.running_balance != null);
     return {
         metadata: {
             bank_name: meta.bank_name || null,
@@ -251,7 +307,59 @@ async function extractWithOpenAI(buffer, mediaType, fileName) {
             statement_start_date: toDate(meta.statement_start_date),
             statement_end_date: toDate(meta.statement_end_date),
             opening_balance: meta.opening_balance == null ? null : Math.round(Number(meta.opening_balance)),
-            closing_balance: meta.closing_balance == null ? null : Math.round(Number(meta.closing_balance)),
+            closing_balance: meta.closing_balance != null ? Math.round(Number(meta.closing_balance)) : (lastBal ? lastBal.running_balance : null),
+        },
+        rows,
+    };
+}
+
+// Primary PDF path: local text extraction + parallel per-chunk row calls.
+async function extractFromPdf(buffer, fileName) {
+    let pages = [];
+    try { pages = await extractPdfText(buffer); } catch (e) {
+        console.warn('[bank-statement-extract] pdf text extraction failed, using vision:', e && e.message ? e.message : e);
+    }
+    const avgChars = pages.length ? pages.reduce((a, p) => a + p.length, 0) / pages.length : 0;
+    if (pages.length === 0 || avgChars < 40) {
+        console.log('[bank-statement-extract] sparse text (avg', Math.round(avgChars), 'chars/pg) -> vision fallback');
+        return extractWithOpenAIVision(buffer, 'application/pdf', fileName);
+    }
+    console.log('[bank-statement-extract]', pages.length, 'pages, avg', Math.round(avgChars), 'chars/pg -> parallel text chunks');
+
+    const chunks = [];
+    for (let i = 0; i < pages.length; i += CHUNK_PAGES) chunks.push(pages.slice(i, i + CHUNK_PAGES).join('\n\n'));
+
+    const metaInput = [
+        { role: 'system', content: [{ type: 'input_text', text: METADATA_PROMPT }] },
+        { role: 'user', content: [{ type: 'input_text', text: pages.slice(0, 2).join('\n\n') }] },
+    ];
+    const rowInputs = chunks.map((text) => ([
+        { role: 'system', content: [{ type: 'input_text', text: ROWS_PROMPT }] },
+        { role: 'user', content: [{ type: 'input_text', text }] },
+    ]));
+
+    // One metadata call + N row-chunk calls, all in parallel.
+    const [metaRes, ...rowResults] = await Promise.all([
+        callOpenAI(metaInput, METADATA_SCHEMA, 'metadata', 2000),
+        ...rowInputs.map((inp) => callOpenAI(inp, ROWS_SCHEMA, 'rows', 8000)),
+    ]);
+
+    const rows = [];
+    rowResults.forEach((r) => {
+        (Array.isArray(r.transactions) ? r.transactions : []).forEach((t) => rows.push(normalizeRow(t)));
+    });
+
+    const meta = metaRes || {};
+    const lastBal = [...rows].reverse().find((r) => r.running_balance != null);
+    return {
+        metadata: {
+            bank_name: meta.bank_name || null,
+            account_holder: meta.account_holder || null,
+            account_number_masked: meta.account_number_masked || null,
+            statement_start_date: toDate(meta.statement_start_date),
+            statement_end_date: toDate(meta.statement_end_date),
+            opening_balance: meta.opening_balance == null ? null : Math.round(Number(meta.opening_balance)),
+            closing_balance: meta.closing_balance != null ? Math.round(Number(meta.closing_balance)) : (lastBal ? lastBal.running_balance : null),
         },
         rows,
     };
@@ -461,7 +569,7 @@ exports.handler = async (event) => {
 
         const isPdf = mime === 'application/pdf' || name.endsWith('.pdf');
         console.log('[bank-statement-extract] start', importId, '| pdf:', isPdf, '| model:', AI_MODEL);
-        const extracted = isPdf ? await extractWithOpenAI(buffer, 'application/pdf', draft.file_name) : extractFromSpreadsheet(buffer);
+        const extracted = isPdf ? await extractFromPdf(buffer, draft.file_name) : extractFromSpreadsheet(buffer);
         console.log('[bank-statement-extract] extracted rows:', extracted.rows.length);
 
         const recon = reconcile(extracted.metadata, extracted.rows);

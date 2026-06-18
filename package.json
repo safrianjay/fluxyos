@@ -6,11 +6,11 @@
     "smoke:announce": "node scripts/announce-smoke.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.104.2",
     "@netlify/functions": "^2.8.2",
     "agentation": "^3.0.2",
     "firebase": "^12.13.0",
     "firebase-admin": "^13.10.0",
+    "pdfjs-dist": "^6.0.227",
     "resend": "^4.0.0",
     "xlsx": "^0.18.5"
   },

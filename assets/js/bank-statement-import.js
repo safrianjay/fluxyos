@@ -180,7 +180,7 @@
             <div class="flex h-full flex-col items-center justify-center py-12 text-center">
                 <div class="h-10 w-10 animate-spin rounded-full border-2 border-gray-200 border-t-[#EA580C]"></div>
                 <p class="mt-4 text-[14px] font-bold text-gray-900">Reading statement…</p>
-                <p class="mt-1 text-[12px] text-gray-500">Detecting account, balances, and transaction rows. A long statement can take a few minutes — keep this open.</p>
+                <p class="mt-1 text-[12px] text-gray-500">Detecting account, balances, and transaction rows. This usually takes under a minute — keep this open.</p>
                 <p class="mt-3 text-[12px] text-gray-400">${escapeHtml(ctx.draft?.file_name || ctx.file?.name || 'Your statement')}</p>
             </div>`;
     }

@@ -1319,7 +1319,7 @@
         "Bank statement draft rejected.": "Draf rekening koran ditolak.",
         "Bank statement uploaded as a draft. Nothing has been saved to your ledger.": "Rekening koran diunggah sebagai draf. Tidak ada yang disimpan ke buku besar Anda.",
         "Reading statement…": "Membaca rekening koran…",
-        "Detecting account, balances, and transaction rows. A long statement can take a few minutes — keep this open.": "Mendeteksi rekening, saldo, dan baris transaksi. Rekening koran yang panjang bisa memakan beberapa menit — biarkan tetap terbuka.",
+        "Detecting account, balances, and transaction rows. This usually takes under a minute — keep this open.": "Mendeteksi rekening, saldo, dan baris transaksi. Biasanya butuh kurang dari satu menit — biarkan tetap terbuka.",
         "Statement read. Review the rows, then confirm to import.": "Rekening koran selesai dibaca. Tinjau barisnya, lalu konfirmasi untuk mengimpor.",
         "Tick the rows to import; adjust type or category before confirming. Nothing is saved until you confirm.": "Centang baris yang ingin diimpor; sesuaikan tipe atau kategori sebelum konfirmasi. Tidak ada yang disimpan sampai Anda konfirmasi.",
         "FluxyOS reads the statement, then shows a review table where you pick the rows to import.": "FluxyOS membaca rekening koran, lalu menampilkan tabel tinjauan tempat Anda memilih baris yang akan diimpor.",
