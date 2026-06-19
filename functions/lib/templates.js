@@ -129,6 +129,14 @@ function greet(locale, name) {
     return name ? `Hi ${escapeHtml(name)},` : 'Hi there,';
 }
 
+// Gender → greeting honorific. Female → Ibu / Mrs; anything else defaults to
+// the male form Bapak / Mr (the lead form only offers male|female).
+function honorific(gender) {
+    return String(gender || '').toLowerCase() === 'female'
+        ? { id: 'Ibu', en: 'Mrs' }
+        : { id: 'Bapak', en: 'Mr' };
+}
+
 function notePara(locale, note) {
     if (!note) return null;
     const label = locale === 'id' ? 'Catatan peninjau' : 'Reviewer note';
@@ -586,6 +594,65 @@ const COPY = {
             ],
             cta: { label: 'Change language · Ganti bahasa', url: settingsUrl },
             footnote: "You're receiving this FluxyOS product update because you have an account. · Anda menerima pembaruan produk FluxyOS ini karena memiliki akun.",
+        };
+    },
+
+    // Sales-lead meeting-reminder outreach, sent from the dashboard Sales Leads
+    // page. Bilingual BY DESIGN (Indonesian primary, English below) regardless of
+    // `locale`, mirroring outreach/meeting-reminder-bilingual.html. The greeting
+    // honorific is driven by `d.gender`; the meeting date/time come from
+    // `d.meetingISO` and are formatted in Asia/Jakarta (WIB).
+    lead_outreach(_locale, d) {
+        const baseUrl = d.baseUrl || 'https://fluxyos.com';
+        const name = d.name ? escapeHtml(String(d.name)) : '';
+        const hon = honorific(d.gender);
+        const sender = d.senderName ? escapeHtml(String(d.senderName)) : 'Tim FluxyOS';
+
+        const dt = d.meetingISO ? new Date(d.meetingISO) : null;
+        const valid = dt && !isNaN(dt.getTime());
+        const TZ = 'Asia/Jakarta';
+        const fmt = (locale, opts) => (valid ? new Intl.DateTimeFormat(locale, { ...opts, timeZone: TZ }).format(dt) : '');
+        const idWeekday = fmt('id-ID', { weekday: 'long' }) || 'meeting kita';
+        const enWeekday = fmt('en-GB', { weekday: 'long' }) || 'our meeting day';
+        const idDate = fmt('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        const enDate = fmt('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        const idTime = valid ? `${fmt('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false })} WIB (GMT+7)` : '';
+        const enTime = valid ? `${fmt('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} WIB (GMT+7)` : '';
+
+        const line = (html, text) => ({ html, text: text != null ? text : html.replace(/<[^>]+>/g, '') });
+        const card = (date, time, helper) => line(
+            `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:#F9FAFB;border:1px solid ${BORDER};border-radius:12px;"><tr><td style="padding:16px 20px;">`
+            + `<div style="font-size:18px;font-weight:700;color:${NAVY};letter-spacing:-0.01em;">📅 ${escapeHtml(date)}</div>`
+            + `<div style="padding-top:4px;font-size:15px;color:${INK};">🕒 ${escapeHtml(time)}</div>`
+            + `<div style="padding-top:8px;font-size:13px;color:${MUTED};line-height:1.5;">${helper}</div>`
+            + `</td></tr></table>`,
+            `${date} — ${time}. ${helper}`,
+        );
+
+        return {
+            subject: 'We are excited to meet you soon',
+            heading: 'Sampai jumpa di meeting kita',
+            paragraphs: [
+                line(`<div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${ORANGE};">Pengingat meeting</div>`, 'PENGINGAT MEETING'),
+                // ---- Bahasa Indonesia (primary) ----
+                line(`Halo ${hon.id} ${name},`),
+                line(`Sekadar mengingatkan bahwa kita sudah terjadwal untuk bertemu pada hari ${escapeHtml(idWeekday)}. Saya sangat menantikan kesempatan untuk mengenal bisnis Anda lebih jauh dan berdiskusi mengenai tantangan yang saat ini sedang dihadapi.`),
+                line('Dalam sesi ini, saya akan menunjukkan bagaimana FluxyOS membantu bisnis mengelola operasional, keuangan, dan proses administrasi dengan lebih efisien melalui otomatisasi dan AI yang terintegrasi.'),
+                card(idDate, idTime, 'Undangan kalender sudah tersedia di inbox Anda, jadi tidak ada yang perlu dilakukan sebelum meeting.'),
+                line('Jika ada waktu luang, Anda juga bisa melihat sekilas FluxyOS di fluxyos.com agar mendapatkan gambaran mengenai platform kami. Dengan begitu, saat sesi berlangsung kita bisa langsung fokus membahas kebutuhan bisnis Anda dan mengeksplorasi solusi yang paling relevan.'),
+                line(`Sampai jumpa di hari ${escapeHtml(idWeekday)}. Saya menantikan diskusi kita.`),
+                // ---- divider ----
+                line(`<div style="border-top:1px solid #EEF0F3;margin:6px 0 0;"></div><div style="text-align:center;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:${NAVY};padding-top:16px;">🇬🇧 English</div>`, '— English —'),
+                // ---- English (secondary) ----
+                line(`Hi ${hon.en} ${name},`),
+                line(`Just confirming our meeting on ${escapeHtml(enWeekday)}, and I'm looking forward to it. You'll get a proper walkthrough of how FluxyOS and our AI can help solve the problems you're dealing with right now.`),
+                card(enDate, enTime, 'The calendar invite is already in your inbox — no action needed.'),
+                line("If you have a few minutes before then, take a look around fluxyos.com. It'll give you a feel for things ahead of our call."),
+                line('Stop losing your evenings to financial reports and spreadsheets. Let FluxyOS handle it, so you can get back to running your business.'),
+                line(`Salam, &middot; Best regards,<br><strong style="color:${NAVY};">${sender}</strong><br><span style="color:${MUTED};">FluxyOS</span>`, `Salam / Best regards, ${d.senderName || 'Tim FluxyOS'} — FluxyOS`),
+            ],
+            cta: { label: 'Jelajahi FluxyOS · Explore FluxyOS', url: baseUrl },
+            footnote: 'Anda menerima email ini karena telah menjadwalkan meeting dengan tim FluxyOS. · You’re receiving this because you booked a meeting with the FluxyOS team.',
         };
     },
 };

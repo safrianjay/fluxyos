@@ -1,4 +1,4 @@
-import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
@@ -409,6 +409,30 @@ class DataService {
         const q = query(collection(this.db, `users/${userId}/subscriptions`), orderBy('timestamp', 'desc'));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    // --- SALES LEADS (user-scoped CRM for the Sales Leads page) ---
+    async getLeads(userId) {
+        const q = query(collection(this.db, `users/${userId}/leads`), orderBy('created_at', 'desc'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    async addLead(userId, data) {
+        const payload = { ...data, created_at: serverTimestamp(), updated_at: serverTimestamp() };
+        // Rules allow these fields to be absent but never literal null.
+        ['role', 'company', 'last_sent_at'].forEach((field) => { if (payload[field] == null) delete payload[field]; });
+        return await addDoc(collection(this.db, `users/${userId}/leads`), payload);
+    }
+
+    async updateLead(userId, leadId, patch = {}) {
+        const ref = doc(this.db, `users/${userId}/leads/${leadId}`);
+        await updateDoc(ref, { ...patch, updated_at: serverTimestamp() });
+        return { id: leadId };
+    }
+
+    async deleteLead(userId, leadId) {
+        await deleteDoc(doc(this.db, `users/${userId}/leads/${leadId}`));
     }
 
     // --- SETTINGS ---

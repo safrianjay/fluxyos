@@ -173,6 +173,26 @@ service cloud.firestore {
         && data.created_at == request.time;
     }
 
+    // Sales Leads (user-scoped CRM for the dashboard Sales Leads page). Strings,
+    // a meeting timestamp, and a workflow status — no money. Distinct from the
+    // public top-level sales_leads (Contact-Sales) collection.
+    function isValidLead(data) {
+      return data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 120
+        && data.gender in ['male', 'female']
+        && data.email is string
+        && data.email.size() > 0
+        && data.email.size() <= 200
+        && data.status in ['new', 'sent', 'meeting_booked', 'closed']
+        && data.meeting_at is timestamp
+        && (!('role' in data) || (data.role is string && data.role.size() <= 120))
+        && (!('company' in data) || (data.company is string && data.company.size() <= 160))
+        && (!('last_sent_at' in data) || data.last_sent_at is timestamp)
+        && data.created_at is timestamp
+        && data.updated_at is timestamp;
+    }
+
     // Accounting Center (Phase 1) — saved category/type → account mappings.
     // Strings/enums only. No money, no row-level financial data, no formatted
     // currency. See docs/PROJECT_BACKGROUND.md §4 (Accounting mappings).
@@ -2316,6 +2336,43 @@ service cloud.firestore {
           ])
           && isValidAuditLog(request.resource.data);
         allow update, delete: if false;
+      }
+
+      match /leads/{leadId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && request.resource.data.keys().hasOnly([
+            'name',
+            'gender',
+            'email',
+            'role',
+            'company',
+            'meeting_at',
+            'status',
+            'last_sent_at',
+            'created_at',
+            'updated_at'
+          ])
+          && isValidLead(request.resource.data)
+          && request.resource.data.created_at == request.time
+          && request.resource.data.updated_at == request.time;
+        allow update: if isOwner(userId)
+          && request.resource.data.keys().hasOnly([
+            'name',
+            'gender',
+            'email',
+            'role',
+            'company',
+            'meeting_at',
+            'status',
+            'last_sent_at',
+            'created_at',
+            'updated_at'
+          ])
+          && isValidLead(request.resource.data)
+          && request.resource.data.created_at == resource.data.created_at
+          && request.resource.data.updated_at == request.time;
+        allow delete: if isOwner(userId);
       }
 
       match /documents/{documentId} {
