@@ -631,7 +631,7 @@ const COPY = {
 
         return {
             subject: 'We are excited to meet you soon',
-            heading: 'Sampai jumpa di meeting kita',
+            heading: 'Kami tidak sabar untuk bertemu',
             paragraphs: [
                 line(`<div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${ORANGE};">Pengingat meeting</div>`, 'PENGINGAT MEETING'),
                 // ---- Bahasa Indonesia (primary) ----
