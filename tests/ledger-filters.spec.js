@@ -5,8 +5,9 @@ const { installTrialPaywallBypass } = require('./qa-helpers');
 /**
  * QA: ledger trust cards, attention queue, and Status + Type filters.
  * Filters live behind a single "Filters" entry point that opens a staged
- * panel (Visibility segmented control + Status/Type/Cash custom dropdowns);
- * selections apply only on "Apply filters".
+ * two-pane panel: a left category rail (Visibility / Status / Type / Cash)
+ * whose options render as radios in the right detail pane. Selections apply
+ * only on "Apply filters".
  * Authenticates via tests/setup-auth.spec.js → tests/.auth/storageState.json.
  */
 
@@ -23,11 +24,7 @@ async function waitForLedgerReady(page) {
         const body = document.querySelector('#ledger-table-body');
         return !!body && !/Fetching ledger data/.test(body.textContent || '');
     }, null, { timeout: 20_000 });
-    // The single Filters entry point is visible; the custom selects mount inside
-    // the (initially hidden) panel, so wait for them attached, not visible.
     await page.waitForSelector('#ledger-filter-trigger');
-    await page.waitForSelector('#ledger-status-filter .fluxy-select-trigger', { state: 'attached' });
-    await page.waitForSelector('#ledger-type-filter .fluxy-select-trigger', { state: 'attached' });
 }
 
 async function openFilterPanel(page) {
@@ -43,25 +40,14 @@ async function applyFilters(page) {
     await expect(page.locator('#ledger-filter-panel')).toBeHidden();
 }
 
-// Pick a Status/Type/Cash dropdown option. The panel must already be open.
-async function pickFluxyOption(page, selectId, value) {
-    const root = page.locator(`#${selectId}`);
-    const trigger = root.locator('.fluxy-select-trigger');
-    const option = root.locator(`.fluxy-select-option[data-value="${value}"]`);
-    await expect(async () => {
-        if ((await root.getAttribute('data-open')) !== 'true') {
-            await trigger.click();
-        }
-        await option.click({ timeout: 1000 });
-    }).toPass({ timeout: 10_000 });
+// Select a category in the left rail, then pick one of its radio options in the
+// right pane. The panel must already be open.
+async function pickFilter(page, group, value) {
+    await page.locator(`#ledger-filter-rail .fluxy-filter-rail-item[data-group="${group}"]`).click();
+    await page.locator(`#ledger-filter-options .fluxy-filter-option[data-value="${value}"]`).click();
 }
 
-// Pick a Visibility segmented value. The panel must already be open.
-async function pickVisibility(page, value) {
-    await page.locator(`#ledger-visibility-filter .fluxy-filter-segment-btn[data-value="${value}"]`).click();
-}
-
-test('ledger page renders the single Filters panel and removes Status/Type breakdown panels', async ({ page }) => {
+test('ledger page renders the two-pane Filters panel and removes Status/Type breakdown panels', async ({ page }) => {
     const consoleErrors = [];
     page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
     page.on('pageerror', err => { consoleErrors.push(String(err)); });
@@ -82,35 +68,30 @@ test('ledger page renders the single Filters panel and removes Status/Type break
     await expect(page.locator('#ledger-filter-panel')).toBeHidden();
     await expect(page.locator('#ledger-filter-count')).toBeHidden();
 
-    // Open the panel: the grouped controls and default labels appear.
+    // Open: rail lists the four categories, Visibility active by default.
     await openFilterPanel(page);
-    const statusRoot = page.locator('#ledger-status-filter');
-    const typeRoot = page.locator('#ledger-type-filter');
-    await expect(statusRoot.locator('.fluxy-select-trigger')).toBeVisible();
-    await expect(typeRoot.locator('.fluxy-select-trigger')).toBeVisible();
-    await expect(statusRoot.locator('.fluxy-select-label')).toHaveText('All statuses');
-    await expect(typeRoot.locator('.fluxy-select-label')).toHaveText('All types');
-    // Visibility is a segmented control defaulting to Active.
-    await expect(page.locator('#ledger-visibility-filter .fluxy-filter-segment-btn[data-value="active"]')).toHaveAttribute('aria-checked', 'true');
+    const rail = page.locator('#ledger-filter-rail .fluxy-filter-rail-item');
+    await expect(rail).toHaveCount(4);
+    await expect(page.locator('#ledger-filter-rail .fluxy-filter-rail-item[data-group="visibility"]')).toHaveAttribute('aria-selected', 'true');
+    // Default detail pane = Visibility options, Active checked.
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value="active"]')).toHaveAttribute('aria-checked', 'true');
 
-    // Native <select> not present
+    // Native <select> not present for these filters
     await expect(page.locator('select#ledger-status-filter')).toHaveCount(0);
     await expect(page.locator('select#ledger-type-filter')).toHaveCount(0);
 
-    // Status options
-    await statusRoot.locator('.fluxy-select-trigger').click();
-    const statusValues = await statusRoot.locator('.fluxy-select-option').evaluateAll(els => els.map(e => e.dataset.value));
+    // Status category options
+    await page.locator('#ledger-filter-rail .fluxy-filter-rail-item[data-group="status"]').click();
+    const statusValues = await page.locator('#ledger-filter-options .fluxy-filter-option').evaluateAll(els => els.map(e => e.dataset.value));
     expect(statusValues).toEqual(['', 'Completed', 'Missing Receipt', 'Pending', 'Reconciled', 'Cancelled', 'Voided']);
-    await statusRoot.locator('.fluxy-select-trigger').click();
 
-    // Type options cover required values
-    await typeRoot.locator('.fluxy-select-trigger').click();
-    const typeValues = await typeRoot.locator('.fluxy-select-option').evaluateAll(els => els.map(e => e.dataset.value));
+    // Type category options
+    await page.locator('#ledger-filter-rail .fluxy-filter-rail-item[data-group="type"]').click();
+    const typeValues = await page.locator('#ledger-filter-options .fluxy-filter-option').evaluateAll(els => els.map(e => e.dataset.value));
     expect(typeValues).toEqual([
         '', 'income', 'expense', 'transfer', 'refund',
         'adjustment', 'fee', 'tax', 'pending_receivable', 'pending_payable'
     ]);
-    await typeRoot.locator('.fluxy-select-trigger').click();
 
     // Chip row hidden initially
     await expect(page.locator('#ledger-filter-chip-row')).toBeHidden();
@@ -181,6 +162,22 @@ test('Add Transaction and Scan / Import controls still open their existing drawe
     expect(consoleErrors, 'console errors during safe drawer open checks').toEqual([]);
 });
 
+test('switching rail categories swaps the right options pane', async ({ page }) => {
+    await page.goto('/ledger.html');
+    await waitForLedgerReady(page);
+
+    await openFilterPanel(page);
+    // Default: Visibility selected, its options shown.
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value="active"]')).toBeVisible();
+
+    // Switch to Type → Type options shown, Visibility options gone.
+    await page.locator('#ledger-filter-rail .fluxy-filter-rail-item[data-group="type"]').click();
+    await expect(page.locator('#ledger-filter-rail .fluxy-filter-rail-item[data-group="type"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#ledger-filter-rail .fluxy-filter-rail-item[data-group="visibility"]')).toHaveAttribute('aria-selected', 'false');
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value="expense"]')).toBeVisible();
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value="active"]')).toHaveCount(0);
+});
+
 test('staged Status filter previews, applies on Apply, shows a chip, and badges the trigger', async ({ page }) => {
     const consoleErrors = [];
     page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
@@ -194,7 +191,9 @@ test('staged Status filter previews, applies on Apply, shows a chip, and badges 
 
     // Stage the selection — table must NOT change until Apply.
     await openFilterPanel(page);
-    await pickFluxyOption(page, 'ledger-status-filter', 'Completed');
+    await pickFilter(page, 'status', 'Completed');
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value="Completed"]')).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('#ledger-filter-rail .fluxy-filter-rail-item[data-group="status"] .fluxy-filter-rail-dot')).toBeVisible();
     await expect(page.locator('#ledger-filter-applied-badge')).toContainText('1 applied');
     await expect(page.locator('#ledger-filter-result-count')).toContainText(/Results: /);
     await expect(page.locator('#ledger-filter-chip-row')).toBeHidden();
@@ -223,7 +222,6 @@ test('staged Status filter previews, applies on Apply, shows a chip, and badges 
 
     // Clear chip → back to All
     await chipRow.locator('[data-filter-clear="status"]').click();
-    await expect(page.locator('#ledger-status-filter .fluxy-select-label')).toHaveText('All statuses');
     await expect(page.locator('#ledger-filter-trigger')).toHaveAttribute('data-active', 'false');
     await expect(page.locator('#ledger-filter-count')).toBeHidden();
     await expect(chipRow).toBeHidden();
@@ -242,8 +240,8 @@ test('Type filter intersects with Status filter and clears independently', async
 
     // Stage both filters in one panel session, then apply.
     await openFilterPanel(page);
-    await pickFluxyOption(page, 'ledger-status-filter', 'Completed');
-    await pickFluxyOption(page, 'ledger-type-filter', 'expense');
+    await pickFilter(page, 'status', 'Completed');
+    await pickFilter(page, 'type', 'expense');
     await expect(page.locator('#ledger-filter-applied-badge')).toContainText('2 applied');
     await applyFilters(page);
 
@@ -261,15 +259,21 @@ test('Type filter intersects with Status filter and clears independently', async
 
     // Clear only Type — Status persists
     await chipRow.locator('[data-filter-clear="type"]').click();
-    await expect(page.locator('#ledger-type-filter .fluxy-select-label')).toHaveText('All types');
-    await expect(page.locator('#ledger-status-filter .fluxy-select-label')).toHaveText('Completed');
-    await expect(page.locator('#ledger-filter-count')).toHaveText('1');
+    await expect(chipRow.locator('[data-filter-clear="type"]')).toHaveCount(0);
     await expect(chipRow.locator('[data-filter-clear="status"]')).toBeVisible();
+    await expect(page.locator('#ledger-filter-count')).toHaveText('1');
+
+    // Reopening shows Type reverted to All, Status still Completed.
+    await openFilterPanel(page);
+    await page.locator('#ledger-filter-rail .fluxy-filter-rail-item[data-group="type"]').click();
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value=""]')).toHaveAttribute('aria-checked', 'true');
+    await page.locator('#ledger-filter-rail .fluxy-filter-rail-item[data-group="status"]').click();
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value="Completed"]')).toHaveAttribute('aria-checked', 'true');
 
     expect(consoleErrors, 'console errors during combined flow').toEqual([]);
 });
 
-test('Visibility segmented filter can switch to Voided/All and clear independently', async ({ page }) => {
+test('Visibility filter can switch to Voided/All and clear independently', async ({ page }) => {
     const consoleErrors = [];
     page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
     page.on('pageerror', err => { consoleErrors.push(String(err)); });
@@ -278,8 +282,8 @@ test('Visibility segmented filter can switch to Voided/All and clear independent
     await waitForLedgerReady(page);
 
     await openFilterPanel(page);
-    await pickVisibility(page, 'voided');
-    await expect(page.locator('#ledger-visibility-filter .fluxy-filter-segment-btn[data-value="voided"]')).toHaveAttribute('aria-checked', 'true');
+    await pickFilter(page, 'visibility', 'voided');
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value="voided"]')).toHaveAttribute('aria-checked', 'true');
     await applyFilters(page);
     await expect(page.locator('#ledger-filter-chip-row [data-filter-clear="visibility"]')).toContainText('Visibility: Voided');
     await expect(page.locator('#ledger-filter-trigger')).toHaveAttribute('data-active', 'true');
@@ -290,9 +294,9 @@ test('Visibility segmented filter can switch to Voided/All and clear independent
     await expect(page.locator('#ledger-filter-count')).toBeHidden();
     // Reopening shows Active re-selected.
     await openFilterPanel(page);
-    await expect(page.locator('#ledger-visibility-filter .fluxy-filter-segment-btn[data-value="active"]')).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value="active"]')).toHaveAttribute('aria-checked', 'true');
 
-    await pickVisibility(page, 'all');
+    await pickFilter(page, 'visibility', 'all');
     await applyFilters(page);
     await expect(page.locator('#ledger-filter-chip-row [data-filter-clear="visibility"]')).toContainText('Visibility: All');
 
@@ -303,16 +307,18 @@ test('Reset clears staged selections; Cancel/close reverts uncommitted changes',
     await page.goto('/ledger.html');
     await waitForLedgerReady(page);
 
-    // Stage a filter, then Reset → applied badge clears without committing.
+    // Stage a filter, then Reset → options revert without committing.
     await openFilterPanel(page);
-    await pickFluxyOption(page, 'ledger-status-filter', 'Completed');
+    await pickFilter(page, 'status', 'Completed');
     await expect(page.locator('#ledger-filter-applied-badge')).toContainText('1 applied');
     await page.locator('#ledger-filter-reset').click();
-    await expect(page.locator('#ledger-status-filter .fluxy-select-label')).toHaveText('All statuses');
     await expect(page.locator('#ledger-filter-applied-badge')).toBeHidden();
+    // After reset the visible (Status) pane shows All statuses checked.
+    await page.locator('#ledger-filter-rail .fluxy-filter-rail-item[data-group="status"]').click();
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value=""]')).toHaveAttribute('aria-checked', 'true');
 
     // Stage again, then close (✕) without applying → nothing committed.
-    await pickFluxyOption(page, 'ledger-status-filter', 'Pending');
+    await pickFilter(page, 'status', 'Pending');
     await page.locator('#ledger-filter-close').click();
     await expect(page.locator('#ledger-filter-panel')).toBeHidden();
     await expect(page.locator('#ledger-filter-count')).toBeHidden();
@@ -320,7 +326,8 @@ test('Reset clears staged selections; Cancel/close reverts uncommitted changes',
 
     // Reopening reseeds from the (still empty) committed state.
     await openFilterPanel(page);
-    await expect(page.locator('#ledger-status-filter .fluxy-select-label')).toHaveText('All statuses');
+    await page.locator('#ledger-filter-rail .fluxy-filter-rail-item[data-group="status"]').click();
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value=""]')).toHaveAttribute('aria-checked', 'true');
 });
 
 test('filter panel closes on outside click and on Escape', async ({ page }) => {
@@ -338,41 +345,6 @@ test('filter panel closes on outside click and on Escape', async ({ page }) => {
     await openFilterPanel(page);
     await page.keyboard.press('Escape');
     await expect(panel).toBeHidden();
-});
-
-test('inside the panel, opening one dropdown auto-closes the other', async ({ page }) => {
-    await page.goto('/ledger.html');
-    await waitForLedgerReady(page);
-
-    await openFilterPanel(page);
-    const statusRoot = page.locator('#ledger-status-filter');
-    const typeRoot = page.locator('#ledger-type-filter');
-    const expectMenuAnchored = async (root) => {
-        const triggerBox = await root.locator('.fluxy-select-trigger').boundingBox();
-        const menuBox = await root.locator('.fluxy-select-menu').boundingBox();
-        const viewportWidth = await page.evaluate(() => window.innerWidth);
-        if (!triggerBox || !menuBox) throw new Error('Expected dropdown trigger and menu boxes to be measurable');
-        const verticalGap = menuBox.y - triggerBox.y - triggerBox.height;
-        expect(verticalGap).toBeGreaterThanOrEqual(4);
-        expect(verticalGap).toBeLessThanOrEqual(8);
-        expect(menuBox.x).toBeGreaterThanOrEqual(0);
-        expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(viewportWidth + 1);
-    };
-
-    await statusRoot.locator('.fluxy-select-trigger').click();
-    await expect(statusRoot).toHaveAttribute('data-open', 'true');
-    await expect(page.locator('.fluxy-select[data-open="true"]')).toHaveCount(1);
-    await expectMenuAnchored(statusRoot);
-
-    // In the stacked panel the open Status menu overlays the Type trigger below
-    // it, so a real pointer click would land on the menu. Dispatch the trigger's
-    // own click to exercise the JS single-open (auto-close) invariant directly.
-    await typeRoot.locator('.fluxy-select-trigger').evaluate(el => el.click());
-    await expect(typeRoot).toHaveAttribute('data-open', 'true');
-    await expect(statusRoot).toHaveAttribute('data-open', 'false');
-    await expect(statusRoot.locator('.fluxy-select-menu')).toBeHidden();
-    await expect(page.locator('.fluxy-select[data-open="true"]')).toHaveCount(1);
-    await expectMenuAnchored(typeRoot);
 });
 
 test('375px, 768px, and 1280px widths have no horizontal overflow on /ledger', async ({ page }) => {
