@@ -173,17 +173,18 @@ service cloud.firestore {
         && data.created_at == request.time;
     }
 
-    // Sales Leads (user-scoped CRM for the dashboard Sales Leads page). Strings,
-    // a meeting timestamp, and a workflow status — no money. Distinct from the
-    // public top-level sales_leads (Contact-Sales) collection.
-    function isValidLead(data) {
-      return data.name is string
-        && data.name.size() > 0
-        && data.name.size() <= 120
+    // Internal-console outreach leads (Sales Leads → Outreach subpage). Manually
+    // entered prospects the team sends the bilingual meeting-reminder to.
+    // MVP_INTERNAL_ONLY_TEMPORARY — open + field-validated like internal_digest_jobs;
+    // the actual email send is gated by the send-lead-outreach function token.
+    function isValidOutreachLead(data) {
+      return data.keys().hasOnly([
+          'name', 'gender', 'email', 'role', 'company', 'meeting_at',
+          'status', 'last_sent_at', 'created_at', 'updated_at'
+        ])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 120
         && data.gender in ['male', 'female']
-        && data.email is string
-        && data.email.size() > 0
-        && data.email.size() <= 200
+        && data.email is string && data.email.size() > 0 && data.email.size() <= 200
         && data.status in ['new', 'sent', 'meeting_booked', 'closed']
         && data.meeting_at is timestamp
         && (!('role' in data) || (data.role is string && data.role.size() <= 120))
@@ -2338,43 +2339,6 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
-      match /leads/{leadId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId)
-          && request.resource.data.keys().hasOnly([
-            'name',
-            'gender',
-            'email',
-            'role',
-            'company',
-            'meeting_at',
-            'status',
-            'last_sent_at',
-            'created_at',
-            'updated_at'
-          ])
-          && isValidLead(request.resource.data)
-          && request.resource.data.created_at == request.time
-          && request.resource.data.updated_at == request.time;
-        allow update: if isOwner(userId)
-          && request.resource.data.keys().hasOnly([
-            'name',
-            'gender',
-            'email',
-            'role',
-            'company',
-            'meeting_at',
-            'status',
-            'last_sent_at',
-            'created_at',
-            'updated_at'
-          ])
-          && isValidLead(request.resource.data)
-          && request.resource.data.created_at == resource.data.created_at
-          && request.resource.data.updated_at == request.time;
-        allow delete: if isOwner(userId);
-      }
-
       match /documents/{documentId} {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId)
@@ -2567,6 +2531,12 @@ service cloud.firestore {
       allow create, delete: if false;
       allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'status_updated_at'])
         && request.resource.data.status in ['new', 'contacted', 'closed', 'spam'];
+    }
+
+    match /outreach_leads/{leadId} {
+      allow read: if true;
+      allow create, update: if isValidOutreachLead(request.resource.data);
+      allow delete: if true;
     }
 
     // Weekly digest broadcast jobs (internal-console "Send digest now"). The

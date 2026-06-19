@@ -492,7 +492,7 @@ transaction editor so the two stay identical.
 - **Dashboard/App Sidebar IA**: All dashboard/app pages use the centralized `sidebar-loader.js` grouped menu:
   - `Command`: Overview, Fluxy AI.
   - `Money Movement`: Transactions, Revenue Sync, Bills, Subscriptions.
-  - `Operations`: Vendor Spend, Receipt Capture, Budgets, Invoices, Sales Leads, Approvals.
+  - `Operations`: Vendor Spend, Receipt Capture, Budgets, Approvals.
   - `Reporting`: Reports & Exports, Audit Log.
   - `Workspace`: Integrations, Settings.
 - **Dashboard/App Future Features**: Future dashboard features may appear only as disabled `Soon` entries until a real authenticated app page exists. Do not link sidebar entries to marketing/landing pages.

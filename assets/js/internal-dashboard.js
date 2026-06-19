@@ -33,6 +33,15 @@ const INTERNAL_USERNAME = 'fluxyos admin';
 const INTERNAL_PASSWORD = 'Jakarta1352!';
 const ACTOR_USERNAME = 'fluxyos admin';
 
+// Shared token for the token-gated send-lead-outreach Netlify function. The
+// console has no Firebase Auth, so the send endpoint trusts this token.
+// MVP_INTERNAL_ONLY_TEMPORARY — exposed in client JS like INTERNAL_PASSWORD;
+// move to a server-verified admin session later. Mirrored in Netlify env
+// INTERNAL_API_TOKEN.
+const INTERNAL_API_TOKEN = 'fxod_c2d33ba1bf55ce784d740eb2f8fa036c0cfea7672283253d';
+const OUTREACH_SEND_URL = '/.netlify/functions/send-lead-outreach';
+const OUTREACH_STATUSES = [['new', 'New'], ['sent', 'Outreach sent'], ['meeting_booked', 'Meeting booked'], ['closed', 'Closed']];
+
 // --- Status models (plan §13) ---
 const ACCOUNT_STATUSES = ['registered', 'kyc_incomplete', 'kyc_submitted', 'kyc_approved', 'kyc_rejected', 'payment_pending', 'payment_submitted', 'payment_verified', 'active', 'suspended'];
 const KYC_STATUSES = ['not_started', 'in_progress', 'submitted', 'needs_revision', 'approved', 'rejected'];
@@ -57,6 +66,8 @@ const state = {
     vouchers: [],
     voucherRedemptions: [],
     leads: [],
+    outreachLeads: [],
+    leadsView: 'enquiries',
     loaded: false,
     loadError: false,
     activeTab: 'overview',
@@ -207,18 +218,20 @@ async function loadData() {
     state.loadError = false;
     renderLoading();
     try {
-        const [users, audit, vouchers, voucherRedemptions, leads] = await Promise.all([
+        const [users, audit, vouchers, voucherRedemptions, leads, outreachLeads] = await Promise.all([
             ds.getInternalUsers({ limitCount: 200 }),
             ds.getInternalAuditLogs(100).catch(() => []),
             ds.getVoucherCodes().catch(() => []),
             ds.getAllVoucherRedemptions({ limitCount: 1000 }).catch(() => []),
-            ds.getSalesLeads({ limitCount: 200 }).catch(() => [])
+            ds.getSalesLeads({ limitCount: 200 }).catch(() => []),
+            ds.getOutreachLeads({ limitCount: 200 }).catch(() => [])
         ]);
         state.users = users || [];
         state.audit = audit || [];
         state.vouchers = vouchers || [];
         state.voucherRedemptions = voucherRedemptions || [];
         state.leads = leads || [];
+        state.outreachLeads = outreachLeads || [];
         state.loaded = true;
         renderAll();
     } catch (err) {
@@ -287,6 +300,8 @@ function renderAll() {
     renderPaymentTab();
     renderVouchersTab();
     renderLeadsTab();
+    renderOutreachLeads();
+    applyLeadsView();
     renderAuditTab();
     renderTabCounts();
 }
@@ -598,6 +613,235 @@ async function onLeadStatusChange(sel) {
         sel.disabled = false;
         window.showToast?.('Could not update lead status', 'error');
     }
+}
+
+// =============================================================================
+// Outreach sub-view (Sales Leads → Outreach) — manually added prospects we send
+// the bilingual meeting-reminder email to (send-lead-outreach function).
+// =============================================================================
+const OUTREACH_STATUS_LABELS = Object.fromEntries(OUTREACH_STATUSES);
+
+function applyLeadsView() {
+    const view = state.leadsView === 'outreach' ? 'outreach' : 'enquiries';
+    $('leads-view-enquiries')?.classList.toggle('hidden', view !== 'enquiries');
+    $('leads-view-outreach')?.classList.toggle('hidden', view !== 'outreach');
+    $('outreach-new-btn')?.classList.toggle('hidden', view !== 'outreach');
+    [['leads-subtab-enquiries', 'enquiries'], ['leads-subtab-outreach', 'outreach']].forEach(([id, v]) => {
+        const btn = $(id);
+        if (!btn) return;
+        const active = v === view;
+        btn.classList.toggle('bg-white', active);
+        btn.classList.toggle('shadow-sm', active);
+        btn.classList.toggle('text-gray-900', active);
+        btn.classList.toggle('text-gray-500', !active);
+    });
+}
+
+function switchLeadsView(view) {
+    state.leadsView = view === 'outreach' ? 'outreach' : 'enquiries';
+    applyLeadsView();
+}
+
+function fmtMeeting(ts) {
+    const dt = toDate(ts);
+    if (!dt) return '—';
+    return dt.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' }) + ' WIB';
+}
+
+function renderOutreachLeads() {
+    const tbody = $('outreach-tbody');
+    const stateEl = $('outreach-state');
+    if (!tbody) return;
+    if (!state.outreachLeads.length) {
+        tbody.innerHTML = '';
+        stateEl?.classList.remove('hidden');
+        if (stateEl) stateEl.innerHTML = '<div class="px-5 py-12 text-center text-[13px] text-gray-500">No outreach yet. Click <span class="font-medium">New outreach</span> to add a prospect and send the bilingual meeting reminder.</div>';
+        return;
+    }
+    stateEl?.classList.add('hidden');
+    tbody.innerHTML = state.outreachLeads.map(l => {
+        const id = escapeHtml(l.id);
+        const status = l.status || 'new';
+        const options = OUTREACH_STATUSES.map(([v, label]) => `<option value="${v}"${v === status ? ' selected' : ''}>${label}</option>`).join('');
+        const email = escapeHtml(l.email || '');
+        return `<tr class="hover:bg-gray-50/60 align-top">
+            <td class="px-5 py-3.5 text-[14px] font-medium text-gray-900">${escapeHtml(l.name || '—')}</td>
+            <td class="px-5 py-3.5 text-[13px]">${email ? `<a href="mailto:${email}" class="text-[#EA580C] hover:underline">${email}</a>` : '—'}</td>
+            <td class="px-5 py-3.5 text-[13px] text-gray-700">${escapeHtml(l.role || '—')}</td>
+            <td class="px-5 py-3.5 text-[13px] text-gray-700">${escapeHtml(l.company || '—')}</td>
+            <td class="px-5 py-3.5 text-[13px] text-gray-700 whitespace-nowrap">${escapeHtml(fmtMeeting(l.meeting_at))}</td>
+            <td class="px-5 py-3.5"><select data-outreach-status="${id}" class="text-[13px] border border-gray-300 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-[#EA580C]/40">${options}</select></td>
+            <td class="px-5 py-3.5 text-right whitespace-nowrap">
+                <button data-outreach-resend="${id}" class="text-[13px] font-semibold text-[#EA580C] hover:text-[#D94E0B] mr-3">Resend</button>
+                <button data-outreach-delete="${id}" class="text-[13px] text-gray-400 hover:text-red-500">Delete</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function outreachMeetingISO(lead) {
+    const dt = toDate(lead.meeting_at);
+    return dt ? dt.toISOString() : null;
+}
+
+async function sendOutreachEmail({ name, gender, email, meetingISO, role, company }) {
+    const res = await fetch(OUTREACH_SEND_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-internal-token': INTERNAL_API_TOKEN },
+        body: JSON.stringify({ name, gender, email, meetingISO, role, company, senderName: ACTOR_USERNAME }),
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok || (out && out.error)) throw new Error((out && out.error) || `Send failed (${res.status})`);
+    return out;
+}
+
+let outreachDatePicker = null;
+let outreachDateKey = null;
+
+function openOutreachModal() {
+    if ($('outreach-modal')) return;
+    const todayKey = window.FluxyDateRangePicker?.getDayKey?.() || new Date().toISOString().slice(0, 10);
+    outreachDateKey = todayKey;
+    const inputCls = 'w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/40 focus:border-[#EA580C] transition-all';
+    const labelCls = 'block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2';
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+        <div id="outreach-modal" class="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <div id="outreach-overlay" class="absolute inset-0 bg-[#0B0F19]/50 opacity-0 transition-opacity duration-200" style="backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);"></div>
+            <div id="outreach-card" class="relative z-10 w-full max-w-[480px] max-h-[90vh] overflow-y-auto bg-white rounded-2xl border border-gray-200 shadow-[0_24px_48px_rgba(11,15,25,0.18)] opacity-0 translate-y-3 transition-all duration-200">
+                <div class="px-6 pt-6 pb-4 flex items-start justify-between">
+                    <div>
+                        <h3 class="text-[17px] font-bold text-gray-900 tracking-tight">Send outreach</h3>
+                        <p class="text-[13px] text-gray-500 mt-1">Add the prospect and email the bilingual meeting reminder.</p>
+                    </div>
+                    <button type="button" data-outreach-close class="text-gray-400 hover:text-gray-600 -mt-1 -mr-1 p-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <form id="outreach-form" class="px-6 pb-6 space-y-4" novalidate>
+                    <div><label for="of-name" class="${labelCls}">Name</label><input id="of-name" type="text" required placeholder="e.g. Anissa Swastika" class="${inputCls}"></div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label for="of-gender" class="${labelCls}">Gender</label>
+                            <select id="of-gender" class="${inputCls}"><option value="female">Female (Ibu / Mrs)</option><option value="male">Male (Bapak / Mr)</option></select></div>
+                        <div><label for="of-time" class="${labelCls}">Meeting time (WIB)</label><input id="of-time" type="time" value="15:00" class="${inputCls}"></div>
+                    </div>
+                    <div><label for="of-email" class="${labelCls}">Email</label><input id="of-email" type="email" required placeholder="name@company.com" class="${inputCls}"></div>
+                    <div><label class="${labelCls}">Meeting date</label><div id="of-date-host"></div></div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label for="of-role" class="${labelCls}">Role</label><input id="of-role" type="text" placeholder="e.g. Founder" class="${inputCls}"></div>
+                        <div><label for="of-company" class="${labelCls}">Company</label><input id="of-company" type="text" placeholder="e.g. Acme" class="${inputCls}"></div>
+                    </div>
+                    <button type="submit" id="of-submit" class="w-full py-3 bg-[#EA580C] hover:bg-[#D94E0B] text-white font-bold rounded-xl text-[14px] shadow-sm transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed">Save &amp; send outreach</button>
+                </form>
+            </div>
+        </div>`;
+    document.body.appendChild(wrap.firstElementChild);
+    document.body.classList.add('overflow-hidden');
+    requestAnimationFrame(() => {
+        $('outreach-overlay')?.classList.replace('opacity-0', 'opacity-100');
+        const card = $('outreach-card');
+        card?.classList.remove('opacity-0', 'translate-y-3');
+    });
+    outreachDatePicker = window.FluxyDateRangePicker?.mount?.('#of-date-host', {
+        mode: 'single', start: todayKey, end: todayKey, defaultStart: todayKey, defaultEnd: todayKey,
+        maxDate: '2099-12-31', onChange: ({ start }) => { outreachDateKey = start; },
+    });
+    $('outreach-modal').querySelector('[data-outreach-close]')?.addEventListener('click', closeOutreachModal);
+    $('outreach-overlay')?.addEventListener('click', closeOutreachModal);
+    $('outreach-form')?.addEventListener('submit', submitOutreach);
+    document.addEventListener('keydown', outreachEsc);
+}
+
+function outreachEsc(e) { if (e.key === 'Escape') closeOutreachModal(); }
+
+function closeOutreachModal() {
+    const modal = $('outreach-modal');
+    if (!modal) return;
+    document.removeEventListener('keydown', outreachEsc);
+    try { outreachDatePicker?.destroy?.(); } catch (_) {}
+    outreachDatePicker = null;
+    $('outreach-overlay')?.classList.replace('opacity-100', 'opacity-0');
+    $('outreach-card')?.classList.add('opacity-0', 'translate-y-3');
+    document.body.classList.remove('overflow-hidden');
+    setTimeout(() => modal.remove(), 200);
+}
+
+async function submitOutreach(e) {
+    e.preventDefault();
+    const name = $('of-name').value.trim();
+    const gender = $('of-gender').value;
+    const email = $('of-email').value.trim();
+    const time = $('of-time').value || '15:00';
+    const role = $('of-role').value.trim();
+    const company = $('of-company').value.trim();
+    if (!name) return window.showToast('Please enter the lead\'s name.', 'error');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return window.showToast('Please enter a valid email.', 'error');
+    if (!outreachDateKey) return window.showToast('Please pick a meeting date.', 'error');
+    const meetingDate = new Date(`${outreachDateKey}T${time}:00+07:00`); // WIB wall-clock
+    if (isNaN(meetingDate.getTime())) return window.showToast('Invalid meeting date/time.', 'error');
+    const meetingISO = meetingDate.toISOString();
+
+    const btn = $('of-submit');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    let leadId;
+    try {
+        leadId = await ds.addOutreachLead({ name, gender, email, role: role || undefined, company: company || undefined, meeting_at: meetingDate, status: 'new' });
+    } catch (err) {
+        btn.disabled = false; btn.textContent = 'Save & send outreach';
+        return window.showToast(err.message || 'Could not save the lead.', 'error');
+    }
+    try {
+        await sendOutreachEmail({ name, gender, email, meetingISO, role, company });
+        await ds.updateOutreachLead(leadId, { status: 'sent', last_sent_at: new Date() });
+        window.showToast('Outreach sent to ' + email, 'success');
+    } catch (err) {
+        window.showToast('Lead saved, but the email failed: ' + (err.message || 'send error') + '. Use Resend.', 'error');
+    }
+    closeOutreachModal();
+    await loadData();
+    state.leadsView = 'outreach';
+    applyLeadsView();
+}
+
+async function onOutreachResend(id) {
+    const lead = state.outreachLeads.find(l => l.id === id);
+    if (!lead) return;
+    const meetingISO = outreachMeetingISO(lead);
+    if (!meetingISO) return window.showToast('This lead has no meeting date.', 'error');
+    const ok = await window.showConfirmDialog?.({ title: 'Resend outreach?', body: `Send the meeting reminder to <strong>${escapeHtml(lead.email)}</strong> again?`, confirmLabel: 'Resend', cancelLabel: 'Cancel' });
+    if (ok === false) return;
+    try {
+        await sendOutreachEmail({ name: lead.name, gender: lead.gender, email: lead.email, meetingISO, role: lead.role, company: lead.company });
+        await ds.updateOutreachLead(id, { status: 'sent', last_sent_at: new Date() });
+        window.showToast('Outreach resent to ' + lead.email, 'success');
+        await loadData(); state.leadsView = 'outreach'; applyLeadsView();
+    } catch (err) { window.showToast(err.message || 'Resend failed.', 'error'); }
+}
+
+async function onOutreachDelete(id) {
+    const lead = state.outreachLeads.find(l => l.id === id);
+    if (!lead) return;
+    const ok = await window.showConfirmDialog?.({ title: 'Delete this lead?', body: `<strong>${escapeHtml(lead.name || 'This lead')}</strong> will be removed from the outreach list.`, confirmLabel: 'Delete', cancelLabel: 'Cancel', tone: 'danger' });
+    if (ok === false) return;
+    try {
+        await ds.deleteOutreachLead(id);
+        window.showToast('Lead deleted.', 'info');
+        await loadData(); state.leadsView = 'outreach'; applyLeadsView();
+    } catch (err) { window.showToast(err.message || 'Could not delete.', 'error'); }
+}
+
+async function onOutreachStatusChange(sel) {
+    const id = sel.dataset.outreachStatus;
+    const status = sel.value;
+    sel.disabled = true;
+    try {
+        await ds.updateOutreachLead(id, { status });
+        const lead = state.outreachLeads.find(l => l.id === id);
+        if (lead) lead.status = status;
+        window.showToast('Status updated', 'success');
+    } catch (_) {
+        window.showToast('Could not update status', 'error');
+    } finally { sel.disabled = false; }
 }
 
 // =============================================================================
@@ -1342,10 +1586,23 @@ function initConsoleEvents() {
     // Vouchers
     $('voucher-create-btn').addEventListener('click', openVoucherCreateDrawer);
 
-    // Sales Leads: delegated status change.
+    // Sales Leads: delegated status change (enquiries + outreach).
     document.addEventListener('change', (e) => {
-        const sel = e.target.closest('[data-lead-status]');
-        if (sel) onLeadStatusChange(sel);
+        const enquiry = e.target.closest('[data-lead-status]');
+        if (enquiry) { onLeadStatusChange(enquiry); return; }
+        const outreach = e.target.closest('[data-outreach-status]');
+        if (outreach) onOutreachStatusChange(outreach);
+    });
+
+    // Sales Leads sub-tabs + outreach actions.
+    $('leads-subtab-enquiries')?.addEventListener('click', () => switchLeadsView('enquiries'));
+    $('leads-subtab-outreach')?.addEventListener('click', () => switchLeadsView('outreach'));
+    $('outreach-new-btn')?.addEventListener('click', openOutreachModal);
+    document.addEventListener('click', (e) => {
+        const resend = e.target.closest('[data-outreach-resend]');
+        if (resend) { onOutreachResend(resend.dataset.outreachResend); return; }
+        const del = e.target.closest('[data-outreach-delete]');
+        if (del) onOutreachDelete(del.dataset.outreachDelete);
     });
 
     // Drawer

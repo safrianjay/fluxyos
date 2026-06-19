@@ -308,29 +308,63 @@
                 <div class="flex items-center justify-between gap-3 mb-4">
                     <div>
                         <h2 class="text-[16px] font-semibold leading-tight">Sales leads</h2>
-                        <p class="text-[12px] text-gray-500">Enterprise AI enquiries submitted from the public Contact Sales page</p>
+                        <p class="text-[12px] text-gray-500">Contact Sales enquiries and meeting-reminder outreach</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+                            <button id="leads-subtab-enquiries" class="leads-subtab px-3 py-1.5 text-[13px] font-medium rounded-md">Enquiries</button>
+                            <button id="leads-subtab-outreach" class="leads-subtab px-3 py-1.5 text-[13px] font-medium rounded-md">Outreach</button>
+                        </div>
+                        <button id="outreach-new-btn" class="hidden px-3.5 py-2 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors active:scale-95">New outreach</button>
                     </div>
                 </div>
-                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-gray-50 border-b border-gray-200">
-                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Received</th>
-                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Work email</th>
-                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">WhatsApp</th>
-                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Company</th>
-                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Type</th>
-                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Team size</th>
-                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Message</th>
-                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="leads-tbody" class="divide-y divide-gray-100 text-[14px]"></tbody>
-                        </table>
+
+                <!-- Sub-view: Contact Sales enquiries (public, read-only) -->
+                <div id="leads-view-enquiries">
+                    <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-50 border-b border-gray-200">
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Received</th>
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Work email</th>
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">WhatsApp</th>
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Company</th>
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Type</th>
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Team size</th>
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Message</th>
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leads-tbody" class="divide-y divide-gray-100 text-[14px]"></tbody>
+                            </table>
+                        </div>
+                        <div id="leads-state" class="hidden"></div>
                     </div>
-                    <div id="leads-state" class="hidden"></div>
+                </div>
+
+                <!-- Sub-view: Outreach campaigns (manually added prospects) -->
+                <div id="leads-view-outreach" class="hidden">
+                    <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-50 border-b border-gray-200">
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Email</th>
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Role</th>
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Company</th>
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Meeting</th>
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="outreach-tbody" class="divide-y divide-gray-100 text-[14px]"></tbody>
+                            </table>
+                        </div>
+                        <div id="outreach-state" class="hidden"></div>
+                    </div>
                 </div>
             </section>
 

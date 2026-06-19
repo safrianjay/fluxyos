@@ -1,18 +1,17 @@
 'use strict';
 
-// Authenticated lead-outreach send, fired from the dashboard Sales Leads page.
-// An authenticated user submits a lead's details and we send the bilingual
-// meeting-reminder email (functions/lib/templates → lead_outreach) to that lead
-// via Resend, from the outreach mailbox hello@fluxyos.com (From + Reply-To).
+// Lead-outreach send, triggered from the Internal Operations Console
+// (internal.html → Sales Leads → Outreach subpage). Renders the bilingual
+// meeting-reminder email (functions/lib/templates → lead_outreach) and sends it
+// via Resend from the outreach mailbox hello@fluxyos.com (From + Reply-To).
 //
-// Auth: verifies the caller's Firebase ID token, so only signed-in dashboard
-// users can trigger a send. The recipient is an arbitrary lead (no uid), so we
-// send Resend directly — no users/{uid}/mail_log idempotency doc (that path is
-// for app-user notifications). This is a manual, one-recipient action, the same
-// posture as submit-contact-sales, so it is intentionally NOT gated by
-// NOTIFY_ENABLED (that flag pauses the automated backfill sweeps only).
-const admin = require('firebase-admin');
-const { initAdmin } = require('./lib/notify-core');
+// Auth: the internal console has no Firebase Auth (MVP client-side credential
+// gate only), so this endpoint is gated by a shared INTERNAL_API_TOKEN that the
+// console passes in the `x-internal-token` header. This matches the console's
+// MVP_INTERNAL_ONLY_TEMPORARY posture — it is NOT production-grade and should
+// move to a server-verified admin session along with the rest of the console.
+// Send-only: lead CRUD (create / status / delete) is done by the console
+// directly against the open+validated outreach_leads collection.
 const { Resend } = require('resend');
 const { buildEmail } = require('../../functions/lib/templates');
 
@@ -29,19 +28,17 @@ exports.handler = async (event) => {
     const cors = {
         'Access-Control-Allow-Origin': ALLOWED.includes(origin) ? origin : 'https://fluxyos.com',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Headers': 'Content-Type, x-internal-token',
     };
     if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors };
     if (event.httpMethod !== 'POST') return { statusCode: 405, headers: cors, body: 'Method not allowed' };
 
     try {
-        // --- Auth: only a signed-in dashboard user may send ---
-        const authz = (event.headers && (event.headers.authorization || event.headers.Authorization)) || '';
-        const token = authz.startsWith('Bearer ') ? authz.slice(7) : '';
-        if (!token) return { statusCode: 401, headers: cors, body: JSON.stringify({ error: 'missing token' }) };
-        initAdmin();
-        const decoded = await admin.auth().verifyIdToken(token);
-        const senderName = str(decoded.name, 120) || 'Tim FluxyOS';
+        // --- Internal token gate ---
+        const expected = process.env.INTERNAL_API_TOKEN;
+        const got = (event.headers && (event.headers['x-internal-token'] || event.headers['X-Internal-Token'])) || '';
+        if (!expected) return { statusCode: 500, headers: cors, body: JSON.stringify({ error: 'token_not_configured' }) };
+        if (got !== expected) return { statusCode: 401, headers: cors, body: JSON.stringify({ error: 'unauthorized' }) };
 
         // --- Validate the lead payload ---
         let body = {};
@@ -50,15 +47,14 @@ exports.handler = async (event) => {
         const gender = ['male', 'female'].includes(body.gender) ? body.gender : 'male';
         const email = str(body.email, 200);
         const meetingISO = str(body.meetingISO, 40);
+        const senderName = str(body.senderName, 120) || 'Tim FluxyOS';
         const meetingDt = meetingISO ? new Date(meetingISO) : null;
         if (!name || !email || !isEmail(email)) return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'invalid_input' }) };
         if (!meetingDt || isNaN(meetingDt.getTime())) return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'invalid_meeting' }) };
 
         if (!process.env.RESEND_API_KEY) return { statusCode: 500, headers: cors, body: JSON.stringify({ error: 'email_not_configured' }) };
 
-        const { subject, html, text } = buildEmail('lead_outreach', 'id', {
-            name, gender, meetingISO, senderName, baseUrl: APP_BASE_URL,
-        });
+        const { subject, html, text } = buildEmail('lead_outreach', 'id', { name, gender, meetingISO, senderName, baseUrl: APP_BASE_URL });
 
         const resend = new Resend(process.env.RESEND_API_KEY);
         const res = await resend.emails.send({ from: EMAIL_FROM, to: email, reply_to: REPLY_TO, subject, html, text });
@@ -67,8 +63,6 @@ exports.handler = async (event) => {
         return { statusCode: 200, headers: cors, body: JSON.stringify({ result: 'sent', id: (res && res.data && res.data.id) || null }) };
     } catch (e) {
         console.error('[send-lead-outreach] failed:', e && e.message ? e.message : e);
-        const msg = String(e && e.message ? e.message : 'server_error').slice(0, 160);
-        const code = /token|auth/i.test(msg) ? 401 : 500;
-        return { statusCode: code, headers: cors, body: JSON.stringify({ error: msg }) };
+        return { statusCode: 500, headers: cors, body: JSON.stringify({ error: String(e && e.message ? e.message : 'server_error').slice(0, 160) }) };
     }
 };

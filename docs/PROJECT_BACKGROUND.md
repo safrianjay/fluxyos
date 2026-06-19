@@ -57,7 +57,6 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Subscriptions | `subscription.html` | App | ✅ | **No** | ✅ |
 | Budgets | `budget.html` | App | ✅ | **No** | ✅ |
 | Invoices | `invoices.html` | App | ✅ | **No** | ✅ |
-| Sales Leads | `sales-leads.html` | App | ✅ | **No** | ✅ |
 | Accounting Center | `accounting.html` | App | ✅ | **No** | ✅ |
 | Accounting Records | `accounting-records.html` | App | ✅ | **No** | ✅ |
 | Reports & Exports | `reports.html` | App | ✅ | **No** | ✅ |
@@ -219,32 +218,6 @@ shipping edit/delete, approvals, exports, integrations, or AI write actions.
 
 **Ordering:** `created_at DESC`. Default limit: 100.
 **Mutation rule:** create/read only for the owning user; never update/delete.
-
-### 4d.1. Sales Leads — `users/{userId}/leads/{leadId}`
-
-Per-user CRM behind the **Sales Leads** page (`sales-leads.html`). A lead is
-created when the user sends an outreach email from the page; the
-`send-lead-outreach` Netlify function renders the bilingual `lead_outreach`
-email (`functions/lib/templates.js`) and sends it via Resend from
-`hello@fluxyos.com`. **Distinct from the public top-level `sales_leads`
-collection** (Contact-Sales inquiries, §4j) — this one is owner-scoped.
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `name` | string | Lead name, 1–120 chars |
-| `gender` | string | `"male"` \| `"female"` — drives the email honorific (Bapak/Ibu · Mr/Mrs) |
-| `email` | string | Recipient, 1–200 chars |
-| `role` | string (optional) | ≤120 chars; table display only |
-| `company` | string (optional) | ≤160 chars; table display only |
-| `meeting_at` | Firestore Timestamp | Meeting date+time; formatted to WIB in the email |
-| `status` | string | `"new"` \| `"sent"` \| `"meeting_booked"` \| `"closed"` |
-| `last_sent_at` | Firestore Timestamp (optional) | Set when the outreach is sent/resent |
-| `created_at` | Firestore Timestamp | `serverTimestamp()` — immutable |
-| `updated_at` | Firestore Timestamp | `serverTimestamp()` on every write |
-
-**Ordering:** `created_at DESC`. **Mutation rule:** owner-only read/create/update/
-delete; field allow-list + validation enforced in `firestore.rules`
-(`isValidLead`). Optional fields must be absent (never literal `null`).
 
 ### 4e. Settings — `users/{userId}/settings/{settingsDoc}`
 
@@ -737,6 +710,26 @@ fields stay immutable and the collection can't be spammed or wiped. Fields:
 `updateSalesLeadStatus(leadId, status)`. The function also fires best-effort
 new-lead alerts: Resend email to `SALES_ALERT_EMAIL` and/or a Slack message to
 `SLACK_WEBHOOK_URL` (each gated by its own env; missing config = silent skip).
+
+#### `outreach_leads/{leadId}` (open read + field-validated client writes)
+
+Manually-added prospects behind the console's **Sales Leads → Outreach**
+sub-view (`internal.html` `panel-leads`, `internal-dashboard.js`). The operator
+adds a prospect and the bilingual meeting-reminder email is sent in one step.
+CRUD is done by the console directly against Firestore (open read +
+field-validated create/update/delete, `isValidOutreachLead`, MVP posture like
+`internal_digest_jobs`). The **email send** is the only gated action: it goes
+through the **`send-lead-outreach`** Netlify function, which renders the
+`lead_outreach` bilingual template (`functions/lib/templates.js`) and sends via
+Resend from `hello@fluxyos.com`, authorized by the `INTERNAL_API_TOKEN` env that
+the console passes in the `x-internal-token` header (the console has no Firebase
+Auth — MVP_INTERNAL_ONLY_TEMPORARY). Fields: `name`, `gender`
+(`male`/`female`, drives the honorific Bapak/Ibu · Mr/Mrs), `email`, `role`
+(optional), `company` (optional), `meeting_at` (Timestamp, formatted to WIB in
+the email), `status` (`new`/`sent`/`meeting_booked`/`closed`), `last_sent_at`
+(optional), `created_at`, `updated_at`. **DataService:** `getOutreachLeads`,
+`addOutreachLead`, `updateOutreachLead`, `deleteOutreachLead`. Distinct from the
+public `sales_leads` (Contact-Sales) collection above.
 
 **Trial mirror (added):** `internal_users/{uid}` also carries `access_status`,
 `trial_started_at`, `trial_ends_at`, `trial_days_remaining`, and

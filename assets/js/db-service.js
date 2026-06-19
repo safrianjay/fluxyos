@@ -411,30 +411,6 @@ class DataService {
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
 
-    // --- SALES LEADS (user-scoped CRM for the Sales Leads page) ---
-    async getLeads(userId) {
-        const q = query(collection(this.db, `users/${userId}/leads`), orderBy('created_at', 'desc'));
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    }
-
-    async addLead(userId, data) {
-        const payload = { ...data, created_at: serverTimestamp(), updated_at: serverTimestamp() };
-        // Rules allow these fields to be absent but never literal null.
-        ['role', 'company', 'last_sent_at'].forEach((field) => { if (payload[field] == null) delete payload[field]; });
-        return await addDoc(collection(this.db, `users/${userId}/leads`), payload);
-    }
-
-    async updateLead(userId, leadId, patch = {}) {
-        const ref = doc(this.db, `users/${userId}/leads/${leadId}`);
-        await updateDoc(ref, { ...patch, updated_at: serverTimestamp() });
-        return { id: leadId };
-    }
-
-    async deleteLead(userId, leadId) {
-        await deleteDoc(doc(this.db, `users/${userId}/leads/${leadId}`));
-    }
-
     // --- SETTINGS ---
     async getUserSettings(userId) {
         const docIds = ['company', 'finance', 'import_rules', 'ai', 'whatsapp', 'email_preferences'];
@@ -2939,6 +2915,32 @@ class DataService {
             status_updated_at: serverTimestamp()
         });
         return { id: leadId, status };
+    }
+
+    // --- Internal outreach leads (Sales Leads → Outreach subpage) ---
+    // Top-level collection; the bilingual meeting-reminder email is sent by the
+    // token-gated send-lead-outreach Netlify function.
+    async getOutreachLeads({ limitCount = 200 } = {}) {
+        const q = query(collection(this.db, 'outreach_leads'), orderBy('created_at', 'desc'), limit(limitCount));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    async addOutreachLead(data) {
+        const payload = { status: 'new', ...data, created_at: serverTimestamp(), updated_at: serverTimestamp() };
+        // Rules allow these to be absent but never literal null.
+        ['role', 'company', 'last_sent_at'].forEach((f) => { if (payload[f] == null) delete payload[f]; });
+        const ref = await addDoc(collection(this.db, 'outreach_leads'), payload);
+        return ref.id;
+    }
+
+    async updateOutreachLead(leadId, patch = {}) {
+        await updateDoc(doc(this.db, `outreach_leads/${leadId}`), { ...patch, updated_at: serverTimestamp() });
+        return { id: leadId };
+    }
+
+    async deleteOutreachLead(leadId) {
+        await deleteDoc(doc(this.db, `outreach_leads/${leadId}`));
     }
 
     subscribeInternalUser(userId, onChange, onError) {
