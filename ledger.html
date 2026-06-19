@@ -53,10 +53,54 @@
                         <p class="text-[14px] text-gray-500 mt-1 max-w-[260px]">Full audit trail of all transactions across your network.</p>
                     </div>
                     <div class="fluxy-page-actions">
-                        <div id="ledger-visibility-filter" class="fluxy-select" data-default-label="Active" data-aria-label="Filter active or voided transactions"></div>
-                        <div id="ledger-status-filter" class="fluxy-select" data-default-label="All statuses" data-aria-label="Filter by status"></div>
-                        <div id="ledger-type-filter" class="fluxy-select" data-default-label="All types" data-aria-label="Filter by type"></div>
-                        <div id="ledger-cash-filter" class="fluxy-select" data-default-label="All cash" data-aria-label="Filter by cash movement status"></div>
+                        <div id="ledger-filter-popover" class="fluxy-filter-popover">
+                            <button id="ledger-filter-trigger" type="button" class="fluxy-select-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="ledger-filter-panel" aria-label="Open filters">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M6 12h12M10 20h4"></path></svg>
+                                <span class="fluxy-select-label">Filters</span>
+                                <span id="ledger-filter-count" class="fluxy-filter-count hidden" aria-hidden="true">0</span>
+                                <svg class="fluxy-select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9 6 6 6-6"/></svg>
+                            </button>
+                            <div id="ledger-filter-panel" class="fluxy-filter-panel" role="dialog" aria-label="Ledger filters" hidden>
+                                <div class="fluxy-filter-panel-header">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[14px] font-semibold text-gray-900">Filters</span>
+                                        <span id="ledger-filter-applied-badge" class="fluxy-filter-applied-badge hidden">0 applied</span>
+                                    </div>
+                                    <button id="ledger-filter-close" type="button" class="fluxy-filter-icon-btn" aria-label="Close filters">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                </div>
+                                <div class="fluxy-filter-panel-body">
+                                    <div class="fluxy-filter-group">
+                                        <p class="fluxy-filter-group-label">Visibility</p>
+                                        <div id="ledger-visibility-filter" class="fluxy-filter-segment" role="radiogroup" aria-label="Filter active or voided transactions">
+                                            <button type="button" class="fluxy-filter-segment-btn" role="radio" data-value="active" aria-checked="true">Active</button>
+                                            <button type="button" class="fluxy-filter-segment-btn" role="radio" data-value="voided" aria-checked="false">Voided</button>
+                                            <button type="button" class="fluxy-filter-segment-btn" role="radio" data-value="all" aria-checked="false">All</button>
+                                        </div>
+                                    </div>
+                                    <div class="fluxy-filter-group">
+                                        <p class="fluxy-filter-group-label">Status</p>
+                                        <div id="ledger-status-filter" class="fluxy-select fluxy-filter-select" data-default-label="All statuses" data-aria-label="Filter by status"></div>
+                                    </div>
+                                    <div class="fluxy-filter-group">
+                                        <p class="fluxy-filter-group-label">Type</p>
+                                        <div id="ledger-type-filter" class="fluxy-select fluxy-filter-select" data-default-label="All types" data-aria-label="Filter by type"></div>
+                                    </div>
+                                    <div class="fluxy-filter-group">
+                                        <p class="fluxy-filter-group-label">Cash movement</p>
+                                        <div id="ledger-cash-filter" class="fluxy-select fluxy-filter-select" data-default-label="All cash" data-aria-label="Filter by cash movement status"></div>
+                                    </div>
+                                </div>
+                                <div class="fluxy-filter-panel-footer">
+                                    <span id="ledger-filter-result-count" class="fluxy-filter-result-count">Results: 0</span>
+                                    <div class="flex items-center gap-2">
+                                        <button id="ledger-filter-reset" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors active:scale-95">Reset</button>
+                                        <button id="ledger-filter-apply" type="button" class="px-3 py-2 bg-[#EA580C] text-white rounded-lg text-[12px] font-bold hover:bg-[#D94E0B] transition-colors active:scale-95">Apply filters</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <button id="download-csv-btn" type="button" data-tour-target="ledger-export" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap" disabled>
                             <svg id="download-csv-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
                             <span id="download-csv-label">Download CSV</span>
@@ -587,6 +631,14 @@
             fluxyOpenSelect?.close();
         });
 
+        // Staged filter state — the panel writes here; committed vars update only on Apply.
+        let ledgerPendingFilters = {
+            visibility: ledgerVisibilityFilter,
+            status: ledgerStatusFilter,
+            type: ledgerTypeFilter,
+            cash: ledgerCashFilter,
+        };
+
         const statusSelect = mountFluxySelect('#ledger-status-filter', {
             options: [
                 { value: '', label: 'All statuses' },
@@ -598,21 +650,8 @@
                 { value: 'Voided', label: 'Voided' },
             ],
             onChange: (v) => {
-                ledgerStatusFilter = v;
-                applyLedgerMonthFilter();
-            }
-        });
-
-        const visibilitySelect = mountFluxySelect('#ledger-visibility-filter', {
-            options: [
-                { value: 'active', label: 'Active' },
-                { value: 'voided', label: 'Voided' },
-                { value: 'all', label: 'All' },
-            ],
-            value: 'active',
-            onChange: (v) => {
-                ledgerVisibilityFilter = v || 'active';
-                applyLedgerMonthFilter();
+                ledgerPendingFilters.status = v;
+                updateFilterPreview();
             }
         });
 
@@ -630,8 +669,8 @@
                 { value: 'pending_payable', label: 'Pending Payable' },
             ],
             onChange: (v) => {
-                ledgerTypeFilter = v;
-                applyLedgerMonthFilter();
+                ledgerPendingFilters.type = v;
+                updateFilterPreview();
             }
         });
 
@@ -645,10 +684,156 @@
                 { value: 'not_classified', label: 'Not classified' },
             ],
             onChange: (v) => {
-                ledgerCashFilter = v;
-                applyLedgerMonthFilter();
+                ledgerPendingFilters.cash = v;
+                updateFilterPreview();
             }
         });
+
+        // Visibility is a segmented radio control (Active / Voided / All).
+        const visibilitySegment = document.getElementById('ledger-visibility-filter');
+        visibilitySegment?.addEventListener('click', (event) => {
+            const btn = event.target.closest('.fluxy-filter-segment-btn');
+            if (!btn) return;
+            ledgerPendingFilters.visibility = btn.dataset.value || 'active';
+            syncVisibilitySegment(ledgerPendingFilters.visibility);
+            updateFilterPreview();
+        });
+
+        function syncVisibilitySegment(value) {
+            visibilitySegment?.querySelectorAll('.fluxy-filter-segment-btn').forEach(btn => {
+                btn.setAttribute('aria-checked', btn.dataset.value === value ? 'true' : 'false');
+            });
+        }
+
+        // ── Filter popover lifecycle ──────────────────────────────────────────
+        const ledgerFilterTrigger = document.getElementById('ledger-filter-trigger');
+        const ledgerFilterPanel = document.getElementById('ledger-filter-panel');
+
+        function countAppliedFilters(state) {
+            let n = 0;
+            if (state.visibility !== 'active') n += 1;
+            if (state.status) n += 1;
+            if (state.type) n += 1;
+            if (state.cash) n += 1;
+            return n;
+        }
+
+        function updateFilterPreview() {
+            const p = ledgerPendingFilters;
+            const count = allLedgerTransactions.filter(tx =>
+                matchesLedgerVendorFilter(tx)
+                && matchesLedgerSearch(tx, ledgerSearchTerm)
+                && matchesLedgerVisibilityFilter(tx, p.visibility)
+                && matchesLedgerStatusFilter(tx, p.status)
+                && matchesLedgerTypeFilter(tx, p.type)
+                && matchesLedgerCashFilter(tx, p.cash)
+            ).length;
+
+            const resultEl = document.getElementById('ledger-filter-result-count');
+            if (resultEl) resultEl.textContent = `Results: ${count.toLocaleString('id-ID')}`;
+
+            const applied = countAppliedFilters(p);
+            const badge = document.getElementById('ledger-filter-applied-badge');
+            if (badge) {
+                badge.textContent = `${applied} applied`;
+                badge.classList.toggle('hidden', applied === 0);
+            }
+        }
+
+        function syncFilterPanelControls() {
+            const p = ledgerPendingFilters;
+            statusSelect?.setValue(p.status || '');
+            typeSelect?.setValue(p.type || '');
+            cashSelect?.setValue(p.cash || '');
+            syncVisibilitySegment(p.visibility || 'active');
+        }
+
+        function positionFilterPanel() {
+            if (!ledgerFilterTrigger || !ledgerFilterPanel) return;
+            const rect = ledgerFilterTrigger.getBoundingClientRect();
+            const gap = 12;
+            const width = ledgerFilterPanel.offsetWidth || 340;
+            const maxLeft = Math.max(gap, window.innerWidth - width - gap);
+            // Right-align the panel to the trigger, clamped to the viewport.
+            const left = Math.min(Math.max(gap, rect.right - width), maxLeft);
+            ledgerFilterPanel.style.setProperty('--fluxy-filter-panel-top', `${Math.round(rect.bottom + 6)}px`);
+            ledgerFilterPanel.style.setProperty('--fluxy-filter-panel-left', `${Math.round(left)}px`);
+        }
+
+        function isFilterPanelOpen() {
+            return ledgerFilterPanel && !ledgerFilterPanel.hidden;
+        }
+
+        function openFilterPanel() {
+            if (!ledgerFilterPanel) return;
+            // Seed pending state from the currently committed filters.
+            ledgerPendingFilters = {
+                visibility: ledgerVisibilityFilter,
+                status: ledgerStatusFilter,
+                type: ledgerTypeFilter,
+                cash: ledgerCashFilter,
+            };
+            syncFilterPanelControls();
+            updateFilterPreview();
+            ledgerFilterPanel.hidden = false;
+            ledgerFilterTrigger?.setAttribute('aria-expanded', 'true');
+            positionFilterPanel();
+            requestAnimationFrame(positionFilterPanel);
+        }
+
+        function closeFilterPanel() {
+            if (!ledgerFilterPanel) return;
+            ledgerFilterPanel.hidden = true;
+            ledgerFilterTrigger?.setAttribute('aria-expanded', 'false');
+        }
+
+        function applyPendingFilters() {
+            ledgerVisibilityFilter = ledgerPendingFilters.visibility || 'active';
+            ledgerStatusFilter = ledgerPendingFilters.status || '';
+            ledgerTypeFilter = ledgerPendingFilters.type || '';
+            ledgerCashFilter = ledgerPendingFilters.cash || '';
+            applyLedgerMonthFilter();
+            closeFilterPanel();
+        }
+
+        function resetPendingFilters() {
+            ledgerPendingFilters = { visibility: 'active', status: '', type: '', cash: '' };
+            syncFilterPanelControls();
+            updateFilterPreview();
+        }
+
+        function updateLedgerFilterTriggerBadge() {
+            const applied = countAppliedFilters({
+                visibility: ledgerVisibilityFilter,
+                status: ledgerStatusFilter,
+                type: ledgerTypeFilter,
+                cash: ledgerCashFilter,
+            });
+            const countEl = document.getElementById('ledger-filter-count');
+            if (countEl) {
+                countEl.textContent = String(applied);
+                countEl.classList.toggle('hidden', applied === 0);
+            }
+            ledgerFilterTrigger?.setAttribute('data-active', applied > 0 ? 'true' : 'false');
+        }
+
+        ledgerFilterTrigger?.addEventListener('click', (event) => {
+            event.stopPropagation();
+            if (isFilterPanelOpen()) { closeFilterPanel(); } else { openFilterPanel(); }
+        });
+        document.getElementById('ledger-filter-close')?.addEventListener('click', closeFilterPanel);
+        document.getElementById('ledger-filter-apply')?.addEventListener('click', applyPendingFilters);
+        document.getElementById('ledger-filter-reset')?.addEventListener('click', resetPendingFilters);
+        document.addEventListener('click', (event) => {
+            if (!isFilterPanelOpen()) return;
+            if (ledgerFilterPanel.contains(event.target)) return;
+            if (ledgerFilterTrigger?.contains(event.target)) return;
+            closeFilterPanel();
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && isFilterPanelOpen()) closeFilterPanel();
+        });
+        window.addEventListener('resize', () => { if (isFilterPanelOpen()) closeFilterPanel(); });
 
         function getMonthKey(date = new Date()) {
             return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -715,7 +900,8 @@
             // Make a voided target visible — the default "Active" filter would hide it.
             if (isVoidedTransaction(row) && ledgerVisibilityFilter === 'active') {
                 ledgerVisibilityFilter = 'all';
-                visibilitySelect?.setValue('all');
+                ledgerPendingFilters.visibility = 'all';
+                syncVisibilitySegment('all');
             }
 
             const txDate = row.timestamp?.toDate?.();
@@ -938,37 +1124,37 @@
             renderLedgerTable();
         }
 
-        function matchesLedgerStatusFilter(transaction) {
-            if (!ledgerStatusFilter) return true;
-            return String(transaction?.status || '').trim() === ledgerStatusFilter;
+        function matchesLedgerStatusFilter(transaction, status = ledgerStatusFilter) {
+            if (!status) return true;
+            return String(transaction?.status || '').trim() === status;
         }
 
         function isVoidedTransaction(transaction) {
             return transaction?.is_voided === true || String(transaction?.status || '').trim().toLowerCase() === 'voided';
         }
 
-        function matchesLedgerVisibilityFilter(transaction) {
+        function matchesLedgerVisibilityFilter(transaction, visibility = ledgerVisibilityFilter) {
             const isVoided = isVoidedTransaction(transaction);
-            if (ledgerVisibilityFilter === 'voided') return isVoided;
-            if (ledgerVisibilityFilter === 'all') return true;
+            if (visibility === 'voided') return isVoided;
+            if (visibility === 'all') return true;
             return !isVoided;
         }
 
-        function matchesLedgerTypeFilter(transaction) {
-            if (!ledgerTypeFilter) return true;
+        function matchesLedgerTypeFilter(transaction, type = ledgerTypeFilter) {
+            if (!type) return true;
             const raw = getNormalizedRawTransactionType(transaction);
             const normalized = raw === 'revenue' ? 'income' : raw;
-            return normalized === ledgerTypeFilter;
+            return normalized === type;
         }
 
-        function matchesLedgerCashFilter(transaction) {
-            if (!ledgerCashFilter) return true;
+        function matchesLedgerCashFilter(transaction, cash = ledgerCashFilter) {
+            if (!cash) return true;
             const hasCashFields = transaction.cash_effective !== undefined || transaction.cash_status !== undefined;
-            if (ledgerCashFilter === 'actual')         return transaction.cash_effective === true;
-            if (ledgerCashFilter === 'pending')        return transaction.cash_status === 'pending';
-            if (ledgerCashFilter === 'no_impact')      return transaction.cash_status === 'none' || transaction.cash_direction === 'none';
-            if (ledgerCashFilter === 'unlinked')       return transaction.cash_effective === true && !transaction.cash_account_id;
-            if (ledgerCashFilter === 'not_classified') return !hasCashFields;
+            if (cash === 'actual')         return transaction.cash_effective === true;
+            if (cash === 'pending')        return transaction.cash_status === 'pending';
+            if (cash === 'no_impact')      return transaction.cash_status === 'none' || transaction.cash_direction === 'none';
+            if (cash === 'unlinked')       return transaction.cash_effective === true && !transaction.cash_account_id;
+            if (cash === 'not_classified') return !hasCashFields;
             return true;
         }
 
@@ -1137,8 +1323,8 @@
 
             setSelectActiveState(statusSelect, Boolean(ledgerStatusFilter));
             setSelectActiveState(typeSelect, Boolean(ledgerTypeFilter));
-            setSelectActiveState(visibilitySelect, ledgerVisibilityFilter !== 'active');
             setSelectActiveState(cashSelect, Boolean(ledgerCashFilter));
+            updateLedgerFilterTriggerBadge();
         }
 
         function setLedgerVendorFilter(vendorName) {
@@ -1965,7 +2151,7 @@
                 applyLedgerMonthFilter();
             } else if (kind === 'visibility') {
                 ledgerVisibilityFilter = 'active';
-                visibilitySelect?.setValue('active');
+                syncVisibilitySegment('active');
                 applyLedgerMonthFilter();
             } else if (kind === 'cash') {
                 ledgerCashFilter = '';

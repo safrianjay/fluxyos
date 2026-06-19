@@ -1419,3 +1419,140 @@ main > header {
     opacity: 0;
 }
 .fluxy-select-option[aria-selected="true"] .fluxy-select-option-check { opacity: 1; }
+
+/* ────────────────────────────────────────────────────────────────────
+   Ledger filter popover — single "Filters" entry point that opens a
+   stacked panel of filter groups (Visibility / Status / Type / Cash).
+   Selections are staged until "Apply filters" is clicked.
+   ──────────────────────────────────────────────────────────────────── */
+.fluxy-filter-popover { position: relative; display: inline-block; vertical-align: middle; }
+
+.fluxy-filter-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: #FFF7ED;
+    color: #EA580C;
+    font-size: var(--fluxy-text-xs);
+    font-weight: var(--fluxy-fw-semibold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+#ledger-filter-trigger[data-active="true"] .fluxy-select-label { color: #EA580C; }
+#ledger-filter-trigger[aria-expanded="true"] .fluxy-select-chevron { transform: rotate(180deg); }
+
+.fluxy-filter-panel {
+    position: fixed;
+    top: var(--fluxy-filter-panel-top, 0);
+    left: var(--fluxy-filter-panel-left, 0);
+    width: 340px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(11,15,25,0.16);
+    z-index: 990;
+}
+.fluxy-filter-panel[hidden] { display: none; }
+
+.fluxy-filter-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #F1F1F4;
+}
+.fluxy-filter-applied-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    background: #FFF7ED;
+    color: #EA580C;
+    font-size: var(--fluxy-text-xs);
+    font-weight: var(--fluxy-fw-semibold);
+    font-variant-numeric: tabular-nums;
+}
+.fluxy-filter-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    color: #9CA3AF;
+    transition: background-color 150ms ease, color 150ms ease;
+}
+.fluxy-filter-icon-btn:hover { background: #F9FAFB; color: #374151; }
+
+.fluxy-filter-panel-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+}
+.fluxy-filter-group { display: flex; flex-direction: column; gap: 8px; }
+.fluxy-filter-group-label {
+    font-size: var(--fluxy-text-xs);
+    font-weight: var(--fluxy-fw-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6B7280;
+}
+.fluxy-filter-select { display: block; }
+.fluxy-filter-select .fluxy-select-trigger { width: 100%; justify-content: space-between; }
+
+.fluxy-filter-segment {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 4px;
+    background: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+}
+.fluxy-filter-segment-btn {
+    padding: 6px 8px;
+    border-radius: 7px;
+    background: transparent;
+    border: 1px solid transparent;
+    font-size: var(--fluxy-text-sm);
+    font-weight: var(--fluxy-fw-medium);
+    color: #6B7280;
+    transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+.fluxy-filter-segment-btn:hover { color: #374151; }
+.fluxy-filter-segment-btn[aria-checked="true"] {
+    background: #FFFFFF;
+    border-color: #EA580C;
+    color: #EA580C;
+    box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+}
+.fluxy-filter-segment-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(234,88,12,0.25);
+}
+
+.fluxy-filter-panel-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-top: 1px solid #F1F1F4;
+    background: #FAFAFB;
+    border-radius: 0 0 12px 12px;
+}
+.fluxy-filter-result-count {
+    font-size: var(--fluxy-text-sm);
+    font-weight: var(--fluxy-fw-medium);
+    color: #6B7280;
+    font-variant-numeric: tabular-nums;
+}
