@@ -57,6 +57,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Subscriptions | `subscription.html` | App | ✅ | **No** | ✅ |
 | Budgets | `budget.html` | App | ✅ | **No** | ✅ |
 | Invoices | `invoices.html` | App | ✅ | **No** | ✅ |
+| Sales Leads | `sales-leads.html` | App | ✅ | **No** | ✅ |
 | Accounting Center | `accounting.html` | App | ✅ | **No** | ✅ |
 | Accounting Records | `accounting-records.html` | App | ✅ | **No** | ✅ |
 | Reports & Exports | `reports.html` | App | ✅ | **No** | ✅ |
@@ -218,6 +219,32 @@ shipping edit/delete, approvals, exports, integrations, or AI write actions.
 
 **Ordering:** `created_at DESC`. Default limit: 100.
 **Mutation rule:** create/read only for the owning user; never update/delete.
+
+### 4d.1. Sales Leads — `users/{userId}/leads/{leadId}`
+
+Per-user CRM behind the **Sales Leads** page (`sales-leads.html`). A lead is
+created when the user sends an outreach email from the page; the
+`send-lead-outreach` Netlify function renders the bilingual `lead_outreach`
+email (`functions/lib/templates.js`) and sends it via Resend from
+`hello@fluxyos.com`. **Distinct from the public top-level `sales_leads`
+collection** (Contact-Sales inquiries, §4j) — this one is owner-scoped.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `name` | string | Lead name, 1–120 chars |
+| `gender` | string | `"male"` \| `"female"` — drives the email honorific (Bapak/Ibu · Mr/Mrs) |
+| `email` | string | Recipient, 1–200 chars |
+| `role` | string (optional) | ≤120 chars; table display only |
+| `company` | string (optional) | ≤160 chars; table display only |
+| `meeting_at` | Firestore Timestamp | Meeting date+time; formatted to WIB in the email |
+| `status` | string | `"new"` \| `"sent"` \| `"meeting_booked"` \| `"closed"` |
+| `last_sent_at` | Firestore Timestamp (optional) | Set when the outreach is sent/resent |
+| `created_at` | Firestore Timestamp | `serverTimestamp()` — immutable |
+| `updated_at` | Firestore Timestamp | `serverTimestamp()` on every write |
+
+**Ordering:** `created_at DESC`. **Mutation rule:** owner-only read/create/update/
+delete; field allow-list + validation enforced in `firestore.rules`
+(`isValidLead`). Optional fields must be absent (never literal `null`).
 
 ### 4e. Settings — `users/{userId}/settings/{settingsDoc}`
 
