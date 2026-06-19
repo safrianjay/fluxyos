@@ -291,6 +291,31 @@ async function main() {
     await expectOutcome('registry index hard delete denied', false,
         () => deleteDoc(doc(db, 'voucher_code_index/registry')));
 
+    // Faithful replica of DataService.deleteVoucherCode: voucher delete +
+    // registry arrayRemove + audit log in ONE writeBatch. A denial on any
+    // single write fails the whole commit, so this is the true production path.
+    await setDoc(doc(db, 'voucher_codes/TESTDELB'), voucherPayload('TESTDELB'));
+    await setDoc(doc(db, 'voucher_code_index/registry'), { codes: ['TESTDELB'], updated_at: serverTimestamp() });
+    await expectOutcome('deleteVoucherCode full batch allowed', true, () => {
+        const batch = writeBatch(db);
+        batch.delete(doc(db, 'voucher_codes/TESTDELB'));
+        batch.set(doc(db, 'voucher_code_index/registry'),
+            { codes: arrayRemove('TESTDELB'), updated_at: serverTimestamp() }, { merge: true });
+        batch.set(doc(collection(db, 'internal_audit_logs')), {
+            actor_uid: null,
+            actor_username: 'fluxyos admin',
+            actor_role: 'internal_admin',
+            action: 'voucher.delete',
+            target_user_id: 'TESTDELB',
+            before: { status: 'active', discount_value: 20, redemption_count: 0 },
+            after: null,
+            reason: null,
+            source: 'internal_dashboard',
+            created_at: serverTimestamp()
+        });
+        return batch.commit();
+    });
+
     console.log(`\nResult: ${passed} passed, ${failed} failed`);
     process.exit(failed ? 1 : 0);
 }
