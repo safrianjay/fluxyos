@@ -1,4 +1,4 @@
-import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
@@ -3368,6 +3368,40 @@ class DataService {
         });
         await batch.commit();
         return { ...existing, status: 'disabled' };
+    }
+
+    // Internal console hard delete. Removes the voucher doc + its registry entry
+    // + writes an audit log atomically. Past voucher_redemptions are immutable
+    // and intentionally kept (the Discount-given KPI reads them, not the code).
+    async deleteVoucherCode(code, auditContext = {}) {
+        const normalized = this.normalizeVoucherCode(code);
+        if (!normalized) throw new Error('invalid-voucher-code');
+        const existing = await this.getVoucherCode(normalized);
+        if (!existing) throw new Error('voucher-not-found');
+        const batch = writeBatch(this.db);
+        batch.delete(this._voucherCodeDoc(normalized));
+        batch.set(this._voucherRegistryDoc(), {
+            codes: arrayRemove(normalized),
+            updated_at: serverTimestamp()
+        }, { merge: true });
+        batch.set(doc(collection(this.db, 'internal_audit_logs')), {
+            actor_uid: null,
+            actor_username: this._stringOrDefault(auditContext.actor_username, 'fluxyos admin', 80),
+            actor_role: 'internal_admin',
+            action: 'voucher.delete',
+            target_user_id: normalized,
+            before: {
+                status: existing.status,
+                discount_value: existing.discount_value,
+                redemption_count: existing.redemption_count || 0
+            },
+            after: null,
+            reason: this._nullableString(auditContext.reason, 500),
+            source: 'internal_dashboard',
+            created_at: serverTimestamp()
+        });
+        await batch.commit();
+        return { id: normalized, deleted: true };
     }
 
     async getVoucherRedemptions(voucherId) {

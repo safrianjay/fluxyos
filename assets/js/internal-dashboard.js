@@ -922,11 +922,10 @@ function renderVouchersTab() {
             <td class="px-5 py-3.5 text-[13px] text-gray-600">${escapeHtml(v.created_by || '—')}</td>
             <td class="px-5 py-3.5 text-[13px] text-gray-500">${fmtDate(v.created_at)}</td>
             <td class="px-5 py-3.5 text-right whitespace-nowrap">
-                <button class="text-[13px] font-medium text-gray-500 hover:text-gray-900" data-voucher-copy="${escapeHtml(v.code)}">Copy</button>
-                <button class="text-[13px] font-semibold text-[#EA580C] hover:underline ml-3" data-voucher-usage="${escapeHtml(v.code)}">Usage</button>
-                ${v.status === 'active'
-                    ? `<button class="text-[13px] font-semibold text-red-600 hover:underline ml-3" data-voucher-disable="${escapeHtml(v.code)}">Disable</button>`
-                    : ''}
+                <button type="button" class="voucher-action-trigger" data-voucher-menu="${escapeHtml(v.code)}"
+                    aria-haspopup="menu" aria-label="Voucher actions for ${escapeHtml(v.code)}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
             </td>
         </tr>`;
     }).join('');
@@ -1130,6 +1129,194 @@ async function submitVoucherCreate(dates) {
     } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Create voucher';
+    }
+}
+
+// ----- Row action menu (pencil dropdown) -----
+let voucherMenuEl = null;
+let voucherMenuTrigger = null;
+
+function closeVoucherMenu() {
+    if (voucherMenuEl) { voucherMenuEl.remove(); voucherMenuEl = null; }
+    if (voucherMenuTrigger) { voucherMenuTrigger.classList.remove('is-open'); voucherMenuTrigger = null; }
+    document.removeEventListener('scroll', closeVoucherMenu, true);
+    window.removeEventListener('resize', closeVoucherMenu);
+}
+
+const VOUCHER_MENU_ICONS = {
+    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    usage: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>',
+    extend: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M12 14v4M10 16h4"/></svg>',
+    disable: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>',
+    delete: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>'
+};
+
+function openVoucherActionMenu(trigger, code) {
+    const reopen = voucherMenuTrigger === trigger;
+    closeVoucherMenu();
+    if (reopen) return; // clicking the open trigger again just closes it
+    const v = state.vouchers.find(x => x.code === code);
+    if (!v) return;
+
+    const items = [
+        { act: 'copy', label: 'Copy code' },
+        { act: 'usage', label: 'View usage' },
+        { act: 'extend', label: v.valid_until ? 'Extend expiry' : 'Set expiry' }
+    ];
+    if (v.status === 'active') items.push({ act: 'disable', label: 'Disable' });
+    items.push({ divider: true });
+    items.push({ act: 'delete', label: 'Delete', danger: true });
+
+    const menu = document.createElement('div');
+    menu.className = 'voucher-menu';
+    menu.setAttribute('role', 'menu');
+    menu.innerHTML = items.map(it => it.divider
+        ? '<div class="voucher-menu-divider"></div>'
+        : `<button type="button" role="menuitem" class="voucher-menu-item${it.danger ? ' is-danger' : ''}"
+                data-voucher-act="${it.act}" data-voucher-code="${escapeHtml(code)}">
+                ${VOUCHER_MENU_ICONS[it.act] || ''}<span>${it.label}</span>
+            </button>`).join('');
+    document.body.appendChild(menu);
+    voucherMenuEl = menu;
+    voucherMenuTrigger = trigger;
+    trigger.classList.add('is-open');
+    positionVoucherMenu(menu, trigger);
+    document.addEventListener('scroll', closeVoucherMenu, true);
+    window.addEventListener('resize', closeVoucherMenu);
+}
+
+// Right-align the menu under the trigger; flip above when there isn't room below.
+function positionVoucherMenu(menu, trigger) {
+    const r = trigger.getBoundingClientRect();
+    const mw = menu.offsetWidth;
+    const mh = menu.offsetHeight;
+    const gap = 6;
+    let left = r.right - mw;
+    left = Math.max(8, Math.min(left, window.innerWidth - mw - 8));
+    let top = r.bottom + gap;
+    if (top + mh > window.innerHeight - 8 && r.top - gap - mh > 8) top = r.top - gap - mh;
+    menu.style.left = `${Math.round(left)}px`;
+    menu.style.top = `${Math.round(top)}px`;
+}
+
+function runVoucherMenuAction(act, code) {
+    closeVoucherMenu();
+    if (act === 'copy') {
+        navigator.clipboard?.writeText(code)
+            .then(() => window.showToast('Voucher code copied', 'success'))
+            .catch(() => window.showToast('Could not copy the code', 'error'));
+    } else if (act === 'usage') {
+        openVoucherUsageDrawer(code);
+    } else if (act === 'extend') {
+        openVoucherExtendDrawer(code);
+    } else if (act === 'disable') {
+        disableVoucher(code);
+    } else if (act === 'delete') {
+        deleteVoucher(code);
+    }
+}
+
+// ----- Extend / set expiry -----
+function openVoucherExtendDrawer(code) {
+    const v = state.vouchers.find(x => x.code === code);
+    if (!v) return;
+    openDrawerShell(`Extend ${code}`, 'voucher-extend');
+
+    const todayKey = window.FluxyDateRangePicker?.getDayKey?.() || '';
+    const currentUntil = v.valid_until ? toDate(v.valid_until) : null;
+    const currentKey = currentUntil ? window.FluxyDateRangePicker?.getDayKey?.(currentUntil) : null;
+    const startKey = currentKey || todayKey;
+    const picked = { until: startKey };
+
+    $('internal-drawer-body').innerHTML = `
+        <div class="flex flex-col gap-4">
+            <div class="idrawer-section" style="margin-top:0">
+                <h3 class="text-[12px] font-bold uppercase tracking-wider text-gray-500 mb-1">Current</h3>
+                ${row('Code', `<span class="vcode">${escapeHtml(v.code)}</span>`)}
+                ${row('Status', badge(voucherDisplayStatus(v), VOUCHER_STATUS_TONE))}
+                ${row('Expiry', escapeHtml(currentUntil ? fmtDate(v.valid_until) : 'No expiry (Always)'))}
+            </div>
+            <div>
+                <span class="vform-label">New expiry date</span>
+                <div id="voucher-extend-picker" class="mt-1"></div>
+                <p class="text-[11px] text-gray-400 mt-1.5">The voucher stays valid through the end of the selected day. Pushing it past today re-activates an expired code.</p>
+            </div>
+            <p id="voucher-extend-error" class="hidden text-[12px] text-red-600 font-medium"></p>
+            <button type="button" id="voucher-extend-submit"
+                class="w-full bg-gray-900 hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-[14px] py-2.5 rounded-lg transition-colors active:scale-[.99]">Save new expiry</button>
+        </div>`;
+
+    window.FluxyDateRangePicker?.mount?.('#voucher-extend-picker', {
+        mode: 'single',
+        start: startKey,
+        end: startKey,
+        defaultStart: startKey,
+        defaultEnd: startKey,
+        maxDate: '2099-12-31',
+        onChange: ({ start }) => { picked.until = start; }
+    });
+
+    $('voucher-extend-submit').addEventListener('click', () => submitVoucherExtend(code, picked));
+}
+
+async function submitVoucherExtend(code, picked) {
+    const errorEl = $('voucher-extend-error');
+    errorEl.classList.add('hidden');
+    const validUntil = dayKeyToLocalDate(picked.until, true);
+    if (!validUntil) { errorEl.textContent = 'Pick a new expiry date.'; errorEl.classList.remove('hidden'); return; }
+    const v = state.vouchers.find(x => x.code === code);
+    const validFrom = v?.valid_from ? toDate(v.valid_from) : null;
+    if (validFrom && validUntil <= validFrom) {
+        errorEl.textContent = 'Expiry date must be after the voucher start date.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+    const btn = $('voucher-extend-submit');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    try {
+        await ds.updateVoucherCode(code, { valid_until: validUntil }, {
+            actor_username: ACTOR_USERNAME,
+            before: { valid_until: v?.valid_until ? fmtDate(v.valid_until) : null },
+            after: { valid_until: fmtDate(validUntil) }
+        });
+        window.showToast(`Voucher ${code} expiry updated`, 'success');
+        closeDrawer();
+        await loadData();
+        switchTab('vouchers');
+    } catch (err) {
+        console.error('[internal] voucher extend failed', err);
+        errorEl.textContent = 'Could not update the expiry. Please try again.';
+        errorEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Save new expiry';
+    }
+}
+
+// ----- Delete -----
+async function deleteVoucher(code) {
+    const v = state.vouchers.find(x => x.code === code);
+    if (!v) return;
+    const used = Number(v.redemption_count) || 0;
+    const usedNote = used > 0
+        ? ` It has <strong>${used}</strong> redemption${used === 1 ? '' : 's'}; those records are kept for history.`
+        : '';
+    const ok = await window.showConfirmDialog({
+        title: 'Delete voucher?',
+        body: `<strong>${escapeHtml(code)}</strong> will be permanently removed and can no longer be used at checkout.${usedNote} This cannot be undone.`,
+        confirmLabel: 'Delete voucher',
+        tone: 'danger',
+        icon: 'trash'
+    });
+    if (!ok) return;
+    try {
+        await ds.deleteVoucherCode(code, { actor_username: ACTOR_USERNAME });
+        window.showToast(`Voucher ${code} deleted`, 'success');
+        await loadData();
+        switchTab('vouchers');
+    } catch (err) {
+        console.error('[internal] voucher delete failed', err);
+        window.showToast('Could not delete the voucher. Please try again.', 'error');
     }
 }
 
@@ -1608,7 +1795,11 @@ function initConsoleEvents() {
     // Drawer
     $('internal-drawer-close').addEventListener('click', closeDrawer);
     $('internal-drawer-overlay').addEventListener('click', closeDrawer);
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && (state.drawerUserId || state.drawerMode)) closeDrawer(); });
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (voucherMenuEl) { closeVoucherMenu(); return; }
+        if (state.drawerUserId || state.drawerMode) closeDrawer();
+    });
 
     // Delegated clicks: Review, Copy UID, voucher actions, drawer actions
     document.addEventListener('click', (e) => {
@@ -1621,17 +1812,12 @@ function initConsoleEvents() {
                 .catch(() => window.showToast('Could not copy UID', 'error'));
             return;
         }
-        const voucherCopyBtn = e.target.closest('[data-voucher-copy]');
-        if (voucherCopyBtn) {
-            navigator.clipboard?.writeText(voucherCopyBtn.dataset.voucherCopy)
-                .then(() => window.showToast('Voucher code copied', 'success'))
-                .catch(() => window.showToast('Could not copy the code', 'error'));
-            return;
-        }
-        const voucherUsageBtn = e.target.closest('[data-voucher-usage]');
-        if (voucherUsageBtn) { openVoucherUsageDrawer(voucherUsageBtn.dataset.voucherUsage); return; }
-        const voucherDisableBtn = e.target.closest('[data-voucher-disable]');
-        if (voucherDisableBtn) { disableVoucher(voucherDisableBtn.dataset.voucherDisable); return; }
+        const voucherMenuBtn = e.target.closest('[data-voucher-menu]');
+        if (voucherMenuBtn) { openVoucherActionMenu(voucherMenuBtn, voucherMenuBtn.dataset.voucherMenu); return; }
+        const voucherActItem = e.target.closest('[data-voucher-act]');
+        if (voucherActItem) { runVoucherMenuAction(voucherActItem.dataset.voucherAct, voucherActItem.dataset.voucherCode); return; }
+        // Click anywhere else with an open menu closes it.
+        if (voucherMenuEl && !e.target.closest('.voucher-menu')) closeVoucherMenu();
         const actBtn = e.target.closest('[data-act]');
         if (actBtn && !actBtn.disabled && state.drawerUserId) {
             runAction(actBtn.dataset.act, state.drawerUserId);

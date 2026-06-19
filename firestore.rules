@@ -2576,9 +2576,11 @@ service cloud.firestore {
     // MVP_INTERNAL_ONLY_TEMPORARY — like internal_users above, admin writes are
     // field-validated but NOT identity-gated, because the internal console has
     // no Firebase identity. Known gaps until custom-claims admin auth exists:
-    //   - anyone who knows the paths can create/disable vouchers or read
+    //   - anyone who knows the paths can create/disable/delete vouchers or read
     //     redemptions (no financial gain: checkout math is still enforced by
-    //     hasValidPaymentRequestVoucher against the voucher doc itself);
+    //     hasValidPaymentRequestVoucher against the voucher doc itself, and
+    //     delete is no worse than the already-open disable — both only stop a
+    //     code working at checkout; past voucher_redemptions are immutable);
     //   - any signed-in user can burn redemption slots via the bare +1 counter
     //     update (DoS on limited vouchers, never a bigger discount).
 
@@ -2677,7 +2679,10 @@ service cloud.firestore {
       allow create: if isValidVoucherCodeCreate(voucherCode, request.resource.data);
       allow update: if isVoucherRedemptionIncrement(resource.data, request.resource.data)
         || isValidVoucherAdminUpdate(resource.data, request.resource.data);
-      allow delete: if false;
+      // Internal-console hard delete (MVP-open, same posture as create/disable
+      // above). The console also arrayRemoves the code from voucher_code_index
+      // in the same batch via the existing update rule.
+      allow delete: if true;
     }
 
     // Registry of existing codes so the internal console can list vouchers

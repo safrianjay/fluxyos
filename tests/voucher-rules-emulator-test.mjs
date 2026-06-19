@@ -15,7 +15,7 @@
 import { initializeApp } from 'firebase/app';
 import {
     getFirestore, connectFirestoreEmulator, doc, collection, getDoc, getDocs,
-    setDoc, writeBatch, serverTimestamp
+    setDoc, deleteDoc, writeBatch, serverTimestamp, arrayRemove
 } from 'firebase/firestore';
 import { getAuth, connectAuthEmulator, signInAnonymously } from 'firebase/auth';
 
@@ -279,6 +279,17 @@ async function main() {
         () => setDoc(doc(db, 'voucher_code_index/registry'), { codes: ['TESTV20'], updated_at: serverTimestamp() }));
     await expectOutcome('registry extra fields rejected', false,
         () => setDoc(doc(db, 'voucher_code_index/registry'), { codes: [], secret: true, updated_at: serverTimestamp() }));
+
+    console.log('\n— internal-console hard delete —');
+    await setDoc(doc(db, 'voucher_codes/TESTDEL'), voucherPayload('TESTDEL'));
+    await expectOutcome('voucher hard delete allowed', true,
+        () => deleteDoc(doc(db, 'voucher_codes/TESTDEL')));
+    await expectOutcome('deleted voucher get returns missing', true,
+        async () => { const s = await getDoc(doc(db, 'voucher_codes/TESTDEL')); if (s.exists()) throw new Error('still exists'); });
+    await expectOutcome('registry arrayRemove allowed', true,
+        () => setDoc(doc(db, 'voucher_code_index/registry'), { codes: arrayRemove('TESTDEL'), updated_at: serverTimestamp() }, { merge: true }));
+    await expectOutcome('registry index hard delete denied', false,
+        () => deleteDoc(doc(db, 'voucher_code_index/registry')));
 
     console.log(`\nResult: ${passed} passed, ${failed} failed`);
     process.exit(failed ? 1 : 0);
