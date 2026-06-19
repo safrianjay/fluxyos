@@ -133,7 +133,6 @@ async function load() {
     state.loading = true;
     show('accounting-loading');
     hide('accounting-error');
-    hide('accounting-empty');
     hide('accounting-content');
 
     try {
@@ -144,11 +143,11 @@ async function load() {
         state.data = data;
         hide('accounting-loading');
 
-        if (!data.hasData) {
-            show('accounting-empty');
-            state.loading = false;
-            return;
-        }
+        // Always render the full layout — KPI strip, tabs, and tables. When the
+        // period has no records, the KPIs read Rp0 and each table/section shows
+        // its own inline empty state (see renderIncomeStatement / renderCleanup /
+        // renderMapping). This keeps the page explorable instead of collapsing to
+        // a single centered "no data" card.
         render(data);
         show('accounting-content');
     } catch (err) {
@@ -337,34 +336,26 @@ function rowGroupHtml(row) {
     return rowTr(row, false);
 }
 
-function incomeEmptyInline() {
+function incomeEmptyRow() {
     return `
-        <div class="fluxy-table-empty">
-            <div class="fluxy-table-empty-title">No income statement data for this period</div>
-            <p class="fluxy-table-empty-description" style="margin-bottom:18px;">Add transactions, bills, or revenue records first. FluxyOS will use them to build an income statement preview.</p>
-            <button type="button" class="acct-btn acct-btn-primary" data-add-tx style="margin:0 auto;">Add transaction</button>
-        </div>`;
+        <tr>
+            <td colspan="6" class="fluxy-table-loading-cell" style="text-align:center;">
+                <div class="fluxy-table-empty-title">No income statement data for this period</div>
+                <p class="fluxy-table-empty-description" style="margin:6px auto 16px;max-width:440px;">Add transactions, bills, or revenue records and FluxyOS will build the statement here. Switch periods to explore other months.</p>
+                <button type="button" class="acct-btn acct-btn-primary" data-add-tx style="margin:0 auto;">Add transaction</button>
+            </td>
+        </tr>`;
 }
 
 function renderIncomeStatement(data) {
     const wrap = el('income-statement-table');
     if (!wrap) return;
 
-    if (!data.hasIncomeData) {
-        wrap.innerHTML = incomeEmptyInline();
-        wrap.querySelector('[data-add-tx]')?.addEventListener('click', () => {
-            if (typeof window.showAddTransactionModal === 'function') {
-                window.showAddTransactionModal({ title: 'Add Transaction', submitLabel: 'Add Transaction', context: 'transaction' });
-            } else {
-                window.location.href = '/ledger';
-            }
-        });
-        return;
-    }
-
     const curLabel = data.period.label;
     const prevLabel = data.comparison_period.label;
-    const body = (data.rows || []).map(rowGroupHtml).join('');
+    const body = data.hasIncomeData
+        ? (data.rows || []).map(rowGroupHtml).join('')
+        : incomeEmptyRow();
     wrap.innerHTML = `
         <table class="fluxy-table acct-is-table">
             <thead>
@@ -379,6 +370,17 @@ function renderIncomeStatement(data) {
             </thead>
             <tbody>${body}</tbody>
         </table>`;
+
+    if (!data.hasIncomeData) {
+        wrap.querySelector('[data-add-tx]')?.addEventListener('click', () => {
+            if (typeof window.showAddTransactionModal === 'function') {
+                window.showAddTransactionModal({ title: 'Add Transaction', submitLabel: 'Add Transaction', context: 'transaction' });
+            } else {
+                window.location.href = '/ledger';
+            }
+        });
+        return;
+    }
 
     wireIncomeStatement(wrap);
 }
