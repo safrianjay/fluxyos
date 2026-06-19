@@ -40,8 +40,9 @@ async function applyFilters(page) {
     await expect(page.locator('#ledger-filter-panel')).toBeHidden();
 }
 
-// Select a category in the left rail, then pick one of its radio options in the
-// right pane. The panel must already be open.
+// Select a category in the left rail, then toggle one of its options in the
+// right pane. The panel must already be open. Status/Type are multi-select
+// (checkboxes); Visibility/Cash are single-select (radios).
 async function pickFilter(page, group, value) {
     await page.locator(`#ledger-filter-rail .fluxy-filter-rail-item[data-group="${group}"]`).click();
     await page.locator(`#ledger-filter-options .fluxy-filter-option[data-value="${value}"]`).click();
@@ -80,10 +81,14 @@ test('ledger page renders the two-pane Filters panel and removes Status/Type bre
     await expect(page.locator('select#ledger-status-filter')).toHaveCount(0);
     await expect(page.locator('select#ledger-type-filter')).toHaveCount(0);
 
-    // Status category options
+    // Visibility options are single-select radios.
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value="active"]')).toHaveAttribute('role', 'radio');
+
+    // Status category options (multi-select checkboxes).
     await page.locator('#ledger-filter-rail .fluxy-filter-rail-item[data-group="status"]').click();
     const statusValues = await page.locator('#ledger-filter-options .fluxy-filter-option').evaluateAll(els => els.map(e => e.dataset.value));
     expect(statusValues).toEqual(['', 'Completed', 'Missing Receipt', 'Pending', 'Reconciled', 'Cancelled', 'Voided']);
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value="Completed"]')).toHaveAttribute('role', 'checkbox');
 
     // Type category options
     await page.locator('#ledger-filter-rail .fluxy-filter-rail-item[data-group="type"]').click();
@@ -271,6 +276,45 @@ test('Type filter intersects with Status filter and clears independently', async
     await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value="Completed"]')).toHaveAttribute('aria-checked', 'true');
 
     expect(consoleErrors, 'console errors during combined flow').toEqual([]);
+});
+
+test('Status is multi-select (OR), counts as one applied group, and shows a count chip', async ({ page }) => {
+    const consoleErrors = [];
+    page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+    page.on('pageerror', err => { consoleErrors.push(String(err)); });
+
+    await page.goto('/ledger.html');
+    await waitForLedgerReady(page);
+
+    await openFilterPanel(page);
+    await pickFilter(page, 'status', 'Completed');
+    await pickFilter(page, 'status', 'Pending');
+
+    // Both checked, "All statuses" unchecked, and it's still ONE applied group.
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value="Completed"]')).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value="Pending"]')).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value=""]')).toHaveAttribute('aria-checked', 'false');
+    await expect(page.locator('#ledger-filter-applied-badge')).toContainText('1 applied');
+
+    await applyFilters(page);
+    await expect(page.locator('#ledger-filter-count')).toHaveText('1');
+    await expect(page.locator('#ledger-filter-chip-row [data-filter-clear="status"]')).toContainText('Status: 2 selected');
+
+    // Each visible row is Completed OR Pending.
+    const statusBadges = page.locator('#ledger-table-body tr td:nth-child(7) span');
+    const count = await statusBadges.count();
+    for (let i = 0; i < count; i++) {
+        await expect(statusBadges.nth(i)).toContainText(/completed|pending/i);
+    }
+
+    // The "All statuses" row clears the whole group.
+    await openFilterPanel(page);
+    await page.locator('#ledger-filter-rail .fluxy-filter-rail-item[data-group="status"]').click();
+    await page.locator('#ledger-filter-options .fluxy-filter-option[data-value=""]').click();
+    await expect(page.locator('#ledger-filter-options .fluxy-filter-option[data-value="Completed"]')).toHaveAttribute('aria-checked', 'false');
+    await expect(page.locator('#ledger-filter-applied-badge')).toBeHidden();
+
+    expect(consoleErrors, 'console errors during multi-select flow').toEqual([]);
 });
 
 test('Visibility filter can switch to Voided/All and clear independently', async ({ page }) => {

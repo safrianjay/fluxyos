@@ -1609,6 +1609,32 @@ main > header {
     background: #EA580C;
 }
 
+/* Multi-select groups use a square checkbox indicator with a check glyph. */
+.fluxy-filter-check {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 2px solid #D1D5DB;
+    flex-shrink: 0;
+    transition: border-color 150ms ease, background-color 150ms ease;
+}
+.fluxy-filter-option[aria-checked="true"] .fluxy-filter-check {
+    border-color: #EA580C;
+    background: #EA580C;
+}
+.fluxy-filter-option[aria-checked="true"] .fluxy-filter-check::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 5px;
+    height: 9px;
+    border: solid #FFFFFF;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
 .fluxy-filter-panel-footer {
     display: flex;
     align-items: center;

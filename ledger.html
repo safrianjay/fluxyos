@@ -427,8 +427,9 @@
         let ledgerSearchTerm = linkedLedgerSearch;
         let activeLedgerVendorFilter = null;
         let ledgerVisibilityFilter = 'active';
-        let ledgerStatusFilter = '';
-        let ledgerTypeFilter = '';
+        // Status and Type are multi-select (OR within each); empty array = no filter.
+        let ledgerStatusFilter = [];
+        let ledgerTypeFilter = [];
         let ledgerCashFilter = '';
         let ledgerRangeStart = getMonthStartKey();
         let ledgerRangeEnd = getMonthEndKey();
@@ -617,12 +618,16 @@
         });
 
         // Staged filter state — the panel writes here; committed vars update only on Apply.
-        let ledgerPendingFilters = {
-            visibility: ledgerVisibilityFilter,
-            status: ledgerStatusFilter,
-            type: ledgerTypeFilter,
-            cash: ledgerCashFilter,
-        };
+        // Status/Type are arrays (multi-select); copy them so staging never mutates committed state.
+        function seedPendingFromCommitted() {
+            return {
+                visibility: ledgerVisibilityFilter,
+                status: [...ledgerStatusFilter],
+                type: [...ledgerTypeFilter],
+                cash: ledgerCashFilter,
+            };
+        }
+        let ledgerPendingFilters = seedPendingFromCommitted();
 
         // Master-detail filter config: each group is a left-rail category whose
         // options render as radios in the right detail pane.
@@ -637,7 +642,7 @@
                 ],
             },
             {
-                key: 'status', label: 'Status', default: '',
+                key: 'status', label: 'Status', default: '', multi: true,
                 icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>',
                 options: [
                     { value: '', label: 'All statuses' },
@@ -650,7 +655,7 @@
                 ],
             },
             {
-                key: 'type', label: 'Type', default: '',
+                key: 'type', label: 'Type', default: '', multi: true,
                 icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581a2.25 2.25 0 0 0 3.182 0l4.318-4.318a2.25 2.25 0 0 0 0-3.182L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z"/><circle cx="7.5" cy="7.5" r="1.125" fill="currentColor" stroke="none"/>',
                 options: [
                     { value: '', label: 'All types' },
@@ -684,11 +689,27 @@
         const ledgerFilterOptions = document.getElementById('ledger-filter-options');
         const ledgerFilterDetailTitle = document.getElementById('ledger-filter-detail-title');
 
+        // A group counts as "applied" when it differs from its default — for
+        // multi-select groups that means a non-empty selection array.
+        function isGroupApplied(group, state) {
+            const v = state[group.key];
+            if (group.multi) return Array.isArray(v) && v.length > 0;
+            return (v || group.default) !== group.default;
+        }
+
+        function isFilterOptionChecked(group, optValue) {
+            if (group.multi) {
+                const arr = ledgerPendingFilters[group.key] || [];
+                return optValue === '' ? arr.length === 0 : arr.includes(optValue);
+            }
+            return optValue === (ledgerPendingFilters[group.key] || group.default);
+        }
+
         function renderFilterRail() {
             if (!ledgerFilterRail) return;
             ledgerFilterRail.innerHTML = LEDGER_FILTER_GROUPS.map(g => {
                 const isActive = g.key === activeFilterGroup;
-                const isApplied = (ledgerPendingFilters[g.key] || g.default) !== g.default;
+                const isApplied = isGroupApplied(g, ledgerPendingFilters);
                 return `
                     <button type="button" class="fluxy-filter-rail-item" role="tab" data-group="${g.key}" aria-selected="${isActive}">
                         <svg class="fluxy-filter-rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">${g.icon}</svg>
@@ -702,11 +723,14 @@
             if (!ledgerFilterOptions) return;
             const group = LEDGER_FILTER_GROUPS.find(g => g.key === activeFilterGroup);
             if (!group) return;
-            const current = ledgerPendingFilters[group.key] || group.default;
-            if (ledgerFilterDetailTitle) ledgerFilterDetailTitle.textContent = `Show only · ${group.label}`;
+            const role = group.multi ? 'checkbox' : 'radio';
+            const indicator = group.multi ? 'fluxy-filter-check' : 'fluxy-filter-radio';
+            ledgerFilterOptions.setAttribute('role', group.multi ? 'group' : 'radiogroup');
+            const hint = group.multi ? ' (choose one or more)' : '';
+            if (ledgerFilterDetailTitle) ledgerFilterDetailTitle.textContent = `Show only · ${group.label}${hint}`;
             ledgerFilterOptions.innerHTML = group.options.map(opt => `
-                <button type="button" class="fluxy-filter-option" role="radio" data-value="${escapeHtml(opt.value)}" aria-checked="${opt.value === current ? 'true' : 'false'}">
-                    <span class="fluxy-filter-radio" aria-hidden="true"></span>
+                <button type="button" class="fluxy-filter-option" role="${role}" data-value="${escapeHtml(opt.value)}" aria-checked="${isFilterOptionChecked(group, opt.value) ? 'true' : 'false'}">
+                    <span class="${indicator}" aria-hidden="true"></span>
                     <span>${escapeHtml(opt.label)}</span>
                 </button>`).join('');
         }
@@ -732,7 +756,21 @@
             const opt = event.target.closest('.fluxy-filter-option');
             if (!opt) return;
             event.stopPropagation();
-            ledgerPendingFilters[activeFilterGroup] = opt.dataset.value;
+            const group = LEDGER_FILTER_GROUPS.find(g => g.key === activeFilterGroup);
+            const value = opt.dataset.value;
+            if (group?.multi) {
+                if (value === '') {
+                    // The "All …" row clears the whole multi-select group.
+                    ledgerPendingFilters[group.key] = [];
+                } else {
+                    const arr = Array.isArray(ledgerPendingFilters[group.key]) ? ledgerPendingFilters[group.key].slice() : [];
+                    const i = arr.indexOf(value);
+                    if (i >= 0) { arr.splice(i, 1); } else { arr.push(value); }
+                    ledgerPendingFilters[group.key] = arr;
+                }
+            } else {
+                ledgerPendingFilters[activeFilterGroup] = value;
+            }
             renderFilterOptions();
             renderFilterRail();
             updateFilterPreview();
@@ -743,8 +781,7 @@
         const ledgerFilterPanel = document.getElementById('ledger-filter-panel');
 
         function countAppliedFilters(state) {
-            return LEDGER_FILTER_GROUPS.reduce((n, g) =>
-                (state[g.key] || g.default) !== g.default ? n + 1 : n, 0);
+            return LEDGER_FILTER_GROUPS.reduce((n, g) => isGroupApplied(g, state) ? n + 1 : n, 0);
         }
 
         function updateFilterPreview() {
@@ -793,12 +830,7 @@
         function openFilterPanel() {
             if (!ledgerFilterPanel) return;
             // Seed pending state from the currently committed filters.
-            ledgerPendingFilters = {
-                visibility: ledgerVisibilityFilter,
-                status: ledgerStatusFilter,
-                type: ledgerTypeFilter,
-                cash: ledgerCashFilter,
-            };
+            ledgerPendingFilters = seedPendingFromCommitted();
             activeFilterGroup = LEDGER_FILTER_GROUPS[0].key;
             syncFilterPanelControls();
             updateFilterPreview();
@@ -816,15 +848,15 @@
 
         function applyPendingFilters() {
             ledgerVisibilityFilter = ledgerPendingFilters.visibility || 'active';
-            ledgerStatusFilter = ledgerPendingFilters.status || '';
-            ledgerTypeFilter = ledgerPendingFilters.type || '';
+            ledgerStatusFilter = [...(ledgerPendingFilters.status || [])];
+            ledgerTypeFilter = [...(ledgerPendingFilters.type || [])];
             ledgerCashFilter = ledgerPendingFilters.cash || '';
             applyLedgerMonthFilter();
             closeFilterPanel();
         }
 
         function resetPendingFilters() {
-            ledgerPendingFilters = { visibility: 'active', status: '', type: '', cash: '' };
+            ledgerPendingFilters = { visibility: 'active', status: [], type: [], cash: '' };
             syncFilterPanelControls();
             updateFilterPreview();
         }
@@ -1152,8 +1184,8 @@
         }
 
         function matchesLedgerStatusFilter(transaction, status = ledgerStatusFilter) {
-            if (!status) return true;
-            return String(transaction?.status || '').trim() === status;
+            if (!status || !status.length) return true;
+            return status.includes(String(transaction?.status || '').trim());
         }
 
         function isVoidedTransaction(transaction) {
@@ -1168,10 +1200,10 @@
         }
 
         function matchesLedgerTypeFilter(transaction, type = ledgerTypeFilter) {
-            if (!type) return true;
+            if (!type || !type.length) return true;
             const raw = getNormalizedRawTransactionType(transaction);
             const normalized = raw === 'revenue' ? 'income' : raw;
-            return normalized === type;
+            return type.includes(normalized);
         }
 
         function matchesLedgerCashFilter(transaction, cash = ledgerCashFilter) {
@@ -1308,16 +1340,20 @@
                     label: `Vendor: ${activeLedgerVendorFilter.displayName}`
                 }));
             }
-            if (ledgerStatusFilter) {
+            if (ledgerStatusFilter.length) {
                 chips.push(renderFilterChip({
                     kind: 'status',
-                    label: `Status: ${ledgerStatusFilter}`
+                    label: ledgerStatusFilter.length === 1
+                        ? `Status: ${ledgerStatusFilter[0]}`
+                        : `Status: ${ledgerStatusFilter.length} selected`
                 }));
             }
-            if (ledgerTypeFilter) {
+            if (ledgerTypeFilter.length) {
                 chips.push(renderFilterChip({
                     kind: 'type',
-                    label: `Type: ${getTypeFilterLabel(ledgerTypeFilter)}`
+                    label: ledgerTypeFilter.length === 1
+                        ? `Type: ${getTypeFilterLabel(ledgerTypeFilter[0])}`
+                        : `Type: ${ledgerTypeFilter.length} selected`
                 }));
             }
             if (ledgerVisibilityFilter !== 'active') {
@@ -2168,11 +2204,11 @@
                 return;
             }
             if (kind === 'status') {
-                ledgerStatusFilter = '';
-                ledgerPendingFilters.status = '';
+                ledgerStatusFilter = [];
+                ledgerPendingFilters.status = [];
             } else if (kind === 'type') {
-                ledgerTypeFilter = '';
-                ledgerPendingFilters.type = '';
+                ledgerTypeFilter = [];
+                ledgerPendingFilters.type = [];
             } else if (kind === 'visibility') {
                 ledgerVisibilityFilter = 'active';
                 ledgerPendingFilters.visibility = 'active';
