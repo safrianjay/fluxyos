@@ -1,11 +1,19 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { installTrialPaywallBypass } = require('./qa-helpers');
 
 /**
  * QA: ledger trust cards, attention queue, and Status + Type filters.
  * Filters are rendered as a custom Fluxy dropdown (not native <select>).
  * Authenticates via tests/setup-auth.spec.js → tests/.auth/storageState.json.
  */
+
+// The shared QA account's trial periodically lapses, which renders an
+// interaction-blocking billing paywall over the page. Strip it so these
+// filter/interaction specs exercise the ledger, not the billing gate.
+test.beforeEach(async ({ page }) => {
+    await installTrialPaywallBypass(page);
+});
 
 async function waitForLedgerReady(page) {
     await page.waitForSelector('#ledger-table-body');
@@ -21,8 +29,18 @@ async function waitForLedgerReady(page) {
 
 async function pickFluxyOption(page, selectId, value) {
     const root = page.locator(`#${selectId}`);
-    await root.locator('.fluxy-select-trigger').click();
-    await root.locator(`.fluxy-select-option[data-value="${value}"]`).click();
+    const trigger = root.locator('.fluxy-select-trigger');
+    const option = root.locator(`.fluxy-select-option[data-value="${value}"]`);
+    // A chip-clear re-render can re-close the dropdown right after it opens
+    // (open-state lives on root[data-open]), racing a plain trigger→option click.
+    // Poll: ensure the menu is open, then click the option, retrying the whole
+    // step until one attempt lands.
+    await expect(async () => {
+        if ((await root.getAttribute('data-open')) !== 'true') {
+            await trigger.click();
+        }
+        await option.click({ timeout: 1000 });
+    }).toPass({ timeout: 10_000 });
 }
 
 test('ledger page renders custom filter dropdowns and removes Status/Type breakdown panels', async ({ page }) => {

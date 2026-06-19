@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { installTrialPaywallBypass } = require('./qa-helpers');
 
 /**
  * QA: universal transaction deep-linking on the Ledger.
@@ -13,6 +14,12 @@ const { test, expect } = require('@playwright/test');
  * Read-only: it reuses the page's already-authenticated Firebase session to
  * pick a real record; it never writes to Firestore.
  */
+
+// Keep these specs independent of the shared QA account's billing state — strip
+// the trial paywall the guard renders when the account's trial has lapsed.
+test.beforeEach(async ({ page }) => {
+    await installTrialPaywallBypass(page);
+});
 
 async function waitForLedgerReady(page) {
     await page.waitForSelector('#ledger-table-body');
