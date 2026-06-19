@@ -23,10 +23,18 @@ test('authenticate as QA user', async ({ page }) => {
     await page.goto('/login.html');
     await page.locator('#email').fill(email);
     await page.locator('#password').fill(password);
-    await Promise.all([
-        page.waitForURL(/\/dashboard(\.html)?($|\?)/, { timeout: 30_000 }),
-        page.locator('form button[type="submit"]').click(),
-    ]);
+    await page.locator('form button[type="submit"]').click();
+
+    // A password account whose email is unverified is routed to the email
+    // verification view instead of /dashboard (login.html `routeUser`). The QA
+    // account is unverified, so click "Continue without verifying" to proceed.
+    // Race the two possible outcomes so a verified account still works.
+    const dashboard = page.waitForURL(/\/dashboard(\.html)?($|\?)/, { timeout: 30_000 });
+    const verifyGate = page.locator('#verify-view')
+        .waitFor({ state: 'visible', timeout: 30_000 })
+        .then(() => page.locator('#verify-skip-link').click());
+    await Promise.race([dashboard, verifyGate]);
+    await page.waitForURL(/\/dashboard(\.html)?($|\?)/, { timeout: 30_000 });
 
     // Wait until the sidebar is hydrated so subsequent specs find the nav.
     await expect(page.locator('#sidebar')).toBeVisible();
