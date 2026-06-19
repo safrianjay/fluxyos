@@ -405,6 +405,7 @@
         let ledgerRangeEnd = getMonthEndKey();
         const linkedLedgerRecordId = new URLSearchParams(window.location.search).get('record');
         let linkedLedgerRecordHandled = false;
+        let linkedLedgerRecordRow = null;
         let linkedLedgerSearchHandled = false;
         if (linkedLedgerSearch) {
             const input = document.getElementById('ledger-search-input');
@@ -420,7 +421,7 @@
             prevBtnId:    'ledger-prev-page',
             nextBtnId:    'ledger-next-page',
         });
-        window.FluxyDateRangePicker?.mount('#ledger-date-range-picker', {
+        const ledgerDatePicker = window.FluxyDateRangePicker?.mount('#ledger-date-range-picker', {
             start: ledgerRangeStart,
             end: ledgerRangeEnd,
             onChange: ({ start, end }) => {
@@ -690,6 +691,43 @@
             return ds.getTransactionsForPeriod(userId, ledgerRangeStart, ledgerRangeEnd, { includeVoided: true });
         }
 
+        // Universal transaction deep-linking: when another page links to a Ledger
+        // transaction (`/ledger?record=<id>`), the record may sit outside the
+        // default current-month range. Fetch it up front, snap the Ledger date
+        // range to the record's own month, and (when it's voided) widen the
+        // visibility filter — so the first load already contains the target and
+        // `openLinkedLedgerRecord` can focus it, regardless of its original period.
+        async function prepareLinkedLedgerRecordRange(user) {
+            if (!linkedLedgerRecordId || !user) return;
+            let row = null;
+            try {
+                row = await ds.getTransactionById(user.uid, linkedLedgerRecordId);
+            } catch (_) {
+                row = null;
+            }
+            if (!row) {
+                window.showToast?.('That transaction could not be found. It may have been deleted.', 'info');
+                linkedLedgerRecordHandled = true;
+                return;
+            }
+            linkedLedgerRecordRow = row;
+
+            // Make a voided target visible — the default "Active" filter would hide it.
+            if (isVoidedTransaction(row) && ledgerVisibilityFilter === 'active') {
+                ledgerVisibilityFilter = 'all';
+                visibilitySelect?.setValue('all');
+            }
+
+            const txDate = row.timestamp?.toDate?.();
+            if (!txDate || Number.isNaN(txDate.getTime())) return;
+            const start = getMonthStartKey(txDate);
+            const end = getMonthEndKey(txDate);
+            if (start === ledgerRangeStart && end === ledgerRangeEnd) return;
+            ledgerRangeStart = start;
+            ledgerRangeEnd = end;
+            ledgerDatePicker?.setRange(start, end);
+        }
+
         // SMART AUTH GUARD
         let checkTimeout = setTimeout(() => {
             window.location.replace('/login');
@@ -704,6 +742,7 @@
                     sessionStorage.removeItem('fluxy_pending_tours');
                     return;
                 }
+                await prepareLinkedLedgerRecordRange(user);
                 await window.loadLedger();
                 handleOnboardingDeepLink();
                 await continuePendingTourIfAny(user.uid);
@@ -1884,7 +1923,11 @@
 
         function openLinkedLedgerRecord() {
             if (!linkedLedgerRecordId || linkedLedgerRecordHandled) return;
-            const row = allLedgerTransactions.find(transaction => transaction.id === linkedLedgerRecordId);
+            // The range was snapped to the record's month in prepareLinkedLedgerRecordRange,
+            // so it should be loaded; fall back to the prefetched row if a filter still
+            // hides it from the in-memory list, so the detail drawer always opens.
+            const row = allLedgerTransactions.find(transaction => transaction.id === linkedLedgerRecordId)
+                || linkedLedgerRecordRow;
             if (!row) {
                 window.showToast?.('That transaction is not in the currently loaded ledger range.', 'info');
                 linkedLedgerRecordHandled = true;

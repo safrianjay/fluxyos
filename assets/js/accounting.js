@@ -414,10 +414,15 @@ function severityDot(severity) {
 
 function cleanupRowHtml(item) {
     const link = SOURCE_LINKS[item.source_collection] || null;
+    // Deep-link transactions to the specific record so the Ledger opens it
+    // regardless of its month; other sources keep their plain page link.
+    const href = (link && item.source_collection === 'transactions' && item.source_id)
+        ? `${link}?record=${encodeURIComponent(item.source_id)}`
+        : link;
     const amount = formatRupiah(item.amount);
     const meta = [item.vendor_name, amount].filter(Boolean).map(escapeHtml).join(' · ');
-    const action = link
-        ? `<a href="${link}" class="acct-btn acct-btn-secondary" style="text-decoration:none;">Open</a>`
+    const action = href
+        ? `<a href="${escapeHtml(href)}" class="acct-btn acct-btn-secondary" style="text-decoration:none;">Open</a>`
         : '';
     return `
         <div class="acct-row">

@@ -2593,7 +2593,7 @@ class DataService {
             status: record.status || 'Completed',
             status_filter: record.status_filter || this._incomeRelatedStatusFilter(record.status || 'Completed'),
             date: record.date || null,
-            source_route: record.source_route || this._incomeSourceRoute(source, vendor)
+            source_route: record.source_route || this._incomeSourceRoute(source, vendor, record.source_id || record.id)
         };
     }
 
@@ -2605,12 +2605,19 @@ class DataService {
         }[source] || 'Records';
     }
 
-    _incomeSourceRoute(source, searchText) {
+    _incomeSourceRoute(source, searchText, recordId = null) {
         const base = {
             transactions: '/ledger',
             bills: '/bill',
             subscriptions: '/subscription'
         }[source] || '/accounting';
+        // Transactions support universal record deep-linking on the Ledger: pass the
+        // id so the Ledger snaps to the record's month and opens it, regardless of
+        // the currently selected date filter. Vendor search stays month-scoped, so
+        // it is only a fallback when no id is available.
+        if (source === 'transactions' && recordId) {
+            return `${base}?record=${encodeURIComponent(recordId)}`;
+        }
         const query = String(searchText || '').trim();
         return query ? `${base}?search=${encodeURIComponent(query)}` : base;
     }
@@ -2794,7 +2801,7 @@ class DataService {
             status: tx.status || 'Completed',
             date: date ? this._getDayKey(date) : null,
             status_filter: this._incomeRelatedStatusFilter(tx.status || 'Completed'),
-            source_route: this._incomeSourceRoute('transactions', vendor)
+            source_route: this._incomeSourceRoute('transactions', vendor, tx.id)
         };
     }
 
