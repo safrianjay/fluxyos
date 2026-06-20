@@ -1293,6 +1293,89 @@ main > header {
 }
 
 /* ────────────────────────────────────────────────────────────────────
+   Fluxy AI launcher button (single source of truth)
+
+   The one intentional gradient affordance in the app: a white pill with a
+   purple→blue gradient border, gradient sparkle icon, and gradient label.
+   This is a DOCUMENTED EXCEPTION to the orange-accent brand + the anti-slop
+   "no purple gradient" rule — it marks the AI assistant, distinct from the
+   orange primary actions. Applied to every `button[onclick*="toggleFluxyAI"]`
+   / `button[id$="ask-ai"]` by the enhancer in shared-dashboard.js. Don't
+   restyle these back to orange without product sign-off.
+   ──────────────────────────────────────────────────────────────────── */
+.fluxy-ai-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 18px;
+    border-radius: 9999px;
+    border: 1.5px solid transparent;
+    background:
+        linear-gradient(#ffffff, #ffffff) padding-box,
+        linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #3B82F6 100%) border-box;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 20px -6px rgba(99, 102, 241, 0.35);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.12s ease;
+}
+
+.fluxy-ai-btn:hover {
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08), 0 10px 26px -6px rgba(99, 102, 241, 0.5);
+}
+
+.fluxy-ai-btn:active {
+    transform: scale(0.97);
+}
+
+.fluxy-ai-btn:focus-visible {
+    outline: 2px solid #8B5CF6;
+    outline-offset: 2px;
+}
+
+.fluxy-ai-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Hide-on-mobile variant (preserves the one page that used `hidden sm:inline-flex`). */
+.fluxy-ai-btn--sm {
+    display: none;
+}
+
+@media (min-width: 640px) {
+    .fluxy-ai-btn--sm {
+        display: inline-flex;
+    }
+}
+
+.fluxy-ai-btn-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #3B82F6 100%);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14.5 1C14.5 5.7 18.3 9.5 23 9.5 18.3 9.5 14.5 13.3 14.5 18 14.5 13.3 10.7 9.5 6 9.5 10.7 9.5 14.5 5.7 14.5 1Z'/%3E%3Cpath d='M6.5 13C6.5 15.2 8.3 17 10.5 17 8.3 17 6.5 18.8 6.5 21 6.5 18.8 4.7 17 2.5 17 4.7 17 6.5 15.2 6.5 13Z'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14.5 1C14.5 5.7 18.3 9.5 23 9.5 18.3 9.5 14.5 13.3 14.5 18 14.5 13.3 10.7 9.5 6 9.5 10.7 9.5 14.5 5.7 14.5 1Z'/%3E%3Cpath d='M6.5 13C6.5 15.2 8.3 17 10.5 17 8.3 17 6.5 18.8 6.5 21 6.5 18.8 4.7 17 2.5 17 4.7 17 6.5 15.2 6.5 13Z'/%3E%3C/svg%3E") center / contain no-repeat;
+    transition: transform 0.12s ease;
+}
+
+.fluxy-ai-btn:hover .fluxy-ai-btn-icon {
+    transform: scale(1.08);
+}
+
+.fluxy-ai-btn-label {
+    background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 45%, #3B82F6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    letter-spacing: 0.005em;
+}
+
+/* ────────────────────────────────────────────────────────────────────
    FluxySelect — custom dropdown (single source of truth)
 
    Styles both the programmatic ledger-filter selects (`.fluxy-select` divs)

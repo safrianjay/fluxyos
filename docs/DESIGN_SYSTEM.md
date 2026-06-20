@@ -108,6 +108,17 @@ new code must already be on-scale.
 - **Primary**: `bg-gray-900 text-white`, `rounded-lg`, `hover:bg-gray-800`.
 - **Secondary**: `bg-white text-gray-700`, `border border-gray-200`, `hover:bg-gray-50`.
 - **Accent**: `text-[#EA580C] font-bold`.
+- **Fluxy AI launcher (documented gradient exception)**: the one intentional
+  gradient affordance in the app — a white **pill** (`rounded-full`) with a
+  purple→blue gradient border, a gradient sparkle icon, and a gradient label.
+  Single source of truth: `.fluxy-ai-btn*` in `assets/css/shared-dashboard.css`,
+  applied automatically by the enhancer in `assets/js/shared-dashboard.js` to
+  every `button[onclick*="toggleFluxyAI"]` / `button[id$="ask-ai"]` launcher.
+  This is an **approved exception** to the orange-accent brand and the anti-slop
+  "no purple gradient" ban (logged under Exception Protocol): the gradient marks
+  the AI assistant and keeps it visually distinct from orange primary actions.
+  Do not restyle these launchers back to orange, and do not extend this gradient
+  to non-AI buttons. The sidebar `Fluxy AI` nav item keeps the sidebar theme.
 
 ### 3. Tables
 - Authenticated app tables use the full **Dashboard Data Table Standard** below.

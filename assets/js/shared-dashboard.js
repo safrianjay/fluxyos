@@ -118,6 +118,42 @@ window.__compressReceiptImage = compressReceiptImage;
     };
 })();
 
+// ---------- Fluxy AI launcher button restyle (single source of truth) ----------
+// Every Fluxy AI launcher pill across the app (topbar buttons that call
+// toggleFluxyAI, plus the records-subpage "Ask Fluxy AI" buttons) is normalized
+// to the shared `.fluxy-ai-btn` look (white pill, gradient border + sparkle +
+// label). Idempotent and progressive — keeps the element, its onclick/listener,
+// data-tour-target, and label intact, so positioning + access-guard logic still
+// work. Styles live in shared-dashboard.css.
+(function enhanceFluxyAIButtons() {
+    const SELECTOR = 'button[onclick*="toggleFluxyAI"], button[id$="ask-ai"]';
+
+    function enhance(btn) {
+        if (!btn || btn.dataset.fluxyAiEnhanced === '1') return;
+        const label = (btn.textContent || '').replace(/\s+/g, ' ').trim() || 'Fluxy AI';
+        // Preserve the one page that hides the launcher on mobile.
+        const hideMobile = /\bhidden\b/.test(btn.className) && /\bsm:(inline-)?flex\b/.test(btn.className);
+        btn.className = 'fluxy-ai-btn' + (hideMobile ? ' fluxy-ai-btn--sm' : '');
+        btn.innerHTML = '<span class="fluxy-ai-btn-icon" aria-hidden="true"></span><span class="fluxy-ai-btn-label"></span>';
+        btn.querySelector('.fluxy-ai-btn-label').textContent = label;
+        btn.dataset.fluxyAiEnhanced = '1';
+    }
+
+    function run() {
+        document.querySelectorAll(SELECTOR).forEach(enhance);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', run);
+    } else {
+        run();
+    }
+    // Catch any launcher added after load (defensive — all 26 ship in static HTML).
+    try {
+        new MutationObserver(run).observe(document.documentElement, { childList: true, subtree: true });
+    } catch (_) { /* observer is best-effort */ }
+})();
+
 // ---------- Dialog (canonical popup component) ----------
 // Single branded popup used everywhere in FluxyOS — replaces native
 // window.confirm() and window.alert(). Two thin wrappers:
