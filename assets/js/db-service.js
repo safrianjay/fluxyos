@@ -396,6 +396,15 @@ class DataService {
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
 
+    // Single-record fetch for universal record deep-linking — lets the Bills page
+    // snap its date range to a linked bill that sits outside the current period.
+    async getBillById(userId, billId) {
+        if (!userId || !billId) throw new Error('userId and billId required');
+        const snap = await getDoc(doc(this.db, `users/${userId}/bills/${billId}`));
+        if (!snap.exists()) return null;
+        return { id: snap.id, ...snap.data() };
+    }
+
     // --- SUBSCRIPTIONS ---
     async addSubscription(userId, data) {
         const { timestamp, ...rest } = data;
@@ -409,6 +418,14 @@ class DataService {
         const q = query(collection(this.db, `users/${userId}/subscriptions`), orderBy('timestamp', 'desc'));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    // Single-record fetch for universal record deep-linking (mirrors getBillById).
+    async getSubscriptionById(userId, subscriptionId) {
+        if (!userId || !subscriptionId) throw new Error('userId and subscriptionId required');
+        const snap = await getDoc(doc(this.db, `users/${userId}/subscriptions/${subscriptionId}`));
+        if (!snap.exists()) return null;
+        return { id: snap.id, ...snap.data() };
     }
 
     // --- SETTINGS ---
@@ -2611,11 +2628,12 @@ class DataService {
             bills: '/bill',
             subscriptions: '/subscription'
         }[source] || '/accounting';
-        // Transactions support universal record deep-linking on the Ledger: pass the
-        // id so the Ledger snaps to the record's month and opens it, regardless of
-        // the currently selected date filter. Vendor search stays month-scoped, so
+        // Every record-backed destination supports universal deep-linking: pass the
+        // id so the target page snaps its date range to the record's own period,
+        // locates the row, scrolls it into view, and highlights it — regardless of
+        // the currently selected date filter. Vendor search stays period-scoped, so
         // it is only a fallback when no id is available.
-        if (source === 'transactions' && recordId) {
+        if (recordId && (source === 'transactions' || source === 'bills' || source === 'subscriptions')) {
             return `${base}?record=${encodeURIComponent(recordId)}`;
         }
         const query = String(searchText || '').trim();
@@ -2672,7 +2690,7 @@ class DataService {
             date: date ? this._getDayKey(date) : null,
             statement_section: classification.section,
             statement_line: classification.line,
-            source_route: this._incomeSourceRoute('bills', vendor)
+            source_route: this._incomeSourceRoute('bills', vendor, bill.id)
         };
     }
 
@@ -2695,7 +2713,7 @@ class DataService {
             date: date ? this._getDayKey(date) : null,
             statement_section: classification.section,
             statement_line: classification.line,
-            source_route: this._incomeSourceRoute('subscriptions', vendor)
+            source_route: this._incomeSourceRoute('subscriptions', vendor, sub.id)
         };
     }
 

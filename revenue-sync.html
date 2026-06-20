@@ -282,6 +282,7 @@
         const linkedRevenueRecordId = new URLSearchParams(window.location.search).get('record');
         let linkedRevenueRecordHandled = false;
         let linkedRevenueSearchHandled = false;
+        let linkedRevenueRecordRow = null;
         if (linkedRevenueSearch) {
             const input = document.getElementById('revenue-search-input');
             if (input) input.value = linkedRevenueSearch;
@@ -315,7 +316,7 @@
         let revenueRangeStart = getMonthStartKey();
         let revenueRangeEnd = getMonthEndKey();
 
-        window.FluxyDateRangePicker?.mount('#revenue-date-range-picker', {
+        const revenueDatePicker = window.FluxyDateRangePicker?.mount('#revenue-date-range-picker', {
             start: revenueRangeStart,
             end: revenueRangeEnd,
             onChange: ({ start, end }) => {
@@ -324,6 +325,36 @@
                 window.loadRevenue();
             }
         });
+
+        // Universal record deep-linking: when another page links to a revenue row
+        // (`/revenue-sync?record=<id>`), it may sit outside the default current-month
+        // range. Revenue rows are income transactions, so fetch the record up front,
+        // snap the range to its own month, and keep the prefetched row as a fallback —
+        // so the first load already contains the target and openLinkedRevenueRecord can
+        // locate, scroll to, and highlight it regardless of the originally selected period.
+        async function prepareLinkedRevenueRecordRange(user) {
+            if (!linkedRevenueRecordId || !user) return;
+            let row = null;
+            try {
+                row = await ds.getTransactionById(user.uid, linkedRevenueRecordId);
+            } catch (_) {
+                row = null;
+            }
+            if (!row) {
+                window.showToast?.('That revenue row could not be found. It may have been deleted.', 'info');
+                linkedRevenueRecordHandled = true;
+                return;
+            }
+            linkedRevenueRecordRow = row;
+            const txDate = row.timestamp?.toDate?.();
+            if (!txDate || Number.isNaN(txDate.getTime())) return;
+            const start = getMonthStartKey(txDate);
+            const end = getMonthEndKey(txDate);
+            if (start === revenueRangeStart && end === revenueRangeEnd) return;
+            revenueRangeStart = start;
+            revenueRangeEnd = end;
+            revenueDatePicker?.setRange(start, end);
+        }
 
         async function getRevenueForRange(userId) {
             const start = parseDayKey(revenueRangeStart);
@@ -872,14 +903,20 @@
 
         function openLinkedRevenueRecord() {
             if (!linkedRevenueRecordId || linkedRevenueRecordHandled) return;
-            const row = allRevenue.find(item => item.id === linkedRevenueRecordId);
+            // The range was snapped to the record's month in prepareLinkedRevenueRecordRange,
+            // so it should be loaded; fall back to the prefetched row if a filter still
+            // hides it from the in-memory list, so the detail drawer always opens.
+            const row = allRevenue.find(item => item.id === linkedRevenueRecordId) || linkedRevenueRecordRow;
             if (!row) {
-                window.showToast?.('That revenue row is not in the currently loaded revenue range.', 'info');
+                window.showToast?.('That revenue row could not be found. It may have been deleted.', 'info');
                 linkedRevenueRecordHandled = true;
                 return;
             }
             linkedRevenueRecordHandled = true;
             window.setTimeout(() => {
+                // Page the table to the record first so the row is in the DOM and the
+                // highlight + scroll lands on it (the table is paginated).
+                revenuePaginator?.goToRow(item => item.id === linkedRevenueRecordId);
                 highlightLinkedRevenueRow();
                 openDrawer(row);
             }, 120);
@@ -1002,6 +1039,7 @@
                     sessionStorage.removeItem('fluxy_pending_tours');
                     return;
                 }
+                await prepareLinkedRevenueRecordRange(user);
                 await window.loadRevenue();
                 await continuePendingTourIfAny(user.uid);
             } else {

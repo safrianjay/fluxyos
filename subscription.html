@@ -155,7 +155,9 @@
             if (!linkedSubscriptionRecordId) return;
             const rowEl = document.querySelector(`[data-subscription-id="${CSS.escape(linkedSubscriptionRecordId)}"]`);
             if (!rowEl) {
-                window.showToast?.('That subscription is not in the current list.', 'info');
+                // Subscriptions load in full (no date scope), so a missing row means the
+                // record no longer exists — never an "out of range" condition.
+                window.showToast?.('That subscription could not be found. It may have been deleted.', 'info');
                 return;
             }
             window.highlightFluxyLinkedTarget?.(rowEl, {

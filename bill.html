@@ -252,6 +252,7 @@
         const linkedBillRecordId = new URLSearchParams(window.location.search).get('record');
         let linkedBillRecordHandled = false;
         let linkedBillSearchHandled = false;
+        let linkedBillRecordRow = null;
         if (linkedBillSearch) {
             const input = document.getElementById('bill-search-input');
             if (input) input.value = linkedBillSearch;
@@ -285,7 +286,7 @@
         let billRangeStart = getMonthStartKey();
         let billRangeEnd = getMonthEndKey();
 
-        window.FluxyDateRangePicker?.mount('#bill-date-range-picker', {
+        const billDatePicker = window.FluxyDateRangePicker?.mount('#bill-date-range-picker', {
             start: billRangeStart,
             end: billRangeEnd,
             onChange: ({ start, end }) => {
@@ -294,6 +295,37 @@
                 window.loadBills();
             }
         });
+
+        // Universal record deep-linking: when another page links to a bill
+        // (`/bill?record=<id>`), it may sit outside the default current-month range.
+        // Fetch it up front, snap the Bills date range to the bill's own month, and
+        // keep the prefetched row as a fallback — so the first load already contains
+        // the target and openLinkedBillRecord can locate, scroll to, and highlight it
+        // regardless of the originally selected period.
+        async function prepareLinkedBillRecordRange(user) {
+            if (!linkedBillRecordId || !user) return;
+            let bill = null;
+            try {
+                bill = await ds.getBillById(user.uid, linkedBillRecordId);
+            } catch (_) {
+                bill = null;
+            }
+            if (!bill) {
+                window.showToast?.('That bill could not be found. It may have been deleted.', 'info');
+                linkedBillRecordHandled = true;
+                return;
+            }
+            linkedBillRecordRow = bill;
+            // Bills load by `timestamp`, so snap the range to the bill's timestamp month.
+            const billDate = bill.timestamp?.toDate?.();
+            if (!billDate || Number.isNaN(billDate.getTime())) return;
+            const start = getMonthStartKey(billDate);
+            const end = getMonthEndKey(billDate);
+            if (start === billRangeStart && end === billRangeEnd) return;
+            billRangeStart = start;
+            billRangeEnd = end;
+            billDatePicker?.setRange(start, end);
+        }
 
         async function getBillsForRange(userId) {
             const start = parseDayKey(billRangeStart);
@@ -841,14 +873,20 @@
 
         function openLinkedBillRecord() {
             if (!linkedBillRecordId || linkedBillRecordHandled) return;
-            const bill = allBills.find(item => item.id === linkedBillRecordId);
+            // The range was snapped to the bill's month in prepareLinkedBillRecordRange,
+            // so it should be loaded; fall back to the prefetched row if a filter still
+            // hides it from the in-memory list, so the detail drawer always opens.
+            const bill = allBills.find(item => item.id === linkedBillRecordId) || linkedBillRecordRow;
             if (!bill) {
-                window.showToast?.('That bill is not in the currently loaded bill range.', 'info');
+                window.showToast?.('That bill could not be found. It may have been deleted.', 'info');
                 linkedBillRecordHandled = true;
                 return;
             }
             linkedBillRecordHandled = true;
             window.setTimeout(() => {
+                // Page the table to the bill first so the row is in the DOM and the
+                // highlight + scroll lands on it (the table is paginated).
+                billPaginator?.goToRow(item => item.id === linkedBillRecordId);
                 highlightLinkedBillRow();
                 openBillDrawer(bill);
             }, 120);
@@ -983,6 +1021,7 @@
                     sessionStorage.removeItem('fluxy_pending_tours');
                     return;
                 }
+                await prepareLinkedBillRecordRange(user);
                 await window.loadBills();
                 const params = new URLSearchParams(window.location.search);
                 if (params.get('openAddBill') === '1' && typeof window.showAddBillModal === 'function') {

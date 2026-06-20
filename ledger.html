@@ -2175,12 +2175,17 @@
             const row = allLedgerTransactions.find(transaction => transaction.id === linkedLedgerRecordId)
                 || linkedLedgerRecordRow;
             if (!row) {
-                window.showToast?.('That transaction is not in the currently loaded ledger range.', 'info');
+                window.showToast?.('That transaction could not be found. It may have been deleted.', 'info');
                 linkedLedgerRecordHandled = true;
                 return;
             }
             linkedLedgerRecordHandled = true;
             window.setTimeout(() => {
+                // The table is paginated, so the linked record may sit on a later
+                // page. Page to it first — otherwise the row isn't in the DOM, the
+                // highlight no-ops, and only the drawer would open (the user never
+                // sees where the record lives in the ledger).
+                ledgerPaginator.goToRow(transaction => transaction.id === linkedLedgerRecordId);
                 highlightLedgerRow(linkedLedgerRecordId);
                 window.openTxDetailDrawer(row);
             }, 120);
@@ -2249,7 +2254,7 @@
             if (!reviewBtn) return;
             const row = findLedgerTransactionById(reviewBtn.dataset.recordId || '');
             if (!row) {
-                window.showToast?.('That transaction is not in the currently loaded ledger range.', 'info');
+                window.showToast?.('That transaction could not be found. It may have been deleted.', 'info');
                 return;
             }
             // The ledger table is paginated, so the record behind this issue may
