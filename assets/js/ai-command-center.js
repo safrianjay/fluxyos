@@ -573,6 +573,9 @@
                     message: prompt,
                     chat_id: state.currentChatId || undefined,
                     page_context: 'ai_command_center',
+                    // Business-level context (the Command Center is not page-scoped)
+                    // so the analyst can orient on workspace coverage.
+                    page_summary: buildCommandCenterPageSummary(financeSnapshot),
                     period: getCurrentPeriod(prompt),
                     finance_snapshot: financeSnapshot,
                 }),
@@ -619,6 +622,24 @@
             confirmLabel: 'Activate subscription'
         });
         return true;
+    }
+
+    // Business-level page context for the full-page Command Center. Unlike the
+    // drawer (which reflects the originating finance page), this summarizes
+    // workspace coverage from the snapshot the request already carries.
+    function buildCommandCenterPageSummary(snapshot) {
+        const counts = snapshot?.meta?.counts || {};
+        return {
+            page: 'ai_command_center',
+            pageTitle: 'Fluxy AI',
+            summary: [
+                { label: 'Transactions', value: String(counts.transactions ?? 0), status: 'neutral' },
+                { label: 'Bills', value: String(counts.bills ?? 0), status: 'neutral' },
+                { label: 'Subscriptions', value: String(counts.subscriptions ?? 0), status: 'neutral' },
+            ],
+            filters: {},
+            selectedRecord: null,
+        };
     }
 
     async function buildFinanceSnapshot() {
@@ -1442,6 +1463,12 @@
     }
 
     function inferRelatedRecordSource(record, context = {}) {
+        // Prefer the authoritative record_kind the backend now tags on evidence.
+        const kind = String(record?.record_kind || '').toLowerCase();
+        if (kind === 'bill') return 'bills';
+        if (kind === 'subscription') return 'subscriptions';
+        if (kind === 'revenue') return 'revenue_sync';
+        if (kind === 'transaction') return 'ledger';
         const rawSource = String(record?.source || record?.collection || '').toLowerCase();
         if (['bill', 'bills', 'invoice'].includes(rawSource)) return 'bills';
         if (['subscription', 'subscriptions'].includes(rawSource)) return 'subscriptions';

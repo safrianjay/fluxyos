@@ -29,6 +29,34 @@ const state = {
     modal: createModalState()
 };
 
+// Fluxy AI page context — summarizes the selected main budget (usage + risk) so
+// the AI drawer opens aware of budget pressure. Reads live module state only.
+window.FluxyAIContext?.register?.(() => {
+    const budget = state.selectedMainBudget;
+    if (!budget) {
+        return { pageTitle: 'Budget', summary: [{ label: 'Status', value: 'No budget selected' }], filters: {}, selectedRecord: null };
+    }
+    const envelope = state.annualEnvelope || {};
+    const annualTotal = Math.max(0, Number(envelope.yearly_budget) || Number(budget.total_budget) || 0);
+    const spent = Math.max(0, Number(envelope.spent_reserved_ytd) || 0);
+    const remaining = Math.max(annualTotal - spent, 0);
+    const usagePct = annualTotal > 0 ? Math.round((spent / annualTotal) * 100) : 0;
+    const risk = usagePct >= 100 ? 'critical' : usagePct >= 85 ? 'warning' : 'good';
+    const riskLabel = usagePct >= 100 ? 'Exceeded' : usagePct >= 85 ? 'At risk' : usagePct >= 70 ? 'Watch' : 'Healthy';
+    const rp = (n) => 'Rp' + (Number(n) || 0).toLocaleString('id-ID');
+    return {
+        pageTitle: budget.name || budget.period_label || 'Budget',
+        summary: [
+            { label: 'Annual budget', value: rp(annualTotal) },
+            { label: 'Usage', value: `${usagePct}%`, status: risk },
+            { label: 'Remaining', value: rp(remaining) },
+            { label: 'Risk level', value: riskLabel, status: risk },
+        ],
+        filters: { main_budget_id: state.selectedMainBudgetId || null },
+        selectedRecord: budget.id ? { id: budget.id } : null,
+    };
+});
+
 function createMainWizardState(overrides = {}) {
     const target = getDefaultAnnualTarget();
     return {

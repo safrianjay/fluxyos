@@ -326,6 +326,26 @@
             }
         });
 
+        // Fluxy AI page context — reads the rendered Bills summary cards so the AI
+        // drawer can open already aware of overdue/upcoming pressure.
+        window.FluxyAIContext?.register?.(() => {
+            const text = (id) => (document.getElementById(id)?.textContent || '').trim();
+            const overdue = parseInt(text('card-overdue-count').replace(/[^\d-]/g, ''), 10) || 0;
+            const missing = parseInt(text('card-missing-date').replace(/[^\d-]/g, ''), 10) || 0;
+            return {
+                pageTitle: 'Bills',
+                summary: [
+                    { label: 'Period', value: window.FluxyAIContext.periodLabel(billRangeStart, billRangeEnd) },
+                    { label: 'Active bills', value: text('card-total-bills') || '0' },
+                    { label: 'Overdue', value: String(overdue), status: overdue > 0 ? 'critical' : 'good' },
+                    { label: 'Due this week', value: text('card-due-week') || '—' },
+                    { label: 'Missing due date', value: String(missing), status: missing > 0 ? 'warning' : 'good' },
+                ],
+                filters: { search: (document.getElementById('bill-search-input')?.value || '').trim() || null },
+                selectedRecord: linkedBillRecordId ? { id: linkedBillRecordId } : null,
+            };
+        });
+
         // Universal record deep-linking: when another page links to a bill
         // (`/bill?record=<id>`), it may sit outside the default current-month range.
         // Fetch it up front, snap the Bills date range to the bill's own month, and

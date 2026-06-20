@@ -326,6 +326,24 @@
             }
         });
 
+        // Fluxy AI page context — reads the rendered Revenue Sync summary cards.
+        window.FluxyAIContext?.register?.(() => {
+            const text = (id) => (document.getElementById(id)?.textContent || '').trim();
+            const needs = parseInt(text('card-needs-review').replace(/[^\d-]/g, ''), 10) || 0;
+            return {
+                pageTitle: 'Revenue Sync',
+                summary: [
+                    { label: 'Period', value: window.FluxyAIContext.periodLabel(revenueRangeStart, revenueRangeEnd) },
+                    { label: 'Total revenue', value: text('card-revenue-total') || '—' },
+                    { label: 'Channels connected', value: text('card-channels-connected') || '0' },
+                    { label: 'Needs review', value: String(needs), status: needs > 0 ? 'warning' : 'good' },
+                    { label: 'Reconciliation health', value: text('card-reconciliation-health') || 'N/A' },
+                ],
+                filters: { search: (document.getElementById('revenue-search-input')?.value || '').trim() || null },
+                selectedRecord: linkedRevenueRecordId ? { id: linkedRevenueRecordId } : null,
+            };
+        });
+
         // Universal record deep-linking: when another page links to a revenue row
         // (`/revenue-sync?record=<id>`), it may sit outside the default current-month
         // range. Revenue rows are income transactions, so fetch the record up front,

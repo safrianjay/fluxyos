@@ -10,19 +10,32 @@
             'What should I do next?'
         ],
         dashboard: [
-            'Explain my business health',
+            'How is my business doing?',
+            'What should I fix first?',
+            'What is hurting my margin?',
             'What changed this month?',
-            'What should I fix first?'
+            'What are my biggest risks?'
         ],
         ledger: [
-            'Find missing receipts',
-            'Show unusual expenses',
-            'Can I trust this ledger?'
+            'Can I trust this ledger?',
+            'Analyze cash movement',
+            'Show unusual transactions',
+            'Explain spending patterns',
+            'Show largest vendors'
         ],
         bills: [
-            'Which bills are due soon?',
-            'What bills are risky?',
-            'Summarize upcoming payables'
+            'Which bills need attention?',
+            'Show overdue bills',
+            'What payments are coming soon?',
+            'Can I cover upcoming bills?',
+            'Which vendors cost the most?'
+        ],
+        budget: [
+            'Which budgets are at risk?',
+            'Where am I overspending?',
+            'Forecast budget usage',
+            'Recommend budget adjustments',
+            'Show highest risk category'
         ],
         subscriptions: [
             'How much am I spending on SaaS?',
@@ -33,6 +46,12 @@
             'What revenue changed?',
             'Which revenue source is strongest?',
             'Is there a revenue anomaly?'
+        ],
+        reports: [
+            'Is my data ready to report?',
+            'Summarize this period',
+            'What is hurting my margin?',
+            'What changed this month?'
         ]
     };
     const MIN_THINKING_MS = 700;
@@ -53,11 +72,7 @@
                     </button>
                 </div>
                 <div class="chat-messages" id="chat-messages" aria-live="polite">
-                    <div class="message ai">
-                        <p class="message-title">Here’s what I can analyze.</p>
-                        <p>I can help with revenue, expenses, margin, bills, subscriptions, ledger cleanup, missing receipts, and operational finance risks from your FluxyOS data.</p>
-                    </div>
-                    <div class="prompt-chip-list" id="prompt-chip-list"></div>
+                    <div id="ai-session-intro"></div>
                 </div>
                 <form class="chat-input-area" id="chat-form">
                     <input type="text" id="chat-input" placeholder="Ask about your finances..." autocomplete="off" maxlength="500">
@@ -82,15 +97,28 @@
         const form = document.getElementById('chat-form');
         const input = document.getElementById('chat-input');
         const messages = document.getElementById('chat-messages');
-        const promptList = document.getElementById('prompt-chip-list');
+        const intro = document.getElementById('ai-session-intro');
 
-        renderPromptChips(promptList, getPageContext(), submitPrompt);
+        // Render the per-session intro (Current Context card + page-aware prompt
+        // chips) fresh, so period/filter/KPI changes are reflected each open.
+        function renderSessionIntro() {
+            const context = readPageContext();
+            intro.innerHTML = renderContextCard(context) + `<div class="prompt-chip-list" id="prompt-chip-list"></div>`;
+            const promptList = intro.querySelector('#prompt-chip-list');
+            renderPromptChips(promptList, context, submitPrompt);
+        }
+
+        renderSessionIntro();
 
         window.toggleFluxyAI = (state) => {
             container.style.display = 'flex';
-            if (state === true) {
+            const open = () => {
+                renderSessionIntro();
                 windowElem.classList.add('active');
                 input.focus();
+            };
+            if (state === true) {
+                open();
                 return;
             }
             if (state === false) {
@@ -98,9 +126,12 @@
                 setTimeout(() => { container.style.display = 'none'; }, 400);
                 return;
             }
-            const isActive = windowElem.classList.toggle('active');
-            if (isActive) input.focus();
-            if (!isActive) setTimeout(() => { container.style.display = 'none'; }, 400);
+            if (!windowElem.classList.contains('active')) {
+                open();
+            } else {
+                windowElem.classList.remove('active');
+                setTimeout(() => { container.style.display = 'none'; }, 400);
+            }
         };
 
         closeBtn.onclick = () => window.toggleFluxyAI(false);
@@ -132,6 +163,10 @@
                     body: JSON.stringify({
                         message: text,
                         page_context: getPageContext(),
+                        // Lightweight page context (title, filters, on-screen
+                        // metrics) so the analyst can acknowledge what the user
+                        // is viewing. Orientation only — never a numeric source.
+                        page_summary: readPageContext(),
                         period: getCurrentPeriod(),
                         // App display language (set in Settings → Language & Region).
                         // The brain replies in Bahasa Indonesia when this is 'id'.
@@ -168,9 +203,21 @@
         return true;
     }
 
-    function renderPromptChips(container, pageContext, onSelect) {
-        const prompts = [...(PROMPTS[pageContext] || []), ...PROMPTS.global].slice(0, 7);
-        container.innerHTML = prompts.map(prompt => (
+    function renderPromptChips(container, context, onSelect) {
+        if (!container) return;
+        const page = (context && context.page) || 'global';
+        // Dynamic, signal-driven chips come first when the page surfaces a live
+        // risk; then the page's curated prompts; then the global fallback tail.
+        const prompts = [];
+        const seen = new Set();
+        const push = (prompt) => {
+            const key = prompt.toLowerCase();
+            if (prompt && !seen.has(key)) { seen.add(key); prompts.push(prompt); }
+        };
+        dynamicPromptsFor(context).forEach(push);
+        (PROMPTS[page] || []).forEach(push);
+        PROMPTS.global.forEach(push);
+        container.innerHTML = prompts.slice(0, 7).map(prompt => (
             `<button type="button" class="prompt-chip" data-prompt="${escapeAttribute(prompt)}">${escapeHTML(prompt)}</button>`
         )).join('');
         container.querySelectorAll('.prompt-chip').forEach(button => {
@@ -178,14 +225,78 @@
         });
     }
 
+    // Build at most two context-derived prompts from live page signals. Reads the
+    // summary row statuses the page provider supplied — no new computation.
+    function dynamicPromptsFor(context) {
+        const out = [];
+        const rows = (context && Array.isArray(context.summary)) ? context.summary : [];
+        const findRow = (re) => rows.find(row => re.test(String(row.label || '')));
+        if (context && context.page === 'bills') {
+            const overdue = findRow(/overdue/i);
+            if (overdue && parseFirstNumber(overdue.value) > 0) out.push('Show overdue bills');
+        }
+        if (context && context.page === 'budget') {
+            const usage = findRow(/usage|used/i);
+            const risk = findRow(/risk/i);
+            if ((usage && parseFirstNumber(usage.value) >= 85) || (risk && /watch|risk|exceed/i.test(String(risk.value)))) {
+                out.push('Why is this budget at risk?');
+            }
+        }
+        if (context && (context.page === 'ledger')) {
+            const missing = findRow(/missing receipt/i);
+            if (missing && parseFirstNumber(missing.value) > 0) out.push('Find missing receipts');
+        }
+        return out;
+    }
+
+    function parseFirstNumber(value) {
+        const match = String(value == null ? '' : value).replace(/[.,](?=\d{3}\b)/g, '').match(/-?\d+(\.\d+)?/);
+        return match ? Number(match[0]) : 0;
+    }
+
+    // Full lightweight context object (page, title, filters, selectedRecord,
+    // summary[]). Prefers the shared registry; falls back to a bare object so the
+    // drawer still works if a page registered no provider.
+    function readPageContext() {
+        if (window.FluxyAIContext && typeof window.FluxyAIContext.get === 'function') {
+            return window.FluxyAIContext.get();
+        }
+        return { page: getPageContext(), pageTitle: 'FluxyOS', filters: {}, selectedRecord: null, summary: [] };
+    }
+
     function getPageContext() {
+        if (window.FluxyAIContext && typeof window.FluxyAIContext.detectPage === 'function') {
+            return window.FluxyAIContext.detectPage();
+        }
         const path = window.location.pathname.replace(/^\//, '').replace(/\.html$/, '');
         if (path.includes('ledger')) return 'ledger';
         if (path.includes('bill')) return 'bills';
         if (path.includes('subscription')) return 'subscriptions';
         if (path.includes('revenue-sync') || path.includes('revenuesync')) return 'revenue_sync';
+        if (path.includes('budget')) return 'budget';
+        if (path.includes('report')) return 'reports';
         if (path.includes('dashboard')) return 'dashboard';
         return 'global';
+    }
+
+    // "Current Context" card shown at the top of every AI session. White card,
+    // status-dot rows reusing the answer key-number visual language.
+    function renderContextCard(context) {
+        const title = escapeHTML((context && context.pageTitle) || 'FluxyOS');
+        const rows = (context && Array.isArray(context.summary)) ? context.summary : [];
+        const rowsHTML = rows.map(row => `
+            <div class="ai-context-row ai-ctx-${escapeAttribute(row.status || 'neutral')}">
+                <span><i aria-hidden="true"></i>${escapeHTML(row.label)}</span>
+                <strong>${escapeHTML(row.value)}</strong>
+            </div>
+        `).join('');
+        return `
+            <div class="ai-context-card">
+                <p class="ai-context-eyebrow">Current Context</p>
+                <p class="ai-context-title">${title}</p>
+                ${rowsHTML ? `<div class="ai-context-grid">${rowsHTML}</div>` : ''}
+            </div>
+        `;
     }
 
     function getCurrentPeriod() {
@@ -278,8 +389,9 @@
         const keyNumbers = Array.isArray(answer.key_numbers) && answer.key_numbers.length
             ? `<div class="answer-grid">${answer.key_numbers.map(renderKeyNumber).join('')}</div>`
             : '';
+        const fallbackKind = fallbackKindForIntent(answer.intent);
         const insights = Array.isArray(answer.insights) && answer.insights.length
-            ? `<div class="answer-section"><h4>Signals</h4>${answer.insights.map(renderInsight).join('')}</div>`
+            ? `<div class="answer-section"><h4>Signals</h4>${answer.insights.map(item => renderInsight(item, fallbackKind)).join('')}</div>`
             : '';
         const actions = Array.isArray(answer.recommended_actions) && answer.recommended_actions.length
             ? `<div class="answer-section"><h4>Next steps</h4>${answer.recommended_actions.map(renderAction).join('')}</div>`
@@ -340,9 +452,9 @@
         `;
     }
 
-    function renderInsight(item) {
+    function renderInsight(item, fallbackKind) {
         const evidence = Array.isArray(item.evidence) && item.evidence.length
-            ? `<div class="evidence-list">${item.evidence.slice(0, 3).map(renderEvidence).join('')}</div>`
+            ? `<div class="evidence-list">${item.evidence.slice(0, 3).map(record => renderEvidence(record, fallbackKind)).join('')}</div>`
             : '';
         return `
             <div class="insight insight-${escapeAttribute(item.severity || 'info')}">
@@ -353,11 +465,40 @@
         `;
     }
 
-    function renderEvidence(record) {
+    // Deep-link target page per record kind. Reuses the existing
+    // /<page>?record=<id> contract every list page already consumes
+    // (highlightFluxyLinkedTarget). No new navigation architecture.
+    const KIND_TO_PATH = {
+        transaction: '/ledger',
+        bill: '/bill',
+        subscription: '/subscription',
+        revenue: '/revenue-sync',
+    };
+
+    function fallbackKindForIntent(intent) {
+        if (intent === 'bills_analysis' || intent === 'cash_pressure') return 'bill';
+        if (intent === 'subscription_analysis') return 'subscription';
+        if (intent === 'revenue_analysis') return 'revenue';
+        return 'transaction';
+    }
+
+    function evidenceHref(record, fallbackKind) {
+        const kind = (record.record_kind && record.record_kind !== 'none') ? record.record_kind : fallbackKind;
+        const base = KIND_TO_PATH[kind];
+        if (!base || !record.id) return null;
+        return `${base}?record=${encodeURIComponent(record.id)}`;
+    }
+
+    function renderEvidence(record, fallbackKind) {
         const name = record.vendor_name || record.label || 'Record';
         const amount = record.formatted_amount || record.formatted_value || '';
         const status = record.status ? ` · ${record.status}` : '';
-        return `<div class="evidence-item"><span>${escapeHTML(name)}${escapeHTML(status)}</span><strong>${escapeHTML(amount)}</strong></div>`;
+        const inner = `<span>${escapeHTML(name)}${escapeHTML(status)}</span><strong>${escapeHTML(amount)}</strong>`;
+        const href = evidenceHref(record, fallbackKind);
+        if (href) {
+            return `<a class="evidence-item evidence-link" href="${escapeAttribute(href)}">${inner}<svg class="evidence-arrow" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg></a>`;
+        }
+        return `<div class="evidence-item">${inner}</div>`;
     }
 
     function renderAction(item) {

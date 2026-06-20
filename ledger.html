@@ -461,6 +461,29 @@
             }
         });
 
+        // Fluxy AI page context — reads the already-rendered KPI cards + active
+        // range/search so the AI drawer can acknowledge the Ledger on open.
+        window.FluxyAIContext?.register?.(() => {
+            const text = (id) => (document.getElementById(id)?.textContent || '').trim();
+            const num = (id) => { const n = parseInt(text(id).replace(/[^\d-]/g, ''), 10); return Number.isFinite(n) ? n : 0; };
+            const missing = num('ledger-missing-receipts-count');
+            const uncat = num('ledger-uncategorized-count');
+            const trust = text('ledger-trust-score');
+            const trustNum = parseInt(trust, 10);
+            return {
+                pageTitle: 'Financial Ledger',
+                summary: [
+                    { label: 'Period', value: window.FluxyAIContext.periodLabel(ledgerRangeStart, ledgerRangeEnd) },
+                    { label: 'Transactions', value: text('ledger-total-count') || '0' },
+                    { label: 'Trust score', value: trust || 'N/A', status: Number.isFinite(trustNum) ? (trustNum >= 90 ? 'good' : trustNum >= 70 ? 'warning' : 'critical') : 'neutral' },
+                    { label: 'Missing receipts', value: String(missing), status: missing > 0 ? 'warning' : 'good' },
+                    { label: 'Uncategorized', value: String(uncat), status: uncat > 0 ? 'warning' : 'good' },
+                ],
+                filters: { search: (document.getElementById('ledger-search-input')?.value || '').trim() || null },
+                selectedRecord: linkedLedgerRecordId ? { id: linkedLedgerRecordId } : null,
+            };
+        });
+
         const fluxySelectInstances = new Map();
         let fluxyOpenSelect = null;
 

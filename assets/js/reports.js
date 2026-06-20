@@ -83,6 +83,33 @@ const reportsState = {
     error: null
 };
 
+// Fluxy AI page context — reports period scope, readiness, and data coverage so
+// the AI drawer opens aware of what the user is preparing to report on.
+window.FluxyAIContext?.register?.(() => {
+    const text = (id) => (document.getElementById(id)?.textContent || '').trim();
+    const MODE_LABELS = { monthly: 'This month', last_month: 'Last month', quarter_to_date: 'Quarter to date', year_to_date: 'Year to date', custom: 'Custom range' };
+    const mode = reportsState.reportPeriodMode;
+    const periodValue = mode === 'custom'
+        ? (window.FluxyAIContext.periodLabel(reportsState.customRange.start, reportsState.customRange.end) || 'Custom range')
+        : (MODE_LABELS[mode] || mode);
+    const src = reportsState.sourceData || {};
+    const txCount = (src.transactions || []).length;
+    const readiness = text('readiness-score');
+    const readinessNum = parseInt(readiness, 10);
+    return {
+        pageTitle: 'Reports & Exports',
+        summary: [
+            { label: 'Period', value: periodValue },
+            { label: 'Readiness', value: readiness || 'N/A', status: Number.isFinite(readinessNum) ? (readinessNum >= 90 ? 'good' : readinessNum >= 70 ? 'warning' : 'critical') : 'neutral' },
+            { label: 'Transactions', value: String(txCount) },
+            { label: 'Bills', value: String((src.bills || []).length) },
+            { label: 'Subscriptions', value: String((src.subscriptions || []).length) },
+        ],
+        filters: { period_mode: mode, comparison_mode: reportsState.comparisonMode, report_type: reportsState.selectedReportType },
+        selectedRecord: null,
+    };
+});
+
 function escapeHtml(value) {
     return String(value ?? '')
         .replace(/&/g, '&amp;')

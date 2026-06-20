@@ -1,4 +1,91 @@
 (function() {
+    // 0. Shared Fluxy AI page-context registry.
+    // Defined synchronously here (sidebar-loader.js is a blocking classic script
+    // that runs before the deferred page <script type="module"> blocks) so every
+    // page can call window.FluxyAIContext.register(...) without a load race.
+    // Pages register a *getter* that reads their live state; the drawer
+    // (ai-chat.js) and the AI Command Center read window.FluxyAIContext.get()
+    // when they open. Context only orients the AI — it never restricts scope and
+    // is never a source of truth for numbers (the backend computes those).
+    if (!window.FluxyAIContext) {
+        const PAGE_TITLES = {
+            dashboard: 'Business Overview',
+            ledger: 'Financial Ledger',
+            bills: 'Bills',
+            subscriptions: 'Subscriptions',
+            revenue_sync: 'Revenue Sync',
+            budget: 'Budget',
+            reports: 'Reports & Exports',
+            global: 'FluxyOS',
+        };
+        const STATUS_VALUES = ['good', 'warning', 'critical', 'neutral'];
+        const detectPage = () => {
+            const path = window.location.pathname.replace(/^\//, '').replace(/\.html$/, '');
+            if (path.includes('ledger')) return 'ledger';
+            if (path.includes('bill')) return 'bills';
+            if (path.includes('subscription')) return 'subscriptions';
+            if (path.includes('revenue-sync') || path.includes('revenuesync')) return 'revenue_sync';
+            if (path.includes('budget')) return 'budget';
+            if (path.includes('report')) return 'reports';
+            if (path.includes('dashboard')) return 'dashboard';
+            return 'global';
+        };
+        const clampSummary = (summary) => {
+            if (!Array.isArray(summary)) return [];
+            return summary
+                .map(row => ({
+                    label: String(row && row.label != null ? row.label : '').slice(0, 60),
+                    value: String(row && row.value != null ? row.value : '').slice(0, 80),
+                    status: row && STATUS_VALUES.includes(row.status) ? row.status : 'neutral',
+                }))
+                .filter(row => row.label || row.value)
+                .slice(0, 6);
+        };
+        const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        // Human-friendly label for a YYYY-MM-DD..YYYY-MM-DD range. Collapses a
+        // full calendar month to "June 2026"; otherwise "1 Jun – 30 Jun 2026".
+        const periodLabel = (start, end) => {
+            const parse = (key) => {
+                const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key || ''));
+                return m ? { y: +m[1], mo: +m[2] - 1, d: +m[3] } : null;
+            };
+            const a = parse(start);
+            const b = parse(end) || a;
+            if (!a) return '';
+            const short = (p) => `${p.d} ${MONTHS[p.mo].slice(0, 3)}`;
+            if (a.y === b.y && a.mo === b.mo) {
+                const lastDay = new Date(a.y, a.mo + 1, 0).getDate();
+                if (a.d === 1 && b.d === lastDay) return `${MONTHS[a.mo]} ${a.y}`;
+                if (a.d === b.d) return `${a.d} ${MONTHS[a.mo].slice(0, 3)} ${a.y}`;
+                return `${a.d}–${b.d} ${MONTHS[a.mo].slice(0, 3)} ${a.y}`;
+            }
+            return `${short(a)} ${a.y} – ${short(b)} ${b.y}`;
+        };
+        window.FluxyAIContext = {
+            _provider: null,
+            detectPage,
+            periodLabel,
+            register(fn) { this._provider = typeof fn === 'function' ? fn : null; },
+            get() {
+                const page = detectPage();
+                const base = { page, pageTitle: PAGE_TITLES[page] || PAGE_TITLES.global, filters: {}, selectedRecord: null, summary: [] };
+                if (!this._provider) return base;
+                try {
+                    const provided = this._provider() || {};
+                    return {
+                        page,
+                        pageTitle: provided.pageTitle || base.pageTitle,
+                        filters: provided.filters && typeof provided.filters === 'object' ? provided.filters : {},
+                        selectedRecord: provided.selectedRecord || null,
+                        summary: clampSummary(provided.summary),
+                    };
+                } catch (err) {
+                    return base;
+                }
+            },
+        };
+    }
+
     // 1. Load Global Assets (AI Chat & CSS)
     const assets = [
         { type: 'link', rel: 'stylesheet', href: '/assets/css/ai-chat.css' },

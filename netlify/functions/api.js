@@ -267,7 +267,7 @@ function classifyIntent(message, pageContext = 'global') {
         if (pageContext === 'ledger') return 'ledger_cleanup';
         return 'data_lookup';
     }
-    if (['dashboard', 'global'].includes(pageContext)) return 'finance_health';
+    if (['dashboard', 'global', 'budget', 'reports'].includes(pageContext)) return 'finance_health';
     if (pageContext === 'ledger') return 'ledger_cleanup';
     if (pageContext === 'bills') return 'bills_analysis';
     if (pageContext === 'subscriptions') return 'subscription_analysis';
@@ -563,10 +563,22 @@ function groupTotals(records, keyFn) {
         .sort((a, b) => b.value - a.value);
 }
 
+// Maps the inferred collection source to the record_kind the frontend uses to
+// build /<page>?record=<id> deep links from answer evidence.
+function recordKindFromSource(source) {
+    if (source === 'bills') return 'bill';
+    if (source === 'subscriptions') return 'subscription';
+    if (source === 'revenue_sync') return 'revenue';
+    if (source === 'ledger') return 'transaction';
+    return 'none';
+}
+
 function compactRecord(record, dateField = 'timestamp') {
+    const source = inferRecordSource(record, dateField);
     return {
         id: record.id,
-        source: inferRecordSource(record, dateField),
+        source,
+        record_kind: recordKindFromSource(source),
         vendor_name: record.vendor_name || 'Unnamed record',
         category: record.category || 'Uncategorized',
         type: record.type || 'unknown',
@@ -1832,6 +1844,7 @@ function financeAnswerSchema() {
                                 additionalProperties: false,
                                 properties: {
                                     id: { type: ['string', 'null'] },
+                                    record_kind: { type: 'string', enum: ['transaction', 'bill', 'subscription', 'revenue', 'none'] },
                                     vendor_name: { type: ['string', 'null'] },
                                     label: { type: ['string', 'null'] },
                                     category: { type: ['string', 'null'] },
@@ -1842,7 +1855,7 @@ function financeAnswerSchema() {
                                     formatted_value: { type: ['string', 'null'] },
                                     date: { type: ['string', 'null'] },
                                 },
-                                required: ['id', 'vendor_name', 'label', 'category', 'type', 'status', 'amount', 'formatted_amount', 'formatted_value', 'date'],
+                                required: ['id', 'record_kind', 'vendor_name', 'label', 'category', 'type', 'status', 'amount', 'formatted_amount', 'formatted_value', 'date'],
                             },
                         },
                     },
@@ -1941,8 +1954,10 @@ function sanitizeInsights(value) {
 function sanitizeEvidenceRecord(record) {
     if (!record || typeof record !== 'object') return null;
     const amount = Number(record.amount);
+    const recordKinds = ['transaction', 'bill', 'subscription', 'revenue', 'none'];
     return {
         id: typeof record.id === 'string' ? record.id : null,
+        record_kind: recordKinds.includes(record.record_kind) ? record.record_kind : 'none',
         vendor_name: typeof record.vendor_name === 'string' ? record.vendor_name : null,
         label: typeof record.label === 'string' ? record.label : null,
         category: typeof record.category === 'string' ? record.category : null,
@@ -1968,7 +1983,32 @@ function sanitizeActions(value) {
     }).filter(Boolean);
 }
 
-async function callOpenAIFinanceAnalyst({ message, pageContext, period, intent, plan, dataCoverage, deterministicAnswer, tools, language = 'en' }) {
+// Clamp the browser-supplied page context to a small, safe shape. It is used by
+// the analyst purely to orient its opening sentence — never as a numeric source.
+function sanitizePageSummary(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const page = typeof raw.page === 'string' ? raw.page.slice(0, 40) : 'global';
+    const pageTitle = typeof raw.pageTitle === 'string' ? raw.pageTitle.slice(0, 80) : '';
+    const summary = Array.isArray(raw.summary)
+        ? raw.summary.slice(0, 8).map(row => ({
+            label: typeof row?.label === 'string' ? row.label.slice(0, 60) : '',
+            value: typeof row?.value === 'string' ? row.value.slice(0, 80) : String(row?.value ?? '').slice(0, 80),
+            status: ['good', 'warning', 'critical', 'neutral'].includes(row?.status) ? row.status : 'neutral',
+        })).filter(row => row.label || row.value)
+        : [];
+    let filters = null;
+    try {
+        const serialized = JSON.stringify(raw.filters || {});
+        if (serialized && serialized.length <= 800) filters = JSON.parse(serialized);
+    } catch (err) { filters = null; }
+    const selectedRecord = raw.selectedRecord && typeof raw.selectedRecord === 'object'
+        ? { id: typeof raw.selectedRecord.id === 'string' ? raw.selectedRecord.id.slice(0, 128) : null }
+        : null;
+    if (!pageTitle && !summary.length) return { page, pageTitle, summary, filters, selectedRecord };
+    return { page, pageTitle, summary, filters, selectedRecord };
+}
+
+async function callOpenAIFinanceAnalyst({ message, pageContext, pageSummary = null, period, intent, plan, dataCoverage, deterministicAnswer, tools, language = 'en' }) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) return null;
     const model = process.env.OPENAI_FINANCE_MODEL || 'gpt-4o-mini';
@@ -1982,6 +2022,8 @@ Use only the provided computed tool results. Never invent numbers, vendors, reco
 Unsupported questions must use this direct answer exactly: "${refusalMessage(language)}"
 Use Indonesian Rupiah formatting. Mention data limitations clearly. Keep recommendations operational, not legal, tax, accounting, medical, or investment advice.
 Do not calculate using assumptions unless clearly marked as a proxy. If a collection is missing or incomplete, add a limitation instead of making up a number.
+A page_summary (when present) describes the page the user is viewing — its title, active filters, and on-screen metrics. Use it ONLY to orient your opening sentence and acknowledge what the user is looking at; it is NOT a source of truth for numbers. Every figure you state must come from computed_tool_results. Begin immediately with analysis — never with a description of your own capabilities, and never restrict your answer to the current page when the question spans other areas.
+For each evidence record, copy record_kind verbatim from the matching record in computed_tool_results; never invent it. Use "none" when a record has no kind.
 ${languageDirective}
 Return only structured JSON matching the schema.`;
 
@@ -2004,6 +2046,7 @@ Return only structured JSON matching the schema.`;
                             text: JSON.stringify({
                                 message,
                                 page_context: pageContext,
+                                page_summary: pageSummary || undefined,
                                 intent,
                                 planner_output: plan,
                                 period,
@@ -2042,6 +2085,7 @@ async function buildBrainChatResponse({ request, uid, token }) {
 
     const chatId = typeof request.chat_id === 'string' && request.chat_id.trim() ? request.chat_id.trim().slice(0, 128) : null;
     const pageContext = typeof request.page_context === 'string' ? request.page_context : 'global';
+    const pageSummary = sanitizePageSummary(request.page_summary);
     // App display language (Settings → Language & Region). The explicit setting
     // wins; fall back to detecting Indonesian from the message text itself.
     const language = (request.language === 'id' || request.language === 'en')
@@ -2130,7 +2174,7 @@ async function buildBrainChatResponse({ request, uid, token }) {
         try {
             let validatedAnswer = null;
             for (let attempt = 0; attempt < 2 && !validatedAnswer; attempt += 1) {
-                const modelAnswer = await callOpenAIFinanceAnalyst({ message, pageContext, period: plan.period, intent, plan, dataCoverage, deterministicAnswer, tools, language });
+                const modelAnswer = await callOpenAIFinanceAnalyst({ message, pageContext, pageSummary, period: plan.period, intent, plan, dataCoverage, deterministicAnswer, tools, language });
                 validatedAnswer = validateFinanceAnswer(modelAnswer, intent, plan.period);
                 if (!validatedAnswer && attempt === 1) throw new Error('OpenAI finance analyst returned invalid structured output');
             }

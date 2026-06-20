@@ -36,6 +36,30 @@ let budgetSetupDatePicker = null;
 let budgetSetupSelectedDate = null;
 window.FluxyDashboardRange = { start: dashboardRangeStart, end: dashboardRangeEnd };
 
+// Fluxy AI page context — reads the rendered Overview KPIs + current period so
+// the AI drawer opens already aware of business health on this dashboard.
+window.FluxyAIContext?.register?.(() => {
+    const text = (id) => (document.getElementById(id)?.textContent || '').trim();
+    const periodLabel = dashboardPeriodMode === 'all_time'
+        ? 'All time'
+        : (window.FluxyAIContext.periodLabel(dashboardRangeStart, dashboardRangeEnd) || 'This month');
+    const summary = [
+        { label: 'Period', value: periodLabel },
+        { label: 'Revenue', value: text('kpi-revenue') || '—' },
+        { label: 'OpEx', value: text('kpi-opex') || '—' },
+        { label: 'Gross margin', value: text('kpi-margin') || '—' },
+        { label: 'Cash pressure', value: text('kpi-cash-pressure') || '—' },
+    ];
+    if (currentBudget && currentBudget.monthly > 0) {
+        summary.push({
+            label: 'Budget used',
+            value: `${Math.round(currentBudget.usedPct || 0)}%`,
+            status: (currentBudget.usedPct || 0) >= 100 ? 'critical' : (currentBudget.usedPct || 0) >= 85 ? 'warning' : 'good',
+        });
+    }
+    return { pageTitle: 'Business Overview', summary, filters: { period_mode: dashboardPeriodMode }, selectedRecord: null };
+});
+
 window.loadDashboard = async () => {
     const user = auth.currentUser;
     if (!user) return;

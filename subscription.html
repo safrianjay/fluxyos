@@ -110,6 +110,29 @@
         const linkedSubscriptionRecordId = new URLSearchParams(window.location.search).get('record');
         let allSubscriptions = [];
         let linkedSubscriptionSearchHandled = false;
+
+        // Fluxy AI page context — Subscriptions has no KPI cards, so summarize the
+        // loaded list (count, monthly recurring spend, renewals in the next 30 days).
+        window.FluxyAIContext?.register?.(() => {
+            const subs = Array.isArray(allSubscriptions) ? allSubscriptions : [];
+            const monthly = subs.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+            const now = new Date();
+            const in30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            const upcoming = subs.filter(s => {
+                const d = s.renewal_date?.toDate ? s.renewal_date.toDate() : null;
+                return d && d >= now && d <= in30;
+            }).length;
+            return {
+                pageTitle: 'Subscriptions',
+                summary: [
+                    { label: 'Active subscriptions', value: String(subs.length) },
+                    { label: 'Monthly recurring', value: 'Rp' + monthly.toLocaleString('id-ID') },
+                    { label: 'Renewals (next 30 days)', value: String(upcoming), status: upcoming > 0 ? 'warning' : 'neutral' },
+                ],
+                filters: { search: (document.getElementById('subscription-search-input')?.value || '').trim() || null },
+                selectedRecord: linkedSubscriptionRecordId ? { id: linkedSubscriptionRecordId } : null,
+            };
+        });
         if (linkedSubscriptionSearch) {
             const input = document.getElementById('subscription-search-input');
             if (input) input.value = linkedSubscriptionSearch;
