@@ -405,6 +405,89 @@ class DataService {
         return { id: snap.id, ...snap.data() };
     }
 
+    // Mark a bill paid: unpaid -> paid, ONLY on explicit user confirmation. Mirrors
+    // markInvoicePaid. Creates the linked expense ledger transaction (the bill's
+    // amount/vendor/category, type 'expense' so it counts as actual_used), carries
+    // the bill's existing budget assignment onto it (committed -> actual on the same
+    // allocation), stamps the bill paid + converted_to_actual + linked_transaction_id,
+    // and writes the audit log — all in one batch so a rules rejection leaves nothing
+    // half-written. The bill drops out of budget *committed* totals (getBudgetUsage
+    // skips converted_to_actual / linked bills), so there is no double count.
+    // Paid is terminal: no un-pay path exists.
+    async markBillPaid(userId, billId, { paymentDate = null, cashFields = null } = {}) {
+        if (!userId || !billId) throw new Error('userId and billId required');
+        const bill = await this.getBillById(userId, billId);
+        if (!bill) throw new Error('Bill not found.');
+        if (bill.payment_status === 'paid') throw new Error('This bill is already marked as paid.');
+        const amount = Math.round(Math.abs(Number(bill.amount) || 0));
+        if (!(amount > 0)) throw new Error('Bill amount must be greater than zero.');
+
+        const txRef = doc(collection(this.db, `users/${userId}/transactions`));
+        const transaction = {
+            amount,
+            vendor_name: bill.vendor_name || 'Bill',
+            category: bill.category || 'Operations',
+            type: 'expense',
+            status: 'Completed',
+            icon: '💸',
+            timestamp: this._coerceTimestampOrNow(paymentDate),
+            notes: `Payment for bill ${bill.vendor_name || billId}`,
+            linked_bill_id: billId,
+            created_at: serverTimestamp()
+        };
+        // Carry over the bill's explicit budget assignment so the actual spend lands
+        // on the same allocation it was committed to. Category-only commitments need
+        // no copy — resolveRecordAssignment re-matches the expense by category.
+        if (bill.budget_match_status === 'excluded') {
+            transaction.budget_id = bill.budget_id ?? null;
+            transaction.budget_allocation_id = null;
+            transaction.budget_match_method = 'excluded';
+            transaction.budget_match_status = 'excluded';
+        } else if (bill.budget_id && bill.budget_allocation_id) {
+            transaction.budget_id = bill.budget_id;
+            transaction.budget_allocation_id = bill.budget_allocation_id;
+            transaction.budget_match_method = 'manual';
+            transaction.budget_match_status = 'matched';
+            transaction.budget_match_confidence = 1;
+        }
+        // Cash impact: default to actual cash-out; the caller may pass derived fields
+        // (FluxyCashImpact.derive) to record the paying bank account / pending state.
+        const cash = (cashFields && typeof cashFields === 'object') ? cashFields : {
+            cash_effective: true,
+            cash_status: 'actual',
+            cash_direction: 'out',
+            cash_account_id: null,
+            cash_source: 'manual',
+            cash_match_status: 'manual',
+            cash_effective_at: transaction.timestamp
+        };
+        Object.assign(transaction, cash);
+
+        const batch = writeBatch(this.db);
+        batch.set(txRef, transaction);
+        batch.update(doc(this.db, `users/${userId}/bills/${billId}`), {
+            payment_status: 'paid',
+            budget_impact_status: 'converted_to_actual',
+            linked_transaction_id: txRef.id,
+            updated_at: serverTimestamp(),
+            updated_by: userId
+        });
+        batch.set(doc(collection(this.db, `users/${userId}/audit_logs`)), {
+            actor_uid: userId,
+            actor_role: null,
+            action: 'bill.mark_paid',
+            target_collection: 'bills',
+            target_id: billId,
+            before: { payment_status: bill.payment_status ?? 'unpaid', budget_impact_status: bill.budget_impact_status ?? null },
+            after: { payment_status: 'paid', budget_impact_status: 'converted_to_actual', transaction_id: txRef.id, amount },
+            reason: null,
+            source: 'dashboard',
+            created_at: serverTimestamp()
+        });
+        await batch.commit();
+        return { id: billId, transactionId: txRef.id };
+    }
+
     // --- SUBSCRIPTIONS ---
     async addSubscription(userId, data) {
         const { timestamp, ...rest } = data;

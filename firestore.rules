@@ -2050,11 +2050,13 @@ service cloud.firestore {
             'bank_statement_import_id',
             'bank_statement_row_id',
             'imported_at',
-            'bank_account_id'
+            'bank_account_id',
+            'linked_bill_id'
           ])
           && isValidBaseRecord(request.resource.data)
           && (!('created_at' in request.resource.data) || request.resource.data.created_at == request.time)
           && (!('receipt_url' in request.resource.data) || request.resource.data.receipt_url is string)
+          && (!('linked_bill_id' in request.resource.data) || request.resource.data.linked_bill_id == null || (request.resource.data.linked_bill_id is string && request.resource.data.linked_bill_id.size() <= 120))
           && isValidTransactionBudgetFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
@@ -2114,10 +2116,12 @@ service cloud.firestore {
             'bank_statement_import_id',
             'bank_statement_row_id',
             'imported_at',
-            'bank_account_id'
+            'bank_account_id',
+            'linked_bill_id'
           ])
           && isValidTransactionRecordUpdate(request.resource.data, resource.data)
           && preservesLegacyRecordDate(request.resource.data, resource.data)
+          && (!('linked_bill_id' in request.resource.data) || request.resource.data.linked_bill_id == null || (request.resource.data.linked_bill_id is string && request.resource.data.linked_bill_id.size() <= 120))
           && isValidTransactionBudgetFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
@@ -2204,13 +2208,17 @@ service cloud.firestore {
             'budget_assignment_reason',
             'budget_assignment_updated_at',
             'budget_assignment_updated_by',
-            'budget_exclusion_reason'
+            'budget_exclusion_reason',
+            'linked_transaction_id',
+            'updated_at',
+            'updated_by'
           ])
           && isValidBaseRecordUpdate(request.resource.data, resource.data)
           && preservesLegacyRecordDate(request.resource.data, resource.data)
           && (!('due_date' in request.resource.data) || request.resource.data.due_date is timestamp)
           && (!('payment_status' in request.resource.data) || request.resource.data.payment_status in ['unpaid', 'paid', 'overdue', 'unknown'])
           && (!('invoice_status' in request.resource.data) || request.resource.data.invoice_status in ['attached'])
+          && (!('linked_transaction_id' in request.resource.data) || request.resource.data.linked_transaction_id == null || (request.resource.data.linked_transaction_id is string && request.resource.data.linked_transaction_id.size() <= 120))
           && isValidBillBudgetFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);

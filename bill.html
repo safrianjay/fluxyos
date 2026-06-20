@@ -181,10 +181,40 @@
         </div>
         <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
             <button id="bill-drawer-close-footer" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[14px] font-medium hover:bg-gray-200 transition-colors">Close</button>
-            <button disabled class="flex-1 px-4 py-2.5 bg-gray-50 text-gray-400 rounded-lg text-[14px] font-medium cursor-not-allowed flex items-center justify-center gap-2">
-                Mark as Paid
-                <span class="text-[10px] font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
-            </button>
+            <button id="bill-mark-paid-btn" type="button" class="flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-lg text-[14px] font-semibold hover:bg-gray-800 active:scale-95 transition-colors flex items-center justify-center gap-2">Mark as Paid</button>
+        </div>
+    </div>
+
+    <!-- Record Payment Modal -->
+    <div id="bill-pay-modal" class="fixed inset-0 z-[60] hidden">
+        <div id="bill-pay-backdrop" class="absolute inset-0 bg-[rgba(11,15,25,0.5)] backdrop-blur-[2px]"></div>
+        <div class="relative min-h-full flex items-center justify-center p-4">
+            <div class="w-full max-w-md bg-white rounded-xl border border-gray-200 shadow-2xl flex flex-col max-h-[90vh]">
+                <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-[18px] font-bold tracking-[-0.01em] text-[#0B0F19]">Record payment</h3>
+                        <p class="text-[12px] text-gray-500 mt-0.5">This posts an expense to your Ledger.</p>
+                    </div>
+                    <button id="bill-pay-close" type="button" aria-label="Close" class="w-8 h-8 rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-50 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="px-5 py-4 overflow-y-auto space-y-4">
+                    <div id="bill-pay-summary" class="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-1.5"></div>
+                    <div>
+                        <label class="block text-[12px] font-semibold text-gray-500 mb-1.5">Payment date</label>
+                        <div id="bill-pay-date"></div>
+                    </div>
+                    <div>
+                        <label class="block text-[12px] font-semibold text-gray-500 mb-1.5">Cash impact</label>
+                        <div id="bill-pay-cash"></div>
+                    </div>
+                </div>
+                <div class="px-5 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
+                    <button id="bill-pay-cancel" type="button" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[14px] font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                    <button id="bill-pay-confirm" type="button" class="flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-lg text-[14px] font-semibold hover:bg-gray-800 active:scale-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Mark as Paid</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -405,6 +435,7 @@
         }
 
         function getBillDisplayStatus(bill) {
+            if (bill.payment_status === 'paid') return 'Paid';
             const dueDate = getBillDueDate(bill);
             if (!dueDate) return 'Missing Due Date';
             const today = getToday();
@@ -425,6 +456,7 @@
             let missingDueDateCount = 0;
 
             for (const bill of bills) {
+                if (bill.payment_status === 'paid') continue;
                 const amount = typeof bill.amount === 'number' ? bill.amount : 0;
                 const dueDate = getBillDueDate(bill);
                 if (!dueDate) { missingDueDateCount++; continue; }
@@ -447,6 +479,7 @@
             const today = getToday();
             const buckets = { overdue: [], today: [], thisWeek: [], later: [] };
             for (const bill of bills) {
+                if (bill.payment_status === 'paid') continue;
                 const dueDate = getBillDueDate(bill);
                 if (!dueDate) continue;
                 const due = new Date(dueDate);
@@ -683,6 +716,7 @@
         // ── Bill Detail Drawer ────────────────────────────────────────────────
 
         let activeDrawerBillId = null;
+        let activeDrawerBill = null;
         let invoiceAttachInFlight = false;
 
         function renderAttachedInvoicesList(bill) {
@@ -702,6 +736,9 @@
 
         function openBillDrawer(bill) {
             activeDrawerBillId = bill.id;
+            activeDrawerBill = bill;
+            const isPaid = bill.payment_status === 'paid';
+            const ledgerHref = bill.linked_transaction_id ? `/ledger?record=${encodeURIComponent(bill.linked_transaction_id)}` : null;
             const dueDate = getBillDueDate(bill);
             const status = getBillDisplayStatus(bill);
             const dueDateDisplay = dueDate
@@ -746,9 +783,15 @@
 
                     <div class="border-t border-gray-100 pt-4">
                         <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-2">Payment Readiness</p>
+                        ${isPaid ? `
+                        <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-[12px] text-emerald-700 leading-relaxed">
+                            Paid and recorded as a Ledger expense.
+                            ${ledgerHref ? `<a href="${ledgerHref}" class="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:underline mt-1">View in Ledger
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 18 6-6-6-6"></path></svg></a>` : ''}
+                        </div>` : `
                         <div class="bg-gray-50 rounded-lg p-3 text-[12px] text-gray-500 leading-relaxed">
-                            This bill has not been marked as paid. Once payment is confirmed, record it as an expense transaction in the Ledger.
-                        </div>
+                            This bill has not been marked as paid. Marking it paid records an expense in the Ledger (category and budget inherited from this bill) and moves it from committed to actual spend.
+                        </div>`}
                     </div>
 
                     ${renderAttachedInvoicesList(bill)}
@@ -760,15 +803,13 @@
                         </button>
                         <input type="file" id="bill-attach-invoice-file" accept="image/jpeg,image/png,image/webp,application/pdf" class="sr-only">
                         <p class="text-[12px] text-gray-400">JPG, PNG, WebP, or PDF · Max 5 MB. Attaching does not mark the bill as paid.</p>
-                        <button disabled class="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 border border-gray-200 text-gray-400 rounded-lg text-[12px] cursor-not-allowed">
-                            <span>Convert to Transaction</span>
-                            <span class="text-[10px] font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Coming soon</span>
-                        </button>
                     </div>
                 </div>
             `;
 
             wireInvoiceAttachControls();
+            const markPaidBtn = document.getElementById('bill-mark-paid-btn');
+            if (markPaidBtn) markPaidBtn.classList.toggle('hidden', isPaid);
             document.getElementById('bill-drawer-backdrop').classList.remove('hidden');
             requestAnimationFrame(() => {
                 document.getElementById('bill-drawer').classList.remove('translate-x-full');
@@ -913,6 +954,118 @@
         document.getElementById('bill-drawer-backdrop').addEventListener('click', closeBillDrawer);
         document.getElementById('bill-drawer-close-btn').addEventListener('click', closeBillDrawer);
         document.getElementById('bill-drawer-close-footer').addEventListener('click', closeBillDrawer);
+
+        // ── Record Payment (Mark as Paid) ─────────────────────────────────────
+        // Marking a bill paid posts an expense to the Ledger, inheriting the bill's
+        // category + budget assignment (committed → actual on the same allocation),
+        // and stamps the bill paid + linked to the new transaction. Paid is terminal.
+        let payModalBill = null;
+        let payCashController = null;
+        let payInFlight = false;
+        let payPickerSelectedKey = null;
+
+        function todayDayKey() {
+            const d = new Date();
+            return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+        }
+        function dayKeyToDate(key) {
+            const [y, m, d] = String(key || todayDayKey()).split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
+        function billAllocationName(bill) {
+            const ctx = billsBudgetCtx;
+            if (!bill.budget_allocation_id || !ctx?.allocations?.length) return null;
+            return ctx.allocations.find(a => a.id === bill.budget_allocation_id)?.name || null;
+        }
+
+        async function openPayModal(bill) {
+            if (!bill) return;
+            if (window.FluxyAccessGuard && !window.FluxyAccessGuard.requireWriteAccess()) return;
+            payModalBill = bill;
+            payInFlight = false;
+            payPickerSelectedKey = todayDayKey();
+
+            const allocName = billAllocationName(bill);
+            document.getElementById('bill-pay-summary').innerHTML = `
+                <div class="flex items-center justify-between gap-3">
+                    <span class="text-[12px] text-gray-500">Vendor</span>
+                    <span class="text-[13px] font-semibold text-gray-900 truncate">${escapeHtml(bill.vendor_name || 'Bill')}</span>
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                    <span class="text-[12px] text-gray-500">Amount</span>
+                    <span class="text-[13px] font-bold text-gray-900 tabular-nums">${formatCurrencyIDR(bill.amount)}</span>
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                    <span class="text-[12px] text-gray-500">Category</span>
+                    <span class="text-[13px] text-gray-700">${escapeHtml(bill.category || 'Operations')}</span>
+                </div>
+                ${allocName ? `<div class="flex items-center justify-between gap-3">
+                    <span class="text-[12px] text-gray-500">Budget</span>
+                    <span class="text-[13px] text-gray-700 truncate">${escapeHtml(allocName)}</span>
+                </div>` : ''}`;
+
+            // Cash impact: default actual cash-out, optional bank account.
+            let bankAccounts = [];
+            try { bankAccounts = (await ds.getBankAccounts(auth.currentUser.uid)) || []; } catch (_) { bankAccounts = []; }
+            const cashHost = document.getElementById('bill-pay-cash');
+            cashHost.innerHTML = window.FluxyCashImpact.buildHtml({ impact: 'actual', direction: 'out', bankAccounts });
+            payCashController = window.FluxyCashImpact.wire(cashHost, { impact: 'actual', direction: 'out' });
+
+            // Single-date picker, default today, today-or-earlier.
+            document.getElementById('bill-pay-date').innerHTML = '';
+            window.FluxyDateRangePicker?.mount('#bill-pay-date', {
+                mode: 'single',
+                start: payPickerSelectedKey,
+                end: payPickerSelectedKey,
+                defaultStart: todayDayKey(),
+                defaultEnd: todayDayKey(),
+                maxDate: todayDayKey(),
+                onChange: ({ start }) => { payPickerSelectedKey = start; }
+            });
+
+            document.getElementById('bill-pay-modal').classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function closePayModal() {
+            document.getElementById('bill-pay-modal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            payModalBill = null;
+            payCashController = null;
+        }
+
+        async function confirmPay() {
+            if (payInFlight || !payModalBill) return;
+            const confirmBtn = document.getElementById('bill-pay-confirm');
+            payInFlight = true;
+            confirmBtn.disabled = true;
+            const original = confirmBtn.textContent;
+            confirmBtn.textContent = 'Recording…';
+            try {
+                const paymentDate = dayKeyToDate(payPickerSelectedKey);
+                const cashState = payCashController?.getState?.() || { impact: 'actual', direction: 'out', accountId: '' };
+                const cashFields = window.FluxyCashImpact.derive(cashState, Timestamp.fromDate(paymentDate));
+                await ds.markBillPaid(auth.currentUser.uid, payModalBill.id, { paymentDate, cashFields });
+                window.showToast?.('Bill marked as paid and recorded in the Ledger.', 'success');
+                closePayModal();
+                closeBillDrawer();
+                await window.loadBills();
+            } catch (err) {
+                console.error('Mark bill paid failed:', err);
+                window.showToast?.(err?.message || 'Could not mark this bill as paid. Please try again.', 'error');
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = original;
+                payInFlight = false;
+            }
+        }
+
+        document.getElementById('bill-mark-paid-btn')?.addEventListener('click', () => {
+            if (activeDrawerBill) openPayModal(activeDrawerBill);
+        });
+        document.getElementById('bill-pay-cancel')?.addEventListener('click', closePayModal);
+        document.getElementById('bill-pay-close')?.addEventListener('click', closePayModal);
+        document.getElementById('bill-pay-backdrop')?.addEventListener('click', closePayModal);
+        document.getElementById('bill-pay-confirm')?.addEventListener('click', confirmPay);
 
         document.getElementById('bill-search-input').addEventListener('input', (e) => filterBills(e.target.value));
         document.getElementById('bill-clear-vendor-filter')?.addEventListener('click', clearBillVendorFilter);

@@ -182,8 +182,26 @@ filter logs to the current budget without a composite index.
 
 **Double-counting guard**: a bill with `budget_impact_status ===
 'converted_to_actual'` OR with `linked_transaction_id` set is skipped by the
-committed-amount calculation (Phase 2 doesn't yet write `linked_transaction_id`,
-but the resolver is ready).
+committed-amount calculation.
+
+**Mark as paid → Ledger (`DataService.markBillPaid`).** The Bills page
+Record-Payment modal (Mark as Paid in the bill drawer) calls
+`markBillPaid(uid, billId, { paymentDate, cashFields })`, which mirrors
+`markInvoicePaid`: in a single `writeBatch` it (a) creates one expense ledger
+transaction (`type: 'expense'`, the bill's `amount`/`vendor_name`/`category`,
+`timestamp` = payment date, `linked_bill_id` = the bill, plus the bill's
+carried-over budget assignment and the chosen `cash_*` fields), (b) updates the
+bill (`payment_status: 'paid'`, `budget_impact_status: 'converted_to_actual'`,
+`linked_transaction_id`, `updated_at`/`updated_by`), and (c) writes the
+`bill.mark_paid` audit log (`target_collection: 'bills'`). The bill then drops
+out of *committed* totals and the new expense lands in *actual_used* on the same
+allocation — committed → actual, no double count. **Category and budget are
+inherited from the bill — the user does not re-select them.** **Paid is
+terminal** (no un-pay path), matching invoices. Cash defaults to actual cash-out;
+the modal lets the user set the payment date, the paying bank account, and
+actual/pending via the shared `FluxyCashImpact` control. The transaction create
+rule allows the new `linked_bill_id` key; the bill update rule allows
+`linked_transaction_id` + `updated_at`/`updated_by`.
 
 **Ordering:** `timestamp DESC`.
 
