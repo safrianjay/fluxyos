@@ -400,7 +400,6 @@ function renderEmptyState() {
                         <h2 class="mt-3 text-[18px] font-bold text-gray-900">Create your first main budget</h2>
                         <p class="mt-2 max-w-xl text-[14px] leading-6 text-gray-500">Start with an annual budget, then split it into monthly, quarterly, or custom working periods.</p>
                     </div>
-                    <button id="budget-empty-create-main" type="button" class="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-lg bg-slate-950 px-4 text-[14px] font-bold text-white transition-colors hover:bg-slate-800 active:scale-95">Create Budget</button>
                 </div>
 
                 <div class="mt-5 max-w-sm rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3">
@@ -487,7 +486,6 @@ function renderEmptyState() {
             </div>
         </section>
     `;
-    el('budget-empty-create-main')?.addEventListener('click', openMainBudgetWizard);
 }
 
 function renderMainBudget() {
