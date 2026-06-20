@@ -279,6 +279,7 @@ Page Shell Standard CSS in `assets/css/shared-dashboard.css` changes. See
 | 6 | Balance Sheet's date/period placement and report-tuned shell are intentionally preserved as the documented exception |
 | 7 | Mobile 375px has no page-level horizontal overflow; controls wrap cleanly and the title + primary action stay visible |
 | 8 | Existing per-page behavior still works: ledger filters, CSV export, scan/import drawer, date filter, table render, pagination, empty states, and Add Transaction/Bill/Subscription drawers |
+| 9 | **Dashboard Content Width Standard.** Every data-heavy page (KPIs/tables/reports/analytics/accounting/budgets/invoices/financial statements) uses `.fluxy-page-shell` → `.fluxy-page-canvas` (1540px). For every new or redesigned dashboard page, compare against Transactions, Revenue Sync, and Bills and verify: content width parity, KPI alignment, filter/action-bar alignment, table width + column behavior, and that no narrow container (`max-w-7xl`/custom) was introduced. Budgets (`budget.html`, `budget-period.html`, `budget-allocation.html`) and Invoices (`invoices.html`) must match the baseline. Reject page-specific widths without an approved exception (`balance-sheet.html` is the documented exception). Automated guard: `tests/dashboard-layout-consistency.spec.js`. |
 
 ### D7. Custom Select / Dropdown Regression
 

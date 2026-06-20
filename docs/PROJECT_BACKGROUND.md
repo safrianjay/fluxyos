@@ -77,6 +77,16 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 
 **Rule:** Footer loads on all landing pages, never on app pages. Any page that renders `#sidebar` is an app page and must not load the marketing footer.
 
+**Dashboard Content Width Standard:** Every data-heavy operational app page (KPIs,
+tables, data grids, reports, analytics, accounting/reconciliation, budgets,
+invoices, financial statements) wraps its scroll content in the shared container
+`.fluxy-page-shell` → `.fluxy-page-canvas` (1540px). Transactions, Revenue Sync,
+and Bills are the baseline; Budgets (`budget.html`, `budget-period.html`,
+`budget-allocation.html`) and Invoices (`invoices.html`) follow it. Do not
+introduce a page-specific content width (`max-w-7xl`/custom) on a data-heavy page
+without a documented exception (`balance-sheet.html` is the one exception). Full
+rule in [DESIGN_SYSTEM.md → Dashboard Content Width Standard](DESIGN_SYSTEM.md).
+
 ---
 
 ## 4. Firestore Database Schema

@@ -317,12 +317,21 @@ Must include:
 - `assets/js/shared-dashboard.js`
 - Page-specific render function that runs only after auth is confirmed
 - Empty/loading/error states for Firestore-backed content
+- **Shared content container (Dashboard Content Width Standard).** Any page with
+  KPIs, tables, data grids, reports, analytics, accounting/reconciliation,
+  budgets, invoices, or financial statements wraps its scroll content in
+  `.fluxy-page-shell` → `.fluxy-page-canvas` (1540px). Transactions, Revenue Sync,
+  and Bills are the baseline; Budgets and Invoices follow it. See
+  [DESIGN_SYSTEM.md → Dashboard Content Width Standard](DESIGN_SYSTEM.md).
 
 Must not:
 
 - Load the marketing footer
 - Read or write another user's data
 - Store formatted currency strings in Firestore
+- Introduce a page-specific content width (`max-w-7xl`, custom `max-w-[…]`, or
+  one-off padding wrappers) on a data-heavy page without a documented exception
+  (`balance-sheet.html` is the one documented exception)
 
 ### Dashboard sidebar entry lifecycle
 

@@ -552,6 +552,32 @@ page-level padding/max-width.
     shell classes above rather than copying one-off Tailwind padding/max-width
     into the page.
 
+#### Dashboard Content Width Standard (hard rule)
+
+Any operational dashboard page that contains one or more of — KPI cards,
+financial summaries, tables, data grids, operational lists, reports, analytics,
+reconciliation/accounting views, budget management views, invoices, or financial
+statements — **must** use the shared dashboard content container:
+`.fluxy-page-shell` (scroll region, `16/24/32px` responsive padding) →
+`.fluxy-page-canvas` (`max-width: 1540px; margin-inline: auto`). This guarantees
+one shared content width, horizontal spacing, grid alignment, and table
+proportion across the platform.
+
+- **Baseline reference implementations: Transactions (`ledger.html`),
+  Revenue Sync (`revenue-sync.html`), Bills (`bill.html`).** Match them.
+- Now compliant on this standard: Budgets (`budget.html`, `budget-period.html`,
+  `budget-allocation.html`) and Invoices (`invoices.html`). They previously used a
+  narrow `max-w-7xl` (1280px) container — that is **banned** for data-heavy pages.
+- **Do not introduce a page-specific content width** (`max-w-7xl`, `max-w-6xl`,
+  one-off `max-w-[…]`, or custom padding wrappers) without a documented product
+  requirement logged as an exception. Documented exception: `balance-sheet.html`
+  may keep its report-tuned shell.
+- Data-heavy pages prioritize information density, scanability, and operational
+  efficiency over decorative spacing. Marketing/landing pages keep their own
+  wider editorial containers and are **not** governed by this rule.
+- Users should feel they operate inside one cohesive financial system, not move
+  between different page layouts.
+
 ---
 
 ## ✨ Animations & Micro-interactions
