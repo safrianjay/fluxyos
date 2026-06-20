@@ -14,7 +14,6 @@ const state = {
     loading: false,
     report: null,
     rowsById: {},
-    drawerOpen: false,
     exportInProgress: false,
     picker: null
 };
@@ -187,18 +186,12 @@ function wireControls() {
     el('bs-expand-btn')?.addEventListener('click', toggleAllRows);
     el('bs-export-btn')?.addEventListener('click', exportCsv);
     el('bs-print-btn')?.addEventListener('click', () => window.print());
-    el('bs-drawer-overlay')?.addEventListener('click', closeDrawer);
-    el('bs-drawer-close-btn')?.addEventListener('click', closeDrawer);
-    document.addEventListener('keydown', event => {
-        if (event.key === 'Escape' && state.drawerOpen) closeDrawer();
-    });
 }
 
 async function loadReport() {
     if (!state.user || state.loading) return;
     state.loading = true;
     hide('bs-error-banner');
-    closeDrawer();
     el('bs-report-panel')?.classList.add('bs-report-loading');
     setExportEnabled(false, 'Loading report...');
 
@@ -313,7 +306,7 @@ function renderTable(report) {
         });
     });
     body.querySelectorAll('[data-open-row]').forEach(row => {
-        row.addEventListener('click', () => openDrawer(row.getAttribute('data-open-row')));
+        row.addEventListener('click', () => navigateToBalanceSheetRecords(row.getAttribute('data-open-row')));
     });
     updateExpandButton();
 }
@@ -432,70 +425,18 @@ function setExportEnabled(enabled, message) {
     if (status) status.textContent = message || '';
 }
 
-function openDrawer(rowId) {
-    const row = state.rowsById[rowId];
-    const records = state.report?.related_records_index?.[rowId] || [];
-    if (!row) return;
-    el('bs-drawer-title').textContent = row.label || ROW_LABELS[rowId] || 'Details';
-    el('bs-drawer-meta').textContent = `As of ${formatDate(state.report.as_of_date)}`;
-    el('bs-drawer-total').textContent = formatRupiah(row.total);
-    el('bs-drawer-count').textContent = `${records.length}`;
-    el('bs-drawer-source').textContent = SOURCE_LABELS[row.source] || row.source || 'Source';
-    el('bs-drawer-records').innerHTML = renderDrawerRecords(rowId, records);
-    document.body.classList.add('bs-drawer-open');
-    document.body.style.overflow = 'hidden';
-    state.drawerOpen = true;
-}
-
-function closeDrawer() {
-    document.body.classList.remove('bs-drawer-open');
-    document.body.style.overflow = '';
-    state.drawerOpen = false;
-}
-
-function renderDrawerRecords(rowId, records) {
-    if (!records.length) {
-        return '<div class="px-4 py-6 text-[14px] text-gray-500">No related records for this row.</div>';
-    }
-    if (rowId === 'cash_bank') {
-        return drawerTable(['Account', 'Bank', 'Balance', 'As of', 'Source', 'Status'], records.map(r => [
-            r.account_name || 'Bank account',
-            r.bank_name || 'Bank',
-            formatRupiah(r.latest_balance),
-            r.latest_balance_at ? formatDate(r.latest_balance_at) : UNAVAILABLE,
-            r.source_type || 'manual',
-            r.status || 'active'
-        ]));
-    }
-    if (rowId === 'accounts_payable') {
-        return drawerTable(['Vendor', 'Amount', 'Due date', 'Payment', 'Category'], records.map(r => [
-            r.vendor_name || 'Bill',
-            formatRupiah(r.amount),
-            r.due_date ? formatDate(r.due_date) : UNAVAILABLE,
-            r.payment_status || 'unpaid',
-            r.category || UNAVAILABLE
-        ]));
-    }
-    return drawerTable(['Vendor', 'Amount', 'Category', 'Status', 'Date'], records.map(r => [
-        r.vendor_name || 'Transaction',
-        formatRupiah(r.amount),
-        r.category || UNAVAILABLE,
-        r.status || UNAVAILABLE,
-        r.timestamp ? formatDate(r.timestamp) : UNAVAILABLE
-    ]));
-}
-
-function drawerTable(headers, rows) {
-    return `
-        <table class="w-full min-w-[560px] text-[14px]">
-            <thead class="bg-gray-50 text-[12px] text-gray-500">
-                <tr>${headers.map(header => `<th class="px-3 py-2 text-left font-semibold">${escapeHtml(header)}</th>`).join('')}</tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-                ${rows.map(row => `<tr>${row.map((cell, index) => `<td class="px-3 py-2 ${index === 1 ? 'bs-mono text-right' : ''}">${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}
-            </tbody>
-        </table>
-    `;
+// Drill down to the dedicated Balance Sheet Records subpage (the Accounting
+// Records pattern) instead of opening an in-page drawer. The subpage lists the
+// supporting source records, each of which deep-links back to where it lives —
+// keeping the full Statement → Line → Records → Source trace traceable.
+function navigateToBalanceSheetRecords(rowId) {
+    if (!ROW_LABELS[rowId]) return;
+    const params = new URLSearchParams({
+        row: rowId,
+        asof: state.report?.as_of_date || state.asOfKey,
+        cadence: state.cadence
+    });
+    window.location.href = `/balance-sheet-records?${params.toString()}`;
 }
 
 async function exportCsv() {
