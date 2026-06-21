@@ -1,4 +1,14 @@
 (function() {
+    // STAGE 2 ACTIVATION SWITCH — workspace-scoped finance data.
+    // Set after the users/{uid} -> workspaces/{uid} data migration completed
+    // (2026-06-22, all users, counts verified). db-service._scope() reads this
+    // before any finance read/write, so all app pages now operate on
+    // workspaces/{workspaceId}. Source data under users/{uid} is left intact, so
+    // flipping this back to false is an instant, full rollback.
+    // sidebar-loader.js is a classic script that runs before the deferred page
+    // modules that import db-service, so the flag is always set in time.
+    window.FLUXY_WORKSPACE_MODE = true;
+
     // 0. Shared Fluxy AI page-context registry.
     // Defined synchronously here (sidebar-loader.js is a blocking classic script
     // that runs before the deferred page <script type="module"> blocks) so every

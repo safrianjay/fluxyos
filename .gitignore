@@ -2,6 +2,12 @@
 node_modules/
 package-lock.json
 
+# Firebase Admin service-account keys — NEVER commit these
+sa.json
+serviceAccount*.json
+*firebase-adminsdk*.json
+*-service-account*.json
+
 # Python
 __pycache__/
 *.py[cod]
