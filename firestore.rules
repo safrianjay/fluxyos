@@ -2815,9 +2815,16 @@ service cloud.firestore {
     }
 
     function isValidWorkspaceProfile(data) {
-      return data.keys().hasOnly(['owner_uid', 'name', 'created_at', 'updated_at'])
+      return data.keys().hasOnly(['owner_uid', 'name', 'created_at', 'updated_at', 'plan_id', 'plan_name', 'subscription_status', 'billing_frequency', 'plan_synced_at'])
         && data.owner_uid is string
-        && (!('name' in data) || data.name == null || (data.name is string && data.name.size() <= 120));
+        && (!('name' in data) || data.name == null || (data.name is string && data.name.size() <= 120))
+        // Denormalized, non-sensitive subscription summary (owner-written, member-read).
+        // No amounts / payment details — just enough for every member to see the plan.
+        && (!('plan_id' in data) || data.plan_id == null || (data.plan_id is string && data.plan_id.size() <= 40))
+        && (!('plan_name' in data) || data.plan_name == null || (data.plan_name is string && data.plan_name.size() <= 80))
+        && (!('subscription_status' in data) || data.subscription_status == null || (data.subscription_status is string && data.subscription_status.size() <= 40))
+        && (!('billing_frequency' in data) || data.billing_frequency == null || (data.billing_frequency is string && data.billing_frequency.size() <= 20))
+        && (!('plan_synced_at' in data) || data.plan_synced_at == null || data.plan_synced_at is timestamp);
     }
     function isValidMember(data) {
       return data.keys().hasOnly(['uid', 'email', 'display_name', 'role', 'status', 'invited_by', 'joined_at', 'updated_at'])
@@ -3002,10 +3009,14 @@ service cloud.firestore {
         && isValidWorkspaceProfile(request.resource.data)
         && request.resource.data.owner_uid == request.auth.uid
         && request.resource.data.created_at == request.time;
-      // Owner/admin may edit the profile; owner_uid is immutable.
+      // Owner/admin may edit the profile name; owner_uid is immutable. The
+      // denormalized subscription fields are OWNER-ONLY (they mirror the owner's
+      // billing) — admins may only change name/updated_at.
       allow update: if hasRole(workspaceId, ['owner', 'admin'])
         && isValidWorkspaceProfile(request.resource.data)
-        && request.resource.data.owner_uid == resource.data.owner_uid;
+        && request.resource.data.owner_uid == resource.data.owner_uid
+        && (hasRole(workspaceId, ['owner'])
+          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'updated_at']));
       // Workspace deletion is an owner-only sensitive action handled server-side.
       allow delete: if false;
 

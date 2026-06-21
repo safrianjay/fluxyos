@@ -29,6 +29,7 @@ const state = {
     uid: null,       // the signed-in user's uid
     ready: false,    // true once a real members doc was read
     name: null,      // workspace display name, when available
+    plan: null,      // denormalized { id, name, status, frequency } — shared by all members
 };
 
 function publish() {
@@ -39,6 +40,7 @@ function publish() {
         uid: state.uid,
         ready: state.ready,
         name: state.name,
+        plan: state.plan,
         isOwner: state.role === 'owner',
         can: (capability) => (state.status === 'active' ? permCan(state.role, capability) : false),
     };
@@ -64,7 +66,7 @@ function fallbackToSelf(uid) {
 async function resolveWorkspace(app, user) {
     if (!user || !user.uid) {
         try { sessionStorage.removeItem('fluxy_ws'); } catch (_) {}
-        Object.assign(state, { id: null, role: null, status: null, uid: null, ready: false, name: null });
+        Object.assign(state, { id: null, role: null, status: null, uid: null, ready: false, name: null, plan: null });
         return publish();
     }
     state.uid = user.uid;
@@ -115,11 +117,20 @@ async function resolveWorkspace(app, user) {
             state.ready = true;
         }
 
-        // 3) Best-effort workspace name for display.
+        // 3) Best-effort workspace name + denormalized plan for display.
         try {
             const wsSnap = await fs.getDoc(fs.doc(db, `workspaces/${state.id}`));
-            if (wsSnap.exists()) state.name = (wsSnap.data() || {}).name || null;
-        } catch (_) { /* name optional */ }
+            if (wsSnap.exists()) {
+                const d = wsSnap.data() || {};
+                state.name = d.name || null;
+                state.plan = (d.plan_id || d.plan_name || d.subscription_status) ? {
+                    id: d.plan_id || null,
+                    name: d.plan_name || null,
+                    status: d.subscription_status || null,
+                    frequency: d.billing_frequency || null
+                } : null;
+            }
+        } catch (_) { /* name/plan optional */ }
         confirmed = true;
     } catch (err) {
         // Network/rules error — keep the owner-of-self fallback already published.

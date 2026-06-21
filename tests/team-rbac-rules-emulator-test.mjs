@@ -180,6 +180,15 @@ const inviteDoc = (email, role, inviterUid) => ({
     await expectOutcome('owner removes a member', true, () =>
         deleteDoc(memberRef(owner, outsider.uid)));
 
+    // ---- Denormalized workspace plan: owner writes, admins cannot, members read ----
+    await expectOutcome('owner sets workspace plan summary', true, () =>
+        updateDoc(wsRef(owner), { plan_id: 'growth', plan_name: 'Growth Engine', subscription_status: 'active', billing_frequency: 'monthly', plan_synced_at: serverTimestamp() }));
+    await expectOutcome('admin CANNOT change workspace plan', false, () =>
+        updateDoc(wsRef(adminUser), { plan_name: 'Free', subscription_status: 'trialing' }));
+    await expectOutcome('admin can rename workspace', true, () =>
+        updateDoc(wsRef(adminUser), { name: 'Acme Renamed', updated_at: serverTimestamp() }));
+    await expectOutcome('member reads workspace plan', true, () => getDoc(wsRef(adminUser)));
+
     console.log(`\nTeam RBAC rules: ${passed} passed, ${failed} failed`);
     process.exit(failed === 0 ? 0 : 1);
 })().catch((e) => { console.error('Test harness error:', e); process.exit(1); });

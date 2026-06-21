@@ -1298,6 +1298,28 @@ class DataService {
         return snap.exists() ? { id: snap.id, ...snap.data() } : null;
     }
 
+    // Denormalize the OWNER's subscription summary onto the workspace doc so every
+    // member (who cannot read the owner's user-scoped billing) sees the same plan.
+    // Owner-only by construction: ownerUid == workspaceId, and only the owner can
+    // read users/{ownerUid}/billing_subscription and write the plan fields (rules).
+    // Non-sensitive fields only — no amounts or payment details. Best-effort.
+    async syncWorkspacePlan(ownerUid) {
+        try {
+            const subSnap = await getDoc(doc(this.db, `users/${ownerUid}/billing_subscription/current`));
+            if (!subSnap.exists()) return;
+            const s = subSnap.data() || {};
+            await setDoc(doc(this.db, `workspaces/${ownerUid}`), {
+                plan_id: s.plan_id || null,
+                plan_name: s.plan_name || null,
+                subscription_status: s.status || null,
+                billing_frequency: s.billing_frequency || null,
+                plan_synced_at: serverTimestamp()
+            }, { merge: true });
+        } catch (e) {
+            console.warn('[workspace plan sync] skipped', e);
+        }
+    }
+
     async getMembers(workspaceId) {
         const snap = await getDocs(collection(this.db, `workspaces/${workspaceId}/members`));
         return snap.docs.map(d => ({ id: d.id, ...d.data() }));

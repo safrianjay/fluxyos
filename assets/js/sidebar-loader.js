@@ -263,7 +263,7 @@
                 <img id="sidebar-user-avatar" src="https://ui-avatars.com/api/?name=User&background=EA580C&color=fff" alt="User" class="w-10 h-10 rounded-full border border-gray-700 flex-shrink-0">
                 <div class="flex-1 min-w-0 sidebar-hide">
                     <p class="text-[13px] font-bold text-white truncate" id="sidebar-user-name">Loading...</p>
-                    <p class="text-[11px] text-gray-500 truncate">Account Owner</p>
+                    <p class="text-[11px] text-gray-500 truncate" id="sidebar-user-role">Member</p>
                 </div>
             </div>
             <button id="logout-btn" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-500 font-medium transition-colors justify-center lg:justify-start">
@@ -316,6 +316,35 @@
         document.querySelectorAll('[data-entity-label]').forEach((el) => {
             el.textContent = resolved;
         });
+    }
+
+    // Human label for the workspace's denormalized subscription state.
+    function planLabel(plan) {
+        if (!plan) return '';
+        switch (plan.status) {
+            case 'active':
+            case 'cancel_scheduled': return plan.name || 'Active plan';
+            case 'trialing': return 'Trial';
+            case 'past_due':
+            case 'payment_failed': return 'Payment due';
+            case 'expired': return 'Expired';
+            case 'awaiting_payment':
+            case 'pending_verification': return 'Payment pending';
+            default: return plan.name || plan.status || '';
+        }
+    }
+
+    // Sidebar profile sub-line: "<Role> · <Plan>" — the same role + workspace
+    // subscription state shown to every member.
+    function applyRoleAndPlan(ws) {
+        const el = document.getElementById('sidebar-user-role');
+        if (!el) return;
+        const role = ws && ws.role;
+        const roleLabel = (window.FluxyPerms && window.FluxyPerms.roleMeta)
+            ? window.FluxyPerms.roleMeta(role).label
+            : (role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Member');
+        const plan = planLabel(ws && ws.plan);
+        el.textContent = plan ? `${roleLabel} · ${plan}` : roleLabel;
     }
 
     async function syncEntityProfile(app, uid, ws) {
@@ -499,6 +528,10 @@
                     // every member). See syncEntityProfile.
                     syncEntityProfile(app, user.uid, ws);
 
+                    // Profile sub-line = "<Role> · <Plan>" — the same role + workspace
+                    // subscription state every member sees.
+                    applyRoleAndPlan(ws);
+
                     // Keep the internal operations index (internal_users/{uid}) in
                     // sync from the user's own session. Best-effort.
                     import("/assets/js/db-service.js").then(({ default: DataService }) => {
@@ -516,7 +549,19 @@
                     if (!ws || ws.role === 'owner') {
                         import("/assets/js/trial-access.js").then(({ applyToPage }) => {
                             return applyToPage(user, {});
-                        }).catch((e) => console.warn('[sidebar] trial access guard skipped', e));
+                        }).then(() => import("/assets/js/db-service.js"))
+                            // After the owner's subscription is ensured, mirror a
+                            // non-sensitive plan summary onto the workspace doc so every
+                            // member sees the same subscription state. Then refresh the
+                            // sidebar label from the freshly-synced value.
+                            .then(({ default: DataService }) => new DataService(app).syncWorkspacePlan(user.uid))
+                            .then(async () => {
+                                try {
+                                    const { resolveWorkspace } = await import("/assets/js/workspace-service.js");
+                                    applyRoleAndPlan(await resolveWorkspace(app, user));
+                                } catch (_) {}
+                            })
+                            .catch((e) => console.warn('[sidebar] trial access guard skipped', e));
                     }
                 });
             });
