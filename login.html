@@ -449,7 +449,29 @@
                 verifyStatusEl.classList.remove('hidden');
             };
 
+            // If the user arrived from a team invite link (/login?invite=<email>&ws=<id>),
+            // add them to the workspace using their *signed-in* email. Best-effort:
+            // a mismatched email or stale invite just falls through to normal routing.
+            const acceptPendingInvite = async (user) => {
+                try {
+                    const params = new URLSearchParams(window.location.search);
+                    const workspaceId = (params.get('ws') || '').trim();
+                    const inviteParam = (params.get('invite') || '').trim();
+                    if (!workspaceId || !inviteParam || !user?.email) return;
+                    const { default: DataService } = await import('./assets/js/db-service.js');
+                    const ds = new DataService(app);
+                    ds.setActor(user.uid);
+                    await ds.acceptInvite(workspaceId, user.uid, {
+                        email: user.email,
+                        displayName: user.displayName || null
+                    });
+                } catch (err) {
+                    console.warn('[login] invite acceptance skipped:', err && err.message ? err.message : err);
+                }
+            };
+
             const goToApp = async (user) => {
+                await acceptPendingInvite(user);
                 const redirected = await redirectIfRequired(user);
                 if (redirected) return;
                 window.location.href = '/dashboard';

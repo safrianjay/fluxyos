@@ -1,0 +1,136 @@
+// FluxyOS — Workspace resolution service
+//
+// Resolves the current signed-in user's active workspace + role and publishes it
+// as window.FluxyWorkspace so every app surface can ask "what workspace am I in,
+// and what may I do here?".
+//
+// Data model (see docs/SECURITY_SYSTEM.md §3 + the Team Management plan):
+//   - workspaces/{workspaceId}                       — workspace profile
+//   - workspaces/{workspaceId}/members/{userId}      — { role, status }
+//   - user_workspaces/{uid} = { workspaceIds:[], default }  — reverse lookup
+//
+// Seeding rule: for existing single-user accounts the workspaceId == the owner's
+// uid, so resolution is reference-safe and a brand-new account works before any
+// migration runs.
+//
+// FAIL-SAFE: this never throws and always leaves a usable window.FluxyWorkspace.
+// If membership can't be read (offline, pre-migration, rules), it falls back to
+// "owner of my own workspace" (id == uid) so existing owners are never locked out.
+
+import { can as permCan } from '/assets/js/perms-service.js';
+
+const FIRESTORE_URL = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+// Mutable cached state. Always shaped, never null.
+const state = {
+    id: null,        // resolved workspaceId
+    role: null,      // owner | admin | finance | viewer
+    status: null,    // active | pending | removed
+    uid: null,       // the signed-in user's uid
+    ready: false,    // true once a real members doc was read
+    name: null,      // workspace display name, when available
+};
+
+function publish() {
+    const snapshot = {
+        id: state.id,
+        role: state.role,
+        status: state.status,
+        uid: state.uid,
+        ready: state.ready,
+        name: state.name,
+        isOwner: state.role === 'owner',
+        can: (capability) => (state.status === 'active' ? permCan(state.role, capability) : false),
+    };
+    if (typeof window !== 'undefined') window.FluxyWorkspace = Object.assign(window.FluxyWorkspace || {}, snapshot);
+    return snapshot;
+}
+
+// Seed an owner-of-own-workspace fallback so the app is usable pre-migration and
+// for fresh accounts. workspaceId == uid (the seeding rule above).
+function fallbackToSelf(uid) {
+    state.id = uid;
+    state.uid = uid;
+    state.role = 'owner';
+    state.status = 'active';
+    state.ready = false; // membership doc not confirmed
+    return publish();
+}
+
+/**
+ * Resolve the workspace + role for `user`. Best-effort; returns the published
+ * snapshot. Safe to call repeatedly (e.g. on every auth state change).
+ */
+async function resolveWorkspace(app, user) {
+    if (!user || !user.uid) {
+        Object.assign(state, { id: null, role: null, status: null, uid: null, ready: false, name: null });
+        return publish();
+    }
+    state.uid = user.uid;
+    // Optimistic fallback first so callers always have something usable.
+    fallbackToSelf(user.uid);
+
+    try {
+        const fs = await import(FIRESTORE_URL);
+        const db = fs.getFirestore(app);
+
+        // 1) Which workspace does this user default to?
+        let workspaceId = user.uid; // seeding default
+        try {
+            const ptrSnap = await fs.getDoc(fs.doc(db, `user_workspaces/${user.uid}`));
+            if (ptrSnap.exists()) {
+                const data = ptrSnap.data() || {};
+                if (data.default && typeof data.default === 'string') workspaceId = data.default;
+            }
+        } catch (_) { /* pointer optional — keep seeding default */ }
+
+        // 2) Read the membership doc for role/status.
+        const memberSnap = await fs.getDoc(fs.doc(db, `workspaces/${workspaceId}/members/${user.uid}`));
+        if (memberSnap.exists()) {
+            const m = memberSnap.data() || {};
+            state.id = workspaceId;
+            state.role = m.role || 'viewer';
+            state.status = m.status || 'active';
+            state.ready = true;
+        } else if (workspaceId === user.uid) {
+            // No membership doc yet but this is the user's own workspace — they are
+            // the owner (pre-bootstrap). Keep the owner fallback, mark not-ready.
+            state.id = user.uid;
+            state.role = 'owner';
+            state.status = 'active';
+            state.ready = false;
+        } else {
+            // Pointed at someone else's workspace but no membership — no access.
+            state.id = workspaceId;
+            state.role = null;
+            state.status = 'removed';
+            state.ready = true;
+        }
+
+        // 3) Best-effort workspace name for display.
+        try {
+            const wsSnap = await fs.getDoc(fs.doc(db, `workspaces/${state.id}`));
+            if (wsSnap.exists()) state.name = (wsSnap.data() || {}).name || null;
+        } catch (_) { /* name optional */ }
+    } catch (err) {
+        // Network/rules error — keep the owner-of-self fallback already published.
+        console.warn('[workspace-service] resolve failed, using self fallback', err);
+    }
+    return publish();
+}
+
+/** Synchronous accessor for the current cached workspace snapshot. */
+function getWorkspace() {
+    return publish();
+}
+
+export { resolveWorkspace, getWorkspace };
+
+// Expose for classic-script consumers.
+if (typeof window !== 'undefined') {
+    window.FluxyWorkspace = Object.assign(window.FluxyWorkspace || {}, {
+        resolve: resolveWorkspace,
+        get: getWorkspace,
+        can: (capability) => false, // replaced by publish() once resolved
+    });
+}

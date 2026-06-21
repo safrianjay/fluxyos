@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Team &amp; roles</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <aside id="sidebar" class="hidden w-[220px] bg-white text-[#1E2F4A] flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
+            <div class="flex items-center gap-4 min-w-0 flex-1">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <div class="min-w-0">
+                    <h1 class="text-lg font-bold text-gray-900 leading-tight">Team &amp; roles</h1>
+                    <p class="hidden sm:block text-[12px] text-gray-500 leading-tight mt-0.5">Invite teammates and control who can view or change your finance data.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="invite-member-btn" type="button" class="hidden items-center gap-2 px-3.5 py-2 bg-gray-900 text-white rounded-lg text-[14px] font-semibold hover:bg-gray-800 transition-all shadow-sm active:scale-95">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v6m3-3h-6M9 12a4 4 0 100-8 4 4 0 000 8zm0 0c-2.67 0-8 1.34-8 4v2h10"></path></svg>
+                    Invite member
+                </button>
+                <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Fluxy AI
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            <div class="max-w-4xl mx-auto space-y-8">
+
+                <section>
+                    <a href="/settings" class="inline-flex items-center gap-1 text-[14px] font-semibold text-gray-500 hover:text-gray-900">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                        Settings
+                    </a>
+                </section>
+
+                <!-- TEAM MEMBERS -->
+                <section class="space-y-3">
+                    <div class="flex items-end justify-between gap-4">
+                        <div>
+                            <h2 class="text-[16px] font-semibold text-gray-900">Members</h2>
+                            <p class="text-[12px] text-gray-500 mt-0.5" id="members-subtitle">People with access to this workspace.</p>
+                        </div>
+                    </div>
+                    <div id="members-loading" class="rounded-xl border border-gray-200 bg-white p-6 text-[13px] text-gray-400">Loading members…</div>
+                    <div id="members-card" class="fluxy-table-card hidden">
+                        <div class="fluxy-table-scroll">
+                            <table class="fluxy-table">
+                                <thead>
+                                    <tr class="fluxy-table-header">
+                                        <th>Member</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th class="text-right">&nbsp;</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="members-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PENDING INVITATIONS -->
+                <section class="space-y-3" id="invites-section">
+                    <div>
+                        <h2 class="text-[16px] font-semibold text-gray-900">Pending invitations</h2>
+                        <p class="text-[12px] text-gray-500 mt-0.5">Invites that have been sent but not accepted yet.</p>
+                    </div>
+                    <div id="invites-container"></div>
+                </section>
+
+                <!-- ROLE REFERENCE -->
+                <section class="space-y-3">
+                    <h2 class="text-[16px] font-semibold text-gray-900">What each role can do</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="role-reference"></div>
+                </section>
+
+                <!-- RECENT ACTIVITY (owner/admin) -->
+                <section class="space-y-3 hidden" id="activity-section">
+                    <h2 class="text-[16px] font-semibold text-gray-900">Recent team activity</h2>
+                    <div id="activity-container" class="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100"></div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <style>
+        .team-role-pill { display:inline-flex; align-items:center; padding:2px 10px; border-radius:9999px; font-size:11px; font-weight:600; letter-spacing:0.01em; }
+        .team-role-owner   { background:#FFF7ED; color:#C2410C; border:1px solid #FED7AA; }
+        .team-role-admin   { background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; }
+        .team-role-finance { background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; }
+        .team-role-viewer  { background:#F8FAFC; color:#475569; border:1px solid #E2E8F0; }
+        .team-you-tag { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#C2410C; background:#FFF7ED; border:1px solid #FED7AA; padding:1px 6px; border-radius:9999px; }
+    </style>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/dashboard-i18n.js"></script>
+    <script src="assets/js/fluxy-select.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from '/assets/js/db-service.js';
+        import { resolveWorkspace } from '/assets/js/workspace-service.js';
+        import { ROLES, roleMeta, can } from '/assets/js/perms-service.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
+            measurementId: "G-ZN7J6DRD2L"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        const ASSIGNABLE_ROLES = ['admin', 'finance', 'viewer']; // owner is never assignable
+        const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const avatarFor = (name) => `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=EA580C&color=fff`;
+        const fmtTime = (ts) => { try { return ts && ts.toDate ? ts.toDate().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''; } catch (_) { return ''; } };
+
+        let state = { ws: null, user: null, canManage: false };
+
+        const authTimeout = setTimeout(() => window.location.replace('/login'), 2500);
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) return;
+            clearTimeout(authTimeout);
+            state.user = user;
+            ds.setActor(user.uid);
+
+            // Resolve role; bootstrap the owner's own workspace if it doesn't exist yet.
+            let ws = await resolveWorkspace(app, user);
+            if (ws.id === user.uid && !ws.ready) {
+                try {
+                    await ds.ensureWorkspace(user.uid, { name: user.displayName || null, email: user.email || null, displayName: user.displayName || null });
+                    ws = await resolveWorkspace(app, user);
+                } catch (e) { console.warn('[team] ensureWorkspace failed', e); }
+            }
+            state.ws = ws;
+            state.canManage = ws.can('team.manage');
+            ds.setActor(user.uid, ws.role); // pin role for audit attribution
+
+            renderRoleReference();
+            wireInvite();
+            if (state.canManage) {
+                const btn = document.getElementById('invite-member-btn');
+                btn.classList.remove('hidden');
+                btn.classList.add('flex');
+            } else {
+                document.getElementById('members-subtitle').textContent = 'People with access to this workspace. You have read-only access to team settings.';
+                document.getElementById('invites-section').classList.add('hidden');
+            }
+            await Promise.all([loadMembers(), loadInvites(), loadActivity()]);
+        });
+
+        function roleLabelPill(role) {
+            const m = roleMeta(role);
+            return `<span class="team-role-pill team-role-${esc(role)}">${esc(m.label)}</span>`;
+        }
+
+        function renderRoleReference() {
+            const host = document.getElementById('role-reference');
+            host.innerHTML = ROLES.map((role) => {
+                const m = roleMeta(role);
+                return `<div class="rounded-xl border border-gray-200 bg-white p-4">
+                    <div class="flex items-center gap-2 mb-1.5">${roleLabelPill(role)}</div>
+                    <p class="text-[13px] text-gray-500 leading-relaxed">${esc(m.description)}</p>
+                </div>`;
+            }).join('');
+        }
+
+        async function loadMembers() {
+            const loading = document.getElementById('members-loading');
+            const card = document.getElementById('members-card');
+            const body = document.getElementById('members-body');
+            let members = [];
+            try { members = await ds.getMembers(state.ws.id); }
+            catch (e) {
+                console.warn('[team] getMembers failed', e);
+                loading.textContent = 'Could not load members. You may not have access to this workspace.';
+                return;
+            }
+            // Owner first, then alpha by name.
+            members.sort((a, b) => (a.role === 'owner' ? -1 : b.role === 'owner' ? 1 : String(a.display_name || a.email || '').localeCompare(String(b.display_name || b.email || ''))));
+            body.innerHTML = members.map((m) => renderMemberRow(m)).join('');
+            loading.classList.add('hidden');
+            card.classList.remove('hidden');
+            wireMemberRows();
+        }
+
+        function renderMemberRow(m) {
+            const isSelf = m.uid === state.user.uid;
+            const isOwner = m.role === 'owner';
+            const name = m.display_name || (m.email ? m.email.split('@')[0] : 'Member');
+            const canEditThis = state.canManage && !isOwner;
+            let roleCell;
+            if (canEditThis) {
+                roleCell = `<select data-role-select data-uid="${esc(m.uid)}" class="text-[13px]">${ASSIGNABLE_ROLES.map((r) => `<option value="${r}" ${m.role === r ? 'selected' : ''}>${esc(roleMeta(r).label)}</option>`).join('')}</select>`;
+            } else {
+                roleCell = roleLabelPill(m.role);
+            }
+            const removeCell = (canEditThis)
+                ? `<button data-remove-member data-uid="${esc(m.uid)}" data-name="${esc(name)}" class="text-[13px] font-semibold text-red-600 hover:text-red-700">Remove</button>`
+                : (isSelf && !isOwner ? `<button data-leave-workspace data-uid="${esc(m.uid)}" class="text-[13px] font-semibold text-red-600 hover:text-red-700">Leave</button>` : '');
+            return `<tr class="fluxy-table-row">
+                <td class="fluxy-table-cell">
+                    <div class="flex items-center gap-3">
+                        <img src="${avatarFor(name)}" alt="" class="w-8 h-8 rounded-full flex-shrink-0">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="fluxy-table-cell-primary truncate">${esc(name)}</span>
+                                ${isSelf ? '<span class="team-you-tag">You</span>' : ''}
+                            </div>
+                            <span class="fluxy-table-cell-meta truncate">${esc(m.email || m.uid)}</span>
+                        </div>
+                    </div>
+                </td>
+                <td class="fluxy-table-cell">${roleCell}</td>
+                <td class="fluxy-table-cell"><span class="fluxy-table-status ${m.status === 'active' ? 'fluxy-status-success' : 'fluxy-status-neutral'}">${esc(m.status || 'active')}</span></td>
+                <td class="fluxy-table-cell text-right">${removeCell}</td>
+            </tr>`;
+        }
+
+        function wireMemberRows() {
+            document.querySelectorAll('[data-role-select]').forEach((sel) => {
+                sel.addEventListener('change', async () => {
+                    const uid = sel.getAttribute('data-uid');
+                    const role = sel.value;
+                    try {
+                        await ds.updateMemberRole(state.ws.id, uid, role);
+                        window.showToast(`Role updated to ${roleMeta(role).label}`, 'success');
+                    } catch (e) {
+                        console.warn('[team] role update failed', e);
+                        window.showToast('Could not update role.', 'error');
+                        loadMembers();
+                    }
+                });
+            });
+            document.querySelectorAll('[data-remove-member]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const uid = btn.getAttribute('data-uid');
+                    const name = btn.getAttribute('data-name');
+                    const ok = await window.showConfirmDialog({
+                        title: 'Remove member?',
+                        body: `<strong>${esc(name)}</strong> will immediately lose access to this workspace.`,
+                        confirmLabel: 'Remove', cancelLabel: 'Cancel', tone: 'danger'
+                    });
+                    if (!ok) return;
+                    try {
+                        await ds.removeMember(state.ws.id, uid);
+                        window.showToast('Member removed.', 'success');
+                        loadMembers();
+                    } catch (e) {
+                        console.warn('[team] remove failed', e);
+                        window.showToast('Could not remove member.', 'error');
+                    }
+                });
+            });
+            document.querySelectorAll('[data-leave-workspace]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const ok = await window.showConfirmDialog({
+                        title: 'Leave workspace?',
+                        body: 'You will lose access to this workspace and need a new invite to return.',
+                        confirmLabel: 'Leave', cancelLabel: 'Cancel', tone: 'danger'
+                    });
+                    if (!ok) return;
+                    try {
+                        await ds.removeMember(state.ws.id, state.user.uid);
+                        window.location.href = '/dashboard';
+                    } catch (e) {
+                        window.showToast('Could not leave workspace.', 'error');
+                    }
+                });
+            });
+        }
+
+        async function loadInvites() {
+            if (!state.canManage) return;
+            const host = document.getElementById('invites-container');
+            let invites = [];
+            try { invites = await ds.getInvites(state.ws.id, { pendingOnly: true }); }
+            catch (e) { console.warn('[team] getInvites failed', e); }
+            if (!invites.length) {
+                window.renderEmptyState('invites-container', {
+                    title: 'No pending invitations',
+                    description: 'Invite a teammate to give them access to this workspace.',
+                    buttonText: 'Invite member',
+                    onAction: openInviteDrawer
+                });
+                return;
+            }
+            host.innerHTML = `<div class="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">${invites.map((inv) => `
+                <div class="flex items-center justify-between gap-4 px-5 py-3">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[14px] font-semibold text-gray-900 truncate">${esc(inv.email)}</span>
+                            ${roleLabelPill(inv.role)}
+                        </div>
+                        <span class="text-[12px] text-gray-400">Invited ${esc(fmtTime(inv.created_at))}</span>
+                    </div>
+                    <div class="flex items-center gap-3 flex-shrink-0">
+                        <button data-resend-invite data-email="${esc(inv.email)}" data-role="${esc(inv.role)}" class="text-[13px] font-semibold text-gray-500 hover:text-gray-900">Resend</button>
+                        <button data-revoke-invite data-email="${esc(inv.email)}" class="text-[13px] font-semibold text-red-600 hover:text-red-700">Revoke</button>
+                    </div>
+                </div>`).join('')}</div>`;
+            host.querySelectorAll('[data-revoke-invite]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const email = btn.getAttribute('data-email');
+                    const ok = await window.showConfirmDialog({ title: 'Revoke invitation?', body: `The invite for <strong>${esc(email)}</strong> will no longer work.`, confirmLabel: 'Revoke', tone: 'danger' });
+                    if (!ok) return;
+                    try { await ds.revokeInvite(state.ws.id, email); window.showToast('Invitation revoked.', 'success'); loadInvites(); }
+                    catch (e) { window.showToast('Could not revoke invite.', 'error'); }
+                });
+            });
+            host.querySelectorAll('[data-resend-invite]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const email = btn.getAttribute('data-email');
+                    const role = btn.getAttribute('data-role');
+                    await sendInvite(email, role, btn);
+                });
+            });
+        }
+
+        async function loadActivity() {
+            if (!state.canManage) return;
+            let logs = [];
+            try { logs = await ds.getWorkspaceAuditLogs(state.ws.id, 20); } catch (_) {}
+            logs = logs.filter((l) => ['members', 'invites'].includes(l.target_collection));
+            if (!logs.length) return;
+            const section = document.getElementById('activity-section');
+            const host = document.getElementById('activity-container');
+            const label = (a) => ({ 'member.invite': 'Invited', 'member.role_change': 'Changed role', 'member.remove': 'Removed member', 'invite.revoke': 'Revoked invite' }[a] || a);
+            host.innerHTML = logs.map((l) => `
+                <div class="flex items-center justify-between gap-4 px-5 py-3">
+                    <span class="text-[13px] text-gray-700">${esc(label(l.action))} · <span class="text-gray-500">${esc(l.target_id || '')}</span></span>
+                    <span class="text-[12px] text-gray-400">${esc(fmtTime(l.created_at))}</span>
+                </div>`).join('');
+            section.classList.remove('hidden');
+        }
+
+        // ---- Invite drawer ----
+        function wireInvite() {
+            const btn = document.getElementById('invite-member-btn');
+            if (btn) btn.addEventListener('click', openInviteDrawer);
+        }
+
+        function openInviteDrawer() {
+            if (!state.canManage) return;
+            closeInviteDrawer();
+            const html = `
+            <div id="team-invite-modal" class="fixed inset-0 z-[100] flex justify-end overflow-hidden">
+                <div id="team-invite-overlay" class="absolute inset-0 bg-black/55 opacity-0 transition-opacity duration-300"></div>
+                <div id="team-invite-drawer" role="dialog" aria-modal="true" class="relative z-10 flex h-full w-full max-w-[440px] translate-x-full flex-col bg-white shadow-2xl transition-transform duration-300">
+                    <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                        <div>
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Team management</p>
+                            <h3 class="mt-1 text-lg font-bold text-gray-900">Invite a teammate</h3>
+                        </div>
+                        <button id="team-invite-close" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                    </div>
+                    <form id="team-invite-form" class="flex flex-1 flex-col overflow-hidden">
+                        <div class="flex-1 space-y-5 overflow-y-auto p-6">
+                            <div>
+                                <label for="invite-email" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Email address</label>
+                                <input type="email" id="invite-email" name="email" required placeholder="teammate@company.com" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-[14px] focus:ring-2 focus:ring-[#EA580C] outline-none">
+                            </div>
+                            <div>
+                                <label for="invite-role" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Role</label>
+                                <select id="invite-role" name="role" class="w-full text-[14px]">
+                                    ${ASSIGNABLE_ROLES.map((r) => `<option value="${r}" ${r === 'finance' ? 'selected' : ''}>${esc(roleMeta(r).label)} — ${esc(roleMeta(r).description)}</option>`).join('')}
+                                </select>
+                                <p class="mt-2 text-[12px] text-gray-400">We'll email them a link to join this workspace.</p>
+                            </div>
+                        </div>
+                        <div class="border-t border-gray-100 bg-white/95 p-4">
+                            <button type="submit" id="invite-submit-btn" class="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-xl shadow-lg transition-all disabled:bg-gray-300">Send invitation</button>
+                        </div>
+                    </form>
+                </div>
+            </div>`;
+            const wrap = document.createElement('div');
+            wrap.innerHTML = html;
+            document.body.appendChild(wrap);
+            document.body.classList.add('overflow-hidden');
+            requestAnimationFrame(() => {
+                document.getElementById('team-invite-overlay')?.classList.replace('opacity-0', 'opacity-100');
+                document.getElementById('team-invite-drawer')?.classList.remove('translate-x-full');
+                document.getElementById('invite-email')?.focus();
+            });
+            document.getElementById('team-invite-overlay').addEventListener('click', closeInviteDrawer);
+            document.getElementById('team-invite-close').addEventListener('click', closeInviteDrawer);
+            window.__teamInviteEsc = (e) => { if (e.key === 'Escape') closeInviteDrawer(); };
+            document.addEventListener('keydown', window.__teamInviteEsc);
+            document.getElementById('team-invite-form').addEventListener('submit', onInviteSubmit);
+        }
+
+        function closeInviteDrawer() {
+            const modal = document.getElementById('team-invite-modal');
+            if (!modal || modal.dataset.closing === 'true') return;
+            modal.dataset.closing = 'true';
+            document.getElementById('team-invite-overlay')?.classList.replace('opacity-100', 'opacity-0');
+            document.getElementById('team-invite-drawer')?.classList.add('translate-x-full');
+            document.body.classList.remove('overflow-hidden');
+            if (window.__teamInviteEsc) { document.removeEventListener('keydown', window.__teamInviteEsc); window.__teamInviteEsc = null; }
+            setTimeout(() => modal.parentElement?.remove(), 300);
+        }
+
+        async function onInviteSubmit(e) {
+            e.preventDefault();
+            const email = document.getElementById('invite-email').value.trim();
+            const role = document.getElementById('invite-role').value;
+            const submitBtn = document.getElementById('invite-submit-btn');
+            if (!email) return;
+            // Guard: already a member or already invited?
+            try {
+                const members = await ds.getMembers(state.ws.id);
+                if (members.some((m) => (m.email || '').toLowerCase() === email.toLowerCase())) {
+                    window.showToast('That person is already a member.', 'error');
+                    return;
+                }
+            } catch (_) {}
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending…';
+            try {
+                await ds.inviteMember(state.ws.id, { email, role, invitedBy: state.user.uid, invitedByEmail: state.user.email });
+                await sendInvite(email, role, null);
+                window.showToast(`Invitation created for ${email}.`, 'success');
+                closeInviteDrawer();
+                loadInvites();
+            } catch (err) {
+                console.warn('[team] invite failed', err);
+                window.showToast('Could not create the invitation.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Send invitation';
+            }
+        }
+
+        // Fire the invite email (best-effort). The invite doc is the source of
+        // truth; if email delivery is off/unconfigured the owner can still share
+        // the join link manually.
+        async function sendInvite(email, role, btn) {
+            const inviteId = String(email).trim().toLowerCase();
+            try {
+                if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+                const token = await state.user.getIdToken();
+                const res = await fetch('/.netlify/functions/send-team-invite', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({
+                        workspaceId: state.ws.id,
+                        inviteId,
+                        email: inviteId,
+                        role,
+                        inviterName: state.user.displayName || state.user.email || 'A FluxyOS workspace owner',
+                        workspaceName: state.ws.name || null
+                    })
+                });
+                if (res.ok) { if (btn) window.showToast(`Invitation re-sent to ${email}.`, 'success'); }
+                else if (btn) window.showToast('Invite saved, but the email could not be sent.', 'info');
+            } catch (e) {
+                if (btn) window.showToast('Invite saved, but the email could not be sent.', 'info');
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Resend'; }
+            }
+        }
+    </script>
+</body>
+</html>

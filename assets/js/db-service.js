@@ -88,6 +88,36 @@ class DataService {
             this.db = getFirestore(app);
         }
         this._storage = null;
+        // The acting user's uid for audit attribution. In the workspace model the
+        // scope id (workspaceId) is distinct from the actor (the signed-in user),
+        // so pages call setActor(user.uid) once after auth. Audit/attribution
+        // fields read this rather than the positional scope argument.
+        this.actorUid = null;
+        this.actorRole = null;
+    }
+
+    // Pin the acting user's uid (and optionally workspace role) for audit
+    // attribution. Call once after auth; call again once the role resolves.
+    setActor(uid, role = null) {
+        this.actorUid = uid || null;
+        if (role !== null) this.actorRole = role;
+        return this;
+    }
+
+    // STAGE 2 scope resolver. Finance/operational collections route through this
+    // so they live under workspaces/{scopeId} once the workspace data migration
+    // has run, or under users/{scopeId} otherwise. The switch is the global flag
+    // window.FLUXY_WORKSPACE_MODE (default OFF), so deploying this code changes
+    // NOTHING until the flag is flipped post-migration. For an owner the scopeId
+    // (passed by pages) equals their uid == their workspaceId, so owner behaviour
+    // is byte-identical; teammates pass FluxyWorkspace.id. Identity collections
+    // (billing/onboarding/settings/usage_limits/ai_chats) do NOT use this and stay
+    // user-scoped. See docs/WORKSPACE_TEAM_MANAGEMENT_STAGE2.md.
+    _workspaceMode() {
+        return typeof window !== 'undefined' && window.FLUXY_WORKSPACE_MODE === true;
+    }
+    _scope(scopeId) {
+        return this._workspaceMode() ? `workspaces/${scopeId}` : `users/${scopeId}`;
     }
 
     // --- TRANSACTIONS (LEDGER) ---
@@ -165,7 +195,7 @@ class DataService {
 
     async getTransactions(userId, limitCount = 50) {
         const q = query(
-            collection(this.db, `users/${userId}/transactions`),
+            collection(this.db, `${this._scope(userId)}/transactions`),
             orderBy('timestamp', 'desc'),
             limit(limitCount)
         );
@@ -175,7 +205,7 @@ class DataService {
 
     async getRevenueTransactionsForDashboardStats(userId) {
         const q = query(
-            collection(this.db, `users/${userId}/transactions`),
+            collection(this.db, `${this._scope(userId)}/transactions`),
             where('type', 'in', ['income', 'revenue', 'refund', 'pending_receivable'])
         );
         const snapshot = await getDocs(q);
@@ -186,7 +216,7 @@ class DataService {
         if (!userId) return { cashIn: 0, cashOut: 0, net: 0, recordCount: 0, _entries: [] };
         try {
             const q = query(
-                collection(this.db, `users/${userId}/transactions`),
+                collection(this.db, `${this._scope(userId)}/transactions`),
                 where('cash_effective', '==', true),
                 limit(2000)
             );
@@ -214,7 +244,7 @@ class DataService {
     async getTransactionsForDashboardOverview(userId, allTime = false) {
         if (!allTime) return this.getTransactions(userId, 1000);
         const q = query(
-            collection(this.db, `users/${userId}/transactions`),
+            collection(this.db, `${this._scope(userId)}/transactions`),
             orderBy('timestamp', 'desc')
         );
         const snapshot = await getDocs(q);
@@ -223,14 +253,14 @@ class DataService {
 
     async getTransactionById(userId, transactionId) {
         if (!userId || !transactionId) throw new Error('userId and transactionId required');
-        const snap = await getDoc(doc(this.db, `users/${userId}/transactions/${transactionId}`));
+        const snap = await getDoc(doc(this.db, `${this._scope(userId)}/transactions/${transactionId}`));
         if (!snap.exists()) return null;
         return { id: snap.id, ...snap.data() };
     }
 
     async updateTransaction(userId, transactionId, patch = {}, reason = 'Edited from ledger') {
         if (!userId || !transactionId) throw new Error('userId and transactionId required');
-        const ref = doc(this.db, `users/${userId}/transactions/${transactionId}`);
+        const ref = doc(this.db, `${this._scope(userId)}/transactions/${transactionId}`);
         const snap = await getDoc(ref);
         if (!snap.exists()) throw new Error('Transaction not found.');
         const existing = snap.data() || {};
@@ -242,8 +272,8 @@ class DataService {
 
         const batch = writeBatch(this.db);
         batch.update(ref, payload);
-        batch.set(doc(collection(this.db, `users/${userId}/audit_logs`)), {
-            actor_uid: userId,
+        batch.set(doc(collection(this.db, `${this._scope(userId)}/audit_logs`)), {
+            actor_uid: (this.actorUid || userId),
             actor_role: null,
             action: 'transaction.update',
             target_collection: 'transactions',
@@ -263,7 +293,7 @@ class DataService {
         const cleanReason = this._stringOrDefault(reason, '', 500);
         if (!cleanReason) throw new Error('Void reason is required.');
 
-        const ref = doc(this.db, `users/${userId}/transactions/${transactionId}`);
+        const ref = doc(this.db, `${this._scope(userId)}/transactions/${transactionId}`);
         const snap = await getDoc(ref);
         if (!snap.exists()) throw new Error('Transaction not found.');
         const existing = snap.data() || {};
@@ -273,16 +303,16 @@ class DataService {
             is_voided: true,
             status: 'Voided',
             voided_at: serverTimestamp(),
-            voided_by: userId,
+            voided_by: (this.actorUid || userId),
             void_reason: cleanReason,
             updated_at: serverTimestamp(),
-            updated_by: userId
+            updated_by: (this.actorUid || userId)
         };
 
         const batch = writeBatch(this.db);
         batch.update(ref, payload);
-        batch.set(doc(collection(this.db, `users/${userId}/audit_logs`)), {
-            actor_uid: userId,
+        batch.set(doc(collection(this.db, `${this._scope(userId)}/audit_logs`)), {
+            actor_uid: (this.actorUid || userId),
             actor_role: null,
             action: 'transaction.void',
             target_collection: 'transactions',
@@ -291,7 +321,7 @@ class DataService {
             after: {
                 is_voided: true,
                 status: 'Voided',
-                voided_by: userId,
+                voided_by: (this.actorUid || userId),
                 void_reason: cleanReason
             },
             reason: cleanReason,
@@ -304,7 +334,7 @@ class DataService {
 
     async updateTransactionCashImpact(userId, transactionId, payload, reason) {
         if (!userId || !transactionId) throw new Error('userId and transactionId required');
-        const ref = doc(this.db, `users/${userId}/transactions/${transactionId}`);
+        const ref = doc(this.db, `${this._scope(userId)}/transactions/${transactionId}`);
         const snap = await getDoc(ref);
         if (!snap.exists()) throw new Error('Transaction not found.');
         const existing = snap.data() || {};
@@ -333,8 +363,8 @@ class DataService {
 
         const batch = writeBatch(this.db);
         batch.update(ref, update);
-        batch.set(doc(collection(this.db, `users/${userId}/audit_logs`)), {
-            actor_uid: userId,
+        batch.set(doc(collection(this.db, `${this._scope(userId)}/audit_logs`)), {
+            actor_uid: (this.actorUid || userId),
             actor_role: null,
             action: 'transaction.cash_impact_updated',
             target_collection: 'transactions',
@@ -351,7 +381,7 @@ class DataService {
 
     async addTransaction(userId, data) {
         const { timestamp, ...rest } = data;
-        return await addDoc(collection(this.db, `users/${userId}/transactions`), {
+        return await addDoc(collection(this.db, `${this._scope(userId)}/transactions`), {
             ...rest,
             timestamp: timestamp || serverTimestamp(),
             created_at: serverTimestamp()
@@ -360,7 +390,7 @@ class DataService {
 
     async addTransactions(userId, rows) {
         const batch = writeBatch(this.db);
-        const txCollection = collection(this.db, `users/${userId}/transactions`);
+        const txCollection = collection(this.db, `${this._scope(userId)}/transactions`);
         const uploadedAt = serverTimestamp();
 
         rows.forEach(row => {
@@ -387,11 +417,11 @@ class DataService {
         // but only allow strings or omission — not literal `null`).
         ['budget_id', 'budget_allocation_id', 'budget_match_method', 'budget_match_status', 'budget_impact_status']
             .forEach((field) => { if (payload[field] == null) delete payload[field]; });
-        return await addDoc(collection(this.db, `users/${userId}/bills`), payload);
+        return await addDoc(collection(this.db, `${this._scope(userId)}/bills`), payload);
     }
 
     async getBills(userId) {
-        const q = query(collection(this.db, `users/${userId}/bills`), orderBy('timestamp', 'desc'));
+        const q = query(collection(this.db, `${this._scope(userId)}/bills`), orderBy('timestamp', 'desc'));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
@@ -400,7 +430,7 @@ class DataService {
     // snap its date range to a linked bill that sits outside the current period.
     async getBillById(userId, billId) {
         if (!userId || !billId) throw new Error('userId and billId required');
-        const snap = await getDoc(doc(this.db, `users/${userId}/bills/${billId}`));
+        const snap = await getDoc(doc(this.db, `${this._scope(userId)}/bills/${billId}`));
         if (!snap.exists()) return null;
         return { id: snap.id, ...snap.data() };
     }
@@ -422,7 +452,7 @@ class DataService {
         const amount = Math.round(Math.abs(Number(bill.amount) || 0));
         if (!(amount > 0)) throw new Error('Bill amount must be greater than zero.');
 
-        const txRef = doc(collection(this.db, `users/${userId}/transactions`));
+        const txRef = doc(collection(this.db, `${this._scope(userId)}/transactions`));
         const transaction = {
             amount,
             vendor_name: bill.vendor_name || 'Bill',
@@ -465,15 +495,15 @@ class DataService {
 
         const batch = writeBatch(this.db);
         batch.set(txRef, transaction);
-        batch.update(doc(this.db, `users/${userId}/bills/${billId}`), {
+        batch.update(doc(this.db, `${this._scope(userId)}/bills/${billId}`), {
             payment_status: 'paid',
             budget_impact_status: 'converted_to_actual',
             linked_transaction_id: txRef.id,
             updated_at: serverTimestamp(),
-            updated_by: userId
+            updated_by: (this.actorUid || userId)
         });
-        batch.set(doc(collection(this.db, `users/${userId}/audit_logs`)), {
-            actor_uid: userId,
+        batch.set(doc(collection(this.db, `${this._scope(userId)}/audit_logs`)), {
+            actor_uid: (this.actorUid || userId),
             actor_role: null,
             action: 'bill.mark_paid',
             target_collection: 'bills',
@@ -491,14 +521,14 @@ class DataService {
     // --- SUBSCRIPTIONS ---
     async addSubscription(userId, data) {
         const { timestamp, ...rest } = data;
-        return await addDoc(collection(this.db, `users/${userId}/subscriptions`), {
+        return await addDoc(collection(this.db, `${this._scope(userId)}/subscriptions`), {
             ...rest,
             timestamp: timestamp || serverTimestamp()
         });
     }
 
     async getSubscriptions(userId) {
-        const q = query(collection(this.db, `users/${userId}/subscriptions`), orderBy('timestamp', 'desc'));
+        const q = query(collection(this.db, `${this._scope(userId)}/subscriptions`), orderBy('timestamp', 'desc'));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
@@ -506,7 +536,7 @@ class DataService {
     // Single-record fetch for universal record deep-linking (mirrors getBillById).
     async getSubscriptionById(userId, subscriptionId) {
         if (!userId || !subscriptionId) throw new Error('userId and subscriptionId required');
-        const snap = await getDoc(doc(this.db, `users/${userId}/subscriptions/${subscriptionId}`));
+        const snap = await getDoc(doc(this.db, `${this._scope(userId)}/subscriptions/${subscriptionId}`));
         if (!snap.exists()) return null;
         return { id: snap.id, ...snap.data() };
     }
@@ -666,11 +696,11 @@ class DataService {
     async updateTransactionReceipt(userId, txId, receiptUrl) {
         // updated_at must be refreshed to request.time, else the transaction
         // update rule rejects any record that has already been edited.
-        await updateDoc(doc(this.db, `users/${userId}/transactions/${txId}`), {
+        await updateDoc(doc(this.db, `${this._scope(userId)}/transactions/${txId}`), {
             receipt_url: receiptUrl,
             status: 'Completed',
             updated_at: serverTimestamp(),
-            updated_by: userId
+            updated_by: (this.actorUid || userId)
         });
     }
 
@@ -689,10 +719,10 @@ class DataService {
             await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
         if (!this._storage) this._storage = getStorage(this.app);
 
-        const documentRef = doc(collection(this.db, `users/${userId}/documents`));
+        const documentRef = doc(collection(this.db, `${this._scope(userId)}/documents`));
         const documentId = documentRef.id;
         const safeName = String(file.name || 'document').replace(/[^\w.\-]+/g, '_').slice(0, 200) || 'document';
-        const storagePath = `users/${userId}/documents/${documentId}/${safeName}`;
+        const storagePath = `${this._scope(userId)}/documents/${documentId}/${safeName}`;
         const snap = await uploadBytes(
             ref(this._storage, storagePath),
             file,
@@ -715,7 +745,7 @@ class DataService {
     }
 
     async addDocumentMetadata(userId, documentId, payload) {
-        const docRef = doc(this.db, `users/${userId}/documents/${documentId}`);
+        const docRef = doc(this.db, `${this._scope(userId)}/documents/${documentId}`);
         await setDoc(docRef, {
             file_name: payload.file_name,
             file_mime_type: payload.file_mime_type,
@@ -735,7 +765,7 @@ class DataService {
     }
 
     async linkDocumentTarget(userId, documentId, targetCollection, targetId) {
-        const docMetaRef = doc(this.db, `users/${userId}/documents/${documentId}`);
+        const docMetaRef = doc(this.db, `${this._scope(userId)}/documents/${documentId}`);
         await updateDoc(docMetaRef, {
             target_collection: targetCollection,
             target_id: targetId,
@@ -753,7 +783,7 @@ class DataService {
         await updateDoc(recordRef, update);
 
         // Link metadata back to the record it was attached to.
-        const docMetaRef = doc(this.db, `users/${userId}/documents/${attachment.document_id}`);
+        const docMetaRef = doc(this.db, `${this._scope(userId)}/documents/${attachment.document_id}`);
         await updateDoc(docMetaRef, {
             target_collection: targetCollection,
             target_id: targetId,
@@ -762,11 +792,11 @@ class DataService {
     }
 
     async updateTransactionType(userId, txId, newType, newIcon) {
-        await updateDoc(doc(this.db, `users/${userId}/transactions/${txId}`), {
+        await updateDoc(doc(this.db, `${this._scope(userId)}/transactions/${txId}`), {
             type: newType,
             icon: newIcon,
             updated_at: serverTimestamp(),
-            updated_by: userId
+            updated_by: (this.actorUid || userId)
         });
     }
 
@@ -1116,19 +1146,19 @@ class DataService {
             warning_counts: data.warning_counts || {},
             limitations: Array.isArray(data.limitations) ? data.limitations : [],
             created_at: serverTimestamp(),
-            created_by: userId
+            created_by: (this.actorUid || userId)
         };
         // Optional YTD/YoY scope metadata. The firestore rule allows the field
         // to be absent — only include it when supplied.
         if (data.report_scope && typeof data.report_scope === 'object') {
             payload.report_scope = data.report_scope;
         }
-        return await addDoc(collection(this.db, `users/${userId}/report_exports`), payload);
+        return await addDoc(collection(this.db, `${this._scope(userId)}/report_exports`), payload);
     }
 
     async getRecentReportExports(userId, limitCount = 10) {
         const q = query(
-            collection(this.db, `users/${userId}/report_exports`),
+            collection(this.db, `${this._scope(userId)}/report_exports`),
             orderBy('created_at', 'desc'),
             limit(limitCount)
         );
@@ -1138,8 +1168,8 @@ class DataService {
 
     // --- AUDIT LOGS ---
     async addAuditLog(userId, data) {
-        return await addDoc(collection(this.db, `users/${userId}/audit_logs`), {
-            actor_uid: userId,
+        return await addDoc(collection(this.db, `${this._scope(userId)}/audit_logs`), {
+            actor_uid: (this.actorUid || userId),
             actor_role: data.actor_role || null,
             action: data.action,
             target_collection: data.target_collection,
@@ -1154,12 +1184,210 @@ class DataService {
 
     async getAuditLogs(userId, limitCount = 100) {
         const q = query(
-            collection(this.db, `users/${userId}/audit_logs`),
+            collection(this.db, `${this._scope(userId)}/audit_logs`),
             orderBy('created_at', 'desc'),
             limit(limitCount)
         );
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    // ====================================================================
+    // WORKSPACE TEAM MANAGEMENT & RBAC
+    //
+    // Workspace-scoped membership/invites/audit. Seeding rule: for existing
+    // single-user accounts workspaceId == the owner's uid (so the migration is
+    // reference-safe). Invites are keyed by lowercased email so Firestore rules
+    // can verify a self-join without a query. See firestore.rules → WORKSPACES
+    // and docs/SECURITY_SYSTEM.md §3–6.
+    // ====================================================================
+
+    _emailKey(email) {
+        return String(email || '').trim().toLowerCase();
+    }
+
+    // Best-effort workspace-scoped audit log. Never throws (mirrors the
+    // post-commit best-effort audits used elsewhere). actor_uid comes from
+    // this.actorUid (set via setActor), which Firestore rules pin to the caller.
+    async _workspaceAudit(workspaceId, data) {
+        try {
+            return await addDoc(collection(this.db, `workspaces/${workspaceId}/audit_logs`), {
+                actor_uid: this.actorUid,
+                actor_role: data.actor_role || this.actorRole || null,
+                action: data.action,
+                target_collection: data.target_collection,
+                target_id: data.target_id || '',
+                before: data.before || null,
+                after: data.after || null,
+                reason: data.reason || null,
+                source: data.source || 'dashboard',
+                created_at: serverTimestamp()
+            });
+        } catch (e) {
+            console.warn('[workspace audit] skipped', e);
+            return null;
+        }
+    }
+
+    // Bootstrap the caller's own workspace (id == uid): profile doc, owner
+    // membership, and the reverse-lookup pointer. Idempotent.
+    async ensureWorkspace(uid, opts = {}) {
+        const wsRef = doc(this.db, `workspaces/${uid}`);
+        let wsExists = false;
+        try { wsExists = (await getDoc(wsRef)).exists(); } catch (_) {}
+        if (!wsExists) {
+            await setDoc(wsRef, {
+                owner_uid: uid,
+                name: opts.name || null,
+                created_at: serverTimestamp(),
+                updated_at: serverTimestamp()
+            });
+        }
+        const memberRef = doc(this.db, `workspaces/${uid}/members/${uid}`);
+        let memberExists = false;
+        try { memberExists = (await getDoc(memberRef)).exists(); } catch (_) {}
+        if (!memberExists) {
+            await setDoc(memberRef, {
+                uid,
+                email: opts.email || null,
+                display_name: opts.displayName || null,
+                role: 'owner',
+                status: 'active',
+                invited_by: null,
+                joined_at: serverTimestamp(),
+                updated_at: serverTimestamp()
+            });
+        }
+        try {
+            await setDoc(doc(this.db, `user_workspaces/${uid}`), {
+                workspaceIds: arrayUnion(uid),
+                default: uid,
+                updated_at: serverTimestamp()
+            }, { merge: true });
+        } catch (_) {}
+        return { workspaceId: uid, role: 'owner' };
+    }
+
+    async getWorkspaceProfile(workspaceId) {
+        const snap = await getDoc(doc(this.db, `workspaces/${workspaceId}`));
+        return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    }
+
+    async getMembers(workspaceId) {
+        const snap = await getDocs(collection(this.db, `workspaces/${workspaceId}/members`));
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    async getInvites(workspaceId, { pendingOnly = true } = {}) {
+        const snap = await getDocs(collection(this.db, `workspaces/${workspaceId}/invites`));
+        let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (pendingOnly) rows = rows.filter(r => r.status === 'pending');
+        return rows;
+    }
+
+    // Create (or re-send) a pending invite. Returns { id } where id == email key.
+    async inviteMember(workspaceId, { email, role, invitedBy = null, invitedByEmail = null, expiresAt = null } = {}) {
+        const key = this._emailKey(email);
+        if (!key) throw new Error('An email address is required.');
+        if (!['admin', 'finance', 'viewer'].includes(role)) throw new Error('Invalid role.');
+        const ref = doc(this.db, `workspaces/${workspaceId}/invites/${key}`);
+        await setDoc(ref, {
+            email: key,
+            role,
+            status: 'pending',
+            invited_by: invitedBy,
+            invited_by_email: invitedByEmail ? this._emailKey(invitedByEmail) : null,
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp(),
+            expires_at: expiresAt,
+            accepted_by: null,
+            accepted_at: null
+        });
+        await this._workspaceAudit(workspaceId, {
+            action: 'member.invite', target_collection: 'invites', target_id: key, after: { email: key, role }
+        });
+        return { id: key };
+    }
+
+    async revokeInvite(workspaceId, email) {
+        const key = this._emailKey(email);
+        await deleteDoc(doc(this.db, `workspaces/${workspaceId}/invites/${key}`));
+        await this._workspaceAudit(workspaceId, {
+            action: 'invite.revoke', target_collection: 'invites', target_id: key
+        });
+    }
+
+    async updateMemberRole(workspaceId, memberUid, role) {
+        if (!['admin', 'finance', 'viewer'].includes(role)) throw new Error('Invalid role.');
+        const ref = doc(this.db, `workspaces/${workspaceId}/members/${memberUid}`);
+        let before = {};
+        try { before = (await getDoc(ref)).data() || {}; } catch (_) {}
+        await updateDoc(ref, { role, updated_at: serverTimestamp() });
+        await this._workspaceAudit(workspaceId, {
+            action: 'member.role_change', target_collection: 'members', target_id: memberUid,
+            before: { role: before.role || null }, after: { role }
+        });
+    }
+
+    async removeMember(workspaceId, memberUid) {
+        const ref = doc(this.db, `workspaces/${workspaceId}/members/${memberUid}`);
+        let before = {};
+        try { before = (await getDoc(ref)).data() || {}; } catch (_) {}
+        await deleteDoc(ref);
+        await this._workspaceAudit(workspaceId, {
+            action: 'member.remove', target_collection: 'members', target_id: memberUid,
+            before: { role: before.role || null, email: before.email || null }
+        });
+    }
+
+    // Invitee self-joins from a pending invite. Creates their member doc and
+    // flips the invite to accepted in one batch (rules verify both transitions).
+    async acceptInvite(workspaceId, uid, { email, displayName = null } = {}) {
+        const key = this._emailKey(email);
+        const inviteRef = doc(this.db, `workspaces/${workspaceId}/invites/${key}`);
+        const inviteSnap = await getDoc(inviteRef);
+        if (!inviteSnap.exists()) throw new Error('Invite not found.');
+        const invite = inviteSnap.data() || {};
+        if (invite.status !== 'pending') throw new Error('This invite is no longer available.');
+        const role = invite.role;
+        const batch = writeBatch(this.db);
+        batch.set(doc(this.db, `workspaces/${workspaceId}/members/${uid}`), {
+            uid,
+            email: key,
+            display_name: displayName,
+            role,
+            status: 'active',
+            invited_by: invite.invited_by || null,
+            joined_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        });
+        batch.update(inviteRef, {
+            status: 'accepted', accepted_by: uid, accepted_at: serverTimestamp(), updated_at: serverTimestamp()
+        });
+        await batch.commit();
+        try {
+            await setDoc(doc(this.db, `user_workspaces/${uid}`), {
+                workspaceIds: arrayUnion(workspaceId),
+                default: workspaceId,
+                updated_at: serverTimestamp()
+            }, { merge: true });
+        } catch (_) {}
+        return { workspaceId, role };
+    }
+
+    async getWorkspaceAuditLogs(workspaceId, limitCount = 50) {
+        try {
+            const q = query(
+                collection(this.db, `workspaces/${workspaceId}/audit_logs`),
+                orderBy('created_at', 'desc'),
+                limit(limitCount)
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (e) {
+            console.warn('[workspace audit] read skipped', e);
+            return [];
+        }
     }
 
     // --- INVOICES (Create Invoice MVP) ---
@@ -1215,12 +1443,12 @@ class DataService {
     }
 
     _invoiceAuditRef(userId) {
-        return doc(collection(this.db, `users/${userId}/audit_logs`));
+        return doc(collection(this.db, `${this._scope(userId)}/audit_logs`));
     }
 
     _invoiceAuditPayload(userId, action, targetId, { before = null, after = null, reason = null } = {}) {
         return {
-            actor_uid: userId,
+            actor_uid: (this.actorUid || userId),
             actor_role: null,
             action,
             target_collection: 'invoices',
@@ -1264,7 +1492,7 @@ class DataService {
             payment_link_enabled: invoiceData.payment_link_enabled === true,
             payment_page_url: null,
             updated_at: serverTimestamp(),
-            updated_by: userId
+            updated_by: (this.actorUid || userId)
         };
     }
 
@@ -1277,7 +1505,7 @@ class DataService {
         let sequence = 1;
         try {
             const q = query(
-                collection(this.db, `users/${userId}/invoices`),
+                collection(this.db, `${this._scope(userId)}/invoices`),
                 orderBy('invoice_number', 'desc'),
                 limit(1)
             );
@@ -1299,7 +1527,7 @@ class DataService {
 
     async getInvoices(userId, limitCount = 100) {
         const q = query(
-            collection(this.db, `users/${userId}/invoices`),
+            collection(this.db, `${this._scope(userId)}/invoices`),
             orderBy('created_at', 'desc'),
             limit(limitCount)
         );
@@ -1308,13 +1536,13 @@ class DataService {
     }
 
     async getInvoice(userId, invoiceId) {
-        const snap = await getDoc(doc(this.db, `users/${userId}/invoices/${invoiceId}`));
+        const snap = await getDoc(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`));
         return snap.exists() ? { id: snap.id, ...snap.data() } : null;
     }
 
     async getInvoiceItems(userId, invoiceId) {
         const q = query(
-            collection(this.db, `users/${userId}/invoices/${invoiceId}/items`),
+            collection(this.db, `${this._scope(userId)}/invoices/${invoiceId}/items`),
             orderBy('position', 'asc')
         );
         const snapshot = await getDocs(q);
@@ -1327,7 +1555,7 @@ class DataService {
     async createInvoiceDraft(userId, invoiceData = {}) {
         const items = (Array.isArray(invoiceData.items) ? invoiceData.items : [])
             .map((item, index) => this._normalizeInvoiceItem(item, index));
-        const invoiceRef = doc(collection(this.db, `users/${userId}/invoices`));
+        const invoiceRef = doc(collection(this.db, `${this._scope(userId)}/invoices`));
         const invoiceNumber = invoiceData.invoice_number || await this.generateInvoiceNumber(userId);
         const payload = {
             invoice_number: this._stringOrDefault(invoiceNumber, '', 40),
@@ -1339,13 +1567,13 @@ class DataService {
             voided_at: null,
             void_reason: null,
             created_at: serverTimestamp(),
-            created_by: userId
+            created_by: (this.actorUid || userId)
         };
 
         const batch = writeBatch(this.db);
         batch.set(invoiceRef, payload);
         items.forEach(item => {
-            batch.set(doc(collection(this.db, `users/${userId}/invoices/${invoiceRef.id}/items`)), {
+            batch.set(doc(collection(this.db, `${this._scope(userId)}/invoices/${invoiceRef.id}/items`)), {
                 ...item,
                 created_at: serverTimestamp(),
                 updated_at: serverTimestamp()
@@ -1379,14 +1607,14 @@ class DataService {
 
         const payload = this._normalizeInvoiceData(userId, invoiceData, incoming);
         const batch = writeBatch(this.db);
-        batch.update(doc(this.db, `users/${userId}/invoices/${invoiceId}`), payload);
+        batch.update(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`), payload);
 
         const keptIds = new Set();
         incoming.forEach(item => {
             const { id, ...fields } = item;
             if (id && existingById.has(id)) {
                 keptIds.add(id);
-                batch.set(doc(this.db, `users/${userId}/invoices/${invoiceId}/items/${id}`), {
+                batch.set(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}/items/${id}`), {
                     ...fields,
                     created_at: existingById.get(id).created_at,
                     updated_at: serverTimestamp()
@@ -1399,7 +1627,7 @@ class DataService {
                     })
                 );
             } else {
-                batch.set(doc(collection(this.db, `users/${userId}/invoices/${invoiceId}/items`)), {
+                batch.set(doc(collection(this.db, `${this._scope(userId)}/invoices/${invoiceId}/items`)), {
                     ...fields,
                     created_at: serverTimestamp(),
                     updated_at: serverTimestamp()
@@ -1414,7 +1642,7 @@ class DataService {
         });
         existingItems.forEach(item => {
             if (!keptIds.has(item.id)) {
-                batch.delete(doc(this.db, `users/${userId}/invoices/${invoiceId}/items/${item.id}`));
+                batch.delete(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}/items/${item.id}`));
                 batch.set(
                     this._invoiceAuditRef(userId),
                     this._invoiceAuditPayload(userId, 'invoice.item_deleted', invoiceId, {
@@ -1437,7 +1665,7 @@ class DataService {
     async addInvoiceItem(userId, invoiceId, itemData = {}) {
         const item = this._normalizeInvoiceItem(itemData, Number(itemData.position) || 0);
         const batch = writeBatch(this.db);
-        batch.set(doc(collection(this.db, `users/${userId}/invoices/${invoiceId}/items`)), {
+        batch.set(doc(collection(this.db, `${this._scope(userId)}/invoices/${invoiceId}/items`)), {
             ...item,
             created_at: serverTimestamp(),
             updated_at: serverTimestamp()
@@ -1452,12 +1680,12 @@ class DataService {
     }
 
     async updateInvoiceItem(userId, invoiceId, itemId, itemData = {}) {
-        const existingSnap = await getDoc(doc(this.db, `users/${userId}/invoices/${invoiceId}/items/${itemId}`));
+        const existingSnap = await getDoc(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}/items/${itemId}`));
         if (!existingSnap.exists()) throw new Error('Invoice item not found.');
         const existing = existingSnap.data();
         const item = this._normalizeInvoiceItem(itemData, Number(itemData.position) || 0);
         const batch = writeBatch(this.db);
-        batch.set(doc(this.db, `users/${userId}/invoices/${invoiceId}/items/${itemId}`), {
+        batch.set(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}/items/${itemId}`), {
             ...item,
             created_at: existing.created_at,
             updated_at: serverTimestamp()
@@ -1473,10 +1701,10 @@ class DataService {
     }
 
     async deleteInvoiceItem(userId, invoiceId, itemId) {
-        const existingSnap = await getDoc(doc(this.db, `users/${userId}/invoices/${invoiceId}/items/${itemId}`));
+        const existingSnap = await getDoc(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}/items/${itemId}`));
         const existing = existingSnap.exists() ? existingSnap.data() : {};
         const batch = writeBatch(this.db);
-        batch.delete(doc(this.db, `users/${userId}/invoices/${invoiceId}/items/${itemId}`));
+        batch.delete(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}/items/${itemId}`));
         batch.set(
             this._invoiceAuditRef(userId),
             this._invoiceAuditPayload(userId, 'invoice.item_deleted', invoiceId, {
@@ -1506,12 +1734,12 @@ class DataService {
             status: 'open',
             finalized_at: serverTimestamp(),
             updated_at: serverTimestamp(),
-            updated_by: userId
+            updated_by: (this.actorUid || userId)
         };
         if (markSent) patch.sent_at = serverTimestamp();
 
         const batch = writeBatch(this.db);
-        batch.update(doc(this.db, `users/${userId}/invoices/${invoiceId}`), patch);
+        batch.update(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`), patch);
         batch.set(
             this._invoiceAuditRef(userId),
             this._invoiceAuditPayload(userId, 'invoice.finalized', invoiceId, {
@@ -1538,10 +1766,10 @@ class DataService {
         if (!invoice) throw new Error('Invoice not found.');
         if (invoice.status !== 'open') throw new Error('Only open invoices can be marked as sent.');
         const batch = writeBatch(this.db);
-        batch.update(doc(this.db, `users/${userId}/invoices/${invoiceId}`), {
+        batch.update(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`), {
             sent_at: serverTimestamp(),
             updated_at: serverTimestamp(),
-            updated_by: userId
+            updated_by: (this.actorUid || userId)
         });
         batch.set(
             this._invoiceAuditRef(userId),
@@ -1565,7 +1793,7 @@ class DataService {
         const amount = Math.round(Number(invoice.total_amount) || 0);
         if (!(amount > 0)) throw new Error('Invoice total must be greater than zero.');
 
-        const txRef = doc(collection(this.db, `users/${userId}/transactions`));
+        const txRef = doc(collection(this.db, `${this._scope(userId)}/transactions`));
         const transaction = {
             amount,
             vendor_name: invoice.customer_name,
@@ -1582,12 +1810,12 @@ class DataService {
 
         const batch = writeBatch(this.db);
         batch.set(txRef, transaction);
-        batch.update(doc(this.db, `users/${userId}/invoices/${invoiceId}`), {
+        batch.update(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`), {
             status: 'paid',
             paid_at: serverTimestamp(),
             linked_transaction_id: txRef.id,
             updated_at: serverTimestamp(),
-            updated_by: userId
+            updated_by: (this.actorUid || userId)
         });
         batch.set(
             this._invoiceAuditRef(userId),
@@ -1615,12 +1843,12 @@ class DataService {
             throw new Error('Only draft or open invoices can be voided.');
         }
         const batch = writeBatch(this.db);
-        batch.update(doc(this.db, `users/${userId}/invoices/${invoiceId}`), {
+        batch.update(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`), {
             status: 'void',
             voided_at: serverTimestamp(),
             void_reason: cleanReason,
             updated_at: serverTimestamp(),
-            updated_by: userId
+            updated_by: (this.actorUid || userId)
         });
         batch.set(
             this._invoiceAuditRef(userId),
@@ -1676,7 +1904,7 @@ class DataService {
     async getAccountingMappings(userId) {
         if (!userId) return [];
         try {
-            const snapshot = await getDocs(collection(this.db, `users/${userId}/accounting_mappings`));
+            const snapshot = await getDocs(collection(this.db, `${this._scope(userId)}/accounting_mappings`));
             return snapshot.docs
                 .map(d => ({ id: d.id, ...d.data() }))
                 .filter(m => m.status !== 'archived');
@@ -1701,7 +1929,7 @@ class DataService {
 
         // Deterministic id keeps one mapping per source. Sanitize for a doc id.
         const safeKey = `${sourceType}__${sourceValue}`.toLowerCase().replace(/[^a-z0-9_]+/g, '-').slice(0, 140);
-        const ref = doc(this.db, `users/${userId}/accounting_mappings/${safeKey}`);
+        const ref = doc(this.db, `${this._scope(userId)}/accounting_mappings/${safeKey}`);
         const existing = await getDoc(ref);
         const payload = {
             source_type: sourceType,
@@ -2196,7 +2424,7 @@ class DataService {
         end.setHours(23, 59, 59, 999);
         try {
             const q = query(
-                collection(this.db, `users/${userId}/transactions`),
+                collection(this.db, `${this._scope(userId)}/transactions`),
                 where('timestamp', '<=', Timestamp.fromDate(end)),
                 orderBy('timestamp', 'desc'),
                 limit(2000)
@@ -2205,7 +2433,7 @@ class DataService {
             return this._activeTransactions(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
         } catch (_) {
             const q = query(
-                collection(this.db, `users/${userId}/transactions`),
+                collection(this.db, `${this._scope(userId)}/transactions`),
                 orderBy('timestamp', 'desc'),
                 limit(2000)
             );
@@ -3597,7 +3825,7 @@ class DataService {
         }
 
         const requestRef = doc(this._billingPaymentRequestsCol(userId));
-        const auditRef = doc(collection(this.db, `users/${userId}/audit_logs`));
+        const auditRef = doc(collection(this.db, `${this._scope(userId)}/audit_logs`));
         const batch = writeBatch(this.db);
         const requestPayload = {
             plan_id: planId,
@@ -3651,7 +3879,7 @@ class DataService {
         };
         batch.set(this._billingSubscriptionDoc(userId), subscriptionPayload);
         batch.set(auditRef, {
-            actor_uid: userId,
+            actor_uid: (this.actorUid || userId),
             actor_role: null,
             action: 'billing.payment_request_created',
             target_collection: 'billing_payment_requests',
@@ -3752,8 +3980,8 @@ class DataService {
             };
             txn.set(subscriptionRef, subscriptionPayload);
 
-            txn.set(doc(collection(this.db, `users/${userId}/audit_logs`)), {
-                actor_uid: userId,
+            txn.set(doc(collection(this.db, `${this._scope(userId)}/audit_logs`)), {
+                actor_uid: (this.actorUid || userId),
                 actor_role: null,
                 action: 'billing.payment_request_created',
                 target_collection: 'billing_payment_requests',
@@ -3838,7 +4066,7 @@ class DataService {
 
         const currentSubscription = await this.getBillingSubscription(userId);
         const requestRef = doc(this._billingPaymentRequestsCol(userId), paymentRequestId);
-        const auditRef = doc(collection(this.db, `users/${userId}/audit_logs`));
+        const auditRef = doc(collection(this.db, `${this._scope(userId)}/audit_logs`));
         const batch = writeBatch(this.db);
 
         const requestUpdate = {
@@ -3869,7 +4097,7 @@ class DataService {
         batch.set(this._billingSubscriptionDoc(userId), subscriptionPayload);
 
         batch.set(auditRef, {
-            actor_uid: userId,
+            actor_uid: (this.actorUid || userId),
             actor_role: null,
             action: 'billing.payment_confirmation_submitted',
             target_collection: 'billing_payment_requests',
@@ -3959,7 +4187,7 @@ class DataService {
         }
 
         const requestRef = doc(this._billingPaymentRequestsCol(userId), paymentRequestId);
-        const auditRef = doc(collection(this.db, `users/${userId}/audit_logs`));
+        const auditRef = doc(collection(this.db, `${this._scope(userId)}/audit_logs`));
         const batch = writeBatch(this.db);
 
         batch.update(requestRef, {
@@ -3970,7 +4198,7 @@ class DataService {
         batch.set(this._billingSubscriptionDoc(userId), subscriptionPayload);
 
         batch.set(auditRef, {
-            actor_uid: userId,
+            actor_uid: (this.actorUid || userId),
             actor_role: null,
             action: 'billing.payment_request_canceled',
             target_collection: 'billing_payment_requests',
@@ -4461,7 +4689,7 @@ class DataService {
         try {
             let bytes = 0;
             let docsThisMonth = 0;
-            const docsSnap = await getDocs(query(collection(this.db, `users/${userId}/documents`), limit(500)));
+            const docsSnap = await getDocs(query(collection(this.db, `${this._scope(userId)}/documents`), limit(500)));
             docsSnap.forEach((d) => {
                 const data = d.data() || {};
                 const size = Number(data.file_size);
@@ -4471,7 +4699,7 @@ class DataService {
             });
             // Bank statement imports also consume storage.
             try {
-                const impSnap = await getDocs(query(collection(this.db, `users/${userId}/bank_statement_imports`), limit(500)));
+                const impSnap = await getDocs(query(collection(this.db, `${this._scope(userId)}/bank_statement_imports`), limit(500)));
                 impSnap.forEach((d) => {
                     const size = Number((d.data() || {}).file_size);
                     if (Number.isFinite(size) && size > 0) bytes += size;
@@ -4570,14 +4798,14 @@ class DataService {
         const sub = await this.getBillingSubscription(userId);
         if (!sub || sub.status !== 'active') return { ok: false, reason: 'not_active' };
 
-        const auditRef = doc(collection(this.db, `users/${userId}/audit_logs`));
+        const auditRef = doc(collection(this.db, `${this._scope(userId)}/audit_logs`));
         const batch = writeBatch(this.db);
         batch.update(this._billingSubscriptionDoc(userId), {
             status: 'cancel_scheduled',
             updated_at: serverTimestamp()
         });
         batch.set(auditRef, {
-            actor_uid: userId,
+            actor_uid: (this.actorUid || userId),
             actor_role: null,
             action: 'billing.renewal_canceled',
             target_collection: 'billing',
@@ -4603,14 +4831,14 @@ class DataService {
         const sub = await this.getBillingSubscription(userId);
         if (!sub || sub.status !== 'cancel_scheduled') return { ok: false, reason: 'not_cancel_scheduled' };
 
-        const auditRef = doc(collection(this.db, `users/${userId}/audit_logs`));
+        const auditRef = doc(collection(this.db, `${this._scope(userId)}/audit_logs`));
         const batch = writeBatch(this.db);
         batch.update(this._billingSubscriptionDoc(userId), {
             status: 'active',
             updated_at: serverTimestamp()
         });
         batch.set(auditRef, {
-            actor_uid: userId,
+            actor_uid: (this.actorUid || userId),
             actor_role: null,
             action: 'billing.renewal_reactivated',
             target_collection: 'billing',
@@ -5288,7 +5516,7 @@ class DataService {
     // --- BANK ACCOUNTS (Phase 1: manual only) ---
     async getBankAccounts(userId) {
         const q = query(
-            collection(this.db, `users/${userId}/bank_accounts`),
+            collection(this.db, `${this._scope(userId)}/bank_accounts`),
             orderBy('created_at', 'desc'),
             limit(50)
         );
@@ -5320,9 +5548,9 @@ class DataService {
             created_at: serverTimestamp(),
             updated_at: serverTimestamp()
         };
-        const accountRef = await addDoc(collection(this.db, `users/${userId}/bank_accounts`), payload);
+        const accountRef = await addDoc(collection(this.db, `${this._scope(userId)}/bank_accounts`), payload);
 
-        await addDoc(collection(this.db, `users/${userId}/bank_balance_snapshots`), {
+        await addDoc(collection(this.db, `${this._scope(userId)}/bank_balance_snapshots`), {
             bank_account_id: accountRef.id,
             balance,
             currency: 'IDR',
@@ -5354,7 +5582,7 @@ class DataService {
         const balance = Math.round(Math.max(0, Number(data.balance) || 0));
         const snapshotDate = this._coerceTimestampOrNow(data.snapshot_at);
 
-        const accountRef = doc(this.db, `users/${userId}/bank_accounts/${accountId}`);
+        const accountRef = doc(this.db, `${this._scope(userId)}/bank_accounts/${accountId}`);
         const existing = await getDoc(accountRef);
         if (!existing.exists()) throw new Error('bank account not found');
         const existingData = existing.data() || {};
@@ -5380,7 +5608,7 @@ class DataService {
         };
         await updateDoc(accountRef, merged);
 
-        await addDoc(collection(this.db, `users/${userId}/bank_balance_snapshots`), {
+        await addDoc(collection(this.db, `${this._scope(userId)}/bank_balance_snapshots`), {
             bank_account_id: accountId,
             balance,
             currency: 'IDR',
@@ -5405,7 +5633,7 @@ class DataService {
 
     async archiveBankAccount(userId, accountId, reason = null) {
         if (!userId || !accountId) throw new Error('userId and accountId required');
-        const accountRef = doc(this.db, `users/${userId}/bank_accounts/${accountId}`);
+        const accountRef = doc(this.db, `${this._scope(userId)}/bank_accounts/${accountId}`);
         const existing = await getDoc(accountRef);
         if (!existing.exists()) throw new Error('bank account not found');
         const existingData = existing.data() || {};
@@ -5451,12 +5679,12 @@ class DataService {
                 limit(limitCount)
             ];
             if (options.accountId) constraints.unshift(where('bank_account_id', '==', options.accountId));
-            const q = query(collection(this.db, `users/${userId}/bank_balance_snapshots`), ...constraints);
+            const q = query(collection(this.db, `${this._scope(userId)}/bank_balance_snapshots`), ...constraints);
             const snapshot = await getDocs(q);
             return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         } catch (_) {
             const q = query(
-                collection(this.db, `users/${userId}/bank_balance_snapshots`),
+                collection(this.db, `${this._scope(userId)}/bank_balance_snapshots`),
                 orderBy('snapshot_at', 'desc'),
                 limit(limitCount)
             );
@@ -5512,7 +5740,7 @@ class DataService {
             confirmed_at: null,
             imported_at: null
         });
-        const ref = await addDoc(collection(this.db, `users/${userId}/bank_statement_imports`), payload);
+        const ref = await addDoc(collection(this.db, `${this._scope(userId)}/bank_statement_imports`), payload);
 
         await this.addAuditLog(userId, {
             action: 'bank_statement.import_created',
@@ -5533,7 +5761,7 @@ class DataService {
 
     async getBankStatementImport(userId, importId) {
         if (!userId || !importId) return null;
-        const snap = await getDoc(doc(this.db, `users/${userId}/bank_statement_imports/${importId}`));
+        const snap = await getDoc(doc(this.db, `${this._scope(userId)}/bank_statement_imports/${importId}`));
         return snap.exists() ? { id: snap.id, ...snap.data() } : null;
     }
 
@@ -5541,7 +5769,7 @@ class DataService {
         if (!userId) return [];
         try {
             const q = query(
-                collection(this.db, `users/${userId}/bank_statement_imports`),
+                collection(this.db, `${this._scope(userId)}/bank_statement_imports`),
                 orderBy('created_at', 'desc'),
                 limit(Math.max(1, Math.min(100, Number(limitCount) || 25)))
             );
@@ -5554,7 +5782,7 @@ class DataService {
 
     async updateBankStatementImport(userId, importId, data = {}) {
         if (!userId || !importId) throw new Error('userId and importId required');
-        const ref = doc(this.db, `users/${userId}/bank_statement_imports/${importId}`);
+        const ref = doc(this.db, `${this._scope(userId)}/bank_statement_imports/${importId}`);
         const existing = await getDoc(ref);
         if (!existing.exists()) throw new Error('bank statement import not found');
         const allowed = {};
@@ -5606,7 +5834,7 @@ class DataService {
         if (!userId || !importId) throw new Error('userId and importId required');
         if (!Array.isArray(rows) || rows.length === 0) return [];
         const safeRows = rows.slice(0, 1000);
-        const rowsCol = collection(this.db, `users/${userId}/bank_statement_imports/${importId}/rows`);
+        const rowsCol = collection(this.db, `${this._scope(userId)}/bank_statement_imports/${importId}/rows`);
         const batch = writeBatch(this.db);
         const created = [];
         safeRows.forEach((row, idx) => {
@@ -5646,7 +5874,7 @@ class DataService {
         if (!userId || !importId) return [];
         try {
             const q = query(
-                collection(this.db, `users/${userId}/bank_statement_imports/${importId}/rows`),
+                collection(this.db, `${this._scope(userId)}/bank_statement_imports/${importId}/rows`),
                 orderBy('row_index', 'asc'),
                 limit(Math.max(1, Math.min(1000, Number(limitCount) || 1000)))
             );
@@ -5668,7 +5896,7 @@ class DataService {
         const safeName = String(file.name || 'bank_statement')
             .replace(/[^\w.\-]+/g, '_')
             .slice(0, 200) || 'bank_statement';
-        const storagePath = `users/${userId}/bank_statement_imports/${importId}/${safeName}`;
+        const storagePath = `${this._scope(userId)}/bank_statement_imports/${importId}/${safeName}`;
         await uploadBytes(
             ref(this._storage, storagePath),
             file,
@@ -5702,7 +5930,7 @@ class DataService {
     // Returns the unsubscribe function.
     watchBankStatementImport(userId, importId, callback) {
         if (!userId || !importId || typeof callback !== 'function') return () => {};
-        const ref = doc(this.db, `users/${userId}/bank_statement_imports/${importId}`);
+        const ref = doc(this.db, `${this._scope(userId)}/bank_statement_imports/${importId}`);
         return onSnapshot(ref, (snap) => {
             callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
         }, () => callback(null));
@@ -5712,7 +5940,7 @@ class DataService {
     // never sent, so the rules' immutability check on it holds.
     async updateBankStatementRow(userId, importId, rowId, data = {}) {
         if (!userId || !importId || !rowId) throw new Error('userId, importId and rowId required');
-        const ref = doc(this.db, `users/${userId}/bank_statement_imports/${importId}/rows/${rowId}`);
+        const ref = doc(this.db, `${this._scope(userId)}/bank_statement_imports/${importId}/rows/${rowId}`);
         const allowed = {};
         if ('selected_for_import' in data) allowed.selected_for_import = data.selected_for_import !== false;
         if ('suggested_vendor_name' in data) allowed.suggested_vendor_name = this._nullableString(data.suggested_vendor_name, 160);
@@ -5741,8 +5969,8 @@ class DataService {
             r && r.selected_for_import !== false && r.review_status !== 'ignored'
             && !r.created_transaction_id && ((Number(r.credit) || 0) > 0 || (Number(r.debit) || 0) > 0));
 
-        const txCol = collection(this.db, `users/${userId}/transactions`);
-        const importPath = `users/${userId}/bank_statement_imports/${importId}`;
+        const txCol = collection(this.db, `${this._scope(userId)}/transactions`);
+        const importPath = `${this._scope(userId)}/bank_statement_imports/${importId}`;
         let created = 0;
 
         // ~200 rows/batch keeps ops (tx create + row update = 2 each) under 500.
@@ -5805,7 +6033,7 @@ class DataService {
 
     async archiveBudget(userId, budgetId, reason = null) {
         if (!userId || !budgetId) throw new Error('userId and budgetId required');
-        const ref = doc(this.db, `users/${userId}/budgets/${budgetId}`);
+        const ref = doc(this.db, `${this._scope(userId)}/budgets/${budgetId}`);
         const existing = await getDoc(ref);
         if (!existing.exists()) throw new Error('budget not found');
         const data = existing.data() || {};
@@ -5838,7 +6066,7 @@ class DataService {
         if (!userId) return [];
         try {
             const q = query(
-                collection(this.db, `users/${userId}/budgets`),
+                collection(this.db, `${this._scope(userId)}/budgets`),
                 orderBy('created_at', 'desc'),
                 limit(limitCount)
             );
@@ -5933,7 +6161,7 @@ class DataService {
 
     async getBudget(userId, budgetId) {
         if (!userId || !budgetId) return null;
-        const snap = await getDoc(doc(this.db, `users/${userId}/budgets/${budgetId}`));
+        const snap = await getDoc(doc(this.db, `${this._scope(userId)}/budgets/${budgetId}`));
         if (!snap.exists()) return null;
         return this._normalizeBudgetRecord({ id: snap.id, ...snap.data() });
     }
@@ -5942,7 +6170,7 @@ class DataService {
         if (!userId) return [];
         try {
             const q = query(
-                collection(this.db, `users/${userId}/budgets`),
+                collection(this.db, `${this._scope(userId)}/budgets`),
                 orderBy('updated_at', 'desc'),
                 limit(limitCount)
             );
@@ -5954,7 +6182,7 @@ class DataService {
         } catch (_) {
             try {
                 const q = query(
-                    collection(this.db, `users/${userId}/budgets`),
+                    collection(this.db, `${this._scope(userId)}/budgets`),
                     orderBy('created_at', 'desc'),
                     limit(limitCount)
                 );
@@ -6031,9 +6259,9 @@ class DataService {
         let budgetId;
         if (existing) {
             budgetId = existing.id;
-            await updateDoc(doc(this.db, `users/${userId}/budgets/${existing.id}`), payload);
+            await updateDoc(doc(this.db, `${this._scope(userId)}/budgets/${existing.id}`), payload);
         } else {
-            const ref = await addDoc(collection(this.db, `users/${userId}/budgets`), {
+            const ref = await addDoc(collection(this.db, `${this._scope(userId)}/budgets`), {
                 ...payload,
                 created_at: serverTimestamp()
             });
@@ -6102,7 +6330,7 @@ class DataService {
         if (!userId || !budgetId) return [];
         try {
             const q = query(
-                collection(this.db, `users/${userId}/budget_allocations`),
+                collection(this.db, `${this._scope(userId)}/budget_allocations`),
                 where('parent_budget_id', '==', budgetId),
                 orderBy('created_at', 'asc'),
                 limit(500)
@@ -6115,7 +6343,7 @@ class DataService {
             // Fallback when composite index is unavailable.
             try {
                 const q = query(
-                    collection(this.db, `users/${userId}/budget_allocations`),
+                    collection(this.db, `${this._scope(userId)}/budget_allocations`),
                     limit(1000)
                 );
                 const snapshot = await getDocs(q);
@@ -6135,7 +6363,7 @@ class DataService {
 
     async getBudgetAllocation(userId, allocationId) {
         if (!userId || !allocationId) return null;
-        const snap = await getDoc(doc(this.db, `users/${userId}/budget_allocations/${allocationId}`));
+        const snap = await getDoc(doc(this.db, `${this._scope(userId)}/budget_allocations/${allocationId}`));
         if (!snap.exists()) return null;
         const allocation = { id: snap.id, ...snap.data() };
         return allocation.status === 'archived' ? null : allocation;
@@ -6461,9 +6689,9 @@ class DataService {
         let budgetRef;
         let budgetIsNew = false;
         if (existing) {
-            budgetRef = doc(this.db, `users/${userId}/budgets/${existing.id}`);
+            budgetRef = doc(this.db, `${this._scope(userId)}/budgets/${existing.id}`);
         } else {
-            budgetRef = doc(collection(this.db, `users/${userId}/budgets`));
+            budgetRef = doc(collection(this.db, `${this._scope(userId)}/budgets`));
             budgetIsNew = true;
         }
 
@@ -6520,14 +6748,14 @@ class DataService {
         // Archive prior allocations via partial update; the merge keeps every
         // other required field intact so hasAll / hasOnly stay valid.
         allocsToArchive.forEach(prev => {
-            const ref = doc(this.db, `users/${userId}/budget_allocations/${prev.id}`);
+            const ref = doc(this.db, `${this._scope(userId)}/budget_allocations/${prev.id}`);
             batch.update(ref, {
                 status: 'archived',
                 updated_at: serverTimestamp()
             });
         });
 
-        const allocationsCol = collection(this.db, `users/${userId}/budget_allocations`);
+        const allocationsCol = collection(this.db, `${this._scope(userId)}/budget_allocations`);
         const allocationRefs = [];
         cleaned.forEach(row => {
             const ref = doc(allocationsCol);
@@ -6622,7 +6850,7 @@ class DataService {
         duplicate.allocations.forEach((alloc, index) => {
             const source = sourceAllocations[index];
             if (!source?.id || !alloc?.id) return;
-            batch.update(doc(this.db, `users/${userId}/budget_allocations/${alloc.id}`), {
+            batch.update(doc(this.db, `${this._scope(userId)}/budget_allocations/${alloc.id}`), {
                 created_from_allocation_id: source.id,
                 updated_at: serverTimestamp()
             });
@@ -6690,7 +6918,7 @@ class DataService {
         if (!userId || !budgetId) {
             return this._emptyBudgetUsage();
         }
-        const budgetRef = doc(this.db, `users/${userId}/budgets/${budgetId}`);
+        const budgetRef = doc(this.db, `${this._scope(userId)}/budgets/${budgetId}`);
         const budgetSnap = await getDoc(budgetRef);
         if (!budgetSnap.exists()) return this._emptyBudgetUsage();
 
@@ -6997,7 +7225,7 @@ class DataService {
         if (!userId || !budgetId) return [];
         try {
             const q = query(
-                collection(this.db, `users/${userId}/audit_logs`),
+                collection(this.db, `${this._scope(userId)}/audit_logs`),
                 orderBy('created_at', 'desc'),
                 limit(500)
             );
@@ -7045,7 +7273,7 @@ class DataService {
             ...updateFields,
             budget_assignment_reason: cleanReason,
             budget_assignment_updated_at: serverTimestamp(),
-            budget_assignment_updated_by: userId
+            budget_assignment_updated_by: (this.actorUid || userId)
         };
         if (targetCollection === 'transactions') {
             payload.updated_at = serverTimestamp();
@@ -7054,9 +7282,9 @@ class DataService {
 
         const batch = writeBatch(this.db);
         batch.update(ref, payload);
-        const auditRef = doc(collection(this.db, `users/${userId}/audit_logs`));
+        const auditRef = doc(collection(this.db, `${this._scope(userId)}/audit_logs`));
         batch.set(auditRef, {
-            actor_uid: userId,
+            actor_uid: (this.actorUid || userId),
             actor_role: null,
             action: auditAction,
             target_collection: targetCollection,

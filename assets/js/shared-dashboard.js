@@ -902,7 +902,13 @@ window.showAddTransactionModal = function(options = {}) {
         if (!user) throw new Error("Session expired. Please log in again.");
 
         const { default: DataService } = await import('/assets/js/db-service.js');
-        return { ds: new DataService(app), user, Timestamp };
+        const ds = new DataService(app);
+        // Workspace scope + actor for STAGE 2. scopeId is the workspace id (== uid
+        // for owners); setActor pins audit/attribution to the real signed-in user.
+        const ws = (typeof window !== 'undefined' && window.FluxyWorkspace) || {};
+        ds.setActor(user.uid, ws.role || null);
+        const scopeId = ws.id || user.uid;
+        return { ds, user, scopeId, Timestamp };
     }
 
     function getLocalDateKey(date = new Date()) {
@@ -1787,6 +1793,15 @@ window.showAddTransactionModal = function(options = {}) {
     // Form Submission
     document.getElementById('global-tx-form').onsubmit = async (e) => {
         e.preventDefault();
+        // Role gate (UX): block viewers from creating records. Fail-open while the
+        // workspace role is still resolving (role == null); Firestore rules remain
+        // the hard boundary regardless. owner/admin/finance pass.
+        const writeCap = context === 'bill' ? 'bills.create' : context === 'subscription' ? 'subscriptions.create' : 'transactions.create';
+        const fxws = (typeof window !== 'undefined' && window.FluxyWorkspace) || null;
+        if (fxws && fxws.role && typeof fxws.can === 'function' && !fxws.can(writeCap)) {
+            window.showToast("Your role doesn't allow adding records in this workspace.", 'error');
+            return;
+        }
         const btn = document.getElementById('tx-submit-btn');
         btn.disabled = true;
         btn.innerText = activeEntryMode === 'bulk' ? "Reading..." : "Deploying...";
@@ -1809,7 +1824,7 @@ window.showAddTransactionModal = function(options = {}) {
 
                 dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#E85D19]');
                 const csvText = csvImportState.csvText || await file.text();
-                const { ds, user, Timestamp } = await getTransactionDataService();
+                const { ds, user, scopeId, Timestamp } = await getTransactionDataService();
                 const transactions = parseBulkTransactions(csvText, todayKey, Timestamp, bulkStatusOverride);
                 // Apply the chosen budget allocation to expense-like rows only.
                 // Income/refund rows are left to category match (or unallocated).
@@ -1824,7 +1839,7 @@ window.showAddTransactionModal = function(options = {}) {
                     });
                 }
                 btn.innerText = `Uploading ${transactions.length}...`;
-                await ds.addTransactions(user.uid, transactions);
+                await ds.addTransactions(scopeId, transactions);
                 setCsvFeedback(`${transactions.length} transactions imported successfully.`, 'success');
                 if (window.loadDashboard) await window.loadDashboard();
                 if (window.loadLedger) await window.loadLedger();
@@ -1873,7 +1888,7 @@ window.showAddTransactionModal = function(options = {}) {
             };
 
             // Initialize Firebase if not already done
-            const { ds, user, Timestamp } = await getTransactionDataService();
+            const { ds, user, scopeId, Timestamp } = await getTransactionDataService();
             if (context === 'bill') {
                 data.due_date = buildBillDueDateTimestamp(selectedEntryDate, Timestamp);
             } else {
@@ -1956,7 +1971,7 @@ window.showAddTransactionModal = function(options = {}) {
                             data.budget_impact_status = 'committed';
                         }
                     }
-                    const billRef = await ds.addBill(user.uid, data);
+                    const billRef = await ds.addBill(scopeId, data);
                     if (attachedDocId && billRef?.id) {
                         try { await ds.linkDocumentTarget(user.uid, attachedDocId, 'bills', billRef.id); } catch (_) {}
                     }
@@ -1964,7 +1979,7 @@ window.showAddTransactionModal = function(options = {}) {
                     if (window.loadBills) await window.loadBills();
                     window.showToast("Bill successfully added to your schedule!", "success");
                 } else if (context === 'subscription') {
-                    const subRef = await ds.addSubscription(user.uid, data);
+                    const subRef = await ds.addSubscription(scopeId, data);
                     if (attachedDocId && subRef?.id) {
                         try { await ds.linkDocumentTarget(user.uid, attachedDocId, 'subscriptions', subRef.id); } catch (_) {}
                     }
@@ -1981,7 +1996,7 @@ window.showAddTransactionModal = function(options = {}) {
                             allocationId: document.getElementById('tx-allocation')?.value || ''
                         }));
                     }
-                    const txRef = await ds.addTransaction(user.uid, data);
+                    const txRef = await ds.addTransaction(scopeId, data);
                     if (attachedDocId && txRef?.id) {
                         try { await ds.linkDocumentTarget(user.uid, attachedDocId, 'transactions', txRef.id); } catch (_) {}
                     }
@@ -2114,6 +2129,16 @@ window.renderEmptyState = function(containerId, config) {
 
 // Global toggle for Fluxy AI (Drawer)
 window.toggleFluxyAI = (state) => {
+    // Role gate (UX): Fluxy AI is a Finance+ capability; viewers are read-only.
+    // Fail-open while role resolves (role == null). Closing (state === false) is
+    // always allowed.
+    if (state !== false) {
+        const fxws = window.FluxyWorkspace || null;
+        if (fxws && fxws.role && typeof fxws.can === 'function' && !fxws.can('ai.use')) {
+            window.showToast?.("Your role doesn't include Fluxy AI in this workspace.", 'error');
+            return;
+        }
+    }
     // Trial/payment access guard: Fluxy AI is locked for expired/payment-pending
     // users (opening to send a message). Fails open if state isn't loaded.
     if (state !== false && window.FluxyAccessGuard && !window.FluxyAccessGuard.requireAIUsage()) {

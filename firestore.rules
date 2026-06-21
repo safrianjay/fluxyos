@@ -2771,6 +2771,427 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ========================================================================
+    // WORKSPACES — Team Management & RBAC (see docs/SECURITY_SYSTEM.md §3–6)
+    //
+    // Seeding rule: for existing single-user accounts workspaceId == owner uid.
+    // STAGE 1 (this block) governs the workspace profile, membership, invites,
+    // and workspace-scoped audit logs — the team-management feature. The finance
+    // collections (transactions/bills/budgets/…) still live under users/{uid}
+    // and migrate to workspaces/{workspaceId}/<collection> in STAGE 2; their
+    // role-gated rules are added there alongside the data migration.
+    // ========================================================================
+
+    function memberPath(workspaceId, uid) {
+      return /databases/$(database)/documents/workspaces/$(workspaceId)/members/$(uid);
+    }
+    function callerMember(workspaceId) {
+      return get(memberPath(workspaceId, request.auth.uid)).data;
+    }
+    function isMember(workspaceId) {
+      return isSignedIn()
+        && exists(memberPath(workspaceId, request.auth.uid))
+        && callerMember(workspaceId).status == 'active';
+    }
+    function hasRole(workspaceId, roles) {
+      return isMember(workspaceId) && (callerMember(workspaceId).role in roles);
+    }
+    // Email-keyed invites: doc id == lowercased invitee email, so rules can
+    // verify a self-join without a query.
+    function callerEmail() {
+      return (request.auth != null && request.auth.token.email is string)
+        ? request.auth.token.email.lower() : '';
+    }
+    function invitePathFor(workspaceId) {
+      return /databases/$(database)/documents/workspaces/$(workspaceId)/invites/$(callerEmail());
+    }
+    function hasPendingInvite(workspaceId) {
+      return callerEmail() != ''
+        && exists(invitePathFor(workspaceId))
+        && get(invitePathFor(workspaceId)).data.status == 'pending';
+    }
+    function pendingInviteRole(workspaceId) {
+      return get(invitePathFor(workspaceId)).data.role;
+    }
+
+    function isValidWorkspaceProfile(data) {
+      return data.keys().hasOnly(['owner_uid', 'name', 'created_at', 'updated_at'])
+        && data.owner_uid is string
+        && (!('name' in data) || data.name == null || (data.name is string && data.name.size() <= 120));
+    }
+    function isValidMember(data) {
+      return data.keys().hasOnly(['uid', 'email', 'display_name', 'role', 'status', 'invited_by', 'joined_at', 'updated_at'])
+        && data.uid is string
+        && data.role in ['owner', 'admin', 'finance', 'viewer']
+        && data.status in ['active', 'pending', 'removed']
+        && (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 200))
+        && (!('display_name' in data) || data.display_name == null || (data.display_name is string && data.display_name.size() <= 200))
+        && (!('invited_by' in data) || data.invited_by == null || (data.invited_by is string && data.invited_by.size() <= 160));
+    }
+    function isValidInvite(inviteId, data) {
+      return data.keys().hasOnly(['email', 'role', 'status', 'invited_by', 'invited_by_email', 'created_at', 'updated_at', 'expires_at', 'accepted_by', 'accepted_at'])
+        && data.email is string && data.email.size() > 0 && data.email.size() <= 200
+        && data.email == inviteId
+        && data.role in ['admin', 'finance', 'viewer']
+        && data.status in ['pending', 'accepted', 'revoked', 'expired']
+        && (!('invited_by' in data) || data.invited_by == null || (data.invited_by is string && data.invited_by.size() <= 160))
+        && (!('invited_by_email' in data) || data.invited_by_email == null || (data.invited_by_email is string && data.invited_by_email.size() <= 200))
+        && (!('expires_at' in data) || data.expires_at == null || data.expires_at is timestamp);
+    }
+    function isValidWorkspaceAuditLog(data) {
+      return data.keys().hasAll(['actor_uid', 'action', 'target_collection', 'target_id', 'source', 'created_at'])
+        && data.actor_uid == request.auth.uid
+        && data.action is string && data.action.size() > 0 && data.action.size() <= 80
+        && data.target_collection in [
+          'transactions', 'bills', 'subscriptions', 'vendors', 'budgets',
+          'budget_allocations', 'invoices', 'exports', 'report_exports',
+          'members', 'invites', 'workspace', 'settings', 'integrations', 'users',
+          'onboarding', 'bank_accounts', 'bank_balance_snapshots',
+          'bank_statement_imports', 'documents', 'billing',
+          'billing_payment_requests', 'payment_verifications', 'accounting_mappings'
+        ]
+        && data.target_id is string && data.target_id.size() <= 200
+        && data.source in ['dashboard', 'ai', 'integration', 'system']
+        && data.created_at == request.time;
+    }
+
+    // ---- STAGE 2 finance-record validation (workspace scope) ----
+    // Reuse the pure field validators defined above; for the collections whose
+    // user-scoped blocks inline a keys().hasOnly([...]) allow-list, these helpers
+    // hold a verbatim copy so the workspace blocks enforce identical shape.
+    function invoiceIsDraftAfterWriteWs(workspaceId, invoiceId) {
+      let inv = getAfter(/databases/$(database)/documents/workspaces/$(workspaceId)/invoices/$(invoiceId)).data;
+      return inv.status == 'draft'
+        || (inv.status == 'open' && (!('sent_at' in inv) || inv.sent_at == null));
+    }
+    function wsValidTxCreate(data) {
+      return data.keys().hasOnly([
+          'amount', 'vendor_name', 'category', 'type', 'status', 'icon', 'timestamp',
+          'created_at', 'receipt_url', 'attached_documents', 'source', 'created_via',
+          'extraction_status', 'extraction_source', 'extraction_confidence', 'extraction_warnings',
+          'document_type', 'invoice_number', 'invoice_date', 'raw_text_preview',
+          'source_file_name', 'source_file_mime_type', 'source_file_size_bytes',
+          'payment_reference', 'notes', 'budget_id', 'budget_allocation_id', 'budget_match_method',
+          'budget_match_status', 'budget_match_confidence', 'budget_assignment_reason',
+          'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason',
+          'cash_effective', 'cash_status', 'cash_direction', 'cash_account_id', 'cash_source',
+          'cash_match_status', 'cash_effective_at', 'bank_statement_import_id', 'bank_statement_row_id',
+          'imported_at', 'bank_account_id', 'linked_bill_id'
+        ])
+        && isValidBaseRecord(data)
+        && (!('created_at' in data) || data.created_at == request.time)
+        && (!('receipt_url' in data) || data.receipt_url is string)
+        && (!('linked_bill_id' in data) || data.linked_bill_id == null || (data.linked_bill_id is string && data.linked_bill_id.size() <= 120))
+        && isValidTransactionBudgetFields(data)
+        && isValidAttachedDocuments(data)
+        && isValidAICaptureMetadata(data);
+    }
+    function wsValidTxUpdate(data, existingData) {
+      return data.keys().hasOnly([
+          'amount', 'vendor_name', 'category', 'type', 'status', 'icon', 'date', 'timestamp',
+          'created_at', 'receipt_url', 'attached_documents', 'source', 'created_via',
+          'extraction_status', 'extraction_source', 'extraction_confidence', 'extraction_warnings',
+          'document_type', 'invoice_number', 'invoice_date', 'raw_text_preview',
+          'source_file_name', 'source_file_mime_type', 'source_file_size_bytes',
+          'payment_reference', 'notes', 'budget_id', 'budget_allocation_id', 'budget_match_method',
+          'budget_match_status', 'budget_match_confidence', 'budget_assignment_reason',
+          'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason',
+          'cash_effective', 'cash_status', 'cash_direction', 'cash_account_id', 'cash_source',
+          'cash_match_status', 'cash_effective_at', 'cash_assignment_reason', 'cash_assignment_updated_at',
+          'cash_assignment_updated_by', 'updated_at', 'updated_by', 'is_voided', 'voided_at', 'voided_by',
+          'void_reason', 'bank_statement_import_id', 'bank_statement_row_id', 'imported_at',
+          'bank_account_id', 'linked_bill_id'
+        ])
+        && isValidTransactionRecordUpdate(data, existingData)
+        && preservesLegacyRecordDate(data, existingData)
+        && (!('linked_bill_id' in data) || data.linked_bill_id == null || (data.linked_bill_id is string && data.linked_bill_id.size() <= 120))
+        && isValidTransactionBudgetFields(data)
+        && isValidAttachedDocuments(data)
+        && isValidAICaptureMetadata(data);
+    }
+    function wsValidBillCreate(data) {
+      return data.keys().hasOnly([
+          'amount', 'vendor_name', 'category', 'type', 'status', 'icon', 'timestamp', 'due_date',
+          'source', 'created_via', 'extraction_status', 'extraction_source', 'extraction_confidence',
+          'extraction_warnings', 'document_type', 'invoice_number', 'invoice_date', 'payment_status',
+          'raw_text_preview', 'source_file_name', 'source_file_mime_type', 'source_file_size_bytes',
+          'attached_documents', 'invoice_status', 'budget_id', 'budget_allocation_id',
+          'budget_match_method', 'budget_match_status', 'budget_impact_status', 'budget_assignment_reason',
+          'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason'
+        ])
+        && isValidBaseRecord(data)
+        && (!('due_date' in data) || data.due_date is timestamp)
+        && (!('payment_status' in data) || data.payment_status in ['unpaid', 'paid', 'overdue', 'unknown'])
+        && (!('invoice_status' in data) || data.invoice_status in ['attached'])
+        && isValidBillBudgetFields(data)
+        && isValidAttachedDocuments(data)
+        && isValidAICaptureMetadata(data);
+    }
+    function wsValidBillUpdate(data, existingData) {
+      return data.keys().hasOnly([
+          'amount', 'vendor_name', 'category', 'type', 'status', 'icon', 'timestamp', 'date', 'due_date',
+          'source', 'created_via', 'extraction_status', 'extraction_source', 'extraction_confidence',
+          'extraction_warnings', 'document_type', 'invoice_number', 'invoice_date', 'payment_status',
+          'raw_text_preview', 'source_file_name', 'source_file_mime_type', 'source_file_size_bytes',
+          'attached_documents', 'invoice_status', 'budget_id', 'budget_allocation_id',
+          'budget_match_method', 'budget_match_status', 'budget_impact_status', 'budget_assignment_reason',
+          'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason',
+          'linked_transaction_id', 'updated_at', 'updated_by'
+        ])
+        && isValidBaseRecordUpdate(data, existingData)
+        && preservesLegacyRecordDate(data, existingData)
+        && (!('due_date' in data) || data.due_date is timestamp)
+        && (!('payment_status' in data) || data.payment_status in ['unpaid', 'paid', 'overdue', 'unknown'])
+        && (!('invoice_status' in data) || data.invoice_status in ['attached'])
+        && (!('linked_transaction_id' in data) || data.linked_transaction_id == null || (data.linked_transaction_id is string && data.linked_transaction_id.size() <= 120))
+        && isValidBillBudgetFields(data)
+        && isValidAttachedDocuments(data)
+        && isValidAICaptureMetadata(data);
+    }
+    function wsValidSubCreate(data) {
+      return data.keys().hasOnly([
+          'amount', 'vendor_name', 'category', 'type', 'status', 'icon', 'timestamp', 'renewal_date',
+          'source', 'created_via', 'extraction_status', 'extraction_source', 'extraction_confidence',
+          'extraction_warnings', 'document_type', 'invoice_number', 'invoice_date', 'billing_cycle',
+          'raw_text_preview', 'source_file_name', 'source_file_mime_type', 'source_file_size_bytes',
+          'notes', 'attached_documents'
+        ])
+        && isValidBaseRecord(data)
+        && (!('renewal_date' in data) || data.renewal_date is timestamp)
+        && isValidAttachedDocuments(data)
+        && isValidAICaptureMetadata(data);
+    }
+    function wsValidSubUpdate(data, existingData) {
+      return data.keys().hasOnly([
+          'amount', 'vendor_name', 'category', 'type', 'status', 'icon', 'timestamp', 'renewal_date',
+          'source', 'created_via', 'extraction_status', 'extraction_source', 'extraction_confidence',
+          'extraction_warnings', 'document_type', 'invoice_number', 'invoice_date', 'billing_cycle',
+          'raw_text_preview', 'source_file_name', 'source_file_mime_type', 'source_file_size_bytes',
+          'notes', 'attached_documents'
+        ])
+        && isValidBaseRecordUpdate(data, existingData)
+        && (!('renewal_date' in data) || data.renewal_date is timestamp)
+        && isValidAttachedDocuments(data)
+        && isValidAICaptureMetadata(data);
+    }
+    function wsValidReportExportCreate(data) {
+      return data.keys().hasOnly([
+          'report_type', 'report_scope', 'period_start', 'period_end', 'formats', 'status',
+          'included_sections', 'record_counts', 'warning_counts', 'limitations', 'created_at', 'created_by'
+        ])
+        && data.report_type is string && data.report_type.size() > 0 && data.report_type.size() <= 80
+        && data.created_by == request.auth.uid
+        && data.created_at == request.time
+        && data.formats is list
+        && data.status is string
+        && data.included_sections is list
+        && data.record_counts is map
+        && data.warning_counts is map
+        && data.limitations is list
+        && (!('report_scope' in data) || data.report_scope is map);
+    }
+
+    match /workspaces/{workspaceId} {
+      // Members can read the workspace; an owner can also read their own (id==uid)
+      // workspace to bootstrap it before their member doc exists.
+      allow read: if isMember(workspaceId)
+        || (isSignedIn() && workspaceId == request.auth.uid);
+      // Bootstrap: a user may only create their own workspace (id == uid).
+      allow create: if isSignedIn()
+        && workspaceId == request.auth.uid
+        && isValidWorkspaceProfile(request.resource.data)
+        && request.resource.data.owner_uid == request.auth.uid
+        && request.resource.data.created_at == request.time;
+      // Owner/admin may edit the profile; owner_uid is immutable.
+      allow update: if hasRole(workspaceId, ['owner', 'admin'])
+        && isValidWorkspaceProfile(request.resource.data)
+        && request.resource.data.owner_uid == resource.data.owner_uid;
+      // Workspace deletion is an owner-only sensitive action handled server-side.
+      allow delete: if false;
+
+      match /members/{memberId} {
+        allow read: if isMember(workspaceId)
+          || (isSignedIn() && workspaceId == request.auth.uid && memberId == request.auth.uid);
+        // (a) Owner bootstrap of their own membership.
+        allow create: if isSignedIn()
+          && workspaceId == request.auth.uid
+          && memberId == request.auth.uid
+          && isValidMember(request.resource.data)
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.role == 'owner'
+          && request.resource.data.status == 'active'
+        // (b) Owner/admin adds a member directly (never another owner).
+          || hasRole(workspaceId, ['owner', 'admin'])
+          && isValidMember(request.resource.data)
+          && request.resource.data.uid == memberId
+          && request.resource.data.role in ['admin', 'finance', 'viewer']
+        // (c) Invite acceptance: the invitee self-joins from a pending invite
+          || isSignedIn()
+          && memberId == request.auth.uid
+          && isValidMember(request.resource.data)
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.status == 'active'
+          && hasPendingInvite(workspaceId)
+          && request.resource.data.role == pendingInviteRole(workspaceId);
+        // Owner/admin change role/status; cannot edit an owner member unless owner,
+        // and cannot promote anyone to owner (ownership transfer is server-side).
+        allow update: if hasRole(workspaceId, ['owner', 'admin'])
+          && isValidMember(request.resource.data)
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.role != 'owner'
+          && resource.data.role != 'owner';
+        // Owner/admin remove a non-owner; a member may remove themselves.
+        allow delete: if (hasRole(workspaceId, ['owner', 'admin']) && resource.data.role != 'owner')
+          || (isSignedIn() && memberId == request.auth.uid && resource.data.role != 'owner');
+      }
+
+      match /invites/{inviteId} {
+        // Owner/admin manage invites; an invitee may read their own invite by id.
+        allow read: if hasRole(workspaceId, ['owner', 'admin'])
+          || (isSignedIn() && resource.data.email == callerEmail());
+        allow create: if hasRole(workspaceId, ['owner', 'admin'])
+          && isValidInvite(inviteId, request.resource.data)
+          && request.resource.data.status == 'pending'
+          && request.resource.data.created_at == request.time;
+        // Owner/admin update (revoke/resend); OR the invitee flips pending->accepted.
+        allow update: if (hasRole(workspaceId, ['owner', 'admin'])
+            && isValidInvite(inviteId, request.resource.data))
+          || (isSignedIn()
+            && resource.data.email == callerEmail()
+            && resource.data.status == 'pending'
+            && request.resource.data.status == 'accepted'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'accepted_by', 'accepted_at', 'updated_at'])
+            && request.resource.data.accepted_by == request.auth.uid);
+        allow delete: if hasRole(workspaceId, ['owner', 'admin']);
+      }
+
+      match /audit_logs/{auditLogId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin']);
+        allow create: if isMember(workspaceId)
+          && isValidWorkspaceAuditLog(request.resource.data);
+        allow update, delete: if false;
+      }
+
+      // ---- STAGE 2 finance/operational records (role-gated) ----
+      // read: any active member incl. viewer · create/update: owner/admin/finance
+      // · delete/void: owner/admin (most use status changes, not deletes).
+      match /transactions/{transactionId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && wsValidTxCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && wsValidTxUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+      match /bills/{billId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && wsValidBillCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && wsValidBillUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+      match /subscriptions/{subscriptionId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && wsValidSubCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && wsValidSubUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+      match /budgets/{budgetId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidBudgetCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidBudgetUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+      match /budget_allocations/{allocationId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidBudgetAllocationCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidBudgetAllocationUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+      match /invoices/{invoiceId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidInvoiceCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidInvoiceUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+
+        match /items/{itemId} {
+          allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+          allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+            && isValidInvoiceItem(request.resource.data)
+            && request.resource.data.created_at == request.time
+            && request.resource.data.updated_at == request.time
+            && invoiceIsDraftAfterWriteWs(workspaceId, invoiceId);
+          allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+            && isValidInvoiceItem(request.resource.data)
+            && request.resource.data.created_at == resource.data.created_at
+            && request.resource.data.updated_at == request.time
+            && invoiceIsDraftAfterWriteWs(workspaceId, invoiceId);
+          allow delete: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+            && invoiceIsDraftAfterWriteWs(workspaceId, invoiceId);
+        }
+      }
+      match /bank_accounts/{bankAccountId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidBankAccountCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidBankAccountUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+      match /bank_balance_snapshots/{snapshotId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidBankBalanceSnapshot(request.resource.data);
+        allow update, delete: if false;
+      }
+      match /bank_statement_imports/{importId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+          && isValidBankStatementImport(request.resource.data)
+          && request.resource.data.created_at == request.time
+          && request.resource.data.updated_at == request.time;
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+          && isValidBankStatementImport(request.resource.data)
+          && request.resource.data.created_at == resource.data.created_at;
+        allow delete: if false;
+
+        match /rows/{rowId} {
+          allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+          allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+            && isValidBankStatementRow(request.resource.data)
+            && request.resource.data.created_at == request.time;
+          allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+            && isValidBankStatementRow(request.resource.data)
+            && request.resource.data.created_at == resource.data.created_at;
+          allow delete: if false;
+        }
+      }
+      match /documents/{documentId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+          && isValidDocumentMetadata(request.resource.data)
+          && request.resource.data.created_at == request.time
+          && request.resource.data.updated_at == request.time
+          && request.resource.data.storage_path.matches('(users|workspaces)/.*/documents/.*');
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+          && isValidDocumentMetadata(request.resource.data)
+          && request.resource.data.created_at == resource.data.created_at
+          && request.resource.data.updated_at == request.time
+          && request.resource.data.storage_path == resource.data.storage_path;
+        allow delete: if false;
+      }
+      match /report_exports/{exportId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && wsValidReportExportCreate(request.resource.data);
+        allow update, delete: if false;
+      }
+      match /accounting_mappings/{mappingId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidAccountingMappingCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidAccountingMappingUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+    }
+
+    // Reverse lookup: a user may read/write only their own pointer doc.
+    match /user_workspaces/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
