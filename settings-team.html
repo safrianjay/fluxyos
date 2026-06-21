@@ -138,7 +138,7 @@
         const avatarFor = (name) => `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=EA580C&color=fff`;
         const fmtTime = (ts) => { try { return ts && ts.toDate ? ts.toDate().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''; } catch (_) { return ''; } };
 
-        let state = { ws: null, user: null, canManage: false };
+        let state = { ws: null, user: null, canManage: false, businessName: null };
 
         const authTimeout = setTimeout(() => window.location.replace('/login'), 2500);
         onAuthStateChanged(auth, async (user) => {
@@ -147,11 +147,18 @@
             state.user = user;
             ds.setActor(user.uid);
 
+            // The workspace/business name shown in invites comes from the saved
+            // Business settings (Settings → Business), NOT the user's display name.
+            try {
+                const settings = await ds.getUserSettings(user.uid);
+                state.businessName = (settings && settings.company && settings.company.business_name) || null;
+            } catch (_) { state.businessName = null; }
+
             // Resolve role; bootstrap the owner's own workspace if it doesn't exist yet.
             let ws = await resolveWorkspace(app, user);
             if (ws.id === user.uid && !ws.ready) {
                 try {
-                    await ds.ensureWorkspace(user.uid, { name: user.displayName || null, email: user.email || null, displayName: user.displayName || null });
+                    await ds.ensureWorkspace(user.uid, { name: state.businessName, email: user.email || null, displayName: user.displayName || null });
                     ws = await resolveWorkspace(app, user);
                 } catch (e) { console.warn('[team] ensureWorkspace failed', e); }
             }
@@ -471,7 +478,7 @@
                         email: inviteId,
                         role,
                         inviterName: state.user.displayName || state.user.email || 'A FluxyOS workspace owner',
-                        workspaceName: state.ws.name || null
+                        workspaceName: state.businessName || state.ws.name || null
                     })
                 });
                 if (res.ok) { if (btn) window.showToast(`Invitation re-sent to ${email}.`, 'success'); }

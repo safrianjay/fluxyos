@@ -255,11 +255,6 @@
                 <svg class="w-6 h-6 lg:w-5 lg:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8a4 4 0 100 8 4 4 0 000-8z"></path></svg>
                 <span class="sidebar-text text-[13px] sidebar-hide">Settings</span>
             </a>
-
-            <a href="/settings-team" id="nav-team" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium transition-all w-full justify-center lg:justify-start">
-                <svg class="w-6 h-6 lg:w-5 lg:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a3 3 0 10-2.83-4"></path></svg>
-                <span class="sidebar-text text-[13px] sidebar-hide">Team</span>
-            </a>
         </div>
 
         <!-- USER PROFILE & SIGNOUT (Bottom) -->
@@ -294,7 +289,6 @@
         'nav-audit-log': '<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
         'nav-integrations': '<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>',
         'nav-settings': '<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M9.67 2h4.66l.8 2.4 2.43 1 2.26-1.13 2.33 4.04-2.02 1.46.03 2.63 1.99 1.51-2.33 4.04-2.27-1.08-2.42 1-.8 2.13H9.67l-.8-2.13-2.42-1-2.27 1.08-2.33-4.04 1.99-1.51.03-2.63-2.02-1.46 2.33-4.04 2.26 1.13 2.43-1z"/><circle cx="12" cy="12" r="3"/></svg>',
-        'nav-team': '<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
         'logout-btn': '<svg class="sidebar-icon sidebar-logout-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>'
     };
 
@@ -406,10 +400,8 @@
         // guarantees Settings wins for the whole /settings* family. No non-settings
         // app route contains the substring 'settings', so this is safe.
         const pageIdMap = {
-            // 'settings-team' MUST precede 'settings': '/settings-team' contains
-            // the substring 'settings', so without this ordering the Team page
-            // would highlight Settings instead of Team.
-            'settings-team': 'nav-team',
+            // Team has no sidebar entry (reached via Settings → Team & roles); like
+            // every /settings-* page, /settings-team highlights the Settings item.
             'settings': 'nav-settings',
             'dashboard': 'nav-overview',
             'ai': 'nav-fluxy-ai',

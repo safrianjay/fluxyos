@@ -666,21 +666,24 @@ const COPY = {
         const inviter = d.inviterName ? escapeHtml(String(d.inviterName)) : 'A FluxyOS workspace owner';
         const workspace = d.workspaceName ? escapeHtml(String(d.workspaceName)) : 'a FluxyOS workspace';
         const roleLabel = escapeHtml(String(d.roleLabel || d.role || 'team member'));
+        const wsRaw = d.workspaceName ? String(d.workspaceName) : 'a FluxyOS workspace';
         const line = (html, text) => ({ html, text: text != null ? text : html.replace(/<[^>]+>/g, '') });
         return {
-            subject: `You've been invited to join ${d.workspaceName ? String(d.workspaceName) : 'a FluxyOS workspace'}`,
+            // Bilingual subject (Indonesian · English), same meaning both sides.
+            subject: `Anda diundang ke ${wsRaw} · You've been invited to join ${wsRaw}`,
             heading: 'Anda diundang ke FluxyOS',
             paragraphs: [
                 line(`<div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${ORANGE};">Undangan tim</div>`, 'UNDANGAN TIM'),
-                // ---- Bahasa Indonesia (primary) ----
+                // ---- Bahasa Indonesia (primary) — same meaning as the English below ----
                 line(`Halo,`),
                 line(`<strong>${inviter}</strong> mengundang Anda untuk bergabung ke <strong>${workspace}</strong> di FluxyOS sebagai <strong>${roleLabel}</strong>.`),
-                line('FluxyOS adalah platform operasi keuangan untuk bisnis — kelola transaksi, tagihan, anggaran, dan laporan dalam satu tempat. Klik tombol di bawah untuk menerima undangan dan masuk dengan email ini.'),
+                line('Terima undangan dan masuk menggunakan alamat email ini untuk mendapatkan akses. Jika Anda belum memiliki akun FluxyOS, buat akun dengan email ini dan Anda akan otomatis ditambahkan.'),
                 // ---- divider ----
                 line(`<div style="border-top:1px solid #EEF0F3;margin:6px 0 0;"></div><div style="text-align:center;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:${NAVY};padding-top:16px;">🇬🇧 English</div>`, '— English —'),
-                // ---- English (secondary) ----
+                // ---- English (same meaning) ----
+                line(`Hi,`),
                 line(`<strong>${inviter}</strong> has invited you to join <strong>${workspace}</strong> on FluxyOS as a <strong>${roleLabel}</strong>.`),
-                line('Accept the invitation and sign in with this email address to get access. If you don’t have a FluxyOS account yet, you can create one with this email and you’ll be added automatically.'),
+                line('Accept the invitation and sign in with this email address to get access. If you don’t have a FluxyOS account yet, create one with this email and you’ll be added automatically.'),
             ],
             cta: { label: 'Terima undangan · Accept invitation', url: acceptUrl },
             footnote: 'Jika Anda tidak mengenali undangan ini, abaikan email ini. · If you didn’t expect this invitation, you can safely ignore this email.',
