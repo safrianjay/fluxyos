@@ -117,7 +117,13 @@ class DataService {
         return typeof window !== 'undefined' && window.FLUXY_WORKSPACE_MODE === true;
     }
     _scope(scopeId) {
-        return this._workspaceMode() ? `workspaces/${scopeId}` : `users/${scopeId}`;
+        if (!this._workspaceMode()) return `users/${scopeId}`;
+        // In workspace mode, target the resolved workspace: the owner's id for a
+        // teammate (so they see the shared data), or the user's own id for an
+        // owner. Falls back to the passed scope id before resolution completes —
+        // owner-safe because their uid == their workspaceId.
+        const wsId = (typeof window !== 'undefined' && window.FluxyWorkspace && window.FluxyWorkspace.id) || scopeId;
+        return `workspaces/${wsId}`;
     }
 
     // --- TRANSACTIONS (LEDGER) ---
@@ -960,6 +966,21 @@ class DataService {
             source: 'legacy_exemption',
             created_at: serverTimestamp(),
             updated_at: serverTimestamp()
+        }, { merge: true });
+    }
+
+    // Invited members join an existing workspace and are NEVER owners — they must
+    // skip the owner KYC/onboarding flow entirely. A distinct 'invited_member'
+    // source keeps the onboarding gate off (it is not 'legacy_exemption', so it is
+    // not self-healed) while letting platform-learning treat them as eligible for
+    // the product coachmarks.
+    async markInvitedMemberExempt(userId) {
+        await setDoc(this._onboardingDoc(userId, 'progress'), {
+            onboarding_exempt: true,
+            eligible_for_onboarding_gate: false,
+            source: 'invited_member',
+            updated_at: serverTimestamp(),
+            created_at: serverTimestamp()
         }, { merge: true });
     }
 

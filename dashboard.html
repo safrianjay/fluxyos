@@ -473,6 +473,10 @@
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 clearTimeout(checkTimeout);
+                // Resolve the workspace (owner's id for teammates) before any data
+                // read so finance reads target the joined workspace, not an empty
+                // self-scope. Idempotent; owner-safe.
+                try { const { resolveWorkspace } = await import('/assets/js/workspace-service.js'); await resolveWorkspace(app, user); } catch (_) {}
                 const gated = await applyToPage(user, { pageKey: 'overview' });
                 if (gated) {
                     sessionStorage.removeItem('fluxy_pending_tour');
@@ -480,6 +484,24 @@
                     return;
                 }
                 if (typeof loadDashboard === 'function') await loadDashboard();
+                // Invited-member welcome — shown once, right after joining a workspace.
+                // On Continue, the existing coachmark flow below runs the tutorial.
+                try {
+                    const rawWelcome = sessionStorage.getItem('fluxy_invite_welcome');
+                    if (rawWelcome) {
+                        sessionStorage.removeItem('fluxy_invite_welcome');
+                        const w = JSON.parse(rawWelcome);
+                        const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+                        const rawBiz = w.business || 'your workspace';
+                        const roleLabel = w.role ? (w.role.charAt(0).toUpperCase() + w.role.slice(1)) : 'team member';
+                        await window.showAlertDialog?.({
+                            title: `Welcome to ${rawBiz}`,
+                            body: `Your invitation has been accepted successfully.<br><br>You have joined <strong>${esc(rawBiz)}</strong> as a <strong>${esc(roleLabel)}</strong>.<br><br>You can now access the workspace and collaborate with your team.`,
+                            confirmLabel: 'Continue',
+                            icon: 'check'
+                        });
+                    }
+                } catch (_) {}
                 await renderQuickStartLearning('quick-start-container', { userId: user.uid });
                 const returningFromTour = !!sessionStorage.getItem('fluxy_learning_focus');
                 if (returningFromTour) sessionStorage.removeItem('fluxy_learning_focus');

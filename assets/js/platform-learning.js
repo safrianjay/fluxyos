@@ -291,6 +291,9 @@ function renderCardVisual(tourId) {
 async function canUsePlatformLearning(userId, ds = getDataService()) {
     if (!userId) return false;
     const onboardingProgress = await ds.getOnboardingProgress(userId);
+    // Invited members skip owner onboarding but SHOULD get the product coachmarks
+    // in the workspace they just joined.
+    if (onboardingProgress?.source === 'invited_member') return true;
     if (!onboardingProgress?.onboarding_completed) return false;
     if (onboardingProgress?.gate_required === true) return false;
     if (onboardingProgress?.onboarding_exempt === true) return false;

@@ -313,6 +313,7 @@
         import {
             getAuth,
             signInWithEmailAndPassword,
+            createUserWithEmailAndPassword,
             sendPasswordResetEmail,
             sendEmailVerification,
             GoogleAuthProvider,
@@ -442,6 +443,57 @@
             let verificationEmailSent = false;
             let resendCooldown = false;
 
+            // ---- Team invitation mode ----
+            // /login?invite=<email>&ws=<id> arrives from the invite email. Context
+            // is mirrored to sessionStorage so it survives a Google redirect round
+            // trip and any re-auth, removing the need to re-open the invite link.
+            const inviteCtx = (() => {
+                const params = new URLSearchParams(window.location.search);
+                let ws = (params.get('ws') || '').trim();
+                let invite = (params.get('invite') || '').trim();
+                if (!ws || !invite) {
+                    try {
+                        const s = JSON.parse(sessionStorage.getItem('fluxy_pending_invite') || 'null');
+                        if (s) { ws = ws || s.ws; invite = invite || s.invite; }
+                    } catch (_) {}
+                }
+                return (ws && invite) ? { ws, invite } : null;
+            })();
+            const inviteMode = !!inviteCtx;
+            if (inviteMode) {
+                try { sessionStorage.setItem('fluxy_pending_invite', JSON.stringify(inviteCtx)); } catch (_) {}
+                applyInviteUi();
+            }
+
+            function applyInviteUi() {
+                const h = document.querySelector('#signin-view h1');
+                if (h) h.textContent = 'Accept your invitation';
+                const sub = document.querySelector('#signin-view > .mb-5 p');
+                if (sub) sub.textContent = 'Continue to join your team on FluxyOS.';
+                // Lock the email field to the invited address.
+                if (emailInput && inviteCtx.invite) {
+                    emailInput.value = inviteCtx.invite;
+                    emailInput.readOnly = true;
+                    emailInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+                }
+                // Email is a SECONDARY CTA: collapse the form + divider until chosen.
+                const divider = document.querySelector('#signin-view .relative.flex.items-center.mb-4');
+                if (loginForm) loginForm.classList.add('hidden');
+                if (divider) divider.classList.add('hidden');
+                const emailCta = document.createElement('button');
+                emailCta.type = 'button';
+                emailCta.id = 'invite-email-cta';
+                emailCta.className = 'w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-colors';
+                emailCta.textContent = 'Continue with email';
+                emailCta.addEventListener('click', () => {
+                    emailCta.classList.add('hidden');
+                    if (divider) divider.classList.remove('hidden');
+                    if (loginForm) loginForm.classList.remove('hidden');
+                    passwordInput?.focus();
+                });
+                (authMessage || googleBtn)?.insertAdjacentElement('afterend', emailCta);
+            }
+
             const setVerifyStatus = (message, tone = 'info') => {
                 if (!verifyStatusEl) return;
                 verifyStatusEl.className = 'mb-4 rounded-lg border px-3 py-2 text-[12px] font-medium ' + (MESSAGE_TONES[tone] || MESSAGE_TONES.info);
@@ -453,20 +505,30 @@
             // add them to the workspace using their *signed-in* email. Best-effort:
             // a mismatched email or stale invite just falls through to normal routing.
             const acceptPendingInvite = async (user) => {
+                if (!inviteCtx || !user?.email) return false;
                 try {
-                    const params = new URLSearchParams(window.location.search);
-                    const workspaceId = (params.get('ws') || '').trim();
-                    const inviteParam = (params.get('invite') || '').trim();
-                    if (!workspaceId || !inviteParam || !user?.email) return;
                     const { default: DataService } = await import('./assets/js/db-service.js');
                     const ds = new DataService(app);
                     ds.setActor(user.uid);
-                    await ds.acceptInvite(workspaceId, user.uid, {
+                    const res = await ds.acceptInvite(inviteCtx.ws, user.uid, {
                         email: user.email,
                         displayName: user.displayName || null
                     });
+                    // Invited members join an existing workspace and are NOT owners:
+                    // exempt them from the owner KYC/onboarding flow.
+                    await ds.markInvitedMemberExempt(user.uid).catch(() => {});
+                    // Stage the welcome modal + the product coachmark for the dashboard.
+                    let business = null;
+                    try { const p = await ds.getWorkspaceProfile(inviteCtx.ws); business = p && p.name; } catch (_) {}
+                    sessionStorage.setItem('fluxy_invite_welcome', JSON.stringify({ business: business || null, role: (res && res.role) || null }));
+                    sessionStorage.setItem('fluxy_pending_tour', 'overview');
+                    sessionStorage.setItem('fluxy_pending_tours', JSON.stringify(['overview']));
+                    sessionStorage.removeItem('fluxy_pending_invite');
+                    return true;
                 } catch (err) {
+                    // Already a member / stale invite / email mismatch — fall through.
                     console.warn('[login] invite acceptance skipped:', err && err.message ? err.message : err);
+                    return false;
                 }
             };
 
@@ -548,7 +610,10 @@
 
             const routeUser = async (user) => {
                 const isPasswordUser = user.providerData?.some((p) => p.providerId === 'password');
-                if (isPasswordUser && !user.emailVerified) {
+                // In invite mode the invitation email already proves address
+                // ownership (and acceptInvite enforces the email matches), so we
+                // skip the separate email-verification gate.
+                if (!inviteMode && isPasswordUser && !user.emailVerified) {
                     showVerifyView(user);
                     return;
                 }
@@ -609,7 +674,20 @@
                     setAuthControlsLocked(true, 'email');
                     try {
                         clearAuthMessage();
-                        await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+                        if (inviteMode) {
+                            // Invitee: sign in, or create the account if it doesn't exist yet.
+                            try {
+                                await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+                            } catch (err) {
+                                if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential') {
+                                    await createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+                                } else {
+                                    throw err;
+                                }
+                            }
+                        } else {
+                            await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+                        }
                     } catch (error) {
                         showAuthMessage("Email sign-in failed. Please check your credentials and try again.");
                         setAuthControlsLocked(false);
