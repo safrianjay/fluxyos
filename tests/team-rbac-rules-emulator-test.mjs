@@ -19,7 +19,8 @@
 import { initializeApp } from 'firebase/app';
 import {
     getFirestore, connectFirestoreEmulator, doc, getDoc,
-    setDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch
+    setDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch,
+    collectionGroup, query, where, getDocs
 } from 'firebase/firestore';
 import { getAuth, connectAuthEmulator, createUserWithEmailAndPassword } from 'firebase/auth';
 
@@ -150,6 +151,14 @@ const inviteDoc = (email, role, inviterUid) => ({
     await expectOutcome('non-member cannot create transaction', false, () => setDoc(txRef(stranger, 't3'), txDoc()));
     await expectOutcome('viewer member can read transaction', true, () => getDoc(txRef(outsider, 't1')));
     await expectOutcome('non-member cannot read transaction', false, () => getDoc(txRef(stranger, 't1')));
+
+    // ---- Workspace resolution via collection-group (members read own docs) ----
+    await expectOutcome('member resolves workspace via collectionGroup(members)', true, async () => {
+        const snap = await getDocs(query(collectionGroup(invitee.db, 'members'), where('uid', '==', invitee.uid)));
+        if (snap.empty) throw new Error('no membership found for self');
+    });
+    await expectOutcome('cannot collectionGroup-query another user\'s memberships', false, () =>
+        getDocs(query(collectionGroup(outsider.db, 'members'), where('uid', '==', owner.uid))));
 
     // ---- Member-management boundaries: OWNER only; no self-edit/self-remove ----
     const adminUser = makeUserCtx('adminuser');

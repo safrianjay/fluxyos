@@ -2998,6 +2998,14 @@ service cloud.firestore {
         && (!('report_scope' in data) || data.report_scope is map);
     }
 
+    // Collection-group read: a user may read their OWN membership docs across all
+    // workspaces (doc.uid == caller). Authorizes the workspace-resolution query
+    // collectionGroup('members').where('uid','==', uid) so members resolve their
+    // workspace even without the reverse-lookup pointer. Scoped to own docs only.
+    match /{path=**}/members/{memberId} {
+      allow read: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
     match /workspaces/{workspaceId} {
       // Members can read the workspace; an owner can also read their own (id==uid)
       // workspace to bootstrap it before their member doc exists.

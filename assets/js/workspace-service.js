@@ -84,37 +84,60 @@ async function resolveWorkspace(app, user) {
         const fs = await import(FIRESTORE_URL);
         const db = fs.getFirestore(app);
 
-        // 1) Which workspace does this user default to?
-        let workspaceId = user.uid; // seeding default
+        // 1) Preference hint: which workspace does the pointer point to?
+        let preferred = user.uid; // seeding default (owner-of-self)
         try {
             const ptrSnap = await fs.getDoc(fs.doc(db, `user_workspaces/${user.uid}`));
-            if (ptrSnap.exists()) {
-                const data = ptrSnap.data() || {};
-                if (data.default && typeof data.default === 'string') workspaceId = data.default;
+            if (ptrSnap.exists() && typeof (ptrSnap.data() || {}).default === 'string') {
+                preferred = ptrSnap.data().default;
             }
-        } catch (_) { /* pointer optional — keep seeding default */ }
+        } catch (_) { /* pointer optional */ }
 
-        // 2) Read the membership doc for role/status.
-        const memberSnap = await fs.getDoc(fs.doc(db, `workspaces/${workspaceId}/members/${user.uid}`));
-        if (memberSnap.exists()) {
-            const m = memberSnap.data() || {};
-            state.id = workspaceId;
-            state.role = m.role || 'viewer';
-            state.status = m.status || 'active';
-            state.ready = true;
-        } else if (workspaceId === user.uid) {
-            // No membership doc yet but this is the user's own workspace — they are
-            // the owner (pre-bootstrap). Keep the owner fallback, mark not-ready.
-            state.id = user.uid;
-            state.role = 'owner';
+        // 2) AUTHORITATIVE: find the user's own membership docs via a collection-group
+        // query (doc.uid == me). This works even if the reverse-lookup pointer is
+        // missing/stale, so already-joined members resolve correctly and see the
+        // shared workspace data. The pointer only breaks ties for multi-workspace users.
+        let memberships = [];
+        try {
+            const snap = await fs.getDocs(fs.query(fs.collectionGroup(db, 'members'), fs.where('uid', '==', user.uid)));
+            snap.forEach((d) => {
+                const parent = d.ref.parent && d.ref.parent.parent;
+                if (parent) {
+                    const m = d.data() || {};
+                    memberships.push({ workspaceId: parent.id, role: m.role || 'viewer', status: m.status || 'active' });
+                }
+            });
+        } catch (_) { /* collection-group index/rules unavailable — fall back below */ }
+
+        const active = memberships.filter((x) => x.status === 'active');
+        const chosen = active.find((x) => x.workspaceId === preferred) || active[0] || null;
+
+        if (chosen) {
+            state.id = chosen.workspaceId;
+            state.role = chosen.role;
             state.status = 'active';
-            state.ready = false;
-        } else {
-            // Pointed at someone else's workspace but no membership — no access.
-            state.id = workspaceId;
-            state.role = null;
-            state.status = 'removed';
             state.ready = true;
+        } else {
+            // Fallback (collection-group unavailable): single pointer-based read,
+            // then owner-of-self.
+            const memberSnap = await fs.getDoc(fs.doc(db, `workspaces/${preferred}/members/${user.uid}`));
+            if (memberSnap.exists()) {
+                const m = memberSnap.data() || {};
+                state.id = preferred;
+                state.role = m.role || 'viewer';
+                state.status = m.status || 'active';
+                state.ready = true;
+            } else if (preferred === user.uid) {
+                state.id = user.uid;
+                state.role = 'owner';
+                state.status = 'active';
+                state.ready = false;
+            } else {
+                state.id = preferred;
+                state.role = null;
+                state.status = 'removed';
+                state.ready = true;
+            }
         }
 
         // 3) Best-effort workspace name + denormalized plan for display.
