@@ -1010,8 +1010,13 @@
                     sessionStorage.removeItem('fluxy_pending_tours');
                     return;
                 }
+                // Resolve the joined workspace before reading so members see shared data.
+                try { const { resolveWorkspace } = await import('/assets/js/workspace-service.js'); await resolveWorkspace(app, user); } catch (_) {}
                 await prepareLinkedLedgerRecordRange(user);
                 await window.loadLedger();
+                // Real-time: a teammate's new/edited transaction surfaces a non-disruptive
+                // "New activity · Refresh" pill (preserves the user's filters/pagination).
+                window.FluxyLive?.attach({ collections: ['transactions'], reload: () => window.loadLedger(), mode: 'prompt' });
                 handleOnboardingDeepLink();
                 await continuePendingTourIfAny(user.uid);
             }

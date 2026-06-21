@@ -1336,6 +1336,20 @@ class DataService {
         }
     }
 
+    // Real-time: invoke `callback` only when ANOTHER member commits a change to a
+    // workspace collection. Skips the initial snapshot (first fire) and this
+    // client's own optimistic writes (metadata.hasPendingWrites), so a member's
+    // own actions don't double-trigger. Returns an unsubscribe function.
+    watchCollection(scopeId, collectionName, callback) {
+        const ref = collection(this.db, `${this._scope(scopeId)}/${collectionName}`);
+        let initialized = false;
+        return onSnapshot(ref, (snap) => {
+            if (!initialized) { initialized = true; return; }
+            if (snap.metadata && snap.metadata.hasPendingWrites) return;
+            try { callback(snap); } catch (_) {}
+        }, (err) => console.warn('[watchCollection] ' + collectionName, err && err.message ? err.message : err));
+    }
+
     async getMembers(workspaceId) {
         const snap = await getDocs(collection(this.db, `workspaces/${workspaceId}/members`));
         return snap.docs.map(d => ({ id: d.id, ...d.data() }));

@@ -1194,8 +1194,12 @@
                     sessionStorage.removeItem('fluxy_pending_tours');
                     return;
                 }
+                // Resolve the joined workspace before reading so members see shared data.
+                try { const { resolveWorkspace } = await import('/assets/js/workspace-service.js'); await resolveWorkspace(app, user); } catch (_) {}
                 await prepareLinkedBillRecordRange(user);
                 await window.loadBills();
+                // Real-time: surface a teammate's bill/payment changes via the refresh pill.
+                window.FluxyLive?.attach({ collections: ['bills', 'transactions'], reload: () => window.loadBills(), mode: 'prompt' });
                 const params = new URLSearchParams(window.location.search);
                 if (params.get('openAddBill') === '1' && typeof window.showAddBillModal === 'function') {
                     setTimeout(() => window.showAddBillModal(), 300);

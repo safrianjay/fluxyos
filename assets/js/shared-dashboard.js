@@ -911,6 +911,45 @@ window.showAddTransactionModal = function(options = {}) {
         return { ds, user, scopeId, Timestamp };
     }
 
+    // ── Real-time workspace sync ──────────────────────────────────────────────
+    // Live updates when OTHER members change shared workspace data. Pages call
+    // FluxyLive.attach({ collections, reload, mode }). mode 'auto' re-runs the
+    // page loader (debounced) — good for read-only surfaces like the dashboard;
+    // mode 'prompt' shows a non-disruptive "New activity · Refresh" pill — good
+    // for filter/pagination-heavy pages (ledger, bills) so a teammate's write
+    // never yanks away the current user's view mid-task.
+    window.FluxyLive = (function () {
+        let started = false;
+        function showPill(onClick) {
+            if (document.getElementById('fluxy-live-pill')) return;
+            const pill = document.createElement('button');
+            pill.id = 'fluxy-live-pill';
+            pill.type = 'button';
+            pill.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:90;display:inline-flex;align-items:center;gap:8px;background:#0B0F19;color:#fff;font-size:13px;font-weight:600;padding:10px 16px;border:none;border-radius:9999px;box-shadow:0 8px 24px rgba(11,15,25,0.25);cursor:pointer;';
+            pill.innerHTML = '<span style="width:8px;height:8px;border-radius:9999px;background:#22c55e;display:inline-block;"></span> New activity · Refresh';
+            pill.addEventListener('click', () => { pill.remove(); try { onClick(); } catch (_) {} });
+            document.body.appendChild(pill);
+        }
+        async function attach({ collections = [], reload, mode = 'prompt' } = {}) {
+            if (started || !collections.length || typeof reload !== 'function') return;
+            started = true;
+            try {
+                const { ds, scopeId } = await getTransactionDataService();
+                let timer = null;
+                const onRemote = () => {
+                    if (mode === 'auto') {
+                        clearTimeout(timer);
+                        timer = setTimeout(() => { try { reload(); } catch (_) {} }, 600);
+                    } else {
+                        showPill(reload);
+                    }
+                };
+                collections.forEach((c) => { try { ds.watchCollection(scopeId, c, onRemote); } catch (_) {} });
+            } catch (_) { started = false; }
+        }
+        return { attach, showPill };
+    })();
+
     function getLocalDateKey(date = new Date()) {
         return [
             date.getFullYear(),

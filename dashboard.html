@@ -524,6 +524,8 @@
                     return;
                 }
                 if (typeof loadDashboard === 'function') await loadDashboard();
+                // Real-time: live-update KPIs/overview when any member changes shared data.
+                window.FluxyLive?.attach({ collections: ['transactions', 'bills', 'subscriptions', 'budgets', 'budget_allocations'], reload: () => window.loadDashboard?.(), mode: 'auto' });
                 // Invited-member first run: prominent success modal, then the
                 // Getting Started coachmark ALWAYS from step 1 (never resumed).
                 const rawWelcome = sessionStorage.getItem('fluxy_invite_welcome');

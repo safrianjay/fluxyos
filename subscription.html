@@ -146,7 +146,11 @@
                     sessionStorage.removeItem('fluxy_pending_tours');
                     return;
                 }
+                // Resolve the joined workspace before reading so members see shared data.
+                try { const { resolveWorkspace } = await import('/assets/js/workspace-service.js'); await resolveWorkspace(app, user); } catch (_) {}
                 await window.loadSubscriptions();
+                // Real-time: surface a teammate's subscription changes via the refresh pill.
+                window.FluxyLive?.attach({ collections: ['subscriptions'], reload: () => window.loadSubscriptions(), mode: 'prompt' });
                 await continuePendingTourIfAny(user.uid);
             } else {
                 window.location.replace('/login');
