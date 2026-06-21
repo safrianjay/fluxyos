@@ -63,13 +63,21 @@ function fallbackToSelf(uid) {
  */
 async function resolveWorkspace(app, user) {
     if (!user || !user.uid) {
+        try { sessionStorage.removeItem('fluxy_ws'); } catch (_) {}
         Object.assign(state, { id: null, role: null, status: null, uid: null, ready: false, name: null });
         return publish();
     }
     state.uid = user.uid;
+    // Drop any cached workspace id that belongs to a different user (sign-in
+    // switch in the same tab) so db-service._scope never reads a cross-user id.
+    try {
+        const cached = JSON.parse(sessionStorage.getItem('fluxy_ws') || 'null');
+        if (cached && cached.uid !== user.uid) sessionStorage.removeItem('fluxy_ws');
+    } catch (_) {}
     // Optimistic fallback first so callers always have something usable.
     fallbackToSelf(user.uid);
 
+    let confirmed = false;
     try {
         const fs = await import(FIRESTORE_URL);
         const db = fs.getFirestore(app);
@@ -112,10 +120,19 @@ async function resolveWorkspace(app, user) {
             const wsSnap = await fs.getDoc(fs.doc(db, `workspaces/${state.id}`));
             if (wsSnap.exists()) state.name = (wsSnap.data() || {}).name || null;
         } catch (_) { /* name optional */ }
+        confirmed = true;
     } catch (err) {
         // Network/rules error — keep the owner-of-self fallback already published.
         console.warn('[workspace-service] resolve failed, using self fallback', err);
     }
+    // Cache the resolved (active) workspace id so db-service._scope can scope
+    // finance reads/writes synchronously on the next page load without waiting
+    // for re-resolution. Only the confirmed id is cached, never the fallback.
+    try {
+        if (confirmed && state.id && state.status === 'active') {
+            sessionStorage.setItem('fluxy_ws', JSON.stringify({ uid: user.uid, id: state.id }));
+        }
+    } catch (_) {}
     return publish();
 }
 

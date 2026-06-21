@@ -3033,16 +3033,21 @@ service cloud.firestore {
           && request.resource.data.status == 'active'
           && hasPendingInvite(workspaceId)
           && request.resource.data.role == pendingInviteRole(workspaceId);
-        // Owner/admin change role/status; cannot edit an owner member unless owner,
-        // and cannot promote anyone to owner (ownership transfer is server-side).
-        allow update: if hasRole(workspaceId, ['owner', 'admin'])
+        // Role changes are OWNER-ONLY. Admins cannot change roles. No one may edit
+        // their OWN membership (no self-escalation), the owner doc is immutable
+        // here, and no one can be promoted to owner (ownership transfer is a
+        // separate server-side flow).
+        allow update: if hasRole(workspaceId, ['owner'])
+          && memberId != request.auth.uid
           && isValidMember(request.resource.data)
           && request.resource.data.uid == resource.data.uid
           && request.resource.data.role != 'owner'
           && resource.data.role != 'owner';
-        // Owner/admin remove a non-owner; a member may remove themselves.
-        allow delete: if (hasRole(workspaceId, ['owner', 'admin']) && resource.data.role != 'owner')
-          || (isSignedIn() && memberId == request.auth.uid && resource.data.role != 'owner');
+        // Removal is OWNER-ONLY, never self, never the owner. (Admins cannot remove
+        // members; members cannot remove themselves.)
+        allow delete: if hasRole(workspaceId, ['owner'])
+          && memberId != request.auth.uid
+          && resource.data.role != 'owner';
       }
 
       match /invites/{inviteId} {

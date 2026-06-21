@@ -138,7 +138,7 @@
         const avatarFor = (name) => `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=EA580C&color=fff`;
         const fmtTime = (ts) => { try { return ts && ts.toDate ? ts.toDate().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''; } catch (_) { return ''; } };
 
-        let state = { ws: null, user: null, canManage: false, businessName: null };
+        let state = { ws: null, user: null, canInvite: false, canManageMembers: false, businessName: null };
 
         const authTimeout = setTimeout(() => window.location.replace('/login'), 2500);
         onAuthStateChanged(auth, async (user) => {
@@ -163,18 +163,25 @@
                 } catch (e) { console.warn('[team] ensureWorkspace failed', e); }
             }
             state.ws = ws;
-            state.canManage = ws.can('team.manage');
+            // Invite + revoke pending invites: owner & admin. Change roles / remove
+            // members: OWNER ONLY.
+            state.canInvite = ws.can('team.invite');
+            state.canManageMembers = ws.can('team.manage_members');
             ds.setActor(user.uid, ws.role); // pin role for audit attribution
 
             renderRoleReference();
             wireInvite();
-            if (state.canManage) {
+            if (state.canInvite) {
                 const btn = document.getElementById('invite-member-btn');
                 btn.classList.remove('hidden');
                 btn.classList.add('flex');
             } else {
-                document.getElementById('members-subtitle').textContent = 'People with access to this workspace. You have read-only access to team settings.';
                 document.getElementById('invites-section').classList.add('hidden');
+            }
+            if (!state.canManageMembers) {
+                document.getElementById('members-subtitle').textContent = state.canInvite
+                    ? 'People with access to this workspace. Only the Owner can change roles or remove members.'
+                    : 'People with access to this workspace.';
             }
             await Promise.all([loadMembers(), loadInvites(), loadActivity()]);
         });
@@ -218,16 +225,17 @@
             const isSelf = m.uid === state.user.uid;
             const isOwner = m.role === 'owner';
             const name = m.display_name || (m.email ? m.email.split('@')[0] : 'Member');
-            const canEditThis = state.canManage && !isOwner;
+            // Owner-only, and NEVER on your own row (no self role change / self-remove).
+            const canEditThis = state.canManageMembers && !isOwner && !isSelf;
             let roleCell;
             if (canEditThis) {
                 roleCell = `<select data-role-select data-uid="${esc(m.uid)}" class="text-[13px]">${ASSIGNABLE_ROLES.map((r) => `<option value="${r}" ${m.role === r ? 'selected' : ''}>${esc(roleMeta(r).label)}</option>`).join('')}</select>`;
             } else {
                 roleCell = roleLabelPill(m.role);
             }
-            const removeCell = (canEditThis)
+            const removeCell = canEditThis
                 ? `<button data-remove-member data-uid="${esc(m.uid)}" data-name="${esc(name)}" class="text-[13px] font-semibold text-red-600 hover:text-red-700">Remove</button>`
-                : (isSelf && !isOwner ? `<button data-leave-workspace data-uid="${esc(m.uid)}" class="text-[13px] font-semibold text-red-600 hover:text-red-700">Leave</button>` : '');
+                : '';
             return `<tr class="fluxy-table-row">
                 <td class="fluxy-table-cell">
                     <div class="flex items-center gap-3">
@@ -282,26 +290,10 @@
                     }
                 });
             });
-            document.querySelectorAll('[data-leave-workspace]').forEach((btn) => {
-                btn.addEventListener('click', async () => {
-                    const ok = await window.showConfirmDialog({
-                        title: 'Leave workspace?',
-                        body: 'You will lose access to this workspace and need a new invite to return.',
-                        confirmLabel: 'Leave', cancelLabel: 'Cancel', tone: 'danger'
-                    });
-                    if (!ok) return;
-                    try {
-                        await ds.removeMember(state.ws.id, state.user.uid);
-                        window.location.href = '/dashboard';
-                    } catch (e) {
-                        window.showToast('Could not leave workspace.', 'error');
-                    }
-                });
-            });
         }
 
         async function loadInvites() {
-            if (!state.canManage) return;
+            if (!state.canInvite) return;
             const host = document.getElementById('invites-container');
             let invites = [];
             try { invites = await ds.getInvites(state.ws.id, { pendingOnly: true }); }
@@ -348,7 +340,7 @@
         }
 
         async function loadActivity() {
-            if (!state.canManage) return;
+            if (!state.ws.can('audit.read')) return;
             let logs = [];
             try { logs = await ds.getWorkspaceAuditLogs(state.ws.id, 20); } catch (_) {}
             logs = logs.filter((l) => ['members', 'invites'].includes(l.target_collection));
@@ -371,7 +363,7 @@
         }
 
         function openInviteDrawer() {
-            if (!state.canManage) return;
+            if (!state.canInvite) return;
             closeInviteDrawer();
             const html = `
             <div id="team-invite-modal" class="fixed inset-0 z-[100] flex justify-end overflow-hidden">

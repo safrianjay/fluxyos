@@ -18,7 +18,7 @@ const ROLES = ['owner', 'admin', 'finance', 'viewer'];
 // Human-facing metadata for each role (used by settings-team.html).
 const ROLE_META = {
     owner:   { label: 'Owner',   description: 'Full access. Billing, ownership transfer, and workspace deletion.' },
-    admin:   { label: 'Admin',   description: 'Manage the team, settings, and all finance records.' },
+    admin:   { label: 'Admin',   description: 'Invite teammates, manage settings, and all finance records. Only the Owner changes roles or removes members.' },
     finance: { label: 'Finance', description: 'Add and edit finance records, mark bills paid, export, and use Fluxy AI.' },
     viewer:  { label: 'Viewer',  description: 'Read-only access to dashboards and records.' },
 };
@@ -35,7 +35,8 @@ const CAPABILITIES = [
     'exports.create',
     'ai.use',
     'integrations.manage',
-    'team.manage',        // invite/remove members, change roles
+    'team.invite',          // invite members + revoke pending invites (owner + admin)
+    'team.manage_members',  // change roles / remove members / transfer (owner ONLY)
     'settings.manage',
     'audit.read',
     'billing.manage',     // owner only
@@ -65,7 +66,9 @@ const ADMIN_CAPS = [
     ...FINANCE_CAPS,
     'transactions.delete',
     'integrations.manage',
-    'team.manage', 'settings.manage', 'audit.read',
+    // Admins may invite + revoke invites, but NOT change roles or remove members
+    // (that is owner-only via 'team.manage_members', granted by owner = all caps).
+    'team.invite', 'settings.manage', 'audit.read',
 ];
 
 // role -> Set(capabilities). Owner is handled as "all" in can().

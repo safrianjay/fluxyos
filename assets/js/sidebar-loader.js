@@ -318,40 +318,51 @@
         });
     }
 
-    async function syncEntityProfile(app, uid) {
+    async function syncEntityProfile(app, uid, ws) {
         if (!app || !uid) {
             applyEntityName(null);
             applyEntityLabel(null);
             return;
         }
-        try {
-            const fs = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-            const db = fs.getFirestore(app);
-            let name = null;
-            let label = null;
+        const isOwner = !ws || ws.role === 'owner' || ws.id === uid;
+        // The business name is the WORKSPACE record's name, so every member sees the
+        // same value. Teammates can only read the workspace doc (not the owner's
+        // settings), so this is their source of truth.
+        let name = (ws && ws.name) || null;
+        let label = null;
+        if (isOwner) {
+            // Owners resolve from their own Business settings and keep the workspace
+            // record's name in sync so teammates see the same name.
             try {
-                const compSnap = await fs.getDoc(fs.doc(db, `users/${uid}/settings/company`));
-                if (compSnap.exists()) {
-                    const data = compSnap.data() || {};
-                    if (data.business_name && data.business_name !== 'Global HQ') name = data.business_name;
-                    if (data.entity_label && data.entity_label !== 'Consolidated') label = data.entity_label;
-                }
-            } catch (e) {}
-            if (!name) {
+                const fs = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+                const db = fs.getFirestore(app);
                 try {
-                    const profSnap = await fs.getDoc(fs.doc(db, `users/${uid}/onboarding/profile`));
-                    if (profSnap.exists()) {
-                        const v = profSnap.data()?.business_name;
-                        if (v) name = v;
+                    const compSnap = await fs.getDoc(fs.doc(db, `users/${uid}/settings/company`));
+                    if (compSnap.exists()) {
+                        const data = compSnap.data() || {};
+                        if (data.business_name && data.business_name !== 'Global HQ') name = data.business_name;
+                        if (data.entity_label && data.entity_label !== 'Consolidated') label = data.entity_label;
                     }
                 } catch (e) {}
-            }
-            applyEntityName(name);
-            applyEntityLabel(label);
-        } catch (e) {
-            applyEntityName(null);
-            applyEntityLabel(null);
+                if (!name) {
+                    try {
+                        const profSnap = await fs.getDoc(fs.doc(db, `users/${uid}/onboarding/profile`));
+                        if (profSnap.exists()) {
+                            const v = profSnap.data()?.business_name;
+                            if (v) name = v;
+                        }
+                    } catch (e) {}
+                }
+                const wsId = (ws && ws.id) || uid;
+                if (name && (!ws || name !== (ws.name || null))) {
+                    fs.setDoc(fs.doc(db, `workspaces/${wsId}`), {
+                        name, owner_uid: wsId, updated_at: fs.serverTimestamp()
+                    }, { merge: true }).catch(() => {});
+                }
+            } catch (e) {}
         }
+        applyEntityName(name);
+        applyEntityLabel(label);
     }
 
     // Listen for live updates broadcast by Settings → Business (or any other
@@ -468,40 +479,44 @@
 
             import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(mod => {
                 const auth = mod.getAuth(app);
-                mod.onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        const nameElem = document.getElementById('sidebar-user-name');
-                        const avatarElem = document.getElementById('sidebar-user-avatar');
-                        if (nameElem) nameElem.innerText = user.displayName || user.email.split('@')[0];
-                        if (avatarElem && user.photoURL) avatarElem.src = user.photoURL;
-                        syncEntityProfile(app, user.uid);
-                        // Keep the internal operations index (internal_users/{uid})
-                        // in sync from the user's own session. Best-effort and
-                        // never blocks the dashboard. See db-service.js
-                        // syncSelfToInternalIndex + internal.html console.
-                        import("/assets/js/db-service.js").then(({ default: DataService }) => {
-                            const ds = new DataService(app);
-                            return ds.syncSelfToInternalIndex(user.uid, {
-                                email: user.email || null,
-                                display_name: user.displayName || null
-                            });
-                        }).catch((e) => console.warn('[sidebar] internal index sync skipped', e));
-                        // Trial/payment access guard: starts the 3-day trial for
-                        // eligible users, renders the trial/payment banner, and
-                        // applies expiry locks across authenticated app pages. This
-                        // is the single wiring point for every page that loads the
-                        // sidebar (all app pages; never landing/login/onboarding/
-                        // internal). Best-effort — never blocks the dashboard.
+                mod.onAuthStateChanged(auth, async (user) => {
+                    if (!user) return;
+                    const nameElem = document.getElementById('sidebar-user-name');
+                    const avatarElem = document.getElementById('sidebar-user-avatar');
+                    if (nameElem) nameElem.innerText = user.displayName || user.email.split('@')[0];
+                    if (avatarElem && user.photoURL) avatarElem.src = user.photoURL;
+
+                    // Resolve workspace + role FIRST so the entity name and the
+                    // trial guard below are correct. Publishes window.FluxyWorkspace
+                    // ({ id, role, status, name, can() }). Fail-safe (owner-of-self).
+                    let ws = null;
+                    try {
+                        const { resolveWorkspace } = await import("/assets/js/workspace-service.js");
+                        ws = await resolveWorkspace(app, user);
+                    } catch (e) { console.warn('[sidebar] workspace resolve skipped', e); }
+
+                    // Sidebar business name = the workspace record's name (shared by
+                    // every member). See syncEntityProfile.
+                    syncEntityProfile(app, user.uid, ws);
+
+                    // Keep the internal operations index (internal_users/{uid}) in
+                    // sync from the user's own session. Best-effort.
+                    import("/assets/js/db-service.js").then(({ default: DataService }) => {
+                        const ds = new DataService(app);
+                        return ds.syncSelfToInternalIndex(user.uid, {
+                            email: user.email || null,
+                            display_name: user.displayName || null
+                        });
+                    }).catch((e) => console.warn('[sidebar] internal index sync skipped', e));
+
+                    // Trial/payment guard is OWNER-scoped: only the workspace owner
+                    // has a billing subscription. Invited members inherit the
+                    // workspace plan and must NOT see a trial banner or have a trial
+                    // created for them. (ws === null → solo owner fallback, run it.)
+                    if (!ws || ws.role === 'owner') {
                         import("/assets/js/trial-access.js").then(({ applyToPage }) => {
                             return applyToPage(user, {});
                         }).catch((e) => console.warn('[sidebar] trial access guard skipped', e));
-                        // Workspace + role resolution: publishes window.FluxyWorkspace
-                        // ({ id, role, status, can() }) so every app surface can gate
-                        // by role. Best-effort and fail-safe (falls back to owner-of-self
-                        // pre-migration). See assets/js/workspace-service.js.
-                        import("/assets/js/workspace-service.js").then(({ resolveWorkspace }) => {
-                            return resolveWorkspace(app, user);
-                        }).catch((e) => console.warn('[sidebar] workspace resolve skipped', e));
                     }
                 });
             });

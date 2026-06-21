@@ -120,10 +120,14 @@ class DataService {
         if (!this._workspaceMode()) return `users/${scopeId}`;
         // In workspace mode, target the resolved workspace: the owner's id for a
         // teammate (so they see the shared data), or the user's own id for an
-        // owner. Falls back to the passed scope id before resolution completes —
-        // owner-safe because their uid == their workspaceId.
-        const wsId = (typeof window !== 'undefined' && window.FluxyWorkspace && window.FluxyWorkspace.id) || scopeId;
-        return `workspaces/${wsId}`;
+        // owner. Prefer the live resolution, then the per-session cache (so reads
+        // are correct immediately on cross-page navigation, before re-resolution),
+        // then the passed scope id. Owner-safe (their uid == their workspaceId).
+        let wsId = (typeof window !== 'undefined' && window.FluxyWorkspace && window.FluxyWorkspace.id) || null;
+        if (!wsId && typeof sessionStorage !== 'undefined') {
+            try { const c = JSON.parse(sessionStorage.getItem('fluxy_ws') || 'null'); if (c && c.id) wsId = c.id; } catch (_) {}
+        }
+        return `workspaces/${wsId || scopeId}`;
     }
 
     // --- TRANSACTIONS (LEDGER) ---

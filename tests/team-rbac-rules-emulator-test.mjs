@@ -19,7 +19,7 @@
 import { initializeApp } from 'firebase/app';
 import {
     getFirestore, connectFirestoreEmulator, doc, getDoc,
-    setDoc, updateDoc, serverTimestamp, writeBatch
+    setDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch
 } from 'firebase/firestore';
 import { getAuth, connectAuthEmulator, createUserWithEmailAndPassword } from 'firebase/auth';
 
@@ -150,6 +150,35 @@ const inviteDoc = (email, role, inviterUid) => ({
     await expectOutcome('non-member cannot create transaction', false, () => setDoc(txRef(stranger, 't3'), txDoc()));
     await expectOutcome('viewer member can read transaction', true, () => getDoc(txRef(outsider, 't1')));
     await expectOutcome('non-member cannot read transaction', false, () => getDoc(txRef(stranger, 't1')));
+
+    // ---- Member-management boundaries: OWNER only; no self-edit/self-remove ----
+    const adminUser = makeUserCtx('adminuser');
+    await signUp(adminUser, 'admin@test.com');
+    await expectOutcome('owner adds an admin', true, () =>
+        setDoc(memberRef(owner, adminUser.uid), memberDoc(adminUser.uid, 'admin@test.com', 'admin')));
+
+    // Admin may invite + revoke, but may NOT change roles or remove members.
+    await expectOutcome('admin can create invite', true, () =>
+        setDoc(inviteRef(adminUser, 'newhire@test.com'), inviteDoc('newhire@test.com', 'finance', adminUser.uid)));
+    await expectOutcome('admin CANNOT change a member role', false, () =>
+        updateDoc(memberRef(adminUser, invitee.uid), { role: 'viewer', updated_at: serverTimestamp() }));
+    await expectOutcome('admin CANNOT remove a member', false, () =>
+        deleteDoc(memberRef(adminUser, outsider.uid)));
+
+    // Owner may change a non-self, non-owner member's role.
+    await expectOutcome('owner changes finance member role to viewer', true, () =>
+        updateDoc(memberRef(owner, invitee.uid), { role: 'viewer', updated_at: serverTimestamp() }));
+    // No self-modification, even for the owner.
+    await expectOutcome('owner CANNOT change own role', false, () =>
+        updateDoc(memberRef(owner, owner.uid), { role: 'admin', updated_at: serverTimestamp() }));
+    // No self-removal for any member.
+    await expectOutcome('member CANNOT remove themselves', false, () =>
+        deleteDoc(memberRef(outsider, outsider.uid)));
+    await expectOutcome('admin CANNOT remove themselves', false, () =>
+        deleteDoc(memberRef(adminUser, adminUser.uid)));
+    // Owner can remove a non-owner member.
+    await expectOutcome('owner removes a member', true, () =>
+        deleteDoc(memberRef(owner, outsider.uid)));
 
     console.log(`\nTeam RBAC rules: ${passed} passed, ${failed} failed`);
     process.exit(failed === 0 ? 0 : 1);
