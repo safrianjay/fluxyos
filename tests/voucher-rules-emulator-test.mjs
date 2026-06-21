@@ -62,9 +62,10 @@ function voucherPayload(code, overrides = {}) {
     };
 }
 
-// Growth monthly @ 20%: subtotal 8.500.000, discount 1.700.000,
-// tax = 11% of 6.800.000 = 748.000, total 7.548.000.
-const AMOUNTS = { subtotal: 8500000, discount: 1700000, tax: 748000, total: 7548000 };
+// Growth monthly @ 20% (price source of truth: billing-config.js + firestore.rules
+// isValidBillingAmounts → growth monthly subtotal 6.990.000): discount 1.398.000,
+// tax = 11% of the discounted 5.592.000 = 615.120, total 6.207.120.
+const AMOUNTS = { subtotal: 6990000, discount: 1398000, tax: 615120, total: 6207120 };
 
 function paymentRequestPayload(voucherCode, overrides = {}) {
     return {
@@ -206,7 +207,7 @@ async function main() {
             requestOverrides: {
                 voucher_id: null, voucher_code: null,
                 voucher_discount_percent: null, voucher_discount_amount: null,
-                estimated_tax_amount: 935000, total_amount: 9435000
+                estimated_tax_amount: 768900, total_amount: 7758900
             }
         }));
 
