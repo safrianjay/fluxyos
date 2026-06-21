@@ -517,6 +517,9 @@
                     // Invited members join an existing workspace and are NOT owners:
                     // exempt them from the owner KYC/onboarding flow.
                     await ds.markInvitedMemberExempt(user.uid).catch(() => {});
+                    // Reset coachmark progress so the tutorial always starts at
+                    // step 1 (never resumed mid-flow) for first-time members.
+                    await ds.resetPlatformLearningState(user.uid).catch(() => {});
                     // Stage the welcome modal + the product coachmark for the dashboard.
                     let business = null;
                     try { const p = await ds.getWorkspaceProfile(inviteCtx.ws); business = p && p.name; } catch (_) {}

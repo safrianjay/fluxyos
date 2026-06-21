@@ -1090,6 +1090,22 @@ class DataService {
         }, { merge: true });
     }
 
+    // Reset coachmark/tour progress so the next run always starts at step 1.
+    // Used when a user joins a workspace via invitation — every invited member
+    // gets the full Getting Started flow from the beginning, never resumed.
+    async resetPlatformLearningState(userId) {
+        await setDoc(this._platformLearningDoc(userId), {
+            dismissed: false,
+            dismissed_at: null,
+            started_tours: [],
+            completed_tours: [],
+            skipped_tours: [],
+            active_tour: null,
+            last_seen_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        }, { merge: true });
+    }
+
     // --- REPORTS & EXPORTS ---
     // Period-scoped fetchers. startKey / endKey are 'YYYY-MM-DD' day keys
     // (inclusive on both ends, interpreted in the client's local timezone).

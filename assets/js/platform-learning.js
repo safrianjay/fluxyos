@@ -24,6 +24,7 @@ const TOUR_CONFIG = {
         route: '/dashboard',
         label: 'Understand your Overview',
         chip: 'Overview',
+        coachmarkLabel: 'Getting Started',
         description: 'Read revenue, OpEx, margin, action items, and finance health.',
         icon: 'OV',
         steps: [
@@ -532,10 +533,12 @@ function renderCurrentStep() {
     target.classList.add('fluxy-tour-highlight');
     target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
     const direction = activeTour.direction || 'forward';
+    const tourCfg = TOUR_CONFIG[activeTour.tourId] || {};
+    const tourLabel = tourCfg.coachmarkLabel || tourCfg.chip || '';
 
     popover.innerHTML = `
         <button type="button" class="fluxy-tour-skip" data-tour-skip>Skip</button>
-        <p class="fluxy-tour-count">${index + 1}/${steps.length}</p>
+        <p class="fluxy-tour-count">${tourLabel ? tourLabel + ' · ' : ''}${index + 1}/${steps.length}</p>
         <h3>${step.title}</h3>
         <p>${step.body}</p>
         <div class="fluxy-tour-actions">

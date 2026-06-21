@@ -450,7 +450,7 @@
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { applyToPage } from "./assets/js/onboarding-gate.js";
-        import { renderQuickStartLearning, continuePendingTourIfAny, focusLearningSection, promoteLearningSection } from "./assets/js/platform-learning.js";
+        import { renderQuickStartLearning, continuePendingTourIfAny, focusLearningSection, promoteLearningSection, startPlatformTour } from "./assets/js/platform-learning.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -464,6 +464,46 @@
 
         const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
         const auth = getAuth(app);
+
+        // Prominent "you joined the workspace" success modal for invited members.
+        // Resolves when the user clicks Continue (which then starts the tutorial).
+        function showInviteWelcome({ business, role }) {
+            return new Promise((resolve) => {
+                const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+                const biz = esc(business || 'your workspace');
+                const roleLabel = esc(role ? (role.charAt(0).toUpperCase() + role.slice(1)) : 'team member');
+                const wrap = document.createElement('div');
+                wrap.innerHTML = `
+                <div class="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    <div class="absolute inset-0 bg-[#0B0F19]/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" data-iw-overlay></div>
+                    <div class="relative z-10 w-full max-w-[440px] bg-white rounded-2xl shadow-2xl px-8 pt-10 pb-8 text-center translate-y-3 opacity-0 transition-all duration-300" data-iw-card>
+                        <div class="mx-auto mb-6 flex items-center justify-center">
+                            <span class="relative flex items-center justify-center w-24 h-24 rounded-full bg-green-50">
+                                <span class="absolute inset-0 rounded-full bg-green-500/10 animate-ping"></span>
+                                <span class="relative flex items-center justify-center w-16 h-16 rounded-full bg-green-500 shadow-lg shadow-green-500/40">
+                                    <svg class="w-9 h-9 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                </span>
+                            </span>
+                        </div>
+                        <p class="text-[11px] font-bold uppercase tracking-[0.14em] text-green-600 mb-2">Invitation accepted</p>
+                        <h2 class="text-[24px] font-bold text-gray-900 leading-tight tracking-tight">Welcome to ${biz}</h2>
+                        <p class="mt-3 text-[14px] text-gray-500 leading-relaxed">You've joined <strong class="text-gray-700">${biz}</strong> as a <strong class="text-gray-700">${roleLabel}</strong>. You now share this workspace with your team — let's show you around.</p>
+                        <button type="button" data-iw-continue class="mt-7 w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-xl shadow-lg transition-all active:scale-[0.98]">Continue</button>
+                    </div>
+                </div>`;
+                document.body.appendChild(wrap);
+                document.body.classList.add('overflow-hidden');
+                const overlay = wrap.querySelector('[data-iw-overlay]');
+                const card = wrap.querySelector('[data-iw-card]');
+                requestAnimationFrame(() => {
+                    overlay?.classList.replace('opacity-0', 'opacity-100');
+                    card?.classList.remove('translate-y-3', 'opacity-0');
+                });
+                const done = () => { document.body.classList.remove('overflow-hidden'); wrap.remove(); resolve(); };
+                // Only Continue dismisses (it kicks off the tutorial).
+                wrap.querySelector('[data-iw-continue]')?.addEventListener('click', done);
+            });
+        }
 
         // SMART AUTH GUARD
         let checkTimeout = setTimeout(() => {
@@ -484,24 +524,18 @@
                     return;
                 }
                 if (typeof loadDashboard === 'function') await loadDashboard();
-                // Invited-member welcome — shown once, right after joining a workspace.
-                // On Continue, the existing coachmark flow below runs the tutorial.
-                try {
-                    const rawWelcome = sessionStorage.getItem('fluxy_invite_welcome');
-                    if (rawWelcome) {
-                        sessionStorage.removeItem('fluxy_invite_welcome');
-                        const w = JSON.parse(rawWelcome);
-                        const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-                        const rawBiz = w.business || 'your workspace';
-                        const roleLabel = w.role ? (w.role.charAt(0).toUpperCase() + w.role.slice(1)) : 'team member';
-                        await window.showAlertDialog?.({
-                            title: `Welcome to ${rawBiz}`,
-                            body: `Your invitation has been accepted successfully.<br><br>You have joined <strong>${esc(rawBiz)}</strong> as a <strong>${esc(roleLabel)}</strong>.<br><br>You can now access the workspace and collaborate with your team.`,
-                            confirmLabel: 'Continue',
-                            icon: 'check'
-                        });
-                    }
-                } catch (_) {}
+                // Invited-member first run: prominent success modal, then the
+                // Getting Started coachmark ALWAYS from step 1 (never resumed).
+                const rawWelcome = sessionStorage.getItem('fluxy_invite_welcome');
+                if (rawWelcome) {
+                    sessionStorage.removeItem('fluxy_invite_welcome');
+                    let w = {};
+                    try { w = JSON.parse(rawWelcome) || {}; } catch (_) {}
+                    await renderQuickStartLearning('quick-start-container', { userId: user.uid });
+                    await showInviteWelcome({ business: w.business, role: w.role });
+                    await startPlatformTour('overview', user.uid);
+                    return;
+                }
                 await renderQuickStartLearning('quick-start-container', { userId: user.uid });
                 const returningFromTour = !!sessionStorage.getItem('fluxy_learning_focus');
                 if (returningFromTour) sessionStorage.removeItem('fluxy_learning_focus');
