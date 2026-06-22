@@ -377,8 +377,10 @@
         async function getRevenueForRange(userId) {
             const start = parseDayKey(revenueRangeStart);
             const end = parseDayKey(addDays(revenueRangeEnd, 1));
+            // Workspace-scoped: route through ds._scope() (NOT a hardcoded
+            // users/{uid}) so invited members read the shared workspace data.
             const q = query(
-                collection(ds.db, `users/${userId}/transactions`),
+                collection(ds.db, `${ds._scope(userId)}/transactions`),
                 where('timestamp', '>=', Timestamp.fromDate(start)),
                 where('timestamp', '<', Timestamp.fromDate(end)),
                 orderBy('timestamp', 'desc'),

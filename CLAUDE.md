@@ -95,6 +95,20 @@ Quick rules:
 
 ## Key Conventions
 
+- **Workspace data scoping (MANDATORY)**: Finance/operational collections
+  (`transactions`, `bills`, `subscriptions`, `budgets`, `budget_allocations`,
+  `invoices`, `audit_logs`, `bank_accounts`, `bank_balance_snapshots`,
+  `bank_statement_imports`, `documents`, `report_exports`, `accounting_mappings`)
+  are **workspace-scoped** and shared across team members. **NEVER hardcode
+  `users/${userId}/<financeCollection>`** — always route through the seam:
+  `${this._scope(userId)}/…` in `db-service.js`, or `${ds._scope(userId)}/…` for
+  an inline page query. Pages must resolve the workspace before the first finance
+  read (centralized in `applyToPage()`). Identity/billing collections
+  (`onboarding`, `platform_learning`, `settings`, `ai_chats`, `billing*`,
+  `usage_limits`, `payment_verifications`, `receipts`, `internal_users`) stay
+  user-scoped. Hardcoding `users/` for finance silently shows invited members
+  **0 data** while owners look fine. Full rule + grep guard in
+  `docs/PROJECT_BACKGROUND.md` §4. Background: `docs/TEAM_MANAGEMENT_HANDOFF.md`.
 - **Navigation & Footer**: All landing pages MUST use the universal header/navbar from `fluxyos.html` and load footer via `footer-loader.js`. Never create custom header markup — copy nav structure from fluxyos.html and maintain consistency across all pages.
 - Footer loads on all **landing pages** only — never on dashboard app pages (`dashboard.html`, `bill.html`, `subscription.html`)
 - Amount formatting: Indonesian Rupiah with `.` as thousands separator, displayed with **no space after `Rp`** (e.g. `Rp1.234.567`, never `Rp 1.234.567`)

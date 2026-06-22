@@ -91,7 +91,40 @@ rule in [DESIGN_SYSTEM.md → Dashboard Content Width Standard](DESIGN_SYSTEM.md
 
 ## 4. Firestore Database Schema
 
-**Auth scope:** All collections are under `users/{userId}/` — each user only sees their own data.
+**Auth scope:** Identity/billing collections are under `users/{userId}/`. **Finance/operational collections are WORKSPACE-scoped** under `workspaces/{workspaceId}/` and shared across team members (Stage 2). The schema paths below still read `users/{userId}/…` for historical reference, but at runtime every finance read/write resolves through `DataService._scope(userId)`.
+
+> ### ⚠️ WORKSPACE DATA SCOPING — MANDATORY (read before any finance read/write)
+>
+> Invited team members must see the SAME finance data as the workspace owner.
+> Getting this wrong silently shows members **0 data** while owners look fine
+> (because `users/{ownerUid}/…` still holds the pre-migration copy as a rollback
+> net — "owner seeing data does NOT prove correctness"). Rules:
+>
+> 1. **NEVER hardcode `users/${userId}/<financeCollection>`** in DataService, page
+>    HTML, or page JS. Always go through the seam: `${this._scope(userId)}/…`
+>    inside `db-service.js`, or `${ds._scope(userId)}/…` for an inline page query.
+>    `_scope()` returns `workspaces/{wsId}` in workspace mode, `users/{uid}` otherwise.
+> 2. **Finance/operational collections** (workspace-scoped — use `_scope`):
+>    `transactions`, `bills`, `subscriptions`, `budgets`, `budget_allocations`,
+>    `invoices`(+`items`), `audit_logs`, `bank_accounts`, `bank_balance_snapshots`,
+>    `bank_statement_imports`(+`rows`), `documents`, `report_exports`, `accounting_mappings`.
+> 3. **Identity/billing collections** (stay user-scoped — keep `users/{uid}`):
+>    `billing_subscription`, `billing_payment_requests`, `billing_invoices`,
+>    `billing`, `payment_verifications`, `usage_limits`, `onboarding`,
+>    `platform_learning`, `ai_chats`, `settings`, `receipts`, `internal_users`.
+> 4. **Resolve before read.** A page must resolve the workspace before its first
+>    finance read, or `_scope` falls back to `workspaces/{memberUid}` (which does
+>    not exist → permission-denied for members). This is centralized: every app
+>    page calls `applyToPage()` (`onboarding-gate.js`) right after auth, which now
+>    resolves the workspace first. Shared finance components that load their own
+>    `DataService` (e.g. in `shared-dashboard.js`) must also call
+>    `resolveWorkspace(app, user)` after `authStateReady()` before reading.
+> 5. **Watch out for inline page queries.** Some pages build Firestore queries
+>    directly in the HTML (`collection(ds.db, …)`) instead of calling a
+>    DataService method — these bypass the seam and are the easiest place to
+>    reintroduce the bug. Grep guard:
+>    `grep -rnE 'users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|audit_logs)' *.html assets/js/*.js | grep -v db-service.js`
+>    must return nothing.
 
 ### 4a. Transactions — `users/{userId}/transactions`
 

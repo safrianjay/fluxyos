@@ -170,6 +170,20 @@ Dashboard auto-refreshes KPIs; Ledger/Bills/Subscriptions show a non-disruptive
   `:indexes`) after editing rules/indexes. Netlify only deploys static files + functions.
 - **Owner seeing data does NOT prove workspace mode** — the owner's data exists in
   BOTH `users/{uid}` and `workspaces/{uid}`. Always test with a teammate.
+- **Finance reads MUST go through `_scope()`; never hardcode `users/{uid}/<finance>`.**
+  This was the actual root cause of the "members see 0 data" reports: several
+  paths still hardcoded `users/${userId}/…` and so read the member's own (empty)
+  collection. Fixed in `db-service.js` (`_getRecordsForPeriod`,
+  `attachDocumentToRecord`, `_commitBudgetUpdate`) AND in **inline page queries**
+  (`bill.html`, `revenue-sync.html` built `collection(ds.db, \`users/${uid}/…\`)`
+  directly). Inline page queries are the sneakiest — they bypass DataService
+  entirely. Guard (must return nothing):
+  `grep -rnE 'users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|audit_logs)' *.html assets/js/*.js | grep -v db-service.js`
+- **Resolve before read on every page.** Only dashboard/ledger/bill/subscription
+  resolved explicitly; the rest got permission-denied because `_scope` fell back to
+  `workspaces/{memberUid}`. Now centralized: `applyToPage()` (`onboarding-gate.js`)
+  resolves the workspace first, and every app page awaits it before its data load.
+  Shared finance components in `shared-dashboard.js` resolve in their own loaders too.
 - **Migration is idempotent and non-destructive** (re-run safe; source kept).
 - **Env**: invite emails depend on `TEAM_INVITES_ENABLED=true` + `RESEND_API_KEY`.
 - Pre-existing rules-compile warnings (`isValidBillingAccess`/`isValidPaymentVerification`

@@ -380,8 +380,10 @@
         async function getBillsForRange(userId) {
             const start = parseDayKey(billRangeStart);
             const end = parseDayKey(addDays(billRangeEnd, 1));
+            // Workspace-scoped: route through ds._scope() (NOT a hardcoded
+            // users/{uid}) so invited members read the shared workspace data.
             const q = query(
-                collection(ds.db, `users/${userId}/bills`),
+                collection(ds.db, `${ds._scope(userId)}/bills`),
                 where('timestamp', '>=', Timestamp.fromDate(start)),
                 where('timestamp', '<', Timestamp.fromDate(end)),
                 orderBy('timestamp', 'desc'),
