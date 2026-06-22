@@ -48,6 +48,72 @@ function publish() {
     return snapshot;
 }
 
+// Durable invite context the login page persists so a missed one-shot acceptance
+// can still be healed on a later authenticated load (see healFromStoredInvite).
+const INVITE_HEAL_KEY = 'fluxy_invite_heal';
+
+function readStoredInvite() {
+    try {
+        let raw = null;
+        if (typeof localStorage !== 'undefined') raw = localStorage.getItem(INVITE_HEAL_KEY);
+        if (!raw && typeof sessionStorage !== 'undefined') raw = sessionStorage.getItem('fluxy_pending_invite');
+        const v = raw ? JSON.parse(raw) : null;
+        return (v && v.ws) ? { ws: String(v.ws), invite: String(v.invite || '') } : null;
+    } catch (_) { return null; }
+}
+
+function clearStoredInvite() {
+    try { if (typeof localStorage !== 'undefined') localStorage.removeItem(INVITE_HEAL_KEY); } catch (_) {}
+    try { if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('fluxy_pending_invite'); } catch (_) {}
+}
+
+// SELF-HEAL an invited member onto the shared workspace. Covers the two ways the
+// login-time acceptance can leave a member stranded as a lonely owner of an empty
+// workspace: (a) the one-shot acceptInvite didn't run/complete, so no member doc
+// exists; or (b) the member doc exists but the members.uid collection-group
+// read/index is unavailable, so resolution couldn't see it. We trust the durable
+// invite context (the owner's workspace id) the login page stored. Returns
+// { workspaceId, role } when the member belongs to that workspace, else null.
+async function healFromStoredInvite(app, db, fs, user) {
+    const stored = readStoredInvite();
+    if (!stored || !stored.ws || stored.ws === user.uid) return null;
+    const myEmail = String(user.email || '').trim().toLowerCase();
+    // Only ever heal the invite addressed to THIS signed-in user.
+    if (stored.invite && stored.invite.trim().toLowerCase() !== myEmail) return null;
+
+    // (b) Membership may already exist — a direct doc read is authoritative and
+    // bypasses any collection-group index/rule gap.
+    try {
+        const meSnap = await fs.getDoc(fs.doc(db, `workspaces/${stored.ws}/members/${user.uid}`));
+        if (meSnap.exists()) {
+            const m = meSnap.data() || {};
+            if ((m.status || 'active') === 'active') {
+                clearStoredInvite();
+                return { workspaceId: stored.ws, role: m.role || 'viewer' };
+            }
+            return null; // removed/pending — do not force-join
+        }
+    } catch (_) { /* fall through to acceptance */ }
+
+    // (a) No member doc yet — accept the pending invite now. Reuse DataService so
+    // the write matches the Firestore rules exactly (member create + invite flip +
+    // pointer), and exempt the member from the owner KYC gate.
+    try {
+        const { default: DataService } = await import('/assets/js/db-service.js');
+        const ds = new DataService(app);
+        ds.setActor(user.uid);
+        const res = await ds.acceptInvite(stored.ws, user.uid, {
+            email: user.email,
+            displayName: user.displayName || null
+        });
+        await ds.markInvitedMemberExempt(user.uid).catch(() => {});
+        clearStoredInvite();
+        return { workspaceId: res.workspaceId, role: res.role };
+    } catch (_) {
+        return null;
+    }
+}
+
 // Seed an owner-of-own-workspace fallback so the app is usable pre-migration and
 // for fresh accounts. workspaceId == uid (the seeding rule above).
 function fallbackToSelf(uid) {
@@ -109,8 +175,28 @@ async function resolveWorkspace(app, user) {
             });
         } catch (_) { /* collection-group index/rules unavailable — fall back below */ }
 
-        const active = memberships.filter((x) => x.status === 'active');
-        const chosen = active.find((x) => x.workspaceId === preferred) || active[0] || null;
+        let active = memberships.filter((x) => x.status === 'active');
+
+        // SELF-HEAL: if no membership in a workspace the user was INVITED to (i.e.
+        // any workspace they don't own) surfaced, they'd otherwise resolve to their
+        // own — possibly empty — workspace and be stranded. Recover from the durable
+        // invite context the login page stored so an invited member converges on the
+        // shared workspace on this load, before any finance read happens.
+        if (!active.some((x) => x.workspaceId !== user.uid)) {
+            const healed = await healFromStoredInvite(app, db, fs, user).catch(() => null);
+            if (healed && healed.workspaceId && healed.workspaceId !== user.uid) {
+                active = active.filter((x) => x.workspaceId !== healed.workspaceId);
+                active.push({ workspaceId: healed.workspaceId, role: healed.role || 'viewer', status: 'active' });
+            }
+        }
+
+        // Prefer a workspace the user was INVITED to (workspaceId != uid) over their
+        // own self-workspace: an invited member's self-workspace, if one exists, is
+        // empty, while the shared workspace is always the right home. The pointer
+        // hint only breaks ties *within* the preferred set.
+        const invitedActive = active.filter((x) => x.workspaceId !== user.uid);
+        const pickFrom = invitedActive.length ? invitedActive : active;
+        const chosen = pickFrom.find((x) => x.workspaceId === preferred) || pickFrom[0] || null;
 
         if (chosen) {
             state.id = chosen.workspaceId;

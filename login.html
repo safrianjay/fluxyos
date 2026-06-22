@@ -462,6 +462,11 @@
             const inviteMode = !!inviteCtx;
             if (inviteMode) {
                 try { sessionStorage.setItem('fluxy_pending_invite', JSON.stringify(inviteCtx)); } catch (_) {}
+                // Durable copy (survives the Google redirect AND a missed one-shot
+                // acceptance): workspace-service.healFromStoredInvite reads this on a
+                // later authenticated load to converge an invited member onto the
+                // shared workspace. Cleared once membership is confirmed.
+                try { localStorage.setItem('fluxy_invite_heal', JSON.stringify(inviteCtx)); } catch (_) {}
                 applyInviteUi();
             }
 
@@ -527,6 +532,7 @@
                     sessionStorage.setItem('fluxy_pending_tour', 'overview');
                     sessionStorage.setItem('fluxy_pending_tours', JSON.stringify(['overview']));
                     sessionStorage.removeItem('fluxy_pending_invite');
+                    try { localStorage.removeItem('fluxy_invite_heal'); } catch (_) {}
                     return true;
                 } catch (err) {
                     // Already a member / stale invite / email mismatch — fall through.
