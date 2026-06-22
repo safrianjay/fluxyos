@@ -2656,6 +2656,13 @@ window.attachChartHover = function attachChartHover(container, options) {
         const auth = getAuth(app);
         if (typeof auth.authStateReady === 'function') await auth.authStateReady();
         if (!auth.currentUser) throw new Error('Sign in required.');
+        // Resolve the workspace before this shared component reads/writes finance
+        // data, so an invited member targets the shared workspace instead of their
+        // own empty workspaces/{uid} (which would 'permission-denied').
+        try {
+            const { resolveWorkspace } = await import('/assets/js/workspace-service.js');
+            await resolveWorkspace(app, auth.currentUser);
+        } catch (_) { /* best-effort; _scope falls back safely */ }
         const { default: DataService } = await import('/assets/js/db-service.js');
         ds = new DataService(app);
         ds._authUserId = auth.currentUser.uid;
@@ -2865,6 +2872,13 @@ window.attachChartHover = function attachChartHover(container, options) {
         const auth = getAuth(app);
         if (typeof auth.authStateReady === 'function') await auth.authStateReady();
         if (!auth.currentUser) throw new Error('Sign in required.');
+        // Resolve the workspace before this shared component reads/writes finance
+        // data, so an invited member targets the shared workspace instead of their
+        // own empty workspaces/{uid} (which would 'permission-denied').
+        try {
+            const { resolveWorkspace } = await import('/assets/js/workspace-service.js');
+            await resolveWorkspace(app, auth.currentUser);
+        } catch (_) { /* best-effort; _scope falls back safely */ }
         const { default: DataService } = await import('/assets/js/db-service.js');
         ds = new DataService(app);
         ds._authUserId = auth.currentUser.uid;
