@@ -7,12 +7,19 @@
 // extension, so instead we DETECT the failure and show a clear, non-technical
 // banner that guides the user to fix it.
 //
-// Detection is REACTIVE (no extra network requests, so it never adds console
-// noise on a healthy load): the Firestore SDK logs a console warning/error when
-// it can't reach the backend ("Could not reach Cloud Firestore backend",
-// "WebChannelConnection ... transport errored", "client is offline"). We
-// intercept those and surface the banner only when the connection is genuinely
-// blocked — the exact moment the user would otherwise hit cryptic save errors.
+// Detection is two-pronged:
+//   1) REACTIVE — the Firestore SDK logs a console warning/error when it can't
+//      reach the backend ("Could not reach Cloud Firestore backend",
+//      "WebChannelConnection ... transport errored", "client is offline"). We
+//      intercept those and surface the banner.
+//   2) ACTIVE PROBE — some blockers (and net::ERR_BLOCKED_BY_CLIENT in
+//      particular) kill the request at the network layer WITHOUT any
+//      interceptable SDK console call, so the page just shows a silent
+//      "0 data" / "Missing or insufficient permissions" dead end. To catch that
+//      we fire ONE lightweight no-cors probe at firestore.googleapis.com on
+//      load: a healthy network resolves it (opaque response), a blocked/offline
+//      client rejects it — and only then do we show the banner. One request per
+//      session, skipped once dismissed, so a healthy load stays quiet.
 (function () {
     if (window.__fluxyConnGuard) return;
     window.__fluxyConnGuard = true;
@@ -20,7 +27,7 @@
     var DISMISS_KEY = 'fluxy_conn_block_dismissed';
     var shown = false;
 
-    var FAILURE_RE = /could not reach cloud firestore backend|webchannelconnection .* transport errored|client is offline|failed to reach/i;
+    var FAILURE_RE = /could not reach cloud firestore backend|webchannelconnection .* transport errored|(listen|write) stream .* (transport errored|error)|client is offline|failed to reach|err_blocked_by_client/i;
 
     function buildBanner() {
         var bar = document.createElement('div');
@@ -85,4 +92,38 @@
         var orig = console[level] ? console[level].bind(console) : function () {};
         console[level] = function () { inspect(arguments); return orig.apply(console, arguments); };
     });
+
+    // ACTIVE PROBE — catch network-layer blocks (net::ERR_BLOCKED_BY_CLIENT) that
+    // never surface as an interceptable SDK console call. A no-cors fetch to the
+    // Firestore host resolves with an opaque response on a healthy network (any
+    // HTTP status counts as "reachable") and rejects only when the request is
+    // blocked at the client/network layer or the device is offline. We fire it
+    // once, after the SDK has had a beat to start, and skip it entirely once the
+    // user has dismissed the banner.
+    function probeFirestoreReachable() {
+        try { if (sessionStorage.getItem(DISMISS_KEY)) return; } catch (_) {}
+        if (shown || typeof fetch !== 'function') return;
+        var ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
+        var timer = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (_) {} }, 6000) : null;
+        fetch('https://firestore.googleapis.com/v1/projects?key=fluxy-conn-probe&_=' + Date.now(), {
+            method: 'GET', mode: 'no-cors', cache: 'no-store', credentials: 'omit',
+            signal: ctrl ? ctrl.signal : undefined
+        }).then(function () {
+            // Reachable (opaque/any status) — the connection is fine. Do nothing.
+            if (timer) clearTimeout(timer);
+        }).catch(function () {
+            // Rejected = blocked by an extension/network filter, or offline. This
+            // is the silent "0 data" case; surface the actionable banner. (Abort
+            // from our own timeout also lands here, which is the right call: a
+            // Firestore probe that can't complete in 6s is a real connection
+            // problem for a realtime app.)
+            if (timer) clearTimeout(timer);
+            showBanner();
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { setTimeout(probeFirestoreReachable, 1500); });
+    } else {
+        setTimeout(probeFirestoreReachable, 1500);
+    }
 })();
