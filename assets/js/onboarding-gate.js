@@ -12,6 +12,7 @@ import {
     collection,
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { resolveDb } from "/assets/js/firestore-db.js";
 
 // Set 24h before the actual deploy so brand-new signups whose UTC creation
 // timestamp lands just before midnight UTC of the deploy day are still caught
@@ -34,7 +35,10 @@ function getApp() {
 }
 
 function getDb() {
-    return getFirestore(getApp());
+    // Route through the shared long-polling initializer (see firestore-db.js) so
+    // the gate — often the first Firestore touch on a page — doesn't lock the app
+    // into the blocker-prone WebChannel transport via a bare getFirestore().
+    return resolveDb(getApp());
 }
 
 // ----- Detection -----

@@ -1,4 +1,5 @@
 import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
@@ -78,15 +79,11 @@ const INCOME_STATEMENT_OPEX_TYPES = ['expense', 'fee', 'tax', 'pending_payable']
 class DataService {
     constructor(app) {
         this.app = app;
-        // Auto-detect long polling: when an ad/privacy blocker (or proxy) kills
-        // Firestore's streaming WebChannel, the SDK falls back to long polling,
-        // which dodges some blocker filter rules. initializeFirestore must run
-        // before any getFirestore() and only once per app — guard with getFirestore.
-        try {
-            this.db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
-        } catch (_) {
-            this.db = getFirestore(app);
-        }
+        // Force long polling so an ad/privacy blocker or proxy that breaks
+        // Firestore's streaming WebChannel can't silently kill reads/writes. The
+        // setting only sticks if applied on the FIRST Firestore access per app,
+        // so every entry point shares resolveDb (see assets/js/firestore-db.js).
+        this.db = resolveDb(app);
         this._storage = null;
         // The acting user's uid for audit attribution. In the workspace model the
         // scope id (workspaceId) is distinct from the actor (the signed-in user),

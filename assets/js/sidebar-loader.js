@@ -363,8 +363,9 @@
             // Owners resolve from their own Business settings and keep the workspace
             // record's name in sync so teammates see the same name.
             try {
+                const { resolveDb } = await import("/assets/js/firestore-db.js");
                 const fs = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-                const db = fs.getFirestore(app);
+                const db = resolveDb(app);
                 try {
                     const compSnap = await fs.getDoc(fs.doc(db, `users/${uid}/settings/company`));
                     if (compSnap.exists()) {

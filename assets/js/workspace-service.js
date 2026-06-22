@@ -148,7 +148,10 @@ async function resolveWorkspace(app, user) {
     let confirmed = false;
     try {
         const fs = await import(FIRESTORE_URL);
-        const db = fs.getFirestore(app);
+        // Apply the shared long-polling setting on first touch (resolveDb) so a
+        // blocked WebChannel (Brave Shields etc.) can't strand resolution either.
+        const { resolveDb } = await import('/assets/js/firestore-db.js');
+        const db = resolveDb(app);
 
         // 1) Preference hint: which workspace does the pointer point to?
         let preferred = user.uid; // seeding default (owner-of-self)
