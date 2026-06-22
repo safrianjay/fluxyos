@@ -88,12 +88,6 @@
                     <h2 class="text-[16px] font-semibold text-gray-900">What each role can do</h2>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="role-reference"></div>
                 </section>
-
-                <!-- RECENT ACTIVITY (owner/admin) -->
-                <section class="space-y-3 hidden" id="activity-section">
-                    <h2 class="text-[16px] font-semibold text-gray-900">Recent team activity</h2>
-                    <div id="activity-container" class="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100"></div>
-                </section>
             </div>
         </div>
     </main>
@@ -183,7 +177,7 @@
                     ? 'People with access to this workspace. Only the Owner can change roles or remove members.'
                     : 'People with access to this workspace.';
             }
-            await Promise.all([loadMembers(), loadInvites(), loadActivity()]);
+            await Promise.all([loadMembers(), loadInvites()]);
         });
 
         function roleLabelPill(role) {
@@ -337,23 +331,6 @@
                     await sendInvite(email, role, btn);
                 });
             });
-        }
-
-        async function loadActivity() {
-            if (!state.ws.can('audit.read')) return;
-            let logs = [];
-            try { logs = await ds.getWorkspaceAuditLogs(state.ws.id, 20); } catch (_) {}
-            logs = logs.filter((l) => ['members', 'invites'].includes(l.target_collection));
-            if (!logs.length) return;
-            const section = document.getElementById('activity-section');
-            const host = document.getElementById('activity-container');
-            const label = (a) => ({ 'member.invite': 'Invited', 'member.role_change': 'Changed role', 'member.remove': 'Removed member', 'invite.revoke': 'Revoked invite' }[a] || a);
-            host.innerHTML = logs.map((l) => `
-                <div class="flex items-center justify-between gap-4 px-5 py-3">
-                    <span class="text-[13px] text-gray-700">${esc(label(l.action))} · <span class="text-gray-500">${esc(l.target_id || '')}</span></span>
-                    <span class="text-[12px] text-gray-400">${esc(fmtTime(l.created_at))}</span>
-                </div>`).join('');
-            section.classList.remove('hidden');
         }
 
         // ---- Invite drawer ----
