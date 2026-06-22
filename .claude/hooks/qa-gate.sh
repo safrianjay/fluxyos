@@ -19,6 +19,39 @@ if [ "$TOOL_NAME" = "Bash" ]; then
   # `git -C /path push origin main`, etc.)
   if printf '%s' "$COMMAND" | grep -qE 'git[[:space:]].*push' \
      && printf '%s' "$COMMAND" | grep -qE '(^|[[:space:]/:])(main|master)([[:space:]]|$)'; then
+
+    # --- Workspace-scoping invariant (blocks even with QA_PASS=1) ---
+    # Finance/operational collections are workspace-scoped and shared across team
+    # members; they MUST be read/written via DataService._scope(userId), never a
+    # hardcoded users/{uid}/<financeCollection>. A hardcoded path silently shows
+    # invited members 0 data while owners look fine. Inline page queries (in *.html
+    # / page JS) are the easiest place to reintroduce this, so scan and hard-block.
+    # See docs/PROJECT_BACKGROUND.md §4 + docs/TEAM_MANAGEMENT_HANDOFF.md §8.
+    REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)
+    if [ -n "$REPO_ROOT" ]; then
+      FIN_RE='users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|audit_logs)'
+      LEAKS=$(grep -rnE "$FIN_RE" "$REPO_ROOT"/*.html "$REPO_ROOT"/assets/js/*.js 2>/dev/null | grep -v '/db-service.js:')
+      if [ -n "$LEAKS" ]; then
+        cat >&2 <<EOF
+🛑 WORKSPACE SCOPING GATE — Production push blocked (QA_PASS cannot override)
+
+Hardcoded user-scoped path(s) on a finance collection were found. These read the
+member's own (empty) users/{uid} data, so invited members see 0 data while the
+owner looks fine. Route through the workspace seam instead:
+
+  users/\${userId}/transactions   ->   \${this._scope(userId)}/transactions   (db-service.js)
+                                   ->   \${ds._scope(userId)}/transactions     (inline page query)
+
+Offending lines:
+$LEAKS
+
+Fix them, confirm the guard is clean, then re-push:
+  grep -rnE '$FIN_RE' *.html assets/js/*.js | grep -v db-service.js   # must be empty
+EOF
+        exit 2
+      fi
+    fi
+
     if printf '%s' "$COMMAND" | grep -q 'QA_PASS=1'; then
       exit 0
     fi
