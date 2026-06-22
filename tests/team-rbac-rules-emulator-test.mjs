@@ -192,8 +192,12 @@ const inviteDoc = (email, role, inviterUid) => ({
     // ---- Denormalized workspace plan: owner writes, admins cannot, members read ----
     await expectOutcome('owner sets workspace plan summary', true, () =>
         updateDoc(wsRef(owner), { plan_id: 'growth', plan_name: 'Growth Engine', subscription_status: 'active', billing_frequency: 'monthly', plan_synced_at: serverTimestamp() }));
+    await expectOutcome('owner sets workspace trial timing', true, () =>
+        updateDoc(wsRef(owner), { subscription_status: 'trialing', trial_started_at: serverTimestamp(), trial_ends_at: serverTimestamp(), current_period_end: serverTimestamp(), plan_synced_at: serverTimestamp() }));
     await expectOutcome('admin CANNOT change workspace plan', false, () =>
         updateDoc(wsRef(adminUser), { plan_name: 'Free', subscription_status: 'trialing' }));
+    await expectOutcome('admin CANNOT change workspace trial timing', false, () =>
+        updateDoc(wsRef(adminUser), { trial_ends_at: serverTimestamp() }));
     await expectOutcome('admin can rename workspace', true, () =>
         updateDoc(wsRef(adminUser), { name: 'Acme Renamed', updated_at: serverTimestamp() }));
     await expectOutcome('member reads workspace plan', true, () => getDoc(wsRef(adminUser)));

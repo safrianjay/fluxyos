@@ -562,6 +562,15 @@
                                 } catch (_) {}
                             })
                             .catch((e) => console.warn('[sidebar] trial access guard skipped', e));
+                    } else {
+                        // Member: there is ONE trial state per workspace and members
+                        // have no billing doc of their own. Derive the same banner /
+                        // paywall / locks from the denormalized workspace trial summary
+                        // (window.FluxyWorkspace.plan) instead of creating a per-member
+                        // trial. Members expire client-side from trial_ends_at.
+                        import("/assets/js/trial-access.js").then(({ applyToWorkspaceMember }) => {
+                            return applyToWorkspaceMember(ws);
+                        }).catch((e) => console.warn('[sidebar] member trial guard skipped', e));
                     }
                 });
             });

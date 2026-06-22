@@ -1329,6 +1329,12 @@ class DataService {
                 plan_name: s.plan_name || null,
                 subscription_status: s.status || null,
                 billing_frequency: s.billing_frequency || null,
+                // Trial timing so every member inherits the SAME trial state and
+                // banner. Non-sensitive (no amounts / payment ids). Members expire
+                // client-side from trial_ends_at (no per-member billing doc).
+                trial_started_at: s.trial_started_at || null,
+                trial_ends_at: s.trial_ends_at || null,
+                current_period_end: s.current_period_end || null,
                 plan_synced_at: serverTimestamp()
             }, { merge: true });
         } catch (e) {

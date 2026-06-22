@@ -299,6 +299,15 @@ function injectPaywallStyles() {
 }
 
 function paywallConfigFor(state) {
+    if (state.isMember) {
+        // Members can't pay (billing is owner-only RBAC) — point them at the owner
+        // instead of a checkout they can't complete.
+        return {
+            member: true,
+            title: 'Your workspace trial has ended',
+            body: 'Ask your workspace owner to choose a plan to restore access. Your finance data is safe and waiting.'
+        };
+    }
     if (state.isPaymentRejected) {
         return {
             title: 'Payment couldn’t be verified',
@@ -329,13 +338,15 @@ function renderPaywall(state) {
     overlay.setAttribute('data-fluxy-paywall', '');
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
+    // Members get no payment CTAs (they can't pay) — just the message + Sign out.
+    const actionsHtml = cfg.member ? '' : `
+            <a class="fluxy-paywall__primary" href="${cfg.primaryHref}">${cfg.primaryLabel}</a>
+            <a class="fluxy-paywall__secondary" href="/payment-pending">Already paid? Check status</a>`;
     overlay.innerHTML = `
         <div class="fluxy-paywall__card" role="document">
             <span class="fluxy-paywall__icon">${iconSvg('warn')}</span>
             <h2 class="fluxy-paywall__title">${cfg.title}</h2>
-            <p class="fluxy-paywall__body">${cfg.body}</p>
-            <a class="fluxy-paywall__primary" href="${cfg.primaryHref}">${cfg.primaryLabel}</a>
-            <a class="fluxy-paywall__secondary" href="/payment-pending">Already paid? Check status</a>
+            <p class="fluxy-paywall__body">${cfg.body}</p>${actionsHtml}
             <button type="button" class="fluxy-paywall__signout" data-fluxy-paywall-signout>Sign out</button>
         </div>
     `;
@@ -443,12 +454,79 @@ export async function applyToPage(authUser) {
     return state;
 }
 
+// Member trial banner: same look as the owner banner but shows the date + days
+// remaining with NO checkout CTA (members can't pay).
+function renderMemberTrialBanner(state) {
+    document.querySelector('[data-fluxy-trial-banner]')?.remove();
+    injectStyles();
+    const variant = state.isTrialExpiring ? 'warn' : 'clock';
+    const days = state.daysRemaining;
+    const daysText = days !== null && days > 0 ? ` · ${days} day${days === 1 ? '' : 's'} left` : '';
+    const banner = document.createElement('div');
+    banner.className = 'fluxy-trial-banner';
+    banner.setAttribute('data-fluxy-trial-banner', '');
+    banner.innerHTML = `
+        <span class="fluxy-trial-banner__icon">${iconSvg(variant)}</span>
+        <span class="fluxy-trial-banner__text">
+            <span class="fluxy-trial-banner__title">Workspace trial.</span>
+            <span class="fluxy-trial-banner__body">Your trial ends ${fmtTrialEnd(state.trialEndsAt)}${daysText}.</span>
+        </span>
+    `;
+    const main = document.querySelector('main');
+    (main || document.body).insertBefore(banner, (main || document.body).firstChild);
+}
+
+// Member access derives from the denormalized workspace trial summary
+// (window.FluxyWorkspace.plan) — there is ONE trial state per workspace and
+// members have no billing_subscription doc of their own. Same deriveState
+// pipeline as the owner; only the data source differs. Members NEVER call
+// ensureBillingSubscription (that would create a separate per-member trial).
+export async function applyToWorkspaceMember(wsAccess) {
+    const plan = wsAccess && wsAccess.plan;
+    // No denormalized plan yet (owner hasn't synced) → fail open, no banner.
+    if (!plan || !plan.status) {
+        const open = deriveState(null);
+        open.isMember = true;
+        window.__fluxyAccessState = open;
+        return open;
+    }
+    let status = plan.status;
+    // Members get no server-side expiry write, so flip a stale `trialing` to
+    // `expired` client-side once trial_ends_at has passed.
+    const endMs = toMillis(plan.trialEndsAt);
+    if (status === 'trialing' && endMs !== null && endMs < Date.now()) status = 'expired';
+    const subscription = {
+        plan_id: plan.id || null,
+        plan_name: plan.name || null,
+        status,
+        billing_frequency: plan.frequency || null,
+        current_payment_request_id: null,
+        trial_started_at: plan.trialStartedAt || null,
+        trial_ends_at: plan.trialEndsAt || null,
+        current_period_start: null,
+        current_period_end: plan.periodEndsAt || null
+    };
+    const state = deriveState(subscription);
+    state.isMember = true;
+    window.__fluxyAccessState = state;
+    if (state.isBlocked) {
+        try { renderPaywall(state); } catch (_) { /* paywall must not break page */ }
+    } else if (state.isTrialActive || state.isTrialExpiring) {
+        // Only the trial banner is member-relevant; owner billing reminders
+        // (payment due / in review) are suppressed since members can't act on them.
+        try { renderMemberTrialBanner(state); } catch (_) { /* banner must not break page */ }
+    }
+    try { applyPageLocks(state); } catch (_) { /* locks must not break page */ }
+    return state;
+}
+
 export function check() {
     return currentState();
 }
 
 window.FluxyAccessGuard = {
     init: applyToPage,
+    initMember: applyToWorkspaceMember,
     check,
     renderBanner: (state) => renderBanner(state || currentState() || deriveState(null)),
     applyPageLocks: (state) => applyPageLocks(state || currentState() || deriveState(null)),

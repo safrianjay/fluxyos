@@ -150,7 +150,12 @@ async function resolveWorkspace(app, user) {
                     id: d.plan_id || null,
                     name: d.plan_name || null,
                     status: d.subscription_status || null,
-                    frequency: d.billing_frequency || null
+                    frequency: d.billing_frequency || null,
+                    // Denormalized trial timing — lets members inherit the same trial
+                    // banner + access verdict without reading the owner's billing doc.
+                    trialStartedAt: d.trial_started_at || null,
+                    trialEndsAt: d.trial_ends_at || null,
+                    periodEndsAt: d.current_period_end || null
                 } : null;
             }
         } catch (_) { /* name/plan optional */ }
