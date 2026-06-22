@@ -784,7 +784,7 @@ class DataService {
         if (!['transactions', 'bills', 'subscriptions'].includes(targetCollection)) {
             throw new Error(`Cannot attach a document to '${targetCollection}'.`);
         }
-        const recordRef = doc(this.db, `users/${userId}/${targetCollection}/${targetId}`);
+        const recordRef = doc(this.db, `${this._scope(userId)}/${targetCollection}/${targetId}`);
         const update = { attached_documents: arrayUnion(attachment) };
         if (targetCollection === 'bills') update.invoice_status = 'attached';
         await updateDoc(recordRef, update);
@@ -1123,9 +1123,13 @@ class DataService {
         const end = this._parseDayKey(endKey);
         if (!start || !end) return [];
         const endExclusive = new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1);
+        // Workspace-scoped (Stage 2): the period readers behind the Ledger, the
+        // Money Movement strip, and the dashboard KPIs must go through _scope() so
+        // invited members read the shared workspace data — a hardcoded users/{uid}
+        // here made members read their own (empty) collection and see 0 records.
         try {
             const q = query(
-                collection(this.db, `users/${userId}/${collectionName}`),
+                collection(this.db, `${this._scope(userId)}/${collectionName}`),
                 where('timestamp', '>=', Timestamp.fromDate(start)),
                 where('timestamp', '<', Timestamp.fromDate(endExclusive)),
                 orderBy('timestamp', 'desc'),
@@ -1137,7 +1141,7 @@ class DataService {
         } catch (e) {
             // Fallback for missing/legacy timestamp indexing: client-side filter.
             const q = query(
-                collection(this.db, `users/${userId}/${collectionName}`),
+                collection(this.db, `${this._scope(userId)}/${collectionName}`),
                 orderBy('timestamp', 'desc'),
                 limit(1000)
             );
@@ -7342,7 +7346,7 @@ class DataService {
         const cleanReason = this._stringOrDefault(reason, '', 500);
         if (!cleanReason) throw new Error('Reason is required.');
 
-        const ref = doc(this.db, `users/${userId}/${targetCollection}/${recordId}`);
+        const ref = doc(this.db, `${this._scope(userId)}/${targetCollection}/${recordId}`);
         const snap = await getDoc(ref);
         if (!snap.exists()) throw new Error('Record not found.');
         const existing = snap.data() || {};
