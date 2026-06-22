@@ -526,6 +526,22 @@ function disableActions(selectors) {
  */
 export async function applyToPage(authUser, options = {}) {
     const { pageKey = 'overview' } = options;
+
+    // Resolve the active workspace BEFORE the page reads any finance data. Every
+    // app page calls applyToPage right after auth and before its data load, so
+    // resolving here guarantees db-service._scope() targets the SHARED workspace
+    // on EVERY page — not the member's own empty workspaces/{uid} — without each
+    // page having to remember to resolve first. This is what made invited members
+    // hit permission-denied / 0 data on pages that lacked an explicit
+    // resolveWorkspace (invoices, budgets, accounting, reports, balance sheet,
+    // revenue sync, integrations). Best-effort; never blocks gating.
+    if (authUser && authUser.uid) {
+        try {
+            const { resolveWorkspace } = await import('/assets/js/workspace-service.js');
+            await resolveWorkspace(getApp(), authUser);
+        } catch (_) { /* _scope falls back safely if resolution is unavailable */ }
+    }
+
     const gate = await shouldGateUser(authUser);
     if (!gate) return false;
 
