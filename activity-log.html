@@ -8,6 +8,22 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <style>
+        /* Activity Log filter bar — compact, inline dropdowns.
+           The shared .fluxy-select--enhanced defaults to display:block/width:100%
+           (right for modal & drawer forms), which would stack these filters
+           full-width in the toolbar. Constrain them to a tidy fixed width here,
+           let them grow to fill on small screens, and keep the bar on one line. */
+        #activity-filters { row-gap: 10px; }
+        #activity-filters .activity-filter-label { flex: 0 0 auto; color: #94A3B8; }
+        #activity-filters .fluxy-select--enhanced { flex: 0 0 auto; width: 196px; max-width: 100%; }
+        #activity-filters .fluxy-select--enhanced .fluxy-select-trigger { width: 100%; }
+        #activity-filters .activity-clear { margin-left: auto; }
+        @media (max-width: 640px) {
+            #activity-filters .fluxy-select--enhanced { flex: 1 1 100%; width: 100%; }
+            #activity-filters .activity-clear { margin-left: 0; }
+        }
+    </style>
 </head>
 <body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
 
@@ -64,18 +80,16 @@
                     </div>
 
                     <!-- Filters -->
-                    <div class="fluxy-table-toolbar flex-wrap gap-3">
-                        <select id="filter-user" aria-label="Filter by user" class="text-[14px]">
-                            <option value="">All Users</option>
-                        </select>
-                        <select id="filter-module" aria-label="Filter by module" class="text-[14px]">
-                            <option value="">All Modules</option>
-                        </select>
-                        <select id="filter-action" aria-label="Filter by action" class="text-[14px]">
-                            <option value="">All Actions</option>
-                        </select>
-                        <button id="activity-clear-filters" type="button" class="hidden inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">
-                            Clear filters
+                    <div id="activity-filters" class="fluxy-table-toolbar">
+                        <span class="activity-filter-label inline-flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wider">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M6 12h12M10 20h4"></path></svg>
+                            Filter
+                        </span>
+                        <select id="filter-user" aria-label="Filter by user"><option value="">All Users</option></select>
+                        <select id="filter-module" aria-label="Filter by module"><option value="">All Modules</option></select>
+                        <select id="filter-action" aria-label="Filter by action"><option value="">All Actions</option></select>
+                        <button id="activity-clear-filters" type="button" class="activity-clear hidden inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-semibold text-gray-600 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">
+                            Clear
                             <span class="text-gray-400" aria-hidden="true">×</span>
                         </button>
                     </div>
