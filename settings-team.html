@@ -74,8 +74,8 @@
                     </div>
                 </section>
 
-                <!-- PENDING INVITATIONS -->
-                <section class="space-y-3" id="invites-section">
+                <!-- PENDING INVITATIONS (shown only when at least one invite is pending) -->
+                <section class="space-y-3 hidden" id="invites-section">
                     <div>
                         <h2 class="text-[16px] font-semibold text-gray-900">Pending invitations</h2>
                         <p class="text-[12px] text-gray-500 mt-0.5">Invites that have been sent but not accepted yet.</p>
@@ -292,15 +292,15 @@
             let invites = [];
             try { invites = await ds.getInvites(state.ws.id, { pendingOnly: true }); }
             catch (e) { console.warn('[team] getInvites failed', e); }
+            // Only surface the Pending invitations section when something is pending;
+            // with none, hide the whole section (no empty state, no button).
+            const section = document.getElementById('invites-section');
             if (!invites.length) {
-                window.renderEmptyState('invites-container', {
-                    title: 'No pending invitations',
-                    description: 'Invite a teammate to give them access to this workspace.',
-                    buttonText: 'Invite member',
-                    onAction: openInviteDrawer
-                });
+                host.innerHTML = '';
+                section.classList.add('hidden');
                 return;
             }
+            section.classList.remove('hidden');
             host.innerHTML = `<div class="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">${invites.map((inv) => `
                 <div class="flex items-center justify-between gap-4 px-5 py-3">
                     <div class="min-w-0">
