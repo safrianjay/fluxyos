@@ -435,6 +435,40 @@ const COPY = {
         };
     },
 
+    // Manual "we've extended your trial" notice — sent by hand when support
+    // grants a special trial extension. `trialEndsLabel` is the new, already
+    // formatted end date; `dashboardUrl` defaults to /dashboard.
+    trial_extended(locale, d) {
+        const url = d.dashboardUrl || `${d.baseUrl}/dashboard`;
+        const when = d.trialEndsLabel ? escapeHtml(d.trialEndsLabel) : null;
+        if (locale === 'id') {
+            return {
+                subject: 'Masa uji coba FluxyOS Anda telah diperpanjang',
+                heading: 'Masa uji coba Anda diperpanjang',
+                paragraphs: [
+                    { html: greet('id', d.name), text: d.name ? `Halo ${d.name},` : 'Halo,' },
+                    { html: 'Terima kasih atas waktu Anda hari ini.', text: 'Terima kasih atas waktu Anda hari ini.' },
+                    { html: `Kami telah memperpanjang masa uji coba FluxyOS Anda selama satu bulan mulai hari ini${when ? `, sehingga berakhir pada <strong>${when}</strong>` : ''}. Anda dapat terus mengeksplorasi platform dan mengundang tim untuk berkolaborasi di ruang kerja Anda.`, text: `Kami telah memperpanjang masa uji coba FluxyOS Anda selama satu bulan mulai hari ini${when ? `, sehingga berakhir pada ${when}` : ''}. Anda dapat terus mengeksplorasi platform dan mengundang tim untuk berkolaborasi di ruang kerja Anda.` },
+                    { html: 'Jika ada pertanyaan atau butuh bantuan, silakan balas email ini.', text: 'Jika ada pertanyaan atau butuh bantuan, silakan balas email ini.' },
+                ],
+                cta: { label: 'Buka dashboard', url },
+                footnote: TRANSACTIONAL_FOOTNOTE.id,
+            };
+        }
+        return {
+            subject: 'Your FluxyOS trial has been extended',
+            heading: 'Your trial has been extended',
+            paragraphs: [
+                { html: greet('en', d.name), text: d.name ? `Hi ${d.name},` : 'Hi there,' },
+                { html: 'Thank you for your time today.', text: 'Thank you for your time today.' },
+                { html: `We've extended your FluxyOS trial by one month starting today${when ? `, so it now runs through <strong>${when}</strong>` : ''}. You can keep exploring the platform and invite your team to collaborate in your workspace.`, text: `We've extended your FluxyOS trial by one month starting today${when ? `, so it now runs through ${when}` : ''}. You can keep exploring the platform and invite your team to collaborate in your workspace.` },
+                { html: 'If you have any questions or need a hand, just reply to this email.', text: 'If you have any questions or need a hand, just reply to this email.' },
+            ],
+            cta: { label: 'Open your dashboard', url },
+            footnote: TRANSACTIONAL_FOOTNOTE.en,
+        };
+    },
+
     // Billing / repayment reminder. `phase`: 'upcoming' (7d before), 'due_soon'
     // (1d before), 'overdue' (3d after the period ended without payment).
     billing_reminder(locale, d) {
