@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Activity Log</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
+            <div class="flex items-center gap-4 flex-1">
+                <button class="md:hidden text-gray-500 hover:text-gray-900">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <div class="hidden sm:flex relative w-full max-w-lg">
+                    <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <input id="activity-search-input" type="text" placeholder="Search user, record, action, or category..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-transparent rounded-lg text-[14px] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C] transition-all">
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div id="activity-date-range-picker"></div>
+                <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Fluxy AI
+                </button>
+            </div>
+        </header>
+
+        <div class="fluxy-page-shell">
+            <div class="fluxy-page-canvas fluxy-section-stack">
+
+                <!-- Page Title & Actions -->
+                <div class="fluxy-page-header">
+                    <div class="fluxy-page-header-main">
+                        <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Activity Log</h1>
+                        <p class="text-[14px] text-gray-500 mt-1">Track financial activity across your workspace — who did what, to which record, and when.</p>
+                    </div>
+                    <div class="fluxy-page-actions">
+                        <button id="download-csv-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap" disabled>
+                            <svg id="download-csv-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
+                            <span id="download-csv-label">Export CSV</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Activity Table -->
+                <div class="fluxy-table-card">
+                    <div class="fluxy-table-card-header">
+                        <div>
+                            <h2 class="fluxy-table-title">All Activity</h2>
+                            <p id="activity-cap-hint" class="fluxy-table-subtitle">Recent changes and events across your workspace.</p>
+                        </div>
+                        <p id="activity-table-count" class="fluxy-table-subtitle"></p>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="fluxy-table-toolbar flex-wrap gap-3">
+                        <select id="filter-user" aria-label="Filter by user" class="text-[14px]">
+                            <option value="">All Users</option>
+                        </select>
+                        <select id="filter-module" aria-label="Filter by module" class="text-[14px]">
+                            <option value="">All Modules</option>
+                        </select>
+                        <select id="filter-action" aria-label="Filter by action" class="text-[14px]">
+                            <option value="">All Actions</option>
+                        </select>
+                        <button id="activity-clear-filters" type="button" class="hidden inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">
+                            Clear filters
+                            <span class="text-gray-400" aria-hidden="true">×</span>
+                        </button>
+                    </div>
+
+                    <div id="activity-empty-state" class="hidden"></div>
+                    <div id="activity-table-container" class="fluxy-table-scroll">
+                        <table class="fluxy-table min-w-[860px]">
+                            <thead>
+                                <tr class="fluxy-table-header">
+                                    <th>User</th>
+                                    <th>Module</th>
+                                    <th>Action</th>
+                                    <th>Category</th>
+                                    <th>Record</th>
+                                    <th>Date &amp; Time</th>
+                                    <th class="fluxy-table-action"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="activity-table-body">
+                                <tr>
+                                    <td colspan="7" class="fluxy-table-loading-cell">Loading activity...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="activity-pagination" class="fluxy-table-pagination hidden">
+                        <p id="activity-page-summary" class="fluxy-table-pagination-summary">Showing 0 events</p>
+                        <div class="fluxy-table-pagination-actions">
+                            <button id="activity-prev-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+                            <span id="activity-page-indicator" class="min-w-16 text-center text-[12px] font-bold text-gray-600">1 / 1</span>
+                            <button id="activity-next-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Activity Detail Drawer — Backdrop -->
+    <div id="activity-drawer-backdrop" class="fixed inset-0 bg-black/30 z-40 hidden"></div>
+
+    <!-- Activity Detail Drawer -->
+    <div id="activity-drawer" class="fixed top-0 right-0 h-full w-full max-w-[420px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div>
+                <h2 class="text-[14px] font-bold text-gray-900">Activity Details</h2>
+                <p class="text-[12px] text-gray-400 mt-0.5">Full event information</p>
+            </div>
+            <button id="activity-drawer-close-btn" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div id="activity-drawer-content" class="flex-1 overflow-y-auto px-6 py-5">
+            <!-- Injected by JS -->
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
+            <button id="activity-drawer-close-footer" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[14px] font-medium hover:bg-gray-200 transition-colors">Close</button>
+            <a id="activity-drawer-view-record" href="#" class="hidden flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-lg text-[14px] font-semibold hover:bg-gray-800 active:scale-95 transition-colors text-center">View Record</a>
+        </div>
+    </div>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/dashboard-i18n.js"></script>
+    <script src="assets/js/fluxy-select.js"></script>
+    <script src="assets/js/date-range-picker.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+        import { applyToPage } from './assets/js/onboarding-gate.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        const ACTIVITY_FETCH_LIMIT = 300;
+        const ACTIVITY_PAGE_SIZE = 10;
+
+        let allLogs = [];            // decorated + filtered-to-shown logs (most recent 300)
+        let membersById = new Map(); // actor_uid -> member doc { display_name, role, email }
+        let activityPaginator = null;
+
+        // ── Action → { module, human label } ─────────────────────────────────
+        // Keyed by the exact dotted action string written by db-service.js. The
+        // fallback below title-cases anything not listed so a new action ships
+        // readable before this map is updated.
+        const ACTION_META = {
+            'transaction.create':              { module: 'Transaction',     label: 'Created' },
+            'transaction.import':              { module: 'Transaction',     label: 'CSV Import' },
+            'transaction.update':              { module: 'Transaction',     label: 'Updated' },
+            'transaction.void':                { module: 'Transaction',     label: 'Voided' },
+            'transaction.cash_impact_updated': { module: 'Transaction',     label: 'Cash Impact Updated' },
+            'bill.create':                     { module: 'Bill',            label: 'Created' },
+            'bill.update':                     { module: 'Bill',            label: 'Updated' },
+            'bill.void':                       { module: 'Bill',            label: 'Voided' },
+            'bill.mark_paid':                  { module: 'Bill',            label: 'Marked Paid' },
+            'subscription.create':             { module: 'Subscription',    label: 'Created' },
+            'subscription.update':             { module: 'Subscription',    label: 'Updated' },
+            'subscription.cancel':             { module: 'Subscription',    label: 'Cancelled' },
+            'budget.created':                  { module: 'Budget',          label: 'Created' },
+            'budget.updated':                  { module: 'Budget',          label: 'Updated' },
+            'budget.archived':                 { module: 'Budget',          label: 'Archived' },
+            'budget.allocations_updated':      { module: 'Budget',          label: 'Allocations Updated' },
+            'budget_assignment.update':        { module: 'Budget',          label: 'Assignment Updated' },
+            'budget_assignment.exclude':       { module: 'Budget',          label: 'Assignment Excluded' },
+            'budget_assignment.restore':       { module: 'Budget',          label: 'Assignment Restored' },
+            'invoice.draft_created':           { module: 'Invoice',         label: 'Draft Created' },
+            'invoice.draft_updated':           { module: 'Invoice',         label: 'Draft Updated' },
+            'invoice.item_added':              { module: 'Invoice',         label: 'Line Item Added' },
+            'invoice.item_updated':            { module: 'Invoice',         label: 'Line Item Updated' },
+            'invoice.item_deleted':            { module: 'Invoice',         label: 'Line Item Removed' },
+            'invoice.finalized':               { module: 'Invoice',         label: 'Finalized' },
+            'invoice.sent':                    { module: 'Invoice',         label: 'Sent' },
+            'invoice.mark_paid':               { module: 'Invoice',         label: 'Marked Paid' },
+            'invoice.voided':                  { module: 'Invoice',         label: 'Voided' },
+            'accounting_mapping.created':      { module: 'Accounting',      label: 'Mapping Created' },
+            'accounting_mapping.updated':      { module: 'Accounting',      label: 'Mapping Updated' },
+            'bank_account.created':            { module: 'Bank Account',    label: 'Created' },
+            'bank_account.balance_updated':    { module: 'Bank Account',    label: 'Balance Updated' },
+            'bank_account.archived':           { module: 'Bank Account',    label: 'Archived' },
+            'bank_statement.import_created':   { module: 'Bank Statement',  label: 'Import Created' },
+            'bank_statement.import_confirmed': { module: 'Bank Statement',  label: 'Import Confirmed' },
+            'export.create':                   { module: 'Reports & Exports', label: 'Export Generated' },
+            'member.invite':                   { module: 'Team',            label: 'Member Invited' },
+            'member.role_change':              { module: 'Team',            label: 'Role Changed' },
+            'member.remove':                   { module: 'Team',            label: 'Member Removed' },
+            'invite.revoke':                   { module: 'Team',            label: 'Invite Revoked' },
+        };
+
+        const PREFIX_MODULE = {
+            transaction: 'Transaction', bill: 'Bill', subscription: 'Subscription',
+            budget: 'Budget', budget_assignment: 'Budget', invoice: 'Invoice',
+            accounting_mapping: 'Accounting', bank_account: 'Bank Account',
+            bank_statement: 'Bank Statement', export: 'Reports & Exports',
+            member: 'Team', invite: 'Team',
+        };
+
+        // Hide billing/trial/onboarding/system noise — the page is "financial
+        // activity" (Finance + Team), per the feature decision.
+        const HIDDEN_PREFIXES = ['billing.', 'trial.', 'voucher.', 'payment.', 'onboarding.', 'weekly_digest.', 'internal.'];
+
+        // Deep-link receivers that already implement `?record=<id>` highlighting.
+        const ROUTE_BY_COLLECTION = { transactions: '/ledger', bills: '/bill', subscriptions: '/subscription' };
+
+        // Drawer change-diff: only these fields are surfaced (everything else is
+        // skipped as internal/noisy), labeled for humans.
+        const FIELD_LABELS = {
+            amount: 'Amount', category: 'Category', vendor_name: 'Vendor', name: 'Name',
+            customer_name: 'Customer', status: 'Status', payment_status: 'Payment Status',
+            type: 'Type', total_amount: 'Total', amount_due: 'Amount Due', tax_amount: 'Tax',
+            invoice_number: 'Invoice #', total_budget: 'Budget', total_allocated: 'Allocated',
+            allocated_amount: 'Allocated', allocation_count: 'Allocations', is_voided: 'Voided',
+            void_reason: 'Void Reason', budget_impact_status: 'Budget Impact',
+            renewal_date: 'Renewal', due_date: 'Due Date', balance: 'Balance',
+            latest_balance: 'Balance', transaction_id: 'Linked Transaction',
+        };
+        const AMOUNT_KEYS = new Set([
+            'amount', 'total_amount', 'amount_due', 'tax_amount', 'total_budget',
+            'allocated_amount', 'total_allocated', 'subtotal_amount', 'discount_amount',
+            'balance', 'latest_balance', 'opening_balance', 'closing_balance',
+        ]);
+
+        // ── Helpers ──────────────────────────────────────────────────────────
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function formatCurrencyIDR(amount) {
+            const val = Number(amount);
+            if (!Number.isFinite(val)) return 'Rp0';
+            return 'Rp' + Math.abs(Math.round(val)).toLocaleString('id-ID');
+        }
+
+        function titleCase(str) {
+            return String(str || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        }
+
+        // WIB-pinned so the "WIB" label is truthful regardless of the viewer's
+        // machine timezone.
+        function formatWIBDate(date) {
+            if (!date) return '—';
+            return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
+        }
+        function formatWIBTime(date) {
+            if (!date) return '';
+            return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' }) + ' WIB';
+        }
+
+        function actionMeta(action) {
+            if (ACTION_META[action]) return ACTION_META[action];
+            const a = String(action || '');
+            const dot = a.indexOf('.');
+            const head = dot >= 0 ? a.slice(0, dot) : a;
+            const tail = dot >= 0 ? a.slice(dot + 1) : '';
+            return { module: PREFIX_MODULE[head] || titleCase(head) || 'Other', label: tail ? titleCase(tail) : titleCase(head) };
+        }
+
+        function isShownLog(log) {
+            const a = String(log.action || '');
+            if (!a) return false;
+            return !HIDDEN_PREFIXES.some((p) => a.startsWith(p));
+        }
+
+        function getRecordName(log) {
+            const tc = log.target_collection;
+            const a = log.after || {}, b = log.before || {};
+            let name = '';
+            switch (tc) {
+                case 'transactions':
+                case 'bills':              name = a.vendor_name || b.vendor_name; break;
+                case 'subscriptions':      name = a.vendor_name || a.name || b.vendor_name || b.name; break;
+                case 'budgets':            name = a.name || b.name; break;
+                case 'budget_allocations': name = a.name || b.name || 'Allocations'; break;
+                case 'invoices':           name = a.invoice_number || a.customer_name || b.invoice_number || b.customer_name; break;
+                case 'accounting_mappings':name = a.source_value || b.source_value; break;
+                case 'bank_accounts':      name = a.account_name || a.bank_name || b.account_name || b.bank_name; break;
+                case 'bank_statement_imports': name = a.file_name || b.file_name; break;
+                case 'members':
+                case 'invites':            name = a.email || b.email || a.display_name || b.display_name; break;
+            }
+            name = name || a.name || a.vendor_name || b.name || b.vendor_name || '';
+            return String(name || '').trim();
+        }
+
+        function getViewRoute(log) {
+            const base = ROUTE_BY_COLLECTION[log.target_collection];
+            if (!base || !log.target_id) return null;
+            return `${base}?record=${encodeURIComponent(log.target_id)}`;
+        }
+
+        function decorate(log) {
+            const meta = actionMeta(log.action);
+            const member = membersById.get(log.actor_uid);
+            const userName = member?.display_name || member?.email || ('User ' + String(log.actor_uid || '').slice(0, 6));
+            const role = String(member?.role || log.actor_role || '').trim();
+            const category = (log.after && log.after.category) ?? (log.before && log.before.category) ?? '';
+            const record = getRecordName(log);
+            const date = log.created_at && typeof log.created_at.toDate === 'function' ? log.created_at.toDate() : null;
+            const _search = [userName, role, meta.module, meta.label, log.action, category, record, log.reason || '']
+                .join(' ').toLowerCase();
+            return { ...log, _module: meta.module, _label: meta.label, _userName: userName, _role: role, _category: String(category || ''), _record: record, _route: getViewRoute(log), _date: date, _search };
+        }
+
+        // ── Date Range State & Helpers (mirrors bill.html) ───────────────────
+
+        function getDayKey(date = new Date()) {
+            return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+        }
+        function parseDayKey(dayKey) {
+            const [year, month, day] = dayKey.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+        function addDays(dayKey, delta) {
+            const date = parseDayKey(dayKey);
+            date.setDate(date.getDate() + delta);
+            return getDayKey(date);
+        }
+
+        // Default to the last 12 months so the activity feed shows history on
+        // first load (it's expanded to the earliest fetched event below).
+        const _today = new Date();
+        let activityRangeStart = getDayKey(new Date(_today.getFullYear() - 1, _today.getMonth(), _today.getDate()));
+        let activityRangeEnd = getDayKey(_today);
+        let datePickerTouched = false;
+
+        const activityDatePicker = window.FluxyDateRangePicker?.mount('#activity-date-range-picker', {
+            start: activityRangeStart,
+            end: activityRangeEnd,
+            onChange: ({ start, end }) => {
+                activityRangeStart = start;
+                activityRangeEnd = end;
+                datePickerTouched = true;
+                applyFilters();
+            }
+        });
+
+        // ── Filters ──────────────────────────────────────────────────────────
+
+        function populateSelect(selectEl, allLabel, items) {
+            if (!selectEl) return;
+            const prev = selectEl.value;
+            const opts = [`<option value="">${escapeHtml(allLabel)}</option>`]
+                .concat(items.map((it) => `<option value="${escapeHtml(it.value)}">${escapeHtml(it.label)}</option>`));
+            selectEl.innerHTML = opts.join('');
+            // Keep the previous selection if it's still available.
+            if (prev && items.some((it) => String(it.value) === prev)) selectEl.value = prev;
+            else selectEl.value = '';
+        }
+
+        function populateFilters() {
+            // Users present in the fetched window.
+            const userMap = new Map();
+            allLogs.forEach((l) => { if (!userMap.has(l.actor_uid)) userMap.set(l.actor_uid, l._userName); });
+            const users = Array.from(userMap.entries())
+                .map(([value, label]) => ({ value, label }))
+                .sort((a, b) => a.label.localeCompare(b.label));
+
+            const modules = Array.from(new Set(allLogs.map((l) => l._module))).sort()
+                .map((m) => ({ value: m, label: m }));
+
+            const actions = Array.from(new Set(allLogs.map((l) => l._label))).sort()
+                .map((a) => ({ value: a, label: a }));
+
+            populateSelect(document.getElementById('filter-user'), 'All Users', users);
+            populateSelect(document.getElementById('filter-module'), 'All Modules', modules);
+            populateSelect(document.getElementById('filter-action'), 'All Actions', actions);
+        }
+
+        function getActiveFilters() {
+            return {
+                search: (document.getElementById('activity-search-input')?.value || '').trim().toLowerCase(),
+                user: document.getElementById('filter-user')?.value || '',
+                module: document.getElementById('filter-module')?.value || '',
+                action: document.getElementById('filter-action')?.value || '',
+            };
+        }
+
+        function filterLogs() {
+            const f = getActiveFilters();
+            const startDate = parseDayKey(activityRangeStart);
+            const endDate = parseDayKey(addDays(activityRangeEnd, 1)); // exclusive upper bound
+            return allLogs.filter((l) => {
+                if (l._date) { if (l._date < startDate || l._date >= endDate) return false; }
+                if (f.user && l.actor_uid !== f.user) return false;
+                if (f.module && l._module !== f.module) return false;
+                if (f.action && l._label !== f.action) return false;
+                if (f.search && !l._search.includes(f.search)) return false;
+                return true;
+            });
+        }
+
+        function syncClearFiltersButton() {
+            const f = getActiveFilters();
+            const active = !!(f.search || f.user || f.module || f.action || datePickerTouched);
+            document.getElementById('activity-clear-filters')?.classList.toggle('hidden', !active);
+        }
+
+        function applyFilters() {
+            syncClearFiltersButton();
+            renderTable(filterLogs());
+        }
+
+        function clearFilters() {
+            const search = document.getElementById('activity-search-input');
+            if (search) search.value = '';
+            ['filter-user', 'filter-module', 'filter-action'].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            datePickerTouched = false;
+            activityRangeStart = getDayKey(new Date(_today.getFullYear() - 1, _today.getMonth(), _today.getDate()));
+            activityRangeEnd = getDayKey(_today);
+            activityDatePicker?.setRange(activityRangeStart, activityRangeEnd);
+            applyFilters();
+        }
+
+        // ── Render: Table ─────────────────────────────────────────────────────
+
+        function renderSlice(visible) {
+            const body = document.getElementById('activity-table-body');
+            if (!body) return;
+            if (visible.length === 0) {
+                body.innerHTML = `<tr><td colspan="7" class="fluxy-table-loading-cell">No activity matches your filters.</td></tr>`;
+                return;
+            }
+            body.innerHTML = visible.map((log) => {
+                const viewCell = log._route
+                    ? `<a href="${escapeHtml(log._route)}" data-view-record class="fluxy-table-action">View Record</a>`
+                    : '<span class="text-gray-300">—</span>';
+                return `
+                    <tr class="fluxy-table-row fluxy-table-row-clickable" data-action="open" data-log-id="${escapeHtml(log.id)}">
+                        <td class="fluxy-table-cell">
+                            <span class="fluxy-table-cell-primary">${escapeHtml(log._userName)}</span>
+                            ${log._role ? `<span class="fluxy-table-cell-meta">${escapeHtml(titleCase(log._role))}</span>` : ''}
+                        </td>
+                        <td class="fluxy-table-cell">${escapeHtml(log._module)}</td>
+                        <td class="fluxy-table-cell">${escapeHtml(log._label)}</td>
+                        <td class="fluxy-table-cell fluxy-table-cell-meta">${escapeHtml(log._category || '—')}</td>
+                        <td class="fluxy-table-cell">
+                            <span class="inline-block max-w-[220px] truncate align-bottom" title="${escapeHtml(log._record || '')}">${escapeHtml(log._record || '—')}</span>
+                        </td>
+                        <td class="fluxy-table-cell">
+                            <span class="fluxy-table-cell-primary tabular-nums">${escapeHtml(formatWIBDate(log._date))}</span>
+                            <span class="fluxy-table-cell-meta tabular-nums">${escapeHtml(formatWIBTime(log._date))}</span>
+                        </td>
+                        <td class="fluxy-table-cell fluxy-table-action">${viewCell}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderTable(rows) {
+            const tableContainer = document.getElementById('activity-table-container');
+            const emptyContainer = document.getElementById('activity-empty-state');
+            const countEl = document.getElementById('activity-table-count');
+
+            if (allLogs.length === 0) {
+                tableContainer.classList.add('hidden');
+                document.getElementById('activity-pagination')?.classList.add('hidden');
+                emptyContainer.classList.remove('hidden');
+                window.renderEmptyState('activity-empty-state', {
+                    title: 'No activity yet.',
+                    description: "Once you and your team start creating, editing, and paying records, every action shows up here.",
+                    buttonText: 'Go to Dashboard',
+                    onAction: () => { window.location.href = '/dashboard'; },
+                    icon: '<svg class="w-8 h-8 text-[#E85D19]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>',
+                });
+                if (countEl) countEl.textContent = '';
+                return;
+            }
+
+            tableContainer.classList.remove('hidden');
+            emptyContainer.classList.add('hidden');
+            if (countEl) {
+                countEl.textContent = rows.length === allLogs.length
+                    ? `${rows.length} event${rows.length !== 1 ? 's' : ''}`
+                    : `${rows.length} of ${allLogs.length} events`;
+            }
+            activityPaginator.setRows(rows, renderSlice);
+        }
+
+        // ── Detail Drawer ──────────────────────────────────────────────────────
+
+        function detailRow(label, valueHtml, opts = {}) {
+            return `
+                <div class="${opts.border ? 'border-t border-gray-100 pt-4' : ''}">
+                    <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">${escapeHtml(label)}</p>
+                    ${valueHtml}
+                </div>`;
+        }
+
+        function formatDiffValue(key, value) {
+            if (value === null || value === undefined || value === '') return '<span class="text-gray-400">—</span>';
+            if (value && typeof value.toDate === 'function') {
+                const d = value.toDate();
+                return `<span class="tabular-nums">${escapeHtml(formatWIBDate(d) + ' · ' + formatWIBTime(d))}</span>`;
+            }
+            if (AMOUNT_KEYS.has(key)) return `<span class="tabular-nums">${escapeHtml(formatCurrencyIDR(value))}</span>`;
+            if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+            return escapeHtml(String(value));
+        }
+
+        function renderChanges(before, after) {
+            if (!before && !after) {
+                return '<p class="text-[12px] text-gray-400">No field changes recorded for this event.</p>';
+            }
+            const b = before || {}, a = after || {};
+            const keys = Array.from(new Set([...Object.keys(b), ...Object.keys(a)])).filter((k) => FIELD_LABELS[k]);
+            const changed = keys.filter((k) => JSON.stringify(b[k] ?? null) !== JSON.stringify(a[k] ?? null));
+            if (!changed.length) {
+                return '<p class="text-[12px] text-gray-400">No field-level changes recorded.</p>';
+            }
+            const arrow = '<svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>';
+            return changed.map((k) => `
+                <div class="rounded-lg border border-gray-100 bg-gray-50/70 px-3 py-2.5">
+                    <p class="text-[12px] font-semibold text-gray-500 mb-1">${escapeHtml(FIELD_LABELS[k])}</p>
+                    <div class="flex items-center gap-2 flex-wrap text-[14px] text-gray-800">
+                        ${formatDiffValue(k, b[k])} ${arrow} ${formatDiffValue(k, a[k])}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function openActivityDrawer(log) {
+            // Bills carry no vendor in their audit snapshot — enrich the record name
+            // from the live bill when possible (best-effort).
+            let recordName = log._record;
+            if (!recordName && log.target_collection === 'bills' && log.target_id) {
+                try {
+                    const bill = await ds.getBillById(auth.currentUser.uid, log.target_id);
+                    if (bill) recordName = bill.vendor_name || recordName;
+                } catch (_) { /* non-fatal */ }
+            }
+
+            const viewLink = document.getElementById('activity-drawer-view-record');
+            if (log._route) {
+                viewLink.href = log._route;
+                viewLink.classList.remove('hidden');
+            } else {
+                viewLink.href = '#';
+                viewLink.classList.add('hidden');
+            }
+
+            const userValue = `
+                <p class="text-[14px] font-bold text-gray-900">${escapeHtml(log._userName)}</p>
+                ${log._role ? `<p class="text-[12px] text-gray-500">${escapeHtml(titleCase(log._role))}</p>` : ''}`;
+            const dateValue = log._date
+                ? `<p class="text-[14px] text-gray-700 tabular-nums">${escapeHtml(formatWIBDate(log._date))}</p><p class="text-[12px] text-gray-500 tabular-nums">${escapeHtml(formatWIBTime(log._date))}</p>`
+                : '<p class="text-[14px] text-gray-400">—</p>';
+            const recordValue = `
+                <p class="text-[14px] font-bold text-gray-900">${escapeHtml(recordName || '—')}</p>
+                <p class="text-[12px] text-gray-500">${escapeHtml(log._module)}</p>`;
+
+            document.getElementById('activity-drawer-content').innerHTML = `
+                <div class="space-y-5">
+                    ${detailRow('Action', `<p class="text-[14px] font-bold text-gray-900">${escapeHtml(log._label)} · ${escapeHtml(log._module)}</p>`)}
+                    ${detailRow('User', userValue, { border: true })}
+                    ${detailRow('Date', dateValue, { border: true })}
+                    ${detailRow('Record', recordValue, { border: true })}
+                    <div class="border-t border-gray-100 pt-4">
+                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-2">Changes</p>
+                        <div class="space-y-2">${renderChanges(log.before, log.after)}</div>
+                    </div>
+                    ${log.reason ? detailRow('Reason', `<div class="bg-gray-50 rounded-lg p-3 text-[12px] text-gray-600 leading-relaxed">${escapeHtml(log.reason)}</div>`, { border: true }) : ''}
+                </div>
+            `;
+
+            document.getElementById('activity-drawer-backdrop').classList.remove('hidden');
+            requestAnimationFrame(() => {
+                document.getElementById('activity-drawer').classList.remove('translate-x-full');
+            });
+        }
+
+        function closeActivityDrawer() {
+            document.getElementById('activity-drawer').classList.add('translate-x-full');
+            document.getElementById('activity-drawer-backdrop').classList.add('hidden');
+        }
+
+        // ── CSV Export ─────────────────────────────────────────────────────────
+
+        function csvCell(value) {
+            const s = String(value ?? '');
+            return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        }
+
+        function buildActivityCsv(rows) {
+            const header = ['Date (WIB)', 'User', 'Role', 'Module', 'Action', 'Category', 'Record', 'Target Collection', 'Target ID', 'Reason'];
+            const lines = [header.map(csvCell).join(',')];
+            rows.forEach((l) => {
+                const when = l._date ? `${formatWIBDate(l._date)} ${formatWIBTime(l._date)}` : '';
+                lines.push([
+                    when, l._userName, titleCase(l._role), l._module, l._label,
+                    l._category, l._record, l.target_collection || '', l.target_id || '', l.reason || ''
+                ].map(csvCell).join(','));
+            });
+            return lines.join('\n');
+        }
+
+        function downloadTextFile(filename, text) {
+            const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function setDownloadButtonState(state) {
+            const button = document.getElementById('download-csv-btn');
+            const label = document.getElementById('download-csv-label');
+            const icon = document.getElementById('download-csv-icon');
+            if (!button || !label || !icon) return;
+            if (state === 'loading') {
+                button.disabled = true;
+                button.classList.add('ring-2', 'ring-orange-100');
+                icon.classList.add('animate-bounce');
+                label.textContent = 'Exporting...';
+                return;
+            }
+            if (state === 'success') {
+                icon.classList.remove('animate-bounce');
+                button.classList.remove('ring-2', 'ring-orange-100');
+                button.classList.add('border-green-200', 'text-green-700', 'bg-green-50');
+                label.textContent = 'Downloaded';
+                return;
+            }
+            icon.classList.remove('animate-bounce');
+            button.classList.remove('ring-2', 'ring-orange-100', 'border-green-200', 'text-green-700', 'bg-green-50');
+            label.textContent = 'Export CSV';
+            button.disabled = allLogs.length === 0;
+        }
+
+        // ── Access denied (role without audit.read) ─────────────────────────────
+
+        function renderAccessDenied() {
+            document.getElementById('activity-table-container')?.classList.add('hidden');
+            document.querySelector('.fluxy-table-toolbar')?.classList.add('hidden');
+            document.getElementById('activity-pagination')?.classList.add('hidden');
+            const empty = document.getElementById('activity-empty-state');
+            empty?.classList.remove('hidden');
+            window.renderEmptyState('activity-empty-state', {
+                title: "Your role doesn't include the Activity Log",
+                description: 'The Activity Log is available to workspace Owners and Admins. Ask an admin if you need access.',
+                buttonText: 'Back to Dashboard',
+                onAction: () => { window.location.href = '/dashboard'; },
+                icon: '<svg class="w-8 h-8 text-[#E85D19]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>',
+            });
+            const dl = document.getElementById('download-csv-btn');
+            if (dl) dl.disabled = true;
+        }
+
+        // ── Event wiring ────────────────────────────────────────────────────────
+
+        document.addEventListener('click', (e) => {
+            // Let the "View Record" link navigate without also opening the drawer.
+            if (e.target.closest('a[data-view-record]')) return;
+            const row = e.target.closest('[data-action="open"]');
+            if (row) {
+                const log = allLogs.find((l) => l.id === row.dataset.logId);
+                if (log) openActivityDrawer(log);
+            }
+        });
+
+        document.getElementById('activity-drawer-backdrop').addEventListener('click', closeActivityDrawer);
+        document.getElementById('activity-drawer-close-btn').addEventListener('click', closeActivityDrawer);
+        document.getElementById('activity-drawer-close-footer').addEventListener('click', closeActivityDrawer);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeActivityDrawer(); });
+
+        document.getElementById('activity-search-input')?.addEventListener('input', applyFilters);
+        document.getElementById('filter-user')?.addEventListener('change', applyFilters);
+        document.getElementById('filter-module')?.addEventListener('change', applyFilters);
+        document.getElementById('filter-action')?.addEventListener('change', applyFilters);
+        document.getElementById('activity-clear-filters')?.addEventListener('click', clearFilters);
+
+        document.getElementById('download-csv-btn')?.addEventListener('click', () => {
+            const rows = filterLogs();
+            if (rows.length === 0) return;
+            setDownloadButtonState('loading');
+            window.setTimeout(() => {
+                downloadTextFile(`fluxyos-activity-${getDayKey()}.csv`, buildActivityCsv(rows));
+                setDownloadButtonState('success');
+                window.setTimeout(() => setDownloadButtonState('idle'), 1200);
+            }, 180);
+        });
+
+        activityPaginator = window.createTablePaginator({
+            pageSize: ACTIVITY_PAGE_SIZE,
+            label: 'events',
+            paginationId: 'activity-pagination',
+            summaryId: 'activity-page-summary',
+            indicatorId: 'activity-page-indicator',
+            prevBtnId: 'activity-prev-page',
+            nextBtnId: 'activity-next-page',
+        });
+
+        // ── Load ─────────────────────────────────────────────────────────────
+
+        async function loadActivity(user) {
+            // Resolve member identities for the actor_uid → name/role join.
+            try {
+                const wsId = window.FluxyWorkspace?.id || user.uid;
+                const members = await ds.getMembers(wsId);
+                membersById = new Map(members.map((m) => [m.uid || m.id, m]));
+            } catch (_) { membersById = new Map(); }
+
+            const raw = await ds.getAuditLogs(user.uid, ACTIVITY_FETCH_LIMIT);
+            const capped = raw.length >= ACTIVITY_FETCH_LIMIT;
+            allLogs = raw.filter(isShownLog).map(decorate);
+
+            // Expand the date range to cover the earliest fetched event so nothing
+            // is hidden by the default 12-month window on first load.
+            let earliest = null;
+            allLogs.forEach((l) => { if (l._date && (!earliest || l._date < earliest)) earliest = l._date; });
+            if (earliest) {
+                const earliestKey = getDayKey(earliest);
+                if (earliestKey < activityRangeStart) {
+                    activityRangeStart = earliestKey;
+                    activityDatePicker?.setRange(activityRangeStart, activityRangeEnd);
+                }
+            }
+
+            const hint = document.getElementById('activity-cap-hint');
+            if (hint) {
+                hint.textContent = capped
+                    ? `Showing the most recent ${ACTIVITY_FETCH_LIMIT} events. Older activity isn't loaded.`
+                    : 'Recent changes and events across your workspace.';
+            }
+
+            const dl = document.getElementById('download-csv-btn');
+            if (dl) dl.disabled = allLogs.length === 0;
+
+            populateFilters();
+            applyFilters();
+        }
+
+        // ── Auth & Boot ────────────────────────────────────────────────────────
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) { window.location.replace('/login'); return; }
+            const gated = await applyToPage(user, { pageKey: 'activity-log' });
+            if (gated) return;
+            // Resolve the joined workspace before reading so members read shared data
+            // and the RBAC capability is accurate.
+            try { const { resolveWorkspace } = await import('/assets/js/workspace-service.js'); await resolveWorkspace(app, user); } catch (_) {}
+            ds.setActor?.(user.uid);
+
+            // RBAC: Activity Log is Owner/Admin only (audit.read). Firestore rules
+            // enforce this too — this is the friendly UI guard.
+            const canAudit = window.FluxyWorkspace?.can ? window.FluxyWorkspace.can('audit.read') : false;
+            if (!canAudit) { renderAccessDenied(); return; }
+
+            try {
+                await loadActivity(user);
+            } catch (err) {
+                console.error('[activity-log] load failed', err);
+                window.showToast?.('We could not load activity right now. Please refresh.', 'error');
+            }
+
+            // Real-time: surface new audit entries from teammates via the refresh pill.
+            window.FluxyLive?.attach({ collections: ['audit_logs'], reload: () => loadActivity(user), mode: 'prompt' });
+        });
+    </script>
+</body>
+</html>

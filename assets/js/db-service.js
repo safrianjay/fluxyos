@@ -388,11 +388,16 @@ class DataService {
 
     async addTransaction(userId, data) {
         const { timestamp, ...rest } = data;
-        return await addDoc(collection(this.db, `${this._scope(userId)}/transactions`), {
+        const ref = await addDoc(collection(this.db, `${this._scope(userId)}/transactions`), {
             ...rest,
             timestamp: timestamp || serverTimestamp(),
             created_at: serverTimestamp()
         });
+        await this._auditCreateBestEffort(userId, 'transaction.create', 'transactions', ref.id, {
+            amount: data.amount, vendor_name: data.vendor_name, category: data.category,
+            type: data.type, status: data.status
+        });
+        return ref;
     }
 
     async addTransactions(userId, rows) {
@@ -410,6 +415,10 @@ class DataService {
         });
 
         await batch.commit();
+        // One summary entry per import (not per row) to avoid flooding the feed.
+        await this._auditCreateBestEffort(userId, 'transaction.import', 'transactions', '', {
+            count: Array.isArray(rows) ? rows.length : 0
+        });
     }
 
     // --- BILLS ---
@@ -424,7 +433,12 @@ class DataService {
         // but only allow strings or omission — not literal `null`).
         ['budget_id', 'budget_allocation_id', 'budget_match_method', 'budget_match_status', 'budget_impact_status']
             .forEach((field) => { if (payload[field] == null) delete payload[field]; });
-        return await addDoc(collection(this.db, `${this._scope(userId)}/bills`), payload);
+        const ref = await addDoc(collection(this.db, `${this._scope(userId)}/bills`), payload);
+        await this._auditCreateBestEffort(userId, 'bill.create', 'bills', ref.id, {
+            amount: data.amount, vendor_name: data.vendor_name, category: data.category,
+            due_date: data.due_date, payment_status: data.payment_status
+        });
+        return ref;
     }
 
     async getBills(userId) {
@@ -528,10 +542,15 @@ class DataService {
     // --- SUBSCRIPTIONS ---
     async addSubscription(userId, data) {
         const { timestamp, ...rest } = data;
-        return await addDoc(collection(this.db, `${this._scope(userId)}/subscriptions`), {
+        const ref = await addDoc(collection(this.db, `${this._scope(userId)}/subscriptions`), {
             ...rest,
             timestamp: timestamp || serverTimestamp()
         });
+        await this._auditCreateBestEffort(userId, 'subscription.create', 'subscriptions', ref.id, {
+            amount: data.amount, vendor_name: data.vendor_name, category: data.category,
+            renewal_date: data.renewal_date
+        });
+        return ref;
     }
 
     async getSubscriptions(userId) {
@@ -1232,6 +1251,30 @@ class DataService {
         );
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    // Best-effort "created" audit log for simple addDoc create paths (transactions,
+    // bills, subscriptions). Never throws — a create must not fail because its
+    // audit entry was rejected. `after` is cleaned to defined values only so it
+    // stays a plain snapshot map (the create rules pin the 10 top-level fields,
+    // which addAuditLog already writes). Powers the Activity Log feed.
+    async _auditCreateBestEffort(userId, action, targetCollection, targetId, after = {}) {
+        try {
+            const clean = {};
+            Object.keys(after || {}).forEach((k) => {
+                if (after[k] !== undefined && after[k] !== null) clean[k] = after[k];
+            });
+            await this.addAuditLog(userId, {
+                action,
+                target_collection: targetCollection,
+                target_id: targetId || '',
+                before: null,
+                after: clean,
+                source: 'dashboard'
+            });
+        } catch (e) {
+            console.warn('[audit] create log skipped', action, e && e.message ? e.message : e);
+        }
     }
 
     // ====================================================================
