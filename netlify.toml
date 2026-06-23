@@ -1,6 +1,11 @@
 [build]
   publish = "."
   functions = "netlify/functions"
+  # Compile the landing-page Tailwind CSS at deploy time so it never goes stale
+  # (replaces the render-blocking cdn.tailwindcss.com on marketing pages — see
+  # tailwind.config.js). The artifact is also committed so the site renders even
+  # if the build step is skipped.
+  command = "npm run build:css"
   # Pin the build + functions runtime so pdfjs-dist (Node >=20, used by the bank
   # statement extractor) runs on a supported runtime.
   [build.environment]

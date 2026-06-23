@@ -8,7 +8,8 @@ function loadFooter() {
     const path = window.location.pathname;
     if (path.includes('/dashboard') || path.includes('/bill') || path.includes('/subscription')) return;
 
-    fetch('/includes/footer.html')
+    const isID = window.location.pathname === '/id' || window.location.pathname.startsWith('/id/');
+    fetch(isID ? '/includes/footer-id.html' : '/includes/footer.html')
         .then(r => { if (!r.ok) throw new Error(r.statusText); return r.text(); })
         .then(html => {
             const tmp = document.createElement('div');
