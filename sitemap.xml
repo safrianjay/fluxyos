@@ -59,9 +59,22 @@
 
   <url>
     <loc>https://fluxyos.com/vendorspend</loc>
-    <lastmod>2026-05-10</lastmod>
+    <lastmod>2026-06-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/vendorspend"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/vendorspend"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/vendorspend"/>
+  </url>
+
+  <url>
+    <loc>https://fluxyos.com/id/vendorspend</loc>
+    <lastmod>2026-06-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/vendorspend"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/vendorspend"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/vendorspend"/>
   </url>
 
   <url>
