@@ -73,9 +73,22 @@
 
   <url>
     <loc>https://fluxyos.com/revenuesync</loc>
-    <lastmod>2026-05-10</lastmod>
+    <lastmod>2026-06-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/revenuesync"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/revenuesync"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/revenuesync"/>
+  </url>
+
+  <url>
+    <loc>https://fluxyos.com/id/revenuesync</loc>
+    <lastmod>2026-06-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/revenuesync"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/revenuesync"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/revenuesync"/>
   </url>
 
   <url>
