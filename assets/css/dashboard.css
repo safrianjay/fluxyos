@@ -1972,6 +1972,72 @@
 }
 .brain-cta:active { transform: scale(0.99); }
 
+/* AI Finance remaining-credits line under the orb. */
+.brain-credits {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #94A3B8;
+}
+.brain-credits-count {
+    font-size: 13px;
+    font-weight: 800;
+    color: #EA580C;
+}
+
+/* Locked state shown when the shared Fluxy AI quota is exhausted. No orange
+   background (brand rule) — orange is the lock-icon accent only. */
+.brain-locked {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    padding: 18px 12px 6px;
+}
+.brain-locked-icon {
+    width: 34px;
+    height: 34px;
+    color: #EA580C;
+    margin-bottom: 2px;
+}
+.brain-locked-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: -0.005em;
+}
+.brain-locked-copy {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: #64748B;
+    max-width: 320px;
+}
+.brain-locked-cta {
+    width: 100%;
+    margin-top: 8px;
+    padding: 11px 14px;
+    border: 1px solid #0B0F19;
+    border-radius: 12px;
+    background: #0B0F19;
+    color: #FFFFFF;
+    font-family: Inter, sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    text-align: center;
+    text-decoration: none;
+    transition: background 120ms ease, border-color 120ms ease;
+}
+.brain-locked-cta:hover {
+    background: #1E293B;
+    border-color: #1E293B;
+}
+
 .rail-section {
     padding: 14px 16px;
     border-top: 1px solid #E5E7EB;

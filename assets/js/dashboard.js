@@ -30,6 +30,7 @@ let attentionItemsCache = { all: [], needs_review: [], my_records: [] };
 let currentAttentionTab = 'all';
 let aiSummaryRequestSeq = 0;
 let aiSummaryOverview = null;
+let aiSummaryUsage = null;
 let bankSetupDatePicker = null;
 let bankSetupSelectedDate = null;
 let budgetSetupDatePicker = null;
@@ -826,14 +827,27 @@ function renderAttentionQueue() {
 
 function renderAiBusinessSummaryIdle(overview) {
     aiSummaryOverview = overview || null;
-    aiSummaryRequestSeq += 1;
-    updateKPI('ai-summary-period', overview?.period?.label || 'Selected period');
+    const requestSeq = (aiSummaryRequestSeq += 1);
+    // Render the orb immediately; then resolve the AI quota and lock the card if
+    // it is exhausted. Reading usage server-side means a refresh/new session
+    // cannot get a fresh generation once the quota is spent.
     setHtml('ai-business-summary-content', getAiBusinessSummaryIdleHtml());
+    const user = auth.currentUser;
+    if (!user) return;
+    ds.getAiUsage(user.uid).then(usage => {
+        if (requestSeq !== aiSummaryRequestSeq) return;
+        aiSummaryUsage = usage;
+        if (usage?.locked) {
+            setHtml('ai-business-summary-content', getAiBusinessSummaryLockedHtml());
+        } else {
+            setHtml('ai-business-summary-content', getAiBusinessSummaryIdleHtml(usage));
+        }
+    }).catch(() => { /* leave the orb; backend still enforces on generate */ });
 }
 
-function getAiBusinessSummaryIdleHtml() {
+function getAiBusinessSummaryIdleHtml(usage) {
     return `
-        <button type="button" class="brain-idle" data-generate-ai-summary aria-label="Generate AI business summary for this period">
+        <button type="button" class="brain-idle" data-generate-ai-summary aria-label="Generate AI finance summary for this period">
             <span class="brain-loading-icon brain-loading-icon-idle" aria-hidden="true">
                 <span class="brain-loading-core"></span>
                 <span class="brain-loading-ring"></span>
@@ -845,6 +859,36 @@ function getAiBusinessSummaryIdleHtml() {
             <span class="brain-idle-label">Generate summary</span>
             <span class="brain-idle-hint">Click the orb to run Fluxy AI for this period</span>
         </button>
+        ${getAiCreditsLineHtml(usage)}
+    `;
+}
+
+// Static phrase ("AI Finance generations left") sits in its own text node so the
+// i18n MutationObserver translates it; the number stays a separate node.
+function getAiCreditsLineHtml(usage) {
+    if (!usage || usage.unlimited || usage.unknown || !Number.isFinite(usage.remaining)) return '';
+    return `
+        <p class="brain-credits">
+            <span class="brain-credits-count tabular-nums">${escapeHtml(String(usage.remaining))}</span>
+            <span>AI Finance generations left</span>
+        </p>
+    `;
+}
+
+function getAiBusinessSummaryLockedHtml() {
+    return `
+        <div class="brain-locked" role="status">
+            <span class="brain-locked-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                    <rect x="4.75" y="10.5" width="14.5" height="9.25" rx="2.25" stroke="currentColor" stroke-width="1.6"/>
+                    <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    <circle cx="12" cy="15" r="1.4" fill="currentColor"/>
+                </svg>
+            </span>
+            <p class="brain-locked-title">You've reached your AI Finance limit.</p>
+            <p class="brain-locked-copy">Your current plan includes a limited number of AI Finance generations. Upgrade or subscribe to continue using AI Finance and unlock more credits.</p>
+            <a class="brain-locked-cta" href="settings-billing.html">Upgrade plan</a>
+        </div>
     `;
 }
 
@@ -852,7 +896,6 @@ async function renderAiBusinessSummary(overview) {
     const requestSeq = ++aiSummaryRequestSeq;
     const periodStart = overview.period?.startDate || dashboardRangeStart;
     const periodEnd = overview.period?.endDate || dashboardRangeEnd;
-    updateKPI('ai-summary-period', overview.period?.label || 'Selected period');
     setHtml('ai-business-summary-content', getAiBusinessSummaryLoadingHtml());
 
     try {
@@ -878,9 +921,16 @@ async function renderAiBusinessSummary(overview) {
         });
         const data = await response.json().catch(() => ({}));
         if (requestSeq !== aiSummaryRequestSeq) return;
+        // Quota exhausted: lock the card instead of falling back to a free answer.
+        if (response.status === 402 || ['trial_ai_limit_reached', 'ai_limit_reached'].includes(data?.error?.code)) {
+            aiSummaryUsage = { ...(aiSummaryUsage || {}), locked: true, remaining: 0 };
+            setHtml('ai-business-summary-content', getAiBusinessSummaryLockedHtml());
+            return;
+        }
         if (!response.ok || data.success === false || !data.answer) {
             throw new Error(data?.error?.message || data?.message || 'AI summary unavailable.');
         }
+        if (data.usage) aiSummaryUsage = data.usage;
         renderAiBusinessSummaryAnswer(data.answer, overview);
     } catch (error) {
         if (requestSeq !== aiSummaryRequestSeq) return;
@@ -922,6 +972,7 @@ function buildAiBusinessSummarySnapshot(overview = {}) {
         transactions,
         bills,
         subscriptions,
+        bank: buildAiBusinessSummarySnapshotBank(overview.bankCash),
         meta: {
             source: 'dashboard_overview_client_snapshot',
             generated_at: new Date().toISOString(),
@@ -942,6 +993,20 @@ function buildAiBusinessSummarySnapshot(overview = {}) {
 function buildAiBusinessSummarySnapshotRead(status) {
     if (status === 'error') return { success: false, error: 'read_failed' };
     return { success: true, error: null };
+}
+
+function buildAiBusinessSummarySnapshotBank(bankCash = {}) {
+    const accountsSynced = Number(bankCash?.accountsSynced) || 0;
+    const sourceType = bankCash?.sourceType ? String(bankCash.sourceType) : null;
+    const connected = accountsSynced > 0 || !!sourceType;
+    return {
+        connected,
+        balance: Number(bankCash?.balance) || 0,
+        accounts_synced: accountsSynced,
+        source_type: sourceType,
+        synced_at: bankCash?.syncedAt ? String(bankCash.syncedAt) : null,
+        thirty_day_outlook: Number.isFinite(Number(bankCash?.thirtyDayOutlook)) ? Number(bankCash.thirtyDayOutlook) : null,
+    };
 }
 
 function normalizeAiBusinessSummarySnapshotRecords(records = [], limit = 1000) {
@@ -978,7 +1043,6 @@ function serializeAiBusinessSummarySnapshotDate(value) {
 
 function renderAiBusinessSummaryFallback(overview) {
     const insights = overview.insights || {};
-    updateKPI('ai-summary-period', overview.period?.label || 'Selected period');
     setHtml('ai-business-summary-content', `
         <div class="brain-message">
             ${escapeHtml(insights.summary || 'Not enough data for a grounded summary yet.')}
@@ -996,7 +1060,6 @@ function renderAiBusinessSummaryFallback(overview) {
 }
 
 function renderAiBusinessSummaryAnswer(answer, overview) {
-    updateKPI('ai-summary-period', answer.period?.label || overview.period?.label || 'Selected period');
     const risk = pickAiInsight(answer.insights || []);
     const actionItem = pickAiAction(answer.recommended_actions || []);
     const limitation = (answer.limitations || []).find(item => typeof item === 'string' && item.trim());
@@ -1013,6 +1076,7 @@ function renderAiBusinessSummaryAnswer(answer, overview) {
             <div class="brain-block-copy">${escapeHtml(actionItem ? `${actionItem.title}: ${actionItem.description}` : 'Keep reviewing new records as they come in.')}</div>
         </div>
         ${limitation ? `<p class="overview-limitation">${escapeHtml(limitation)}</p>` : ''}
+        ${getAiCreditsLineHtml(aiSummaryUsage)}
     `);
 }
 
@@ -1713,7 +1777,7 @@ document.addEventListener('click', event => {
         if (aiSummaryOverview) renderAiBusinessSummary(aiSummaryOverview);
         return;
     }
-    if (event.target.closest('[data-ask-fluxy-summary]') || event.target.closest('[data-ask-fluxy]')) {
+    if (event.target.closest('[data-ask-fluxy]')) {
         window.toggleFluxyAI?.();
     }
 });

@@ -89,15 +89,17 @@ export const GB = 1024 * MB;
 // canonical storage quota; `storage_limit_gb` remains for GB-oriented
 // display/tests. `ai_chat_limit` / `doc_processing_limit` are per-month quotas
 // for self-serve plans (scope `'plan'`, reset monthly) — `null` means unlimited.
-// The trial keeps its lifetime AI cap of 3 (scope `'trial'`). These numbers are
-// tunable business constants; the firestore.rules per-plan limit map mirrors
-// `ai_chat_limit` / `doc_processing_limit` and must change in lockstep.
+// The trial keeps its lifetime AI cap of 1 (scope `'trial'`). `ai_chat_limit` is
+// the SHARED Fluxy AI quota (AI chat + Overview AI Finance Summary) and resets
+// each billing period. These numbers are tunable business constants; the
+// firestore.rules per-plan limit map and `PLAN_AI_PERIOD_LIMITS` in
+// netlify/functions/api.js mirror `ai_chat_limit` and must change in lockstep.
 export const PLAN_LIMITS = {
-    trial:      { tier: 'trial',      seat_limit: 1,  storage_limit_bytes: 5 * MB,  storage_limit_gb: null, ai_chat_limit: 3,   ai_chat_scope: 'trial', doc_processing_limit: null },
-    starter:    { tier: 'starter',    seat_limit: 1,  storage_limit_bytes: 2 * GB,  storage_limit_gb: 2,    ai_chat_limit: 25,  ai_chat_scope: 'plan',  doc_processing_limit: 25 },
-    basic:      { tier: 'basic',      seat_limit: 5,  storage_limit_bytes: 5 * GB,  storage_limit_gb: 5,    ai_chat_limit: 150, ai_chat_scope: 'plan',  doc_processing_limit: 150 },
-    core:       { tier: 'basic',      seat_limit: 5,  storage_limit_bytes: 5 * GB,  storage_limit_gb: 5,    ai_chat_limit: 150, ai_chat_scope: 'plan',  doc_processing_limit: 150 },
-    growth:     { tier: 'growth',     seat_limit: 10, storage_limit_bytes: 10 * GB, storage_limit_gb: 10,   ai_chat_limit: 750, ai_chat_scope: 'plan',  doc_processing_limit: 750 },
+    trial:      { tier: 'trial',      seat_limit: 1,  storage_limit_bytes: 5 * MB,  storage_limit_gb: null, ai_chat_limit: 1,   ai_chat_scope: 'trial', doc_processing_limit: null },
+    starter:    { tier: 'starter',    seat_limit: 1,  storage_limit_bytes: 2 * GB,  storage_limit_gb: 2,    ai_chat_limit: 10,  ai_chat_scope: 'plan',  doc_processing_limit: 25 },
+    basic:      { tier: 'basic',      seat_limit: 5,  storage_limit_bytes: 5 * GB,  storage_limit_gb: 5,    ai_chat_limit: 30,  ai_chat_scope: 'plan',  doc_processing_limit: 150 },
+    core:       { tier: 'basic',      seat_limit: 5,  storage_limit_bytes: 5 * GB,  storage_limit_gb: 5,    ai_chat_limit: 30,  ai_chat_scope: 'plan',  doc_processing_limit: 150 },
+    growth:     { tier: 'growth',     seat_limit: 10, storage_limit_bytes: 10 * GB, storage_limit_gb: 10,   ai_chat_limit: 100, ai_chat_scope: 'plan',  doc_processing_limit: 750 },
     enterprise: { tier: 'enterprise', seat_limit: 50, storage_limit_bytes: 50 * GB, storage_limit_gb: 50,   ai_chat_limit: null, ai_chat_scope: 'plan',  doc_processing_limit: null, storage_note: 'Unlimited storage available on custom agreement.' }
 };
 

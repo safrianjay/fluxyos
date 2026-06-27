@@ -3590,6 +3590,67 @@ class DataService {
         return snap.exists() ? { id: snap.id, ...snap.data() } : null;
     }
 
+    // Reads the shared Fluxy AI quota (AI chat + Overview AI Finance Summary) for
+    // display + on-load locking. Mirrors consumeAIQuotaIfNeeded /
+    // PLAN_AI_PERIOD_LIMITS in netlify/functions/api.js. Returns
+    // { scope, used, limit, remaining, unlimited, locked }. The backend remains
+    // the source of truth; on a read error we return unlocked so the UI never
+    // false-locks (the backend still enforces on generate).
+    async getAiUsage(userId) {
+        const trialLimit = getPlanLimits('trial')?.ai_chat_limit ?? 1;
+        if (!userId) return { scope: 'trial', used: 0, limit: trialLimit, remaining: trialLimit, unlimited: false, locked: false };
+        const toMillis = (value) => {
+            if (!value) return null;
+            if (typeof value.toMillis === 'function') return value.toMillis();
+            if (typeof value.seconds === 'number') return value.seconds * 1000;
+            if (value instanceof Date) return value.getTime();
+            const ms = new Date(value).getTime();
+            return Number.isNaN(ms) ? null : ms;
+        };
+        const readCount = async (docId) => {
+            const snap = await getDoc(doc(this.db, `users/${userId}/usage_limits/${docId}`));
+            return snap.exists() ? { data: snap.data(), count: Math.max(0, Number(snap.data().count) || 0) } : null;
+        };
+        try {
+            const sub = await this.getBillingSubscription(userId);
+            const status = sub?.status || null;
+            const planId = sub?.plan_id || null;
+            const isPaidActive = (status === 'active' || status === 'cancel_scheduled') && planId && planId !== 'trial';
+
+            if (isPaidActive) {
+                const limit = getPlanLimits(planId)?.ai_chat_limit;
+                if (limit == null) return { scope: 'plan', used: 0, limit: null, remaining: Infinity, unlimited: true, locked: false };
+                const periodStartMs = toMillis(sub.current_period_start);
+                let used = 0;
+                if (periodStartMs) {
+                    const existing = await readCount('ai_chat_plan');
+                    if (existing && toMillis(existing.data.period_start) === periodStartMs) used = existing.count;
+                } else {
+                    const existing = await readCount(`ai_chat_${this._jakartaMonthKey()}`);
+                    used = existing ? existing.count : 0;
+                }
+                const remaining = Math.max(0, limit - used);
+                return { scope: 'plan', used, limit, remaining, unlimited: false, locked: remaining <= 0 };
+            }
+
+            // Trial scope (covers trial / trialing / awaiting_payment /
+            // pending_verification / payment_failed / expired and missing sub).
+            const existing = await readCount('ai_chat_trial');
+            const used = existing ? existing.count : 0;
+            const remaining = Math.max(0, trialLimit - used);
+            return { scope: 'trial', used, limit: trialLimit, remaining, unlimited: false, locked: remaining <= 0 };
+        } catch (_) {
+            return { scope: 'unknown', used: 0, limit: null, remaining: Infinity, unlimited: false, locked: false, unknown: true };
+        }
+    }
+
+    _jakartaMonthKey() {
+        const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
+        const year = parts.find(p => p.type === 'year')?.value || '0000';
+        const month = parts.find(p => p.type === 'month')?.value || '01';
+        return `${year}-${month}`;
+    }
+
     async upsertBillingSubscription(userId, subscriptionData = {}) {
         if (!userId) throw new Error('missing-user');
         const payload = this._cleanDefined({

@@ -1000,10 +1000,10 @@ service cloud.firestore {
         ])
         && data.metric == 'ai_chat_requests'
         && data.scope == 'trial'
-        && data.limit == 3
+        && data.limit == 1
         && data.count is number
         && data.count >= 1
-        && data.count <= 3;
+        && data.count <= 1;
     }
 
     function isValidTrialAIUsageCreate(limitId, data) {
@@ -1021,15 +1021,15 @@ service cloud.firestore {
         && data.count == existingData.count + 1;
     }
 
-    // Per-plan monthly Fluxy AI counter (`ai_chat_<YYYY-MM>`). The limit is
+    // Per-plan Fluxy AI counter, reset each billing period. The limit is
     // re-derived from the user's ACTIVE subscription plan via get(), so a client
-    // cannot inflate it. Mirrors PLAN_AI_MONTHLY_LIMITS in netlify/functions/api.js
+    // cannot inflate it. Mirrors PLAN_AI_PERIOD_LIMITS in netlify/functions/api.js
     // and ai_chat_limit in assets/js/billing-config.js. Enterprise (unlimited)
     // writes no counter, so it has no entry here.
     function planMonthlyAiLimit(planId) {
-      return planId == 'starter' ? 25
-        : (planId == 'core' || planId == 'basic') ? 150
-        : planId == 'growth' ? 750
+      return planId == 'starter' ? 10
+        : (planId == 'core' || planId == 'basic') ? 30
+        : planId == 'growth' ? 100
         : -1;
     }
 
@@ -1069,6 +1069,51 @@ service cloud.firestore {
         && data.period == existingData.period
         && data.limit == existingData.limit
         && data.count == existingData.count + 1;
+    }
+
+    // Billing-period Fluxy AI counter (single doc `ai_chat_plan`). `period_start`
+    // must equal the subscription's current_period_start, so a client cannot
+    // forge an early reset (billing_subscription is owner-protected and only
+    // advanced by the verified billing flow). Mirrors the `ai_chat_plan` path in
+    // consumeAIQuotaIfNeeded (netlify/functions/api.js).
+    function subscriptionPeriodStart(userId) {
+      let path = /databases/$(database)/documents/users/$(userId)/billing_subscription/current;
+      return exists(path) ? get(path).data.current_period_start : null;
+    }
+
+    function isValidPlanPeriodAIUsageShape(userId, data) {
+      let limit = activePlanAiLimit(userId);
+      return data.keys().hasAll(['metric', 'scope', 'period_start', 'count', 'limit'])
+        && data.keys().hasOnly(['metric', 'scope', 'period_start', 'count', 'limit'])
+        && data.metric == 'ai_chat_requests'
+        && data.scope == 'plan'
+        && data.period_start is timestamp
+        && data.period_start == subscriptionPeriodStart(userId)
+        && limit > 0
+        && data.limit == limit
+        && data.count is number
+        && data.count >= 1
+        && data.count <= limit;
+    }
+
+    function isValidPlanPeriodAIUsageCreate(limitId, userId, data) {
+      return limitId == 'ai_chat_plan'
+        && isValidPlanPeriodAIUsageShape(userId, data)
+        && data.count == 1;
+    }
+
+    function isValidPlanPeriodAIUsageUpdate(limitId, userId, data, existingData) {
+      return limitId == 'ai_chat_plan'
+        && isValidPlanPeriodAIUsageShape(userId, data)
+        && data.metric == existingData.metric
+        && data.scope == existingData.scope
+        && data.limit == existingData.limit
+        && (
+          // Same period: monotonic +1 increment.
+          (data.period_start == existingData.period_start && data.count == existingData.count + 1)
+          // New billing period (period_start advanced): reset to 1.
+          || (data.period_start != existingData.period_start && data.count == 1)
+        );
     }
 
     function isValidSettingsTimestamp(data) {
@@ -2382,10 +2427,12 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId)
           && (isValidTrialAIUsageCreate(limitId, request.resource.data)
-            || isValidPlanAIUsageCreate(limitId, userId, request.resource.data));
+            || isValidPlanAIUsageCreate(limitId, userId, request.resource.data)
+            || isValidPlanPeriodAIUsageCreate(limitId, userId, request.resource.data));
         allow update: if isOwner(userId)
           && (isValidTrialAIUsageUpdate(limitId, request.resource.data, resource.data)
-            || isValidPlanAIUsageUpdate(limitId, userId, request.resource.data, resource.data));
+            || isValidPlanAIUsageUpdate(limitId, userId, request.resource.data, resource.data)
+            || isValidPlanPeriodAIUsageUpdate(limitId, userId, request.resource.data, resource.data));
         allow delete: if false;
       }
 

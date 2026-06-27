@@ -197,7 +197,7 @@
         if (data?.error?.code !== 'trial_ai_limit_reached') return false;
         window.FluxyAccessGuard?.showSubscriptionLimitModal?.({
             title: 'Trial AI limit reached',
-            body: data.error.message || 'Your trial includes 3 Fluxy AI chats. Activate your subscription to keep chatting.',
+            body: data.error.message || 'Your trial includes 1 Fluxy AI generation. Activate your subscription to keep using Fluxy AI.',
             confirmLabel: 'Activate subscription'
         });
         return true;
