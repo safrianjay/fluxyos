@@ -1917,15 +1917,14 @@
 
 .brain-message {
     border: 1px solid #E5E7EB;
-    border-left: 4px solid #EA580C;
     border-radius: 12px;
     background: #FFFFFF;
-    padding: 12px 14px;
-    color: #111827;
-    font-size: 13px;
-    line-height: 1.5;
-    font-weight: 700;
-    letter-spacing: -0.005em;
+    padding: 13px 15px;
+    color: #1F2937;
+    font-size: 13.5px;
+    line-height: 1.6;
+    font-weight: 500;
+    letter-spacing: -0.003em;
 }
 
 .brain-block {
@@ -1945,10 +1944,10 @@
 }
 
 .brain-block-copy {
-    color: #111827;
-    font-size: 12px;
-    line-height: 1.45;
-    font-weight: 700;
+    color: #1F2937;
+    font-size: 12.5px;
+    line-height: 1.55;
+    font-weight: 500;
 }
 
 .brain-cta {
