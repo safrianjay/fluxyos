@@ -854,20 +854,30 @@ function renderChartOfAccounts() {
     wrap.innerHTML = tableShell([{ label: 'Code' }, { label: 'Account' }, { label: 'Type' }, { label: 'Normal' }, { label: 'Status' }], body);
 }
 
+const GL_ALL = '__all__';
+
 function renderLedgerSelector() {
     const sel = el('ledger-account-select');
     if (!sel) return;
     const coa = state.kernel.coa || [];
     const prev = sel.value;
-    sel.innerHTML = coa.map(a => `<option value="${escapeHtml(a.code)}">${escapeHtml(a.code)} · ${escapeHtml(a.name)}</option>`).join('');
-    const pick = coa.find(a => a.code === prev) ? prev : (coa[0] ? coa[0].code : '');
+    const opts = coa.map(a => `<option value="${escapeHtml(a.code)}">${escapeHtml(a.code)} · ${escapeHtml(a.name)}</option>`).join('');
+    sel.innerHTML = `<option value="${GL_ALL}">All accounts</option>${opts}`;
+    // Default to the first real account; keep "All accounts" if it was selected.
+    const pick = (prev === GL_ALL || coa.find(a => a.code === prev)) ? prev : (coa[0] ? coa[0].code : '');
     sel.value = pick;
     renderGeneralLedger(pick);
 }
 
+// Bumped on every GL render request so a slower in-flight fetch (e.g. the initial
+// single-account load) can't clobber a newer selection like "All accounts".
+let glRenderSeq = 0;
+
 async function renderGeneralLedger(accountCode) {
     const wrap = el('ledger-content');
     if (!wrap) return;
+    const token = ++glRenderSeq;
+    if (accountCode === GL_ALL) return renderGeneralLedgerAll(wrap, token);
     if (!accountCode) {
         wrap.innerHTML = emptyState('Pick an account', 'Choose an account to see its ledger activity.');
         return;
@@ -875,6 +885,7 @@ async function renderGeneralLedger(accountCode) {
     wrap.innerHTML = '<div class="fluxy-table-loading-cell">Loading…</div>';
     try {
         const gl = await state.ds.getGeneralLedger(state.user.uid, accountCode, { periodKey: currentPeriodKey() });
+        if (token !== glRenderSeq) return; // superseded by a newer selection
         if (!gl.entries.length) {
             wrap.innerHTML = emptyState('No activity', 'This account has no postings in the selected period.');
             return;
@@ -892,6 +903,57 @@ async function renderGeneralLedger(accountCode) {
         wireRowNavigation(wrap);
     } catch (err) {
         console.error('General ledger load failed:', err);
+        wrap.innerHTML = emptyState('Could not load ledger', 'Please try again.');
+    }
+}
+
+// "All accounts" view: every account with activity rendered as its own ledger
+// section (header + entries + running balance + closing). Built from one journals
+// fetch; rows still drill into Journal Detail.
+async function renderGeneralLedgerAll(wrap, token) {
+    if (token == null) token = ++glRenderSeq;
+    wrap.innerHTML = '<div class="fluxy-table-loading-cell">Loading…</div>';
+    try {
+        const accounts = await state.ds.getGeneralLedgerAll(state.user.uid, { periodKey: currentPeriodKey() });
+        if (token !== glRenderSeq) return; // superseded by a newer selection
+        if (!accounts.length) {
+            wrap.innerHTML = emptyState('No activity', 'No accounts have postings in the selected period.');
+            return;
+        }
+        const sections = accounts.map(acct => {
+            const body = acct.entries.map(e => `<tr class="fluxy-table-row${e.journal_id ? ' fluxy-table-row-clickable' : ''}"${e.journal_id ? ` data-href="${journalDetailLink(e.journal_id)}" tabindex="0"` : ''}>
+                <td class="fluxy-table-cell"><div class="fluxy-table-cell-primary">${escapeHtml(prettyRule(e.posting_rule_id))}</div><div class="fluxy-table-cell-meta">${escapeHtml(e.memo || e.period_key || '')}</div></td>
+                <td class="fluxy-table-cell fluxy-table-money">${e.debit ? formatRupiah(e.debit) : '—'}</td>
+                <td class="fluxy-table-cell fluxy-table-money">${e.credit ? formatRupiah(e.credit) : '—'}</td>
+                <td class="fluxy-table-cell fluxy-table-money">${signedRupiah(e.running_balance)}</td>
+            </tr>`).join('');
+            const closing = `<tr class="fluxy-table-row fluxy-table-row-total">
+                <td class="fluxy-table-cell">Closing balance</td><td class="fluxy-table-cell fluxy-table-money">—</td><td class="fluxy-table-cell fluxy-table-money">—</td>
+                <td class="fluxy-table-cell fluxy-table-money">${signedRupiah(acct.closing)}</td></tr>`;
+            return `<div class="acct-gl-section">
+                <button type="button" class="acct-gl-section-head" data-gl-account="${escapeHtml(acct.account_code)}" title="Open just this account">
+                    <span><strong>${escapeHtml(acct.account_code)}</strong> · ${escapeHtml(acct.account_name)}</span>
+                    <span class="acct-gl-section-type">${escapeHtml(acct.account_type)}</span>
+                </button>
+                ${tableShell([{ label: 'Entry' }, { label: 'Debit', money: true }, { label: 'Credit', money: true }, { label: 'Running', money: true }], body + closing)}
+            </div>`;
+        }).join('');
+        wrap.innerHTML = sections;
+        wireRowNavigation(wrap);
+        // A section header narrows the view to that single account.
+        if (!wrap.dataset.glHeadWired) {
+            wrap.dataset.glHeadWired = '1';
+            wrap.addEventListener('click', (e) => {
+                const head = e.target.closest('.acct-gl-section-head');
+                if (!head) return;
+                const code = head.getAttribute('data-gl-account');
+                const sel = el('ledger-account-select');
+                if (sel) sel.value = code;
+                renderGeneralLedger(code);
+            });
+        }
+    } catch (err) {
+        console.error('General ledger (all) load failed:', err);
         wrap.innerHTML = emptyState('Could not load ledger', 'Please try again.');
     }
 }

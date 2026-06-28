@@ -74,3 +74,30 @@ test('journal register shows the redesigned columns and journal numbers', async 
 
     expect(bad, `console/page errors:\n${bad.join('\n')}`).toEqual([]);
 });
+
+test('general ledger "All accounts" renders one section per account', async ({ page }) => {
+    const bad = [];
+    consoleGuard(page, bad);
+
+    await page.goto('/accounting.html');
+    await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
+    await page.locator('[data-acct-tab="ledger"]').click();
+    await expect(page.locator('#ledger-content')).not.toBeEmpty({ timeout: 30000 });
+
+    // The selector offers an "All accounts" option.
+    await expect(page.locator('#ledger-account-select option[value="__all__"]')).toHaveCount(1);
+
+    // Select it the way the enhanced dropdown does (value + a real change event).
+    await page.evaluate(() => {
+        const sel = document.getElementById('ledger-account-select');
+        sel.value = '__all__';
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    // Multiple per-account sections render, each with a header + closing balance.
+    await expect(page.locator('#ledger-content .acct-gl-section').first()).toBeVisible({ timeout: 30000 });
+    expect(await page.locator('#ledger-content .acct-gl-section').count()).toBeGreaterThan(1);
+    await expect(page.locator('#ledger-content')).toContainText('Closing balance');
+
+    expect(bad, `console/page errors:\n${bad.join('\n')}`).toEqual([]);
+});

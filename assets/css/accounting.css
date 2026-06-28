@@ -241,6 +241,28 @@
 .mj-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 #mj-lines .acct-records-select.mj-acct { min-width: 180px; }
 
+/* --- General Ledger "All accounts" sections --- */
+.acct-gl-section { margin-bottom: 20px; }
+.acct-gl-section:last-child { margin-bottom: 0; }
+.acct-gl-section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    padding: 10px 20px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    font-size: 14px;
+    color: #0B0F19;
+    cursor: pointer;
+}
+.acct-gl-section-head:hover { background: #F1F5F9; }
+.acct-gl-section-type { font-size: 12px; color: #64748B; text-transform: capitalize; flex-shrink: 0; }
+
 /* --- Skeleton --- */
 .acct-skel {
     background: linear-gradient(90deg, #F3F4F6 25%, #E9ECEF 37%, #F3F4F6 63%);

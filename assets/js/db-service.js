@@ -2537,6 +2537,48 @@ class DataService {
         return { account_code: accountCode, account_name: acct ? acct.name : accountCode, account_type: type, entries, closing: running };
     }
 
+    // General ledger for EVERY account that has activity, built from a single
+    // journals fetch (posted only — drafts are not in the ledger) and grouped by
+    // account, each with its own running balance. Powers the GL "All accounts"
+    // view. Bounded by `max` journals to keep the all-accounts render light.
+    async getGeneralLedgerAll(userId, { periodKey: pk = null, max = 500 } = {}) {
+        const [journals, coa] = await Promise.all([
+            this.listJournals(userId, { periodKey: pk, max }),
+            this.getChartOfAccounts(userId)
+        ]);
+        const meta = {};
+        coa.forEach((a) => { meta[a.code] = { name: a.name, type: a.type }; });
+        const ordered = journals.slice().sort((a, b) => this._journalSortKey(a) - this._journalSortKey(b));
+        const acctMap = {};
+        ordered.forEach((j) => {
+            (j.lines || []).forEach((l) => {
+                const code = l.account_code;
+                const type = (meta[code] && meta[code].type) || l.account_type || 'asset';
+                const acc = acctMap[code] || (acctMap[code] = {
+                    account_code: code,
+                    account_name: (meta[code] && meta[code].name) || l.account_name || code,
+                    account_type: type,
+                    entries: [],
+                    running: 0
+                });
+                acc.running += signedBalance(type, l.debit, l.credit);
+                acc.entries.push({
+                    journal_id: j.id,
+                    period_key: j.period_key,
+                    posting_rule_id: j.posting_rule_id,
+                    source: j.source || null,
+                    memo: l.memo || j.memo || '',
+                    debit: Number(l.debit) || 0,
+                    credit: Number(l.credit) || 0,
+                    running_balance: acc.running
+                });
+            });
+        });
+        return Object.values(acctMap)
+            .map((a) => ({ account_code: a.account_code, account_name: a.account_name, account_type: a.account_type, entries: a.entries, closing: a.running }))
+            .sort((a, b) => String(a.account_code).localeCompare(String(b.account_code)));
+    }
+
     _journalSortKey(j) {
         const t = j.posted_at;
         if (t && typeof t.toMillis === 'function') return t.toMillis();
