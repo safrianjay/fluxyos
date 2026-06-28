@@ -172,6 +172,24 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Bank reconciliation matching | 📋 Planned | Phase 7 |
 | Accounting export package | 📋 Planned | Topbar "Export package" disabled until shipped |
 
+### Tax Center (Indonesia)
+Full spec: `docs/INDONESIA_TAX_CENTER_ARCHITECTURE.md`. Derived from the Accounting
+Kernel — tax posts as extra journal lines, never a parallel ledger. New sidebar group
+**"Tax & Compliance"** → `/tax-center`. All collections workspace-scoped (§4o).
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Tax Center app page (`/tax-center`) + sidebar group | 📋 Planned | Phase 1; Accounting-Center page/tab/KPI patterns; `tax.read` gates visibility |
+| `tax-engine.js` (pure rules, rates-as-data) | 🔧 Stub | Built + unit-tested (PPN output/input, PKP gating, `roundTax`, gross-up appendix); needs browser QA before ship |
+| Company Tax Profile (`company_tax_profile`) | 🔧 Stub | Built: DataService + rules + `/tax-center` profile form; needs `firebase deploy --only firestore:rules` + browser QA |
+| Tax mappings (`tax_mappings`) + COA tax accounts | 🔧 Stub | COA `1130/1140/1150/2100/2110/2200` added to `CHART_OF_ACCOUNTS_SEED`; `tax_mappings` rules shipped; mapping UI is Phase 2 |
+| PPN output/input posting (gross-up, explicit-treatment-only) | 🔧 Stub | Wired into `_postSourceJournal` + correction repost; posts only on a document `tax_code`/saved `tax_mapping` (no blanket 11%); payable = `2100` − `1130`. Needs emulator rules tests + browser QA |
+| Withholding PPh 23/4(2)/26 (21 if payroll) + bukti potong fields | 📋 Planned | Phase 2; `tax_transactions` posted via kernel |
+| Tax periods + filings + close/lock (`tax_periods`, `tax_filings`) | 📋 Planned | Phase 3; SPT/bupot CSV exports; Tax Calendar; reconciliation controls |
+| Corporate tax PPh 25/29 + annual reconciliation | 📋 Planned | Phase 4 |
+| AI Tax Assistant (read-only; no auto-file) | 📋 Planned | Phase 5; explain VAT payable, detect missing faktur — confirm-before-act |
+| DJP / Coretax / e-Faktur / e-Bupot integration | 📋 Planned | Phase 5; server-side in FastAPI backend; data model designed for it now |
+
 ### Integrations
 | Feature | Status | Notes |
 |---------|--------|-------|

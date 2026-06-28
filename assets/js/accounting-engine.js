@@ -46,7 +46,16 @@ export const CHART_OF_ACCOUNTS_SEED = [
     { code: '6400', name: 'Operations Expense', type: 'expense' },
     { code: '6500', name: 'Tax Expense', type: 'expense' },
     { code: '6600', name: 'Bank Fees', type: 'expense' },
-    { code: '6999', name: 'Other Expense', type: 'expense' }
+    { code: '6999', name: 'Other Expense', type: 'expense' },
+    // --- Indonesia Tax Center accounts (see docs/INDONESIA_TAX_CENTER_ARCHITECTURE.md
+    // §5). Inactive for posting until tax-engine.js emits lines against them; seeded so
+    // the chart is complete and tax journals resolve account names without a lookup.
+    { code: '1130', name: 'PPN Masukan (Input VAT)', type: 'asset' },
+    { code: '1140', name: 'Prepaid PPh 25', type: 'asset' },
+    { code: '1150', name: 'PPh Dipotong Pihak Lain', type: 'asset' },
+    { code: '2100', name: 'PPN Keluaran (Output VAT)', type: 'liability' },
+    { code: '2110', name: 'PPh Payable', type: 'liability' },
+    { code: '2200', name: 'PPh 29 Payable', type: 'liability' }
 ];
 
 // Fast lookup: code -> { name, type }.

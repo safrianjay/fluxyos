@@ -168,6 +168,48 @@ Indonesia mixed with everyday English (Slack, dashboard, invoice, online shop).
 | Live | Live (keep) | |
 | Dashboard | Dashboard (keep) | |
 
+### Tax Center glossary (formal register — see §12)
+
+For the Tax Center (`/tax-center`, `/id/tax-center.html`). Indonesian tax acronyms
+and DJP terms stay as-is (they ARE the Indonesian terms). Use the formal finance
+register of §12 (Anda, no bureaucratic filler), not the casual landing tone. Full
+feature spec: `docs/INDONESIA_TAX_CENTER_ARCHITECTURE.md`.
+
+| English | Indonesian (canonical) | Notes |
+|---------|------------------------|-------|
+| Tax Center | Pusat Pajak | Section name; keep "Tax Center" in the product header |
+| Tax & Compliance (sidebar group) | Pajak & Kepatuhan | |
+| Company Tax Profile | Profil Pajak Perusahaan | |
+| Tax filing | Pelaporan pajak | |
+| Tax period | Periode pajak | |
+| Filing deadline | Batas waktu pelaporan | |
+| Filed | Sudah dilaporkan | Past tense |
+| PPN (Value Added Tax) | PPN (Pajak Pertambahan Nilai) | Keep "PPN"; 11% standard |
+| Output VAT / Input VAT | PPN Keluaran / PPN Masukan | |
+| PPh (income tax) | PPh (Pajak Penghasilan) | Keep "PPh"; article = "PPh Pasal 23" |
+| Withholding tax | PPh yang dipotong | Or "pajak yang dipotong" |
+| Tax payable | Pajak terutang | |
+| Tax credit | Kredit pajak | |
+| Taxable amount / base | Dasar pengenaan pajak (DPP) | |
+| Tax rate | Tarif pajak | |
+| Tax mapping | Pemetaan pajak | |
+| Tax summary | Ringkasan pajak | |
+| Tax-ready export | Ekspor siap pajak | |
+| Compliance score | Skor kepatuhan | |
+| NPWP | NPWP (keep) | Tax ID (Nomor Pokok Wajib Pajak) |
+| SPT (tax return) | SPT (keep) | Surat Pemberitahuan |
+| e-Faktur | e-Faktur (keep) | DJP digital tax invoice |
+| Faktur Pajak | Faktur Pajak (keep) | |
+| Bukti Potong | Bukti Potong (keep) | Withholding slip |
+| PKP / Non-PKP | PKP / Non-PKP (keep) | VAT-registered status |
+| UMKM final tax | PPh Final UMKM (keep) | 0.5% scheme |
+| DJP / Coretax | DJP / Coretax (keep) | Tax authority & its system |
+
+**Pair-edit reminder (Tax Center):** any user-facing copy change on `tax-center.html`
+must update `/id/tax-center.html` (or the formal `ID` keys in
+`assets/js/dashboard-i18n.js`, per §12) in the same commit. New tax term not above?
+Add it here before translating.
+
 ---
 
 ## 3. Page-Level Scope

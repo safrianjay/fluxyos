@@ -2,6 +2,7 @@ import { getFirestore, initializeFirestore, collection, query, where, getDocs, g
 import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
 import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, CHART_OF_ACCOUNTS_SEED, signedBalance, periodKey as acctPeriodKey } from "./accounting-engine.js";
+import { buildTaxAppendix } from "./tax-engine.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
 // See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
@@ -2141,6 +2142,76 @@ class DataService {
     }
 
     // =====================================================================
+    // TAX CENTER (Indonesia) — company tax profile
+    // The profile (NPWP, PKP status, UMKM flag, default PPN rate) drives every
+    // branch of the pure tax engine (assets/js/tax-engine.js). Workspace-scoped,
+    // single doc id `current`. See docs/INDONESIA_TAX_CENTER_ARCHITECTURE.md §6.
+    // =====================================================================
+
+    async getTaxProfile(userId) {
+        if (!userId) return null;
+        try {
+            const snap = await getDoc(doc(this.db, `${this._scope(userId)}/company_tax_profile/current`));
+            return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    // Upsert the workspace tax profile. Sanitizes/validates the fields the rules
+    // enforce (pkp_status enum, npwp/nik strings, default_ppn_rate 0–100, umkm bool)
+    // so a bad write never reaches Firestore, then writes a tax_profile.update audit.
+    async saveTaxProfile(userId, data = {}) {
+        if (!userId) throw new Error('userId required');
+        const pkpStatus = String(data.pkp_status || '').toLowerCase() === 'pkp' ? 'pkp' : 'non_pkp';
+        let ppnRate = Math.round(Number(data.default_ppn_rate));
+        if (!Number.isFinite(ppnRate) || ppnRate < 0) ppnRate = 11;
+        if (ppnRate > 100) ppnRate = 100;
+        const ref = doc(this.db, `${this._scope(userId)}/company_tax_profile/current`);
+        const existing = await getDoc(ref);
+        const payload = {
+            npwp: this._nullableString(data.npwp, 32),
+            nik: this._nullableString(data.nik, 32),
+            pkp_status: pkpStatus,
+            pkp_effective_date: data.pkp_effective_date || null,
+            umkm_final: data.umkm_final === true,
+            tax_office_kpp: this._nullableString(data.tax_office_kpp, 120),
+            business_classification: this._nullableString(data.business_classification, 120),
+            default_ppn_rate: ppnRate,
+            updated_at: serverTimestamp(),
+            updated_by: (this.actorUid || userId)
+        };
+        payload.created_at = existing.exists() ? (existing.data().created_at || serverTimestamp()) : serverTimestamp();
+        await setDoc(ref, payload);
+        await this.addAuditLog(userId, {
+            action: 'tax_profile.update',
+            target_collection: 'company_tax_profile',
+            target_id: 'current',
+            after: { pkp_status: pkpStatus, umkm_final: payload.umkm_final, default_ppn_rate: ppnRate },
+            source: 'dashboard'
+        });
+        this._taxProfileCache = {}; // invalidate the posting-engine profile cache
+        return { id: 'current', ...payload };
+    }
+
+    // Read the tax lines for a period (optionally a direction). Returns [] on any
+    // error so the Tax Center renders an empty state rather than throwing. Posting
+    // of tax_transactions is wired in a later phase; today this is normally empty.
+    async getTaxTransactions(userId, { periodKey = null, max = 500 } = {}) {
+        if (!userId) return [];
+        try {
+            const base = collection(this.db, `${this._scope(userId)}/tax_transactions`);
+            const q = periodKey
+                ? query(base, where('period_key', '==', periodKey), limit(max))
+                : query(base, limit(max));
+            const snap = await getDocs(q);
+            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (_) {
+            return [];
+        }
+    }
+
+    // =====================================================================
     // ACCOUNTING KERNEL (double-entry posting, ledger, periods)
     // The pure rules live in accounting-engine.js; this section is the
     // Firestore I/O layer that posts journals atomically with the business
@@ -2173,6 +2244,62 @@ class DataService {
         });
         this._acctMapCache[key] = map;
         return map;
+    }
+
+    // --- TAX CENTER posting integration ---------------------------------
+    // Cached workspace tax profile (drives PKP gating in the tax engine).
+    async _loadTaxProfile(userId) {
+        this._taxProfileCache = this._taxProfileCache || {};
+        const key = this._scope(userId);
+        if (key in this._taxProfileCache) return this._taxProfileCache[key];
+        const p = await this.getTaxProfile(userId).catch(() => null);
+        this._taxProfileCache[key] = p;
+        return p;
+    }
+    // Cached category/type → tax_code map (explicit tax treatments only).
+    async _loadTaxMappings(userId) {
+        this._taxMapCacheTax = this._taxMapCacheTax || {};
+        const key = this._scope(userId);
+        if (this._taxMapCacheTax[key]) return this._taxMapCacheTax[key];
+        const map = {};
+        try {
+            const snap = await getDocs(collection(this.db, `${key}/tax_mappings`));
+            snap.forEach((d) => {
+                const m = d.data();
+                if (m.status === 'archived' || !m.tax_code) return;
+                if (m.source_type === 'transaction_category') map[`category:${m.source_value}`] = m.tax_code;
+                else if (m.source_type === 'transaction_type') map[`type:${String(m.source_value).toLowerCase()}`] = m.tax_code;
+            });
+        } catch (_) { /* collection may not exist yet */ }
+        this._taxMapCacheTax[key] = map;
+        return map;
+    }
+    // Graft PPN gross-up lines onto a freshly-built journal IN PLACE (tax-exclusive
+    // model). Only fires when the document carries an explicit tax treatment
+    // (tax_code or a saved tax_mapping) — so untaxed documents post byte-identical to
+    // before. Each appended pair is balanced, so totals stay equal. Returns the
+    // tax_transactions metadata rows for the caller to stage (post path only).
+    // Never throws — tax must never block the base accounting post.
+    async _applyTaxAppendix(userId, journal, sourceCollection, payload) {
+        try {
+            if (!journal || !Array.isArray(journal.lines)) return [];
+            const [profile, taxMappings] = await Promise.all([
+                this._loadTaxProfile(userId),
+                this._loadTaxMappings(userId)
+            ]);
+            if (!profile) return [];
+            const appendix = buildTaxAppendix({
+                baseJournal: journal, collection: sourceCollection, document: payload, profile, mappings: taxMappings
+            });
+            if (!appendix || !appendix.lines.length) return [];
+            journal.lines = journal.lines.concat(appendix.lines);
+            journal.total_debit = journal.lines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
+            journal.total_credit = journal.lines.reduce((s, l) => s + (Number(l.credit) || 0), 0);
+            journal.is_balanced = journal.total_debit === journal.total_credit;
+            return appendix.tax_transactions || [];
+        } catch (_) {
+            return [];
+        }
     }
 
     // Write one journal + its ledger_balances increments into an existing batch.
@@ -2324,6 +2451,12 @@ class DataService {
                 if (fresh) {
                     fresh.period_key = targetPeriod || await this._openTargetPeriod(userId, fresh.period_key);
                     fresh.source_number = this._sourceNumberOf(sourceCollection, afterPayload);
+                    // Re-apply PPN to the repost so an edit keeps the ledger correct: the
+                    // reversal above already unwinds the old journal's tax lines, and this
+                    // grafts the recomputed tax onto the fresh entry. (tax_transactions
+                    // detail rows are rewritten on the post path; corrections rely on the
+                    // ledger + reconcile script — see INDONESIA_TAX_CENTER_ARCHITECTURE §9.)
+                    await this._applyTaxAppendix(userId, fresh, sourceCollection, afterPayload);
                 }
             }
             // Reserve numbers for the journals that will post (reversal first, then
@@ -2371,6 +2504,10 @@ class DataService {
             });
             if (!journal) { payload.accounting_status = 'excluded'; return null; }
             journal.source_number = this._sourceNumberOf(sourceCollection, payload);
+            // Tax Center: graft PPN gross-up lines IN PLACE before numbering/attach, so
+            // the journal number, ledger_balances, and rules balance-check all see the
+            // final lines. No-op unless the document has an explicit tax treatment.
+            const taxTxRows = await this._applyTaxAppendix(userId, journal, sourceCollection, payload);
             const bases = await this._reserveJournalNumbers(userId, { [String(journal.period_key).slice(0, 4)]: 1 });
             this._assignJournalNumbers([journal], bases);
             const journalRef = this._attachJournalToBatch(batch, this._scope(userId), journal, {
@@ -2378,6 +2515,21 @@ class DataService {
             });
             payload.journal_ref = journalRef.id;
             payload.accounting_status = 'posted';
+            // Stage one tax_transactions row per PPN line, linked to the journal.
+            (taxTxRows || []).forEach((t) => {
+                const tref = doc(collection(this.db, `${this._scope(userId)}/tax_transactions`));
+                batch.set(tref, {
+                    ...t,
+                    source_collection: sourceCollection,
+                    source_id: sourceRef.id,
+                    source_number: journal.source_number || null,
+                    journal_ref: journalRef.id,
+                    entity_id: this._resolvedScopeId(userId),
+                    status: 'posted',
+                    created_by: this.actorUid || userId,
+                    created_at: serverTimestamp()
+                });
+            });
             return journalRef.id;
         } catch (err) {
             console.warn('[accounting] posting skipped, marked pending:', err && err.message ? err.message : err);

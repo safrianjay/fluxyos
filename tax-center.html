@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Tax Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="assets/css/accounting.css">
+</head>
+<body class="dashboard-page flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content will be loaded by sidebar-loader.js -->
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+
+        <!-- Header / Topbar -->
+        <header class="dashboard-main-topbar h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm">
+            <div class="dashboard-topbar-left flex items-center gap-4">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <div class="dashboard-topbar-copy">
+                    <span class="dashboard-topbar-title">Tax Center</span>
+                    <p class="dashboard-topbar-subtitle">Indonesian tax — PPN, withholding, and compliance, derived from your books.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="tax-period-label" class="fluxy-meta"></span>
+            </div>
+        </header>
+
+        <div class="fluxy-page-shell flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            <div class="fluxy-page-canvas">
+
+                <!-- KPI strip -->
+                <section class="acct-kpi-grid" aria-label="Tax summary">
+                    <article class="acct-card acct-kpi">
+                        <span class="fluxy-kpi-label">PPN Payable</span>
+                        <span id="kpi-ppn-payable" class="acct-kpi-value acct-mono">—</span>
+                        <span id="kpi-ppn-payable-sub" class="fluxy-meta">Selected period</span>
+                    </article>
+                    <article class="acct-card acct-kpi">
+                        <span class="fluxy-kpi-label">PPN Keluaran (Output)</span>
+                        <span id="kpi-ppn-output" class="acct-kpi-value acct-mono">—</span>
+                        <span class="fluxy-meta">Collected on sales</span>
+                    </article>
+                    <article class="acct-card acct-kpi">
+                        <span class="fluxy-kpi-label">PPN Masukan (Input)</span>
+                        <span id="kpi-ppn-input" class="acct-kpi-value acct-mono">—</span>
+                        <span class="fluxy-meta">Creditable on purchases</span>
+                    </article>
+                    <article class="acct-card acct-kpi">
+                        <span class="fluxy-kpi-label">Tax Profile</span>
+                        <span id="kpi-profile-status" class="acct-kpi-value">—</span>
+                        <span id="kpi-profile-sub" class="fluxy-meta">PKP status</span>
+                    </article>
+                </section>
+
+                <!-- Tabs -->
+                <nav class="acct-tabs mt-6" role="tablist" aria-label="Tax Center views">
+                    <button class="acct-tab is-active" data-tax-tab="overview" role="tab">Overview</button>
+                    <button class="acct-tab" data-tax-tab="profile" role="tab">Company Tax Profile</button>
+                    <button class="acct-tab" data-tax-tab="ppn" role="tab">PPN</button>
+                </nav>
+
+                <!-- Overview panel -->
+                <div data-tax-panel="overview" class="flex flex-col gap-6 mt-6">
+                    <section class="acct-card p-5">
+                        <h2 class="fluxy-table-title">Compliance overview</h2>
+                        <p class="fluxy-table-subtitle mt-1">The Tax Center derives Indonesian tax from your accounting records — it never keeps a separate ledger. Set your tax profile, then PPN and withholding will summarize here as transactions post.</p>
+                        <div id="tax-overview-note" class="mt-4"></div>
+                    </section>
+                </div>
+
+                <!-- Company Tax Profile panel -->
+                <div data-tax-panel="profile" class="hidden flex-col gap-6 mt-6">
+                    <section class="acct-card p-5">
+                        <h2 class="fluxy-table-title">Company tax profile</h2>
+                        <p class="fluxy-table-subtitle mt-1">Your NPWP and PKP status drive every tax calculation. A Non-PKP workspace charges no PPN.</p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5 max-w-2xl">
+                            <label class="flex flex-col gap-1">
+                                <span class="fluxy-kpi-label">NPWP</span>
+                                <input id="tax-npwp" type="text" maxlength="32" placeholder="00.000.000.0-000.000" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:border-orange-400" />
+                            </label>
+                            <label class="flex flex-col gap-1">
+                                <span class="fluxy-kpi-label">NIK (optional)</span>
+                                <input id="tax-nik" type="text" maxlength="32" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:border-orange-400" />
+                            </label>
+                            <label class="flex flex-col gap-1">
+                                <span class="fluxy-kpi-label">PKP status</span>
+                                <select id="tax-pkp-status" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px]">
+                                    <option value="non_pkp">Non-PKP (no PPN)</option>
+                                    <option value="pkp">PKP (charges PPN)</option>
+                                </select>
+                            </label>
+                            <label class="flex flex-col gap-1">
+                                <span class="fluxy-kpi-label">Default PPN rate (%)</span>
+                                <input id="tax-ppn-rate" type="number" min="0" max="100" step="1" value="11" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] tabular-nums focus:outline-none focus:border-orange-400" />
+                            </label>
+                            <label class="flex flex-col gap-1">
+                                <span class="fluxy-kpi-label">Tax office (KPP)</span>
+                                <input id="tax-kpp" type="text" maxlength="120" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:border-orange-400" />
+                            </label>
+                            <label class="flex flex-col gap-1">
+                                <span class="fluxy-kpi-label">Business classification (KLU)</span>
+                                <input id="tax-klu" type="text" maxlength="120" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:border-orange-400" />
+                            </label>
+                            <label class="flex items-center gap-2 sm:col-span-2">
+                                <input id="tax-umkm" type="checkbox" class="w-4 h-4 accent-orange-600" />
+                                <span class="text-[14px] text-gray-700">UMKM final tax scheme (PP 23/2018, 0.5% of turnover)</span>
+                            </label>
+                        </div>
+
+                        <div class="mt-5 flex items-center gap-3">
+                            <button id="tax-profile-save" type="button" class="acct-btn-primary">Save tax profile</button>
+                            <span id="tax-profile-hint" class="fluxy-meta"></span>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- PPN panel -->
+                <div data-tax-panel="ppn" class="hidden flex-col gap-6 mt-6">
+                    <section class="fluxy-table-card">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">PPN — <span id="ppn-period-label"></span></h2>
+                                <p class="fluxy-table-subtitle">Output and input VAT lines for the period, derived from posted documents.</p>
+                            </div>
+                        </div>
+                        <div id="ppn-summary-body"></div>
+                    </section>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/dashboard-i18n.js"></script>
+    <script src="assets/js/fluxy-select.js"></script>
+
+    <!-- AUTH GUARD + PAGE BOOT -->
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+        import { applyToPage } from './assets/js/onboarding-gate.js';
+        import { initTaxCenterPage } from './assets/js/tax-center.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.replace('/login');
+                return;
+            }
+            const gated = await applyToPage(user, { pageKey: 'tax-center' });
+            if (gated) return;
+            initTaxCenterPage({ ds, user });
+        });
+    </script>
+</body>
+</html>

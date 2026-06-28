@@ -2923,7 +2923,8 @@ service cloud.firestore {
           'onboarding', 'bank_accounts', 'bank_balance_snapshots',
           'bank_statement_imports', 'documents', 'billing',
           'billing_payment_requests', 'payment_verifications', 'accounting_mappings',
-          'chart_of_accounts', 'journals', 'ledger_balances', 'periods', 'counters'
+          'chart_of_accounts', 'journals', 'ledger_balances', 'periods', 'counters',
+          'company_tax_profile', 'tax_mappings', 'tax_transactions', 'tax_periods', 'tax_filings'
         ]
         && data.target_id is string && data.target_id.size() <= 200
         && data.source in ['dashboard', 'ai', 'integration', 'system']
@@ -3400,6 +3401,67 @@ service cloud.firestore {
         allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
           && request.resource.data.seq is number
           && request.resource.data.seq >= resource.data.seq;
+        allow delete: if false;
+      }
+
+      // --- TAX CENTER (Indonesia) -----------------------------------------
+      // Derived layer over the accounting kernel; see
+      // docs/INDONESIA_TAX_CENTER_ARCHITECTURE.md. Tax data is workspace-scoped and
+      // amounts are raw integers. tax_transactions / tax_periods / tax_filings rules
+      // are defined ahead of their data layer so later phases ship without a rules
+      // redeploy. Reads: every member (incl. viewer). Writes: finance+/accountant,
+      // except the irreversible filing step (owner/admin).
+      match /company_tax_profile/{docId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.pkp_status in ['pkp', 'non_pkp']
+          && (!('npwp' in request.resource.data) || request.resource.data.npwp == null || (request.resource.data.npwp is string && request.resource.data.npwp.size() <= 32))
+          && (!('nik' in request.resource.data) || request.resource.data.nik == null || (request.resource.data.nik is string && request.resource.data.nik.size() <= 32))
+          && (!('umkm_final' in request.resource.data) || request.resource.data.umkm_final is bool)
+          && (!('default_ppn_rate' in request.resource.data) || (request.resource.data.default_ppn_rate is number && request.resource.data.default_ppn_rate >= 0 && request.resource.data.default_ppn_rate <= 100))
+          && (!('tax_office_kpp' in request.resource.data) || request.resource.data.tax_office_kpp == null || (request.resource.data.tax_office_kpp is string && request.resource.data.tax_office_kpp.size() <= 120))
+          && (!('business_classification' in request.resource.data) || request.resource.data.business_classification == null || (request.resource.data.business_classification is string && request.resource.data.business_classification.size() <= 120));
+        allow delete: if false;
+      }
+      // Category/type → tax-code mappings. Soft-archive via status; hard delete is
+      // owner/admin only.
+      match /tax_mappings/{mappingId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.tax_code is string && request.resource.data.tax_code.size() <= 40
+          && (!('tax_rate_percent' in request.resource.data) || (request.resource.data.tax_rate_percent is number && request.resource.data.tax_rate_percent >= 0 && request.resource.data.tax_rate_percent <= 100))
+          && (!('status' in request.resource.data) || request.resource.data.status in ['active', 'archived']);
+        allow delete: if hasRole(workspaceId, ['owner', 'admin']);
+      }
+      // Tax lines emitted per business document (append-only). Raw-integer amounts;
+      // only the reversal-linkage may change after creation.
+      match /tax_transactions/{taxTxId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.tax_code is string
+          && request.resource.data.taxable_base is number && request.resource.data.taxable_base >= 0
+          && request.resource.data.tax_amount is number && request.resource.data.tax_amount >= 0
+          && request.resource.data.direction in ['output', 'input', 'withheld_by_us', 'withheld_by_other', 'final']
+          && request.resource.data.period_key is string;
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reversed_by_tax_tx_id', 'updated_at']);
+        allow delete: if false;
+      }
+      // Computed period summaries (cached from tax_transactions, like ledger_balances).
+      match /tax_periods/{periodId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.status in ['open', 'computed', 'filed', 'amended', 'settled'];
+        allow delete: if false;
+      }
+      // Filing records (append-only). Creating/marking a draft filing is finance+;
+      // accept/reject/amend (the irreversible, outward-facing step) is owner/admin.
+      match /tax_filings/{filingId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.filing_type is string
+          && request.resource.data.status in ['draft', 'filed', 'accepted', 'rejected', 'amended'];
+        allow update: if hasRole(workspaceId, ['owner', 'admin']);
         allow delete: if false;
       }
     }
