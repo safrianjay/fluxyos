@@ -115,6 +115,10 @@
                     <!-- TABS -->
                     <nav class="acct-tabs" role="tablist" aria-label="Accounting Center views">
                         <button type="button" class="acct-tab is-active" data-acct-tab="income" role="tab">Income Statement</button>
+                        <button type="button" class="acct-tab" data-acct-tab="journals" role="tab">Journals</button>
+                        <button type="button" class="acct-tab" data-acct-tab="ledger" role="tab">General Ledger</button>
+                        <button type="button" class="acct-tab" data-acct-tab="trial" role="tab">Trial Balance</button>
+                        <button type="button" class="acct-tab" data-acct-tab="coa" role="tab">Chart of Accounts</button>
                         <button type="button" class="acct-tab" data-acct-tab="cleanup" role="tab">Cleanup <span class="acct-tab-count" id="tab-cleanup-count">0</span></button>
                         <button type="button" class="acct-tab" data-acct-tab="mapping" role="tab">Account Mapping</button>
                         <button type="button" class="acct-tab" data-acct-tab="close" role="tab">Close</button>
@@ -131,6 +135,64 @@
                                 </div>
                             </div>
                             <div id="income-statement-table" class="acct-is-scroll fluxy-table-scroll"></div>
+                        </section>
+                    </div>
+
+                    <!-- JOURNALS TAB (Journal Register) -->
+                    <div data-acct-panel="journals" class="hidden">
+                        <section class="acct-card fluxy-table-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">Journal Register</h2>
+                                    <p class="fluxy-table-subtitle">System-generated double-entry postings for <span id="journals-period">this period</span>. Click a journal to trace it to its source document.</p>
+                                </div>
+                            </div>
+                            <div id="journals-content" class="fluxy-table-scroll"></div>
+                        </section>
+                    </div>
+
+                    <!-- GENERAL LEDGER TAB -->
+                    <div data-acct-panel="ledger" class="hidden">
+                        <section class="acct-card fluxy-table-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">General Ledger</h2>
+                                    <p class="fluxy-table-subtitle">Per-account activity with a running balance. Pick an account to drill into its journals.</p>
+                                </div>
+                                <div class="fluxy-table-actions">
+                                    <select id="ledger-account-select" aria-label="Ledger account"></select>
+                                </div>
+                            </div>
+                            <div id="ledger-content" class="fluxy-table-scroll"></div>
+                        </section>
+                    </div>
+
+                    <!-- TRIAL BALANCE TAB -->
+                    <div data-acct-panel="trial" class="hidden">
+                        <section class="acct-card fluxy-table-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">Trial Balance</h2>
+                                    <p class="fluxy-table-subtitle">Every account's net debit/credit for <span id="trial-period">this period</span>. Debits must equal credits.</p>
+                                </div>
+                                <div class="fluxy-table-actions">
+                                    <span id="trial-balance-flag" class="acct-pill acct-pill-planned">—</span>
+                                </div>
+                            </div>
+                            <div id="trial-content" class="fluxy-table-scroll"></div>
+                        </section>
+                    </div>
+
+                    <!-- CHART OF ACCOUNTS TAB -->
+                    <div data-acct-panel="coa" class="hidden">
+                        <section class="acct-card fluxy-table-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">Chart of Accounts</h2>
+                                    <p class="fluxy-table-subtitle">The accounts the posting engine uses. Indonesian SMB starter chart (IDR).</p>
+                                </div>
+                            </div>
+                            <div id="coa-content" class="fluxy-table-scroll"></div>
                         </section>
                     </div>
 
@@ -167,11 +229,11 @@
                                 <div id="close-readiness-content"></div>
                             </section>
                             <aside class="acct-card" style="padding:20px;height:fit-content;">
-                                <h3 class="fluxy-card-title" style="margin-bottom:8px;">Close this period</h3>
-                                <p class="fluxy-meta" style="margin-bottom:16px;">Locking a period and posting journal entries is coming in a later phase. For now, use the checklist to get review-ready.</p>
-                                <button type="button" class="acct-btn acct-btn-secondary" disabled style="width:100%;justify-content:center;">
+                                <h3 class="fluxy-card-title" style="margin-bottom:8px;">Close <span id="close-period-label">this period</span></h3>
+                                <p class="fluxy-meta" style="margin-bottom:16px;">Closing posts a closing journal that rolls net income into Retained Earnings and locks the period. The trial balance must balance first.</p>
+                                <div id="close-status" class="fluxy-meta" style="margin-bottom:12px;"></div>
+                                <button type="button" id="close-period-btn" class="acct-btn acct-btn-primary" style="width:100%;justify-content:center;">
                                     Close period
-                                    <span class="acct-pill acct-pill-planned" style="padding:1px 6px;">Planned</span>
                                 </button>
                             </aside>
                         </div>

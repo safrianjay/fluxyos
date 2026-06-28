@@ -34,6 +34,10 @@ const CAPABILITIES = [
     'vendors.manage',
     'exports.create',
     'ai.use',
+    'accounting.read',   // view Accounting Center: journals, GL, trial balance, CoA
+    'accounting.post',   // post/manage journals + chart of accounts (finance+)
+    'period.close',      // close an accounting period (finance+)
+    'period.lock',       // lock a closed period (owner/admin only)
     'integrations.manage',
     'team.invite',          // invite members + revoke pending invites (owner + admin)
     'team.manage_members',  // change roles / remove members / transfer (owner ONLY)
@@ -47,6 +51,7 @@ const CAPABILITIES = [
 // Read capabilities every active member (including viewer) has.
 const READ_CAPS = [
     'transactions.read', 'bills.read', 'subscriptions.read', 'budgets.read', 'invoices.read',
+    'accounting.read',
 ];
 
 // Finance can create/edit finance records + export + AI, but not delete, not
@@ -58,6 +63,7 @@ const FINANCE_CAPS = [
     'subscriptions.create', 'subscriptions.update',
     'budgets.manage', 'invoices.manage', 'vendors.manage',
     'exports.create', 'ai.use',
+    'accounting.post', 'period.close',
 ];
 
 // Admin = all Finance capabilities + team/settings/integrations/audit + delete,
@@ -66,6 +72,7 @@ const ADMIN_CAPS = [
     ...FINANCE_CAPS,
     'transactions.delete',
     'integrations.manage',
+    'period.lock',
     // Admins may invite + revoke invites, but NOT change roles or remove members
     // (that is owner-only via 'team.manage_members', granted by owner = all caps).
     'team.invite', 'settings.manage', 'audit.read',

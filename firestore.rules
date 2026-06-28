@@ -165,7 +165,11 @@ service cloud.firestore {
           'billing_payment_requests',
           'payment_verifications',
           'accounting_mappings',
-          'invoices'
+          'invoices',
+          'chart_of_accounts',
+          'journals',
+          'ledger_balances',
+          'periods'
         ]
         && data.target_id is string
         && data.target_id.size() <= 160
@@ -2843,6 +2847,15 @@ service cloud.firestore {
     function hasRole(workspaceId, roles) {
       return isMember(workspaceId) && (callerMember(workspaceId).role in roles);
     }
+    // Accounting kernel: a journal may only post into a period that is not closed
+    // or locked. A missing period doc means the period has never been closed (open).
+    // The closing journal itself is allowed because the period lock write commits
+    // in the same batch — at rule-eval time the committed period is still open.
+    function wsPeriodOpen(workspaceId, pk) {
+      return pk is string
+        && (!exists(/databases/$(database)/documents/workspaces/$(workspaceId)/periods/$(pk))
+          || get(/databases/$(database)/documents/workspaces/$(workspaceId)/periods/$(pk)).data.status == 'open');
+    }
     // Email-keyed invites: doc id == lowercased invitee email, so rules can
     // verify a self-join without a query.
     function callerEmail() {
@@ -2906,7 +2919,8 @@ service cloud.firestore {
           'members', 'invites', 'workspace', 'settings', 'integrations', 'users',
           'onboarding', 'bank_accounts', 'bank_balance_snapshots',
           'bank_statement_imports', 'documents', 'billing',
-          'billing_payment_requests', 'payment_verifications', 'accounting_mappings'
+          'billing_payment_requests', 'payment_verifications', 'accounting_mappings',
+          'chart_of_accounts', 'journals', 'ledger_balances', 'periods'
         ]
         && data.target_id is string && data.target_id.size() <= 200
         && data.source in ['dashboard', 'ai', 'integration', 'system']
@@ -3258,6 +3272,59 @@ service cloud.firestore {
         allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
         allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidAccountingMappingCreate(request.resource.data);
         allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidAccountingMappingUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+
+      // --- ACCOUNTING KERNEL (double-entry) -------------------------------
+      // Chart of Accounts. Archive via is_active; never hard-deleted.
+      match /chart_of_accounts/{accountCode} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+          && request.resource.data.code is string
+          && request.resource.data.name is string && request.resource.data.name.size() <= 120
+          && request.resource.data.type in ['asset', 'liability', 'equity', 'revenue', 'expense']
+          && request.resource.data.normal_balance in ['debit', 'credit'];
+        allow delete: if false;
+      }
+      // Journals are immutable once posted: rules enforce Σdebit==Σcredit (>0) and
+      // a non-closed period at create, and allow only the reversal-linkage field to
+      // change afterward. Per-line sums cannot be verified in rules (the known
+      // client-side-posting limitation — the reconcile script + Trial Balance
+      // assertion are the compensating controls).
+      match /journals/{journalId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+          && request.resource.data.total_debit is number
+          && request.resource.data.total_credit is number
+          && request.resource.data.total_debit == request.resource.data.total_credit
+          && request.resource.data.total_debit > 0
+          && request.resource.data.is_balanced == true
+          && request.resource.data.lines is list
+          && request.resource.data.status in ['posted', 'reversal', 'reversed']
+          && wsPeriodOpen(workspaceId, request.resource.data.period_key);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reversed_by_journal_id']);
+        allow delete: if false;
+      }
+      // Running per-account/period balances (the trial-balance source). Written via
+      // FieldValue.increment alongside each journal; field-validated only.
+      match /ledger_balances/{balanceId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+          && request.resource.data.account_code is string
+          && request.resource.data.period_key is string
+          && request.resource.data.debit_total is number && request.resource.data.debit_total >= 0
+          && request.resource.data.credit_total is number && request.resource.data.credit_total >= 0;
+        allow delete: if false;
+      }
+      // Period lifecycle. Closing requires finance+; locking is owner/admin only.
+      match /periods/{periodKey} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow create, update: if request.resource.data.period_key is string
+          && request.resource.data.status in ['open', 'closed', 'locked']
+          && (request.resource.data.status != 'locked'
+            ? hasRole(workspaceId, ['owner', 'admin', 'finance'])
+            : hasRole(workspaceId, ['owner', 'admin']));
         allow delete: if false;
       }
     }

@@ -83,10 +83,23 @@ export function initAccountingPage({ ds, user }) {
     state.user = user;
     state.startKey = getMonthStartKey();
     state.endKey = getMonthEndKey();
+    state.kernel = { loadedPeriod: null, coa: [], journals: [], trial: null, period: null };
+
+    // Idempotent: seed the Chart of Accounts so the ledger views and posting
+    // engine have accounts to reference. Best-effort — a viewer without write
+    // access simply reads whatever already exists. loadKernel() awaits this so the
+    // first ledger read never races an empty (un-seeded) chart.
+    state.seedPromise = ds.seedChartOfAccounts(user.uid).catch(() => {});
 
     mountPicker();
     wireStaticControls();
     load();
+}
+
+// The accounting period these ledger views scope to: the month of the selected
+// start day (accounting periods are monthly 'YYYY-MM').
+function currentPeriodKey() {
+    return String(state.startKey || getMonthStartKey()).slice(0, 7);
 }
 
 function mountPicker() {
@@ -109,12 +122,17 @@ function wireStaticControls() {
     document.querySelectorAll('[data-acct-tab]').forEach(btn => {
         btn.addEventListener('click', () => setTab(btn.getAttribute('data-acct-tab')));
     });
+
+    el('ledger-account-select')?.addEventListener('change', (e) => renderGeneralLedger(e.target.value));
+    el('close-period-btn')?.addEventListener('click', () => onClosePeriod());
 }
 
 function openFluxyAI() {
     if (typeof window.toggleFluxyAI === 'function') window.toggleFluxyAI(true);
     else window.showToast?.('Fluxy AI is still loading. Try again in a moment.', 'info');
 }
+
+const KERNEL_TABS = new Set(['journals', 'ledger', 'trial', 'coa']);
 
 function setTab(tab) {
     if (!tab) return;
@@ -125,6 +143,35 @@ function setTab(tab) {
     document.querySelectorAll('[data-acct-panel]').forEach(panel => {
         panel.classList.toggle('hidden', panel.getAttribute('data-acct-panel') !== tab);
     });
+    // Ledger views read the new accounting collections lazily — only when their
+    // tab is first opened for the active period, so the page load stays light.
+    if (KERNEL_TABS.has(tab)) loadKernel();
+}
+
+// Fetch CoA + journals + trial balance for the active period and render the four
+// accounting-workspace panels. Cached per period; a period change clears it.
+async function loadKernel(force = false) {
+    const pk = currentPeriodKey();
+    if (!force && state.kernel.loadedPeriod === pk) return;
+    state.kernel.loadedPeriod = pk; // claim early to avoid duplicate fetches
+    try {
+        await state.seedPromise; // ensure the chart exists before the first read
+        const [coa, journals, trial, period] = await Promise.all([
+            state.ds.getChartOfAccounts(state.user.uid),
+            state.ds.listJournals(state.user.uid, { periodKey: pk }),
+            state.ds.getTrialBalance(state.user.uid, { periodKey: pk }),
+            state.ds.getPeriod(state.user.uid, pk)
+        ]);
+        state.kernel = { loadedPeriod: pk, coa, journals, trial, period };
+        renderJournals();
+        renderTrialBalance();
+        renderChartOfAccounts();
+        renderLedgerSelector();
+        renderClosePanel();
+    } catch (err) {
+        console.error('Accounting kernel load failed:', err);
+        state.kernel.loadedPeriod = null; // allow a retry on next tab open
+    }
 }
 
 // --- data load ---
@@ -551,4 +598,201 @@ function renderClose(data) {
         checkRow('Categories mapped to accounts', c.categories_mapped),
         checkRow('Bank imports reviewed', c.bank_imports_reviewed)
     ].join('');
+}
+
+// =====================================================================
+// ACCOUNTING WORKSPACE — ledger read surfaces (Phase 2)
+// Journal Register, General Ledger, Trial Balance, Chart of Accounts, and
+// the working period-close panel. Data comes from the accounting kernel
+// (db-service getChartOfAccounts / listJournals / getTrialBalance /
+// getGeneralLedger / getPeriod / closePeriod).
+// =====================================================================
+
+const RULE_LABELS = {
+    'TXN-EXP-CASH': 'Expense paid', 'TXN-INC-CASH': 'Income received', 'TXN-OPEX-CASH': 'Fee / tax paid',
+    'TXN-ACCRUE-AR': 'Accrued receivable', 'TXN-ACCRUE-AP': 'Accrued payable',
+    'BILL-ACCRUE': 'Bill accrued', 'BILL-PAY': 'Bill paid', 'SUB-ACCRUE': 'Subscription accrued',
+    'INV-ISSUE': 'Invoice issued', 'INV-PAY': 'Invoice paid', 'OPENING': 'Opening balance', 'CLOSE': 'Period close'
+};
+function prettyRule(id) {
+    if (!id) return 'Journal';
+    if (String(id).startsWith('REVERSAL')) return 'Reversal';
+    return RULE_LABELS[id] || id;
+}
+function srcLabel(j) {
+    const s = j.source || {};
+    const c = String(s.collection || '').replace(/s$/, '');
+    return `${c || 'source'} ${String(s.id || '').slice(0, 6)}`;
+}
+function tableShell(cols, bodyRows) {
+    const head = cols.map(c => `<th${c.money ? ' class="fluxy-table-money"' : ''}>${escapeHtml(c.label)}</th>`).join('');
+    return `<table class="fluxy-table"><thead><tr class="fluxy-table-header">${head}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+}
+function emptyState(title, desc) {
+    return `<div class="fluxy-table-empty"><div class="fluxy-table-empty-title">${escapeHtml(title)}</div><div class="fluxy-table-empty-description">${escapeHtml(desc)}</div></div>`;
+}
+
+function renderJournals() {
+    const wrap = el('journals-content');
+    if (!wrap) return;
+    if (el('journals-period')) el('journals-period').textContent = currentPeriodKey();
+    const rows = state.kernel.journals || [];
+    if (!rows.length) {
+        wrap.innerHTML = emptyState('No journals this period', 'Create a transaction, bill, or invoice — the engine posts its journal automatically.');
+        return;
+    }
+    const body = rows.map(j => {
+        const lines = (j.lines || []).map(l => `${escapeHtml(l.account_code)} ${l.debit ? 'Dr' : 'Cr'} ${formatRupiah(l.debit || l.credit)}`).join(' · ');
+        const link = SOURCE_LINKS[j.source && j.source.collection];
+        const src = link
+            ? `<a class="acct-link" href="${link}">${escapeHtml(srcLabel(j))}</a>`
+            : `<span class="fluxy-table-cell-meta">${escapeHtml(srcLabel(j))}</span>`;
+        return `<tr class="fluxy-table-row">
+            <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${escapeHtml(prettyRule(j.posting_rule_id))}</span><span class="fluxy-table-cell-meta">${escapeHtml(lines)}</span></td>
+            <td class="fluxy-table-cell">${src}</td>
+            <td class="fluxy-table-cell fluxy-table-money">${formatRupiah(j.total_debit)}</td>
+            <td class="fluxy-table-cell fluxy-table-money"><span class="fluxy-table-status ${j.is_balanced ? 'fluxy-status-success' : 'fluxy-status-danger'}">${j.is_balanced ? 'Balanced' : 'Check'}</span></td>
+        </tr>`;
+    }).join('');
+    wrap.innerHTML = tableShell([{ label: 'Journal' }, { label: 'Source' }, { label: 'Amount', money: true }, { label: 'Status', money: true }], body);
+}
+
+function renderTrialBalance() {
+    const wrap = el('trial-content');
+    if (!wrap) return;
+    if (el('trial-period')) el('trial-period').textContent = currentPeriodKey();
+    const tb = state.kernel.trial || { rows: [], totalDebit: 0, totalCredit: 0, balanced: true };
+    const flag = el('trial-balance-flag');
+    if (flag) {
+        flag.textContent = tb.balanced ? 'In balance' : 'Out of balance';
+        flag.className = 'acct-pill ' + (tb.balanced ? 'acct-pill-ready' : 'acct-pill-needs');
+    }
+    if (!tb.rows.length) {
+        wrap.innerHTML = emptyState('No postings this period', 'The trial balance fills in as journals post.');
+        return;
+    }
+    const body = tb.rows.map(r => `<tr class="fluxy-table-row">
+        <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${escapeHtml(r.account_code)} · ${escapeHtml(r.account_name)}</span><span class="fluxy-table-cell-meta">${escapeHtml(r.account_type)}</span></td>
+        <td class="fluxy-table-cell fluxy-table-money">${r.debit_amount ? formatRupiah(r.debit_amount) : '—'}</td>
+        <td class="fluxy-table-cell fluxy-table-money">${r.credit_amount ? formatRupiah(r.credit_amount) : '—'}</td>
+    </tr>`).join('');
+    const totals = `<tr class="fluxy-table-row fluxy-table-row-total">
+        <td class="fluxy-table-cell">Total</td>
+        <td class="fluxy-table-cell fluxy-table-money">${formatRupiah(tb.totalDebit)}</td>
+        <td class="fluxy-table-cell fluxy-table-money">${formatRupiah(tb.totalCredit)}</td>
+    </tr>`;
+    wrap.innerHTML = tableShell([{ label: 'Account' }, { label: 'Debit', money: true }, { label: 'Credit', money: true }], body + totals);
+}
+
+function renderChartOfAccounts() {
+    const wrap = el('coa-content');
+    if (!wrap) return;
+    const coa = state.kernel.coa || [];
+    if (!coa.length) {
+        wrap.innerHTML = emptyState('Chart of Accounts not seeded yet', 'Open this page with edit access to seed the Indonesian SMB starter chart.');
+        return;
+    }
+    const body = coa.map(a => `<tr class="fluxy-table-row">
+        <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${escapeHtml(a.code)}</span></td>
+        <td class="fluxy-table-cell">${escapeHtml(a.name)}</td>
+        <td class="fluxy-table-cell"><span class="fluxy-table-cell-meta">${escapeHtml(a.type)}</span></td>
+        <td class="fluxy-table-cell"><span class="fluxy-table-cell-meta">${escapeHtml(a.normal_balance)}</span></td>
+        <td class="fluxy-table-cell">${a.is_active !== false ? '<span class="fluxy-table-status fluxy-status-success">Active</span>' : '<span class="fluxy-table-status fluxy-status-neutral">Archived</span>'}</td>
+    </tr>`).join('');
+    wrap.innerHTML = tableShell([{ label: 'Code' }, { label: 'Account' }, { label: 'Type' }, { label: 'Normal' }, { label: 'Status' }], body);
+}
+
+function renderLedgerSelector() {
+    const sel = el('ledger-account-select');
+    if (!sel) return;
+    const coa = state.kernel.coa || [];
+    const prev = sel.value;
+    sel.innerHTML = coa.map(a => `<option value="${escapeHtml(a.code)}">${escapeHtml(a.code)} · ${escapeHtml(a.name)}</option>`).join('');
+    const pick = coa.find(a => a.code === prev) ? prev : (coa[0] ? coa[0].code : '');
+    sel.value = pick;
+    renderGeneralLedger(pick);
+}
+
+async function renderGeneralLedger(accountCode) {
+    const wrap = el('ledger-content');
+    if (!wrap) return;
+    if (!accountCode) {
+        wrap.innerHTML = emptyState('Pick an account', 'Choose an account to see its ledger activity.');
+        return;
+    }
+    wrap.innerHTML = '<div class="fluxy-table-loading-cell">Loading…</div>';
+    try {
+        const gl = await state.ds.getGeneralLedger(state.user.uid, accountCode, { periodKey: currentPeriodKey() });
+        if (!gl.entries.length) {
+            wrap.innerHTML = emptyState('No activity', 'This account has no postings in the selected period.');
+            return;
+        }
+        const body = gl.entries.map(e => `<tr class="fluxy-table-row">
+            <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${escapeHtml(prettyRule(e.posting_rule_id))}</span><span class="fluxy-table-cell-meta">${escapeHtml(e.memo || '')}</span></td>
+            <td class="fluxy-table-cell fluxy-table-money">${e.debit ? formatRupiah(e.debit) : '—'}</td>
+            <td class="fluxy-table-cell fluxy-table-money">${e.credit ? formatRupiah(e.credit) : '—'}</td>
+            <td class="fluxy-table-cell fluxy-table-money">${signedRupiah(e.running_balance)}</td>
+        </tr>`).join('');
+        const closing = `<tr class="fluxy-table-row fluxy-table-row-total">
+            <td class="fluxy-table-cell">Closing balance</td><td class="fluxy-table-cell fluxy-table-money">—</td><td class="fluxy-table-cell fluxy-table-money">—</td>
+            <td class="fluxy-table-cell fluxy-table-money">${signedRupiah(gl.closing)}</td></tr>`;
+        wrap.innerHTML = tableShell([{ label: 'Entry' }, { label: 'Debit', money: true }, { label: 'Credit', money: true }, { label: 'Running', money: true }], body + closing);
+    } catch (err) {
+        console.error('General ledger load failed:', err);
+        wrap.innerHTML = emptyState('Could not load ledger', 'Please try again.');
+    }
+}
+
+function renderClosePanel() {
+    const pk = currentPeriodKey();
+    if (el('close-period-label')) el('close-period-label').textContent = pk;
+    const status = el('close-status');
+    const btn = el('close-period-btn');
+    if (!status || !btn) return;
+    const period = state.kernel.period || { status: 'open' };
+    const tb = state.kernel.trial || { balanced: true, rows: [] };
+    if (period.status === 'closed' || period.status === 'locked') {
+        status.innerHTML = `<span class="fluxy-table-status fluxy-status-neutral">Period ${escapeHtml(period.status)}</span>`;
+        btn.disabled = true;
+        btn.textContent = 'Period closed';
+        return;
+    }
+    if (!tb.rows.length) {
+        status.innerHTML = '<span class="fluxy-table-status fluxy-status-neutral">No postings to close</span>';
+        btn.disabled = true;
+        btn.textContent = 'Close period';
+        return;
+    }
+    if (!tb.balanced) {
+        status.innerHTML = '<span class="fluxy-table-status fluxy-status-danger">Trial balance is out of balance</span>';
+        btn.disabled = true;
+        btn.textContent = 'Close period';
+        return;
+    }
+    status.innerHTML = '<span class="fluxy-table-status fluxy-status-success">Trial balance is in balance</span>';
+    btn.disabled = false;
+    btn.textContent = 'Close period';
+}
+
+async function onClosePeriod() {
+    const pk = currentPeriodKey();
+    const ok = await window.showConfirmDialog?.({
+        title: `Close ${pk}?`,
+        body: 'This posts a closing journal that rolls net income into <strong>Retained Earnings</strong> and locks the period. New postings to this period will be blocked.',
+        confirmLabel: 'Close period',
+        cancelLabel: 'Cancel',
+        tone: 'default'
+    });
+    if (ok === false) return;
+    const btn = el('close-period-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Closing…'; }
+    try {
+        const res = await state.ds.closePeriod(state.user.uid, pk);
+        window.showToast?.(`Closed ${pk}. Net ${signedRupiah(res.net)} posted to Retained Earnings.`, 'success');
+        await loadKernel(true);
+    } catch (err) {
+        console.error('Close period failed:', err);
+        await window.showAlertDialog?.({ title: 'Could not close period', body: escapeHtml(err.message || 'Please try again.'), tone: 'danger' });
+        renderClosePanel();
+    }
 }

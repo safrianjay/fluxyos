@@ -1163,6 +1163,72 @@ financial records are stored in Firestore.
 **Sidebar route:** `Balance Sheet` → `/balance-sheet`, under the Reporting group
 in `sidebar-loader.js` (active id `nav-balance-sheet`).
 
+### 4m.3. Accounting Kernel — double-entry ledger (workspace-scoped)
+
+The real double-entry engine that sits **behind** the business documents. Business
+documents stay the only operational entry point; posting is silent. Pure posting
+rules live in `assets/js/accounting-engine.js` (no Firestore/DOM, unit-tested in
+`tests/accounting-engine.spec.js`); the Firestore I/O lives in the "ACCOUNTING
+KERNEL" section of `db-service.js`. Rules verified in
+`tests/accounting-kernel-rules-emulator-test.mjs` (17 cases).
+
+**Architecture:** client-side posting; Firestore rules are the integrity boundary.
+`addTransaction` / `addBill` / `addSubscription` / `markBillPaid` build the journal
+via `buildJournal()` and write it **atomically in the same `writeBatch`** as the
+document (helper `_postSourceJournal` → `_attachJournalToBatch`). Posting never
+blocks the document — a build error marks the row `accounting_status: 'pending'`
+for a later sweep. Money is always a raw integer Rupiah.
+
+Four new **workspace-scoped** collections (route through `_scope()`; never
+hardcode `users/`):
+
+| Collection | Doc id | Key fields |
+|---|---|---|
+| `chart_of_accounts` | `{code}` | `code, name, type (asset/liability/equity/revenue/expense), subtype, parent_code, normal_balance, is_active, currency, entity_id, opening_balance, created_at`. Seeded idempotently by `seedChartOfAccounts()` from `CHART_OF_ACCOUNTS_SEED`. Archive via `is_active`; **never deleted**. |
+| `journals` | auto | `posting_rule_id, source:{collection,id}, period_key 'YYYY-MM', status (posted/reversal/reversed), entity_id, currency, memo, lines[], total_debit, total_credit, is_balanced, reverses_journal_id, reversed_by_journal_id, posted_by, posted_at, created_at`. **Immutable** after post (rules allow only `reversed_by_journal_id` to change; no delete). Created only into a **non-closed** period. |
+| `ledger_balances` | `{period_key}__{account_code}` | `period_key, account_code, account_type, entity_id, currency, debit_total, credit_total, updated_at`. Running per-account/period totals, written via `FieldValue.increment` alongside each journal. **The trial-balance source** — never sum all journal lines. |
+| `periods` | `{period_key}` | `period_key, status (open/closed/locked), entity_id, closed_by, closed_at, retained_earnings_posted, updated_at`. Missing doc = open. `closePeriod()` posts a closing journal (net income → `3000 Retained Earnings`) and sets `closed`. Lock is owner/admin only. |
+
+Foresight fields present on every journal/account now (multi-entity/-currency UI
+deferred): `entity_id` (= workspaceId), `currency` ('IDR'), `fx_rate` (1),
+`functional_amount`. Source documents gain `journal_ref` + `accounting_status`
+(`posted`/`pending`/`excluded`) for drill-down.
+
+**Posting rules** (`selectRule` → rule table in `accounting-engine.js`): expense→
+Dr expense/Cr Cash; income→Dr Cash/Cr Revenue; `pending_payable`→Dr expense/Cr A/P;
+bill→Dr expense/Cr A/P (accrual), bill payment (carries `linked_bill_id`)→Dr A/P/Cr
+Cash (settlement, no double expense); subscription→accrual; invoice (non-draft)→Dr
+A/R/Cr Revenue. `transfer`/`adjustment`/custom types and invoice drafts do **not**
+post. Account selection honors saved `accounting_mappings` → category defaults →
+type defaults → `6999` fallback.
+
+**Known limitation (accepted):** rules verify Σdebit==Σcredit on the journal
+**totals** but cannot sum the `lines[]` array — a client could submit balanced
+totals with lopsided lines. Compensating controls: the Trial Balance view re-asserts
+balance, and `scripts/reconcile-ledger-balances.js` (planned) rebuilds balances from
+journals. Server-side posting would close this; client-side was chosen for
+architectural fit/speed.
+
+**`DataService` kernel methods:** `seedChartOfAccounts`, `getChartOfAccounts`,
+`listJournals`, `getJournalById`, `getTrialBalance` (from `ledger_balances`),
+`getGeneralLedger` (running balance per account), `getPeriod`, `listPeriods`,
+`closePeriod`. UI surfaces these as Accounting Center tabs: **Journals / General
+Ledger / Trial Balance / Chart of Accounts** + a working **Close** panel
+(`accounting.html` + `accounting.js`).
+
+**Permissions:** `accounting.read` (all members incl. viewer), `accounting.post`
++ `period.close` (finance+), `period.lock` (owner/admin). See `perms-service.js`.
+
+**Cutover:** `scripts/post-opening-balances.js` posts one opening-balance journal
+per workspace (dry-run default; `--commit` to write; idempotent). No mass backfill.
+
+**Follow-ups (not yet wired):** invoice `INV-ISSUE` posting on finalize +
+`INV-PAY` on `markInvoicePaid`; CSV/bank-statement bulk imports currently mark
+rows `pending` (not auto-posted, to stay under the 500-write batch ceiling);
+period reopen; the reconcile script; correction-in-current-period on edits to a
+**closed** period (open-period edits re-post; the engine's `buildReversalJournal`
+exists for this).
+
 ### 4n. Invoices — `users/{userId}/invoices/{invoiceId}` (+ `items` subcollection)
 
 Customer invoices for the Operations → Invoices page (`invoices.html` +

@@ -1,6 +1,7 @@
-import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
+import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, CHART_OF_ACCOUNTS_SEED, signedBalance, periodKey as acctPeriodKey } from "./accounting-engine.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
 // See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
@@ -388,11 +389,15 @@ class DataService {
 
     async addTransaction(userId, data) {
         const { timestamp, ...rest } = data;
-        const ref = await addDoc(collection(this.db, `${this._scope(userId)}/transactions`), {
-            ...rest,
-            timestamp: timestamp || serverTimestamp(),
-            created_at: serverTimestamp()
-        });
+        const scope = this._scope(userId);
+        const ref = doc(collection(this.db, `${scope}/transactions`));
+        const payload = { ...rest, timestamp: timestamp || serverTimestamp(), created_at: serverTimestamp() };
+        const batch = writeBatch(this.db);
+        // Post the double-entry journal atomically with the transaction. Posting
+        // never blocks the write — failures mark the row `pending` for a sweep.
+        await this._postSourceJournal(userId, batch, 'transactions', ref, payload, { date: timestamp });
+        batch.set(ref, payload);
+        await batch.commit();
         await this._auditCreateBestEffort(userId, 'transaction.create', 'transactions', ref.id, {
             amount: data.amount, vendor_name: data.vendor_name, category: data.category,
             type: data.type, status: data.status
@@ -433,7 +438,14 @@ class DataService {
         // but only allow strings or omission — not literal `null`).
         ['budget_id', 'budget_allocation_id', 'budget_match_method', 'budget_match_status', 'budget_impact_status']
             .forEach((field) => { if (payload[field] == null) delete payload[field]; });
-        const ref = await addDoc(collection(this.db, `${this._scope(userId)}/bills`), payload);
+        const scope = this._scope(userId);
+        const ref = doc(collection(this.db, `${scope}/bills`));
+        const batch = writeBatch(this.db);
+        // A bill accrues the expense now (Dr expense / Cr Accounts Payable). The
+        // later "mark paid" creates a linked expense transaction that settles A/P.
+        await this._postSourceJournal(userId, batch, 'bills', ref, payload, { date: data.due_date || timestamp });
+        batch.set(ref, payload);
+        await batch.commit();
         await this._auditCreateBestEffort(userId, 'bill.create', 'bills', ref.id, {
             amount: data.amount, vendor_name: data.vendor_name, category: data.category,
             due_date: data.due_date, payment_status: data.payment_status
@@ -515,6 +527,10 @@ class DataService {
         Object.assign(transaction, cash);
 
         const batch = writeBatch(this.db);
+        // The linked payment carries linked_bill_id, so the engine posts BILL-PAY
+        // (Dr Accounts Payable / Cr Cash) — settling the A/P the bill accrued at
+        // creation rather than recognizing the expense a second time.
+        await this._postSourceJournal(userId, batch, 'transactions', txRef, transaction, { date: transaction.timestamp });
         batch.set(txRef, transaction);
         batch.update(doc(this.db, `${this._scope(userId)}/bills/${billId}`), {
             payment_status: 'paid',
@@ -542,10 +558,13 @@ class DataService {
     // --- SUBSCRIPTIONS ---
     async addSubscription(userId, data) {
         const { timestamp, ...rest } = data;
-        const ref = await addDoc(collection(this.db, `${this._scope(userId)}/subscriptions`), {
-            ...rest,
-            timestamp: timestamp || serverTimestamp()
-        });
+        const scope = this._scope(userId);
+        const ref = doc(collection(this.db, `${scope}/subscriptions`));
+        const payload = { ...rest, timestamp: timestamp || serverTimestamp() };
+        const batch = writeBatch(this.db);
+        await this._postSourceJournal(userId, batch, 'subscriptions', ref, payload, { date: data.renewal_date || timestamp });
+        batch.set(ref, payload);
+        await batch.commit();
         await this._auditCreateBestEffort(userId, 'subscription.create', 'subscriptions', ref.id, {
             amount: data.amount, vendor_name: data.vendor_name, category: data.category,
             renewal_date: data.renewal_date
@@ -2082,7 +2101,287 @@ class DataService {
             after: { source_type: sourceType, source_value: sourceValue, target_account_code: code },
             source: 'dashboard'
         });
+        this._acctMapCache = {}; // invalidate the posting-engine mapping cache
         return { id: safeKey, ...payload };
+    }
+
+    // =====================================================================
+    // ACCOUNTING KERNEL (double-entry posting, ledger, periods)
+    // The pure rules live in accounting-engine.js; this section is the
+    // Firestore I/O layer that posts journals atomically with the business
+    // document and reads back the ledger. See docs/PROJECT_BACKGROUND.md §4n.
+    // =====================================================================
+
+    // Bare workspace/user id (not the path) for entity_id stamping. Mirrors the
+    // resolution _scope() does, but returns just the id.
+    _resolvedScopeId(scopeId) {
+        if (!this._workspaceMode()) return scopeId;
+        let wsId = (typeof window !== 'undefined' && window.FluxyWorkspace && window.FluxyWorkspace.id) || null;
+        if (!wsId && typeof sessionStorage !== 'undefined') {
+            try { const c = JSON.parse(sessionStorage.getItem('fluxy_ws') || 'null'); if (c && c.id) wsId = c.id; } catch (_) {}
+        }
+        return wsId || scopeId;
+    }
+
+    // Saved account mappings as the engine's { 'category:X' | 'type:y' -> code }
+    // shape. Cached per scope for the session so create-time posting stays fast.
+    async _loadAcctMappings(userId) {
+        this._acctMapCache = this._acctMapCache || {};
+        const key = this._scope(userId);
+        if (this._acctMapCache[key]) return this._acctMapCache[key];
+        const raw = await this.getAccountingMappings(userId).catch(() => []);
+        const map = {};
+        raw.forEach((m) => {
+            if (!m.target_account_code) return;
+            if (m.source_type === 'transaction_category') map[`category:${m.source_value}`] = m.target_account_code;
+            else if (m.source_type === 'transaction_type') map[`type:${String(m.source_value).toLowerCase()}`] = m.target_account_code;
+        });
+        this._acctMapCache[key] = map;
+        return map;
+    }
+
+    // Write one journal + its ledger_balances increments into an existing batch.
+    // Returns the new journal DocumentReference. Shared by document posting,
+    // opening balances, period close, and corrections.
+    _attachJournalToBatch(batch, scope, journal, { entityId = null } = {}) {
+        const journalRef = doc(collection(this.db, `${scope}/journals`));
+        const journalDoc = {
+            ...journal,
+            entity_id: entityId,
+            posted_by: this.actorUid || null,
+            posted_at: serverTimestamp(),
+            created_at: serverTimestamp()
+        };
+        batch.set(journalRef, journalDoc);
+        (journal.lines || []).forEach((l) => {
+            const balRef = doc(this.db, `${scope}/ledger_balances/${journal.period_key}__${l.account_code}`);
+            batch.set(balRef, {
+                period_key: journal.period_key,
+                account_code: l.account_code,
+                account_type: l.account_type,
+                entity_id: entityId,
+                currency: 'IDR',
+                debit_total: increment(Number(l.debit) || 0),
+                credit_total: increment(Number(l.credit) || 0),
+                updated_at: serverTimestamp()
+            }, { merge: true });
+        });
+        return journalRef;
+    }
+
+    // Build the journal for a business document and stage it in `batch`. Mutates
+    // `payload` to carry journal_ref + accounting_status. Posting NEVER blocks the
+    // document: any engine/build error marks the doc `pending` for a later sweep.
+    async _postSourceJournal(userId, batch, sourceCollection, sourceRef, payload, opts = {}) {
+        try {
+            const mappings = await this._loadAcctMappings(userId);
+            const journal = buildJournal({
+                collection: sourceCollection,
+                id: sourceRef.id,
+                document: payload,
+                mappings,
+                date: opts.date || payload.timestamp || payload.due_date || payload.renewal_date || null
+            });
+            if (!journal) { payload.accounting_status = 'excluded'; return null; }
+            const journalRef = this._attachJournalToBatch(batch, this._scope(userId), journal, {
+                entityId: this._resolvedScopeId(userId)
+            });
+            payload.journal_ref = journalRef.id;
+            payload.accounting_status = 'posted';
+            return journalRef.id;
+        } catch (err) {
+            console.warn('[accounting] posting skipped, marked pending:', err && err.message ? err.message : err);
+            payload.accounting_status = 'pending';
+            return null;
+        }
+    }
+
+    // Idempotent Chart of Accounts seed. Writes only the accounts that don't yet
+    // exist, so it is safe to call on every Accounting Center load.
+    async seedChartOfAccounts(userId) {
+        const scope = this._scope(userId);
+        const existing = await getDocs(collection(this.db, `${scope}/chart_of_accounts`));
+        const have = new Set(existing.docs.map((d) => d.id));
+        const entityId = this._resolvedScopeId(userId);
+        const batch = writeBatch(this.db);
+        let created = 0;
+        CHART_OF_ACCOUNTS_SEED.forEach((a) => {
+            if (have.has(a.code)) return;
+            batch.set(doc(this.db, `${scope}/chart_of_accounts/${a.code}`), {
+                code: a.code,
+                name: a.name,
+                type: a.type,
+                subtype: null,
+                parent_code: null,
+                normal_balance: (a.type === 'asset' || a.type === 'expense') ? 'debit' : 'credit',
+                is_active: true,
+                currency: 'IDR',
+                entity_id: entityId,
+                opening_balance: 0,
+                created_at: serverTimestamp()
+            });
+            created += 1;
+        });
+        if (created) await batch.commit();
+        return created;
+    }
+
+    async getChartOfAccounts(userId) {
+        const snap = await getDocs(collection(this.db, `${this._scope(userId)}/chart_of_accounts`));
+        return snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => String(a.code).localeCompare(String(b.code)));
+    }
+
+    // Recent journals (newest first). Period/account filters apply client-side so
+    // no composite index is required at this volume.
+    async listJournals(userId, { periodKey: pk = null, accountCode = null, max = 200 } = {}) {
+        const snap = await getDocs(query(
+            collection(this.db, `${this._scope(userId)}/journals`),
+            orderBy('posted_at', 'desc'),
+            limit(max)
+        ));
+        let rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        if (pk) rows = rows.filter((j) => j.period_key === pk);
+        if (accountCode) rows = rows.filter((j) => (j.lines || []).some((l) => l.account_code === accountCode));
+        return rows;
+    }
+
+    async getJournalById(userId, journalId) {
+        if (!journalId) return null;
+        const s = await getDoc(doc(this.db, `${this._scope(userId)}/journals/${journalId}`));
+        return s.exists() ? { id: s.id, ...s.data() } : null;
+    }
+
+    // Trial balance from the running ledger_balances snapshots (not by summing all
+    // journal lines — that is the §7 scalability requirement). Optionally scoped to
+    // one period. Each account nets to a single debit- or credit-column figure.
+    async getTrialBalance(userId, { periodKey: pk = null } = {}) {
+        const [snap, coa] = await Promise.all([
+            getDocs(collection(this.db, `${this._scope(userId)}/ledger_balances`)),
+            this.getChartOfAccounts(userId)
+        ]);
+        const meta = {};
+        coa.forEach((a) => { meta[a.code] = { name: a.name, type: a.type }; });
+        const agg = {};
+        snap.docs.forEach((d) => {
+            const b = d.data();
+            if (pk && b.period_key !== pk) return;
+            const c = b.account_code;
+            if (!agg[c]) {
+                agg[c] = {
+                    account_code: c,
+                    account_type: (meta[c] && meta[c].type) || b.account_type || 'asset',
+                    account_name: (meta[c] && meta[c].name) || c,
+                    debit_total: 0,
+                    credit_total: 0
+                };
+            }
+            agg[c].debit_total += Number(b.debit_total || 0);
+            agg[c].credit_total += Number(b.credit_total || 0);
+        });
+        const rows = Object.values(agg)
+            .map((r) => {
+                const net = r.debit_total - r.credit_total;
+                return {
+                    ...r,
+                    debit_amount: net > 0 ? net : 0,
+                    credit_amount: net < 0 ? -net : 0,
+                    balance: signedBalance(r.account_type, r.debit_total, r.credit_total)
+                };
+            })
+            .filter((r) => r.debit_total || r.credit_total)
+            .sort((a, b) => String(a.account_code).localeCompare(String(b.account_code)));
+        const totalDebit = rows.reduce((s, r) => s + r.debit_amount, 0);
+        const totalCredit = rows.reduce((s, r) => s + r.credit_amount, 0);
+        return { rows, totalDebit, totalCredit, balanced: totalDebit === totalCredit };
+    }
+
+    // General ledger for one account: every journal line that touches the account,
+    // with a running balance in the account's natural direction.
+    async getGeneralLedger(userId, accountCode, { periodKey: pk = null, max = 300 } = {}) {
+        if (!accountCode) return { account_code: accountCode, entries: [], closing: 0 };
+        const journals = await this.listJournals(userId, { periodKey: pk, accountCode, max });
+        const coa = await this.getChartOfAccounts(userId);
+        const acct = coa.find((a) => a.code === accountCode);
+        const type = acct ? acct.type : 'asset';
+        const ordered = journals.slice().sort((a, b) => this._journalSortKey(a) - this._journalSortKey(b));
+        let running = 0;
+        const entries = [];
+        ordered.forEach((j) => {
+            (j.lines || []).filter((l) => l.account_code === accountCode).forEach((l) => {
+                running += signedBalance(type, l.debit, l.credit);
+                entries.push({
+                    journal_id: j.id,
+                    period_key: j.period_key,
+                    posting_rule_id: j.posting_rule_id,
+                    source: j.source || null,
+                    memo: l.memo || j.memo || '',
+                    debit: Number(l.debit) || 0,
+                    credit: Number(l.credit) || 0,
+                    running_balance: running
+                });
+            });
+        });
+        return { account_code: accountCode, account_name: acct ? acct.name : accountCode, account_type: type, entries, closing: running };
+    }
+
+    _journalSortKey(j) {
+        const t = j.posted_at;
+        if (t && typeof t.toMillis === 'function') return t.toMillis();
+        if (t && typeof t.seconds === 'number') return t.seconds * 1000;
+        return 0;
+    }
+
+    async getPeriod(userId, pk) {
+        if (!pk) return { period_key: pk, status: 'open' };
+        const s = await getDoc(doc(this.db, `${this._scope(userId)}/periods/${pk}`));
+        return s.exists() ? { id: s.id, ...s.data() } : { period_key: pk, status: 'open' };
+    }
+
+    async listPeriods(userId) {
+        const s = await getDocs(collection(this.db, `${this._scope(userId)}/periods`));
+        return s.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => String(b.period_key).localeCompare(String(a.period_key)));
+    }
+
+    // Close a period: roll its net income into Retained Earnings via a closing
+    // journal and lock the period to `closed`. Refuses to close an out-of-balance
+    // period. The closing journal posts WHILE the period is still open (the lock
+    // write commits in the same batch), so future journals into it are blocked.
+    async closePeriod(userId, pk) {
+        if (!pk) throw new Error('period_key required');
+        const current = await this.getPeriod(userId, pk);
+        if (current.status === 'closed' || current.status === 'locked') {
+            throw new Error('Period is already closed');
+        }
+        const tb = await this.getTrialBalance(userId, { periodKey: pk });
+        if (!tb.balanced) throw new Error('Trial balance is out of balance — cannot close this period');
+        let revenue = 0;
+        let expense = 0;
+        tb.rows.forEach((r) => {
+            const natural = signedBalance(r.account_type, r.debit_total, r.credit_total);
+            if (r.account_type === 'revenue') revenue += natural;
+            if (r.account_type === 'expense') expense += natural;
+        });
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+        const batch = writeBatch(this.db);
+        const closing = buildClosingJournal({ revenueTotal: revenue, expenseTotal: expense, periodKey: pk });
+        if (closing) this._attachJournalToBatch(batch, scope, closing, { entityId });
+        batch.set(doc(this.db, `${scope}/periods/${pk}`), {
+            period_key: pk,
+            status: 'closed',
+            entity_id: entityId,
+            closed_by: this.actorUid || null,
+            closed_at: serverTimestamp(),
+            retained_earnings_posted: !!closing,
+            updated_at: serverTimestamp()
+        }, { merge: true });
+        await batch.commit();
+        await this._auditCreateBestEffort(userId, 'period.close', 'periods', pk, { revenue, expense, net: revenue - expense });
+        return { period_key: pk, revenue, expense, net: revenue - expense };
     }
 
     // Orchestrates the period reads and returns the full readiness snapshot used
