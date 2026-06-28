@@ -1,7 +1,7 @@
 import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
-import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, CHART_OF_ACCOUNTS_SEED, signedBalance, periodKey as acctPeriodKey } from "./accounting-engine.js";
+import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, CHART_OF_ACCOUNTS_SEED, signedBalance, periodKey as acctPeriodKey } from "./accounting-engine.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
 // See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
@@ -1444,7 +1444,7 @@ class DataService {
     async inviteMember(workspaceId, { email, role, invitedBy = null, invitedByEmail = null, expiresAt = null } = {}) {
         const key = this._emailKey(email);
         if (!key) throw new Error('An email address is required.');
-        if (!['admin', 'finance', 'viewer'].includes(role)) throw new Error('Invalid role.');
+        if (!['admin', 'finance', 'accountant', 'viewer'].includes(role)) throw new Error('Invalid role.');
         const ref = doc(this.db, `workspaces/${workspaceId}/invites/${key}`);
         await setDoc(ref, {
             email: key,
@@ -1473,7 +1473,7 @@ class DataService {
     }
 
     async updateMemberRole(workspaceId, memberUid, role) {
-        if (!['admin', 'finance', 'viewer'].includes(role)) throw new Error('Invalid role.');
+        if (!['admin', 'finance', 'accountant', 'viewer'].includes(role)) throw new Error('Invalid role.');
         const ref = doc(this.db, `workspaces/${workspaceId}/members/${memberUid}`);
         let before = {};
         try { before = (await getDoc(ref)).data() || {}; } catch (_) {}
@@ -2185,6 +2185,7 @@ class DataService {
         batch.set(journalRef, {
             ...journal,
             entity_id: entityId,
+            created_by: journal.created_by || this.actorUid || null,
             posted_by: this.actorUid || null,
             posted_at: serverTimestamp(),
             created_at: serverTimestamp()
@@ -2212,6 +2213,56 @@ class DataService {
             }, { merge: true });
         });
         return journalRef;
+    }
+
+    // Reserve N sequential journal numbers per period-year in a single atomic
+    // transaction, so concurrent posts can never collide on a number. `yearCounts`
+    // is { '2026': 2, '2025': 1 }. Returns { '2026': base, ... } where the first
+    // number to assign for a year is base+1. Runs BEFORE the writeBatch commit;
+    // a failed batch afterwards leaves a harmless gap (never a duplicate).
+    async _reserveJournalNumbers(userId, yearCounts) {
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+        const years = Object.keys(yearCounts || {}).filter((y) => Number(yearCounts[y]) > 0);
+        if (!years.length) return {};
+        const bases = {};
+        await runTransaction(this.db, async (tx) => {
+            const refs = years.map((y) => doc(this.db, `${scope}/counters/journal-${y}`));
+            const snaps = await Promise.all(refs.map((r) => tx.get(r)));
+            years.forEach((y, i) => {
+                const cur = snaps[i].exists() ? Number(snaps[i].data().seq || 0) : 0;
+                bases[y] = cur;
+                tx.set(refs[i], {
+                    seq: cur + Number(yearCounts[y]),
+                    entity_id: entityId,
+                    updated_at: serverTimestamp()
+                }, { merge: true });
+            });
+        });
+        return bases;
+    }
+
+    // Stamp journal_number (JE-YYYY-NNNNNN) + journal_seq onto each journal in
+    // order, consuming the reserved per-year bases. Numbering follows the journal's
+    // own accounting-period year. Mutates and returns the journals.
+    _assignJournalNumbers(journals, bases) {
+        const cursor = {};
+        (journals || []).forEach((j) => {
+            const y = String(j.period_key || '').slice(0, 4) || String(new Date().getFullYear());
+            cursor[y] = (cursor[y] == null ? (Number(bases[y]) || 0) : cursor[y]) + 1;
+            const seq = cursor[y];
+            j.journal_seq = seq;
+            j.journal_number = `JE-${y}-${String(seq).padStart(6, '0')}`;
+        });
+        return journals;
+    }
+
+    // Human-readable number of the source document for register/detail display
+    // without an extra fetch. Only set when a real document number exists.
+    _sourceNumberOf(sourceCollection, payload) {
+        if (!payload) return null;
+        if (sourceCollection === 'invoices') return payload.invoice_number || null;
+        return null;
     }
 
     // Flush an accumulated balance map (one merged increment per account+period).
@@ -2248,30 +2299,49 @@ class DataService {
             const entityId = this._resolvedScopeId(userId);
             const acc = {};
             let targetPeriod = null;
-            const oldJournalId = existing && existing.journal_ref;
+            let reversal = null;
+            let oldJournalId = existing && existing.journal_ref;
             if (oldJournalId) {
                 const oldJournal = await this.getJournalById(userId, oldJournalId);
                 if (oldJournal && !oldJournal.reversed_by_journal_id) {
                     targetPeriod = await this._openTargetPeriod(userId, oldJournal.period_key);
-                    const reversal = buildReversalJournal({ ...oldJournal, id: oldJournalId }, { targetPeriodKey: targetPeriod });
-                    const revRef = this._attachJournalToBatch(batch, scope, reversal, { entityId, balanceAcc: acc });
-                    batch.update(doc(this.db, `${scope}/journals/${oldJournalId}`), { reversed_by_journal_id: revRef.id });
+                    reversal = buildReversalJournal({ ...oldJournal, id: oldJournalId }, { targetPeriodKey: targetPeriod });
+                } else {
+                    oldJournalId = null; // already reversed / nothing to reverse
                 }
             }
+            let fresh = null;
             if (afterPayload) {
                 const mappings = await this._loadAcctMappings(userId);
-                const fresh = buildJournal({
+                fresh = buildJournal({
                     collection: sourceCollection, id: sourceRef.id, document: afterPayload, mappings,
                     date: afterPayload.timestamp || afterPayload.due_date || afterPayload.renewal_date || null
                 });
                 if (fresh) {
                     fresh.period_key = targetPeriod || await this._openTargetPeriod(userId, fresh.period_key);
-                    const newRef = this._attachJournalToBatch(batch, scope, fresh, { entityId, balanceAcc: acc });
-                    result.journal_ref = newRef.id;
-                    result.accounting_status = 'posted';
-                } else {
-                    result.accounting_status = 'excluded';
+                    fresh.source_number = this._sourceNumberOf(sourceCollection, afterPayload);
                 }
+            }
+            // Reserve numbers for the journals that will post (reversal first, then
+            // repost) in one transaction before staging them in the batch.
+            const pending = [];
+            if (reversal) pending.push(reversal);
+            if (fresh) pending.push(fresh);
+            if (pending.length) {
+                const counts = {};
+                pending.forEach((j) => { const y = String(j.period_key).slice(0, 4); counts[y] = (counts[y] || 0) + 1; });
+                this._assignJournalNumbers(pending, await this._reserveJournalNumbers(userId, counts));
+            }
+            if (reversal && oldJournalId) {
+                const revRef = this._attachJournalToBatch(batch, scope, reversal, { entityId, balanceAcc: acc });
+                batch.update(doc(this.db, `${scope}/journals/${oldJournalId}`), { reversed_by_journal_id: revRef.id });
+            }
+            if (fresh) {
+                const newRef = this._attachJournalToBatch(batch, scope, fresh, { entityId, balanceAcc: acc });
+                result.journal_ref = newRef.id;
+                result.accounting_status = 'posted';
+            } else if (afterPayload) {
+                result.accounting_status = 'excluded';
             } else {
                 result.accounting_status = 'reversed';
             }
@@ -2296,6 +2366,9 @@ class DataService {
                 date: opts.date || payload.timestamp || payload.due_date || payload.renewal_date || null
             });
             if (!journal) { payload.accounting_status = 'excluded'; return null; }
+            journal.source_number = this._sourceNumberOf(sourceCollection, payload);
+            const bases = await this._reserveJournalNumbers(userId, { [String(journal.period_key).slice(0, 4)]: 1 });
+            this._assignJournalNumbers([journal], bases);
             const journalRef = this._attachJournalToBatch(batch, this._scope(userId), journal, {
                 entityId: this._resolvedScopeId(userId)
             });
@@ -2346,17 +2419,42 @@ class DataService {
             .sort((a, b) => String(a.code).localeCompare(String(b.code)));
     }
 
-    // Recent journals (newest first). Period/account filters apply client-side so
-    // no composite index is required at this volume.
-    async listJournals(userId, { periodKey: pk = null, accountCode = null, max = 200 } = {}) {
-        const snap = await getDocs(query(
-            collection(this.db, `${this._scope(userId)}/journals`),
-            orderBy('posted_at', 'desc'),
-            limit(max)
-        ));
-        let rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    // Recent journals (newest first). Posted journals come from the posted_at-ordered
+    // query; drafts (which carry no posted_at, so the order query omits them) are
+    // fetched separately and surfaced first when includeDrafts is set. All other
+    // filters apply client-side, so no composite index is required at this volume.
+    // GL/trial-balance callers leave includeDrafts off — drafts are not in the ledger.
+    async listJournals(userId, {
+        periodKey: pk = null, accountCode = null, status = null, journalType = null,
+        sourceCollection = null, createdBy = null, amountMin = null, amountMax = null,
+        search = null, includeDrafts = false, max = 200
+    } = {}) {
+        const coll = collection(this.db, `${this._scope(userId)}/journals`);
+        const tasks = [getDocs(query(coll, orderBy('posted_at', 'desc'), limit(max)))];
+        if (includeDrafts) tasks.push(getDocs(query(coll, where('status', '==', 'draft'), limit(50))));
+        const snaps = await Promise.all(tasks);
+        let rows = snaps[0].docs.map((d) => ({ id: d.id, ...d.data() }));
+        if (includeDrafts && snaps[1]) {
+            rows = [...snaps[1].docs.map((d) => ({ id: d.id, ...d.data() })), ...rows];
+        }
+        const typeOf = (j) => j.journal_type || (j.posting_rule_id === 'MANUAL' ? 'manual' : 'system');
         if (pk) rows = rows.filter((j) => j.period_key === pk);
         if (accountCode) rows = rows.filter((j) => (j.lines || []).some((l) => l.account_code === accountCode));
+        if (status) rows = rows.filter((j) => (j.status || 'posted') === status);
+        if (journalType) rows = rows.filter((j) => typeOf(j) === journalType);
+        if (sourceCollection) {
+            rows = sourceCollection === 'manual'
+                ? rows.filter((j) => !(j.source && j.source.collection))
+                : rows.filter((j) => (j.source && j.source.collection) === sourceCollection);
+        }
+        if (createdBy) rows = rows.filter((j) => (j.created_by || j.posted_by) === createdBy);
+        if (amountMin != null) rows = rows.filter((j) => Number(j.total_debit || 0) >= amountMin);
+        if (amountMax != null) rows = rows.filter((j) => Number(j.total_debit || 0) <= amountMax);
+        if (search) {
+            const q = String(search).toLowerCase();
+            rows = rows.filter((j) => [j.journal_number, j.description, j.memo, j.source_number, j.posting_rule_id]
+                .some((v) => String(v || '').toLowerCase().includes(q)));
+        }
         return rows;
     }
 
@@ -2482,7 +2580,10 @@ class DataService {
         const entityId = this._resolvedScopeId(userId);
         const batch = writeBatch(this.db);
         const closing = buildClosingJournal({ revenueTotal: revenue, expenseTotal: expense, periodKey: pk });
-        if (closing) this._attachJournalToBatch(batch, scope, closing, { entityId });
+        if (closing) {
+            this._assignJournalNumbers([closing], await this._reserveJournalNumbers(userId, { [String(closing.period_key).slice(0, 4)]: 1 }));
+            this._attachJournalToBatch(batch, scope, closing, { entityId });
+        }
         batch.set(doc(this.db, `${scope}/periods/${pk}`), {
             period_key: pk,
             status: 'closed',
@@ -2495,6 +2596,175 @@ class DataService {
         await batch.commit();
         await this._auditCreateBestEffort(userId, 'period.close', 'periods', pk, { revenue, expense, net: revenue - expense });
         return { period_key: pk, revenue, expense, net: revenue - expense };
+    }
+
+    // --- Manual journals (accountant workflow: Draft -> Posted) ---------------
+    // Manual journals are the EXCEPTION path for accounting activity the posting
+    // engine does not cover (opening balances, accruals, adjustments, reclasses,
+    // depreciation, FX). They never auto-post: a draft is saved (no number, no
+    // ledger impact), edited, then explicitly posted (number assigned, immutable).
+
+    // Resolve account name/type from the workspace chart of accounts; normalize a
+    // raw UI line list into stored journal lines (integers, one non-zero side).
+    _normalizeManualLines(lines, coa) {
+        const idx = {};
+        (coa || []).forEach((a) => { idx[a.code] = { name: a.name, type: a.type }; });
+        return (lines || []).map((l) => {
+            const code = String(l.account_code || '').trim();
+            const acct = idx[code] || null;
+            const debit = Math.max(0, Math.round(Number(l.debit) || 0));
+            const credit = Math.max(0, Math.round(Number(l.credit) || 0));
+            return {
+                account_code: code,
+                account_type: acct ? acct.type : (l.account_type || 'expense'),
+                account_name: acct ? acct.name : (l.account_name || code),
+                debit,
+                credit,
+                currency: 'IDR',
+                fx_rate: 1,
+                functional_amount: debit || credit,
+                memo: l.memo || ''
+            };
+        }).filter((l) => l.account_code && (l.debit > 0 || l.credit > 0));
+    }
+
+    async createManualJournalDraft(userId, { date = null, period_key = null, description = '', reference = '', subtype = null, memo = '', lines = [] } = {}) {
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+        const pk = period_key || acctPeriodKey(date ? new Date(date) : new Date());
+        const cleanLines = this._normalizeManualLines(lines, await this.getChartOfAccounts(userId));
+        const totalDebit = cleanLines.reduce((s, l) => s + l.debit, 0);
+        const totalCredit = cleanLines.reduce((s, l) => s + l.credit, 0);
+        const ref = doc(collection(this.db, `${scope}/journals`));
+        await setDoc(ref, {
+            posting_rule_id: 'MANUAL',
+            journal_type: 'manual',
+            manual_subtype: subtype || null,
+            status: 'draft',
+            source: { collection: null, id: null },
+            source_number: null,
+            period_key: pk,
+            description: description || 'Manual journal',
+            reference: reference || null,
+            memo: memo || description || '',
+            lines: cleanLines,
+            total_debit: totalDebit,
+            total_credit: totalCredit,
+            is_balanced: totalDebit === totalCredit && totalDebit > 0,
+            currency: 'IDR',
+            entity_id: entityId,
+            created_by: this.actorUid || null,
+            generated_by: this.actorUid || null,
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        });
+        await this._auditCreateBestEffort(userId, 'journal.draft_created', 'journals', ref.id, { period_key: pk });
+        return ref.id;
+    }
+
+    async updateManualJournalDraft(userId, journalId, { date, period_key, description, reference, subtype, memo, lines } = {}) {
+        const scope = this._scope(userId);
+        const existing = await this.getJournalById(userId, journalId);
+        if (!existing) throw new Error('Draft not found');
+        if (existing.status !== 'draft') throw new Error('Only draft journals can be edited');
+        const update = { updated_at: serverTimestamp() };
+        if (date != null || period_key != null) update.period_key = period_key || acctPeriodKey(date ? new Date(date) : new Date());
+        if (description != null) update.description = description || 'Manual journal';
+        if (reference != null) update.reference = reference || null;
+        if (subtype != null) update.manual_subtype = subtype || null;
+        if (memo != null) update.memo = memo;
+        if (lines != null) {
+            const cleanLines = this._normalizeManualLines(lines, await this.getChartOfAccounts(userId));
+            update.lines = cleanLines;
+            update.total_debit = cleanLines.reduce((s, l) => s + l.debit, 0);
+            update.total_credit = cleanLines.reduce((s, l) => s + l.credit, 0);
+            update.is_balanced = update.total_debit === update.total_credit && update.total_debit > 0;
+        }
+        await updateDoc(doc(this.db, `${scope}/journals/${journalId}`), update);
+        return journalId;
+    }
+
+    async deleteManualJournalDraft(userId, journalId) {
+        const existing = await this.getJournalById(userId, journalId);
+        if (!existing) return;
+        if (existing.status !== 'draft') throw new Error('Only draft journals can be deleted');
+        await deleteDoc(doc(this.db, `${this._scope(userId)}/journals/${journalId}`));
+        await this._auditCreateBestEffort(userId, 'journal.draft_deleted', 'journals', journalId, {});
+    }
+
+    // Post a draft: re-finalize through the engine (asserts balance), confirm the
+    // target period is open, reserve a number, then flip the SAME doc to posted and
+    // write its ledger_balances increments — atomically in one batch.
+    async postManualJournal(userId, journalId) {
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+        const draft = await this.getJournalById(userId, journalId);
+        if (!draft) throw new Error('Draft not found');
+        if (draft.status !== 'draft') throw new Error('Journal is not a draft');
+        const coa = await this.getChartOfAccounts(userId);
+        const accountIndex = {};
+        coa.forEach((a) => { accountIndex[a.code] = { name: a.name, type: a.type }; });
+        // Throws on imbalance — a draft must be balanced before it can post.
+        const built = buildManualJournal({
+            lines: draft.lines,
+            period_key: draft.period_key,
+            description: draft.description,
+            reference: draft.reference || null,
+            subtype: draft.manual_subtype || null,
+            accountIndex
+        });
+        const period = await this.getPeriod(userId, built.period_key);
+        if (period.status === 'closed' || period.status === 'locked') {
+            throw new Error('Cannot post into a closed period');
+        }
+        this._assignJournalNumbers([built], await this._reserveJournalNumbers(userId, { [String(built.period_key).slice(0, 4)]: 1 }));
+        const batch = writeBatch(this.db);
+        batch.set(doc(this.db, `${scope}/journals/${journalId}`), {
+            ...built,
+            status: 'posted',
+            entity_id: entityId,
+            generated_by: this.actorUid || draft.generated_by || null,
+            created_by: draft.created_by || this.actorUid || null,
+            posted_by: this.actorUid || null,
+            posted_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        }, { merge: true });
+        built.lines.forEach((l) => {
+            batch.set(doc(this.db, `${scope}/ledger_balances/${built.period_key}__${l.account_code}`), {
+                period_key: built.period_key,
+                account_code: l.account_code,
+                account_type: l.account_type,
+                entity_id: entityId,
+                currency: 'IDR',
+                debit_total: increment(Number(l.debit) || 0),
+                credit_total: increment(Number(l.credit) || 0),
+                updated_at: serverTimestamp()
+            }, { merge: true });
+        });
+        await batch.commit();
+        await this._auditCreateBestEffort(userId, 'journal.posted', 'journals', journalId, { journal_number: built.journal_number });
+        return { id: journalId, journal_number: built.journal_number };
+    }
+
+    // User-triggered reversal from the Journal Detail page. Builds a reversing entry
+    // into the current OPEN period (never mutating a closed book), assigns it a
+    // number, and links it back to the original via reversed_by_journal_id.
+    async reverseJournal(userId, journalId) {
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+        const original = await this.getJournalById(userId, journalId);
+        if (!original) throw new Error('Journal not found');
+        if (original.status === 'draft') throw new Error('Draft journals cannot be reversed — edit or discard the draft instead');
+        if (original.reversed_by_journal_id) throw new Error('This journal has already been reversed');
+        const targetPeriod = await this._openTargetPeriod(userId, original.period_key);
+        const reversal = buildReversalJournal({ ...original, id: journalId }, { targetPeriodKey: targetPeriod });
+        this._assignJournalNumbers([reversal], await this._reserveJournalNumbers(userId, { [String(reversal.period_key).slice(0, 4)]: 1 }));
+        const batch = writeBatch(this.db);
+        const revRef = this._attachJournalToBatch(batch, scope, reversal, { entityId });
+        batch.update(doc(this.db, `${scope}/journals/${journalId}`), { reversed_by_journal_id: revRef.id });
+        await batch.commit();
+        await this._auditCreateBestEffort(userId, 'journal.reversed', 'journals', journalId, { reversal_id: revRef.id, journal_number: reversal.journal_number });
+        return { reversal_id: revRef.id, journal_number: reversal.journal_number };
     }
 
     // Orchestrates the period reads and returns the full readiness snapshot used

@@ -163,7 +163,11 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Posted journal-entry income statement (P&L) | 📋 Planned | The shipped Income Statement is a preview; posted statements wait on journal posting + close |
 | Period close + lock + `accounting_periods` | 📋 Planned | Needs confirmation, locking, and audit flow |
 | Chart of accounts management (`accounting_accounts`) | 📋 Planned | Phase 2 |
-| Journal drafts → posted journal entries (double-entry) | 📋 Planned | Phases 3–4; AI may draft, never auto-post |
+| Double-entry posting kernel (auto-post from business events) | ✅ Shipped | `accounting-engine.js` + db-service; journals / ledger_balances / periods |
+| Journal numbers (`JE-YYYY-NNNNNN`) + per-year counters | ✅ Shipped | Reserved atomically at post; `scripts/backfill-journal-numbers.js` for history |
+| Journal Register redesign + Journal Detail drill-down + filters | ✅ Shipped | `accounting-journal.html`; GL / Trial Balance now drill into Journal Detail |
+| Manual journals (Draft → Posted) + reverse | ✅ Shipped | `accounting-journal-new.html`; `journals.manual` capability; `accountant` role |
+| AI on journals (explain / find source / draft correction) | 📋 Planned | Architecture seam shipped (Journal Detail AI panel); no AI calls yet |
 | Formal accounting statements (posted Balance Sheet, Cash Flow, Trial Balance) | 📋 Planned | Phase 6; waits on chart of accounts, journal entries, opening balances, retained earnings, and period close |
 | Bank reconciliation matching | 📋 Planned | Phase 7 |
 | Accounting export package | 📋 Planned | Topbar "Export package" disabled until shipped |

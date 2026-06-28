@@ -1185,7 +1185,8 @@ hardcode `users/`):
 | Collection | Doc id | Key fields |
 |---|---|---|
 | `chart_of_accounts` | `{code}` | `code, name, type (asset/liability/equity/revenue/expense), subtype, parent_code, normal_balance, is_active, currency, entity_id, opening_balance, created_at`. Seeded idempotently by `seedChartOfAccounts()` from `CHART_OF_ACCOUNTS_SEED`. Archive via `is_active`; **never deleted**. |
-| `journals` | auto | `posting_rule_id, source:{collection,id}, period_key 'YYYY-MM', status (posted/reversal/reversed), entity_id, currency, memo, lines[], total_debit, total_credit, is_balanced, reverses_journal_id, reversed_by_journal_id, posted_by, posted_at, created_at`. **Immutable** after post (rules allow only `reversed_by_journal_id` to change; no delete). Created only into a **non-closed** period. |
+| `journals` | auto | `journal_number ('JE-YYYY-NNNNNN'), journal_seq (int), journal_type ('system'\|'manual'), manual_subtype, posting_rule_id, source:{collection,id}, source_number, period_key 'YYYY-MM', status (draft/posted/reversal/reversed), description, reference, entity_id, currency, memo, lines[], total_debit, total_credit, is_balanced, reverses_journal_id, reversed_by_journal_id, created_by, generated_by, posted_by, posted_at, created_at`. Posted entries are **immutable** (rules allow only `reversed_by_journal_id` to change; no delete) and created only into a **non-closed** period. `journal_type:'manual'` `status:'draft'` rows are editable/deletable until posted. |
+| `counters` | `journal-{YYYY}` | `seq (int, monotonic), entity_id, updated_at`. Per-year journal-number sequence, reserved in a `runTransaction` before the posting batch (`_reserveJournalNumbers`). Rules enforce `seq` only ever grows; no delete. |
 | `ledger_balances` | `{period_key}__{account_code}` | `period_key, account_code, account_type, entity_id, currency, debit_total, credit_total, updated_at`. Running per-account/period totals, written via `FieldValue.increment` alongside each journal. **The trial-balance source** — never sum all journal lines. |
 | `periods` | `{period_key}` | `period_key, status (open/closed/locked), entity_id, closed_by, closed_at, retained_earnings_posted, updated_at`. Missing doc = open. `closePeriod()` posts a closing journal (net income → `3000 Retained Earnings`) and sets `closed`. Lock is owner/admin only. |
 
@@ -1243,6 +1244,36 @@ one batch.
 revenue (legacy invoices with no `INV-ISSUE` journal fall back to a plain income
 posting); `voidInvoice` reverses the issue journal. Invoice docs carry
 `journal_ref`/`accounting_status` (allowed via `isValidInvoiceBase`).
+
+**Journal numbers (wired).** Every posted/reversal journal gets an immutable
+`JE-YYYY-NNNNNN` (annual reset, sequenced by the journal's `period_key` year). The
+number is reserved at post time via `_reserveJournalNumbers` (one `runTransaction`
+over `counters/journal-{YYYY}`, reserving N at once for multi-journal batches like
+corrections) and stamped by `_assignJournalNumbers` before the journal is staged in
+the `writeBatch`. A failed batch after reservation leaves a harmless gap (never a
+duplicate). Existing journals are numbered by `scripts/backfill-journal-numbers.js`
+(dry-run default; seeds the counter docs). The Firestore doc id remains the internal
+id; `journal_number` is the human reference.
+
+**Manual journals (wired).** The accountant workflow for entries the engine doesn't
+post (opening/accrual/adjustment/reclass/closing/audit/correction/depreciation/fx).
+Lifecycle is **Draft → Posted**: `createManualJournalDraft`/`updateManualJournalDraft`
+store an editable `status:'draft'` journal with **no number and no ledger impact**;
+`postManualJournal` re-finalizes through `buildManualJournal` (asserts balance),
+confirms the period is open, reserves a number, and flips the same doc to `posted`
+while writing its `ledger_balances` increments. Drafts can be discarded
+(`deleteManualJournalDraft`); posted entries never can. `reverseJournal` posts a
+user-triggered reversal into the open period. UI: the Journal Register
+(`accounting.html` Journals tab — Date / Journal # / Source / Description / Amount /
+Status / Actions, with filters), the **Journal Detail** drill-down hub
+(`accounting-journal.html`), and the **Manual Journal editor**
+(`accounting-journal-new.html`). General Ledger and Trial Balance rows now drill into
+Journal Detail (TB → GL → Journal → source), so no view dead-ends.
+
+**Roles.** A fifth role, **`accountant`**, has the same finance-collection access as
+`finance` plus the named accounting persona (capability `journals.manual`; posting
++ `period.close`; lock stays owner/admin). Added across `firestore.rules`,
+`perms-service.js`, `settings-team.html`, and the invite/role validators.
 
 **Follow-ups (not yet wired):** edit/void corrections for **bills/subscriptions**
 (same `_correctSourceJournal` pattern as transactions); CSV/bank-statement bulk

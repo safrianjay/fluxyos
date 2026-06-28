@@ -2896,7 +2896,7 @@ service cloud.firestore {
     function isValidMember(data) {
       return data.keys().hasOnly(['uid', 'email', 'display_name', 'role', 'status', 'invited_by', 'joined_at', 'updated_at'])
         && data.uid is string
-        && data.role in ['owner', 'admin', 'finance', 'viewer']
+        && data.role in ['owner', 'admin', 'finance', 'accountant', 'viewer']
         && data.status in ['active', 'pending', 'removed']
         && (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 200))
         && (!('display_name' in data) || data.display_name == null || (data.display_name is string && data.display_name.size() <= 200))
@@ -2906,7 +2906,7 @@ service cloud.firestore {
       return data.keys().hasOnly(['email', 'role', 'status', 'invited_by', 'invited_by_email', 'created_at', 'updated_at', 'expires_at', 'accepted_by', 'accepted_at'])
         && data.email is string && data.email.size() > 0 && data.email.size() <= 200
         && data.email == inviteId
-        && data.role in ['admin', 'finance', 'viewer']
+        && data.role in ['admin', 'finance', 'accountant', 'viewer']
         && data.status in ['pending', 'accepted', 'revoked', 'expired']
         && (!('invited_by' in data) || data.invited_by == null || (data.invited_by is string && data.invited_by.size() <= 160))
         && (!('invited_by_email' in data) || data.invited_by_email == null || (data.invited_by_email is string && data.invited_by_email.size() <= 200))
@@ -2923,7 +2923,7 @@ service cloud.firestore {
           'onboarding', 'bank_accounts', 'bank_balance_snapshots',
           'bank_statement_imports', 'documents', 'billing',
           'billing_payment_requests', 'payment_verifications', 'accounting_mappings',
-          'chart_of_accounts', 'journals', 'ledger_balances', 'periods'
+          'chart_of_accounts', 'journals', 'ledger_balances', 'periods', 'counters'
         ]
         && data.target_id is string && data.target_id.size() <= 200
         && data.source in ['dashboard', 'ai', 'integration', 'system']
@@ -3126,7 +3126,7 @@ service cloud.firestore {
           || hasRole(workspaceId, ['owner', 'admin'])
           && isValidMember(request.resource.data)
           && request.resource.data.uid == memberId
-          && request.resource.data.role in ['admin', 'finance', 'viewer']
+          && request.resource.data.role in ['admin', 'finance', 'accountant', 'viewer']
         // (c) Invite acceptance: the invitee self-joins from a pending invite
           || isSignedIn()
           && memberId == request.auth.uid
@@ -3183,98 +3183,98 @@ service cloud.firestore {
       // read: any active member incl. viewer · create/update: owner/admin/finance
       // · delete/void: owner/admin (most use status changes, not deletes).
       match /transactions/{transactionId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && wsValidTxCreate(request.resource.data);
-        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && wsValidTxUpdate(request.resource.data, resource.data);
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && wsValidTxCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && wsValidTxUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
       match /bills/{billId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && wsValidBillCreate(request.resource.data);
-        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && wsValidBillUpdate(request.resource.data, resource.data);
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && wsValidBillCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && wsValidBillUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
       match /subscriptions/{subscriptionId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && wsValidSubCreate(request.resource.data);
-        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && wsValidSubUpdate(request.resource.data, resource.data);
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && wsValidSubCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && wsValidSubUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
       match /budgets/{budgetId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidBudgetCreate(request.resource.data);
-        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidBudgetUpdate(request.resource.data, resource.data);
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && isValidBudgetCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && isValidBudgetUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
       match /budget_allocations/{allocationId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidBudgetAllocationCreate(request.resource.data);
-        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidBudgetAllocationUpdate(request.resource.data, resource.data);
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && isValidBudgetAllocationCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && isValidBudgetAllocationUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
       match /invoices/{invoiceId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidInvoiceCreate(request.resource.data);
-        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidInvoiceUpdate(request.resource.data, resource.data);
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && isValidInvoiceCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && isValidInvoiceUpdate(request.resource.data, resource.data);
         allow delete: if false;
 
         match /items/{itemId} {
-          allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-          allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+          allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+          allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
             && isValidInvoiceItem(request.resource.data)
             && request.resource.data.created_at == request.time
             && request.resource.data.updated_at == request.time
             && invoiceIsDraftAfterWriteWs(workspaceId, invoiceId);
-          allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+          allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
             && isValidInvoiceItem(request.resource.data)
             && request.resource.data.created_at == resource.data.created_at
             && request.resource.data.updated_at == request.time
             && invoiceIsDraftAfterWriteWs(workspaceId, invoiceId);
-          allow delete: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+          allow delete: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
             && invoiceIsDraftAfterWriteWs(workspaceId, invoiceId);
         }
       }
       match /bank_accounts/{bankAccountId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidBankAccountCreate(request.resource.data);
-        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidBankAccountUpdate(request.resource.data, resource.data);
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && isValidBankAccountCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && isValidBankAccountUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
       match /bank_balance_snapshots/{snapshotId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidBankBalanceSnapshot(request.resource.data);
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && isValidBankBalanceSnapshot(request.resource.data);
         allow update, delete: if false;
       }
       match /bank_statement_imports/{importId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
           && isValidBankStatementImport(request.resource.data)
           && request.resource.data.created_at == request.time
           && request.resource.data.updated_at == request.time;
-        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
           && isValidBankStatementImport(request.resource.data)
           && request.resource.data.created_at == resource.data.created_at;
         allow delete: if false;
 
         match /rows/{rowId} {
-          allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-          allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+          allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+          allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
             && isValidBankStatementRow(request.resource.data)
             && request.resource.data.created_at == request.time;
-          allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+          allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
             && isValidBankStatementRow(request.resource.data)
             && request.resource.data.created_at == resource.data.created_at;
           allow delete: if false;
         }
       }
       match /documents/{documentId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
           && isValidDocumentMetadata(request.resource.data)
           && request.resource.data.created_at == request.time
           && request.resource.data.updated_at == request.time
           && request.resource.data.storage_path.matches('(users|workspaces)/.*/documents/.*');
-        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
           && isValidDocumentMetadata(request.resource.data)
           && request.resource.data.created_at == resource.data.created_at
           && request.resource.data.updated_at == request.time
@@ -3282,22 +3282,22 @@ service cloud.firestore {
         allow delete: if false;
       }
       match /report_exports/{exportId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && wsValidReportExportCreate(request.resource.data);
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && wsValidReportExportCreate(request.resource.data);
         allow update, delete: if false;
       }
       match /accounting_mappings/{mappingId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidAccountingMappingCreate(request.resource.data);
-        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance']) && isValidAccountingMappingUpdate(request.resource.data, resource.data);
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && isValidAccountingMappingCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && isValidAccountingMappingUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
 
       // --- ACCOUNTING KERNEL (double-entry) -------------------------------
       // Chart of Accounts. Archive via is_active; never hard-deleted.
       match /chart_of_accounts/{accountCode} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
           && request.resource.data.code is string
           && request.resource.data.name is string && request.resource.data.name.size() <= 120
           && request.resource.data.type in ['asset', 'liability', 'equity', 'revenue', 'expense']
@@ -3310,25 +3310,58 @@ service cloud.firestore {
       // client-side-posting limitation — the reconcile script + Trial Balance
       // assertion are the compensating controls).
       match /journals/{journalId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+
+        // Create. A manual DRAFT may be unbalanced and carries no journal_number
+        // or period lock while it is being edited. A POSTED/reversal entry must be
+        // balanced (>0), numbered, and target a non-closed period.
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.lines is list
           && request.resource.data.total_debit is number
           && request.resource.data.total_credit is number
-          && request.resource.data.total_debit == request.resource.data.total_credit
-          && request.resource.data.total_debit > 0
-          && request.resource.data.is_balanced == true
-          && request.resource.data.lines is list
-          && request.resource.data.status in ['posted', 'reversal', 'reversed']
-          && wsPeriodOpen(workspaceId, request.resource.data.period_key);
-        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reversed_by_journal_id']);
-        allow delete: if false;
+          && request.resource.data.journal_type in ['system', 'manual']
+          && (
+            (request.resource.data.status == 'draft'
+              && request.resource.data.journal_type == 'manual')
+            || (request.resource.data.status in ['posted', 'reversal', 'reversed']
+              && request.resource.data.total_debit == request.resource.data.total_credit
+              && request.resource.data.total_debit > 0
+              && request.resource.data.is_balanced == true
+              && request.resource.data.journal_number is string
+              && request.resource.data.journal_number.size() > 0
+              && wsPeriodOpen(workspaceId, request.resource.data.period_key))
+          );
+
+        // Update. A draft may be edited by finance/accountant and may transition to
+        // posted (re-asserting balance + number + open period). A posted/reversal/
+        // reversed entry is immutable except for the reversal-linkage field.
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && (
+            (resource.data.status == 'draft'
+              && (
+                request.resource.data.status == 'draft'
+                || (request.resource.data.status == 'posted'
+                  && request.resource.data.total_debit == request.resource.data.total_credit
+                  && request.resource.data.total_debit > 0
+                  && request.resource.data.is_balanced == true
+                  && request.resource.data.journal_number is string
+                  && request.resource.data.journal_number.size() > 0
+                  && wsPeriodOpen(workspaceId, request.resource.data.period_key))
+              ))
+            || (resource.data.status in ['posted', 'reversal', 'reversed']
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reversed_by_journal_id']))
+          );
+
+        // Drafts can be discarded; posted entries are never deleted — corrections
+        // happen through reversal journals only.
+        allow delete: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && resource.data.status == 'draft';
       }
       // Running per-account/period balances (the trial-balance source). Written via
       // FieldValue.increment alongside each journal; field-validated only.
       match /ledger_balances/{balanceId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
-        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance'])
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
           && request.resource.data.account_code is string
           && request.resource.data.period_key is string
           && request.resource.data.debit_total is number && request.resource.data.debit_total >= 0
@@ -3337,12 +3370,24 @@ service cloud.firestore {
       }
       // Period lifecycle. Closing requires finance+; locking is owner/admin only.
       match /periods/{periodKey} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'viewer']);
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
         allow create, update: if request.resource.data.period_key is string
           && request.resource.data.status in ['open', 'closed', 'locked']
           && (request.resource.data.status != 'locked'
-            ? hasRole(workspaceId, ['owner', 'admin', 'finance'])
+            ? hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
             : hasRole(workspaceId, ['owner', 'admin']));
+        allow delete: if false;
+      }
+      // Per-year journal-number counters (doc id `journal-YYYY`). Reserved in a
+      // transaction; `seq` only ever grows so a number is never reissued.
+      match /counters/{counterId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.seq is number
+          && request.resource.data.seq >= 0;
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.seq is number
+          && request.resource.data.seq >= resource.data.seq;
         allow delete: if false;
       }
     }

@@ -126,6 +126,7 @@ function wireStaticControls() {
 
     el('ledger-account-select')?.addEventListener('change', (e) => renderGeneralLedger(e.target.value));
     el('close-period-btn')?.addEventListener('click', () => onClosePeriod());
+    el('journals-new-manual')?.addEventListener('click', () => { window.location.href = 'accounting-journal-new.html'; });
 }
 
 function openFluxyAI() {
@@ -159,7 +160,7 @@ async function loadKernel(force = false) {
         await state.seedPromise; // ensure the chart exists before the first read
         const [coa, journals, trial, period] = await Promise.all([
             state.ds.getChartOfAccounts(state.user.uid),
-            state.ds.listJournals(state.user.uid, { periodKey: pk }),
+            state.ds.listJournals(state.user.uid, { periodKey: pk, includeDrafts: true }),
             state.ds.getTrialBalance(state.user.uid, { periodKey: pk }),
             state.ds.getPeriod(state.user.uid, pk)
         ]);
@@ -644,43 +645,132 @@ function sourceDeepLink(source) {
     return `${base}?${param}=${encodeURIComponent(source.id)}`;
 }
 
+// Deep link to the Journal Detail page (the central accounting drill-down hub).
+function journalDetailLink(id) { return `accounting-journal.html?id=${encodeURIComponent(id)}`; }
+// Drafts open the manual-journal editor to resume editing.
+function journalDraftLink(id) { return `accounting-journal-new.html?draft=${encodeURIComponent(id)}`; }
+
+// "21 Jun" posting date from posted_at (or created_at for drafts), Asia/Jakarta.
+function journalDate(j) {
+    const t = j.posted_at || j.created_at;
+    const ms = t && typeof t.toMillis === 'function' ? t.toMillis()
+        : (t && typeof t.seconds === 'number' ? t.seconds * 1000 : null);
+    if (!ms) return j.status === 'draft' ? 'Not posted' : (j.period_key || '');
+    return new Date(ms).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'Asia/Jakarta' });
+}
+
+// [semanticClass, label] for the status badge.
+function journalStatusBadge(j) {
+    if (j.status === 'draft') return ['fluxy-status-neutral', 'Draft'];
+    if (j.reversed_by_journal_id) return ['fluxy-status-warning', 'Reversed'];
+    if (j.status === 'reversal' || String(j.posting_rule_id || '').startsWith('REVERSAL')) return ['fluxy-status-info', 'Reversal'];
+    if (!j.is_balanced) return ['fluxy-status-danger', 'Check'];
+    return ['fluxy-status-success', 'Posted'];
+}
+
+function journalTypeOf(j) { return j.journal_type || (j.posting_rule_id === 'MANUAL' ? 'manual' : 'system'); }
+
+function journalSourceText(j) {
+    if (j.source_number) return j.source_number;
+    if (j.source && j.source.collection) return `${String(j.source.collection).replace(/s$/, '')} · ${String(j.source.id).slice(0, 8)}`;
+    return journalTypeOf(j) === 'manual' ? 'Manual' : '—';
+}
+
+// Active register filters (period comes from the page-level date picker).
+const journalFilters = { search: '', status: '', type: '', source: '', account: '' };
+
+function applyJournalFilters(rows) {
+    return (rows || []).filter(j => {
+        if (journalFilters.status && (j.status || 'posted') !== journalFilters.status) return false;
+        if (journalFilters.type && journalTypeOf(j) !== journalFilters.type) return false;
+        if (journalFilters.source) {
+            const sc = (j.source && j.source.collection) || 'manual';
+            if (journalFilters.source === 'manual' ? sc !== 'manual' : sc !== journalFilters.source) return false;
+        }
+        if (journalFilters.account && !(j.lines || []).some(l => l.account_code === journalFilters.account)) return false;
+        if (journalFilters.search) {
+            const q = journalFilters.search.toLowerCase();
+            const hay = [j.journal_number, j.description, j.memo, j.source_number, prettyRule(j.posting_rule_id)];
+            if (!hay.some(v => String(v || '').toLowerCase().includes(q))) return false;
+        }
+        return true;
+    });
+}
+
+// Can the current member create manual journals? (UX gate; rules are the boundary.)
+function canManualJournal() {
+    const ws = (typeof window !== 'undefined') ? window.FluxyWorkspace : null;
+    if (ws && typeof ws.can === 'function' && ws.role) return ws.can('journals.manual');
+    return true; // solo/owner or unresolved workspace — rules still enforce
+}
+
+// Populate the account filter + bind toolbar controls once.
+function wireJournalToolbar() {
+    const toolbar = el('journals-toolbar');
+    if (!toolbar) return;
+    const newBtn = el('journals-new-manual');
+    if (newBtn) newBtn.classList.toggle('hidden', !canManualJournal());
+    if (toolbar.dataset.wired) { syncJournalAccountFilter(); return; }
+    toolbar.dataset.wired = '1';
+    syncJournalAccountFilter();
+    const bind = (id, key, evt) => el(id)?.addEventListener(evt, (e) => { journalFilters[key] = e.target.value.trim(); renderJournals(); });
+    bind('journals-filter-search', 'search', 'input');
+    bind('journals-filter-status', 'status', 'change');
+    bind('journals-filter-type', 'type', 'change');
+    bind('journals-filter-source', 'source', 'change');
+    bind('journals-filter-account', 'account', 'change');
+    el('journals-filter-clear')?.addEventListener('click', () => {
+        Object.keys(journalFilters).forEach(k => { journalFilters[k] = ''; });
+        ['journals-filter-search', 'journals-filter-status', 'journals-filter-type', 'journals-filter-source', 'journals-filter-account']
+            .forEach(id => { const n = el(id); if (n) n.value = ''; });
+        renderJournals();
+    });
+}
+
+// Fill the account <select> from the chart of accounts (after coa loads).
+function syncJournalAccountFilter() {
+    const sel = el('journals-filter-account');
+    if (!sel || sel.dataset.filled === String((state.kernel.coa || []).length)) return;
+    const cur = sel.value;
+    const opts = (state.kernel.coa || []).map(a => `<option value="${escapeHtml(a.code)}">${escapeHtml(a.code)} · ${escapeHtml(a.name)}</option>`).join('');
+    sel.innerHTML = `<option value="">All accounts</option>${opts}`;
+    sel.value = cur;
+    sel.dataset.filled = String((state.kernel.coa || []).length);
+}
+
 function renderJournals() {
     const wrap = el('journals-content');
     if (!wrap) return;
     if (el('journals-period')) el('journals-period').textContent = currentPeriodKey();
-    const rows = state.kernel.journals || [];
+    wireJournalToolbar();
+    const all = state.kernel.journals || [];
+    const rows = applyJournalFilters(all);
+    if (!all.length) {
+        wrap.innerHTML = emptyState('No journals this period', 'Create a transaction, bill, or invoice — the engine posts its journal automatically. Use New manual journal for adjustments.');
+        return;
+    }
     if (!rows.length) {
-        wrap.innerHTML = emptyState('No journals this period', 'Create a transaction, bill, or invoice — the engine posts its journal automatically.');
+        wrap.innerHTML = emptyState('No matching journals', 'No journals match the current filters. Clear filters to see all entries for this period.');
         return;
     }
     const body = rows.map(j => {
-        const lines = j.lines || [];
-        const drNames = lines.filter(l => Number(l.debit) > 0).map(l => l.account_name || l.account_code).join(', ') || '—';
-        const crNames = lines.filter(l => Number(l.credit) > 0).map(l => l.account_name || l.account_code).join(', ') || '—';
-        const href = sourceDeepLink(j.source);
-        const isReversal = String(j.posting_rule_id || '').startsWith('REVERSAL');
-        const srcText = j.source && j.source.collection
-            ? `${String(j.source.collection).replace(/s$/, '')} · ${String(j.source.id).slice(0, 8)}`
-            : 'Manual';
-        return `<tr class="fluxy-table-row${href ? ' fluxy-table-row-clickable' : ''}"${href ? ` data-href="${href}" tabindex="0"` : ''}>
-            <td class="fluxy-table-cell">
-                <div class="fluxy-table-cell-primary">${escapeHtml(prettyRule(j.posting_rule_id))}</div>
-                <div class="fluxy-table-cell-meta">${escapeHtml(j.period_key || '')}${isReversal ? ' · reversal' : ''}</div>
-            </td>
-            <td class="fluxy-table-cell">
-                <div class="fluxy-table-cell-meta"><strong>Dr</strong> ${escapeHtml(drNames)}</div>
-                <div class="fluxy-table-cell-meta"><strong>Cr</strong> ${escapeHtml(crNames)}</div>
-            </td>
-            <td class="fluxy-table-cell">
-                <div class="fluxy-table-cell-meta">${escapeHtml(srcText)}</div>
-                ${href ? '<div class="fluxy-table-cell-meta" style="color:#EA580C;">View record →</div>' : ''}
-            </td>
+        const isDraft = j.status === 'draft';
+        const href = isDraft ? journalDraftLink(j.id) : journalDetailLink(j.id);
+        const [badgeClass, badgeLabel] = journalStatusBadge(j);
+        const number = j.journal_number || (isDraft ? 'Draft — not numbered' : '—');
+        return `<tr class="fluxy-table-row fluxy-table-row-clickable" data-href="${href}" tabindex="0">
+            <td class="fluxy-table-cell"><div class="fluxy-table-cell-primary">${escapeHtml(journalDate(j))}</div><div class="fluxy-table-cell-meta">${escapeHtml(j.period_key || '')}</div></td>
+            <td class="fluxy-table-cell"><div class="fluxy-table-cell-primary">${escapeHtml(number)}</div><div class="fluxy-table-cell-meta">${escapeHtml(journalTypeOf(j) === 'manual' ? 'Manual' : 'System')}</div></td>
+            <td class="fluxy-table-cell"><div class="fluxy-table-cell-meta">${escapeHtml(journalSourceText(j))}</div></td>
+            <td class="fluxy-table-cell"><div class="fluxy-table-cell-meta">${escapeHtml(j.description || prettyRule(j.posting_rule_id))}</div></td>
             <td class="fluxy-table-cell fluxy-table-money">${formatRupiah(j.total_debit)}</td>
-            <td class="fluxy-table-cell fluxy-table-money"><span class="fluxy-table-status ${j.is_balanced ? 'fluxy-status-success' : 'fluxy-status-danger'}">${j.is_balanced ? 'Balanced' : 'Check'}</span></td>
+            <td class="fluxy-table-cell"><span class="fluxy-table-status ${badgeClass}">${badgeLabel}</span></td>
+            <td class="fluxy-table-cell fluxy-table-money"><a class="acct-link" href="${href}">${isDraft ? 'Edit' : 'View'} →</a></td>
         </tr>`;
     }).join('');
     wrap.innerHTML = tableShell([
-        { label: 'Journal' }, { label: 'Posting (Dr / Cr)' }, { label: 'Source' }, { label: 'Amount', money: true }, { label: 'Status', money: true }
+        { label: 'Date' }, { label: 'Journal #' }, { label: 'Source' }, { label: 'Description' },
+        { label: 'Amount', money: true }, { label: 'Status' }, { label: 'Actions', money: true }
     ], body);
     wireRowNavigation(wrap);
 }
@@ -711,7 +801,7 @@ function renderTrialBalance() {
         wrap.innerHTML = emptyState('No postings this period', 'The trial balance fills in as journals post.');
         return;
     }
-    const body = tb.rows.map(r => `<tr class="fluxy-table-row">
+    const body = tb.rows.map(r => `<tr class="fluxy-table-row fluxy-table-row-clickable" data-account="${escapeHtml(r.account_code)}" tabindex="0">
         <td class="fluxy-table-cell"><div class="fluxy-table-cell-primary">${escapeHtml(r.account_code)} · ${escapeHtml(r.account_name)}</div><div class="fluxy-table-cell-meta">${escapeHtml(r.account_type)}</div></td>
         <td class="fluxy-table-cell fluxy-table-money">${r.debit_amount ? formatRupiah(r.debit_amount) : '—'}</td>
         <td class="fluxy-table-cell fluxy-table-money">${r.credit_amount ? formatRupiah(r.credit_amount) : '—'}</td>
@@ -722,6 +812,28 @@ function renderTrialBalance() {
         <td class="fluxy-table-cell fluxy-table-money">${formatRupiah(tb.totalCredit)}</td>
     </tr>`;
     wrap.innerHTML = tableShell([{ label: 'Account' }, { label: 'Debit', money: true }, { label: 'Credit', money: true }], body + totals);
+    wireTrialDrilldown(wrap);
+}
+
+// Trial Balance rows drill into the General Ledger for that account (TB → GL →
+// Journal Detail → source). Avoids the trial balance being a dead-end table.
+function wireTrialDrilldown(wrap) {
+    if (!wrap || wrap.dataset.drillWired) return;
+    wrap.dataset.drillWired = '1';
+    const go = (target) => {
+        const row = target.closest('tr[data-account]');
+        if (row) drillToLedger(row.getAttribute('data-account'));
+    };
+    wrap.addEventListener('click', (e) => go(e.target));
+    wrap.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(e.target); });
+}
+
+function drillToLedger(accountCode) {
+    if (!accountCode) return;
+    setTab('ledger');
+    const sel = el('ledger-account-select');
+    if (sel) sel.value = accountCode;
+    renderGeneralLedger(accountCode);
 }
 
 function renderChartOfAccounts() {
@@ -767,7 +879,7 @@ async function renderGeneralLedger(accountCode) {
             wrap.innerHTML = emptyState('No activity', 'This account has no postings in the selected period.');
             return;
         }
-        const body = gl.entries.map(e => `<tr class="fluxy-table-row${sourceDeepLink(e.source) ? ' fluxy-table-row-clickable' : ''}"${sourceDeepLink(e.source) ? ` data-href="${sourceDeepLink(e.source)}" tabindex="0"` : ''}>
+        const body = gl.entries.map(e => `<tr class="fluxy-table-row${e.journal_id ? ' fluxy-table-row-clickable' : ''}"${e.journal_id ? ` data-href="${journalDetailLink(e.journal_id)}" tabindex="0"` : ''}>
             <td class="fluxy-table-cell"><div class="fluxy-table-cell-primary">${escapeHtml(prettyRule(e.posting_rule_id))}</div><div class="fluxy-table-cell-meta">${escapeHtml(e.memo || e.period_key || '')}</div></td>
             <td class="fluxy-table-cell fluxy-table-money">${e.debit ? formatRupiah(e.debit) : '—'}</td>
             <td class="fluxy-table-cell fluxy-table-money">${e.credit ? formatRupiah(e.credit) : '—'}</td>
