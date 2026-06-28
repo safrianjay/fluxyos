@@ -208,6 +208,21 @@ async function main() {
     await expectOutcome('viewer cannot advance the counter', false, () =>
         setDoc(doc(db, `workspaces/${WS}/counters/journal-2026`), { seq: 11 }, { merge: true }));
 
+    console.log('\n— period reopen (closed → open) is owner/admin only —');
+    // Seed a closed period (as owner) to reopen from.
+    await setMemberRole(uid, 'owner');
+    await expectOutcome('close 2026-01 (owner)', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/periods/2026-01`), { period_key: '2026-01', status: 'closed' }));
+    await setMemberRole(uid, 'finance');
+    await expectOutcome('finance CANNOT reopen a closed period', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/periods/2026-01`), { period_key: '2026-01', status: 'open' }, { merge: true }));
+    await setMemberRole(uid, 'accountant');
+    await expectOutcome('accountant CANNOT reopen a closed period', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/periods/2026-01`), { period_key: '2026-01', status: 'open' }, { merge: true }));
+    await setMemberRole(uid, 'admin');
+    await expectOutcome('admin CAN reopen a closed period', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/periods/2026-01`), { period_key: '2026-01', status: 'open' }, { merge: true }));
+
     console.log(`\n──────── ${passed} passed, ${failed} failed ────────`);
     process.exit(failed ? 1 : 0);
 }

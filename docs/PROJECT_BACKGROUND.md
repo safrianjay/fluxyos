@@ -107,7 +107,10 @@ rule in [DESIGN_SYSTEM.md → Dashboard Content Width Standard](DESIGN_SYSTEM.md
 > 2. **Finance/operational collections** (workspace-scoped — use `_scope`):
 >    `transactions`, `bills`, `subscriptions`, `budgets`, `budget_allocations`,
 >    `invoices`(+`items`), `audit_logs`, `bank_accounts`, `bank_balance_snapshots`,
->    `bank_statement_imports`(+`rows`), `documents`, `report_exports`, `accounting_mappings`.
+>    `bank_statement_imports`(+`rows`), `documents`, `report_exports`, `accounting_mappings`,
+>    `chart_of_accounts`, `journals`, `counters`, `ledger_balances`, `periods`, and
+>    **(planned — Tax Center, §4o)** `company_tax_profile`, `tax_mappings`,
+>    `tax_transactions`, `tax_periods`, `tax_filings`.
 > 3. **Identity/billing collections** (stay user-scoped — keep `users/{uid}`):
 >    `billing_subscription`, `billing_payment_requests`, `billing_invoices`,
 >    `billing`, `payment_verifications`, `usage_limits`, `onboarding`,
@@ -123,7 +126,7 @@ rule in [DESIGN_SYSTEM.md → Dashboard Content Width Standard](DESIGN_SYSTEM.md
 >    directly in the HTML (`collection(ds.db, …)`) instead of calling a
 >    DataService method — these bypass the seam and are the easiest place to
 >    reintroduce the bug. Grep guard:
->    `grep -rnE 'users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|audit_logs)' *.html assets/js/*.js | grep -v db-service.js`
+>    `grep -rnE 'users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|audit_logs|company_tax_profile|tax_mappings|tax_transactions|tax_periods|tax_filings)' *.html assets/js/*.js | grep -v db-service.js`
 >    must return nothing.
 
 ### 4a. Transactions — `users/{userId}/transactions`
@@ -1188,7 +1191,7 @@ hardcode `users/`):
 | `journals` | auto | `journal_number ('JE-YYYY-NNNNNN'), journal_seq (int), journal_type ('system'\|'manual'), manual_subtype, posting_rule_id, source:{collection,id}, source_number, period_key 'YYYY-MM', status (draft/posted/reversal/reversed), description, reference, entity_id, currency, memo, lines[], total_debit, total_credit, is_balanced, reverses_journal_id, reversed_by_journal_id, created_by, generated_by, posted_by, posted_at, created_at`. Posted entries are **immutable** (rules allow only `reversed_by_journal_id` to change; no delete) and created only into a **non-closed** period. `journal_type:'manual'` `status:'draft'` rows are editable/deletable until posted. |
 | `counters` | `journal-{YYYY}` | `seq (int, monotonic), entity_id, updated_at`. Per-year journal-number sequence, reserved in a `runTransaction` before the posting batch (`_reserveJournalNumbers`). Rules enforce `seq` only ever grows; no delete. |
 | `ledger_balances` | `{period_key}__{account_code}` | `period_key, account_code, account_type, entity_id, currency, debit_total, credit_total, updated_at`. Running per-account/period totals, written via `FieldValue.increment` alongside each journal. **The trial-balance source** — never sum all journal lines. |
-| `periods` | `{period_key}` | `period_key, status (open/closed/locked), entity_id, closed_by, closed_at, retained_earnings_posted, updated_at`. Missing doc = open. `closePeriod()` posts a closing journal (net income → `3000 Retained Earnings`) and sets `closed`. Lock is owner/admin only. |
+| `periods` | `{period_key}` | `period_key, status (open/closed/locked), entity_id, closed_by, closed_at, retained_earnings_posted, updated_at`. Missing doc = open. `closePeriod()` posts a closing journal (net income → `3000 Retained Earnings`) and sets `closed`. `reopenPeriod()` (owner/admin only — rules gate the closed/locked → open transition) flips the period open and reverses the closing journal so net income backs out of Retained Earnings. Lock is owner/admin only. |
 
 Foresight fields present on every journal/account now (multi-entity/-currency UI
 deferred): `entity_id` (= workspaceId), `currency` ('IDR'), `fx_rate` (1),
@@ -1290,7 +1293,7 @@ Center → Journals tab shows a pending banner + "Post pending entries" button
 **Follow-ups (not yet wired):** edit/void corrections for **bills/subscriptions**
 (same `_correctSourceJournal` pattern as transactions) — note bills/subscriptions
 have no edit/void path in the app today, so this is only relevant once they become
-editable; period reopen.
+editable.
 
 ### 4n. Invoices — `users/{userId}/invoices/{invoiceId}` (+ `items` subcollection)
 
@@ -1393,6 +1396,41 @@ CSV export.
 
 **Sidebar route:** `Invoices` → `/invoices`, Operations group directly under
 Budgets (active id `nav-invoices`).
+
+### 4o. Tax Center — Indonesian tax collections (PLANNED, workspace-scoped)
+
+**Status: design only — not yet built.** Full spec:
+`docs/INDONESIA_TAX_CENTER_ARCHITECTURE.md`. Listed here so the schema reference and
+the §4 grep guard cover the collections from day one. The Tax Center is **derived**:
+tax amounts post as **additional lines on the journal the business document already
+generates** through the existing Accounting Kernel (§4m.3) — never a parallel ledger.
+Pure rules live in `assets/js/tax-engine.js` (mirrors `accounting-engine.js`: no
+Firestore/DOM, unit-tested). All amounts raw integer Rupiah; route every path through
+`_scope()`; append-only collections soft-archive via `status`.
+
+| Collection | Doc id | Key fields |
+|---|---|---|
+| `company_tax_profile` | `current` | `npwp, nik, pkp_status ('pkp'\|'non_pkp'), pkp_effective_date, umkm_final (bool), tax_office_kpp, business_classification, default_ppn_rate (int %), entity_id, updated_by, updated_at`. One per workspace; drives every engine branch. |
+| `tax_mappings` | `{source_type}__{source_value}` | `source_type, source_value, tax_code, tax_rate_percent, effective_from, effective_until, status ('active'\|'archived'), created_by, created_at, updated_at`. Mirrors `accounting_mappings`. |
+| `tax_transactions` | auto (append-only) | `source_collection, source_id, source_number, tax_code, tax_name, direction ('output'\|'input'\|'withheld_by_us'\|'withheld_by_other'\|'final'), tax_rate_percent, taxable_base (int), tax_amount (int), period_key 'YYYY-MM', journal_ref, npwp_counterparty, faktur_number, bukti_potong_no, status ('draft'\|'posted'\|'corrected'\|'reversed'), reverses_tax_tx_id, reversed_by_tax_tx_id, entity_id, created_by, created_at`. |
+| `tax_periods` | `{period_type}-{period_key}` | `period_type ('monthly'\|'quarterly'\|'annual'), period_key, period_start, period_end, filing_deadline, status ('open'\|'computed'\|'filed'\|'amended'\|'settled'), ppn_output, ppn_input, ppn_payable, pph_withheld, pph_credit, pph_final (all int), entity_id, closed_by, closed_at, updated_at`. Cached summary of `tax_transactions` (the rows are the source), like `ledger_balances`. |
+| `tax_filings` | auto (append-only) | `period_id, filing_type ('SPT_PPN'\|'SPT_PPh_Unifikasi'\|'SPT_PPh21'\|'SPT_Tahunan'\|'Tax_Certificate'), filing_date, reference_number, status ('draft'\|'filed'\|'accepted'\|'rejected'\|'amended'), file_path, external_link, filed_by, audit_log_id, entity_id, created_at, updated_at`. |
+
+**New COA accounts** (added to `CHART_OF_ACCOUNTS_SEED`): `1130` PPN Masukan,
+`1140` Prepaid PPh 25, `1150` PPh withheld-by-customers, `2100` PPN Keluaran,
+`2110` PPh Payable, `2200` PPh 29 Payable.
+
+**New optional fields on transactions/bills/invoices** (additive; validators must
+allow them like `isValidAccountingLink`): `tax_code`, `taxable_base` (int),
+`tax_amount` (int), `npwp_counterparty`, `faktur_number`, `bukti_potong_no`,
+`withholding_flag` (bool).
+
+**Permissions:** `tax.read` (all incl. viewer), `tax.map`/`tax.post`/`tax.period.close`
+(finance+/accountant), `tax.file` (owner/admin). **Audit actions** (`target_collection`
+the tax collection): `tax_profile.update`, `tax_mapping.create/update/archive`,
+`tax_transaction.post/reverse`, `tax_period.compute/close`,
+`tax_filing.submit/accept/reject`. Rules deploy separately
+(`firebase deploy --only firestore:rules`).
 
 ---
 

@@ -3371,11 +3371,23 @@ service cloud.firestore {
       // Period lifecycle. Closing requires finance+; locking is owner/admin only.
       match /periods/{periodKey} {
         allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
-        allow create, update: if request.resource.data.period_key is string
+        // Create (open or close): finance+; locking is owner/admin only.
+        allow create: if request.resource.data.period_key is string
           && request.resource.data.status in ['open', 'closed', 'locked']
           && (request.resource.data.status != 'locked'
             ? hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
             : hasRole(workspaceId, ['owner', 'admin']));
+        // Update: REOPEN (closed/locked → open) and LOCK are owner/admin only;
+        // other transitions (e.g. open → closed) are finance+.
+        allow update: if request.resource.data.period_key is string
+          && request.resource.data.status in ['open', 'closed', 'locked']
+          && (
+            ((resource.data.status == 'closed' || resource.data.status == 'locked') && request.resource.data.status == 'open')
+              ? hasRole(workspaceId, ['owner', 'admin'])
+              : (request.resource.data.status == 'locked'
+                ? hasRole(workspaceId, ['owner', 'admin'])
+                : hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']))
+          );
         allow delete: if false;
       }
       // Per-year journal-number counters (doc id `journal-YYYY`). Reserved in a

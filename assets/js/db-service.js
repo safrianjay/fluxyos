@@ -2728,6 +2728,57 @@ class DataService {
         return { period_key: pk, revenue, expense, net: revenue - expense };
     }
 
+    // Reopen a closed/locked period (owner/admin — enforced by rules). Two steps,
+    // because a journal can only post into an OPEN period: (1) flip the period to
+    // open, then (2) reverse its closing journal so Retained Earnings backs out and
+    // Revenue/Expense are restored. Idempotent: only reverses CLOSE journals not
+    // already reversed, so a retry after a partial failure completes the reversal.
+    async reopenPeriod(userId, pk) {
+        if (!pk) throw new Error('period_key required');
+        const period = await this.getPeriod(userId, pk);
+        if (period.status !== 'closed' && period.status !== 'locked') {
+            throw new Error('Only a closed or locked period can be reopened.');
+        }
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+
+        // Step 1: open the period (so the reversal can post into it).
+        const open = writeBatch(this.db);
+        open.set(doc(this.db, `${scope}/periods/${pk}`), {
+            period_key: pk,
+            status: 'open',
+            entity_id: entityId,
+            reopened_by: this.actorUid || null,
+            reopened_at: serverTimestamp(),
+            retained_earnings_posted: false,
+            updated_at: serverTimestamp()
+        }, { merge: true });
+        await open.commit();
+
+        // Step 2: reverse the period's closing journal(s) not already reversed.
+        const closeJournals = (await this.listJournals(userId, { periodKey: pk, max: 500 }))
+            .filter((j) => j.posting_rule_id === 'CLOSE' && j.source && j.source.id === pk && !j.reversed_by_journal_id);
+        let reversed = 0;
+        if (closeJournals.length) {
+            const batch = writeBatch(this.db);
+            const acc = {};
+            const counts = {};
+            closeJournals.forEach((j) => { const y = String(j.period_key).slice(0, 4); counts[y] = (counts[y] || 0) + 1; });
+            const bases = await this._reserveJournalNumbers(userId, counts);
+            const reversals = closeJournals.map((j) => buildReversalJournal({ ...j, id: j.id }, { targetPeriodKey: pk }));
+            this._assignJournalNumbers(reversals, bases);
+            reversals.forEach((rev, i) => {
+                const rref = this._attachJournalToBatch(batch, scope, rev, { entityId, balanceAcc: acc });
+                batch.update(doc(this.db, `${scope}/journals/${closeJournals[i].id}`), { reversed_by_journal_id: rref.id });
+                reversed += 1;
+            });
+            this._flushBalanceAcc(batch, scope, entityId, acc);
+            await batch.commit();
+        }
+        await this._auditCreateBestEffort(userId, 'period.reopen', 'periods', pk, { reversed_close_journals: reversed });
+        return { period_key: pk, status: 'open', reversed_close_journals: reversed };
+    }
+
     // --- Manual journals (accountant workflow: Draft -> Posted) ---------------
     // Manual journals are the EXCEPTION path for accounting activity the posting
     // engine does not cover (opening balances, accruals, adjustments, reclasses,
