@@ -2936,6 +2936,13 @@ service cloud.firestore {
       return inv.status == 'draft'
         || (inv.status == 'open' && (!('sent_at' in inv) || inv.sent_at == null));
     }
+    // Accounting kernel back-link: the posting engine stamps these onto the source
+    // transaction/bill/subscription so the document can drill to its journal and
+    // surface its posting status. Optional + bounded.
+    function isValidAccountingLink(data) {
+      return (!('journal_ref' in data) || data.journal_ref == null || (data.journal_ref is string && data.journal_ref.size() <= 120))
+        && (!('accounting_status' in data) || data.accounting_status in ['posted', 'pending', 'excluded']);
+    }
     function wsValidTxCreate(data) {
       return data.keys().hasOnly([
           'amount', 'vendor_name', 'category', 'type', 'status', 'icon', 'timestamp',
@@ -2948,7 +2955,8 @@ service cloud.firestore {
           'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason',
           'cash_effective', 'cash_status', 'cash_direction', 'cash_account_id', 'cash_source',
           'cash_match_status', 'cash_effective_at', 'bank_statement_import_id', 'bank_statement_row_id',
-          'imported_at', 'bank_account_id', 'linked_bill_id'
+          'imported_at', 'bank_account_id', 'linked_bill_id', 'linked_invoice_id',
+          'journal_ref', 'accounting_status'
         ])
         && isValidBaseRecord(data)
         && (!('created_at' in data) || data.created_at == request.time)
@@ -2956,6 +2964,7 @@ service cloud.firestore {
         && (!('linked_bill_id' in data) || data.linked_bill_id == null || (data.linked_bill_id is string && data.linked_bill_id.size() <= 120))
         && isValidTransactionBudgetFields(data)
         && isValidAttachedDocuments(data)
+        && isValidAccountingLink(data)
         && isValidAICaptureMetadata(data);
     }
     function wsValidTxUpdate(data, existingData) {
@@ -2972,13 +2981,14 @@ service cloud.firestore {
           'cash_match_status', 'cash_effective_at', 'cash_assignment_reason', 'cash_assignment_updated_at',
           'cash_assignment_updated_by', 'updated_at', 'updated_by', 'is_voided', 'voided_at', 'voided_by',
           'void_reason', 'bank_statement_import_id', 'bank_statement_row_id', 'imported_at',
-          'bank_account_id', 'linked_bill_id'
+          'bank_account_id', 'linked_bill_id', 'linked_invoice_id', 'journal_ref', 'accounting_status'
         ])
         && isValidTransactionRecordUpdate(data, existingData)
         && preservesLegacyRecordDate(data, existingData)
         && (!('linked_bill_id' in data) || data.linked_bill_id == null || (data.linked_bill_id is string && data.linked_bill_id.size() <= 120))
         && isValidTransactionBudgetFields(data)
         && isValidAttachedDocuments(data)
+        && isValidAccountingLink(data)
         && isValidAICaptureMetadata(data);
     }
     function wsValidBillCreate(data) {
@@ -2989,7 +2999,8 @@ service cloud.firestore {
           'raw_text_preview', 'source_file_name', 'source_file_mime_type', 'source_file_size_bytes',
           'attached_documents', 'invoice_status', 'budget_id', 'budget_allocation_id',
           'budget_match_method', 'budget_match_status', 'budget_impact_status', 'budget_assignment_reason',
-          'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason'
+          'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason',
+          'journal_ref', 'accounting_status'
         ])
         && isValidBaseRecord(data)
         && (!('due_date' in data) || data.due_date is timestamp)
@@ -2997,6 +3008,7 @@ service cloud.firestore {
         && (!('invoice_status' in data) || data.invoice_status in ['attached'])
         && isValidBillBudgetFields(data)
         && isValidAttachedDocuments(data)
+        && isValidAccountingLink(data)
         && isValidAICaptureMetadata(data);
     }
     function wsValidBillUpdate(data, existingData) {
@@ -3008,7 +3020,7 @@ service cloud.firestore {
           'attached_documents', 'invoice_status', 'budget_id', 'budget_allocation_id',
           'budget_match_method', 'budget_match_status', 'budget_impact_status', 'budget_assignment_reason',
           'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason',
-          'linked_transaction_id', 'updated_at', 'updated_by'
+          'linked_transaction_id', 'updated_at', 'updated_by', 'journal_ref', 'accounting_status'
         ])
         && isValidBaseRecordUpdate(data, existingData)
         && preservesLegacyRecordDate(data, existingData)
@@ -3018,6 +3030,7 @@ service cloud.firestore {
         && (!('linked_transaction_id' in data) || data.linked_transaction_id == null || (data.linked_transaction_id is string && data.linked_transaction_id.size() <= 120))
         && isValidBillBudgetFields(data)
         && isValidAttachedDocuments(data)
+        && isValidAccountingLink(data)
         && isValidAICaptureMetadata(data);
     }
     function wsValidSubCreate(data) {
@@ -3026,11 +3039,12 @@ service cloud.firestore {
           'source', 'created_via', 'extraction_status', 'extraction_source', 'extraction_confidence',
           'extraction_warnings', 'document_type', 'invoice_number', 'invoice_date', 'billing_cycle',
           'raw_text_preview', 'source_file_name', 'source_file_mime_type', 'source_file_size_bytes',
-          'notes', 'attached_documents'
+          'notes', 'attached_documents', 'journal_ref', 'accounting_status'
         ])
         && isValidBaseRecord(data)
         && (!('renewal_date' in data) || data.renewal_date is timestamp)
         && isValidAttachedDocuments(data)
+        && isValidAccountingLink(data)
         && isValidAICaptureMetadata(data);
     }
     function wsValidSubUpdate(data, existingData) {
@@ -3039,11 +3053,12 @@ service cloud.firestore {
           'source', 'created_via', 'extraction_status', 'extraction_source', 'extraction_confidence',
           'extraction_warnings', 'document_type', 'invoice_number', 'invoice_date', 'billing_cycle',
           'raw_text_preview', 'source_file_name', 'source_file_mime_type', 'source_file_size_bytes',
-          'notes', 'attached_documents'
+          'notes', 'attached_documents', 'journal_ref', 'accounting_status'
         ])
         && isValidBaseRecordUpdate(data, existingData)
         && (!('renewal_date' in data) || data.renewal_date is timestamp)
         && isValidAttachedDocuments(data)
+        && isValidAccountingLink(data)
         && isValidAICaptureMetadata(data);
     }
     function wsValidReportExportCreate(data) {

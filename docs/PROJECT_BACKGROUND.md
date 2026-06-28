@@ -1219,8 +1219,15 @@ Ledger / Trial Balance / Chart of Accounts** + a working **Close** panel
 **Permissions:** `accounting.read` (all members incl. viewer), `accounting.post`
 + `period.close` (finance+), `period.lock` (owner/admin). See `perms-service.js`.
 
-**Cutover:** `scripts/post-opening-balances.js` posts one opening-balance journal
-per workspace (dry-run default; `--commit` to write; idempotent). No mass backfill.
+**Cutover / history:** `scripts/post-opening-balances.js` posts one opening-balance
+journal per workspace (dry-run default; `--commit`; idempotent). For populating
+historical periods, `scripts/backfill-journals.js` generates journals for existing
+transactions/bills/subscriptions — dry-run default, idempotent (double-guarded by
+`accounting_status`/`journal_ref` and existing journals-by-source), skips closed
+periods and invoice-linked settlements, batched ≤100 docs. Reuses the real engine
+via a data-URL import. Source docs gain `journal_ref` + `accounting_status` (the
+document validators in `firestore.rules` allow these two keys via
+`isValidAccountingLink`).
 
 **Follow-ups (not yet wired):** invoice `INV-ISSUE` posting on finalize +
 `INV-PAY` on `markInvoicePaid`; CSV/bank-statement bulk imports currently mark

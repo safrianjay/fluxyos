@@ -89,6 +89,20 @@ async function main() {
     await expectOutcome('hard-delete an account is denied', false, () =>
         deleteDoc(doc(db, `workspaces/${WS}/chart_of_accounts/6300`)));
 
+    // REGRESSION: the posting engine stamps journal_ref + accounting_status onto
+    // the source document. The document validators must allow these keys, or the
+    // whole create batch (document + journal) is denied and adding a transaction
+    // breaks. This reproduces the production "Permission Denied" on Add Transaction.
+    console.log('\n— regression: source doc carries journal_ref + accounting_status —');
+    const txn = (extra = {}) => ({
+        amount: 2577200, vendor_name: 'Event wibu', category: 'Revenue', type: 'income',
+        status: 'Completed', icon: '💰', timestamp: serverTimestamp(), created_at: serverTimestamp(), ...extra
+    });
+    await expectOutcome('tx create with journal_ref + accounting_status is allowed', true, () =>
+        setDoc(doc(collection(db, `workspaces/${WS}/transactions`)), txn({ journal_ref: 'J123', accounting_status: 'posted' })));
+    await expectOutcome('tx create with bad accounting_status is denied', false, () =>
+        setDoc(doc(collection(db, `workspaces/${WS}/transactions`)), txn({ accounting_status: 'nonsense' })));
+
     console.log('\n— journals: balance + immutability —');
     const okRef = doc(collection(db, `workspaces/${WS}/journals`));
     await expectOutcome('post a balanced journal (open period)', true, () => setDoc(okRef, journal('2026-06')));
