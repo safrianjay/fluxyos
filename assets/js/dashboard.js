@@ -31,6 +31,10 @@ let currentAttentionTab = 'all';
 let aiSummaryRequestSeq = 0;
 let aiSummaryOverview = null;
 let aiSummaryUsage = null;
+// Canonical KPI numbers exactly as rendered on the overview cards. Captured by
+// the render functions so the AI Finance Summary narrates the same figures the
+// user sees (the backend's own Firestore read can be a different/stale dataset).
+let dashboardKpis = {};
 let bankSetupDatePicker = null;
 let bankSetupSelectedDate = null;
 let budgetSetupDatePicker = null;
@@ -307,6 +311,12 @@ function renderSummaryBoard(overview, ledgerCash = {}) {
     updateKPI('kpi-margin', `${formatNumber(margin, 1)}%`);
     updateKPI('kpi-payables', formatIDR(rp.payablesTotal));
 
+    dashboardKpis.grossMargin = margin;
+    dashboardKpis.payables = safeNumber(rp.payablesTotal);
+    dashboardKpis.receivables = safeNumber(rp.receivablesTotal);
+    dashboardKpis.overdueCount = safeNumber(actions.overdueBills);
+    dashboardKpis.periodLabel = overview.period?.label || 'selected period';
+
     renderMarginStatus(margin, p.marginChangePct);
     renderMetricArrow('kpi-margin-arrow', p.marginChangePct, 'revenue');
 
@@ -329,6 +339,7 @@ function renderLedgerCashCell(ledgerCash, bankCash, cashPressure) {
 
     const el = document.getElementById('kpi-ledger-cash');
     if (el) el.textContent = formatIDR(net);
+    dashboardKpis.cashPosition = net;
 
     const sub = document.getElementById('kpi-ledger-cash-sub');
     if (sub) {
@@ -352,6 +363,7 @@ function renderLedgerCashCell(ledgerCash, bankCash, cashPressure) {
         }
     }
     const bankRunning = safeNumber(bankCash.balance) + bankAdj;
+    dashboardKpis.bankCash = bankRunning;
 
     // Append a live data point so the sparkline ends at the current running balance
     const adjustedHistory = [...(bankCash.balanceHistory || [])];
@@ -371,6 +383,7 @@ function renderLedgerCashCell(ledgerCash, bankCash, cashPressure) {
     const payDue = safeNumber(cp.payablesDueSoon);
     const overdueCount = safeNumber(cp.overdueCount);
     const newOutlook = bankRunning + recvDue - payDue;
+    dashboardKpis.cashPressure = newOutlook;
     let newRisk = 'low';
     if (overdueCount > 0 && (bankRunning + recvDue) < payDue) newRisk = 'critical';
     else if (newOutlook < 0) newRisk = 'high';
@@ -450,6 +463,7 @@ function renderOpexBudgetCell(performance, budget) {
     const remaining = safeNumber(budget.remaining);
 
     updateKPI('kpi-opex', formatIDR(opex));
+    dashboardKpis.opex = opex;
 
     const sub = document.getElementById('kpi-opex-change');
     if (sub) {
@@ -973,6 +987,19 @@ function buildAiBusinessSummarySnapshot(overview = {}) {
         bills,
         subscriptions,
         bank: buildAiBusinessSummarySnapshotBank(overview.bankCash),
+        kpis: {
+            period_label: dashboardKpis.periodLabel || overview.period?.label || 'selected period',
+            revenue: numberOrNull(dashboardKpis.revenue),
+            revenue_records: numberOrNull(dashboardKpis.revenueRecords),
+            opex: numberOrNull(dashboardKpis.opex),
+            gross_margin: numberOrNull(dashboardKpis.grossMargin),
+            cash_position: numberOrNull(dashboardKpis.cashPosition),
+            bank_cash: numberOrNull(dashboardKpis.bankCash),
+            cash_pressure: numberOrNull(dashboardKpis.cashPressure),
+            payables: numberOrNull(dashboardKpis.payables),
+            receivables: numberOrNull(dashboardKpis.receivables),
+            overdue_count: numberOrNull(dashboardKpis.overdueCount),
+        },
         meta: {
             source: 'dashboard_overview_client_snapshot',
             generated_at: new Date().toISOString(),
@@ -993,6 +1020,10 @@ function buildAiBusinessSummarySnapshot(overview = {}) {
 function buildAiBusinessSummarySnapshotRead(status) {
     if (status === 'error') return { success: false, error: 'read_failed' };
     return { success: true, error: null };
+}
+
+function numberOrNull(value) {
+    return Number.isFinite(Number(value)) ? Number(value) : null;
 }
 
 function buildAiBusinessSummarySnapshotBank(bankCash = {}) {
@@ -1375,6 +1406,8 @@ function renderRevenueCard() {
         : calculateRevenueChange(selected, previous);
 
     updateKPI('kpi-revenue', formatIDR(selected.amount));
+    dashboardKpis.revenue = safeNumber(selected.amount);
+    dashboardKpis.revenueRecords = safeNumber(selected.count);
     updateKPI('revenue-record-count', formatRevenueRecordCount(selected.count));
     updateKPI('revenue-secondary-value', formatIDR(secondary.amount));
     renderKpiComparison('kpi-revenue-change', change, 'revenue');

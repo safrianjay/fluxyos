@@ -364,6 +364,31 @@ function normalizeSnapshotReadMeta(snapshot, key) {
     return { success, error };
 }
 
+// Canonical overview KPI numbers sent by the dashboard. When present, the
+// overview AI summary narrates these verbatim instead of recomputing — the
+// dashboard is the single source of truth (workspace-scoped), whereas the
+// backend's own REST read is user-scoped and can be a different/stale dataset.
+function normalizeOverviewKpis(kpis) {
+    if (!kpis || typeof kpis !== 'object') return null;
+    const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+    const normalized = {
+        period_label: typeof kpis.period_label === 'string' && kpis.period_label.trim() ? kpis.period_label.trim().slice(0, 80) : 'selected period',
+        revenue: num(kpis.revenue),
+        revenue_records: num(kpis.revenue_records),
+        opex: num(kpis.opex),
+        gross_margin: num(kpis.gross_margin),
+        cash_position: num(kpis.cash_position),
+        bank_cash: num(kpis.bank_cash),
+        cash_pressure: num(kpis.cash_pressure),
+        payables: num(kpis.payables),
+        receivables: num(kpis.receivables),
+        overdue_count: num(kpis.overdue_count),
+    };
+    // Require at least one real financial figure to treat the KPIs as usable.
+    const hasData = ['revenue', 'opex', 'cash_position', 'payables', 'bank_cash'].some(k => normalized[k] !== null);
+    return hasData ? normalized : null;
+}
+
 function normalizeFinanceSnapshotBank(bank) {
     if (!bank || typeof bank !== 'object') return { connected: false, balance: 0, thirty_day_outlook: null };
     const balanceRaw = Number(bank.balance);
@@ -1808,6 +1833,59 @@ function legacyIntentFromPlan(intent) {
     }[intent] || intent;
 }
 
+// Builds the Overview "AI Finance Summary" answer purely from the dashboard's
+// computed KPI numbers (no recompute), so the summary always matches the cards.
+function buildOverviewSummaryAnswer({ kpis, period, language }) {
+    const id = language === 'id';
+    const answer = baseAnswer('business_health', 'analysis', period, language);
+    const periodLabel = kpis.period_label || (id ? 'periode terpilih' : 'selected period');
+    const margin = kpis.gross_margin;
+
+    const parts = [];
+    if (kpis.revenue !== null) parts.push(id ? `pendapatan ${formatIDR(kpis.revenue)}` : `revenue is ${formatIDR(kpis.revenue)}`);
+    if (kpis.opex !== null) parts.push(id ? `OpEx ${formatIDR(kpis.opex)}` : `OpEx is ${formatIDR(kpis.opex)}`);
+    if (margin !== null) parts.push(id ? `margin kotor ${formatPercent(margin)}` : `gross margin is ${formatPercent(margin)}`);
+    let direct = id
+        ? `Berikut yang saya lihat untuk ${periodLabel}: ${parts.join(', ')}.`
+        : `Here is what I am seeing for ${periodLabel}: ${parts.join(', ')}.`;
+    if (kpis.cash_position !== null) {
+        const tail = [];
+        if (kpis.payables) tail.push(id ? `${formatIDR(kpis.payables)} utang` : `${formatIDR(kpis.payables)} in payables`);
+        if (kpis.receivables) tail.push(id ? `${formatIDR(kpis.receivables)} piutang` : `${formatIDR(kpis.receivables)} in receivables`);
+        const tailText = tail.length ? (id ? `, dengan ${tail.join(' dan ')}` : `, with ${tail.join(' and ')}`) : '';
+        direct += id
+            ? ` Posisi kas Anda ${formatIDR(kpis.cash_position)}${tailText}.`
+            : ` Your cash position is ${formatIDR(kpis.cash_position)}${tailText}.`;
+    }
+    answer.direct_answer = direct;
+
+    answer.key_numbers = [
+        kpis.revenue !== null ? keyNumber(id ? 'Pendapatan' : 'Revenue', kpis.revenue, kpis.revenue > 0 ? 'good' : 'warning') : null,
+        kpis.opex !== null ? keyNumber('OpEx', kpis.opex, 'neutral') : null,
+        margin !== null ? keyNumber(id ? 'Margin kotor' : 'Gross margin', margin, margin < 0 ? 'critical' : margin < 20 ? 'warning' : 'good', formatPercent) : null,
+        kpis.cash_position !== null ? keyNumber(id ? 'Posisi kas' : 'Cash position', kpis.cash_position, kpis.cash_position < 0 ? 'critical' : 'neutral', formatSignedIDR) : null,
+        kpis.payables ? keyNumber(id ? 'Utang' : 'Payables', kpis.payables, kpis.overdue_count ? 'warning' : 'neutral') : null,
+    ].filter(Boolean);
+
+    const insights = [];
+    if (kpis.overdue_count) insights.push(insight(id ? 'Tagihan jatuh tempo' : 'Overdue bills', id ? `${kpis.overdue_count} tagihan belum dibayar telah jatuh tempo.` : `${kpis.overdue_count} unpaid bill(s) are overdue.`, 'critical'));
+    if (margin !== null && margin < 0) insights.push(insight(id ? 'Margin kotor negatif' : 'Negative gross margin', id ? 'OpEx lebih besar dari pendapatan pada periode ini.' : 'OpEx is higher than revenue this period.', 'critical'));
+    if (kpis.cash_position !== null && kpis.cash_position < 0) insights.push(insight(id ? 'Posisi kas negatif' : 'Negative cash position', id ? 'Posisi kas dari catatan yang sudah diselesaikan berada di bawah nol.' : 'Your settled cash position is below zero.', 'warning'));
+    if (!insights.length) insights.push(insight(id ? 'Tidak ada risiko mendesak' : 'No urgent risk', id ? 'Tidak ada tagihan jatuh tempo atau margin negatif pada periode ini.' : 'No overdue bills or negative margin this period.', 'info'));
+    answer.insights = insights;
+
+    let act;
+    if (kpis.overdue_count) act = action(id ? 'Selesaikan tagihan jatuh tempo' : 'Clear overdue bills', id ? 'Prioritaskan tagihan yang sudah jatuh tempo sebelum menambah pengeluaran baru.' : 'Prioritize the overdue bills before taking on new spend.', 'high');
+    else if (margin !== null && margin < 0) act = action(id ? 'Tinjau pendorong biaya' : 'Review cost drivers', id ? 'OpEx melebihi pendapatan — tinjau kategori pengeluaran terbesar lebih dulu.' : 'OpEx exceeds revenue — review your largest expense categories first.', 'high');
+    else act = action(id ? 'Pantau terus' : 'Keep monitoring', id ? 'Jaga catatan tetap rapi dan pantau tagihan yang akan datang.' : 'Keep records clean and watch upcoming bills.', 'medium');
+    answer.recommended_actions = [act];
+
+    answer.limitations = [id
+        ? 'Ringkasan ini mencerminkan KPI dashboard Anda untuk periode terpilih.'
+        : 'This summary mirrors your dashboard KPIs for the selected period.'];
+    return answer;
+}
+
 function buildPlannedDeterministicAnswer({ plan, message, pageContext, tools, language }) {
     if (plan.intent === 'unsupported' || !plan.is_supported) {
         return buildDeterministicAnswer({ intent: 'unsupported', message, pageContext, period: plan.period, tools: {}, language });
@@ -2235,6 +2313,18 @@ async function buildBrainChatResponse({ request, uid, token }) {
         plan.collections_needed = collectionsForTools(plan.tools_to_call);
     }
     const intent = plan.intent;
+
+    // Overview "AI Finance Summary": when the dashboard sends its computed KPI
+    // numbers, narrate them verbatim so the summary always matches the cards.
+    // The backend's own Firestore read is user-scoped and can be a different or
+    // stale dataset (finance data is workspace-scoped), so we do NOT recompute.
+    if (pageContext === 'overview_summary') {
+        const overviewKpis = normalizeOverviewKpis(request.finance_snapshot?.kpis);
+        if (overviewKpis) {
+            const answer = buildOverviewSummaryAnswer({ kpis: overviewKpis, period: plan.period, language });
+            return { status: 200, body: { success: true, chat_id: chatId, intent, scope: FINANCE_SCOPE, answer, related_records: [], error: null } };
+        }
+    }
 
     if (!plan.is_supported || intent === 'unsupported' || intent === 'ambiguous') {
         const answer = buildPlannedDeterministicAnswer({ plan, message, pageContext, tools: {}, language });
@@ -3446,6 +3536,8 @@ exports.__test__ = {
     consumeAIQuotaIfNeeded,
     PLAN_AI_PERIOD_LIMITS,
     TRIAL_AI_LIMIT,
+    normalizeOverviewKpis,
+    buildOverviewSummaryAnswer,
     billEvidenceFromExtraction,
     receiptEvidenceFromExtraction,
     classifyAmbiguousExtraction,
