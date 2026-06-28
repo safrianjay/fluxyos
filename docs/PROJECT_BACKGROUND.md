@@ -1275,10 +1275,18 @@ Journal Detail (TB → GL → Journal → source), so no view dead-ends.
 + `period.close`; lock stays owner/admin). Added across `firestore.rules`,
 `perms-service.js`, `settings-team.html`, and the invite/role validators.
 
+**Bulk-import sweep (wired).** CSV (`addTransactions`) and bank-statement
+(`confirmBankStatementImport`) imports create rows marked
+`accounting_status: 'pending'` (no inline posting — would blow the 500-write batch
+ceiling). `postPendingJournals(userId)` posts the backlog through the same numbered
+path (`_reserveJournalNumbers` + `_assignJournalNumbers`), idempotent (only touches
+`pending`), chunked (≤120 journals/batch), skipping closed periods. The Accounting
+Center → Journals tab shows a pending banner + "Post pending entries" button
+(`countPendingPostings` drives the count).
+
 **Follow-ups (not yet wired):** edit/void corrections for **bills/subscriptions**
-(same `_correctSourceJournal` pattern as transactions); CSV/bank-statement bulk
-imports mark rows `pending` (not auto-posted, to stay under the 500-write batch
-ceiling); period reopen; the reconcile script.
+(same `_correctSourceJournal` pattern as transactions); period reopen; the
+reconcile script.
 
 ### 4n. Invoices — `users/{userId}/invoices/{invoiceId}` (+ `items` subcollection)
 

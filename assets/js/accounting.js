@@ -127,6 +127,35 @@ function wireStaticControls() {
     el('ledger-account-select')?.addEventListener('change', (e) => renderGeneralLedger(e.target.value));
     el('close-period-btn')?.addEventListener('click', () => onClosePeriod());
     el('journals-new-manual')?.addEventListener('click', () => { window.location.href = 'accounting-journal-new.html'; });
+    el('journals-post-pending')?.addEventListener('click', () => onPostPending());
+}
+
+// Imported entries (CSV / bank statements) post their journals via a sweep rather
+// than inline. Surface the backlog + a one-click post action.
+function renderPendingBanner() {
+    const banner = el('journals-pending');
+    if (!banner) return;
+    const n = Number(state.kernel.pending) || 0;
+    banner.classList.toggle('hidden', n <= 0);
+    if (n > 0 && el('journals-pending-count')) el('journals-pending-count').textContent = String(n);
+}
+
+async function onPostPending() {
+    const btn = el('journals-post-pending');
+    if (btn) { btn.disabled = true; btn.textContent = 'Posting…'; }
+    try {
+        const res = await state.ds.postPendingJournals(state.user.uid);
+        const parts = [`Posted ${res.posted}`];
+        if (res.excluded) parts.push(`${res.excluded} skipped (non-posting)`);
+        if (res.skippedClosed) parts.push(`${res.skippedClosed} in closed periods`);
+        window.showToast?.(parts.join(' · '), 'success');
+        await loadKernel(true);
+    } catch (err) {
+        console.error('Post pending failed:', err);
+        await window.showAlertDialog?.({ title: 'Could not post pending entries', body: escapeHtml(err.message || 'Please try again.'), tone: 'danger' });
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Post pending entries'; }
+    }
 }
 
 function openFluxyAI() {
@@ -158,14 +187,16 @@ async function loadKernel(force = false) {
     state.kernel.loadedPeriod = pk; // claim early to avoid duplicate fetches
     try {
         await state.seedPromise; // ensure the chart exists before the first read
-        const [coa, journals, trial, period] = await Promise.all([
+        const [coa, journals, trial, period, pending] = await Promise.all([
             state.ds.getChartOfAccounts(state.user.uid),
             state.ds.listJournals(state.user.uid, { periodKey: pk, includeDrafts: true }),
             state.ds.getTrialBalance(state.user.uid, { periodKey: pk }),
-            state.ds.getPeriod(state.user.uid, pk)
+            state.ds.getPeriod(state.user.uid, pk),
+            state.ds.countPendingPostings(state.user.uid).catch(() => 0)
         ]);
-        state.kernel = { loadedPeriod: pk, coa, journals, trial, period };
+        state.kernel = { loadedPeriod: pk, coa, journals, trial, period, pending };
         renderJournals();
+        renderPendingBanner();
         renderTrialBalance();
         renderChartOfAccounts();
         renderLedgerSelector();

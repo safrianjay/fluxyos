@@ -424,7 +424,11 @@ class DataService {
             batch.set(doc(txCollection), {
                 ...rest,
                 timestamp: timestamp || serverTimestamp(),
-                created_at: uploadedAt
+                created_at: uploadedAt,
+                // Bulk imports don't post journals inline (would blow the 500-write
+                // batch ceiling). Mark them pending so the Accounting Center sweep
+                // (postPendingJournals) can post them in chunked batches afterward.
+                accounting_status: 'pending'
             });
         });
 
@@ -2380,6 +2384,90 @@ class DataService {
             payload.accounting_status = 'pending';
             return null;
         }
+    }
+
+    // Count source documents awaiting a journal. Bulk imports (CSV, bank
+    // statements) mark rows accounting_status:'pending' instead of posting inline.
+    async countPendingPostings(userId, collections = ['transactions', 'bills', 'subscriptions']) {
+        const scope = this._scope(userId);
+        const counts = await Promise.all(collections.map(async (col) => {
+            try {
+                const snap = await getDocs(query(collection(this.db, `${scope}/${col}`), where('accounting_status', '==', 'pending')));
+                return snap.size;
+            } catch (_) { return 0; }
+        }));
+        return counts.reduce((a, b) => a + b, 0);
+    }
+
+    // Sweep: post journals for documents marked accounting_status:'pending' (from
+    // CSV / bank-statement bulk imports that skipped inline posting). Numbered like
+    // live posting, idempotent (only touches 'pending'), chunked to respect the
+    // 500-write batch ceiling, and never posts into a CLOSED period (those stay
+    // pending and are reported). Returns { posted, excluded, skippedClosed }.
+    async postPendingJournals(userId, { collections = ['transactions', 'bills', 'subscriptions'], max = 1000 } = {}) {
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+        const mappings = await this._loadAcctMappings(userId);
+
+        const items = [];
+        for (const col of collections) {
+            try {
+                const snap = await getDocs(query(collection(this.db, `${scope}/${col}`), where('accounting_status', '==', 'pending'), limit(max)));
+                snap.forEach((d) => items.push({ collection: col, ref: d.ref, id: d.id, data: d.data() }));
+            } catch (_) { /* collection may not exist */ }
+        }
+        if (!items.length) return { posted: 0, excluded: 0, skippedClosed: 0 };
+
+        const periodsSnap = await getDocs(collection(this.db, `${scope}/periods`));
+        const closed = new Set();
+        periodsSnap.forEach((d) => { const p = d.data(); if (p.status === 'closed' || p.status === 'locked') closed.add(p.period_key); });
+
+        const toPost = [];
+        const toExclude = [];
+        let skippedClosed = 0;
+        for (const it of items) {
+            const journal = buildJournal({
+                collection: it.collection, id: it.id, document: it.data, mappings,
+                date: it.data.timestamp || it.data.due_date || it.data.renewal_date || null
+            });
+            if (!journal) { toExclude.push(it.ref); continue; }
+            if (closed.has(journal.period_key)) { skippedClosed++; continue; }
+            journal.source_number = this._sourceNumberOf(it.collection, it.data);
+            toPost.push({ ref: it.ref, journal });
+        }
+
+        if (toPost.length) {
+            const counts = {};
+            toPost.forEach((p) => { const y = String(p.journal.period_key).slice(0, 4); counts[y] = (counts[y] || 0) + 1; });
+            this._assignJournalNumbers(toPost.map((p) => p.journal), await this._reserveJournalNumbers(userId, counts));
+        }
+
+        let posted = 0;
+        let excluded = 0;
+        const CHUNK = 120;
+        for (let i = 0; i < toPost.length; i += CHUNK) {
+            const slice = toPost.slice(i, i + CHUNK);
+            const batch = writeBatch(this.db);
+            const acc = {};
+            slice.forEach((p) => {
+                const jr = this._attachJournalToBatch(batch, scope, p.journal, { entityId, balanceAcc: acc });
+                batch.update(p.ref, { journal_ref: jr.id, accounting_status: 'posted' });
+            });
+            this._flushBalanceAcc(batch, scope, entityId, acc);
+            await batch.commit();
+            posted += slice.length;
+        }
+        for (let i = 0; i < toExclude.length; i += 400) {
+            const slice = toExclude.slice(i, i + 400);
+            const batch = writeBatch(this.db);
+            slice.forEach((ref) => batch.update(ref, { accounting_status: 'excluded' }));
+            await batch.commit();
+            excluded += slice.length;
+        }
+        if (posted || excluded) {
+            await this._auditCreateBestEffort(userId, 'journal.sweep', 'journals', '', { posted, excluded, skipped_closed: skippedClosed });
+        }
+        return { posted, excluded, skippedClosed };
     }
 
     // Idempotent Chart of Accounts seed. Writes only the accounts that don't yet
@@ -6912,7 +7000,9 @@ class DataService {
                     source: 'bank_statement_import',
                     bank_statement_import_id: importId,
                     bank_statement_row_id: row.id,
-                    imported_at: serverTimestamp()
+                    imported_at: serverTimestamp(),
+                    // Posted later by the Accounting Center sweep (postPendingJournals).
+                    accounting_status: 'pending'
                 });
                 batch.update(doc(this.db, `${importPath}/rows/${row.id}`), {
                     created_transaction_id: txRef.id,

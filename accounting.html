@@ -195,6 +195,10 @@
                                 </div>
                                 <button type="button" id="journals-filter-clear" class="h-10 px-3 bg-white border border-gray-200 rounded-lg text-[14px] font-medium text-gray-700 hover:bg-gray-50 active:scale-95">Clear</button>
                             </div>
+                            <div id="journals-pending" class="hidden" style="margin:0 20px 12px;padding:12px 16px;border:1px solid #E2E8F0;background:#F8FAFC;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                                <span class="fluxy-table-cell-meta"><strong id="journals-pending-count">0</strong> imported entries aren't in the ledger yet — post them to update the journals, trial balance, and general ledger.</span>
+                                <button type="button" id="journals-post-pending" class="acct-btn acct-btn-primary">Post pending entries</button>
+                            </div>
                             <div id="journals-content" class="fluxy-table-scroll"></div>
                         </section>
                     </div>
