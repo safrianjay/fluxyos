@@ -86,6 +86,7 @@ to these roles instead of inventing page-specific access names.
 | `owner` | Business owner or workspace creator | Full access, billing/security settings, delete workspace |
 | `admin` | Finance/admin operator | Manage users, records, settings, integrations |
 | `finance` | Finance team member | Create and edit finance records, export data, reconcile |
+| `accountant` | Bookkeeper / accountant | Everything `finance` can do, plus the accounting toolkit: post and reverse manual journals, close periods |
 | `approver` | Department or budget approver | Review and approve assigned bills, budgets, and exceptions |
 | `employee` | Regular submitter | Submit claims, receipts, card/budget requests |
 | `viewer` | Auditor, investor, or read-only stakeholder | Read-only dashboard and exports where allowed |
@@ -95,6 +96,10 @@ Role rules:
 - Every user must have exactly one primary role per workspace.
 - `owner` is the only role that can transfer ownership or delete a workspace.
 - `viewer` must never write financial data.
+- `accountant` has the same finance-collection access as `finance` plus
+  `journals.manual` (create/edit/post/reverse manual journals); period **lock**
+  stays owner/admin only. Shipped roles today: `owner`, `admin`, `finance`,
+  `accountant`, `viewer` (`approver`/`employee` remain reserved).
 - `employee` must never approve their own money-moving request.
 - `approver` can approve only records assigned to them or their scope.
 - Sensitive permissions should be additive and explicit; do not infer them from
@@ -124,6 +129,12 @@ capabilities.
 | `subscriptions.cancel` | Mark subscriptions canceled |
 | `vendors.manage` | Create/edit vendor profile or payment details |
 | `budgets.manage` | Create/edit budget rules and limits |
+| `invoices.manage` | Create/edit/finalize customer invoices |
+| `accounting.read` | View Accounting Center: journals, general ledger, trial balance, chart of accounts |
+| `accounting.post` | Post/manage journals + chart of accounts (finance/accountant+) |
+| `journals.manual` | Create, edit, post, and reverse manual journals (finance/accountant+) |
+| `period.close` | Close an accounting period (finance/accountant+) |
+| `period.lock` | Lock a closed accounting period (owner/admin only) |
 | `exports.create` | Export CSV/PDF/accounting files |
 | `integrations.manage` | Connect or disconnect third-party integrations |
 | `users.manage` | Invite, remove, or change roles |
@@ -137,7 +148,8 @@ Default recommendation:
 |---|---|
 | `owner` | All capabilities |
 | `admin` | All except ownership transfer and workspace deletion |
-| `finance` | Finance records, exports, reconciliation, audit read |
+| `finance` | Finance records, exports, reconciliation, audit read, accounting read/post, manual journals, period close |
+| `accountant` | Same as `finance` (finance records + accounting read/post + `journals.manual` + `period.close`); no period lock |
 | `approver` | Read relevant records, approve assigned bills/budgets |
 | `employee` | Create own requests/receipts, read own submitted records |
 | `viewer` | Read-only dashboard and audit where allowed |
@@ -180,9 +192,9 @@ function hasRole(workspaceId, roles) {
 }
 
 match /workspaces/{workspaceId}/transactions/{transactionId} {
-  allow read: if hasRole(workspaceId, ["owner", "admin", "finance", "viewer"]);
-  allow create: if hasRole(workspaceId, ["owner", "admin", "finance"]);
-  allow update: if hasRole(workspaceId, ["owner", "admin", "finance"]);
+  allow read: if hasRole(workspaceId, ["owner", "admin", "finance", "accountant", "viewer"]);
+  allow create: if hasRole(workspaceId, ["owner", "admin", "finance", "accountant"]);
+  allow update: if hasRole(workspaceId, ["owner", "admin", "finance", "accountant"]);
   allow delete: if hasRole(workspaceId, ["owner", "admin"]);
 }
 ```
