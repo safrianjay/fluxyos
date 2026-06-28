@@ -50,13 +50,26 @@ const WS = 'ws_acct_test';
 function line(code, type, debit, credit) {
     return { account_code: code, account_type: type, debit, credit, currency: 'IDR', fx_rate: 1, functional_amount: debit || credit, memo: '' };
 }
-function journal(pk, { debit = 1000, credit = 1000, balanced = true, lines = null } = {}) {
+function journal(pk, { debit = 1000, credit = 1000, balanced = true, lines = null, journalType = 'system', number = 'JE-2026-000001', status = 'posted' } = {}) {
     return {
-        posting_rule_id: 'TEST', source: { collection: 'bills', id: 'b1' },
-        period_key: pk, status: 'posted', memo: 'test',
+        posting_rule_id: 'TEST', journal_type: journalType, journal_number: number, journal_seq: 1,
+        description: 'test', source: { collection: 'bills', id: 'b1' },
+        period_key: pk, status, memo: 'test',
         lines: lines || [line('6300', 'expense', 1000, 0), line('2000', 'liability', 0, 1000)],
         total_debit: debit, total_credit: credit, is_balanced: balanced,
         currency: 'IDR', entity_id: WS, posted_by: null, posted_at: serverTimestamp(), created_at: serverTimestamp()
+    };
+}
+// A manual journal DRAFT: no number, may be unbalanced while edited.
+function manualDraft(pk, { debit = 1000, credit = 1000, balanced = true, lines = null } = {}) {
+    return {
+        posting_rule_id: 'MANUAL', journal_type: 'manual', status: 'draft',
+        description: 'Manual journal', reference: null, source: { collection: null, id: null }, source_number: null,
+        period_key: pk, memo: '',
+        lines: lines || [line('6300', 'expense', 1000, 0), line('2000', 'liability', 0, 1000)],
+        total_debit: debit, total_credit: credit, is_balanced: balanced,
+        currency: 'IDR', entity_id: WS, created_by: null, generated_by: null,
+        created_at: serverTimestamp(), updated_at: serverTimestamp()
     };
 }
 function ledgerBalance(pk, code, overrides = {}) {
@@ -114,7 +127,32 @@ async function main() {
         updateDoc(okRef, { total_debit: 5000, total_credit: 5000 }));
     await expectOutcome('setting reversal linkage is allowed', true, () =>
         updateDoc(okRef, { reversed_by_journal_id: 'J999' }));
-    await expectOutcome('deleting a journal is denied', false, () => deleteDoc(okRef));
+    await expectOutcome('deleting a posted journal is denied', false, () => deleteDoc(okRef));
+
+    console.log('\n— manual journals: draft → posted —');
+    // A manual draft may be saved unbalanced (work in progress).
+    const draftRef = doc(collection(db, `workspaces/${WS}/journals`));
+    await expectOutcome('save an UNBALANCED manual draft', true, () =>
+        setDoc(draftRef, manualDraft('2026-06', { debit: 1000, credit: 0, balanced: false, lines: [line('6300', 'expense', 1000, 0)] })));
+    // Drafts are manual-only — a system draft is rejected.
+    await expectOutcome('reject a SYSTEM draft (drafts are manual-only)', false, () =>
+        setDoc(doc(collection(db, `workspaces/${WS}/journals`)), { ...manualDraft('2026-06'), journal_type: 'system' }));
+    // Posting a draft WITHOUT a number is denied.
+    await expectOutcome('posting a draft WITHOUT a number is denied', false, () =>
+        updateDoc(draftRef, { status: 'posted', total_debit: 1000, total_credit: 1000, is_balanced: true,
+            lines: [line('6300', 'expense', 1000, 0), line('2000', 'liability', 0, 1000)] }));
+    // Posting a balanced draft WITH a number into an open period is allowed.
+    await expectOutcome('posting a balanced draft WITH a number is allowed', true, () =>
+        updateDoc(draftRef, { status: 'posted', journal_number: 'JE-2026-000002', journal_seq: 2,
+            total_debit: 1000, total_credit: 1000, is_balanced: true,
+            lines: [line('6300', 'expense', 1000, 0), line('2000', 'liability', 0, 1000)] }));
+    // The ex-draft is now posted → immutable except reversal linkage.
+    await expectOutcome('the posted (ex-draft) journal is now immutable', false, () =>
+        updateDoc(draftRef, { total_debit: 5 }));
+    // A draft can be discarded; a posted entry cannot.
+    const draft2 = doc(collection(db, `workspaces/${WS}/journals`));
+    await expectOutcome('save a second manual draft', true, () => setDoc(draft2, manualDraft('2026-06')));
+    await expectOutcome('deleting a DRAFT journal is allowed', true, () => deleteDoc(draft2));
 
     console.log('\n— ledger_balances —');
     await expectOutcome('write a valid ledger balance', true, () =>
@@ -149,6 +187,26 @@ async function main() {
         setDoc(doc(db, `workspaces/${WS}/periods/2026-03`), { period_key: '2026-03', status: 'closed' }));
     await expectOutcome('finance CANNOT lock a period (owner/admin only)', false, () =>
         setDoc(doc(db, `workspaces/${WS}/periods/2026-02`), { period_key: '2026-02', status: 'locked' }));
+
+    await setMemberRole(uid, 'accountant');
+    await expectOutcome('accountant CAN post a journal', true, () =>
+        setDoc(doc(collection(db, `workspaces/${WS}/journals`)), journal('2026-06', { number: 'JE-2026-000050' })));
+    await expectOutcome('accountant CAN save a manual draft', true, () =>
+        setDoc(doc(collection(db, `workspaces/${WS}/journals`)), manualDraft('2026-06')));
+    await expectOutcome('accountant CANNOT lock a period (owner/admin only)', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/periods/2026-01`), { period_key: '2026-01', status: 'locked' }));
+
+    console.log('\n— journal-number counters (monotonic) —');
+    await setMemberRole(uid, 'finance');
+    await expectOutcome('create a counter (seq 5)', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/counters/journal-2026`), { seq: 5, entity_id: WS, updated_at: serverTimestamp() }));
+    await expectOutcome('advance the counter (seq 10)', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/counters/journal-2026`), { seq: 10, entity_id: WS, updated_at: serverTimestamp() }, { merge: true }));
+    await expectOutcome('rolling the counter BACKWARD is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/counters/journal-2026`), { seq: 3, entity_id: WS, updated_at: serverTimestamp() }, { merge: true }));
+    await setMemberRole(uid, 'viewer');
+    await expectOutcome('viewer cannot advance the counter', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/counters/journal-2026`), { seq: 11 }, { merge: true }));
 
     console.log(`\n──────── ${passed} passed, ${failed} failed ────────`);
     process.exit(failed ? 1 : 0);

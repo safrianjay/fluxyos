@@ -97,6 +97,7 @@
         .team-role-owner   { background:#FFF7ED; color:#C2410C; border:1px solid #FED7AA; }
         .team-role-admin   { background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; }
         .team-role-finance { background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; }
+        .team-role-accountant { background:#F5F3FF; color:#6D28D9; border:1px solid #DDD6FE; }
         .team-role-viewer  { background:#F8FAFC; color:#475569; border:1px solid #E2E8F0; }
         .team-you-tag { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#C2410C; background:#FFF7ED; border:1px solid #FED7AA; padding:1px 6px; border-radius:9999px; }
     </style>
@@ -127,7 +128,7 @@
         const auth = getAuth(app);
         const ds = new DataService(app);
 
-        const ASSIGNABLE_ROLES = ['admin', 'finance', 'viewer']; // owner is never assignable
+        const ASSIGNABLE_ROLES = ['admin', 'finance', 'accountant', 'viewer']; // owner is never assignable
         const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const avatarFor = (name) => `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=EA580C&color=fff`;
         const fmtTime = (ts) => { try { return ts && ts.toDate ? ts.toDate().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''; } catch (_) { return ''; } };

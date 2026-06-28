@@ -24,18 +24,31 @@ test('accounting engine posts a balanced journal for every business event', asyn
             mapped: j('transactions', 't9', { type: 'expense', amount: 5000, category: 'Event' }, { 'category:Event': '6400' }),
             opening: e.buildOpeningJournal({ entries: [{ account_code: '1000', debit: 50000000 }, { account_code: '2000', credit: 8000000 }], date: d }),
             closeProfit: e.buildClosingJournal({ revenueTotal: 5000000, expenseTotal: 1451500, periodKey: '2026-06' }),
+            manual: e.buildManualJournal({ period_key: '2026-06', description: 'Depreciation', subtype: 'depreciation',
+                lines: [{ account_code: '6400', debit: 250000 }, { account_code: '2000', credit: 250000 }] }),
             pkJakarta: e.periodKey(new Date('2026-06-30T17:30:00Z')),
             signedAsset: e.signedBalance('asset', 5000, 2000),
-            signedLiability: e.signedBalance('liability', 2000, 9000)
+            signedLiability: e.signedBalance('liability', 2000, 9000),
+            manualUnbalanced: (() => { try { e.buildManualJournal({ period_key: '2026-06', lines: [{ account_code: '6400', debit: 100 }] }); return 'no-throw'; } catch (_) { return 'threw'; } })()
         };
     });
 
     const balanced = (jr) => jr && jr.is_balanced && jr.total_debit === jr.total_credit && jr.total_debit > 0;
 
     // Every posting event is balanced.
-    for (const key of ['expense', 'income', 'fee', 'pendPayable', 'billAccrue', 'billPay', 'invIssue', 'mapped', 'opening', 'closeProfit']) {
+    for (const key of ['expense', 'income', 'fee', 'pendPayable', 'billAccrue', 'billPay', 'invIssue', 'mapped', 'opening', 'closeProfit', 'manual']) {
         expect(balanced(r[key]), `${key} must be balanced`).toBe(true);
     }
+    // System journals are tagged for the register/detail surfaces.
+    expect(r.expense.journal_type).toBe('system');
+    expect(r.expense.generated_by).toBe('posting_engine');
+    expect(r.expense.description).toBe('Expense paid');
+    // Manual journals are tagged manual and carry their subtype; an unbalanced
+    // manual entry throws (it can never post).
+    expect(r.manual.journal_type).toBe('manual');
+    expect(r.manual.manual_subtype).toBe('depreciation');
+    expect(r.manual.posting_rule_id).toBe('MANUAL');
+    expect(r.manualUnbalanced).toBe('threw');
     // Rule selection.
     expect(r.expense.posting_rule_id).toBe('TXN-EXP-CASH');
     expect(r.income.posting_rule_id).toBe('TXN-INC-CASH');

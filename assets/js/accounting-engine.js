@@ -251,6 +251,31 @@ const RULES = {
     }
 };
 
+// Human-readable description per posting rule. Mirrors the register labels but
+// lives here so the description is stamped onto the journal at build time and is
+// available on every drill-down surface (register, detail, exports) without a
+// lookup. Reversals are derived from their `REVERSAL:<rule>` id.
+const RULE_DESCRIPTIONS = {
+    'TXN-INC-CASH': 'Income received',
+    'TXN-EXP-CASH': 'Expense paid',
+    'TXN-OPEX-CASH': 'Fee / tax paid',
+    'TXN-ACCRUE-AR': 'Accrued receivable',
+    'TXN-ACCRUE-AP': 'Accrued payable',
+    'BILL-ACCRUE': 'Bill accrued',
+    'BILL-PAY': 'Bill paid',
+    'SUB-ACCRUE': 'Subscription accrued',
+    'INV-ISSUE': 'Invoice issued',
+    'INV-PAY': 'Invoice paid',
+    'OPENING': 'Opening balance',
+    'CLOSE': 'Period close'
+};
+
+export function describeRule(id) {
+    if (!id) return 'Journal';
+    if (String(id).startsWith('REVERSAL')) return 'Reversal';
+    return RULE_DESCRIPTIONS[id] || id;
+}
+
 // --- public builders ------------------------------------------------------
 
 // Assert balance and assemble totals. Throws on imbalance so a bug can never
@@ -283,6 +308,9 @@ export function buildJournal({ collection, id, document, mappings, date } = {}) 
     const when = date || document?.timestamp || document?.due_date || document?.date || new Date();
     return finalize(lines, {
         posting_rule_id: ruleId,
+        journal_type: 'system',
+        generated_by: 'posting_engine',
+        description: describeRule(ruleId),
         source: { collection, id: id || null },
         period_key: periodKey(when),
         status: 'posted',
@@ -304,6 +332,9 @@ export function buildOpeningJournal({ entries = [], date } = {}) {
     else if (diff < 0) lines.push(line(OPENING_EQUITY, -diff, 0, 'Opening balance equity'));
     return finalize(lines, {
         posting_rule_id: 'OPENING',
+        journal_type: 'system',
+        generated_by: 'posting_engine',
+        description: 'Opening balance',
         source: { collection: null, id: null },
         period_key: periodKey(date || new Date()),
         status: 'posted',
@@ -330,6 +361,9 @@ export function buildClosingJournal({ revenueTotal = 0, expenseTotal = 0, date, 
     if (!lines.length) return null;
     return finalize(lines, {
         posting_rule_id: 'CLOSE',
+        journal_type: 'system',
+        generated_by: 'posting_engine',
+        description: 'Period close',
         source: { collection: 'periods', id: pk || null },
         period_key: pk || periodKey(date || new Date()),
         status: 'posted',
@@ -356,10 +390,60 @@ export function buildReversalJournal(original, { targetPeriodKey } = {}) {
     const lines = reverseLines(original.lines);
     return finalize(lines, {
         posting_rule_id: `REVERSAL:${original.posting_rule_id || ''}`,
+        journal_type: original.journal_type || 'system',
+        generated_by: 'posting_engine',
+        description: original.journal_number
+            ? `Reversal of ${original.journal_number}`
+            : 'Reversal',
+        manual_subtype: original.journal_type === 'manual' ? 'correction' : null,
         source: original.source || { collection: null, id: null },
+        source_number: original.source_number || null,
         period_key: targetPeriodKey || original.period_key,
         status: 'reversal',
         reverses_journal_id: original.id || original.journal_id || null,
         memo: original.memo ? `Reversal: ${original.memo}` : 'Reversal'
+    });
+}
+
+// Build a balanced manual journal from accountant-entered lines. Unlike the rule
+// builders this carries no posting rule — the accountant chooses every account.
+// `accountIndex` (code -> { name, type }) comes from the workspace chart of
+// accounts so custom accounts resolve; it falls back to the seed index. Reuses
+// finalize(), so an unbalanced manual entry throws and never posts (the draft
+// path stores raw lines without calling this; only POST finalizes).
+export function buildManualJournal({ lines = [], date, period_key, description, reference, subtype, accountIndex } = {}) {
+    const idx = accountIndex || ACCOUNT_INDEX;
+    const built = (lines || [])
+        .map((l) => {
+            const code = String(l.account_code || '').trim();
+            const acct = idx[code] || ACCOUNT_INDEX[code] || null;
+            const debit = toInt(l.debit);
+            const credit = toInt(l.credit);
+            return {
+                account_code: code,
+                account_type: acct ? acct.type : 'expense',
+                account_name: acct ? acct.name : code,
+                debit,
+                credit,
+                currency: 'IDR',
+                fx_rate: 1,
+                functional_amount: debit || credit,
+                memo: l.memo || ''
+            };
+        })
+        .filter((l) => l.account_code && (l.debit > 0 || l.credit > 0));
+    const pk = period_key || periodKey(date || new Date());
+    return finalize(built, {
+        posting_rule_id: 'MANUAL',
+        journal_type: 'manual',
+        manual_subtype: subtype || null,
+        generated_by: null, // db-service stamps the posting uid
+        source: { collection: null, id: null },
+        source_number: null,
+        period_key: pk,
+        status: 'posted',
+        reference: reference || null,
+        description: description || 'Manual journal',
+        memo: description || ''
     });
 }

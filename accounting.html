@@ -144,8 +144,36 @@
                             <div class="fluxy-table-card-header">
                                 <div>
                                     <h2 class="fluxy-table-title">Journal Register</h2>
-                                    <p class="fluxy-table-subtitle">System-generated double-entry postings for <span id="journals-period">this period</span>. Click a journal to trace it to its source document.</p>
+                                    <p class="fluxy-table-subtitle">Every double-entry posting for <span id="journals-period">this period</span> — system-generated and manual. Open a journal to trace it to its source, ledger entries, and audit trail.</p>
                                 </div>
+                                <div class="fluxy-table-actions">
+                                    <button type="button" id="journals-new-manual" class="acct-btn acct-btn-primary hidden">+ New manual journal</button>
+                                </div>
+                            </div>
+                            <div id="journals-toolbar" class="fluxy-table-toolbar acct-journal-toolbar">
+                                <input id="journals-filter-search" class="acct-records-input acct-journal-filter" type="search" placeholder="Search number, description, source…" aria-label="Search journals" />
+                                <select id="journals-filter-status" class="acct-records-select acct-journal-filter" aria-label="Filter by status">
+                                    <option value="">All statuses</option>
+                                    <option value="posted">Posted</option>
+                                    <option value="draft">Draft</option>
+                                    <option value="reversal">Reversal</option>
+                                </select>
+                                <select id="journals-filter-type" class="acct-records-select acct-journal-filter" aria-label="Filter by type">
+                                    <option value="">All types</option>
+                                    <option value="system">System</option>
+                                    <option value="manual">Manual</option>
+                                </select>
+                                <select id="journals-filter-source" class="acct-records-select acct-journal-filter" aria-label="Filter by source">
+                                    <option value="">All sources</option>
+                                    <option value="transactions">Transactions</option>
+                                    <option value="bills">Bills</option>
+                                    <option value="subscriptions">Subscriptions</option>
+                                    <option value="invoices">Invoices</option>
+                                    <option value="periods">Period close</option>
+                                    <option value="manual">Manual</option>
+                                </select>
+                                <select id="journals-filter-account" class="acct-records-select acct-journal-filter" aria-label="Filter by account"><option value="">All accounts</option></select>
+                                <button type="button" id="journals-filter-clear" class="acct-btn acct-btn-secondary">Clear</button>
                             </div>
                             <div id="journals-content" class="fluxy-table-scroll"></div>
                         </section>
