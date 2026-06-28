@@ -1206,7 +1206,10 @@ type defaults → `6999` fallback.
 **Known limitation (accepted):** rules verify Σdebit==Σcredit on the journal
 **totals** but cannot sum the `lines[]` array — a client could submit balanced
 totals with lopsided lines. Compensating controls: the Trial Balance view re-asserts
-balance, and `scripts/reconcile-ledger-balances.js` (planned) rebuilds balances from
+balance, and `scripts/reconcile-ledger-balances.js` (built — dry-run default;
+recomputes every account/period balance from the journal lines, reports
+drift/missing/orphan + a global Σdebit==Σcredit check, and `--commit` overwrites
+ledger_balances with the authoritative totals) rebuilds balances from
 journals. Server-side posting would close this; client-side was chosen for
 architectural fit/speed.
 
@@ -1285,8 +1288,9 @@ Center → Journals tab shows a pending banner + "Post pending entries" button
 (`countPendingPostings` drives the count).
 
 **Follow-ups (not yet wired):** edit/void corrections for **bills/subscriptions**
-(same `_correctSourceJournal` pattern as transactions); period reopen; the
-reconcile script.
+(same `_correctSourceJournal` pattern as transactions) — note bills/subscriptions
+have no edit/void path in the app today, so this is only relevant once they become
+editable; period reopen.
 
 ### 4n. Invoices — `users/{userId}/invoices/{invoiceId}` (+ `items` subcollection)
 
