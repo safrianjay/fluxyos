@@ -177,12 +177,12 @@
                                     <p class="fluxy-table-subtitle">Open invoices count as expected receivables until you confirm payment.</p>
                                 </div>
                             </div>
-                            <div class="fluxy-table-toolbar flex flex-col gap-2 sm:flex-row sm:items-center">
-                                <div class="relative flex-1 min-w-0">
+                            <div class="grid grid-cols-1 gap-3 items-center border-b border-slate-200 bg-white px-5 py-3 sm:grid-cols-[1fr_minmax(180px,220px)]">
+                                <div class="relative">
                                     <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"></path></svg>
-                                    <input id="invoice-search" type="text" placeholder="Search by number, customer, email, or status" class="h-9 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-[14px] text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C]">
+                                    <input id="invoice-search" type="text" placeholder="Search by number, customer, email, or status" class="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-[14px] text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C]">
                                 </div>
-                                <select id="invoice-status-filter" class="h-9 rounded-lg border border-gray-200 bg-white px-3 text-[12px] font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-[#EA580C] sm:w-44">
+                                <select id="invoice-status-filter" class="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-[14px] font-medium text-gray-700 outline-none focus:ring-2 focus:ring-[#EA580C]">
                                     <option value="all">All statuses</option>
                                     <option value="draft">Draft</option>
                                     <option value="open">Open</option>
