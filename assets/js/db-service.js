@@ -1894,7 +1894,15 @@ class DataService {
         if (markSent) patch.sent_at = serverTimestamp();
 
         const batch = writeBatch(this.db);
-        batch.update(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`), patch);
+        const invoiceRef = doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`);
+        // Finalizing issues the invoice: post INV-ISSUE (Dr Accounts Receivable /
+        // Cr Revenue) for the total. Merge the journal pointer into the same
+        // invoice update (one write per doc per batch).
+        const issueDoc = { ...invoice, ...patch, status: 'open' };
+        await this._postSourceJournal(userId, batch, 'invoices', invoiceRef, issueDoc, { date: invoice.issue_date });
+        if (issueDoc.journal_ref) patch.journal_ref = issueDoc.journal_ref;
+        if (issueDoc.accounting_status) patch.accounting_status = issueDoc.accounting_status;
+        batch.update(invoiceRef, patch);
         batch.set(
             this._invoiceAuditRef(userId),
             this._invoiceAuditPayload(userId, 'invoice.finalized', invoiceId, {
@@ -1962,8 +1970,14 @@ class DataService {
             created_at: serverTimestamp()
         };
         if (invoice.issue_date) transaction.invoice_date = invoice.issue_date;
+        // If the invoice was issued under the accounting kernel (has a journal),
+        // link the payment so it posts INV-PAY (Dr Cash / Cr A/R) — settling the
+        // receivable instead of recognizing revenue twice. Legacy invoices with no
+        // INV-ISSUE journal fall back to a plain income posting (Dr Cash/Cr Revenue).
+        if (invoice.journal_ref) transaction.linked_invoice_id = invoiceId;
 
         const batch = writeBatch(this.db);
+        await this._postSourceJournal(userId, batch, 'transactions', txRef, transaction, { date: transaction.timestamp });
         batch.set(txRef, transaction);
         batch.update(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`), {
             status: 'paid',
@@ -1998,13 +2012,21 @@ class DataService {
             throw new Error('Only draft or open invoices can be voided.');
         }
         const batch = writeBatch(this.db);
-        batch.update(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`), {
+        const invoiceRef = doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`);
+        const voidPatch = {
             status: 'void',
             voided_at: serverTimestamp(),
             void_reason: cleanReason,
             updated_at: serverTimestamp(),
             updated_by: (this.actorUid || userId)
-        });
+        };
+        // Voiding an issued invoice reverses its INV-ISSUE journal so Revenue and
+        // A/R no longer reflect it. Drafts never posted, so there's nothing to reverse.
+        if (invoice.status === 'open' && invoice.journal_ref) {
+            const jf = await this._correctSourceJournal(userId, batch, 'invoices', invoiceRef, invoice, null);
+            if (jf.accounting_status) voidPatch.accounting_status = jf.accounting_status;
+        }
+        batch.update(invoiceRef, voidPatch);
         batch.set(
             this._invoiceAuditRef(userId),
             this._invoiceAuditPayload(userId, 'invoice.voided', invoiceId, {

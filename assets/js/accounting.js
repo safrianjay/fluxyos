@@ -40,6 +40,7 @@ const SOURCE_LINKS = {
     transactions: '/ledger',
     bills: '/bill',
     subscriptions: '/subscription',
+    invoices: '/invoices',
     bank_statement_imports: '/integration'
 };
 // --- helpers ---
@@ -637,7 +638,10 @@ function emptyState(title, desc) {
 function sourceDeepLink(source) {
     if (!source || !source.collection || !source.id) return '';
     const base = SOURCE_LINKS[source.collection];
-    return base ? `${base}?record=${encodeURIComponent(source.id)}` : '';
+    if (!base) return '';
+    // Invoices open by ?invoice=<id>; every other list page consumes ?record=<id>.
+    const param = source.collection === 'invoices' ? 'invoice' : 'record';
+    return `${base}?${param}=${encodeURIComponent(source.id)}`;
 }
 
 function renderJournals() {

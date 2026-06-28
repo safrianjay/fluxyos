@@ -1229,12 +1229,25 @@ via a data-URL import. Source docs gain `journal_ref` + `accounting_status` (the
 document validators in `firestore.rules` allow these two keys via
 `isValidAccountingLink`).
 
-**Follow-ups (not yet wired):** invoice `INV-ISSUE` posting on finalize +
-`INV-PAY` on `markInvoicePaid`; CSV/bank-statement bulk imports currently mark
-rows `pending` (not auto-posted, to stay under the 500-write batch ceiling);
-period reopen; the reconcile script; correction-in-current-period on edits to a
-**closed** period (open-period edits re-post; the engine's `buildReversalJournal`
-exists for this).
+**Edit/void corrections (wired).** Editing or voiding a **transaction**
+(`updateTransaction`/`voidTransaction`) reverses the document's journal and (for
+an edit) reposts from the new state via `_correctSourceJournal` — both into an
+OPEN period (correction-in-current-period; a closed book is never mutated). The
+reversal + repost balance increments are aggregated before flushing
+(`_flushBalanceAcc`) so the same `ledger_balances` doc is never written twice in
+one batch.
+
+**Invoices (wired).** `finalizeInvoice` posts `INV-ISSUE` (Dr A/R / Cr Revenue);
+`markInvoicePaid` links the income transaction (`linked_invoice_id`) so it posts
+`INV-PAY` (Dr Cash / Cr A/R) — settling the receivable, not double-recognizing
+revenue (legacy invoices with no `INV-ISSUE` journal fall back to a plain income
+posting); `voidInvoice` reverses the issue journal. Invoice docs carry
+`journal_ref`/`accounting_status` (allowed via `isValidInvoiceBase`).
+
+**Follow-ups (not yet wired):** edit/void corrections for **bills/subscriptions**
+(same `_correctSourceJournal` pattern as transactions); CSV/bank-statement bulk
+imports mark rows `pending` (not auto-posted, to stay under the 500-write batch
+ceiling); period reopen; the reconcile script.
 
 ### 4n. Invoices — `users/{userId}/invoices/{invoiceId}` (+ `items` subcollection)
 

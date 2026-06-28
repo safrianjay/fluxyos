@@ -1643,8 +1643,11 @@ service cloud.firestore {
           'created_at',
           'updated_at',
           'created_by',
-          'updated_by'
+          'updated_by',
+          'journal_ref',
+          'accounting_status'
         ])
+        && isValidAccountingLink(data)
         && data.keys().hasAll([
           'invoice_number',
           'status',
