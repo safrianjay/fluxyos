@@ -2941,7 +2941,7 @@ service cloud.firestore {
     // surface its posting status. Optional + bounded.
     function isValidAccountingLink(data) {
       return (!('journal_ref' in data) || data.journal_ref == null || (data.journal_ref is string && data.journal_ref.size() <= 120))
-        && (!('accounting_status' in data) || data.accounting_status in ['posted', 'pending', 'excluded']);
+        && (!('accounting_status' in data) || data.accounting_status in ['posted', 'pending', 'excluded', 'reversed']);
     }
     function wsValidTxCreate(data) {
       return data.keys().hasOnly([

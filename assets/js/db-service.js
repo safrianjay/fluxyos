@@ -279,6 +279,11 @@ class DataService {
         const after = { ...existing, ...payload };
 
         const batch = writeBatch(this.db);
+        // Keep the ledger correct: reverse the old journal and repost from the
+        // edited state (into an open period). Merge the new journal pointer into
+        // the same source update — one write per doc per batch.
+        const journalFields = await this._correctSourceJournal(userId, batch, 'transactions', ref, existing, after);
+        Object.assign(payload, journalFields);
         batch.update(ref, payload);
         batch.set(doc(collection(this.db, `${this._scope(userId)}/audit_logs`)), {
             actor_uid: (this.actorUid || userId),
@@ -318,6 +323,10 @@ class DataService {
         };
 
         const batch = writeBatch(this.db);
+        // Voiding reverses the document's journal (no repost) so the ledger and
+        // trial balance no longer reflect the cancelled transaction.
+        const journalFields = await this._correctSourceJournal(userId, batch, 'transactions', ref, existing, null);
+        Object.assign(payload, journalFields);
         batch.update(ref, payload);
         batch.set(doc(collection(this.db, `${this._scope(userId)}/audit_logs`)), {
             actor_uid: (this.actorUid || userId),
@@ -2143,19 +2152,33 @@ class DataService {
     // Write one journal + its ledger_balances increments into an existing batch.
     // Returns the new journal DocumentReference. Shared by document posting,
     // opening balances, period close, and corrections.
-    _attachJournalToBatch(batch, scope, journal, { entityId = null } = {}) {
+    //
+    // When `balanceAcc` is provided, ledger_balances increments are accumulated
+    // into it instead of written immediately — the caller flushes once via
+    // _flushBalanceAcc. This is REQUIRED when a single batch posts more than one
+    // journal touching the same account+period (corrections post a reversal + a
+    // repost): Firestore forbids writing the same document twice in one batch.
+    _attachJournalToBatch(batch, scope, journal, { entityId = null, balanceAcc = null } = {}) {
         const journalRef = doc(collection(this.db, `${scope}/journals`));
-        const journalDoc = {
+        batch.set(journalRef, {
             ...journal,
             entity_id: entityId,
             posted_by: this.actorUid || null,
             posted_at: serverTimestamp(),
             created_at: serverTimestamp()
-        };
-        batch.set(journalRef, journalDoc);
+        });
         (journal.lines || []).forEach((l) => {
-            const balRef = doc(this.db, `${scope}/ledger_balances/${journal.period_key}__${l.account_code}`);
-            batch.set(balRef, {
+            if (balanceAcc) {
+                const key = `${journal.period_key}__${l.account_code}`;
+                const e = balanceAcc[key] || (balanceAcc[key] = {
+                    period_key: journal.period_key, account_code: l.account_code,
+                    account_type: l.account_type, debit: 0, credit: 0
+                });
+                e.debit += Number(l.debit) || 0;
+                e.credit += Number(l.credit) || 0;
+                return;
+            }
+            batch.set(doc(this.db, `${scope}/ledger_balances/${journal.period_key}__${l.account_code}`), {
                 period_key: journal.period_key,
                 account_code: l.account_code,
                 account_type: l.account_type,
@@ -2167,6 +2190,74 @@ class DataService {
             }, { merge: true });
         });
         return journalRef;
+    }
+
+    // Flush an accumulated balance map (one merged increment per account+period).
+    _flushBalanceAcc(batch, scope, entityId, balanceAcc) {
+        Object.values(balanceAcc).forEach((e) => {
+            batch.set(doc(this.db, `${scope}/ledger_balances/${e.period_key}__${e.account_code}`), {
+                period_key: e.period_key, account_code: e.account_code, account_type: e.account_type,
+                entity_id: entityId, currency: 'IDR',
+                debit_total: increment(e.debit), credit_total: increment(e.credit),
+                updated_at: serverTimestamp()
+            }, { merge: true });
+        });
+    }
+
+    // The period a correction should post into: the original period if it's still
+    // open, otherwise the current month (the correction-in-current-period rule —
+    // never mutate a closed book's history).
+    async _openTargetPeriod(userId, candidate) {
+        const pk = candidate || acctPeriodKey(new Date());
+        const p = await this.getPeriod(userId, pk);
+        return p.status === 'open' ? pk : acctPeriodKey(new Date());
+    }
+
+    // Keep the ledger in step with an edited/voided document. Reverses the
+    // document's existing journal and (for an edit) reposts from the new state —
+    // both into an OPEN period. Returns { journal_ref, accounting_status } for the
+    // caller to merge into its own source-doc update (one write per doc per batch).
+    // afterPayload === null means a void (reverse only, no repost). Best-effort:
+    // a failure never blocks the edit/void.
+    async _correctSourceJournal(userId, batch, sourceCollection, sourceRef, existing, afterPayload) {
+        const result = {};
+        try {
+            const scope = this._scope(userId);
+            const entityId = this._resolvedScopeId(userId);
+            const acc = {};
+            let targetPeriod = null;
+            const oldJournalId = existing && existing.journal_ref;
+            if (oldJournalId) {
+                const oldJournal = await this.getJournalById(userId, oldJournalId);
+                if (oldJournal && !oldJournal.reversed_by_journal_id) {
+                    targetPeriod = await this._openTargetPeriod(userId, oldJournal.period_key);
+                    const reversal = buildReversalJournal({ ...oldJournal, id: oldJournalId }, { targetPeriodKey: targetPeriod });
+                    const revRef = this._attachJournalToBatch(batch, scope, reversal, { entityId, balanceAcc: acc });
+                    batch.update(doc(this.db, `${scope}/journals/${oldJournalId}`), { reversed_by_journal_id: revRef.id });
+                }
+            }
+            if (afterPayload) {
+                const mappings = await this._loadAcctMappings(userId);
+                const fresh = buildJournal({
+                    collection: sourceCollection, id: sourceRef.id, document: afterPayload, mappings,
+                    date: afterPayload.timestamp || afterPayload.due_date || afterPayload.renewal_date || null
+                });
+                if (fresh) {
+                    fresh.period_key = targetPeriod || await this._openTargetPeriod(userId, fresh.period_key);
+                    const newRef = this._attachJournalToBatch(batch, scope, fresh, { entityId, balanceAcc: acc });
+                    result.journal_ref = newRef.id;
+                    result.accounting_status = 'posted';
+                } else {
+                    result.accounting_status = 'excluded';
+                }
+            } else {
+                result.accounting_status = 'reversed';
+            }
+            this._flushBalanceAcc(batch, scope, entityId, acc);
+        } catch (err) {
+            console.warn('[accounting] correction skipped:', err && err.message ? err.message : err);
+        }
+        return result;
     }
 
     // Build the journal for a business document and stage it in `batch`. Mutates

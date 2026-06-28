@@ -632,6 +632,14 @@ function emptyState(title, desc) {
     return `<div class="fluxy-table-empty"><div class="fluxy-table-empty-title">${escapeHtml(title)}</div><div class="fluxy-table-empty-description">${escapeHtml(desc)}</div></div>`;
 }
 
+// Deep link to a journal's source document, using the app-wide /<page>?record=<id>
+// contract every list page consumes.
+function sourceDeepLink(source) {
+    if (!source || !source.collection || !source.id) return '';
+    const base = SOURCE_LINKS[source.collection];
+    return base ? `${base}?record=${encodeURIComponent(source.id)}` : '';
+}
+
 function renderJournals() {
     const wrap = el('journals-content');
     if (!wrap) return;
@@ -642,19 +650,47 @@ function renderJournals() {
         return;
     }
     const body = rows.map(j => {
-        const lines = (j.lines || []).map(l => `${escapeHtml(l.account_code)} ${l.debit ? 'Dr' : 'Cr'} ${formatRupiah(l.debit || l.credit)}`).join(' · ');
-        const link = SOURCE_LINKS[j.source && j.source.collection];
-        const src = link
-            ? `<a class="acct-link" href="${link}">${escapeHtml(srcLabel(j))}</a>`
-            : `<span class="fluxy-table-cell-meta">${escapeHtml(srcLabel(j))}</span>`;
-        return `<tr class="fluxy-table-row">
-            <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${escapeHtml(prettyRule(j.posting_rule_id))}</span><span class="fluxy-table-cell-meta">${escapeHtml(lines)}</span></td>
-            <td class="fluxy-table-cell">${src}</td>
+        const lines = j.lines || [];
+        const drNames = lines.filter(l => Number(l.debit) > 0).map(l => l.account_name || l.account_code).join(', ') || '—';
+        const crNames = lines.filter(l => Number(l.credit) > 0).map(l => l.account_name || l.account_code).join(', ') || '—';
+        const href = sourceDeepLink(j.source);
+        const isReversal = String(j.posting_rule_id || '').startsWith('REVERSAL');
+        const srcText = j.source && j.source.collection
+            ? `${String(j.source.collection).replace(/s$/, '')} · ${String(j.source.id).slice(0, 8)}`
+            : 'Manual';
+        return `<tr class="fluxy-table-row${href ? ' fluxy-table-row-clickable' : ''}"${href ? ` data-href="${href}" tabindex="0"` : ''}>
+            <td class="fluxy-table-cell">
+                <div class="fluxy-table-cell-primary">${escapeHtml(prettyRule(j.posting_rule_id))}</div>
+                <div class="fluxy-table-cell-meta">${escapeHtml(j.period_key || '')}${isReversal ? ' · reversal' : ''}</div>
+            </td>
+            <td class="fluxy-table-cell">
+                <div class="fluxy-table-cell-meta"><strong>Dr</strong> ${escapeHtml(drNames)}</div>
+                <div class="fluxy-table-cell-meta"><strong>Cr</strong> ${escapeHtml(crNames)}</div>
+            </td>
+            <td class="fluxy-table-cell">
+                <div class="fluxy-table-cell-meta">${escapeHtml(srcText)}</div>
+                ${href ? '<div class="fluxy-table-cell-meta" style="color:#EA580C;">View record →</div>' : ''}
+            </td>
             <td class="fluxy-table-cell fluxy-table-money">${formatRupiah(j.total_debit)}</td>
             <td class="fluxy-table-cell fluxy-table-money"><span class="fluxy-table-status ${j.is_balanced ? 'fluxy-status-success' : 'fluxy-status-danger'}">${j.is_balanced ? 'Balanced' : 'Check'}</span></td>
         </tr>`;
     }).join('');
-    wrap.innerHTML = tableShell([{ label: 'Journal' }, { label: 'Source' }, { label: 'Amount', money: true }, { label: 'Status', money: true }], body);
+    wrap.innerHTML = tableShell([
+        { label: 'Journal' }, { label: 'Posting (Dr / Cr)' }, { label: 'Source' }, { label: 'Amount', money: true }, { label: 'Status', money: true }
+    ], body);
+    wireRowNavigation(wrap);
+}
+
+// Delegate row clicks/Enter to navigate to a row's data-href (deep link).
+function wireRowNavigation(wrap) {
+    if (!wrap || wrap.dataset.navWired) return;
+    wrap.dataset.navWired = '1';
+    const go = (target) => {
+        const row = target.closest('tr[data-href]');
+        if (row) window.location.href = row.getAttribute('data-href');
+    };
+    wrap.addEventListener('click', (e) => go(e.target));
+    wrap.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(e.target); });
 }
 
 function renderTrialBalance() {
@@ -672,7 +708,7 @@ function renderTrialBalance() {
         return;
     }
     const body = tb.rows.map(r => `<tr class="fluxy-table-row">
-        <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${escapeHtml(r.account_code)} · ${escapeHtml(r.account_name)}</span><span class="fluxy-table-cell-meta">${escapeHtml(r.account_type)}</span></td>
+        <td class="fluxy-table-cell"><div class="fluxy-table-cell-primary">${escapeHtml(r.account_code)} · ${escapeHtml(r.account_name)}</div><div class="fluxy-table-cell-meta">${escapeHtml(r.account_type)}</div></td>
         <td class="fluxy-table-cell fluxy-table-money">${r.debit_amount ? formatRupiah(r.debit_amount) : '—'}</td>
         <td class="fluxy-table-cell fluxy-table-money">${r.credit_amount ? formatRupiah(r.credit_amount) : '—'}</td>
     </tr>`).join('');
@@ -727,8 +763,8 @@ async function renderGeneralLedger(accountCode) {
             wrap.innerHTML = emptyState('No activity', 'This account has no postings in the selected period.');
             return;
         }
-        const body = gl.entries.map(e => `<tr class="fluxy-table-row">
-            <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${escapeHtml(prettyRule(e.posting_rule_id))}</span><span class="fluxy-table-cell-meta">${escapeHtml(e.memo || '')}</span></td>
+        const body = gl.entries.map(e => `<tr class="fluxy-table-row${sourceDeepLink(e.source) ? ' fluxy-table-row-clickable' : ''}"${sourceDeepLink(e.source) ? ` data-href="${sourceDeepLink(e.source)}" tabindex="0"` : ''}>
+            <td class="fluxy-table-cell"><div class="fluxy-table-cell-primary">${escapeHtml(prettyRule(e.posting_rule_id))}</div><div class="fluxy-table-cell-meta">${escapeHtml(e.memo || e.period_key || '')}</div></td>
             <td class="fluxy-table-cell fluxy-table-money">${e.debit ? formatRupiah(e.debit) : '—'}</td>
             <td class="fluxy-table-cell fluxy-table-money">${e.credit ? formatRupiah(e.credit) : '—'}</td>
             <td class="fluxy-table-cell fluxy-table-money">${signedRupiah(e.running_balance)}</td>
@@ -737,6 +773,7 @@ async function renderGeneralLedger(accountCode) {
             <td class="fluxy-table-cell">Closing balance</td><td class="fluxy-table-cell fluxy-table-money">—</td><td class="fluxy-table-cell fluxy-table-money">—</td>
             <td class="fluxy-table-cell fluxy-table-money">${signedRupiah(gl.closing)}</td></tr>`;
         wrap.innerHTML = tableShell([{ label: 'Entry' }, { label: 'Debit', money: true }, { label: 'Credit', money: true }, { label: 'Running', money: true }], body + closing);
+        wireRowNavigation(wrap);
     } catch (err) {
         console.error('General ledger load failed:', err);
         wrap.innerHTML = emptyState('Could not load ledger', 'Please try again.');
