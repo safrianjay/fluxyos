@@ -150,30 +150,50 @@
                                     <button type="button" id="journals-new-manual" class="acct-btn acct-btn-primary hidden">+ New manual journal</button>
                                 </div>
                             </div>
-                            <div id="journals-toolbar" class="fluxy-table-toolbar acct-journal-toolbar">
-                                <input id="journals-filter-search" class="acct-records-input acct-journal-filter" type="search" placeholder="Search number, description, source…" aria-label="Search journals" />
-                                <select id="journals-filter-status" class="acct-records-select acct-journal-filter" aria-label="Filter by status">
-                                    <option value="">All statuses</option>
-                                    <option value="posted">Posted</option>
-                                    <option value="draft">Draft</option>
-                                    <option value="reversal">Reversal</option>
-                                </select>
-                                <select id="journals-filter-type" class="acct-records-select acct-journal-filter" aria-label="Filter by type">
-                                    <option value="">All types</option>
-                                    <option value="system">System</option>
-                                    <option value="manual">Manual</option>
-                                </select>
-                                <select id="journals-filter-source" class="acct-records-select acct-journal-filter" aria-label="Filter by source">
-                                    <option value="">All sources</option>
-                                    <option value="transactions">Transactions</option>
-                                    <option value="bills">Bills</option>
-                                    <option value="subscriptions">Subscriptions</option>
-                                    <option value="invoices">Invoices</option>
-                                    <option value="periods">Period close</option>
-                                    <option value="manual">Manual</option>
-                                </select>
-                                <select id="journals-filter-account" class="acct-records-select acct-journal-filter" aria-label="Filter by account"><option value="">All accounts</option></select>
-                                <button type="button" id="journals-filter-clear" class="acct-btn acct-btn-secondary">Clear</button>
+                            <div id="journals-toolbar" class="acct-journal-toolbar grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[minmax(200px,1fr)_140px_130px_155px_minmax(160px,190px)_auto] gap-3 items-end px-5 pb-4 pt-1">
+                                <div>
+                                    <label for="journals-filter-search" class="block text-[12px] font-semibold text-gray-500 mb-1.5">Search</label>
+                                    <input id="journals-filter-search" type="search" placeholder="Number, description, source…" aria-label="Search journals"
+                                        class="w-full h-10 px-3 border border-gray-200 rounded-lg text-[14px] bg-white focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]" />
+                                </div>
+                                <div>
+                                    <label for="journals-filter-status" class="block text-[12px] font-semibold text-gray-500 mb-1.5">Status</label>
+                                    <select id="journals-filter-status" aria-label="Filter by status"
+                                        class="w-full h-10 px-3 border border-gray-200 rounded-lg text-[14px] bg-white focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                                        <option value="">All statuses</option>
+                                        <option value="posted">Posted</option>
+                                        <option value="draft">Draft</option>
+                                        <option value="reversal">Reversal</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="journals-filter-type" class="block text-[12px] font-semibold text-gray-500 mb-1.5">Type</label>
+                                    <select id="journals-filter-type" aria-label="Filter by type"
+                                        class="w-full h-10 px-3 border border-gray-200 rounded-lg text-[14px] bg-white focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                                        <option value="">All types</option>
+                                        <option value="system">System</option>
+                                        <option value="manual">Manual</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="journals-filter-source" class="block text-[12px] font-semibold text-gray-500 mb-1.5">Source</label>
+                                    <select id="journals-filter-source" aria-label="Filter by source"
+                                        class="w-full h-10 px-3 border border-gray-200 rounded-lg text-[14px] bg-white focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                                        <option value="">All sources</option>
+                                        <option value="transactions">Transactions</option>
+                                        <option value="bills">Bills</option>
+                                        <option value="subscriptions">Subscriptions</option>
+                                        <option value="invoices">Invoices</option>
+                                        <option value="periods">Period close</option>
+                                        <option value="manual">Manual</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="journals-filter-account" class="block text-[12px] font-semibold text-gray-500 mb-1.5">Account</label>
+                                    <select id="journals-filter-account" aria-label="Filter by account"
+                                        class="w-full h-10 px-3 border border-gray-200 rounded-lg text-[14px] bg-white focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]"><option value="">All accounts</option></select>
+                                </div>
+                                <button type="button" id="journals-filter-clear" class="h-10 px-3 bg-white border border-gray-200 rounded-lg text-[14px] font-medium text-gray-700 hover:bg-gray-50 active:scale-95">Clear</button>
                             </div>
                             <div id="journals-content" class="fluxy-table-scroll"></div>
                         </section>

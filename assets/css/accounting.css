@@ -200,16 +200,10 @@
 }
 .acct-link:hover { text-decoration: underline; }
 
-/* Journal Register filter toolbar: wraps on small screens, controls stay compact. */
-.acct-journal-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-}
-.acct-journal-filter { width: auto; min-width: 0; }
-.acct-journal-toolbar .acct-journal-filter[type="search"],
-.acct-journal-toolbar input.acct-journal-filter { flex: 1 1 220px; min-width: 180px; }
+/* Journal Register filter toolbar uses a responsive Tailwind grid (mirrors the
+   Balance Sheet filter bar) so the enhanced FluxySelect dropdowns size to their
+   cells instead of stretching full-width. Border separates it from the table. */
+.acct-journal-toolbar { border-top: 1px solid #F1F5F9; }
 
 /* --- Journal Detail page --- */
 .acct-jr-meta-grid {
