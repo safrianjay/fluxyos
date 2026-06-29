@@ -16,6 +16,20 @@ function formatRp(n) {
     return 'Rp' + v.toLocaleString('id-ID');
 }
 
+function formatRpInput(value, allowNegative = false) {
+    const raw = String(value || '');
+    const negative = allowNegative && raw.trim().startsWith('-');
+    const digits = raw.replace(/[^\d]/g, '');
+    if (!digits) return '';
+    const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return negative ? `-${formatted}` : formatted;
+}
+
+function parseRpInput(value) {
+    const raw = String(value || '').replace(/[^\d-]/g, '');
+    return Math.round(Number(raw) || 0);
+}
+
 // 'YYYY-MM' and a human label in Asia/Jakarta, matching the accounting period key.
 function currentPeriod() {
     const now = new Date();
@@ -404,10 +418,24 @@ function wireCorporate(ds, user) {
         if (hint) hint.textContent = 'Read-only for your role.';
         return;
     }
+    const amountEl = document.getElementById('corp-pph25-amount');
+    const annualAdjEl = document.getElementById('corp-annual-adj');
+    if (amountEl) {
+        amountEl.addEventListener('input', (event) => {
+            const target = event.target;
+            target.value = formatRpInput(target.value);
+        });
+    }
+    if (annualAdjEl) {
+        annualAdjEl.addEventListener('input', (event) => {
+            const target = event.target;
+            target.value = formatRpInput(target.value, true);
+        });
+    }
+
     btn.addEventListener('click', async () => {
-        const amountEl = document.getElementById('corp-pph25-amount');
         const refEl = document.getElementById('corp-pph25-ref');
-        const amount = parseInt(String(amountEl ? amountEl.value : '').replace(/[^\d]/g, ''), 10);
+        const amount = parseRpInput(amountEl ? amountEl.value : '');
         if (!Number.isFinite(amount) || amount <= 0) { toast('Enter an amount', 'error'); return; }
         btn.setAttribute('disabled', 'disabled');
         try {
@@ -433,7 +461,7 @@ function wireCorporate(ds, user) {
     if (computeAnnualBtn) {
         computeAnnualBtn.addEventListener('click', async () => {
             const year = String((document.getElementById('corp-annual-year') || {}).value || '').trim();
-            const adj = parseInt(String((document.getElementById('corp-annual-adj') || {}).value || '').replace(/[^\d-]/g, ''), 10) || 0;
+            const adj = parseRpInput((document.getElementById('corp-annual-adj') || {}).value || '');
             if (!/^\d{4}$/.test(year)) { toast('Enter a 4-digit fiscal year', 'error'); return; }
             computeAnnualBtn.setAttribute('disabled', 'disabled');
             try {
