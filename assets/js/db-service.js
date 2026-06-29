@@ -2321,6 +2321,67 @@ class DataService {
         }
     }
 
+    // --- TAX PERIODS (compute / file) -----------------------------------
+    // Compute a monthly tax period summary from the ledger (the source of truth) and
+    // persist it as a cached tax_periods doc (id `monthly-YYYY-MM`). Status → computed.
+    // Refuses to recompute a filed/settled period. Writes a tax_period.compute audit.
+    async computeTaxPeriod(userId, periodKey) {
+        if (!userId || !periodKey) throw new Error('userId + periodKey required');
+        const [ppn, wht] = await Promise.all([this.getPpnLedger(userId, periodKey), this.getWhtLedger(userId, periodKey)]);
+        const ref = doc(this.db, `${this._scope(userId)}/tax_periods/monthly-${periodKey}`);
+        const existing = await getDoc(ref);
+        if (existing.exists() && ['filed', 'settled'].includes(existing.data().status)) {
+            throw new Error('This period is filed and cannot be recomputed.');
+        }
+        const payload = {
+            period_type: 'monthly',
+            period_key: periodKey,
+            status: 'computed',
+            ppn_output: ppn.output, ppn_input: ppn.input, ppn_payable: ppn.payable,
+            pph_withheld: wht.payable, pph_credit: wht.credit,
+            updated_at: serverTimestamp(),
+            created_at: existing.exists() ? (existing.data().created_at || serverTimestamp()) : serverTimestamp()
+        };
+        await setDoc(ref, payload, { merge: true });
+        await this.addAuditLog(userId, {
+            action: 'tax_period.compute', target_collection: 'tax_periods', target_id: `monthly-${periodKey}`,
+            after: { ppn_payable: ppn.payable, pph_withheld: wht.payable, pph_credit: wht.credit }, source: 'dashboard'
+        });
+        return { id: `monthly-${periodKey}`, ...payload };
+    }
+
+    // Mark a computed period as filed (locks it from recompute). Audited.
+    async fileTaxPeriod(userId, periodKey) {
+        if (!userId || !periodKey) throw new Error('userId + periodKey required');
+        const ref = doc(this.db, `${this._scope(userId)}/tax_periods/monthly-${periodKey}`);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('Compute the period before filing.');
+        await setDoc(ref, {
+            status: 'filed', closed_by: (this.actorUid || userId), closed_at: serverTimestamp(), updated_at: serverTimestamp()
+        }, { merge: true });
+        await this.addAuditLog(userId, {
+            action: 'tax_period.close', target_collection: 'tax_periods', target_id: `monthly-${periodKey}`, source: 'dashboard'
+        });
+    }
+
+    async getTaxPeriod(userId, periodKey) {
+        if (!userId || !periodKey) return null;
+        try {
+            const snap = await getDoc(doc(this.db, `${this._scope(userId)}/tax_periods/monthly-${periodKey}`));
+            return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+        } catch (_) { return null; }
+    }
+
+    async listTaxPeriods(userId, { max = 24 } = {}) {
+        if (!userId) return [];
+        try {
+            const snap = await getDocs(collection(this.db, `${this._scope(userId)}/tax_periods`));
+            return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                .sort((a, b) => String(b.period_key || '').localeCompare(String(a.period_key || '')))
+                .slice(0, max);
+        } catch (_) { return []; }
+    }
+
     // Read the tax lines for a period (optionally a direction). Returns [] on any
     // error so the Tax Center renders an empty state rather than throwing. Posting
     // of tax_transactions is wired in a later phase; today this is normally empty.

@@ -201,6 +201,84 @@ function renderWithholding(taxTx, whtLedger, period) {
         <tbody>${html}</tbody></table></div>`;
 }
 
+function periodBadge(status) {
+    const map = { computed: ['fluxy-status-info', 'Computed'], filed: ['fluxy-status-success', 'Filed'], settled: ['fluxy-status-success', 'Settled'] };
+    return map[status] || ['fluxy-status-neutral', 'Open'];
+}
+
+function renderPeriods(periods, period) {
+    const label = document.getElementById('period-card-label');
+    if (label) label.textContent = period.label;
+    const cur = (periods || []).find((p) => p.period_key === period.key);
+    const badge = document.getElementById('period-status-badge');
+    if (badge) { const [cls, text] = periodBadge(cur && cur.status); badge.className = 'fluxy-table-status ' + cls; badge.textContent = text; }
+    const fileBtn = document.getElementById('period-file-btn');
+    if (fileBtn) fileBtn.disabled = !cur || cur.status === 'filed' || cur.status === 'settled' || !canEditTax();
+    const list = document.getElementById('tax-periods-list');
+    if (!list) return;
+    if (!periods || !periods.length) {
+        list.innerHTML = '<p class="fluxy-meta" style="padding:8px 0">No periods computed yet. Click “Compute period” to summarize this month from your books.</p>';
+        return;
+    }
+    const rows = periods.map((p) => {
+        const [cls, text] = periodBadge(p.status);
+        return `<tr class="fluxy-table-row">
+            <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${p.period_key || ''}</span></td>
+            <td class="fluxy-table-cell fluxy-table-money">${formatRp(p.ppn_payable)}</td>
+            <td class="fluxy-table-cell fluxy-table-money">${formatRp(p.pph_withheld)}</td>
+            <td class="fluxy-table-cell"><span class="fluxy-table-status ${cls}">${text}</span></td>
+        </tr>`;
+    }).join('');
+    list.innerHTML = `<div class="fluxy-table-scroll"><table class="fluxy-table">
+        <thead><tr class="fluxy-table-header"><th>Period</th><th class="fluxy-table-money">PPN payable</th><th class="fluxy-table-money">PPh payable</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`;
+}
+
+async function reloadPeriods(ds, user, period) {
+    const periods = await ds.listTaxPeriods(user.uid).catch(() => []);
+    renderPeriods(periods, period);
+}
+
+function wirePeriods(ds, user, period) {
+    const computeBtn = document.getElementById('period-compute-btn');
+    const fileBtn = document.getElementById('period-file-btn');
+    if (!canEditTax()) {
+        [computeBtn, fileBtn].forEach((b) => { if (b) { b.setAttribute('disabled', 'disabled'); b.classList.add('opacity-50', 'cursor-not-allowed'); } });
+        return;
+    }
+    if (computeBtn) {
+        computeBtn.addEventListener('click', async () => {
+            computeBtn.setAttribute('disabled', 'disabled');
+            try {
+                await ds.computeTaxPeriod(user.uid, period.key);
+                await reloadPeriods(ds, user, period);
+                toast('Period computed', 'success');
+            } catch (e) {
+                toast(e && e.message ? e.message : 'Could not compute period', 'error');
+                console.error('computeTaxPeriod failed', e);
+            } finally {
+                computeBtn.removeAttribute('disabled');
+            }
+        });
+    }
+    if (fileBtn) {
+        fileBtn.addEventListener('click', async () => {
+            const ok = typeof window.showConfirmDialog === 'function'
+                ? await window.showConfirmDialog({ title: 'Mark period as filed?', body: `This locks ${period.label} from recompute. Do this once you have reported it to DJP.`, confirmLabel: 'Mark filed', cancelLabel: 'Cancel', tone: 'default' })
+                : true;
+            if (!ok) return;
+            try {
+                await ds.fileTaxPeriod(user.uid, period.key);
+                await reloadPeriods(ds, user, period);
+                toast('Period marked as filed', 'success');
+            } catch (e) {
+                toast(e && e.message ? e.message : 'Could not file period', 'error');
+                console.error('fileTaxPeriod failed', e);
+            }
+        });
+    }
+}
+
 function renderMappings(mappings) {
     const el = document.getElementById('tax-mappings-list');
     if (!el) return;
@@ -288,19 +366,22 @@ export async function initTaxCenterPage({ ds, user }) {
 
     wireSave(ds, user);
     wireMappings(ds, user);
+    wirePeriods(ds, user, period);
 
     let profile = null;
     let taxTx = [];
     let mappings = [];
     let ppn = null;
     let wht = null;
+    let periods = [];
     try {
-        [profile, taxTx, mappings, ppn, wht] = await Promise.all([
+        [profile, taxTx, mappings, ppn, wht, periods] = await Promise.all([
             ds.getTaxProfile(user.uid),
             ds.getTaxTransactions(user.uid, { periodKey: period.key }),
             ds.getTaxMappings(user.uid),
             ds.getPpnLedger(user.uid, period.key),
-            ds.getWhtLedger(user.uid, period.key)
+            ds.getWhtLedger(user.uid, period.key),
+            ds.listTaxPeriods(user.uid)
         ]);
     } catch (err) {
         console.error('Tax Center load failed', err);
@@ -310,4 +391,5 @@ export async function initTaxCenterPage({ ds, user }) {
     renderPpn(profile, taxTx || [], ppn || { output: 0, input: 0, payable: 0 }, period);
     renderWithholding(taxTx || [], wht || { payable: 0, credit: 0 }, period);
     renderMappings(mappings || []);
+    renderPeriods(periods || [], period);
 }
