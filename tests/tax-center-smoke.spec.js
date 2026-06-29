@@ -44,12 +44,18 @@ test('Tax Center loads, profile saves through rules, console clean', async ({ pa
     await page.locator('#tax-ppn-rate').fill('11');
     await page.locator('#tax-profile-save').click();
 
-    // Success signal: KPI flips to PKP (renderProfile runs only after a successful save).
-    await expect(page.locator('#kpi-profile-status')).toHaveText('PKP', { timeout: 20000 });
+    // Direct write-success signal: the toast only shows after saveTaxProfile resolves
+    // (the write + audit log were accepted by the deployed rules). KPI flips alongside.
+    await expect(page.getByText('Tax profile saved')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('#kpi-profile-status')).toHaveText('PKP');
 
-    // Persistence: reload and confirm the saved NPWP is read back through the rules.
+    // Persistence: let the write propagate, then reload and read it back through the
+    // rules. A reload immediately after save can read a client-cached prior value, so
+    // settle first — this verifies durability, not write latency.
+    await page.waitForTimeout(2500);
     await page.reload();
     await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('#tax-period-label')).not.toBeEmpty({ timeout: 30000 });
     await page.locator('[data-tax-tab="profile"]').click();
     await expect(page.locator('#tax-npwp')).toHaveValue(npwp, { timeout: 20000 });
 
