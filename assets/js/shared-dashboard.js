@@ -633,6 +633,13 @@ window.showAddTransactionModal = function(options = {}) {
                             </div>
                         </div>
                         ${context === 'bill' ? `<div id="tx-budget-preview" class="hidden rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600"></div>` : ''}
+                        ${context === 'bill' ? `
+                        <div>
+                            <label for="tx-bill-tax-rate" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">PPN rate (%) <span class="normal-case font-normal text-gray-400">— optional, tax-inclusive</span></label>
+                            <input id="tx-bill-tax-rate" type="text" inputmode="decimal" placeholder="e.g. 11" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[14px] tabular-nums" />
+                            <p class="mt-2 text-[12px] text-gray-500">If set (PKP workspaces), PPN is extracted from the amount to input VAT (1130).</p>
+                        </div>
+                        ` : ''}
                         ${context === 'transaction' ? `
                         <div id="tx-allocation-section" class="hidden">
                             <label for="tx-allocation" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Budget allocation</label>
@@ -1930,6 +1937,18 @@ window.showAddTransactionModal = function(options = {}) {
             const { ds, user, scopeId, Timestamp } = await getTransactionDataService();
             if (context === 'bill') {
                 data.due_date = buildBillDueDateTimestamp(selectedEntryDate, Timestamp);
+                // Optional per-bill PPN (tax-inclusive): store the rate + extracted
+                // amounts for display; the posting engine recomputes the same split.
+                const rawRate = document.getElementById('tx-bill-tax-rate')?.value;
+                const rate = parseFloat(String(rawRate || '').replace(',', '.'));
+                if (Number.isFinite(rate) && rate > 0) {
+                    const r = Math.min(Math.max(rate, 0), 100);
+                    const total = Number(data.amount) || 0;
+                    const base = Math.round(total / (1 + r / 100));
+                    data.tax_rate_percent = r;
+                    data.taxable_base = base;
+                    data.tax_amount = total - base;
+                }
             } else {
                 data.timestamp = buildTransactionTimestamp(selectedEntryDate, Timestamp);
             }
