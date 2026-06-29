@@ -274,6 +274,7 @@ class DataService {
         if (!snap.exists()) throw new Error('Transaction not found.');
         const existing = snap.data() || {};
         if (this._isVoidedTransaction(existing)) throw new Error('Voided transactions cannot be edited.');
+        await this._assertEditablePeriod(userId, existing);
 
         const payload = this._normalizeTransactionPatch(patch, existing);
         payload.updated_by = userId;
@@ -312,6 +313,7 @@ class DataService {
         if (!snap.exists()) throw new Error('Transaction not found.');
         const existing = snap.data() || {};
         if (this._isVoidedTransaction(existing)) throw new Error('Transaction is already voided.');
+        await this._assertEditablePeriod(userId, existing);
 
         const payload = {
             is_voided: true,
@@ -2772,6 +2774,30 @@ class DataService {
         const pk = candidate || acctPeriodKey(new Date());
         const p = await this.getPeriod(userId, pk);
         return p.status === 'open' ? pk : acctPeriodKey(new Date());
+    }
+
+    // Block edits/voids of a document whose accounting period is closed or locked.
+    // A closed book must not be mutated: the user reopens the period first (or the
+    // correction would silently land in a different open period, mismatching the
+    // source). Throws a clear message instead of a raw Firestore permission error.
+    async _assertEditablePeriod(userId, existing) {
+        let pk = null;
+        if (existing && existing.journal_ref) {
+            const j = await this.getJournalById(userId, existing.journal_ref);
+            if (j) pk = j.period_key;
+        }
+        if (!pk && existing) {
+            const when = existing.timestamp || existing.due_date || existing.renewal_date || existing.date || null;
+            if (when) {
+                const date = when.toDate ? when.toDate() : (when.seconds ? new Date(when.seconds * 1000) : when);
+                pk = acctPeriodKey(date);
+            }
+        }
+        if (!pk) return;
+        const period = await this.getPeriod(userId, pk);
+        if (period.status === 'closed' || period.status === 'locked') {
+            throw new Error(`This transaction is in a closed accounting period (${pk}). Reopen the period before editing or voiding it.`);
+        }
     }
 
     // Keep the ledger in step with an edited/voided document. Reverses the

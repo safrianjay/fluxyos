@@ -1242,7 +1242,11 @@ an edit) reposts from the new state via `_correctSourceJournal` — both into an
 OPEN period (correction-in-current-period; a closed book is never mutated). The
 reversal + repost balance increments are aggregated before flushing
 (`_flushBalanceAcc`) so the same `ledger_balances` doc is never written twice in
-one batch.
+one batch. Editing/voiding a transaction whose journal sits in a **closed/locked
+period** is blocked up front (`_assertEditablePeriod`) with a clear "reopen the
+period first" message — a closed book is never mutated, and this avoids the raw
+Firestore permission error the correction would otherwise hit (it can't post a
+journal into a closed period).
 
 **Invoices (wired).** `finalizeInvoice` posts `INV-ISSUE` (Dr A/R / Cr Revenue);
 `markInvoicePaid` links the income transaction (`linked_invoice_id`) so it posts
