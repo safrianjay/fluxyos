@@ -87,15 +87,19 @@
                                 <h2 class="fluxy-table-title">Tax period — <span id="period-card-label"></span></h2>
                                 <p class="fluxy-table-subtitle mt-1">Compute the period from your books, then mark it filed once reported to DJP. Filing locks it from recompute.</p>
                             </div>
-                            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-                                <span id="period-status-badge" class="fluxy-table-status fluxy-status-neutral shrink-0">Open</span>
-                                <input id="period-filing-ref" type="text" maxlength="80" placeholder="DJP ref (optional)" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] w-full sm:w-48 min-w-[220px]" />
-                                <select id="period-filing-type" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] min-w-[160px]">
-                                    <option value="SPT_PPN">SPT PPN</option>
-                                    <option value="SPT_PPh_Unifikasi">SPT PPh Unifikasi</option>
-                                </select>
-                                <button id="period-compute-btn" type="button" class="acct-btn acct-btn-secondary">Compute period</button>
-                                <button id="period-file-btn" type="button" class="acct-btn acct-btn-primary">Mark as filed</button>
+                            <div class="flex flex-col gap-3">
+                                <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                                    <select id="period-filing-type" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] min-w-[160px]">
+                                        <option value="SPT_PPN">SPT PPN</option>
+                                        <option value="SPT_PPh_Unifikasi">SPT PPh Unifikasi</option>
+                                    </select>
+                                    <button id="period-compute-btn" type="button" class="acct-btn acct-btn-secondary">Compute period</button>
+                                    <button id="period-file-btn" type="button" class="acct-btn acct-btn-primary">Mark as filed</button>
+                                </div>
+                                <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                                    <span id="period-status-badge" class="fluxy-table-status fluxy-status-neutral shrink-0">Open</span>
+                                    <input id="period-filing-ref" type="text" maxlength="80" placeholder="DJP ref (optional)" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] w-full sm:w-48 min-w-[220px]" />
+                                </div>
                             </div>
                         </div>
                         <div id="tax-periods-list" class="mt-5"></div>
