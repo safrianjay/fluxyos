@@ -2417,6 +2417,56 @@ class DataService {
         } catch (_) { return []; }
     }
 
+    // --- CORPORATE TAX (Phase 4) ----------------------------------------
+    // Record a monthly PPh 25 installment. It is a creditable PREPAYMENT, so it posts
+    // Dr 1140 Prepaid PPh 25 / Cr 1000 Cash — NOT tax expense — through the kernel
+    // (a numbered manual journal). Audited. See INDONESIA_TAX_CENTER_ARCHITECTURE §18b.
+    async recordCorporateTaxPayment(userId, { amount, reference = null } = {}) {
+        if (!userId) throw new Error('userId required');
+        const amt = Math.round(Number(amount) || 0);
+        if (amt <= 0) throw new Error('Amount must be greater than zero.');
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+        const journal = buildManualJournal({
+            lines: [{ account_code: '1140', debit: amt }, { account_code: '1000', credit: amt }],
+            date: new Date(),
+            description: 'PPh 25 installment',
+            reference: this._nullableString(reference, 80),
+            subtype: 'corporate_tax'
+        });
+        const batch = writeBatch(this.db);
+        this._assignJournalNumbers([journal], await this._reserveJournalNumbers(userId, { [String(journal.period_key).slice(0, 4)]: 1 }));
+        const acc = {};
+        const jr = this._attachJournalToBatch(batch, scope, journal, { entityId, balanceAcc: acc });
+        this._flushBalanceAcc(batch, scope, entityId, acc);
+        await batch.commit();
+        await this.addAuditLog(userId, {
+            action: 'tax_payment.create', target_collection: 'journals', target_id: jr.id,
+            after: { kind: 'pph25', amount: amt }, source: 'dashboard'
+        });
+        return { journal_ref: jr.id, amount: amt };
+    }
+
+    // Corporate-tax credit position across all periods (lifetime running balances):
+    // prepaid PPh 25 (1140), PPh withheld by others (1150), and PPh 29 payable (2200).
+    async getCorporateTaxSummary(userId) {
+        const zero = { prepaid_pph25: 0, pph_credit: 0, pph29_payable: 0 };
+        if (!userId) return zero;
+        try {
+            const scope = this._scope(userId);
+            const q = (code) => getDocs(query(collection(this.db, `${scope}/ledger_balances`), where('account_code', '==', code)));
+            const [a, b, c] = await Promise.all([q('1140'), q('1150'), q('2200')]);
+            const sum = (snap, side) => snap.docs.reduce((s, d) => s + (Number(d.data()[side]) || 0), 0);
+            return {
+                prepaid_pph25: sum(a, 'debit_total') - sum(a, 'credit_total'),
+                pph_credit: sum(b, 'debit_total') - sum(b, 'credit_total'),
+                pph29_payable: sum(c, 'credit_total') - sum(c, 'debit_total')
+            };
+        } catch (_) {
+            return zero;
+        }
+    }
+
     // Read the tax lines for a period (optionally a direction). Returns [] on any
     // error so the Tax Center renders an empty state rather than throwing. Posting
     // of tax_transactions is wired in a later phase; today this is normally empty.

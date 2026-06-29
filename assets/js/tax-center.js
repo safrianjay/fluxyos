@@ -359,6 +359,51 @@ function wirePeriods(ds, user, period) {
     }
 }
 
+function renderCorporate(summary) {
+    const s = summary || { prepaid_pph25: 0, pph_credit: 0, pph29_payable: 0 };
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = formatRp(v); };
+    set('kpi-corp-prepaid', s.prepaid_pph25);
+    set('kpi-corp-credit', s.pph_credit);
+    set('kpi-corp-payable', s.pph29_payable);
+}
+
+async function reloadCorporate(ds, user) {
+    const summary = await ds.getCorporateTaxSummary(user.uid).catch(() => null);
+    renderCorporate(summary);
+}
+
+function wireCorporate(ds, user) {
+    const btn = document.getElementById('corp-pph25-btn');
+    if (!btn) return;
+    if (!canEditTax()) {
+        btn.setAttribute('disabled', 'disabled');
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        document.querySelectorAll('[data-tax-panel="corporate"] input').forEach((el) => el.setAttribute('disabled', 'disabled'));
+        const hint = document.getElementById('corp-hint');
+        if (hint) hint.textContent = 'Read-only for your role.';
+        return;
+    }
+    btn.addEventListener('click', async () => {
+        const amountEl = document.getElementById('corp-pph25-amount');
+        const refEl = document.getElementById('corp-pph25-ref');
+        const amount = parseInt(String(amountEl ? amountEl.value : '').replace(/[^\d]/g, ''), 10);
+        if (!Number.isFinite(amount) || amount <= 0) { toast('Enter an amount', 'error'); return; }
+        btn.setAttribute('disabled', 'disabled');
+        try {
+            await ds.recordCorporateTaxPayment(user.uid, { amount, reference: refEl ? refEl.value : null });
+            if (amountEl) amountEl.value = '';
+            if (refEl) refEl.value = '';
+            await reloadCorporate(ds, user);
+            toast('PPh 25 payment recorded', 'success');
+        } catch (e) {
+            toast(e && e.message ? e.message : 'Could not record payment', 'error');
+            console.error('recordCorporateTaxPayment failed', e);
+        } finally {
+            btn.removeAttribute('disabled');
+        }
+    });
+}
+
 function renderMappings(mappings) {
     const el = document.getElementById('tax-mappings-list');
     if (!el) return;
@@ -447,6 +492,7 @@ export async function initTaxCenterPage({ ds, user }) {
     wireSave(ds, user);
     wireMappings(ds, user);
     wirePeriods(ds, user, period);
+    wireCorporate(ds, user);
 
     let profile = null;
     let taxTx = [];
@@ -455,15 +501,17 @@ export async function initTaxCenterPage({ ds, user }) {
     let wht = null;
     let periods = [];
     let filings = [];
+    let corporate = null;
     try {
-        [profile, taxTx, mappings, ppn, wht, periods, filings] = await Promise.all([
+        [profile, taxTx, mappings, ppn, wht, periods, filings, corporate] = await Promise.all([
             ds.getTaxProfile(user.uid),
             ds.getTaxTransactions(user.uid, { periodKey: period.key }),
             ds.getTaxMappings(user.uid),
             ds.getPpnLedger(user.uid, period.key),
             ds.getWhtLedger(user.uid, period.key),
             ds.listTaxPeriods(user.uid),
-            ds.listTaxFilings(user.uid)
+            ds.listTaxFilings(user.uid),
+            ds.getCorporateTaxSummary(user.uid)
         ]);
     } catch (err) {
         console.error('Tax Center load failed', err);
@@ -475,5 +523,6 @@ export async function initTaxCenterPage({ ds, user }) {
     renderMappings(mappings || []);
     renderPeriods(periods || [], period);
     renderFilings(filings || []);
+    renderCorporate(corporate);
     wireExports(ds, user, taxTx || [], period);
 }

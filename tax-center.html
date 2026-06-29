@@ -70,6 +70,7 @@
                     <button class="acct-tab" data-tax-tab="profile" role="tab">Company Tax Profile</button>
                     <button class="acct-tab" data-tax-tab="ppn" role="tab">PPN</button>
                     <button class="acct-tab" data-tax-tab="withholding" role="tab">Withholding</button>
+                    <button class="acct-tab" data-tax-tab="corporate" role="tab">Corporate Tax</button>
                     <button class="acct-tab" data-tax-tab="mappings" role="tab">Mappings</button>
                 </nav>
 
@@ -190,6 +191,43 @@
                             </div>
                         </div>
                         <div id="wht-summary-body"></div>
+                    </section>
+                </div>
+
+                <!-- Corporate Tax panel -->
+                <div data-tax-panel="corporate" class="hidden flex-col gap-6 mt-6">
+                    <section class="acct-kpi-grid" aria-label="Corporate tax summary">
+                        <article class="acct-card acct-kpi">
+                            <span class="fluxy-kpi-label">Prepaid PPh 25</span>
+                            <span id="kpi-corp-prepaid" class="acct-kpi-value acct-mono">—</span>
+                            <span class="fluxy-meta">Installments paid (1140), creditable</span>
+                        </article>
+                        <article class="acct-card acct-kpi">
+                            <span class="fluxy-kpi-label">PPh Credit (withheld)</span>
+                            <span id="kpi-corp-credit" class="acct-kpi-value acct-mono">—</span>
+                            <span class="fluxy-meta">Withheld by customers (1150)</span>
+                        </article>
+                        <article class="acct-card acct-kpi">
+                            <span class="fluxy-kpi-label">PPh 29 Payable</span>
+                            <span id="kpi-corp-payable" class="acct-kpi-value acct-mono">—</span>
+                            <span class="fluxy-meta">Year-end balancing (2200)</span>
+                        </article>
+                    </section>
+                    <section class="acct-card p-5">
+                        <h2 class="fluxy-table-title">Record PPh 25 installment</h2>
+                        <p class="fluxy-table-subtitle mt-1">Monthly corporate income tax prepayment. Posts to Prepaid PPh 25 (1140) — a creditable asset against annual tax, not an expense.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5 max-w-2xl items-end">
+                            <label class="flex flex-col gap-1">
+                                <span class="fluxy-kpi-label">Amount (Rp)</span>
+                                <input id="corp-pph25-amount" type="text" inputmode="numeric" placeholder="0" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] tabular-nums focus:outline-none focus:border-orange-400" />
+                            </label>
+                            <label class="flex flex-col gap-1">
+                                <span class="fluxy-kpi-label">Reference (optional)</span>
+                                <input id="corp-pph25-ref" type="text" maxlength="80" placeholder="e.g. SSP/billing code" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:border-orange-400" />
+                            </label>
+                            <button id="corp-pph25-btn" type="button" class="acct-btn acct-btn-primary">Record payment</button>
+                        </div>
+                        <span id="corp-hint" class="fluxy-meta"></span>
                     </section>
                 </div>
 
