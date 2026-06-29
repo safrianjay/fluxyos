@@ -2875,7 +2875,26 @@ class DataService {
     // Build the journal for a business document and stage it in `batch`. Mutates
     // `payload` to carry journal_ref + accounting_status. Posting NEVER blocks the
     // document: any engine/build error marks the doc `pending` for a later sweep.
+    // Block posting into a closed/locked period up front with a clear message,
+    // rather than letting the journal create fail the whole batch with a raw
+    // Firestore permission error. The target period is the document's effective
+    // date (serverTimestamp sentinels resolve ~now → current period).
+    async _assertOpenPostingPeriod(userId, when) {
+        let date;
+        if (when && typeof when.toDate === 'function') date = when.toDate();
+        else if (when && typeof when.seconds === 'number') date = new Date(when.seconds * 1000);
+        else if (when instanceof Date) date = when;
+        else date = new Date();
+        if (isNaN(date.getTime())) return;
+        const pk = acctPeriodKey(date);
+        const period = await this.getPeriod(userId, pk);
+        if (period.status === 'closed' || period.status === 'locked') {
+            throw new Error(`Cannot post to a closed accounting period (${pk}). Reopen the period, or use a date in an open period.`);
+        }
+    }
+
     async _postSourceJournal(userId, batch, sourceCollection, sourceRef, payload, opts = {}) {
+        await this._assertOpenPostingPeriod(userId, opts.date || payload.timestamp || payload.due_date || payload.renewal_date || null);
         try {
             const mappings = await this._loadAcctMappings(userId);
             const journal = buildJournal({
@@ -2921,6 +2940,9 @@ class DataService {
             });
             return journalRef.id;
         } catch (err) {
+            if (err && typeof err.message === 'string' && /cannot post to a closed accounting period/i.test(err.message)) {
+                throw err;
+            }
             console.warn('[accounting] posting skipped, marked pending:', err && err.message ? err.message : err);
             payload.accounting_status = 'pending';
             return null;
