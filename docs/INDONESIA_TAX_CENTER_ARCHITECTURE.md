@@ -6,9 +6,13 @@
 > `DESIGN_SYSTEM.md`, `SECURITY_SYSTEM.md`, `LOCALIZATION_PLAN.md` §2/§12, and
 > `ROADMAP.md` (Tax Center track).
 >
-> **Status: design only.** No `.html`, `.js`, `.css`, or `firestore.rules` ship
-> with this document. Everything below is the spec a future phased build executes
-> against. Phasing and acceptance criteria are in §18.
+> **Status: Phases 1–3 SHIPPED (live on main, rules deployed); Phases 4–5 planned.**
+> Built: `tax-engine.js`, `tax-center.html`/`.js`, the 5 tax collections + rules,
+> PPN (output `2100` / input `1130`), withholding (we-withhold `2110` /
+> customers-withhold `1150`), tax periods (compute/file/lock), SPT PPN + Bukti Potong
+> CSV exports, and `tax_filings`. See `ROADMAP.md` → Tax Center for the per-feature
+> status, and §18b below for the Phase 4 (corporate tax) plan. The sections below are
+> the design of record; where the build refined a decision it is noted in §18a.
 >
 > Domain sources: the Indonesia tax deep-research report and the Tax Center product
 > brief (both in the planning thread). This doc condenses them into FluxyOS-shaped
@@ -564,6 +568,37 @@ written for each sensitive action; EN + ID copy paired.
   rewrite `tax_transactions` detail rows; period summaries should trust the ledger
   (`2100`/`1130`) and the reconcile script. Full tax_transactions correction is a §9
   follow-up.
+
+## 18b. Phase 4 — Corporate income tax (PLAN, not yet built)
+
+Corporate tax differs from the per-transaction PPN/PPh work: it is **periodic/annual
+computation + prepayment tracking**, not a gross-up appendix on a business document.
+The COA accounts already exist (`1140` Prepaid PPh 25, `2200` PPh 29 Payable). Plan:
+
+- **PPh 25 (monthly installment).** Recording a PPh 25 payment posts `Dr 1140 Prepaid
+  PPh 25 / Cr Cash` — a creditable prepaid asset, NOT `6500` Tax Expense. Build a
+  dedicated `recordCorporateTaxPayment(userId, { kind:'pph25', amount, date })` that
+  posts this via the kernel (a numbered system journal, like `_postSourceJournal` but
+  a fixed two-line entry), audited. UI: a **Corporate Tax** tab with a "Record PPh 25
+  payment" action + a list of installments and the running `1140` balance.
+- **PPh 29 (annual balancing).** At year end: `CIT = 22% × taxable income` (taxable
+  income = book net income ± fiscal adjustments). Credit prepayments: `1140` (PPh 25)
+  + `1150` (PPh withheld by others). The remainder is `2200` PPh 29 payable (or an
+  overpayment/refund). Build `computeAnnualCorporateTax(userId, fiscalYear, { adjustments })`
+  reading the closed-year ledger (net income) + `1140`/`1150` balances; persist an
+  annual `tax_periods` doc (`period_type:'annual'`) + a `tax_filings` SPT_Tahunan entry.
+- **Fiscal adjustments.** Permanent + temporary book-to-tax differences as a small
+  editable list feeding the taxable-income figure. Keep them as data (a
+  `fiscal_adjustments` subcollection or fields on the annual `tax_periods` doc), never
+  hardcoded.
+- **Open question:** PPh Final UMKM (0.5% of turnover) is an *alternative* to ordinary
+  CIT — when `company_tax_profile.umkm_final` is true, the annual computation is
+  `0.5% × turnover`, posted monthly as `Dr 6500 / Cr 2110` (already modeled in §4).
+  Decide whether Phase 4 ships ordinary-CIT first or UMKM-final first based on the
+  target segment (UMKM-final is simpler and covers most micro/small businesses).
+
+Suggested first slice: **PPh 25 installment recording + a Corporate Tax tab** (small,
+concrete, mirrors the existing posting/tab patterns), then annual PPh 29.
 
 ## 19. Open questions & assumptions
 

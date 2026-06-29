@@ -179,16 +179,21 @@ Kernel — tax posts as extra journal lines, never a parallel ledger. New sideba
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Tax Center app page (`/tax-center`) + sidebar group | 📋 Planned | Phase 1; Accounting-Center page/tab/KPI patterns; `tax.read` gates visibility |
-| `tax-engine.js` (pure rules, rates-as-data) | 🔧 Stub | Built + unit-tested (PPN output/input, PKP gating, `roundTax`, gross-up appendix); needs browser QA before ship |
-| Company Tax Profile (`company_tax_profile`) | 🔧 Stub | Built: DataService + rules + `/tax-center` profile form; needs `firebase deploy --only firestore:rules` + browser QA |
-| Tax mappings (`tax_mappings`) + COA tax accounts | 🔧 Stub | COA `1130/1140/1150/2100/2110/2200` added to `CHART_OF_ACCOUNTS_SEED`; `tax_mappings` rules shipped; mapping UI is Phase 2 |
-| PPN output/input posting (gross-up, explicit-treatment-only) | 🔧 Stub | Wired into `_postSourceJournal` + correction repost; posts only on a document `tax_code`/saved `tax_mapping` (no blanket 11%); payable = `2100` − `1130`. Needs emulator rules tests + browser QA |
-| Withholding PPh 23/4(2)/26 (21 if payroll) + bukti potong fields | 📋 Planned | Phase 2; `tax_transactions` posted via kernel |
-| Tax periods + filings + close/lock (`tax_periods`, `tax_filings`) | 📋 Planned | Phase 3; SPT/bupot CSV exports; Tax Calendar; reconciliation controls |
-| Corporate tax PPh 25/29 + annual reconciliation | 📋 Planned | Phase 4 |
+| Tax Center app page (`/tax-center`) + sidebar group | ✅ Shipped Phase 1 | Overview / Company Tax Profile / PPN / Withholding / Mappings tabs; "Tax & Compliance" sidebar group; `tax.read`-gated; deployed |
+| `tax-engine.js` (pure rules, rates-as-data) | ✅ Shipped Phase 1 | Pure/unit-tested: PPN output/input, PKP gating, `roundTax`, gross-up appendix, invoice/bill/withholding branches |
+| Company Tax Profile (`company_tax_profile`) | ✅ Shipped Phase 1 | DataService + rules (deployed) + profile form; drives PKP/UMKM branching |
+| Tax mappings (`tax_mappings`) + COA tax accounts | ✅ Shipped Phase 1 | COA `1130/1140/1150/2100/2110/2200`; Mappings tab (add/list/archive); category/type → tax code |
+| PPN output (per-invoice rate + mappings → `2100`) | ✅ Shipped Phase 1 | Invoice splits PPN out of Revenue; income via mapping grosses up; PPN tab from the ledger |
+| PPN input (per-bill rate → `1130`, tax-inclusive extract) | ✅ Shipped Phase 1 | Add Bill modal "PPN rate (%)"; payable = `2100` − `1130` |
+| Withholding — we withhold on bills (PPh 23/4(2)/26 → `2110`) | ✅ Shipped Phase 2 | Per-bill rate + type; Dr A/P / Cr 2110; stacks with PPN; bukti potong field; Withholding tab |
+| Withholding — customers withhold on invoices (→ `1150`) | ✅ Shipped Phase 2 | Per-invoice customer-withholding; `markInvoicePaid` reclasses Dr 1150 / Cr Cash |
+| Tax periods compute + file/lock (`tax_periods`) | ✅ Shipped Phase 3 | Overview period card; compute from ledger; file locks recompute; audited |
+| SPT PPN + Bukti Potong CSV exports | ✅ Shipped Phase 3 | Period-scoped CSV downloads from PPN/Withholding tabs; `export.create` audit |
+| Tax filings (`tax_filings`) | ✅ Shipped Phase 3 | SPT type + DJP reference + status recorded on file; Filings list; `tax_filing.submit` audit |
+| Corporate tax PPh 25/29 + annual reconciliation | 📋 Planned | Phase 4; PPh 25 prepayments (`1140`), PPh 29 (`2200`), fiscal adjustments. See architecture §18b |
 | AI Tax Assistant (read-only; no auto-file) | 📋 Planned | Phase 5; explain VAT payable, detect missing faktur — confirm-before-act |
 | DJP / Coretax / e-Faktur / e-Bupot integration | 📋 Planned | Phase 5; server-side in FastAPI backend; data model designed for it now |
+| Tax Calendar + reconciliation alerts | 📋 Planned | Deadline reminders (PPN 20th, etc.); VAT output−input and withholding-vs-payable checks |
 
 ### Integrations
 | Feature | Status | Notes |
