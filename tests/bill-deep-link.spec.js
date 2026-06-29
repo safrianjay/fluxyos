@@ -34,6 +34,7 @@ async function waitForBillsReady(page) {
 }
 
 async function pickBills(page) {
+    await page.waitForFunction(() => window.FluxyWorkspace && window.FluxyWorkspace.id, null, { timeout: 20_000 });
     return page.evaluate(async () => {
         const appMod = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
         const authMod = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
@@ -41,9 +42,10 @@ async function pickBills(page) {
         const app = appMod.getApps()[0];
         const user = authMod.getAuth(app).currentUser;
         if (!app || !user) return { error: 'no-auth' };
+        const scopeId = window.FluxyWorkspace?.id || user.uid;
         const db = fsMod.getFirestore(app);
         const q = fsMod.query(
-            fsMod.collection(db, `users/${user.uid}/bills`),
+            fsMod.collection(db, `workspaces/${scopeId}/bills`),
             fsMod.orderBy('timestamp', 'desc'),
             fsMod.limit(400)
         );
