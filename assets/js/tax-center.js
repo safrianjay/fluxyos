@@ -165,6 +165,42 @@ function wireSave(ds, user) {
     });
 }
 
+function renderWithholding(taxTx, whtLedger, period) {
+    const periodLabel = document.getElementById('wht-period-label');
+    if (periodLabel) periodLabel.textContent = period.label;
+    const payable = whtLedger ? whtLedger.payable : 0;
+    const credit = whtLedger ? whtLedger.credit : 0;
+    const kpiPay = document.getElementById('kpi-wht-payable');
+    const kpiCr = document.getElementById('kpi-wht-credit');
+    if (kpiPay) kpiPay.textContent = formatRp(payable);
+    if (kpiCr) kpiCr.textContent = formatRp(credit);
+
+    const body = document.getElementById('wht-summary-body');
+    if (!body) return;
+    const rows = (taxTx || []).filter((t) => t.direction === 'withheld_by_us' || t.direction === 'withheld_by_other' || t.direction === 'final');
+    if (!rows.length) {
+        if (typeof window !== 'undefined' && typeof window.renderEmptyState === 'function') {
+            window.renderEmptyState('wht-summary-body', {
+                icon: '✂️',
+                title: 'No withholding yet for this period',
+                description: 'Add a PPh withholding rate on a bill (Bills → Add Bill) and it will summarize here with its bukti potong.'
+            });
+        } else {
+            body.innerHTML = '<p class="fluxy-meta" style="padding:16px">No withholding yet for this period.</p>';
+        }
+        return;
+    }
+    const html = rows.map((t) => `
+        <tr class="fluxy-table-row">
+            <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${t.tax_name || t.tax_code || ''}</span><span class="fluxy-table-cell-meta">${t.bukti_potong_no || 'No bukti potong'}</span></td>
+            <td class="fluxy-table-cell fluxy-table-money">${formatRp(t.taxable_base)}</td>
+            <td class="fluxy-table-cell fluxy-table-money">${formatRp(t.tax_amount)}</td>
+        </tr>`).join('');
+    body.innerHTML = `<div class="fluxy-table-scroll"><table class="fluxy-table">
+        <thead><tr class="fluxy-table-header"><th>Withholding</th><th class="fluxy-table-money">Base (DPP)</th><th class="fluxy-table-money">PPh</th></tr></thead>
+        <tbody>${html}</tbody></table></div>`;
+}
+
 function renderMappings(mappings) {
     const el = document.getElementById('tax-mappings-list');
     if (!el) return;
@@ -256,19 +292,22 @@ export async function initTaxCenterPage({ ds, user }) {
     let profile = null;
     let taxTx = [];
     let mappings = [];
-    let trial = [];
+    let ppn = null;
+    let wht = null;
     try {
-        [profile, taxTx, mappings, trial] = await Promise.all([
+        [profile, taxTx, mappings, ppn, wht] = await Promise.all([
             ds.getTaxProfile(user.uid),
             ds.getTaxTransactions(user.uid, { periodKey: period.key }),
             ds.getTaxMappings(user.uid),
-            ds.getPpnLedger(user.uid, period.key)
+            ds.getPpnLedger(user.uid, period.key),
+            ds.getWhtLedger(user.uid, period.key)
         ]);
     } catch (err) {
         console.error('Tax Center load failed', err);
     }
     renderProfile(profile);
     renderOverviewNote(profile);
-    renderPpn(profile, taxTx || [], trial || { output: 0, input: 0, payable: 0 }, period);
+    renderPpn(profile, taxTx || [], ppn || { output: 0, input: 0, payable: 0 }, period);
+    renderWithholding(taxTx || [], wht || { payable: 0, credit: 0 }, period);
     renderMappings(mappings || []);
 }

@@ -2276,6 +2276,28 @@ class DataService {
         }
     }
 
+    // Withholding for a period from the ledger: PPh Payable (2110 credit balance, what
+    // we withheld and owe DJP) and creditable PPh withheld by customers (1150 debit
+    // balance). Targeted 2-doc read by deterministic id; zeros on error.
+    async getWhtLedger(userId, periodKey) {
+        const zero = { payable: 0, credit: 0 };
+        if (!userId || !periodKey) return zero;
+        try {
+            const scope = this._scope(userId);
+            const [pay, cr] = await Promise.all([
+                getDoc(doc(this.db, `${scope}/ledger_balances/${periodKey}__2110`)),
+                getDoc(doc(this.db, `${scope}/ledger_balances/${periodKey}__1150`))
+            ]);
+            const p = pay.exists() ? pay.data() : {};
+            const c = cr.exists() ? cr.data() : {};
+            const payable = (Number(p.credit_total) || 0) - (Number(p.debit_total) || 0);
+            const credit = (Number(c.debit_total) || 0) - (Number(c.credit_total) || 0);
+            return { payable, credit };
+        } catch (_) {
+            return zero;
+        }
+    }
+
     // Read the tax lines for a period (optionally a direction). Returns [] on any
     // error so the Tax Center renders an empty state rather than throwing. Posting
     // of tax_transactions is wired in a later phase; today this is normally empty.

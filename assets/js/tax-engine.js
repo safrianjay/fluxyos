@@ -245,35 +245,54 @@ export function buildTaxAppendix({ baseJournal, collection, document, profile, m
         };
     }
 
-    // Bills carry a per-bill tax rate (tax_rate_percent); the entered amount is the
-    // TOTAL owed (tax-inclusive, how vendor bills arrive). BILL-ACCRUE posts Dr
-    // Expense / Cr A/P for the total, so EXTRACT the PPN: base = round(total/(1+rate)),
-    // ppn = total − base; post Dr 1130 PPN Masukan / Cr Expense (ppn). Net: Expense =
-    // base, 1130 = ppn, A/P = total. Only when PKP and a rate is set; untaxed bills
-    // post unchanged. (A bill with no rate still falls through to category mappings.)
+    // Bills carry per-bill PPN and/or PPh withholding. The entered amount is the TOTAL
+    // owed (tax-inclusive). BILL-ACCRUE posts Dr Expense / Cr A/P for the total. Two
+    // independent, balanced grafts stack onto it (the DPP base is shared):
+    //   • PPN (input), PKP only: base = round(total/(1+ppnRate)); ppn = total − base.
+    //     Dr 1130 PPN Masukan / Cr Expense (ppn). Net Expense = base, A/P = total.
+    //   • PPh withholding (we withhold), any business: pph = round(base × whtRate).
+    //     Dr A/P / Cr 2110 PPh Payable (pph). Net A/P = total − pph (vendor gets net),
+    //     2110 = pph (we owe DJP). The vendor's PPN is not withheld.
+    // Only the grafts whose rate is set are emitted; an untaxed bill posts unchanged.
     if (collection === 'bills') {
-        if (!isPKP(profile)) return null;
-        const rate = Number(doc.tax_rate_percent) || 0;
-        if (rate <= 0) return null;
         const total = toInt(doc.amount);
-        if (total <= 0) return null;
-        const base = Math.round(total / (1 + rate / 100));
-        const ppn = total - base;
-        if (ppn <= 0) return null;
+        const ppnRate = isPKP(profile) ? (Number(doc.tax_rate_percent) || 0) : 0;
+        const whtRate = Number(doc.withholding_rate) || 0;
+        if (total <= 0 || (ppnRate <= 0 && whtRate <= 0)) return null;
+        const base = ppnRate > 0 ? Math.round(total / (1 + ppnRate / 100)) : total;
+        const periodKey = baseJournal.period_key || null;
         const expLeg = baseJournal.lines.find((l) => l.account_type === 'expense' && toInt(l.debit) > 0)
             || baseJournal.lines.find((l) => toInt(l.debit) > 0);
-        if (!expLeg) return null;
-        return {
-            lines: [
-                journalLine('1130', 'asset', 'PPN Masukan', ppn, 0, 'PPN Masukan'),
-                journalLine(expLeg.account_code, expLeg.account_type, expLeg.account_name, 0, ppn, 'PPN extract')
-            ],
-            tax_transactions: [{
-                tax_code: 'PPN_IN_11', tax_name: 'PPN Masukan', direction: 'input',
-                tax_rate_percent: rate, taxable_base: base, tax_amount: ppn, period_key: baseJournal.period_key || null,
-                npwp_counterparty: doc.vendor_npwp || null, faktur_number: doc.faktur_number || null
-            }]
-        };
+        const apLeg = baseJournal.lines.find((l) => l.account_type === 'liability' && toInt(l.credit) > 0)
+            || baseJournal.lines.find((l) => toInt(l.credit) > 0);
+        const lines = [];
+        const taxTx = [];
+        if (ppnRate > 0 && expLeg) {
+            const ppn = total - base;
+            if (ppn > 0) {
+                lines.push(journalLine('1130', 'asset', 'PPN Masukan', ppn, 0, 'PPN Masukan'));
+                lines.push(journalLine(expLeg.account_code, expLeg.account_type, expLeg.account_name, 0, ppn, 'PPN extract'));
+                taxTx.push({
+                    tax_code: 'PPN_IN_11', tax_name: 'PPN Masukan', direction: 'input',
+                    tax_rate_percent: ppnRate, taxable_base: base, tax_amount: ppn, period_key: periodKey,
+                    npwp_counterparty: doc.vendor_npwp || null, faktur_number: doc.faktur_number || null
+                });
+            }
+        }
+        if (whtRate > 0 && apLeg) {
+            const pph = Math.round((base * whtRate) / 100);
+            if (pph > 0) {
+                lines.push(journalLine(apLeg.account_code, apLeg.account_type, apLeg.account_name, pph, 0, 'PPh withheld'));
+                lines.push(journalLine('2110', 'liability', 'PPh Payable', 0, pph, doc.withholding_type || 'PPh withheld'));
+                taxTx.push({
+                    tax_code: doc.withholding_code || 'PPH_WHT', tax_name: doc.withholding_type || 'PPh withholding',
+                    direction: 'withheld_by_us', tax_rate_percent: whtRate, taxable_base: base, tax_amount: pph,
+                    period_key: periodKey, npwp_counterparty: doc.vendor_npwp || null, bukti_potong_no: doc.bukti_potong_no || null
+                });
+            }
+        }
+        if (!lines.length) return null;
+        return { lines, tax_transactions: taxTx };
     }
 
     const codes = selectExplicitTaxRules(collection, document || {}, profile, mappings);

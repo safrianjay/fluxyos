@@ -69,6 +69,7 @@
                     <button class="acct-tab is-active" data-tax-tab="overview" role="tab">Overview</button>
                     <button class="acct-tab" data-tax-tab="profile" role="tab">Company Tax Profile</button>
                     <button class="acct-tab" data-tax-tab="ppn" role="tab">PPN</button>
+                    <button class="acct-tab" data-tax-tab="withholding" role="tab">Withholding</button>
                     <button class="acct-tab" data-tax-tab="mappings" role="tab">Mappings</button>
                 </nav>
 
@@ -138,6 +139,31 @@
                             </div>
                         </div>
                         <div id="ppn-summary-body"></div>
+                    </section>
+                </div>
+
+                <!-- Withholding panel -->
+                <div data-tax-panel="withholding" class="hidden flex-col gap-6 mt-6">
+                    <section class="acct-kpi-grid" aria-label="Withholding summary">
+                        <article class="acct-card acct-kpi">
+                            <span class="fluxy-kpi-label">PPh Payable (outstanding)</span>
+                            <span id="kpi-wht-payable" class="acct-kpi-value acct-mono">—</span>
+                            <span class="fluxy-meta">Withheld by us, owed to DJP (2110)</span>
+                        </article>
+                        <article class="acct-card acct-kpi">
+                            <span class="fluxy-kpi-label">PPh Credit (creditable)</span>
+                            <span id="kpi-wht-credit" class="acct-kpi-value acct-mono">—</span>
+                            <span class="fluxy-meta">Withheld by customers (1150)</span>
+                        </article>
+                    </section>
+                    <section class="fluxy-table-card">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">Withholding — <span id="wht-period-label"></span></h2>
+                                <p class="fluxy-table-subtitle">PPh withheld on bills/payments this period, with bukti potong references.</p>
+                            </div>
+                        </div>
+                        <div id="wht-summary-body"></div>
                     </section>
                 </div>
 

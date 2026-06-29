@@ -2955,7 +2955,11 @@ service cloud.firestore {
         && (!('tax_amount' in data) || data.tax_amount == null || (data.tax_amount is number && data.tax_amount >= 0))
         && (!('taxable_base' in data) || data.taxable_base == null || (data.taxable_base is number && data.taxable_base >= 0))
         && (!('vendor_npwp' in data) || data.vendor_npwp == null || (data.vendor_npwp is string && data.vendor_npwp.size() <= 32))
-        && (!('faktur_number' in data) || data.faktur_number == null || (data.faktur_number is string && data.faktur_number.size() <= 40));
+        && (!('faktur_number' in data) || data.faktur_number == null || (data.faktur_number is string && data.faktur_number.size() <= 40))
+        && (!('withholding_rate' in data) || data.withholding_rate == null || (data.withholding_rate is number && data.withholding_rate >= 0 && data.withholding_rate <= 100))
+        && (!('withholding_type' in data) || data.withholding_type == null || (data.withholding_type is string && data.withholding_type.size() <= 40))
+        && (!('withholding_code' in data) || data.withholding_code == null || (data.withholding_code is string && data.withholding_code.size() <= 40))
+        && (!('bukti_potong_no' in data) || data.bukti_potong_no == null || (data.bukti_potong_no is string && data.bukti_potong_no.size() <= 60));
     }
     function wsValidTxCreate(data) {
       return data.keys().hasOnly([
@@ -3015,7 +3019,8 @@ service cloud.firestore {
           'budget_match_method', 'budget_match_status', 'budget_impact_status', 'budget_assignment_reason',
           'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason',
           'journal_ref', 'accounting_status',
-          'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number'
+          'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
+          'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no'
         ])
         && isValidBaseRecord(data)
         && (!('due_date' in data) || data.due_date is timestamp)
@@ -3037,7 +3042,8 @@ service cloud.firestore {
           'budget_match_method', 'budget_match_status', 'budget_impact_status', 'budget_assignment_reason',
           'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason',
           'linked_transaction_id', 'updated_at', 'updated_by', 'journal_ref', 'accounting_status',
-          'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number'
+          'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
+          'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no'
         ])
         && isValidBaseRecordUpdate(data, existingData)
         && isValidTaxDocFields(data)

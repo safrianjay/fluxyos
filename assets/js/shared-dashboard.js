@@ -639,6 +639,22 @@ window.showAddTransactionModal = function(options = {}) {
                             <input id="tx-bill-tax-rate" type="text" inputmode="decimal" placeholder="e.g. 11" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[14px] tabular-nums" />
                             <p class="mt-2 text-[12px] text-gray-500">If set (PKP workspaces), PPN is extracted from the amount to input VAT (1130).</p>
                         </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="tx-bill-wht-rate" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">PPh withholding (%)</label>
+                                <input id="tx-bill-wht-rate" type="text" inputmode="decimal" placeholder="e.g. 2" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[14px] tabular-nums" />
+                            </div>
+                            <div>
+                                <label for="tx-bill-wht-type" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Withholding type</label>
+                                <select id="tx-bill-wht-type" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[14px]">
+                                    <option value="">None</option>
+                                    <option value="PPh 23">PPh 23</option>
+                                    <option value="PPh 4(2)">PPh 4(2)</option>
+                                    <option value="PPh 26">PPh 26</option>
+                                </select>
+                            </div>
+                            <p class="col-span-2 text-[12px] text-gray-500">We withhold PPh from the vendor on the base; it posts to PPh Payable (2110) and reduces what you pay them.</p>
+                        </div>
                         ` : ''}
                         ${context === 'transaction' ? `
                         <div id="tx-allocation-section" class="hidden">
@@ -1941,13 +1957,24 @@ window.showAddTransactionModal = function(options = {}) {
                 // amounts for display; the posting engine recomputes the same split.
                 const rawRate = document.getElementById('tx-bill-tax-rate')?.value;
                 const rate = parseFloat(String(rawRate || '').replace(',', '.'));
+                const total = Number(data.amount) || 0;
+                let base = total;
                 if (Number.isFinite(rate) && rate > 0) {
                     const r = Math.min(Math.max(rate, 0), 100);
-                    const total = Number(data.amount) || 0;
-                    const base = Math.round(total / (1 + r / 100));
+                    base = Math.round(total / (1 + r / 100));
                     data.tax_rate_percent = r;
                     data.taxable_base = base;
                     data.tax_amount = total - base;
+                }
+                // Optional PPh withholding (we withhold from the vendor on the base).
+                const rawWht = document.getElementById('tx-bill-wht-rate')?.value;
+                const wht = parseFloat(String(rawWht || '').replace(',', '.'));
+                const whtType = document.getElementById('tx-bill-wht-type')?.value || '';
+                if (Number.isFinite(wht) && wht > 0) {
+                    const wr = Math.min(Math.max(wht, 0), 100);
+                    data.withholding_rate = wr;
+                    data.withholding_type = whtType || 'PPh 23';
+                    data.withholding_code = ({ 'PPh 23': 'PPH23', 'PPh 4(2)': 'PPH4_2', 'PPh 26': 'PPH26' })[whtType] || 'PPH_WHT';
                 }
             } else {
                 data.timestamp = buildTransactionTimestamp(selectedEntryDate, Timestamp);
