@@ -216,6 +216,35 @@ function journalLine(accountCode, accountType, accountName, debit, credit, memo)
 // account the document already moved. Returns { lines, tax_transactions } or null.
 export function buildTaxAppendix({ baseJournal, collection, document, profile, mappings } = {}) {
     if (!baseJournal || !Array.isArray(baseJournal.lines)) return null;
+    const doc = document || {};
+
+    // Invoices carry their own PPN on the document (tax_rate_percent / tax_amount).
+    // INV-ISSUE posts Dr A/R / Cr Revenue for the TOTAL (incl. PPN), so reclass the
+    // PPN portion out of Revenue into 2100 PPN Keluaran: Dr <revenue> (tax) / Cr 2100
+    // (tax). Net: A/R = total, Revenue = subtotal, 2100 = tax. Only when PKP and the
+    // invoice actually has PPN — untaxed invoices post unchanged.
+    if (collection === 'invoices') {
+        if (!isPKP(profile)) return null;
+        const tax = toInt(doc.tax_amount);
+        if (tax <= 0) return null;
+        const revLeg = baseJournal.lines.find((l) => l.account_type === 'revenue' && toInt(l.credit) > 0)
+            || baseJournal.lines.find((l) => toInt(l.credit) > 0);
+        if (!revLeg) return null;
+        const subtotal = toInt(doc.subtotal_amount) || (toInt(doc.total_amount) - tax);
+        return {
+            lines: [
+                journalLine(revLeg.account_code, revLeg.account_type, revLeg.account_name, tax, 0, 'PPN reclass'),
+                journalLine('2100', 'liability', 'PPN Keluaran', 0, tax, 'PPN Keluaran')
+            ],
+            tax_transactions: [{
+                tax_code: 'PPN_OUT_11', tax_name: 'PPN Keluaran', direction: 'output',
+                tax_rate_percent: Number(doc.tax_rate_percent) || rateFor('PPN_OUT_11'),
+                taxable_base: subtotal, tax_amount: tax, period_key: baseJournal.period_key || null,
+                npwp_counterparty: doc.customer_npwp || null, faktur_number: doc.faktur_number || null
+            }]
+        };
+    }
+
     const codes = selectExplicitTaxRules(collection, document || {}, profile, mappings);
     if (!codes.length) return null;
     const base = taxableBaseOf(document);
