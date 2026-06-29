@@ -354,7 +354,19 @@
                                     <div class="mt-4 space-y-3">
                                         <div>
                                             <label for="inv-tax-rate" class="text-[12px] font-medium text-gray-700">Tax rate (%) <span class="font-normal text-gray-400">— optional</span></label>
-                                            <input id="inv-tax-rate" type="text" inputmode="decimal" placeholder="e.g. 11" class="mt-1 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-[14px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C] font-mono sm:w-40">
+                                            <input id="inv-tax-rate" type="text" inputmode="decimal" placeholder="e.g. 11" class="mt-1 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-[14px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C] tabular-nums sm:w-40">
+                                        </div>
+                                        <div>
+                                            <label for="inv-cust-wht-rate" class="text-[12px] font-medium text-gray-700">Customer withholding (%) <span class="font-normal text-gray-400">— PPh the customer withholds on payment</span></label>
+                                            <div class="mt-1 flex gap-2">
+                                                <input id="inv-cust-wht-rate" type="text" inputmode="decimal" placeholder="e.g. 2" class="h-10 w-28 rounded-lg border border-gray-200 bg-white px-3 text-[14px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C] tabular-nums">
+                                                <select id="inv-cust-wht-type" class="h-10 rounded-lg border border-gray-200 bg-white px-3 text-[14px] text-gray-900 outline-none focus:ring-2 focus:ring-[#EA580C]">
+                                                    <option value="">Type…</option>
+                                                    <option value="PPh 23">PPh 23</option>
+                                                    <option value="PPh 4(2)">PPh 4(2)</option>
+                                                    <option value="PPh 26">PPh 26</option>
+                                                </select>
+                                            </div>
                                         </div>
                                         <div>
                                             <label for="inv-memo" class="text-[12px] font-medium text-gray-700">Memo <span class="font-normal text-gray-400">— shows above the item table</span></label>

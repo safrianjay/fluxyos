@@ -453,6 +453,8 @@ export function initInvoicesPage({ ds, user }) {
             }
             editor.paymentMethod = invoice.payment_collection_method === 'manual_only' ? 'manual_only' : 'request_payment';
             editor.taxRate = invoice.tax_rate_percent ?? null;
+            editor.custWhtRate = invoice.customer_withholding_rate ?? null;
+            editor.custWhtType = invoice.customer_withholding_type || '';
             editor.memo = invoice.memo || '';
             editor.footer = invoice.footer || '';
             editor.issueDate = toDateObj(invoice.issue_date) || new Date();
@@ -504,6 +506,8 @@ export function initInvoicesPage({ ds, user }) {
             radio.checked = radio.value === editor.paymentMethod;
         });
         el('inv-tax-rate').value = editor.taxRate == null ? '' : String(editor.taxRate);
+        if (el('inv-cust-wht-rate')) el('inv-cust-wht-rate').value = editor.custWhtRate == null ? '' : String(editor.custWhtRate);
+        if (el('inv-cust-wht-type')) el('inv-cust-wht-type').value = editor.custWhtType || '';
         el('inv-memo').value = editor.memo;
         el('inv-footer').value = editor.footer;
         closeItemForm();
@@ -544,6 +548,14 @@ export function initInvoicesPage({ ds, user }) {
         editor.taxRate = Number.isFinite(rate) ? Math.min(Math.max(rate, 0), 100) : null;
         markDirty();
     });
+    el('inv-cust-wht-rate')?.addEventListener('input', (event) => {
+        const cleaned = event.target.value.replace(',', '.').replace(/[^\d.]/g, '');
+        event.target.value = cleaned;
+        const rate = parseFloat(cleaned);
+        editor.custWhtRate = Number.isFinite(rate) ? Math.min(Math.max(rate, 0), 100) : null;
+        markDirty();
+    });
+    el('inv-cust-wht-type')?.addEventListener('change', (event) => { editor.custWhtType = event.target.value || ''; markDirty(); });
     document.querySelectorAll('input[name="inv-payment-method"]').forEach((radio) => {
         radio.addEventListener('change', () => {
             if (radio.checked) { editor.paymentMethod = radio.value; markDirty(); }
@@ -786,6 +798,9 @@ export function initInvoicesPage({ ds, user }) {
             due_terms: editor.dueTerms,
             items: editor.items,
             tax_rate_percent: editor.taxRate,
+            customer_withholding_rate: editor.custWhtRate,
+            customer_withholding_type: editor.custWhtType || null,
+            customer_withholding_code: ({ 'PPh 23': 'PPH23', 'PPh 4(2)': 'PPH4_2', 'PPh 26': 'PPH26' })[editor.custWhtType] || null,
             memo: editor.memo.trim() || null,
             footer: editor.footer.trim() || null,
             payment_collection_method: editor.paymentMethod,

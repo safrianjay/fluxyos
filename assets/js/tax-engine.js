@@ -295,6 +295,31 @@ export function buildTaxAppendix({ baseJournal, collection, document, profile, m
         return { lines, tax_transactions: taxTx };
     }
 
+    // Customer withholding on an invoice PAYMENT. INV-PAY posts Dr Cash / Cr A/R for
+    // the total; the customer withheld PPh and paid us net, giving a bukti potong. The
+    // withheld amount is a creditable prepayment: reclass it out of Cash into 1150.
+    // Dr 1150 / Cr Cash (pph). Net: Cash = net received, 1150 = creditable PPh, A/R =
+    // total (fully settled). markInvoicePaid stamps customer_withholding_amount.
+    if (collection === 'transactions' && doc.linked_invoice_id) {
+        const pph = toInt(doc.customer_withholding_amount);
+        if (pph <= 0) return null;
+        const cashLeg = baseJournal.lines.find((l) => l.account_type === 'asset' && toInt(l.debit) > 0)
+            || baseJournal.lines.find((l) => toInt(l.debit) > 0);
+        if (!cashLeg) return null;
+        return {
+            lines: [
+                journalLine('1150', 'asset', 'PPh Dipotong Pihak Lain', pph, 0, doc.withholding_type || 'PPh withheld by customer'),
+                journalLine(cashLeg.account_code, cashLeg.account_type, cashLeg.account_name, 0, pph, 'PPh withheld by customer')
+            ],
+            tax_transactions: [{
+                tax_code: doc.withholding_code || 'PPH_WHT', tax_name: doc.withholding_type || 'PPh (customer withheld)',
+                direction: 'withheld_by_other', tax_rate_percent: Number(doc.withholding_rate) || 0,
+                taxable_base: toInt(doc.taxable_base) || 0, tax_amount: pph, period_key: baseJournal.period_key || null,
+                npwp_counterparty: doc.customer_npwp || null, bukti_potong_no: doc.bukti_potong_no || null
+            }]
+        };
+    }
+
     const codes = selectExplicitTaxRules(collection, document || {}, profile, mappings);
     if (!codes.length) return null;
     const base = taxableBaseOf(document);

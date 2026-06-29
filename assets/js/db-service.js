@@ -1641,6 +1641,12 @@ class DataService {
             due_date: invoiceData.due_date ? this._coerceTimestampOrNow(invoiceData.due_date) : null,
             due_terms: this._allowedValue(invoiceData.due_terms, dueTermsAllowed, 'due_in_30_days'),
             item_count: normalizedItems.length,
+            // Customer withholding (the customer withholds PPh on payment). Optional.
+            customer_npwp: invoiceData.customer_npwp ? (this._nullableString(invoiceData.customer_npwp, 32)) : null,
+            customer_withholding_rate: (Number(invoiceData.customer_withholding_rate) > 0)
+                ? Math.min(Math.max(Number(invoiceData.customer_withholding_rate), 0), 100) : null,
+            customer_withholding_type: invoiceData.customer_withholding_type ? this._nullableString(invoiceData.customer_withholding_type, 40) : null,
+            customer_withholding_code: invoiceData.customer_withholding_code ? this._nullableString(invoiceData.customer_withholding_code, 40) : null,
             ...totals,
             memo: invoiceData.memo ? this._stringOrDefault(invoiceData.memo, '', 500) || null : null,
             footer: invoiceData.footer ? this._stringOrDefault(invoiceData.footer, '', 500) || null : null,
@@ -1980,6 +1986,23 @@ class DataService {
         // receivable instead of recognizing revenue twice. Legacy invoices with no
         // INV-ISSUE journal fall back to a plain income posting (Dr Cash/Cr Revenue).
         if (invoice.journal_ref) transaction.linked_invoice_id = invoiceId;
+
+        // Customer withholding: if the invoice records that the customer withholds PPh,
+        // stamp the computed amount on the payment so the engine reclasses it to 1150
+        // (creditable) and books Cash at the net received. Base is the invoice subtotal.
+        const cwRate = Number(invoice.customer_withholding_rate) || 0;
+        if (cwRate > 0 && invoice.journal_ref) {
+            const base = Math.round(Number(invoice.subtotal_amount) || 0);
+            const pph = Math.round((base * cwRate) / 100);
+            if (pph > 0) {
+                transaction.customer_withholding_amount = pph;
+                transaction.withholding_rate = cwRate;
+                transaction.withholding_type = invoice.customer_withholding_type || 'PPh 23';
+                transaction.withholding_code = invoice.customer_withholding_code || 'PPH_WHT';
+                transaction.taxable_base = base;
+                if (invoice.customer_npwp) transaction.customer_npwp = invoice.customer_npwp;
+            }
+        }
 
         const batch = writeBatch(this.db);
         await this._postSourceJournal(userId, batch, 'transactions', txRef, transaction, { date: transaction.timestamp });

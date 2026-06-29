@@ -1645,9 +1645,14 @@ service cloud.firestore {
           'created_by',
           'updated_by',
           'journal_ref',
-          'accounting_status'
+          'accounting_status',
+          'customer_npwp',
+          'customer_withholding_rate',
+          'customer_withholding_type',
+          'customer_withholding_code'
         ])
         && isValidAccountingLink(data)
+        && isValidTaxDocFields(data)
         && data.keys().hasAll([
           'invoice_number',
           'status',
@@ -2959,7 +2964,12 @@ service cloud.firestore {
         && (!('withholding_rate' in data) || data.withholding_rate == null || (data.withholding_rate is number && data.withholding_rate >= 0 && data.withholding_rate <= 100))
         && (!('withholding_type' in data) || data.withholding_type == null || (data.withholding_type is string && data.withholding_type.size() <= 40))
         && (!('withholding_code' in data) || data.withholding_code == null || (data.withholding_code is string && data.withholding_code.size() <= 40))
-        && (!('bukti_potong_no' in data) || data.bukti_potong_no == null || (data.bukti_potong_no is string && data.bukti_potong_no.size() <= 60));
+        && (!('bukti_potong_no' in data) || data.bukti_potong_no == null || (data.bukti_potong_no is string && data.bukti_potong_no.size() <= 60))
+        && (!('customer_npwp' in data) || data.customer_npwp == null || (data.customer_npwp is string && data.customer_npwp.size() <= 32))
+        && (!('customer_withholding_amount' in data) || data.customer_withholding_amount == null || (data.customer_withholding_amount is number && data.customer_withholding_amount >= 0))
+        && (!('customer_withholding_rate' in data) || data.customer_withholding_rate == null || (data.customer_withholding_rate is number && data.customer_withholding_rate >= 0 && data.customer_withholding_rate <= 100))
+        && (!('customer_withholding_type' in data) || data.customer_withholding_type == null || (data.customer_withholding_type is string && data.customer_withholding_type.size() <= 40))
+        && (!('customer_withholding_code' in data) || data.customer_withholding_code == null || (data.customer_withholding_code is string && data.customer_withholding_code.size() <= 40));
     }
     function wsValidTxCreate(data) {
       return data.keys().hasOnly([
@@ -2974,7 +2984,11 @@ service cloud.firestore {
           'cash_effective', 'cash_status', 'cash_direction', 'cash_account_id', 'cash_source',
           'cash_match_status', 'cash_effective_at', 'bank_statement_import_id', 'bank_statement_row_id',
           'imported_at', 'bank_account_id', 'linked_bill_id', 'linked_invoice_id',
-          'journal_ref', 'accounting_status'
+          'journal_ref', 'accounting_status',
+          'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
+          'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no',
+          'customer_npwp', 'customer_withholding_amount', 'customer_withholding_rate',
+          'customer_withholding_type', 'customer_withholding_code'
         ])
         && isValidBaseRecord(data)
         && (!('created_at' in data) || data.created_at == request.time)
@@ -2983,6 +2997,7 @@ service cloud.firestore {
         && isValidTransactionBudgetFields(data)
         && isValidAttachedDocuments(data)
         && isValidAccountingLink(data)
+        && isValidTaxDocFields(data)
         && isValidAICaptureMetadata(data);
     }
     function wsValidTxUpdate(data, existingData) {
@@ -2999,7 +3014,11 @@ service cloud.firestore {
           'cash_match_status', 'cash_effective_at', 'cash_assignment_reason', 'cash_assignment_updated_at',
           'cash_assignment_updated_by', 'updated_at', 'updated_by', 'is_voided', 'voided_at', 'voided_by',
           'void_reason', 'bank_statement_import_id', 'bank_statement_row_id', 'imported_at',
-          'bank_account_id', 'linked_bill_id', 'linked_invoice_id', 'journal_ref', 'accounting_status'
+          'bank_account_id', 'linked_bill_id', 'linked_invoice_id', 'journal_ref', 'accounting_status',
+          'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
+          'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no',
+          'customer_npwp', 'customer_withholding_amount', 'customer_withholding_rate',
+          'customer_withholding_type', 'customer_withholding_code'
         ])
         && isValidTransactionRecordUpdate(data, existingData)
         && preservesLegacyRecordDate(data, existingData)
@@ -3007,6 +3026,7 @@ service cloud.firestore {
         && isValidTransactionBudgetFields(data)
         && isValidAttachedDocuments(data)
         && isValidAccountingLink(data)
+        && isValidTaxDocFields(data)
         && isValidAICaptureMetadata(data);
     }
     function wsValidBillCreate(data) {
