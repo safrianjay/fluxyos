@@ -6,13 +6,15 @@
 > `DESIGN_SYSTEM.md`, `SECURITY_SYSTEM.md`, `LOCALIZATION_PLAN.md` §2/§12, and
 > `ROADMAP.md` (Tax Center track).
 >
-> **Status: Phases 1–3 SHIPPED (live on main, rules deployed); Phases 4–5 planned.**
+> **Status: Phases 1–4 SHIPPED (live on main, rules deployed); Phase 5 planned.**
 > Built: `tax-engine.js`, `tax-center.html`/`.js`, the 5 tax collections + rules,
 > PPN (output `2100` / input `1130`), withholding (we-withhold `2110` /
 > customers-withhold `1150`), tax periods (compute/file/lock), SPT PPN + Bukti Potong
-> CSV exports, and `tax_filings`. See `ROADMAP.md` → Tax Center for the per-feature
-> status, and §18b below for the Phase 4 (corporate tax) plan. The sections below are
-> the design of record; where the build refined a decision it is noted in §18a.
+> CSV exports, `tax_filings`, and **corporate tax** (PPh 25 installments → `1140`;
+> annual PPh 29 reconciliation → `2200`, UMKM 0.5% / ordinary 22%). Phase 5 (AI Tax
+> Assistant + Coretax/e-Faktur/e-Bupot integration) is planned. See `ROADMAP.md` →
+> Tax Center for the per-feature status. The sections below are the design of record;
+> where the build refined a decision it is noted in §18a (and §18b for corporate tax).
 >
 > Domain sources: the Indonesia tax deep-research report and the Tax Center product
 > brief (both in the planning thread). This doc condenses them into FluxyOS-shaped
@@ -569,11 +571,13 @@ written for each sensitive action; EN + ID copy paired.
   (`2100`/`1130`) and the reconcile script. Full tax_transactions correction is a §9
   follow-up.
 
-## 18b. Phase 4 — Corporate income tax (PLAN, not yet built)
+## 18b. Phase 4 — Corporate income tax (SHIPPED)
 
 Corporate tax differs from the per-transaction PPN/PPh work: it is **periodic/annual
 computation + prepayment tracking**, not a gross-up appendix on a business document.
-The COA accounts already exist (`1140` Prepaid PPh 25, `2200` PPh 29 Payable). Plan:
+The COA accounts already exist (`1140` Prepaid PPh 25, `2200` PPh 29 Payable). As
+built (Corporate Tax tab; `recordCorporateTaxPayment` / `computeAnnualCorporateTax` /
+`postAnnualCorporateTax` in `db-service.js`):
 
 - **PPh 25 (monthly installment).** Recording a PPh 25 payment posts `Dr 1140 Prepaid
   PPh 25 / Cr Cash` — a creditable prepaid asset, NOT `6500` Tax Expense. Build a
@@ -591,14 +595,18 @@ The COA accounts already exist (`1140` Prepaid PPh 25, `2200` PPh 29 Payable). P
   editable list feeding the taxable-income figure. Keep them as data (a
   `fiscal_adjustments` subcollection or fields on the annual `tax_periods` doc), never
   hardcoded.
-- **Open question:** PPh Final UMKM (0.5% of turnover) is an *alternative* to ordinary
-  CIT — when `company_tax_profile.umkm_final` is true, the annual computation is
-  `0.5% × turnover`, posted monthly as `Dr 6500 / Cr 2110` (already modeled in §4).
-  Decide whether Phase 4 ships ordinary-CIT first or UMKM-final first based on the
-  target segment (UMKM-final is simpler and covers most micro/small businesses).
+- **UMKM vs ordinary (resolved — both shipped).** The annual reconciliation picks the
+  scheme from `company_tax_profile.umkm_final`: true → `0.5% × turnover`; false →
+  `22% × taxable income` (book net income ± fiscal adjustment). One Compute/Post flow
+  handles both.
 
-Suggested first slice: **PPh 25 installment recording + a Corporate Tax tab** (small,
-concrete, mirrors the existing posting/tab patterns), then annual PPh 29.
+**Built as:** PPh 25 installment recording + a Corporate Tax tab, then annual PPh 29
+(Compute preview → Post). Verified end-to-end (`tests/tax-corporate.spec.js`,
+`tests/tax-annual.spec.js`).
+
+**Not yet built (Phase 4 follow-ups):** UMKM 0.5% posted *monthly* (`Dr 6500 / Cr 2110`)
+rather than only at annual reconciliation; a per-year fiscal-adjustments line list (the
+current input is a single net adjustment number).
 
 ## 19. Open questions & assumptions
 

@@ -1397,12 +1397,14 @@ CSV export.
 **Sidebar route:** `Invoices` → `/invoices`, Operations group directly under
 Budgets (active id `nav-invoices`).
 
-### 4o. Tax Center — Indonesian tax collections (SHIPPED Phases 1–3, workspace-scoped)
+### 4o. Tax Center — Indonesian tax collections (SHIPPED Phases 1–4, workspace-scoped)
 
 **Status: live on main (rules deployed).** PPN (output `2100` / input `1130`),
 withholding (`2110` we-withhold / `1150` customers-withhold), tax periods
-(compute/file/lock), SPT PPN + Bukti Potong CSV exports, and `tax_filings` are all
-shipped. Phase 4 (corporate PPh 25/29) is planned. Full spec:
+(compute/file/lock), SPT PPN + Bukti Potong CSV exports, `tax_filings`, and corporate
+tax (PPh 25 installments → `1140`; annual PPh 29 → `2200`, UMKM 0.5% / ordinary 22%)
+are all shipped. Phase 5 (AI Tax Assistant + Coretax/e-Faktur/e-Bupot) is planned.
+Full spec:
 `docs/INDONESIA_TAX_CENTER_ARCHITECTURE.md`. Listed here so the schema reference and
 the §4 grep guard cover the collections from day one. The Tax Center is **derived**:
 tax amounts post as **additional lines on the journal the business document already
