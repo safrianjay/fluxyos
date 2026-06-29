@@ -2947,6 +2947,16 @@ service cloud.firestore {
       return (!('journal_ref' in data) || data.journal_ref == null || (data.journal_ref is string && data.journal_ref.size() <= 120))
         && (!('accounting_status' in data) || data.accounting_status in ['posted', 'pending', 'excluded', 'reversed']);
     }
+    // Tax Center per-document tax fields (optional, bounded). Allowed on
+    // transactions/bills/invoices so a document can carry its own PPN treatment.
+    function isValidTaxDocFields(data) {
+      return (!('tax_code' in data) || data.tax_code == null || (data.tax_code is string && data.tax_code.size() <= 40))
+        && (!('tax_rate_percent' in data) || data.tax_rate_percent == null || (data.tax_rate_percent is number && data.tax_rate_percent >= 0 && data.tax_rate_percent <= 100))
+        && (!('tax_amount' in data) || data.tax_amount == null || (data.tax_amount is number && data.tax_amount >= 0))
+        && (!('taxable_base' in data) || data.taxable_base == null || (data.taxable_base is number && data.taxable_base >= 0))
+        && (!('vendor_npwp' in data) || data.vendor_npwp == null || (data.vendor_npwp is string && data.vendor_npwp.size() <= 32))
+        && (!('faktur_number' in data) || data.faktur_number == null || (data.faktur_number is string && data.faktur_number.size() <= 40));
+    }
     function wsValidTxCreate(data) {
       return data.keys().hasOnly([
           'amount', 'vendor_name', 'category', 'type', 'status', 'icon', 'timestamp',
@@ -3004,7 +3014,8 @@ service cloud.firestore {
           'attached_documents', 'invoice_status', 'budget_id', 'budget_allocation_id',
           'budget_match_method', 'budget_match_status', 'budget_impact_status', 'budget_assignment_reason',
           'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason',
-          'journal_ref', 'accounting_status'
+          'journal_ref', 'accounting_status',
+          'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number'
         ])
         && isValidBaseRecord(data)
         && (!('due_date' in data) || data.due_date is timestamp)
@@ -3013,6 +3024,7 @@ service cloud.firestore {
         && isValidBillBudgetFields(data)
         && isValidAttachedDocuments(data)
         && isValidAccountingLink(data)
+        && isValidTaxDocFields(data)
         && isValidAICaptureMetadata(data);
     }
     function wsValidBillUpdate(data, existingData) {
@@ -3024,9 +3036,11 @@ service cloud.firestore {
           'attached_documents', 'invoice_status', 'budget_id', 'budget_allocation_id',
           'budget_match_method', 'budget_match_status', 'budget_impact_status', 'budget_assignment_reason',
           'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason',
-          'linked_transaction_id', 'updated_at', 'updated_by', 'journal_ref', 'accounting_status'
+          'linked_transaction_id', 'updated_at', 'updated_by', 'journal_ref', 'accounting_status',
+          'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number'
         ])
         && isValidBaseRecordUpdate(data, existingData)
+        && isValidTaxDocFields(data)
         && preservesLegacyRecordDate(data, existingData)
         && (!('due_date' in data) || data.due_date is timestamp)
         && (!('payment_status' in data) || data.payment_status in ['unpaid', 'paid', 'overdue', 'unknown'])

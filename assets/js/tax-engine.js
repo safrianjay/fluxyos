@@ -245,6 +245,37 @@ export function buildTaxAppendix({ baseJournal, collection, document, profile, m
         };
     }
 
+    // Bills carry a per-bill tax rate (tax_rate_percent); the entered amount is the
+    // TOTAL owed (tax-inclusive, how vendor bills arrive). BILL-ACCRUE posts Dr
+    // Expense / Cr A/P for the total, so EXTRACT the PPN: base = round(total/(1+rate)),
+    // ppn = total − base; post Dr 1130 PPN Masukan / Cr Expense (ppn). Net: Expense =
+    // base, 1130 = ppn, A/P = total. Only when PKP and a rate is set; untaxed bills
+    // post unchanged. (A bill with no rate still falls through to category mappings.)
+    if (collection === 'bills') {
+        if (!isPKP(profile)) return null;
+        const rate = Number(doc.tax_rate_percent) || 0;
+        if (rate <= 0) return null;
+        const total = toInt(doc.amount);
+        if (total <= 0) return null;
+        const base = Math.round(total / (1 + rate / 100));
+        const ppn = total - base;
+        if (ppn <= 0) return null;
+        const expLeg = baseJournal.lines.find((l) => l.account_type === 'expense' && toInt(l.debit) > 0)
+            || baseJournal.lines.find((l) => toInt(l.debit) > 0);
+        if (!expLeg) return null;
+        return {
+            lines: [
+                journalLine('1130', 'asset', 'PPN Masukan', ppn, 0, 'PPN Masukan'),
+                journalLine(expLeg.account_code, expLeg.account_type, expLeg.account_name, 0, ppn, 'PPN extract')
+            ],
+            tax_transactions: [{
+                tax_code: 'PPN_IN_11', tax_name: 'PPN Masukan', direction: 'input',
+                tax_rate_percent: rate, taxable_base: base, tax_amount: ppn, period_key: baseJournal.period_key || null,
+                npwp_counterparty: doc.vendor_npwp || null, faktur_number: doc.faktur_number || null
+            }]
+        };
+    }
+
     const codes = selectExplicitTaxRules(collection, document || {}, profile, mappings);
     if (!codes.length) return null;
     const base = taxableBaseOf(document);
