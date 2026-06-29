@@ -579,6 +579,11 @@ function wireMappings(ds, user) {
 
 export async function initTaxCenterPage({ ds, user }) {
     if (!ds || !user) return;
+    const loading = document.getElementById('tax-loading');
+    const content = document.getElementById('tax-page-content');
+    loading?.classList.remove('hidden');
+    content?.classList.add('hidden');
+
     wireTabs();
     const period = currentPeriod();
     const label = document.getElementById('tax-period-label');
@@ -611,7 +616,11 @@ export async function initTaxCenterPage({ ds, user }) {
         ]);
     } catch (err) {
         console.error('Tax Center load failed', err);
+    } finally {
+        loading?.classList.add('hidden');
+        content?.classList.remove('hidden');
     }
+
     renderProfile(profile);
     renderOverviewNote(profile);
     renderPpn(profile, taxTx || [], ppn || { output: 0, input: 0, payable: 0 }, period);
