@@ -41,9 +41,17 @@ test('tax period: compute current month in the UI; compute→file→lock lifecyc
         const after = await ds.getTaxPeriod(uid, k);
         let recomputeThrew = false;
         try { await ds.computeTaxPeriod(uid, k); } catch (_) { recomputeThrew = true; }
-        return { computedStatus: c.status, filedStatus: after.status, recomputeThrew };
+        // Filing record for the period.
+        const filing = await ds.addTaxFiling(uid, { periodKey: k, filing_type: 'SPT_PPN', reference_number: 'REF-' + k });
+        const filings = await ds.listTaxFilings(uid, { periodKey: k });
+        return {
+            computedStatus: c.status, filedStatus: after.status, recomputeThrew,
+            filingStatus: filing.status, filingFound: filings.some((f) => f.reference_number === 'REF-' + k && f.filing_type === 'SPT_PPN')
+        };
     });
     expect(res.computedStatus).toBe('computed');
     expect(res.filedStatus).toBe('filed');
     expect(res.recomputeThrew).toBe(true);
+    expect(res.filingStatus).toBe('filed');
+    expect(res.filingFound).toBe(true);
 });

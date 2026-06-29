@@ -292,6 +292,27 @@ async function reloadPeriods(ds, user, period) {
     renderPeriods(periods, period);
 }
 
+const FILING_LABEL = { SPT_PPN: 'SPT PPN', SPT_PPh_Unifikasi: 'SPT PPh Unifikasi', SPT_PPh21: 'SPT PPh 21', SPT_Tahunan: 'SPT Tahunan', Tax_Certificate: 'Tax Certificate' };
+function renderFilings(filings) {
+    const el = document.getElementById('tax-filings-list');
+    if (!el) return;
+    if (!filings || !filings.length) { el.innerHTML = ''; return; }
+    const sorted = filings.slice().sort((a, b) => String(b.period_id || '').localeCompare(String(a.period_id || '')));
+    const rows = sorted.map((f) => `
+        <tr class="fluxy-table-row">
+            <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${FILING_LABEL[f.filing_type] || f.filing_type || ''}</span><span class="fluxy-table-cell-meta">${String(f.period_id || '').replace('monthly-', '')}</span></td>
+            <td class="fluxy-table-cell">${f.reference_number || '—'}</td>
+            <td class="fluxy-table-cell"><span class="fluxy-table-status fluxy-status-success">${f.status || 'filed'}</span></td>
+        </tr>`).join('');
+    el.innerHTML = `<h3 class="fluxy-kpi-label" style="margin:4px 0 8px">Filings</h3><div class="fluxy-table-scroll"><table class="fluxy-table">
+        <thead><tr class="fluxy-table-header"><th>Filing</th><th>DJP reference</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+async function reloadFilings(ds, user) {
+    const filings = await ds.listTaxFilings(user.uid).catch(() => []);
+    renderFilings(filings);
+}
+
 function wirePeriods(ds, user, period) {
     const computeBtn = document.getElementById('period-compute-btn');
     const fileBtn = document.getElementById('period-file-btn');
@@ -322,8 +343,14 @@ function wirePeriods(ds, user, period) {
             if (!ok) return;
             try {
                 await ds.fileTaxPeriod(user.uid, period.key);
+                const filingType = document.getElementById('period-filing-type')?.value || 'SPT_PPN';
+                const ref = document.getElementById('period-filing-ref')?.value || null;
+                await ds.addTaxFiling(user.uid, { periodKey: period.key, filing_type: filingType, reference_number: ref });
+                const refInput = document.getElementById('period-filing-ref');
+                if (refInput) refInput.value = '';
                 await reloadPeriods(ds, user, period);
-                toast('Period marked as filed', 'success');
+                await reloadFilings(ds, user);
+                toast('Period filed & filing recorded', 'success');
             } catch (e) {
                 toast(e && e.message ? e.message : 'Could not file period', 'error');
                 console.error('fileTaxPeriod failed', e);
@@ -427,14 +454,16 @@ export async function initTaxCenterPage({ ds, user }) {
     let ppn = null;
     let wht = null;
     let periods = [];
+    let filings = [];
     try {
-        [profile, taxTx, mappings, ppn, wht, periods] = await Promise.all([
+        [profile, taxTx, mappings, ppn, wht, periods, filings] = await Promise.all([
             ds.getTaxProfile(user.uid),
             ds.getTaxTransactions(user.uid, { periodKey: period.key }),
             ds.getTaxMappings(user.uid),
             ds.getPpnLedger(user.uid, period.key),
             ds.getWhtLedger(user.uid, period.key),
-            ds.listTaxPeriods(user.uid)
+            ds.listTaxPeriods(user.uid),
+            ds.listTaxFilings(user.uid)
         ]);
     } catch (err) {
         console.error('Tax Center load failed', err);
@@ -445,5 +474,6 @@ export async function initTaxCenterPage({ ds, user }) {
     renderWithholding(taxTx || [], wht || { payable: 0, credit: 0 }, period);
     renderMappings(mappings || []);
     renderPeriods(periods || [], period);
+    renderFilings(filings || []);
     wireExports(ds, user, taxTx || [], period);
 }

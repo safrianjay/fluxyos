@@ -2382,6 +2382,41 @@ class DataService {
         } catch (_) { return []; }
     }
 
+    // Record a tax filing for a period (the DJP-facing artifact: SPT type, reference
+    // number, status). Append-only collection; audited (tax_filing.submit).
+    async addTaxFiling(userId, { periodKey, filing_type = 'SPT_PPN', reference_number = null, external_link = null, status = 'filed' } = {}) {
+        if (!userId || !periodKey) throw new Error('userId + periodKey required');
+        const ref = doc(collection(this.db, `${this._scope(userId)}/tax_filings`));
+        const payload = {
+            period_id: `monthly-${periodKey}`,
+            filing_type,
+            filing_date: serverTimestamp(),
+            reference_number: this._nullableString(reference_number, 80),
+            external_link: this._nullableString(external_link, 300),
+            status,
+            filed_by: (this.actorUid || userId),
+            entity_id: this._resolvedScopeId(userId),
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp()
+        };
+        await setDoc(ref, payload);
+        await this.addAuditLog(userId, {
+            action: 'tax_filing.submit', target_collection: 'tax_filings', target_id: ref.id,
+            after: { period: periodKey, filing_type, status, reference_number: payload.reference_number }, source: 'dashboard'
+        });
+        return { id: ref.id, ...payload };
+    }
+
+    async listTaxFilings(userId, { periodKey = null, max = 50 } = {}) {
+        if (!userId) return [];
+        try {
+            const snap = await getDocs(collection(this.db, `${this._scope(userId)}/tax_filings`));
+            let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            if (periodKey) rows = rows.filter(r => r.period_id === `monthly-${periodKey}`);
+            return rows.slice(0, max);
+        } catch (_) { return []; }
+    }
+
     // Read the tax lines for a period (optionally a direction). Returns [] on any
     // error so the Tax Center renders an empty state rather than throwing. Posting
     // of tax_transactions is wired in a later phase; today this is normally empty.
