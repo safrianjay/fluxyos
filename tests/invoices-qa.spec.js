@@ -98,8 +98,8 @@ test('invoices: finalize-only edit affordance + mark-as-sent regression', async 
     await expect(page.locator('#detail-edit-btn')).toBeHidden();
     await expect(page.locator('#detail-sent-btn')).toBeHidden();
 
-    // --- Back button returns to the list ---
-    await page.locator('#invoice-detail-back').click();
+    // --- Back link (now in the sticky topbar) returns to the list ---
+    await page.locator('#invoice-topbar-back').click();
     await expect(page.locator('#invoice-list-view')).toBeVisible();
     await expect(page.locator('#invoice-detail-view')).toBeHidden();
 
