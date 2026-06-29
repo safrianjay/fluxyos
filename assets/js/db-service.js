@@ -2447,6 +2447,90 @@ class DataService {
         return { journal_ref: jr.id, amount: amt };
     }
 
+    // Aggregate ledger_balances for one fiscal year: net revenue, net expense, and
+    // per-account net debit (for prepaid 1140 / withheld 1150). Filters by period_key
+    // year prefix. Fetches the collection and filters (like getTrialBalance).
+    async _yearLedgerAggregate(userId, fiscalYear) {
+        const agg = { revenue: 0, expense: 0, code: {} };
+        const snap = await getDocs(collection(this.db, `${this._scope(userId)}/ledger_balances`));
+        snap.docs.forEach((d) => {
+            const b = d.data();
+            if (String(b.period_key || '').slice(0, 4) !== String(fiscalYear)) return;
+            const debit = Number(b.debit_total) || 0;
+            const credit = Number(b.credit_total) || 0;
+            agg.code[b.account_code] = (agg.code[b.account_code] || 0) + (debit - credit);
+            if (b.account_type === 'revenue') agg.revenue += (credit - debit);
+            else if (b.account_type === 'expense') agg.expense += (debit - credit);
+        });
+        return agg;
+    }
+
+    // Compute the annual corporate income tax for a fiscal year. Scheme follows the
+    // profile: UMKM final = 0.5% × turnover; otherwise ordinary CIT = 22% × taxable
+    // income (book net income ± fiscal adjustment). PPh 29 = CIT − prepaid PPh 25
+    // (1140) − PPh withheld by others (1150). Pure read (no write) — for preview.
+    async computeAnnualCorporateTax(userId, fiscalYear, { fiscalAdjustment = 0 } = {}) {
+        if (!userId || !fiscalYear) throw new Error('userId + fiscalYear required');
+        const [profile, agg] = await Promise.all([this.getTaxProfile(userId), this._yearLedgerAggregate(userId, fiscalYear)]);
+        const umkm = !!(profile && profile.umkm_final === true);
+        const turnover = Math.max(Math.round(agg.revenue), 0);
+        const netIncome = Math.round(agg.revenue - agg.expense);
+        const adj = Math.round(Number(fiscalAdjustment) || 0);
+        const taxableIncome = netIncome + adj;
+        const cit = umkm ? Math.round(turnover * 0.005) : Math.round(Math.max(taxableIncome, 0) * 0.22);
+        const prepaid = Math.max(Math.round(agg.code['1140'] || 0), 0);
+        const withheld = Math.max(Math.round(agg.code['1150'] || 0), 0);
+        return {
+            fiscal_year: String(fiscalYear), scheme: umkm ? 'umkm_final' : 'ordinary',
+            turnover, net_income: netIncome, fiscal_adjustment: adj, taxable_income: taxableIncome,
+            cit, prepaid, withheld, pph29: cit - prepaid - withheld
+        };
+    }
+
+    // Post the annual reconciliation: recognise CIT (Dr 6500), consume the prepaid +
+    // withheld credits (Cr 1140 / Cr 1150), and book the remainder to 2200 (PPh 29
+    // payable, or a debit overpayment). Writes an annual tax_periods doc + audit.
+    // Idempotent: refuses if the year is already reconciled.
+    async postAnnualCorporateTax(userId, fiscalYear, { fiscalAdjustment = 0 } = {}) {
+        const r = await this.computeAnnualCorporateTax(userId, fiscalYear, { fiscalAdjustment });
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+        const pref = doc(this.db, `${scope}/tax_periods/annual-${r.fiscal_year}`);
+        const existing = await getDoc(pref);
+        if (existing.exists() && ['computed', 'filed', 'settled'].includes(existing.data().status)) {
+            throw new Error(`Annual tax for ${r.fiscal_year} is already reconciled.`);
+        }
+        const lines = [];
+        if (r.cit > 0) lines.push({ account_code: '6500', debit: r.cit });
+        if (r.prepaid > 0) lines.push({ account_code: '1140', credit: r.prepaid });
+        if (r.withheld > 0) lines.push({ account_code: '1150', credit: r.withheld });
+        if (r.pph29 > 0) lines.push({ account_code: '2200', credit: r.pph29 });
+        else if (r.pph29 < 0) lines.push({ account_code: '2200', debit: -r.pph29 });
+        if (!lines.length) throw new Error(`Nothing to reconcile for ${r.fiscal_year}.`);
+        const journal = buildManualJournal({
+            lines, date: new Date(`${r.fiscal_year}-12-31T00:00:00`),
+            description: `Annual corporate tax ${r.fiscal_year} (${r.scheme === 'umkm_final' ? 'UMKM 0.5%' : 'CIT 22%'})`,
+            subtype: 'corporate_annual'
+        });
+        const batch = writeBatch(this.db);
+        this._assignJournalNumbers([journal], await this._reserveJournalNumbers(userId, { [String(journal.period_key).slice(0, 4)]: 1 }));
+        const acc = {};
+        const jr = this._attachJournalToBatch(batch, scope, journal, { entityId, balanceAcc: acc });
+        this._flushBalanceAcc(batch, scope, entityId, acc);
+        batch.set(pref, {
+            period_type: 'annual', period_key: String(r.fiscal_year), status: 'computed', scheme: r.scheme,
+            cit: r.cit, prepaid_credits: r.prepaid + r.withheld, pph29_payable: Math.max(r.pph29, 0),
+            journal_ref: jr.id, updated_at: serverTimestamp(),
+            created_at: existing.exists() ? (existing.data().created_at || serverTimestamp()) : serverTimestamp()
+        }, { merge: true });
+        await batch.commit();
+        await this.addAuditLog(userId, {
+            action: 'tax_period.compute', target_collection: 'tax_periods', target_id: `annual-${r.fiscal_year}`,
+            after: { scheme: r.scheme, cit: r.cit, pph29: r.pph29 }, source: 'dashboard'
+        });
+        return { ...r, journal_ref: jr.id };
+    }
+
     // Corporate-tax credit position across all periods (lifetime running balances):
     // prepaid PPh 25 (1140), PPh withheld by others (1150), and PPh 29 payable (2200).
     async getCorporateTaxSummary(userId) {

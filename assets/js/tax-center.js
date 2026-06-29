@@ -66,17 +66,22 @@ async function logExport(ds, user, report, period, count) {
         });
     } catch (_) { /* audit best-effort; never block the download */ }
 }
-function wireExports(ds, user, taxTx, period) {
+// Bind export handlers EARLY (before init's data fetch) and read the tax lines fresh
+// at click time — so the buttons work the moment the page is interactive (no race with
+// the async load) and always reflect the latest posted data.
+function wireExports(ds, user, period) {
     const ppnBtn = document.getElementById('ppn-export-btn');
     if (ppnBtn) ppnBtn.addEventListener('click', async () => {
-        const rows = (taxTx || []).filter((t) => t.direction === 'output' || t.direction === 'input');
+        const taxTx = await ds.getTaxTransactions(user.uid, { periodKey: period.key }).catch(() => []);
+        const rows = taxTx.filter((t) => t.direction === 'output' || t.direction === 'input');
         downloadCsv(`spt_ppn_${period.key}.csv`, buildPpnCsv(taxTx, period));
         await logExport(ds, user, 'spt_ppn', period, rows.length);
         toast('SPT PPN CSV exported', 'success');
     });
     const whtBtn = document.getElementById('wht-export-btn');
     if (whtBtn) whtBtn.addEventListener('click', async () => {
-        const rows = (taxTx || []).filter((t) => t.direction === 'withheld_by_us' || t.direction === 'withheld_by_other' || t.direction === 'final');
+        const taxTx = await ds.getTaxTransactions(user.uid, { periodKey: period.key }).catch(() => []);
+        const rows = taxTx.filter((t) => t.direction === 'withheld_by_us' || t.direction === 'withheld_by_other' || t.direction === 'final');
         downloadCsv(`bukti_potong_${period.key}.csv`, buildBupotCsv(taxTx, period));
         await logExport(ds, user, 'bukti_potong', period, rows.length);
         toast('Bukti Potong CSV exported', 'success');
@@ -372,6 +377,22 @@ async function reloadCorporate(ds, user) {
     renderCorporate(summary);
 }
 
+function renderAnnualResult(r) {
+    const el = document.getElementById('corp-annual-result');
+    if (!el) return;
+    const rows = [
+        ['Scheme', r.scheme === 'umkm_final' ? 'UMKM final 0.5%' : 'Ordinary CIT 22%'],
+        [r.scheme === 'umkm_final' ? 'Turnover' : 'Taxable income', formatRp(r.scheme === 'umkm_final' ? r.turnover : r.taxable_income)],
+        ['Corporate tax (CIT)', formatRp(r.cit)],
+        ['Less: Prepaid PPh 25', formatRp(r.prepaid)],
+        ['Less: PPh withheld', formatRp(r.withheld)],
+        [r.pph29 >= 0 ? 'PPh 29 payable' : 'Overpayment', formatRp(Math.abs(r.pph29))]
+    ];
+    el.innerHTML = '<div class="fluxy-table-scroll"><table class="fluxy-table"><tbody>'
+        + rows.map(([k, v], i) => `<tr class="fluxy-table-row ${i === rows.length - 1 ? 'fluxy-table-row-total' : ''}"><td class="fluxy-table-cell">${k}</td><td class="fluxy-table-cell fluxy-table-money">${v}</td></tr>`).join('')
+        + '</tbody></table></div>';
+}
+
 function wireCorporate(ds, user) {
     const btn = document.getElementById('corp-pph25-btn');
     if (!btn) return;
@@ -402,6 +423,52 @@ function wireCorporate(ds, user) {
             btn.removeAttribute('disabled');
         }
     });
+
+    // Annual reconciliation (PPh 29).
+    const yearEl = document.getElementById('corp-annual-year');
+    if (yearEl && !yearEl.value) yearEl.value = String(new Date().getFullYear());
+    const computeAnnualBtn = document.getElementById('corp-annual-compute');
+    const postAnnualBtn = document.getElementById('corp-annual-post');
+    let lastAnnual = null;
+    if (computeAnnualBtn) {
+        computeAnnualBtn.addEventListener('click', async () => {
+            const year = String((document.getElementById('corp-annual-year') || {}).value || '').trim();
+            const adj = parseInt(String((document.getElementById('corp-annual-adj') || {}).value || '').replace(/[^\d-]/g, ''), 10) || 0;
+            if (!/^\d{4}$/.test(year)) { toast('Enter a 4-digit fiscal year', 'error'); return; }
+            computeAnnualBtn.setAttribute('disabled', 'disabled');
+            try {
+                lastAnnual = await ds.computeAnnualCorporateTax(user.uid, year, { fiscalAdjustment: adj });
+                renderAnnualResult(lastAnnual);
+                if (postAnnualBtn) postAnnualBtn.classList.remove('hidden');
+            } catch (e) {
+                toast(e && e.message ? e.message : 'Could not compute', 'error');
+                console.error('computeAnnualCorporateTax failed', e);
+            } finally {
+                computeAnnualBtn.removeAttribute('disabled');
+            }
+        });
+    }
+    if (postAnnualBtn) {
+        postAnnualBtn.addEventListener('click', async () => {
+            if (!lastAnnual) return;
+            const ok = typeof window.showConfirmDialog === 'function'
+                ? await window.showConfirmDialog({ title: `Post annual reconciliation ${lastAnnual.fiscal_year}?`, body: `Books CIT to tax expense, consumes prepayments, and posts ${formatRp(Math.abs(lastAnnual.pph29))} ${lastAnnual.pph29 >= 0 ? 'PPh 29 payable' : 'overpayment'}.`, confirmLabel: 'Post', cancelLabel: 'Cancel', tone: 'default' })
+                : true;
+            if (!ok) return;
+            postAnnualBtn.setAttribute('disabled', 'disabled');
+            try {
+                await ds.postAnnualCorporateTax(user.uid, lastAnnual.fiscal_year, { fiscalAdjustment: lastAnnual.fiscal_adjustment });
+                await reloadCorporate(ds, user);
+                postAnnualBtn.classList.add('hidden');
+                toast('Annual reconciliation posted', 'success');
+            } catch (e) {
+                toast(e && e.message ? e.message : 'Could not post', 'error');
+                console.error('postAnnualCorporateTax failed', e);
+            } finally {
+                postAnnualBtn.removeAttribute('disabled');
+            }
+        });
+    }
 }
 
 function renderMappings(mappings) {
@@ -493,6 +560,7 @@ export async function initTaxCenterPage({ ds, user }) {
     wireMappings(ds, user);
     wirePeriods(ds, user, period);
     wireCorporate(ds, user);
+    wireExports(ds, user, period);
 
     let profile = null;
     let taxTx = [];
@@ -524,5 +592,4 @@ export async function initTaxCenterPage({ ds, user }) {
     renderPeriods(periods || [], period);
     renderFilings(filings || []);
     renderCorporate(corporate);
-    wireExports(ds, user, taxTx || [], period);
 }

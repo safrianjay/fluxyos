@@ -229,6 +229,23 @@
                         </div>
                         <span id="corp-hint" class="fluxy-meta"></span>
                     </section>
+                    <section class="acct-card p-5">
+                        <h2 class="fluxy-table-title">Annual reconciliation (PPh 29)</h2>
+                        <p class="fluxy-table-subtitle mt-1">Year-end corporate tax: UMKM 0.5% of turnover, or 22% CIT on taxable income, less prepayments (1140 + 1150). Posting books the remainder to PPh 29 Payable (2200).</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5 max-w-2xl items-end">
+                            <label class="flex flex-col gap-1">
+                                <span class="fluxy-kpi-label">Fiscal year</span>
+                                <input id="corp-annual-year" type="text" inputmode="numeric" maxlength="4" placeholder="2026" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] tabular-nums focus:outline-none focus:border-orange-400" />
+                            </label>
+                            <label class="flex flex-col gap-1">
+                                <span class="fluxy-kpi-label">Fiscal adjustment (Rp)</span>
+                                <input id="corp-annual-adj" type="text" inputmode="numeric" placeholder="0" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] tabular-nums focus:outline-none focus:border-orange-400" />
+                            </label>
+                            <button id="corp-annual-compute" type="button" class="acct-btn acct-btn-secondary">Compute</button>
+                        </div>
+                        <div id="corp-annual-result" class="mt-4"></div>
+                        <button id="corp-annual-post" type="button" class="acct-btn acct-btn-primary mt-3 hidden">Post reconciliation</button>
+                    </section>
                 </div>
 
                 <!-- Mappings panel -->
