@@ -20,6 +20,15 @@ service firebase.storage {
         || request.resource.size <= 5 * 1024 * 1024;
     }
 
+    // Workspace membership for shared finance storage (documents, bank statements).
+    // Mirrors firestore.rules isMember(): active member of the workspace. The
+    // workspace id equals the owner's uid, so trial limits read the owner's billing.
+    function isWorkspaceMember(workspaceId) {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid)).data.status == 'active';
+    }
+
     match /users/{userId}/receipts/{filename} {
       allow read:   if request.auth != null && request.auth.uid == userId;
       allow write:  if request.auth != null
@@ -42,6 +51,31 @@ service firebase.storage {
       allow write:  if request.auth != null
                     && request.auth.uid == userId
                     && respectsTrialStorageSingleFileLimit(userId)
+                    && request.resource.size <= 10 * 1024 * 1024
+                    && request.resource.contentType in [
+                        'application/pdf',
+                        'text/csv',
+                        'application/csv',
+                        'application/vnd.ms-excel',
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    ];
+      allow delete: if false;
+    }
+    // Workspace-scoped finance storage (shared across team members). Mirrors the
+    // user-scoped document / bank-statement rules above, gated by workspace
+    // membership instead of uid ownership. See firestore.rules §workspaces.
+    match /workspaces/{workspaceId}/documents/{documentId}/{fileName} {
+      allow read:   if isWorkspaceMember(workspaceId);
+      allow write:  if isWorkspaceMember(workspaceId)
+                    && respectsTrialStorageSingleFileLimit(workspaceId)
+                    && request.resource.size <= 5 * 1024 * 1024
+                    && request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+      allow delete: if false;
+    }
+    match /workspaces/{workspaceId}/bank_statement_imports/{importId}/{fileName} {
+      allow read:   if isWorkspaceMember(workspaceId);
+      allow write:  if isWorkspaceMember(workspaceId)
+                    && respectsTrialStorageSingleFileLimit(workspaceId)
                     && request.resource.size <= 10 * 1024 * 1024
                     && request.resource.contentType in [
                         'application/pdf',
