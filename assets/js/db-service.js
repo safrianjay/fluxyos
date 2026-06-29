@@ -2,7 +2,7 @@ import { getFirestore, initializeFirestore, collection, query, where, getDocs, g
 import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
 import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, CHART_OF_ACCOUNTS_SEED, signedBalance, periodKey as acctPeriodKey } from "./accounting-engine.js";
-import { buildTaxAppendix } from "./tax-engine.js";
+import { buildTaxAppendix, TAX_RATES } from "./tax-engine.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
 // See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
@@ -2194,6 +2194,65 @@ class DataService {
         return { id: 'current', ...payload };
     }
 
+    // Active tax mappings (category/type → tax_code). Drives explicit-treatment-only
+    // PPN posting (see tax-engine selectExplicitTaxRules). Archived rows excluded.
+    async getTaxMappings(userId) {
+        if (!userId) return [];
+        try {
+            const snap = await getDocs(collection(this.db, `${this._scope(userId)}/tax_mappings`));
+            return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => m.status !== 'archived');
+        } catch (_) {
+            return [];
+        }
+    }
+
+    // Upsert a tax mapping. Deterministic doc id from source_type+value so a re-save
+    // updates rather than duplicates. tax_rate_percent is derived from the engine's
+    // rate table so UI and posting can never disagree. Writes an audit log and
+    // invalidates the posting-engine mapping cache.
+    async saveTaxMapping(userId, data = {}) {
+        if (!userId) throw new Error('userId required');
+        const sourceType = data.source_type === 'transaction_type' ? 'transaction_type' : 'transaction_category';
+        const sourceValue = this._nullableString(data.source_value, 60);
+        if (!sourceValue) throw new Error('source_value required');
+        const taxCode = this._nullableString(data.tax_code, 40);
+        if (!taxCode || !TAX_RATES[taxCode]) throw new Error('valid tax_code required');
+        const safeKey = `${sourceType}__${sourceValue}`.toLowerCase().replace(/[^a-z0-9_]+/g, '-').slice(0, 140);
+        const ref = doc(this.db, `${this._scope(userId)}/tax_mappings/${safeKey}`);
+        const existing = await getDoc(ref);
+        const payload = {
+            source_type: sourceType,
+            source_value: sourceValue,
+            tax_code: taxCode,
+            tax_rate_percent: TAX_RATES[taxCode].rate,
+            status: 'active',
+            updated_at: serverTimestamp(),
+            created_at: existing.exists() ? (existing.data().created_at || serverTimestamp()) : serverTimestamp()
+        };
+        await setDoc(ref, payload);
+        await this.addAuditLog(userId, {
+            action: existing.exists() ? 'tax_mapping.update' : 'tax_mapping.create',
+            target_collection: 'tax_mappings',
+            target_id: safeKey,
+            after: { source_type: sourceType, source_value: sourceValue, tax_code: taxCode },
+            source: 'dashboard'
+        });
+        this._taxMapCacheTax = {};
+        return { id: safeKey, ...payload };
+    }
+
+    // Soft-archive a tax mapping (status → archived). Merge keeps tax_code present so
+    // the update passes the rules validator. Invalidates the posting cache.
+    async archiveTaxMapping(userId, mappingId) {
+        if (!userId || !mappingId) throw new Error('userId + mappingId required');
+        const ref = doc(this.db, `${this._scope(userId)}/tax_mappings/${mappingId}`);
+        await setDoc(ref, { status: 'archived', updated_at: serverTimestamp() }, { merge: true });
+        await this.addAuditLog(userId, {
+            action: 'tax_mapping.archive', target_collection: 'tax_mappings', target_id: mappingId, source: 'dashboard'
+        });
+        this._taxMapCacheTax = {};
+    }
+
     // Read the tax lines for a period (optionally a direction). Returns [] on any
     // error so the Tax Center renders an empty state rather than throwing. Posting
     // of tax_transactions is wired in a later phase; today this is normally empty.
@@ -2510,21 +2569,27 @@ class DataService {
             const taxTxRows = await this._applyTaxAppendix(userId, journal, sourceCollection, payload);
             const bases = await this._reserveJournalNumbers(userId, { [String(journal.period_key).slice(0, 4)]: 1 });
             this._assignJournalNumbers([journal], bases);
-            const journalRef = this._attachJournalToBatch(batch, this._scope(userId), journal, {
-                entityId: this._resolvedScopeId(userId)
-            });
+            const scope = this._scope(userId);
+            const entityId = this._resolvedScopeId(userId);
+            // Accumulate ledger_balances and flush once: a tax gross-up line reuses an
+            // existing account (Cash / A-R / A-P), so writing balances per-line would
+            // hit the same ledger_balances doc twice in one batch — which Firestore
+            // forbids. The accumulator collapses same-account lines into one increment.
+            const acc = {};
+            const journalRef = this._attachJournalToBatch(batch, scope, journal, { entityId, balanceAcc: acc });
+            this._flushBalanceAcc(batch, scope, entityId, acc);
             payload.journal_ref = journalRef.id;
             payload.accounting_status = 'posted';
             // Stage one tax_transactions row per PPN line, linked to the journal.
             (taxTxRows || []).forEach((t) => {
-                const tref = doc(collection(this.db, `${this._scope(userId)}/tax_transactions`));
+                const tref = doc(collection(this.db, `${scope}/tax_transactions`));
                 batch.set(tref, {
                     ...t,
                     source_collection: sourceCollection,
                     source_id: sourceRef.id,
                     source_number: journal.source_number || null,
                     journal_ref: journalRef.id,
-                    entity_id: this._resolvedScopeId(userId),
+                    entity_id: entityId,
                     status: 'posted',
                     created_by: this.actorUid || userId,
                     created_at: serverTimestamp()

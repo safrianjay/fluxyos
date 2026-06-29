@@ -28,6 +28,8 @@ function toast(message, type) {
     if (typeof window !== 'undefined' && typeof window.showToast === 'function') window.showToast(message, type);
 }
 
+const TAX_CODE_LABEL = { PPN_OUT_11: 'PPN Keluaran 11%', PPN_IN_11: 'PPN Masukan 11%' };
+
 function canEditTax() {
     const role = (typeof window !== 'undefined' && window.FluxyWorkspace && window.FluxyWorkspace.role) || null;
     // Owner default (no resolved role) keeps full access; viewer is read-only.
@@ -160,6 +162,84 @@ function wireSave(ds, user) {
     });
 }
 
+function renderMappings(mappings) {
+    const el = document.getElementById('tax-mappings-list');
+    if (!el) return;
+    if (!mappings.length) {
+        el.innerHTML = '<p class="fluxy-meta" style="padding:8px 0">No tax mappings yet. Add one above to start posting PPN on a category or type.</p>';
+        return;
+    }
+    const rows = mappings.map((m) => `
+        <tr class="fluxy-table-row">
+            <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${m.source_value || ''}</span><span class="fluxy-table-cell-meta">${m.source_type === 'transaction_type' ? 'Type' : 'Category'}</span></td>
+            <td class="fluxy-table-cell">${TAX_CODE_LABEL[m.tax_code] || m.tax_code || ''}</td>
+            <td class="fluxy-table-cell" style="text-align:right">${canEditTax() ? `<button type="button" class="acct-btn acct-btn-secondary" data-archive-mapping="${m.id}">Archive</button>` : ''}</td>
+        </tr>`).join('');
+    el.innerHTML = `<div class="fluxy-table-scroll"><table class="fluxy-table">
+        <thead><tr class="fluxy-table-header"><th>Source</th><th>Treatment</th><th style="text-align:right">Action</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`;
+}
+
+async function reloadMappings(ds, user) {
+    const mappings = await ds.getTaxMappings(user.uid).catch(() => []);
+    renderMappings(mappings);
+}
+
+function wireMappings(ds, user) {
+    const addBtn = document.getElementById('map-add-btn');
+    const list = document.getElementById('tax-mappings-list');
+    const editable = canEditTax();
+    if (!editable) {
+        if (addBtn) { addBtn.setAttribute('disabled', 'disabled'); addBtn.classList.add('opacity-50', 'cursor-not-allowed'); }
+        document.querySelectorAll('[data-tax-panel="mappings"] input, [data-tax-panel="mappings"] select')
+            .forEach((el) => el.setAttribute('disabled', 'disabled'));
+        const hint = document.getElementById('map-hint');
+        if (hint) hint.textContent = 'Read-only for your role.';
+        return;
+    }
+    if (addBtn) {
+        addBtn.addEventListener('click', async () => {
+            const sourceType = (document.getElementById('map-source-type') || {}).value;
+            const sourceValueEl = document.getElementById('map-source-value');
+            const sourceValue = sourceValueEl ? sourceValueEl.value.trim() : '';
+            const taxCode = (document.getElementById('map-tax-code') || {}).value;
+            if (!sourceValue) { toast('Enter a category or type value', 'error'); return; }
+            addBtn.setAttribute('disabled', 'disabled');
+            try {
+                await ds.saveTaxMapping(user.uid, { source_type: sourceType, source_value: sourceValue, tax_code: taxCode });
+                if (sourceValueEl) sourceValueEl.value = '';
+                await reloadMappings(ds, user);
+                toast('Tax mapping saved', 'success');
+            } catch (err) {
+                toast('Could not save mapping', 'error');
+                console.error('saveTaxMapping failed', err);
+            } finally {
+                addBtn.removeAttribute('disabled');
+            }
+        });
+    }
+    // Archive via delegation on the (persistent) list container.
+    if (list) {
+        list.addEventListener('click', async (e) => {
+            const btn = e.target.closest('[data-archive-mapping]');
+            if (!btn) return;
+            const id = btn.getAttribute('data-archive-mapping');
+            const ok = typeof window.showConfirmDialog === 'function'
+                ? await window.showConfirmDialog({ title: 'Archive mapping?', body: 'This source will no longer post PPN.', confirmLabel: 'Archive', cancelLabel: 'Cancel', tone: 'danger' })
+                : true;
+            if (!ok) return;
+            try {
+                await ds.archiveTaxMapping(user.uid, id);
+                await reloadMappings(ds, user);
+                toast('Mapping archived', 'success');
+            } catch (err) {
+                toast('Could not archive mapping', 'error');
+                console.error('archiveTaxMapping failed', err);
+            }
+        });
+    }
+}
+
 export async function initTaxCenterPage({ ds, user }) {
     if (!ds || !user) return;
     wireTabs();
@@ -168,13 +248,16 @@ export async function initTaxCenterPage({ ds, user }) {
     if (label) label.textContent = period.label;
 
     wireSave(ds, user);
+    wireMappings(ds, user);
 
     let profile = null;
     let taxTx = [];
+    let mappings = [];
     try {
-        [profile, taxTx] = await Promise.all([
+        [profile, taxTx, mappings] = await Promise.all([
             ds.getTaxProfile(user.uid),
-            ds.getTaxTransactions(user.uid, { periodKey: period.key })
+            ds.getTaxTransactions(user.uid, { periodKey: period.key }),
+            ds.getTaxMappings(user.uid)
         ]);
     } catch (err) {
         console.error('Tax Center load failed', err);
@@ -182,4 +265,5 @@ export async function initTaxCenterPage({ ds, user }) {
     renderProfile(profile);
     renderOverviewNote(profile);
     renderPpn(profile, taxTx || [], period);
+    renderMappings(mappings || []);
 }

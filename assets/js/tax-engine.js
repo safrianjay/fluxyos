@@ -174,6 +174,10 @@ export function classifyTax({ collection, document, profile, mappings } = {}) {
 export function selectExplicitTaxRules(collection, document, profile, mappings) {
     const doc = document || {};
     const map = mappings || {};
+    // Settlement legs (a payment linked to a bill/invoice) post Dr A/P-Cr Cash or
+    // Dr Cash-Cr A/R — they never carry tax: the PPN rode on the accrual/issue. Tax
+    // here would double-count and gross up the settlement. Skip them.
+    if (doc.linked_bill_id || doc.linked_invoice_id) return [];
     const category = String(doc.category || '').trim();
     const type = String(doc.type || '').trim().toLowerCase();
     let codes = [];

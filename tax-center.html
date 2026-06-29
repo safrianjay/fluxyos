@@ -69,6 +69,7 @@
                     <button class="acct-tab is-active" data-tax-tab="overview" role="tab">Overview</button>
                     <button class="acct-tab" data-tax-tab="profile" role="tab">Company Tax Profile</button>
                     <button class="acct-tab" data-tax-tab="ppn" role="tab">PPN</button>
+                    <button class="acct-tab" data-tax-tab="mappings" role="tab">Mappings</button>
                 </nav>
 
                 <!-- Overview panel -->
@@ -137,6 +138,39 @@
                             </div>
                         </div>
                         <div id="ppn-summary-body"></div>
+                    </section>
+                </div>
+
+                <!-- Mappings panel -->
+                <div data-tax-panel="mappings" class="hidden flex-col gap-6 mt-6">
+                    <section class="acct-card p-5">
+                        <h2 class="fluxy-table-title">Tax mappings</h2>
+                        <p class="fluxy-table-subtitle mt-1">Assign a PPN treatment to a transaction category or type. Only mapped sources post PPN — everything else stays untaxed.</p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-5 items-end">
+                            <label class="flex flex-col gap-1">
+                                <span class="fluxy-kpi-label">Source</span>
+                                <select id="map-source-type" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px]">
+                                    <option value="transaction_category">Category</option>
+                                    <option value="transaction_type">Type</option>
+                                </select>
+                            </label>
+                            <label class="flex flex-col gap-1">
+                                <span class="fluxy-kpi-label">Value</span>
+                                <input id="map-source-value" type="text" maxlength="60" placeholder="e.g. Revenue" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] focus:outline-none focus:border-orange-400" />
+                            </label>
+                            <label class="flex flex-col gap-1">
+                                <span class="fluxy-kpi-label">Tax treatment</span>
+                                <select id="map-tax-code" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px]">
+                                    <option value="PPN_OUT_11">PPN Keluaran 11% (output / sales)</option>
+                                    <option value="PPN_IN_11">PPN Masukan 11% (input / purchases)</option>
+                                </select>
+                            </label>
+                            <button id="map-add-btn" type="button" class="acct-btn acct-btn-primary">Add mapping</button>
+                        </div>
+                        <span id="map-hint" class="fluxy-meta"></span>
+
+                        <div id="tax-mappings-list" class="mt-5"></div>
                     </section>
                 </div>
 
