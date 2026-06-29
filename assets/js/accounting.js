@@ -164,7 +164,7 @@ function openFluxyAI() {
     else window.showToast?.('Fluxy AI is still loading. Try again in a moment.', 'info');
 }
 
-const KERNEL_TABS = new Set(['journals', 'ledger', 'trial', 'coa']);
+const KERNEL_TABS = new Set(['journals', 'ledger', 'trial', 'coa', 'close']);
 
 function setTab(tab) {
     if (!tab) return;
@@ -996,17 +996,32 @@ function renderClosePanel() {
     const status = el('close-status');
     const btn = el('close-period-btn');
     if (!status || !btn) return;
+    const reopeningBtn = el('reopen-period-btn');
+    const loading = !state.kernel.period || state.kernel.loadedPeriod !== currentPeriodKey();
+    if (loading) {
+        status.innerHTML = `<span class="fluxy-table-status fluxy-status-neutral">Loading period status…</span>`;
+        btn.classList.remove('hidden');
+        btn.disabled = true;
+        btn.textContent = 'Loading...';
+        if (reopeningBtn) reopeningBtn.classList.add('hidden');
+        return;
+    }
     const period = state.kernel.period || { status: 'open' };
     const tb = state.kernel.trial || { balanced: true, rows: [] };
-    const reopenBtn = el('reopen-period-btn');
+    const reopenBtn = reopeningBtn;
     // Reopen is owner/admin only (mirrors the firestore.rules gate).
     const canReopen = !!(window.FluxyWorkspace && typeof window.FluxyWorkspace.can === 'function'
         ? window.FluxyWorkspace.can('period.lock')
         : false);
     if (period.status === 'closed' || period.status === 'locked') {
-        status.innerHTML = `<span class="fluxy-table-status fluxy-status-neutral">Period ${escapeHtml(period.status)}</span>`;
+        const label = period.status === 'locked' ? 'Locked period' : 'Closed period';
+        status.innerHTML = `<span class="fluxy-table-status fluxy-status-neutral">${escapeHtml(label)}</span>`;
         btn.classList.add('hidden');
-        if (reopenBtn) reopenBtn.classList.toggle('hidden', !canReopen);
+        if (reopenBtn) {
+            reopenBtn.classList.remove('acct-btn-secondary');
+            reopenBtn.classList.add('acct-btn-primary');
+            reopenBtn.classList.toggle('hidden', !canReopen);
+        }
         return;
     }
     btn.classList.remove('hidden');
@@ -1043,6 +1058,8 @@ async function onClosePeriod() {
     try {
         const res = await state.ds.closePeriod(state.user.uid, pk);
         window.showToast?.(`Closed ${pk}. Net ${signedRupiah(res.net)} posted to Retained Earnings.`, 'success');
+        state.kernel.period = { status: 'closed' };
+        renderClosePanel();
         await loadKernel(true);
     } catch (err) {
         console.error('Close period failed:', err);
@@ -1056,7 +1073,7 @@ async function onReopenPeriod() {
     const ok = await window.showConfirmDialog?.({
         title: `Reopen ${pk}?`,
         body: 'This reverses the closing journal (backing net income out of <strong>Retained Earnings</strong>) and unlocks the period so it accepts new postings. The reversal stays on the audit trail.',
-        confirmLabel: 'Reopen period',
+        confirmLabel: 'Reopen this period',
         cancelLabel: 'Cancel',
         tone: 'default'
     });
@@ -1066,12 +1083,14 @@ async function onReopenPeriod() {
     try {
         const res = await state.ds.reopenPeriod(state.user.uid, pk);
         window.showToast?.(`Reopened ${pk}.${res.reversed_close_journals ? ' Closing entry reversed.' : ''}`, 'success');
+        state.kernel.period = { status: 'open' };
+        renderClosePanel();
         await loadKernel(true);
     } catch (err) {
         console.error('Reopen period failed:', err);
         await window.showAlertDialog?.({ title: 'Could not reopen period', body: escapeHtml(err.message || 'Please try again.'), tone: 'danger' });
         renderClosePanel();
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = 'Reopen period'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'Reopen this period'; }
     }
 }
