@@ -30,6 +30,59 @@ function toast(message, type) {
 
 const TAX_CODE_LABEL = { PPN_OUT_11: 'PPN Keluaran 11%', PPN_IN_11: 'PPN Masukan 11%' };
 
+// CSV helpers (mirror invoices.js: client-side Blob download + export.create audit).
+function csvCell(v) {
+    const s = v == null ? '' : String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function downloadCsv(filename, csv) {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+function buildPpnCsv(taxTx, period) {
+    const header = ['period', 'direction', 'tax_code', 'counterparty_npwp', 'faktur_number', 'base_dpp', 'ppn'];
+    const rows = (taxTx || [])
+        .filter((t) => t.direction === 'output' || t.direction === 'input')
+        .map((t) => [period.key, t.direction, t.tax_code || '', t.npwp_counterparty || '', t.faktur_number || '', Math.round(Number(t.taxable_base) || 0), Math.round(Number(t.tax_amount) || 0)].map(csvCell).join(','));
+    return [header.join(','), ...rows].join('\n');
+}
+function buildBupotCsv(taxTx, period) {
+    const header = ['period', 'direction', 'withholding_code', 'counterparty_npwp', 'bukti_potong_no', 'base_dpp', 'pph'];
+    const rows = (taxTx || [])
+        .filter((t) => t.direction === 'withheld_by_us' || t.direction === 'withheld_by_other' || t.direction === 'final')
+        .map((t) => [period.key, t.direction, t.tax_code || '', t.npwp_counterparty || '', t.bukti_potong_no || '', Math.round(Number(t.taxable_base) || 0), Math.round(Number(t.tax_amount) || 0)].map(csvCell).join(','));
+    return [header.join(','), ...rows].join('\n');
+}
+async function logExport(ds, user, report, period, count) {
+    try {
+        await ds.addAuditLog(user.uid, {
+            action: 'export.create', target_collection: 'report_exports', target_id: '',
+            after: { report, period: period.key, rows: count, format: 'csv' }, source: 'dashboard'
+        });
+    } catch (_) { /* audit best-effort; never block the download */ }
+}
+function wireExports(ds, user, taxTx, period) {
+    const ppnBtn = document.getElementById('ppn-export-btn');
+    if (ppnBtn) ppnBtn.addEventListener('click', async () => {
+        const rows = (taxTx || []).filter((t) => t.direction === 'output' || t.direction === 'input');
+        downloadCsv(`spt_ppn_${period.key}.csv`, buildPpnCsv(taxTx, period));
+        await logExport(ds, user, 'spt_ppn', period, rows.length);
+        toast('SPT PPN CSV exported', 'success');
+    });
+    const whtBtn = document.getElementById('wht-export-btn');
+    if (whtBtn) whtBtn.addEventListener('click', async () => {
+        const rows = (taxTx || []).filter((t) => t.direction === 'withheld_by_us' || t.direction === 'withheld_by_other' || t.direction === 'final');
+        downloadCsv(`bukti_potong_${period.key}.csv`, buildBupotCsv(taxTx, period));
+        await logExport(ds, user, 'bukti_potong', period, rows.length);
+        toast('Bukti Potong CSV exported', 'success');
+    });
+}
+
 function canEditTax() {
     const role = (typeof window !== 'undefined' && window.FluxyWorkspace && window.FluxyWorkspace.role) || null;
     // Owner default (no resolved role) keeps full access; viewer is read-only.
@@ -392,4 +445,5 @@ export async function initTaxCenterPage({ ds, user }) {
     renderWithholding(taxTx || [], wht || { payable: 0, credit: 0 }, period);
     renderMappings(mappings || []);
     renderPeriods(periods || [], period);
+    wireExports(ds, user, taxTx || [], period);
 }
