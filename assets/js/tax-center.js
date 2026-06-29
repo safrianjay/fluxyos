@@ -70,13 +70,16 @@ function renderProfile(profile) {
     if (sub) sub.textContent = profile?.umkm_final ? 'UMKM final scheme' : 'PKP status';
 }
 
-function renderPpn(profile, taxTx, period) {
+// renderPpn drives the headline KPIs from the ledger (source of truth: 2100 output /
+// 1130 input, via ds.getPpnLedger) so they stay correct even when tax_transactions
+// detail rows lag (e.g. after an edit); tax_transactions feed the detail table only.
+function renderPpn(profile, taxTx, ledgerPpn, period) {
     const periodLabel = document.getElementById('ppn-period-label');
     if (periodLabel) periodLabel.textContent = period.label;
 
-    const output = taxTx.filter((t) => t.direction === 'output').reduce((s, t) => s + (Number(t.tax_amount) || 0), 0);
-    const input = taxTx.filter((t) => t.direction === 'input').reduce((s, t) => s + (Number(t.tax_amount) || 0), 0);
-    const payable = output - input;
+    const output = ledgerPpn ? ledgerPpn.output : 0;
+    const input = ledgerPpn ? ledgerPpn.input : 0;
+    const payable = ledgerPpn ? ledgerPpn.payable : 0;
 
     const kpiOut = document.getElementById('kpi-ppn-output');
     const kpiIn = document.getElementById('kpi-ppn-input');
@@ -253,17 +256,19 @@ export async function initTaxCenterPage({ ds, user }) {
     let profile = null;
     let taxTx = [];
     let mappings = [];
+    let trial = [];
     try {
-        [profile, taxTx, mappings] = await Promise.all([
+        [profile, taxTx, mappings, trial] = await Promise.all([
             ds.getTaxProfile(user.uid),
             ds.getTaxTransactions(user.uid, { periodKey: period.key }),
-            ds.getTaxMappings(user.uid)
+            ds.getTaxMappings(user.uid),
+            ds.getPpnLedger(user.uid, period.key)
         ]);
     } catch (err) {
         console.error('Tax Center load failed', err);
     }
     renderProfile(profile);
     renderOverviewNote(profile);
-    renderPpn(profile, taxTx || [], period);
+    renderPpn(profile, taxTx || [], trial || { output: 0, input: 0, payable: 0 }, period);
     renderMappings(mappings || []);
 }

@@ -2253,6 +2253,29 @@ class DataService {
         this._taxMapCacheTax = {};
     }
 
+    // PPN for a period straight from the ledger (the source of truth), via a targeted
+    // 2-doc read of the deterministic ledger_balances ids (never scan the whole
+    // collection — it is large). output = 2100 credit balance, input = 1130 debit
+    // balance, payable = output − input. Returns zeros on any error.
+    async getPpnLedger(userId, periodKey) {
+        const zero = { output: 0, input: 0, payable: 0 };
+        if (!userId || !periodKey) return zero;
+        try {
+            const scope = this._scope(userId);
+            const [outSnap, inSnap] = await Promise.all([
+                getDoc(doc(this.db, `${scope}/ledger_balances/${periodKey}__2100`)),
+                getDoc(doc(this.db, `${scope}/ledger_balances/${periodKey}__1130`))
+            ]);
+            const od = outSnap.exists() ? outSnap.data() : {};
+            const id = inSnap.exists() ? inSnap.data() : {};
+            const output = (Number(od.credit_total) || 0) - (Number(od.debit_total) || 0);
+            const input = (Number(id.debit_total) || 0) - (Number(id.credit_total) || 0);
+            return { output, input, payable: output - input };
+        } catch (_) {
+            return zero;
+        }
+    }
+
     // Read the tax lines for a period (optionally a direction). Returns [] on any
     // error so the Tax Center renders an empty state rather than throwing. Posting
     // of tax_transactions is wired in a later phase; today this is normally empty.

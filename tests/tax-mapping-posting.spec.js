@@ -65,4 +65,11 @@ test('a UI tax mapping drives PPN posting on a matching transaction', async ({ p
     // Revenue (4000) stays at the base (tax-exclusive).
     const revCredit = j.lines.filter((l) => l.account_code === '4000').reduce((s, l) => s + (Number(l.credit) || 0), 0);
     expect(revCredit).toBe(amount);
+
+    // PPN tab reflects the ledger: output PPN (2100 credit balance) is now positive
+    // for the period after this taxed post.
+    await page.reload();
+    await expect(page.locator('#tax-period-label')).not.toBeEmpty({ timeout: 30000 });
+    await page.locator('[data-tax-tab="ppn"]').click();
+    await expect(page.locator('#kpi-ppn-output')).toHaveText(/Rp[1-9]/, { timeout: 20000 });
 });
