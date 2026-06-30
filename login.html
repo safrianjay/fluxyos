@@ -307,7 +307,7 @@
         </div>
     </div>
 
-    <!-- FIREBASE INTEGRATION (REDIRECT VERSION) -->
+    <!-- FIREBASE INTEGRATION (POPUP VERSION — redirect removed for iOS/Safari ITP compatibility) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import {
@@ -318,8 +318,6 @@
             sendEmailVerification,
             GoogleAuthProvider,
             signInWithPopup,
-            signInWithRedirect,
-            getRedirectResult,
             onAuthStateChanged
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { redirectIfRequired } from "./assets/js/onboarding-gate.js";
@@ -629,25 +627,24 @@
                 await goToApp(user);
             };
 
-            getRedirectResult(auth).catch((error) => {
-                console.warn("Redirect Result Error:", error);
-                showAuthMessage(getAuthErrorMessage(error));
-            });
 
             // Handle Auth State (Auto-Redirect + verification gate)
             onAuthStateChanged(auth, async (user) => {
                 if (user) routeUser(user);
             });
 
-            // Google Login (Popup Method - Better for Mobile/SSO)
+            // Google Login (Popup only — signInWithRedirect removed because iOS Safari
+            // ITP clears sessionStorage during the OAuth round-trip, producing the
+            // "missing initial state" error visible on mobile browsers.)
             if (googleBtn) {
                 googleBtn.addEventListener('click', async () => {
                     if (authInFlight) return;
-                    const popupFallbackErrors = new Set([
-                        'auth/popup-blocked',
+
+                    // Errors where the user deliberately cancelled or the popup was
+                    // blocked — show a quiet info message, do NOT fall back to redirect.
+                    const userCancelledErrors = new Set([
                         'auth/popup-closed-by-user',
                         'auth/cancelled-popup-request',
-                        'auth/operation-not-supported-in-this-environment'
                     ]);
 
                     clearAuthMessage();
@@ -657,15 +654,11 @@
                         return;
                     } catch (error) {
                         console.warn("Popup Auth Error:", error);
-                        if (popupFallbackErrors.has(error.code)) {
-                            try {
-                                googleBtn.innerHTML = "Redirecting...";
-                                await signInWithRedirect(auth, googleProvider);
-                                return;
-                            } catch (redirectError) {
-                                console.warn("Redirect Auth Error:", redirectError);
-                                showAuthMessage(getAuthErrorMessage(redirectError));
-                            }
+                        if (userCancelledErrors.has(error.code)) {
+                            // User closed the popup — not an error, just unlock.
+                            showAuthMessage('Sign-in cancelled. Try again whenever you\'re ready.', 'info');
+                        } else if (error.code === 'auth/popup-blocked') {
+                            showAuthMessage('Pop-ups are blocked by your browser. Please allow pop-ups for this site and try again.', 'info');
                         } else {
                             showAuthMessage(getAuthErrorMessage(error));
                         }
