@@ -457,6 +457,19 @@ async function fetchUserDocument(uid, token, collectionName, documentId) {
     return decodeFirestoreDocument(await res.json());
 }
 
+async function fetchWorkspaceDocument(workspaceId, token) {
+    if (!FIRESTORE_PROJECT_ID) throw new Error('FIREBASE_PROJECT_ID is not configured');
+    const encodedWorkspace = encodeURIComponent(workspaceId);
+    const url = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/workspaces/${encodedWorkspace}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 404) return null;
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Firestore workspaces/${workspaceId} read failed: ${res.status} ${text.slice(0, 120)}`);
+    }
+    return decodeFirestoreDocument(await res.json());
+}
+
 async function patchUserDocument(uid, token, collectionName, documentId, data) {
     if (!FIRESTORE_PROJECT_ID) throw new Error('FIREBASE_PROJECT_ID is not configured');
     const encodedUid = encodeURIComponent(uid);
@@ -517,7 +530,16 @@ function activePaidPlanId(subscription) {
 // period (resets when the period advances); otherwise it falls back to the
 // calendar-month doc `ai_chat_<YYYY-MM>`. Enterprise (null limit) and unknown
 // plans are unlimited (returns null = no enforcement).
-async function consumeAIQuotaIfNeeded(uid, token) {
+async function consumeAIQuotaIfNeeded(uid, token, workspaceId) {
+    if (workspaceId && workspaceId !== uid) {
+        const workspace = await fetchWorkspaceDocument(workspaceId, token).catch(() => null);
+        if (workspace && workspace.plan) {
+            const planId = workspace.plan.id;
+            const limit = PLAN_AI_PERIOD_LIMITS[planId];
+            if (limit == null) return null; // enterprise / unlimited
+        }
+    }
+
     const subscription = await fetchUserDocument(uid, token, 'billing_subscription', 'current').catch(() => null);
 
     if (shouldUseTrialAIQuota(subscription)) {
@@ -2497,7 +2519,8 @@ exports.handler = async (event) => {
         if (parsed.error) return jsonResponse(headers, 400, { success: false, error: { code: 'invalid_json', message: parsed.error } });
         const uid = getUid(user);
         if (!uid) return jsonResponse(headers, 401, { success: false, error: { code: 'unauthenticated', message: 'Invalid user session' } });
-        const aiQuota = await consumeAIQuotaIfNeeded(uid, token);
+        const workspaceId = typeof parsed.body.workspace_id === 'string' ? parsed.body.workspace_id : null;
+        const aiQuota = await consumeAIQuotaIfNeeded(uid, token, workspaceId);
         if (aiQuota?.blocked) {
             const isTrial = aiQuota.scope === 'trial';
             return jsonResponse(headers, 402, {

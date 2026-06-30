@@ -924,6 +924,7 @@ async function renderAiBusinessSummary(overview) {
             },
             body: JSON.stringify({
                 message: 'Summarize what happened in my business finance for this selected period. Focus on revenue, OpEx, gross margin, cash pressure, overdue bills, receivables, payables, data quality, and what I should do first.',
+                workspace_id: window.FluxyWorkspace?.id || null,
                 page_context: 'overview_summary',
                 period: {
                     type: 'custom',

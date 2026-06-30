@@ -5038,6 +5038,13 @@ class DataService {
             return snap.exists() ? { data: snap.data(), count: Math.max(0, Number(snap.data().count) || 0) } : null;
         };
         try {
+            if (window.FluxyWorkspace?.plan?.id) {
+                const wsLimit = getPlanLimits(window.FluxyWorkspace.plan.id)?.ai_chat_limit;
+                if (wsLimit == null) {
+                    return { scope: 'plan', used: 0, limit: null, remaining: Infinity, unlimited: true, locked: false };
+                }
+            }
+
             const sub = await this.getBillingSubscription(userId);
             const status = sub?.status || null;
             const planId = sub?.plan_id || null;

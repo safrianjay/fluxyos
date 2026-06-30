@@ -162,6 +162,7 @@
                     },
                     body: JSON.stringify({
                         message: text,
+                        workspace_id: window.FluxyWorkspace?.id || null,
                         page_context: getPageContext(),
                         // Lightweight page context (title, filters, on-screen
                         // metrics) so the analyst can acknowledge what the user

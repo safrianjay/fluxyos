@@ -572,6 +572,7 @@
                 body: JSON.stringify({
                     message: prompt,
                     chat_id: state.currentChatId || undefined,
+                    workspace_id: window.FluxyWorkspace?.id || null,
                     page_context: 'ai_command_center',
                     // Business-level context (the Command Center is not page-scoped)
                     // so the analyst can orient on workspace coverage.
