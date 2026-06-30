@@ -125,12 +125,41 @@ function el(id) { return document.getElementById(id); }
 
 async function loadBusinessName() {
     try {
-        const settings = await ds.getUserSettings(reportsState.user.uid);
-        reportsState.businessName = settings?.company?.business_name || '';
+        // For admins/members, window.FluxyWorkspace.id is the workspace owner's uid
+        // (workspaceId == ownerUid by seeding rule). For owners it equals their own uid.
+        // Always load the business name from the OWNER's settings so the report's
+        // "Prepared for" field shows the real business name, not the "Global HQ" default.
+        const workspaceOwnerId = (window.FluxyWorkspace && window.FluxyWorkspace.id) || reportsState.user.uid;
+        const isOwner = workspaceOwnerId === reportsState.user.uid;
+
+        // Prefer the denormalized workspace name (already synced from the owner's
+        // Business Settings and stored on the workspace doc — shared by all members).
+        const wsName = window.FluxyWorkspace && window.FluxyWorkspace.name;
+
+        // Fetch owner + signed-in user settings in parallel when they differ.
+        // When the user IS the owner, a single call covers both needs.
+        let ownerSettings, mySettings;
+        if (isOwner) {
+            ownerSettings = mySettings = await ds.getUserSettings(reportsState.user.uid);
+        } else {
+            [ownerSettings, mySettings] = await Promise.all([
+                wsName && wsName !== 'Global HQ' ? Promise.resolve(null) : ds.getUserSettings(workspaceOwnerId),
+                ds.getUserSettings(reportsState.user.uid).catch(() => ({}))
+            ]);
+        }
+
+        if (wsName && wsName !== 'Global HQ') {
+            reportsState.businessName = wsName;
+        } else {
+            reportsState.businessName = ownerSettings?.company?.business_name || '';
+        }
+
+        // Report settings (ARR source, recurring revenue categories) are personal
+        // preferences tied to the signed-in user, not the workspace owner.
         reportsState.reportsSettings = {
-            arr_source: settings?.reports?.arr_source || 'none',
-            recurring_revenue_category_ids: Array.isArray(settings?.reports?.recurring_revenue_category_ids)
-                ? settings.reports.recurring_revenue_category_ids
+            arr_source: mySettings?.reports?.arr_source || 'none',
+            recurring_revenue_category_ids: Array.isArray(mySettings?.reports?.recurring_revenue_category_ids)
+                ? mySettings.reports.recurring_revenue_category_ids
                 : []
         };
     } catch {
