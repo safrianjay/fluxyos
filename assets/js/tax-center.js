@@ -181,7 +181,7 @@ function renderPpn(profile, taxTx, ledgerPpn, period) {
     }
     const rows = taxTx.map((t) => `
         <tr class="fluxy-table-row">
-            <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${t.tax_name || t.tax_code || ''}</span><span class="fluxy-table-cell-meta">${t.direction || ''}</span></td>
+            <td class="fluxy-table-cell"><div class="flex flex-col"><span class="fluxy-table-cell-primary">${t.tax_name || t.tax_code || ''}</span><span class="fluxy-table-cell-meta">${t.direction || ''}</span></div></td>
             <td class="fluxy-table-cell fluxy-table-money">${formatRp(t.taxable_base)}</td>
             <td class="fluxy-table-cell fluxy-table-money">${formatRp(t.tax_amount)}</td>
         </tr>`).join('');
@@ -221,7 +221,7 @@ function renderDeadlines() {
         const chip = dl.days_left === 0 ? 'Due today' : `${dl.days_left} day${dl.days_left === 1 ? '' : 's'} left`;
         const tone = dl.days_left <= 7 ? 'fluxy-status-warning' : 'fluxy-status-neutral';
         return `<tr class="fluxy-table-row" data-deadline="${dl.code}">
-            <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${DEADLINE_LABELS[dl.code] || dl.code}</span><span class="fluxy-table-cell-meta">${dl.period} — ${dl.due}</span></td>
+            <td class="fluxy-table-cell"><div class="flex flex-col"><span class="fluxy-table-cell-primary">${DEADLINE_LABELS[dl.code] || dl.code}</span><span class="fluxy-table-cell-meta">${dl.period} — ${dl.due}</span></div></td>
             <td class="fluxy-table-cell" style="text-align:right"><span class="fluxy-table-status ${tone}">${chip}</span></td>
         </tr>`;
     }).join('');
@@ -322,7 +322,7 @@ function renderWithholding(taxTx, whtLedger, period) {
     }
     const html = rows.map((t) => `
         <tr class="fluxy-table-row">
-            <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${t.tax_name || t.tax_code || ''}</span><span class="fluxy-table-cell-meta">${t.bukti_potong_no || 'No bukti potong'}</span></td>
+            <td class="fluxy-table-cell"><div class="flex flex-col"><span class="fluxy-table-cell-primary">${t.tax_name || t.tax_code || ''}</span><span class="fluxy-table-cell-meta">${t.bukti_potong_no || 'No bukti potong'}</span></div></td>
             <td class="fluxy-table-cell fluxy-table-money">${formatRp(t.taxable_base)}</td>
             <td class="fluxy-table-cell fluxy-table-money">${formatRp(t.tax_amount)}</td>
         </tr>`).join('');
@@ -346,11 +346,20 @@ function renderPeriods(periods, period) {
     if (fileBtn) fileBtn.disabled = !cur || cur.status === 'filed' || cur.status === 'settled' || !canEditTax();
     const list = document.getElementById('tax-periods-list');
     if (!list) return;
-    if (!periods || !periods.length) {
+    // Display only plausible calendar periods (monthly YYYY-MM or annual YYYY up to
+    // next year) and cap the list — QA/synthetic far-future years would otherwise
+    // sort to the top and bury the real months.
+    const maxYear = new Date().getFullYear() + 1;
+    const visible = (periods || []).filter((p) => {
+        const key = String(p.period_key || '');
+        const m = /^(\d{4})(?:-\d{2})?$/.exec(key);
+        return m && Number(m[1]) <= maxYear;
+    }).slice(0, 12);
+    if (!visible.length) {
         list.innerHTML = '<p class="fluxy-meta" style="padding:8px 0">No periods computed yet. Click “Compute period” to summarize this month from your books.</p>';
         return;
     }
-    const rows = periods.map((p) => {
+    const rows = visible.map((p) => {
         const [cls, text] = periodBadge(p.status);
         return `<tr class="fluxy-table-row">
             <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${p.period_key || ''}</span></td>
@@ -374,10 +383,18 @@ function renderFilings(filings) {
     const el = document.getElementById('tax-filings-list');
     if (!el) return;
     if (!filings || !filings.length) { el.innerHTML = ''; return; }
-    const sorted = filings.slice().sort((a, b) => String(b.period_id || '').localeCompare(String(a.period_id || '')));
+    const maxYear = new Date().getFullYear() + 1;
+    const sorted = filings.slice()
+        .filter((f) => {
+            const m = /^(?:monthly|annual)-(\d{4})/.exec(String(f.period_id || ''));
+            return m && Number(m[1]) <= maxYear;
+        })
+        .sort((a, b) => String(b.period_id || '').localeCompare(String(a.period_id || '')))
+        .slice(0, 12);
+    if (!sorted.length) { el.innerHTML = ''; return; }
     const rows = sorted.map((f) => `
         <tr class="fluxy-table-row">
-            <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${FILING_LABEL[f.filing_type] || f.filing_type || ''}</span><span class="fluxy-table-cell-meta">${String(f.period_id || '').replace('monthly-', '')}</span></td>
+            <td class="fluxy-table-cell"><div class="flex flex-col"><span class="fluxy-table-cell-primary">${FILING_LABEL[f.filing_type] || f.filing_type || ''}</span><span class="fluxy-table-cell-meta">${String(f.period_id || '').replace('monthly-', '')}</span></div></td>
             <td class="fluxy-table-cell">${f.reference_number || '—'}</td>
             <td class="fluxy-table-cell"><span class="fluxy-table-status fluxy-status-success">${f.status || 'filed'}</span></td>
         </tr>`).join('');
@@ -471,23 +488,17 @@ function wireCorporate(ds, user) {
     if (!canEditTax()) {
         btn.setAttribute('disabled', 'disabled');
         btn.classList.add('opacity-50', 'cursor-not-allowed');
-        document.querySelectorAll('[data-tax-panel="corporate"] input').forEach((el) => el.setAttribute('disabled', 'disabled'));
+        document.querySelectorAll('[data-tax-panel="corporate"] input, [data-tax-panel="corporate"] select, [data-tax-panel="corporate"] button')
+            .forEach((el) => { el.setAttribute('disabled', 'disabled'); el.classList.add('opacity-50', 'cursor-not-allowed'); });
         const hint = document.getElementById('corp-hint');
         if (hint) hint.textContent = 'Read-only for your role.';
         return;
     }
     const amountEl = document.getElementById('corp-pph25-amount');
-    const annualAdjEl = document.getElementById('corp-annual-adj');
     if (amountEl) {
         amountEl.addEventListener('input', (event) => {
             const target = event.target;
             target.value = formatRpInput(target.value);
-        });
-    }
-    if (annualAdjEl) {
-        annualAdjEl.addEventListener('input', (event) => {
-            const target = event.target;
-            target.value = formatRpInput(target.value, true);
         });
     }
 
@@ -510,20 +521,107 @@ function wireCorporate(ds, user) {
         }
     });
 
-    // Annual reconciliation (PPh 29).
+    // Annual reconciliation (PPh 29) + fiscal-adjustment line list. Lines persist on
+    // the annual tax_periods doc (saveFiscalAdjustments) and their sum feeds the
+    // taxable-income computation under the ordinary scheme.
     const yearEl = document.getElementById('corp-annual-year');
     if (yearEl && !yearEl.value) yearEl.value = String(new Date().getFullYear());
     const computeAnnualBtn = document.getElementById('corp-annual-compute');
     const postAnnualBtn = document.getElementById('corp-annual-post');
     let lastAnnual = null;
+    let adjLines = [];
+
+    const adjListEl = document.getElementById('fiscal-adj-list');
+    const currentYear = () => String((yearEl || {}).value || '').trim();
+    const adjTotal = () => adjLines.reduce((s, l) => s + (Math.round(Number(l.amount)) || 0), 0);
+    const renderAdjEditor = () => {
+        if (!adjListEl) return;
+        adjListEl.innerHTML = adjLines.map((l, i) => `
+            <div class="flex flex-wrap items-center gap-2" data-adj-row="${i}">
+                <input data-adj-label type="text" maxlength="120" placeholder="e.g. Non-deductible entertainment" value="${String(l.label || '').replace(/"/g, '&quot;')}" class="flex-1 min-w-[180px] border border-gray-200 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-orange-400" />
+                <select data-adj-kind class="border border-gray-200 rounded-lg px-2 py-2 text-[13px]">
+                    <option value="permanent"${l.kind !== 'temporary' ? ' selected' : ''}>Permanent</option>
+                    <option value="temporary"${l.kind === 'temporary' ? ' selected' : ''}>Temporary</option>
+                </select>
+                <input data-adj-amount type="text" inputmode="numeric" placeholder="±0" value="${l.amount ? formatRpInput(String(l.amount), true) : ''}" class="w-36 border border-gray-200 rounded-lg px-3 py-2 text-[13px] tabular-nums text-right focus:outline-none focus:border-orange-400" />
+                <button data-adj-remove type="button" class="acct-btn acct-btn-secondary">Remove</button>
+            </div>`).join('');
+        const totalEl = document.getElementById('fiscal-adj-total');
+        if (totalEl) totalEl.textContent = formatRp(adjTotal());
+    };
+    let adjLoadSeq = 0;
+    let adjLoadedYear = null;
+    const loadAdjustments = async () => {
+        const year = currentYear();
+        // The year input fires 'change' again on blur (e.g. when the user clicks
+        // Add right after typing). Reloading for the SAME year would clobber the
+        // lines being edited with the saved list — only reload on a real change.
+        if (year === adjLoadedYear) return;
+        const seq = ++adjLoadSeq;
+        if (!/^\d{4}$/.test(year)) { adjLines = []; adjLoadedYear = null; renderAdjEditor(); return; }
+        const rows = await ds.getFiscalAdjustments(user.uid, year).catch(() => []);
+        if (seq !== adjLoadSeq) return; // a newer year change superseded this load
+        adjLines = rows;
+        adjLoadedYear = year;
+        renderAdjEditor();
+        // Marker for tests/UI: the editor now reflects this year's saved lines.
+        if (adjListEl) adjListEl.dataset.loadedYear = year;
+    };
+    if (adjListEl) {
+        adjListEl.addEventListener('input', (e) => {
+            const row = e.target.closest('[data-adj-row]');
+            if (!row) return;
+            const i = Number(row.getAttribute('data-adj-row'));
+            if (!adjLines[i]) return;
+            if (e.target.hasAttribute('data-adj-amount')) {
+                e.target.value = formatRpInput(e.target.value, true);
+                adjLines[i].amount = parseRpInput(e.target.value);
+            } else if (e.target.hasAttribute('data-adj-label')) {
+                adjLines[i].label = e.target.value;
+            } else if (e.target.hasAttribute('data-adj-kind')) {
+                adjLines[i].kind = e.target.value;
+            }
+            const totalEl = document.getElementById('fiscal-adj-total');
+            if (totalEl) totalEl.textContent = formatRp(adjTotal());
+        });
+        adjListEl.addEventListener('change', (e) => {
+            const row = e.target.closest('[data-adj-row]');
+            if (row && e.target.hasAttribute('data-adj-kind')) adjLines[Number(row.getAttribute('data-adj-row'))].kind = e.target.value;
+        });
+        adjListEl.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-adj-remove]');
+            if (!btn) return;
+            const row = btn.closest('[data-adj-row]');
+            adjLines.splice(Number(row.getAttribute('data-adj-row')), 1);
+            renderAdjEditor();
+        });
+    }
+    document.getElementById('fiscal-adj-add')?.addEventListener('click', () => {
+        adjLines.push({ label: '', amount: 0, kind: 'permanent' });
+        renderAdjEditor();
+    });
+    document.getElementById('fiscal-adj-save')?.addEventListener('click', async () => {
+        const year = currentYear();
+        if (!/^\d{4}$/.test(year)) { toast('Enter a 4-digit fiscal year', 'error'); return; }
+        try {
+            adjLines = await ds.saveFiscalAdjustments(user.uid, year, adjLines);
+            renderAdjEditor();
+            toast('Adjustments saved', 'success');
+        } catch (e) {
+            toast(e && e.message ? e.message : 'Could not save adjustments', 'error');
+            console.error('saveFiscalAdjustments failed', e);
+        }
+    });
+    yearEl?.addEventListener('change', loadAdjustments);
+    loadAdjustments();
+
     if (computeAnnualBtn) {
         computeAnnualBtn.addEventListener('click', async () => {
-            const year = String((document.getElementById('corp-annual-year') || {}).value || '').trim();
-            const adj = parseRpInput((document.getElementById('corp-annual-adj') || {}).value || '');
+            const year = currentYear();
             if (!/^\d{4}$/.test(year)) { toast('Enter a 4-digit fiscal year', 'error'); return; }
             computeAnnualBtn.setAttribute('disabled', 'disabled');
             try {
-                lastAnnual = await ds.computeAnnualCorporateTax(user.uid, year, { fiscalAdjustment: adj });
+                lastAnnual = await ds.computeAnnualCorporateTax(user.uid, year, { fiscalAdjustment: adjTotal() });
                 renderAnnualResult(lastAnnual);
                 if (postAnnualBtn) postAnnualBtn.classList.remove('hidden');
             } catch (e) {
@@ -566,7 +664,7 @@ function renderMappings(mappings) {
     }
     const rows = mappings.map((m) => `
         <tr class="fluxy-table-row">
-            <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${m.source_value || ''}</span><span class="fluxy-table-cell-meta">${m.source_type === 'transaction_type' ? 'Type' : 'Category'}</span></td>
+            <td class="fluxy-table-cell"><div class="flex flex-col"><span class="fluxy-table-cell-primary">${m.source_value || ''}</span><span class="fluxy-table-cell-meta">${m.source_type === 'transaction_type' ? 'Type' : 'Category'}</span></div></td>
             <td class="fluxy-table-cell">${TAX_CODE_LABEL[m.tax_code] || m.tax_code || ''}</td>
             <td class="fluxy-table-cell" style="text-align:right">${canEditTax() ? `<button type="button" class="acct-btn acct-btn-secondary" data-archive-mapping="${m.id}">Archive</button>` : ''}</td>
         </tr>`).join('');
@@ -637,6 +735,12 @@ function wireMappings(ds, user) {
 
 export async function initTaxCenterPage({ ds, user }) {
     if (!ds || !user) return;
+    // onAuthStateChanged can re-emit; a second init would double-wire every
+    // button (double posting) and reset editor state closures. Init once.
+    if (typeof window !== 'undefined') {
+        if (window.__fluxyTaxCenterInit) return;
+        window.__fluxyTaxCenterInit = true;
+    }
     const loading = document.getElementById('tax-loading');
     const content = document.getElementById('tax-page-content');
     loading?.classList.remove('hidden');

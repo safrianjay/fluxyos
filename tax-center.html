@@ -131,17 +131,20 @@
 
                 <!-- Overview panel -->
                 <div data-tax-panel="overview" class="flex flex-col gap-6 mt-6">
-                    <section class="acct-card p-5">
-                        <h2 class="fluxy-table-title">Compliance overview</h2>
-                        <p class="fluxy-table-subtitle mt-1">The Tax Center derives Indonesian tax from your accounting records — it never keeps a separate ledger. Set your tax profile, then PPN and withholding will summarize here as transactions post.</p>
-                        <div id="tax-overview-note" class="mt-4"></div>
-                        <div id="tax-insights" class="mt-4 flex flex-col gap-2"></div>
-                    </section>
-                    <section class="acct-card p-5">
-                        <h2 class="fluxy-table-title">Upcoming tax deadlines</h2>
-                        <p class="fluxy-table-subtitle mt-1">PPh deposits by the 15th, e-Faktur upload and PPh reporting by the 20th, SPT Masa PPN by month-end, SPT Tahunan by 30 April.</p>
-                        <div id="tax-deadlines" class="mt-4"></div>
-                    </section>
+                    <!-- Compliance + deadlines side by side on wide screens (space-saving). -->
+                    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
+                        <section class="acct-card p-5">
+                            <h2 class="fluxy-table-title">Compliance overview</h2>
+                            <p class="fluxy-table-subtitle mt-1">The Tax Center derives Indonesian tax from your accounting records — it never keeps a separate ledger. Set your tax profile, then PPN and withholding will summarize here as transactions post.</p>
+                            <div id="tax-overview-note" class="mt-4"></div>
+                            <div id="tax-insights" class="mt-4 flex flex-col gap-2"></div>
+                        </section>
+                        <section class="acct-card p-5">
+                            <h2 class="fluxy-table-title">Upcoming tax deadlines</h2>
+                            <p class="fluxy-table-subtitle mt-1">PPh deposits by the 15th, e-Faktur upload and PPh reporting by the 20th, SPT Masa PPN by month-end, SPT Tahunan by 30 April.</p>
+                            <div id="tax-deadlines" class="mt-4"></div>
+                        </section>
+                    </div>
                     <section class="acct-card p-5">
                         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div>
@@ -295,16 +298,25 @@
                     <section class="acct-card p-5">
                         <h2 class="fluxy-table-title">Annual reconciliation (PPh 29)</h2>
                         <p class="fluxy-table-subtitle mt-1">Year-end corporate tax: UMKM 0.5% of turnover, or 22% CIT on taxable income, less prepayments (1140 + 1150). Posting books the remainder to PPh 29 Payable (2200).</p>
-                        <div class="grid grid-cols-1 gap-4 mt-5 max-w-3xl items-end sm:[grid-template-columns:minmax(220px,1fr)_minmax(260px,1fr)_auto]">
+                        <div class="grid grid-cols-1 gap-4 mt-5 max-w-3xl items-end sm:[grid-template-columns:minmax(220px,1fr)_auto]">
                             <label class="flex flex-col gap-1">
                                 <span class="fluxy-kpi-label">Fiscal year</span>
                                 <input id="corp-annual-year" type="text" inputmode="numeric" maxlength="4" placeholder="2026" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] tabular-nums focus:outline-none focus:border-orange-400" />
                             </label>
-                            <label class="flex flex-col gap-1">
-                                <span class="fluxy-kpi-label">Fiscal adjustment (Rp)</span>
-                                <input id="corp-annual-adj" type="text" inputmode="numeric" placeholder="0" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] tabular-nums focus:outline-none focus:border-orange-400" />
-                            </label>
                             <button id="corp-annual-compute" type="button" class="acct-btn acct-btn-secondary">Compute</button>
+                        </div>
+                        <div class="mt-5 max-w-3xl">
+                            <div class="flex items-center justify-between">
+                                <span class="fluxy-kpi-label">Fiscal adjustments</span>
+                                <span class="fluxy-meta">Total: <span id="fiscal-adj-total" class="tabular-nums">Rp0</span></span>
+                            </div>
+                            <p class="fluxy-table-subtitle mt-1">Book-to-tax differences: non-deductible expenses add (+), non-taxable income subtracts (−). Applied to taxable income under the ordinary scheme.</p>
+                            <div id="fiscal-adj-list" class="mt-3 flex flex-col gap-2"></div>
+                            <div class="mt-3 flex items-center gap-2">
+                                <button id="fiscal-adj-add" type="button" class="acct-btn acct-btn-ghost">Add adjustment</button>
+                                <button id="fiscal-adj-save" type="button" class="acct-btn acct-btn-secondary">Save adjustments</button>
+                                <span id="fiscal-adj-hint" class="fluxy-meta"></span>
+                            </div>
                         </div>
                         <div id="corp-annual-result" class="mt-4"></div>
                         <button id="corp-annual-post" type="button" class="acct-btn acct-btn-primary mt-3 hidden">Post reconciliation</button>

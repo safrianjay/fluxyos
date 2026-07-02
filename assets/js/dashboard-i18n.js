@@ -2797,7 +2797,16 @@
         "PPh deposits by the 15th, e-Faktur upload and PPh reporting by the 20th, SPT Masa PPN by month-end, SPT Tahunan by 30 April.": "Setoran PPh paling lambat tanggal 15, unggah e-Faktur dan pelaporan PPh paling lambat tanggal 20, SPT Masa PPN sampai akhir bulan, SPT Tahunan paling lambat 30 April.",
         "PPh deposit": "Setoran PPh",
         "e-Faktur upload & PPh report": "Unggah e-Faktur & lapor PPh",
-        "Due today": "Jatuh tempo hari ini"
+        "Due today": "Jatuh tempo hari ini",
+        "Fiscal adjustments": "Penyesuaian fiskal",
+        "Book-to-tax differences: non-deductible expenses add (+), non-taxable income subtracts (−). Applied to taxable income under the ordinary scheme.": "Perbedaan pembukuan-ke-pajak: beban yang tidak dapat dikurangkan menambah (+), penghasilan yang tidak kena pajak mengurangi (−). Diterapkan pada penghasilan kena pajak di skema umum.",
+        "Add adjustment": "Tambah penyesuaian",
+        "Save adjustments": "Simpan penyesuaian",
+        "Adjustments saved": "Penyesuaian disimpan",
+        "Total:": "Total:",
+        "Permanent": "Permanen",
+        "Temporary": "Temporer",
+        "e.g. Non-deductible entertainment": "mis. Jamuan yang tidak dapat dikurangkan"
     };
 
     // ─────────────────────────────────────────────────────────────────────────

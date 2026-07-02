@@ -35,7 +35,14 @@ test('tax period: compute current month in the UI; compute→file→lock lifecyc
         const app = getApps()[0];
         const uid = getAuth(app).currentUser.uid;
         const ds = new DataService(app);
-        const k = String(2100 + (Date.now() % 5000)) + '-01';
+        // Provably-fresh synthetic key: a collision with a prior run's filed period
+        // would make computeTaxPeriod throw "filed and cannot be recomputed".
+        let k = null;
+        for (let t = 0; t < 25 && !k; t++) {
+            const cand = String(3000 + Math.floor(Math.random() * 6999)) + '-01';
+            if (!(await ds.getTaxPeriod(uid, cand))) k = cand;
+        }
+        if (!k) throw new Error('no fresh synthetic period found');
         const c = await ds.computeTaxPeriod(uid, k);
         await ds.fileTaxPeriod(uid, k);
         const after = await ds.getTaxPeriod(uid, k);

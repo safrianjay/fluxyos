@@ -2378,7 +2378,15 @@ class DataService {
         if (!userId) return [];
         try {
             const snap = await getDocs(collection(this.db, `${this._scope(userId)}/tax_periods`));
+            // Real tax periods can't be in the far future; drop implausible years
+            // (e.g. QA/synthetic docs) BEFORE the sort+slice so they can never
+            // crowd out the current month.
+            const maxYear = new Date().getFullYear() + 1;
             return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                .filter((p) => {
+                    const m = /^(\d{4})/.exec(String(p.period_key || ''));
+                    return m && Number(m[1]) <= maxYear;
+                })
                 .sort((a, b) => String(b.period_key || '').localeCompare(String(a.period_key || '')))
                 .slice(0, max);
         } catch (_) { return []; }
@@ -2493,6 +2501,54 @@ class DataService {
     // withheld credits (Cr 1140 / Cr 1150), and book the remainder to 2200 (PPh 29
     // payable, or a debit overpayment). Writes an annual tax_periods doc + audit.
     // Idempotent: refuses if the year is already reconciled.
+    // Fiscal-adjustment line list for a fiscal year (permanent/temporary book-to-tax
+    // differences). Stored as data on the annual tax_periods doc (status stays 'open'
+    // until reconciliation posts) so the list survives sessions and lands on the
+    // audit trail. Editable only until the year is reconciled.
+    _normalizeFiscalAdjustments(lines) {
+        return (Array.isArray(lines) ? lines : [])
+            .map((l) => ({
+                label: this._nullableString(l && l.label, 120) || 'Adjustment',
+                amount: Math.round(Number(l && l.amount) || 0),
+                kind: (l && l.kind) === 'temporary' ? 'temporary' : 'permanent'
+            }))
+            .filter((l) => l.amount !== 0)
+            .slice(0, 40);
+    }
+
+    async getFiscalAdjustments(userId, fiscalYear) {
+        if (!userId || !fiscalYear) return [];
+        try {
+            const snap = await getDoc(doc(this.db, `${this._scope(userId)}/tax_periods/annual-${fiscalYear}`));
+            const rows = snap.exists() ? snap.data().fiscal_adjustments : null;
+            return Array.isArray(rows) ? rows : [];
+        } catch (_) { return []; }
+    }
+
+    async saveFiscalAdjustments(userId, fiscalYear, lines) {
+        if (!userId || !/^\d{4}$/.test(String(fiscalYear))) throw new Error('userId + 4-digit fiscalYear required');
+        const clean = this._normalizeFiscalAdjustments(lines);
+        const ref = doc(this.db, `${this._scope(userId)}/tax_periods/annual-${fiscalYear}`);
+        const existing = await getDoc(ref);
+        if (existing.exists() && ['computed', 'filed', 'settled'].includes(existing.data().status)) {
+            throw new Error(`Annual tax for ${fiscalYear} is already reconciled — adjustments are locked.`);
+        }
+        await setDoc(ref, {
+            period_type: 'annual',
+            period_key: String(fiscalYear),
+            status: existing.exists() ? (existing.data().status || 'open') : 'open',
+            fiscal_adjustments: clean,
+            fiscal_adjustment_total: clean.reduce((s, l) => s + l.amount, 0),
+            updated_at: serverTimestamp(),
+            created_at: existing.exists() ? (existing.data().created_at || serverTimestamp()) : serverTimestamp()
+        }, { merge: true });
+        await this.addAuditLog(userId, {
+            action: 'tax_period.adjustments_updated', target_collection: 'tax_periods', target_id: `annual-${fiscalYear}`,
+            after: { lines: clean.length, total: clean.reduce((s, l) => s + l.amount, 0) }, source: 'dashboard'
+        });
+        return clean;
+    }
+
     async postAnnualCorporateTax(userId, fiscalYear, { fiscalAdjustment = 0 } = {}) {
         const r = await this.computeAnnualCorporateTax(userId, fiscalYear, { fiscalAdjustment });
         const scope = this._scope(userId);
