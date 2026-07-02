@@ -37,6 +37,13 @@
             'Recommend budget adjustments',
             'Show highest risk category'
         ],
+        tax: [
+            'Explain my PPN payable this month',
+            'Any missing faktur or bukti potong?',
+            'Summarize my withholding position',
+            'How is my corporate tax shaping up?',
+            'What should I do before filing?'
+        ],
         subscriptions: [
             'How much am I spending on SaaS?',
             'Which renewals are coming?',

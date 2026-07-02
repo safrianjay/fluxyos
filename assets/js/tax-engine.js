@@ -359,3 +359,55 @@ export function buildTaxAppendix({ baseJournal, collection, document, profile, m
     if (!lines.length) return null;
     return { lines, tax_transactions: taxTx };
 }
+
+// --- compliance checks (deterministic, read-only) ---------------------------
+
+// The deterministic half of the AI Tax Assistant (architecture §12/§13): pure,
+// read-only findings over the period's tax data. No LLM, no Firestore — the caller
+// supplies what the Tax Center already loads. Returns [{ severity: 'warning'|'info'|
+// 'critical', code, title, detail }]. The AI drawer explains; these detect.
+export function runComplianceChecks({ profile, taxTx = [], ppn = null, wht = null, periods = [], periodKey = null } = {}) {
+    const findings = [];
+    const add = (severity, code, title, detail) => findings.push({ severity, code, title, detail });
+
+    if (!profile) {
+        add('critical', 'NO_PROFILE', 'Company tax profile not set',
+            'Set your NPWP and PKP status in Company Tax Profile — every tax calculation depends on it.');
+        return findings; // everything downstream is meaningless without a profile
+    }
+    if (isPKP(profile) && !profile.npwp) {
+        add('warning', 'PKP_NO_NPWP', 'PKP without an NPWP',
+            'This workspace charges PPN but has no NPWP on the profile. Faktur Pajak requires it.');
+    }
+
+    // Missing faktur numbers on output PPN lines (each needs a Faktur Pajak).
+    const missingFaktur = taxTx.filter((t) => t.direction === 'output' && !t.faktur_number).length;
+    if (missingFaktur > 0) {
+        add('warning', 'MISSING_FAKTUR', `${missingFaktur} output PPN line${missingFaktur === 1 ? '' : 's'} without a faktur number`,
+            'Each taxable sale needs a Faktur Pajak number before the SPT PPN is filed.');
+    }
+    // Missing bukti potong on withholding we performed.
+    const missingBupot = taxTx.filter((t) => t.direction === 'withheld_by_us' && !t.bukti_potong_no).length;
+    if (missingBupot > 0) {
+        add('warning', 'MISSING_BUPOT', `${missingBupot} withholding line${missingBupot === 1 ? '' : 's'} without a bukti potong`,
+            'Issue a bukti potong to the vendor for each PPh amount withheld.');
+    }
+
+    // Period hygiene: tax activity but the month is not computed/filed; or the cached
+    // period summary has drifted from the live ledger (stale — recompute).
+    if (periodKey) {
+        const current = (periods || []).find((p) => p.period_key === periodKey && p.period_type !== 'annual');
+        const hasActivity = (ppn && (ppn.output || ppn.input)) || (wht && (wht.payable || wht.credit)) || taxTx.length > 0;
+        if (hasActivity && !current) {
+            add('info', 'PERIOD_NOT_COMPUTED', 'This month has tax activity but no computed period',
+                'Compute the period on the Overview tab so the summary is locked in before filing.');
+        } else if (current && ppn && ['computed'].includes(current.status)
+            && (toInt(current.ppn_payable) !== toInt(ppn.payable))) {
+            add('warning', 'PERIOD_DRIFT', 'Computed period is out of date',
+                `The period summary (PPN payable ${toInt(current.ppn_payable)}) no longer matches the ledger (${toInt(ppn.payable)}). Recompute before filing.`);
+        }
+    }
+
+    if (!findings.length) add('info', 'ALL_CLEAR', 'No compliance issues detected', 'PPN and withholding data for this period look consistent.');
+    return findings;
+}

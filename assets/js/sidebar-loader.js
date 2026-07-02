@@ -26,11 +26,13 @@
             revenue_sync: 'Revenue Sync',
             budget: 'Budget',
             reports: 'Reports & Exports',
+            tax: 'Tax Center',
             global: 'FluxyOS',
         };
         const STATUS_VALUES = ['good', 'warning', 'critical', 'neutral'];
         const detectPage = () => {
             const path = window.location.pathname.replace(/^\//, '').replace(/\.html$/, '');
+            if (path.includes('tax-center')) return 'tax';
             if (path.includes('ledger')) return 'ledger';
             if (path.includes('bill')) return 'bills';
             if (path.includes('subscription')) return 'subscriptions';

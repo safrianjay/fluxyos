@@ -34,6 +34,10 @@
             </div>
             <div class="flex items-center gap-3">
                 <span id="tax-period-label" class="fluxy-meta"></span>
+                <button type="button" id="tax-ask-ai" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group" title="Open Fluxy AI">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Ask Fluxy AI
+                </button>
             </div>
         </header>
 
@@ -131,6 +135,7 @@
                         <h2 class="fluxy-table-title">Compliance overview</h2>
                         <p class="fluxy-table-subtitle mt-1">The Tax Center derives Indonesian tax from your accounting records — it never keeps a separate ledger. Set your tax profile, then PPN and withholding will summarize here as transactions post.</p>
                         <div id="tax-overview-note" class="mt-4"></div>
+                        <div id="tax-insights" class="mt-4 flex flex-col gap-2"></div>
                     </section>
                     <section class="acct-card p-5">
                         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

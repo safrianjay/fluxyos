@@ -10,6 +10,8 @@
 // posted in a later phase. See docs/INDONESIA_TAX_CENTER_ARCHITECTURE.md.
 // =============================================================================
 
+import { runComplianceChecks } from './tax-engine.js';
+
 // Rupiah, raw integer → 'Rp1.234.567' (no space after Rp — design-system rule).
 function formatRp(n) {
     const v = Math.round(Number(n) || 0);
@@ -188,6 +190,41 @@ function renderPpn(profile, taxTx, ledgerPpn, period) {
             <thead><tr class="fluxy-table-header"><th>Tax</th><th class="fluxy-table-money">Base (DPP)</th><th class="fluxy-table-money">PPN</th></tr></thead>
             <tbody>${rows}</tbody>
         </table></div>`;
+}
+
+// Deterministic compliance findings (the detect half of the AI Tax Assistant).
+const INSIGHT_STATUS = { critical: 'fluxy-status-danger', warning: 'fluxy-status-warning', info: 'fluxy-status-neutral' };
+function renderInsights(findings) {
+    const el = document.getElementById('tax-insights');
+    if (!el) return;
+    el.innerHTML = (findings || []).map((f) => `
+        <div class="flex items-start gap-3 border border-gray-200 rounded-lg px-3 py-2.5" data-insight="${f.code}">
+            <span class="fluxy-table-status ${INSIGHT_STATUS[f.severity] || 'fluxy-status-neutral'}" style="flex-shrink:0">${f.severity}</span>
+            <div>
+                <p class="text-[14px] font-semibold text-gray-900">${f.title}</p>
+                <p class="text-[12px] text-gray-500">${f.detail}</p>
+            </div>
+        </div>`).join('');
+}
+
+// Live page context for the Fluxy AI drawer (window.FluxyAIContext — the explain
+// half; read-only, never writes). Registered once init has real figures.
+function registerAiContext({ profile, ppn, wht, corporate, findings, period }) {
+    if (!window.FluxyAIContext || typeof window.FluxyAIContext.register !== 'function') return;
+    const issueCount = (findings || []).filter((f) => f.code !== 'ALL_CLEAR').length;
+    window.FluxyAIContext.register(() => ({
+        pageTitle: 'Tax Center',
+        summary: [
+            { label: 'Period', value: period.label },
+            { label: 'PKP status', value: profile ? (profile.pkp_status === 'pkp' ? 'PKP' : 'Non-PKP') : 'Not set', status: profile ? 'good' : 'critical' },
+            { label: 'PPN payable', value: formatRp(ppn ? ppn.payable : 0) },
+            { label: 'PPh withheld (owed)', value: formatRp(wht ? wht.payable : 0) },
+            { label: 'Prepaid PPh 25', value: formatRp(corporate ? corporate.prepaid_pph25 : 0) },
+            { label: 'Compliance issues', value: String(issueCount), status: issueCount ? 'warning' : 'good' }
+        ],
+        filters: { period: period.key },
+        selectedRecord: null
+    }));
 }
 
 function renderOverviewNote(profile) {
@@ -629,4 +666,12 @@ export async function initTaxCenterPage({ ds, user }) {
     renderPeriods(periods || [], period);
     renderFilings(filings || []);
     renderCorporate(corporate);
+
+    // AI Tax Assistant: deterministic compliance findings + live drawer context.
+    const findings = runComplianceChecks({ profile, taxTx: taxTx || [], ppn, wht, periods: periods || [], periodKey: period.key });
+    renderInsights(findings);
+    registerAiContext({ profile, ppn, wht, corporate, findings, period });
+    document.getElementById('tax-ask-ai')?.addEventListener('click', () => {
+        if (typeof window.toggleFluxyAI === 'function') window.toggleFluxyAI(true);
+    });
 }
