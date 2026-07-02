@@ -194,7 +194,7 @@ Kernel — tax posts as extra journal lines, never a parallel ledger. New sideba
 | Corporate tax — annual PPh 29 reconciliation (`2200`) | ✅ Shipped Phase 4 | UMKM 0.5% × turnover or ordinary 22% CIT on taxable income; credits 1140/1150; Compute preview + Post (idempotent); annual `tax_periods` doc |
 | AI Tax Assistant — foundation (insights + drawer context) | ✅ Shipped Phase 5.1 | Deterministic compliance findings on Overview (`runComplianceChecks`: missing faktur/bukti potong, period drift, profile gaps); `/tax-center` as AI page `tax` with tax chips + live `FluxyAIContext` (PPN payable, withholding, PPh 25, issue count); Ask Fluxy AI button. Read-only — never writes or files |
 | DJP / Coretax / e-Faktur / e-Bupot integration | 📋 Planned | Phase 5.2; **blocked on real DJP API access/credentials** — data model seams ready; server-side in FastAPI backend |
-| Tax Calendar + deadline reminders | 📋 Planned | Deadline reminders (PPN 20th, etc.); reconciliation checks now partially covered by the Phase 5.1 insights |
+| Tax Calendar + deadline reminders | ✅ Shipped | Overview "Upcoming tax deadlines" card (`upcomingTaxDeadlines` in tax-engine.js): PPh deposit 15th, e-Faktur/PPh report 20th, SPT Masa PPN month-end, SPT Tahunan 30 Apr; day-countdown chips, localized |
 
 ### Integrations
 | Feature | Status | Notes |

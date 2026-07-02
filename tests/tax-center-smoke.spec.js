@@ -64,5 +64,12 @@ test('Tax Center loads, profile saves through rules, console clean', async ({ pa
     await expect(page.locator('[data-tax-panel="ppn"]')).toBeVisible();
     await expect(page.locator('#ppn-summary-body')).not.toBeEmpty({ timeout: 20000 });
 
+    // Tax calendar: upcoming deadlines render with day-countdown chips.
+    await page.locator('[data-tax-tab="overview"]').click();
+    const deadlineRows = page.locator('#tax-deadlines [data-deadline]');
+    await expect(deadlineRows.first()).toBeVisible({ timeout: 20000 });
+    expect(await deadlineRows.count()).toBeGreaterThanOrEqual(3);
+    await expect(page.locator('#tax-deadlines .fluxy-table-status').first()).toHaveText(/\d+ days? left|Due today/);
+
     expect(bad, `console/page errors:\n${bad.join('\n')}`).toEqual([]);
 });

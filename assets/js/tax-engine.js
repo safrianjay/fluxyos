@@ -360,6 +360,44 @@ export function buildTaxAppendix({ baseJournal, collection, document, profile, m
     return { lines, tax_transactions: taxTx };
 }
 
+// --- tax calendar (deterministic deadlines) ---------------------------------
+
+// Upcoming Indonesian filing deadlines relative to `now` (Asia/Jakarta calendar
+// day). A month's obligations land in the FOLLOWING month: PPh deposit by the
+// 15th, e-Faktur upload + PPh reporting by the 20th (PER-11/PJ/2025), SPT Masa
+// PPN by month-end; the annual SPT Tahunan Badan is due 30 April. Pure — `now`
+// is injectable for tests. Returns [{ code, period, due, days_left }] sorted by
+// urgency (past deadlines are dropped; the UI is a reminder, not an audit).
+export function upcomingTaxDeadlines(nowInput, { max = 4 } = {}) {
+    const now = nowInput instanceof Date && !Number.isNaN(nowInput.getTime()) ? nowInput : new Date();
+    const [y, mo, d] = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }).split('-').map(Number);
+    const today = new Date(y, mo - 1, d);
+    const list = [];
+    const push = (code, period, dueY, dueM, dueD) => {
+        const lastDay = new Date(dueY, dueM, 0).getDate();
+        const day = Math.min(dueD, lastDay);
+        const due = new Date(dueY, dueM - 1, day);
+        const days = Math.round((due - today) / 86400000);
+        if (days < 0) return;
+        list.push({ code, period, due: `${dueY}-${String(dueM).padStart(2, '0')}-${String(day).padStart(2, '0')}`, days_left: days });
+    };
+    // Obligations of last month (deadlines this month) and this month (next month).
+    for (let k = 0; k < 2; k++) {
+        let pm = mo - 1 + k, py = y;
+        if (pm < 1) { pm += 12; py -= 1; }
+        let dm = pm + 1, dy = py;
+        if (dm > 12) { dm -= 12; dy += 1; }
+        const period = `${py}-${String(pm).padStart(2, '0')}`;
+        push('PPH_DEPOSIT', period, dy, dm, 15);
+        push('EFAKTUR_REPORT', period, dy, dm, 20);
+        push('SPT_PPN', period, dy, dm, 31);
+    }
+    // Annual SPT Tahunan Badan: 30 April for the prior fiscal year (next year's if passed).
+    const annualYear = (mo > 4 || (mo === 4 && d > 30)) ? y + 1 : y;
+    push('SPT_TAHUNAN', `FY${annualYear - 1}`, annualYear, 4, 30);
+    return list.sort((a, b) => a.days_left - b.days_left).slice(0, max);
+}
+
 // --- compliance checks (deterministic, read-only) ---------------------------
 
 // The deterministic half of the AI Tax Assistant (architecture §12/§13): pure,

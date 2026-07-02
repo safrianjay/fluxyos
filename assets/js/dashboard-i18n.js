@@ -2785,7 +2785,19 @@
         "Archive mapping?": "Arsipkan pemetaan?",
         "This source will no longer post PPN.": "Sumber ini tidak akan lagi memposting PPN.",
         "Mark period as filed?": "Tandai periode sudah dilaporkan?",
-        "Mark filed": "Tandai dilaporkan"
+        "Mark filed": "Tandai dilaporkan",
+        "Each taxable sale needs a Faktur Pajak number before the SPT PPN is filed.": "Setiap penjualan kena pajak memerlukan nomor Faktur Pajak sebelum SPT PPN dilaporkan.",
+        "Issue a bukti potong to the vendor for each PPh amount withheld.": "Terbitkan bukti potong kepada vendor untuk setiap jumlah PPh yang dipotong.",
+        "PKP without an NPWP": "PKP tanpa NPWP",
+        "This workspace charges PPN but has no NPWP on the profile. Faktur Pajak requires it.": "Ruang kerja ini memungut PPN tetapi belum memiliki NPWP di profil. Faktur Pajak memerlukannya.",
+        "This month has tax activity but no computed period": "Bulan ini memiliki aktivitas pajak tetapi belum ada periode terhitung",
+        "Compute the period on the Overview tab so the summary is locked in before filing.": "Hitung periode di tab Ringkasan agar ringkasannya terkunci sebelum pelaporan.",
+        "Computed period is out of date": "Periode terhitung tidak lagi mutakhir",
+        "Upcoming tax deadlines": "Tenggat pajak mendatang",
+        "PPh deposits by the 15th, e-Faktur upload and PPh reporting by the 20th, SPT Masa PPN by month-end, SPT Tahunan by 30 April.": "Setoran PPh paling lambat tanggal 15, unggah e-Faktur dan pelaporan PPh paling lambat tanggal 20, SPT Masa PPN sampai akhir bulan, SPT Tahunan paling lambat 30 April.",
+        "PPh deposit": "Setoran PPh",
+        "e-Faktur upload & PPh report": "Unggah e-Faktur & lapor PPh",
+        "Due today": "Jatuh tempo hari ini"
     };
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -2793,6 +2805,15 @@
     //  Applied (in order) only to nodes that miss an exact dictionary key.
     // ─────────────────────────────────────────────────────────────────────────
     var PATTERNS = [
+        // Tax Center compliance insights (counted findings).
+        { re: /^(\d[\d.,]*)\s+output PPN lines?\s+without a faktur number$/i,
+          id: function (m) { return m[1] + ' baris PPN keluaran tanpa nomor faktur'; } },
+        { re: /^(\d[\d.,]*)\s+withholding lines?\s+without a bukti potong$/i,
+          id: function (m) { return m[1] + ' baris pemotongan tanpa bukti potong'; } },
+        { re: /^The period summary \(PPN payable ([\d.,-]+)\) no longer matches the ledger \(([\d.,-]+)\)\. Recompute before filing\.$/i,
+          id: function (m) { return 'Ringkasan periode (PPN terutang ' + m[1] + ') tidak lagi cocok dengan buku besar (' + m[2] + '). Hitung ulang sebelum melaporkan.'; } },
+        { re: /^(\d+)\s+days?\s+left$/i,
+          id: function (m) { return 'sisa ' + m[1] + ' hari'; } },
         { re: /^Showing\s+(\d[\d.,]*)\s*[-–]\s*(\d[\d.,]*)\s+of\s+(\d[\d.,]*)\s+records?$/i,
           id: function (m) { return 'Menampilkan ' + m[1] + '–' + m[2] + ' dari ' + m[3] + ' catatan'; } },
         { re: /^Showing\s+(\d[\d.,]*)\s+of\s+(\d[\d.,]*)\s+records?$/i,

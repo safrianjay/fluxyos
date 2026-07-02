@@ -10,7 +10,7 @@
 // posted in a later phase. See docs/INDONESIA_TAX_CENTER_ARCHITECTURE.md.
 // =============================================================================
 
-import { runComplianceChecks } from './tax-engine.js';
+import { runComplianceChecks, upcomingTaxDeadlines } from './tax-engine.js';
 
 // Rupiah, raw integer → 'Rp1.234.567' (no space after Rp — design-system rule).
 function formatRp(n) {
@@ -205,6 +205,27 @@ function renderInsights(findings) {
                 <p class="text-[12px] text-gray-500">${f.detail}</p>
             </div>
         </div>`).join('');
+}
+
+// Tax Calendar: deterministic upcoming deadlines (pure engine math).
+const DEADLINE_LABELS = {
+    PPH_DEPOSIT: 'PPh deposit',
+    EFAKTUR_REPORT: 'e-Faktur upload & PPh report',
+    SPT_PPN: 'SPT Masa PPN',
+    SPT_TAHUNAN: 'SPT Tahunan Badan'
+};
+function renderDeadlines() {
+    const el = document.getElementById('tax-deadlines');
+    if (!el) return;
+    const rows = upcomingTaxDeadlines(new Date(), { max: 4 }).map((dl) => {
+        const chip = dl.days_left === 0 ? 'Due today' : `${dl.days_left} day${dl.days_left === 1 ? '' : 's'} left`;
+        const tone = dl.days_left <= 7 ? 'fluxy-status-warning' : 'fluxy-status-neutral';
+        return `<tr class="fluxy-table-row" data-deadline="${dl.code}">
+            <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${DEADLINE_LABELS[dl.code] || dl.code}</span><span class="fluxy-table-cell-meta">${dl.period} — ${dl.due}</span></td>
+            <td class="fluxy-table-cell" style="text-align:right"><span class="fluxy-table-status ${tone}">${chip}</span></td>
+        </tr>`;
+    }).join('');
+    el.innerHTML = `<div class="fluxy-table-scroll"><table class="fluxy-table"><tbody>${rows}</tbody></table></div>`;
 }
 
 // Live page context for the Fluxy AI drawer (window.FluxyAIContext — the explain
@@ -670,6 +691,7 @@ export async function initTaxCenterPage({ ds, user }) {
     // AI Tax Assistant: deterministic compliance findings + live drawer context.
     const findings = runComplianceChecks({ profile, taxTx: taxTx || [], ppn, wht, periods: periods || [], periodKey: period.key });
     renderInsights(findings);
+    renderDeadlines();
     registerAiContext({ profile, ppn, wht, corporate, findings, period });
     document.getElementById('tax-ask-ai')?.addEventListener('click', () => {
         if (typeof window.toggleFluxyAI === 'function') window.toggleFluxyAI(true);

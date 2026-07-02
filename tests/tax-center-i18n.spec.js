@@ -27,6 +27,10 @@ test('Tax Center renders in formal Bahasa Indonesia when fluxyos-lang=id', async
     await expect(page.locator('[data-tax-tab="corporate"]')).toHaveText('Pajak Badan');
     await expect(page.locator('[data-tax-tab="mappings"]')).toHaveText('Pemetaan');
 
+    // Tax calendar (title + interpolated day-countdown chip via PATTERNS).
+    await expect(page.locator('[data-tax-panel="overview"]')).toContainText('Tenggat pajak mendatang');
+    await expect(page.locator('#tax-deadlines .fluxy-table-status').first()).toHaveText(/sisa \d+ hari|Jatuh tempo hari ini/, { timeout: 15000 });
+
     // KPI labels + profile form + actions.
     await expect(page.locator('.acct-kpi-grid').first()).toContainText('PPN Terutang');
     await page.locator('[data-tax-tab="profile"]').click();
