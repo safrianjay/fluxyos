@@ -240,7 +240,7 @@ function renderReport() {
     el('bs-report-subtitle').textContent = report.compare_as_of_date
         ? `As of ${formatDate(report.as_of_date)} compared with ${formatDate(report.compare_as_of_date)}`
         : `As of ${formatDate(report.as_of_date)}`;
-    el('bs-generated-label').textContent = `Generated ${new Date(report.generated_at).toLocaleString('en-US')}`;
+    el('bs-generated-label').textContent = `Generated ${new Date(report.generated_at).toLocaleString(window.FluxyI18n?.locale?.() || 'en-US')}`;
     el('bs-scope-summary').textContent = scopeText(report);
 
     renderWarnings(report.warnings || []);

@@ -861,6 +861,9 @@ function routeAfterSubmit() {
 // ---------- Review ----------
 function renderReview() {
     const f = state.fields;
+    // Stored values are English (schema §4f); composite " · " rows never hit
+    // the i18n walker as exact strings, so translate the parts for display.
+    const tt = (s) => (s ? (window.FluxyI18n?.t(s) ?? s) : '—');
     const preferenceLabels = f.first_actions
         .map((value) => ONBOARDING_PREFERENCES.find((item) => item.value === value)?.label)
         .filter(Boolean);
@@ -868,12 +871,12 @@ function renderReview() {
         ? `<span class="onboarding-chip-list">${preferenceLabels.map((label) => `<span class="onboarding-chip">${escapeHtml(label)}</span>`).join('')}</span>`
         : '—';
     const documentsHtml = [
-        f.id_doc_name ? `Identity: ${f.id_doc_name}` : 'Identity: not added',
-        f.biz_doc_name ? `Business: ${f.biz_doc_name}` : 'Business: not added'
+        f.id_doc_name ? `${tt('Identity:')} ${tt(f.id_doc_name)}` : 'Identity: not added',
+        f.biz_doc_name ? `${tt('Business:')} ${tt(f.biz_doc_name)}` : 'Business: not added'
     ].map((label) => `<span class="onboarding-chip">${escapeHtml(label)}</span>`).join('');
     const rows = [
-        ['Business details', `${f.business_name || '—'} · ${f.role || '—'}`, false],
-        ['Business size', `${f.monthly_revenue_range || '—'} · ${f.employee_count_range || '—'}`, false],
+        ['Business details', `${f.business_name || '—'} · ${tt(f.role)}`, false],
+        ['Business size', `${tt(f.monthly_revenue_range)} · ${tt(f.employee_count_range)}`, false],
         ['Account owner', f.legal_full_name || '—', false],
         ['Preferred WhatsApp number', f.phone_number || '—', false],
         ['Selected setup focus', preferenceHtml, true],

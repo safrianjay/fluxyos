@@ -53,7 +53,9 @@
                 .filter(row => row.label || row.value)
                 .slice(0, 6);
         };
-        const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        // Month names come from Intl in the active app language (dashboard-i18n).
+        const dateLocale = () => (window.FluxyI18n && window.FluxyI18n.locale && window.FluxyI18n.locale()) || 'en-GB';
+        const monthName = (p, style) => new Date(p.y, p.mo, 1).toLocaleDateString(dateLocale(), { month: style });
         // Human-friendly label for a YYYY-MM-DD..YYYY-MM-DD range. Collapses a
         // full calendar month to "June 2026"; otherwise "1 Jun – 30 Jun 2026".
         const periodLabel = (start, end) => {
@@ -64,12 +66,12 @@
             const a = parse(start);
             const b = parse(end) || a;
             if (!a) return '';
-            const short = (p) => `${p.d} ${MONTHS[p.mo].slice(0, 3)}`;
+            const short = (p) => `${p.d} ${monthName(p, 'short')}`;
             if (a.y === b.y && a.mo === b.mo) {
                 const lastDay = new Date(a.y, a.mo + 1, 0).getDate();
-                if (a.d === 1 && b.d === lastDay) return `${MONTHS[a.mo]} ${a.y}`;
-                if (a.d === b.d) return `${a.d} ${MONTHS[a.mo].slice(0, 3)} ${a.y}`;
-                return `${a.d}–${b.d} ${MONTHS[a.mo].slice(0, 3)} ${a.y}`;
+                if (a.d === 1 && b.d === lastDay) return `${monthName(a, 'long')} ${a.y}`;
+                if (a.d === b.d) return `${a.d} ${monthName(a, 'short')} ${a.y}`;
+                return `${a.d}–${b.d} ${monthName(a, 'short')} ${a.y}`;
             }
             return `${short(a)} ${a.y} – ${short(b)} ${b.y}`;
         };

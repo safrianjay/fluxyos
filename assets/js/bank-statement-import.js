@@ -79,7 +79,7 @@
         try {
             const date = typeof value.toDate === 'function' ? value.toDate() : new Date(value);
             if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '—';
-            return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            return date.toLocaleDateString((window.FluxyI18n?.locale?.() || 'en-GB'), { day: '2-digit', month: 'short', year: 'numeric' });
         } catch (_) {
             return '—';
         }

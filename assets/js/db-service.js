@@ -4705,14 +4705,16 @@ class DataService {
     }
 
     // Column-header label: "May 2026" for a full month, otherwise "May 1–Jun 2".
+    // Display-only (never stored) — formats in the active app language.
     _incomeStatementColumnLabel(startKey, endKey) {
+        const loc = (typeof window !== 'undefined' && window.FluxyI18n?.locale?.()) || 'en-US';
         const start = this._parseDayKey(startKey);
         const end = this._parseDayKey(endKey);
         if (!start || !end) return 'Period';
         if (startKey === this._getMonthStartKey(start) && endKey === this._getMonthEndKey(start)) {
-            return start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            return start.toLocaleDateString(loc, { month: 'short', year: 'numeric' });
         }
-        return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+        return `${start.toLocaleDateString(loc, { month: 'short', day: 'numeric' })}–${end.toLocaleDateString(loc, { month: 'short', day: 'numeric' })}`;
     }
 
     _incomeChange(current, previous) {
@@ -9156,16 +9158,18 @@ class DataService {
         return buckets;
     }
 
+    // Chart bucket label — display-only, formats in the active app language.
     _formatCashFlowLabel(startKey, endKey, bucketType) {
+        const loc = (typeof window !== 'undefined' && window.FluxyI18n?.locale?.()) || 'en-US';
         const start = this._parseDayKey(startKey);
         const end = this._parseDayKey(endKey);
         if (!start || !end) return '';
-        if (bucketType === 'month') return start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-        if (startKey === endKey) return start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        if (bucketType === 'month') return start.toLocaleDateString(loc, { month: 'short', year: 'numeric' });
+        if (startKey === endKey) return start.toLocaleDateString(loc, { month: 'short', day: 'numeric' });
         if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
-            return `${start.toLocaleDateString('en-US', { month: 'short' })} ${start.getDate()}-${end.getDate()}`;
+            return `${start.toLocaleDateString(loc, { month: 'short' })} ${start.getDate()}-${end.getDate()}`;
         }
-        return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}-${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+        return `${start.toLocaleDateString(loc, { month: 'short', day: 'numeric' })}-${end.toLocaleDateString(loc, { month: 'short', day: 'numeric' })}`;
     }
 
     _buildPayablesByCategory(...recordArrays) {

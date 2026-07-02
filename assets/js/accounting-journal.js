@@ -46,7 +46,7 @@ function tsMillis(t) {
 function fmtDateTime(t) {
     const ms = tsMillis(t);
     if (!ms) return '—';
-    return new Date(ms).toLocaleString('en-GB', {
+    return new Date(ms).toLocaleString((window.FluxyI18n?.locale?.() || 'en-GB'), {
         day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta'
     });
 }
@@ -54,7 +54,7 @@ function fmtDateTime(t) {
 function fmtDate(t) {
     const ms = tsMillis(t);
     if (!ms) return '—';
-    return new Date(ms).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
+    return new Date(ms).toLocaleDateString((window.FluxyI18n?.locale?.() || 'en-GB'), { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
 }
 
 function journalType(j) { return j.journal_type || (j.posting_rule_id === 'MANUAL' ? 'manual' : 'system'); }

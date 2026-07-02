@@ -1908,7 +1908,8 @@ function mountWizardMonthPicker() {
     const panel = el('budget-wizard-month-panel');
     if (!control || !input || !button || !panel) return;
 
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthNames = Array.from({ length: 12 }, (_, i) =>
+        new Date(2000, i, 1).toLocaleDateString((window.FluxyI18n?.locale?.() || 'en-US'), { month: 'short' }));
     let panelYear = Number((input.value || wizardMonthValue()).slice(0, 4)) || new Date().getFullYear();
     const yearEl = panel.querySelector('[data-budget-month-year]');
     const grid = panel.querySelector('[data-budget-month-grid]');

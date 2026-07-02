@@ -573,6 +573,9 @@
                     message: prompt,
                     chat_id: state.currentChatId || undefined,
                     workspace_id: window.FluxyWorkspace?.id || null,
+                    // App display language — the analyst answers in formal Bahasa
+                    // when the dashboard runs in Indonesian (same as ai-chat.js).
+                    language: (window.FluxyI18n && window.FluxyI18n.getLang()) || 'en',
                     page_context: 'ai_command_center',
                     // Business-level context (the Command Center is not page-scoped)
                     // so the analyst can orient on workspace coverage.

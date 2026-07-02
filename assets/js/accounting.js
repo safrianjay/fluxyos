@@ -688,7 +688,7 @@ function journalDate(j) {
     const ms = t && typeof t.toMillis === 'function' ? t.toMillis()
         : (t && typeof t.seconds === 'number' ? t.seconds * 1000 : null);
     if (!ms) return j.status === 'draft' ? 'Not posted' : (j.period_key || '');
-    return new Date(ms).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'Asia/Jakarta' });
+    return new Date(ms).toLocaleDateString((window.FluxyI18n?.locale?.() || 'en-GB'), { day: '2-digit', month: 'short', timeZone: 'Asia/Jakarta' });
 }
 
 // [semanticClass, label] for the status badge.

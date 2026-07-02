@@ -783,11 +783,13 @@
         }
 
         async function cancelRenewal(btn, o) {
-            const planName = o.plan_name || 'your';
+            const planName = o.plan_name || 'current';
             const periodEnd = o.current_period_end ? formatDate(o.current_period_end) : 'the end of your current period';
             const ok = await window.showConfirmDialog({
                 title: 'Cancel renewal?',
-                body: `Your <strong>${escapeHtml(planName)}</strong> plan will stay active until <strong>${escapeHtml(periodEnd)}</strong>. After that, your workspace will move to limited access unless you reactivate. This will not delete your financial data.`,
+                // "The <plan> plan will stay…" keeps the i18n walker's text-node
+                // segments cleanly translatable ("The"→"Paket", tail→"akan tetap…").
+                body: `The <strong>${escapeHtml(planName)}</strong> plan will stay active until <strong>${escapeHtml(periodEnd)}</strong>. After that, your workspace will move to limited access unless you reactivate. This will not delete your financial data.`,
                 confirmLabel: 'Cancel renewal',
                 cancelLabel: 'Keep subscription',
                 tone: 'danger'
