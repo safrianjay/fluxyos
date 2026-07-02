@@ -786,9 +786,9 @@ def _should_use_trial_ai_quota(subscription: Dict[str, Any] | None) -> bool:
     }
 
 # Per-plan monthly Fluxy AI chat limits. MUST stay in lockstep with
-# PLAN_AI_MONTHLY_LIMITS in netlify/functions/api.js and ai_chat_limit in
+# PLAN_AI_PERIOD_LIMITS in netlify/functions/api.js and ai_chat_limit in
 # assets/js/billing-config.js. None = unlimited (enterprise).
-_PLAN_AI_MONTHLY_LIMITS = {"starter": 25, "basic": 150, "core": 150, "growth": 750, "enterprise": None}
+_PLAN_AI_MONTHLY_LIMITS = {"starter": 10, "basic": 30, "core": 30, "growth": 100, "enterprise": None}
 
 
 def _active_paid_plan_id(subscription: Dict[str, Any] | None) -> str | None:
@@ -802,7 +802,7 @@ def _active_paid_plan_id(subscription: Dict[str, Any] | None) -> str | None:
 
 def _consume_ai_quota(uid: str, token: str) -> Dict[str, Any] | None:
     """Enforce the Fluxy AI chat quota before answering. Trial-scope users keep
-    the lifetime cap of 3 (doc ``ai_chat_trial``); active paid plans get a
+    the lifetime cap of 1 (doc ``ai_chat_trial``); active paid plans get a
     per-month counter (``ai_chat_<YYYY-MM>``). Enterprise / unknown plans are
     unlimited (returns None)."""
     try:
@@ -811,7 +811,7 @@ def _consume_ai_quota(uid: str, token: str) -> Dict[str, Any] | None:
         subscription = None
 
     if _should_use_trial_ai_quota(subscription):
-        limit_count = 3
+        limit_count = 1
         try:
             existing = _fetch_document(uid, token, "usage_limits", "ai_chat_trial")
         except Exception:

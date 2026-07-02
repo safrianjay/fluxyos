@@ -51,11 +51,11 @@ test('billing config exposes enforced trial and per-plan limits', async ({ page 
 
     expect(result.trial).toMatchObject({
         tier: 'trial', seat_limit: 1, storage_limit_bytes: 5 * 1024 * 1024,
-        storage_limit_gb: null, ai_chat_limit: 3, ai_chat_scope: 'trial', doc_processing_limit: null
+        storage_limit_gb: null, ai_chat_limit: 1, ai_chat_scope: 'trial', doc_processing_limit: null
     });
-    expect(result.starter).toMatchObject({ seat_limit: 1, ai_chat_limit: 25, ai_chat_scope: 'plan', doc_processing_limit: 25 });
-    expect(result.core).toMatchObject({ seat_limit: 5, ai_chat_limit: 150, doc_processing_limit: 150 });
-    expect(result.growth).toMatchObject({ seat_limit: 10, ai_chat_limit: 750, doc_processing_limit: 750 });
+    expect(result.starter).toMatchObject({ seat_limit: 1, ai_chat_limit: 10, ai_chat_scope: 'plan', doc_processing_limit: 25 });
+    expect(result.core).toMatchObject({ seat_limit: 5, ai_chat_limit: 30, doc_processing_limit: 150 });
+    expect(result.growth).toMatchObject({ seat_limit: 10, ai_chat_limit: 100, doc_processing_limit: 750 });
     // Enterprise = unlimited (null) AI + document processing.
     expect(result.enterprise).toMatchObject({ seat_limit: 50, ai_chat_limit: null, doc_processing_limit: null });
 });
