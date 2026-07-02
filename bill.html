@@ -660,7 +660,7 @@
                 const budgetChip = badge ? `
                     <div class="mt-1.5 flex items-center gap-2 flex-wrap">
                         <span class="fluxy-table-status ${badge.cls}">${escapeHtml(badge.label)}</span>
-                        <button type="button" class="fluxy-table-action" data-fluxy-budget-action="${badge.action}" data-record-id="${escapeHtml(bill.id)}" data-vendor="${escapeHtml(vendorName)}" data-amount-text="${escapeHtml(amountText)}" data-current-allocation-id="${escapeHtml(badge.allocationId || '')}">${badge.action === 'restore' ? 'Restore' : 'Assign'}</button>
+                        <button type="button" class="fluxy-table-action" data-fluxy-budget-action="${badge.action}" data-budget-id="${escapeHtml(badge.budgetId || '')}" data-record-id="${escapeHtml(bill.id)}" data-vendor="${escapeHtml(vendorName)}" data-amount-text="${escapeHtml(amountText)}" data-current-allocation-id="${escapeHtml(badge.allocationId || '')}">${badge.action === 'restore' ? 'Restore' : 'Assign'}</button>
                     </div>` : '';
                 return `
                     <tr class="fluxy-table-row fluxy-table-row-clickable" data-action="review" data-bill-id="${escapeHtml(bill.id)}">
@@ -1212,39 +1212,69 @@
             }
         });
 
-        // Phase 2: cache active budget + allocations so each row can render a
+        // Phase 2: cache active budgets + allocations so each row can render a
         // small budget chip without an extra fetch per row.
-        let billsBudgetCtx = { activeBudget: null, allocations: [] };
+        let billsBudgetCtx = { budgets: [], allocationsByBudgetId: {} };
         async function refreshBillsBudgetCtx() {
             const user = auth.currentUser;
-            if (!user) { billsBudgetCtx = { activeBudget: null, allocations: [] }; return; }
+            if (!user) { billsBudgetCtx = { budgets: [], allocationsByBudgetId: {} }; return; }
             try {
-                const activeBudget = await ds.getActiveBudget(user.uid);
-                if (!activeBudget) { billsBudgetCtx = { activeBudget: null, allocations: [] }; return; }
-                const allocations = await ds.getBudgetAllocations(user.uid, activeBudget.id);
-                billsBudgetCtx = { activeBudget, allocations };
+                const periodBudgets = await ds.getPeriodBudgets(user.uid, null);
+                const annualBudgets = await ds.getAnnualBudgets(user.uid);
+                const budgets = [...periodBudgets, ...annualBudgets].filter(b => b && b.status === 'active');
+                const allocationsByBudgetId = {};
+                await Promise.all(budgets.map(async (budget) => {
+                    allocationsByBudgetId[budget.id] = await ds.getBudgetAllocations(user.uid, budget.id);
+                }));
+                billsBudgetCtx = { budgets, allocationsByBudgetId };
             } catch (_) {
-                billsBudgetCtx = { activeBudget: null, allocations: [] };
+                billsBudgetCtx = { budgets: [], allocationsByBudgetId: {} };
             }
+        }
+        function isAnnualBudget(budget) {
+            const budgetType = String(budget?.budget_type || budget?.period_type || '').toLowerCase();
+            return budgetType === 'annual' || budgetType === 'yearly';
+        }
+        function findBillBudgetForDate(dateValue) {
+            const ctx = billsBudgetCtx;
+            if (!ctx?.budgets?.length || !dateValue) return null;
+            const dueDate = dateValue instanceof Date ? dateValue : new Date(dateValue);
+            if (Number.isNaN(dueDate.getTime())) return null;
+            const matchesDate = (budget) => {
+                const startDate = budget.period_start?.toDate?.();
+                const endDate = budget.period_end?.toDate?.();
+                if (!startDate || !endDate) return false;
+                const startCompare = new Date(startDate); startCompare.setHours(0,0,0,0);
+                const endCompare = new Date(endDate); endCompare.setHours(23,59,59,999);
+                return dueDate >= startCompare && dueDate <= endCompare;
+            };
+            const periodBudget = ctx.budgets.find(b => !isAnnualBudget(b) && matchesDate(b));
+            if (periodBudget) return periodBudget;
+            const annualBudget = ctx.budgets.find(b => isAnnualBudget(b) && matchesDate(b));
+            if (annualBudget) return annualBudget;
+            const activeBudgets = ctx.budgets.filter(b => b.status === 'active');
+            const fallback = activeBudgets
+                .filter(b => !isAnnualBudget(b))
+                .map(b => ({ budget: b, start: b.period_start?.toDate?.() }))
+                .filter(entry => entry.start && entry.start <= dueDate)
+                .sort((a, b) => b.start - a.start)[0];
+            return fallback?.budget || activeBudgets[0] || null;
         }
         window.__resolveBillBudgetBadge = function (bill) {
             const ctx = billsBudgetCtx;
-            if (!ctx?.activeBudget) return null;
+            if (!ctx?.budgets?.length) return null;
             if (bill.payment_status === 'paid') return null;
             if (bill.budget_impact_status === 'converted_to_actual' || bill.linked_transaction_id) return null;
-            const startDate = ctx.activeBudget.period_start?.toDate?.();
-            const endDate = ctx.activeBudget.period_end?.toDate?.();
             const dueDate = bill.due_date?.toDate?.() || bill.timestamp?.toDate?.();
-            if (!startDate || !endDate || !dueDate) return null;
-            const startCompare = new Date(startDate); startCompare.setHours(0,0,0,0);
-            const endCompare = new Date(endDate); endCompare.setHours(23,59,59,999);
-            if (dueDate < startCompare || dueDate > endCompare) return null;
-            const { allocationId, source } = ds.resolveRecordAssignment(bill, ctx.activeBudget, ctx.allocations);
-            const allocName = allocationId ? (ctx.allocations.find(a => a.id === allocationId)?.name || '—') : null;
-            if (source === 'excluded') return { label: 'Excluded', cls: 'border-gray-200 bg-gray-50 text-gray-500', allocationId: null, action: 'restore' };
-            if (source === 'manual' || source === 'explicit') return { label: `Committed to ${allocName}`, cls: 'border-emerald-200 bg-emerald-50 text-emerald-700', allocationId, action: 'assign' };
-            if (source === 'category') return { label: `Auto · ${allocName}`, cls: 'border-blue-200 bg-blue-50 text-blue-700', allocationId, action: 'assign' };
-            return { label: 'Unallocated', cls: 'border-orange-200 bg-orange-50 text-orange-700', allocationId: null, action: 'assign' };
+            const budget = findBillBudgetForDate(dueDate);
+            if (!budget) return null;
+            const allocations = ctx.allocationsByBudgetId[budget.id] || [];
+            const { allocationId, source } = ds.resolveRecordAssignment(bill, budget, allocations);
+            const allocName = allocationId ? (allocations.find(a => a.id === allocationId)?.name || '—') : null;
+            if (source === 'excluded') return { label: 'Excluded', cls: 'border-gray-200 bg-gray-50 text-gray-500', allocationId: null, action: 'restore', budgetId: budget.id };
+            if (source === 'manual' || source === 'explicit') return { label: `Committed to ${allocName}`, cls: 'border-emerald-200 bg-emerald-50 text-emerald-700', allocationId, action: 'assign', budgetId: budget.id };
+            if (source === 'category') return { label: `Auto · ${allocName}`, cls: 'border-blue-200 bg-blue-50 text-blue-700', allocationId, action: 'assign', budgetId: budget.id };
+            return { label: 'Unallocated', cls: 'border-orange-200 bg-orange-50 text-orange-700', allocationId: null, action: 'assign', budgetId: budget.id };
         };
 
         document.getElementById('bill-table-body')?.addEventListener('click', (event) => {
@@ -1252,10 +1282,12 @@
             if (!budgetBtn) return;
             event.preventDefault();
             event.stopPropagation();
-            if (!billsBudgetCtx?.activeBudget || !window.FluxyBudgetAssignment?.open) {
+            if (!billsBudgetCtx?.budgets?.length || !window.FluxyBudgetAssignment?.open) {
                 window.showToast?.('Create a budget first to assign records.', 'info');
                 return;
             }
+            const budgetId = budgetBtn.dataset.budgetId || '';
+            const allocations = budgetId ? billsBudgetCtx.allocationsByBudgetId?.[budgetId] || [] : [];
             window.FluxyBudgetAssignment.open({
                 action: budgetBtn.dataset.fluxyBudgetAction,
                 recordType: 'bills',
@@ -1263,8 +1295,8 @@
                 vendor: budgetBtn.dataset.vendor,
                 amountText: budgetBtn.dataset.amountText,
                 currentAllocationId: budgetBtn.dataset.currentAllocationId || null,
-                budgetId: billsBudgetCtx.activeBudget.id,
-                allocations: billsBudgetCtx.allocations || [],
+                budgetId,
+                allocations,
                 onDone: () => window.loadBills()
             });
         });

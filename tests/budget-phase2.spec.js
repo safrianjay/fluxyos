@@ -122,6 +122,17 @@ test('P3: ledger row carries a budget chip', async ({ page }) => {
     expect(chipCount).toBeGreaterThan(0);
 });
 
+test('P3b: ledger budget chip opens the assignment drawer', async ({ page }) => {
+    await page.goto('/ledger.html');
+    await page.waitForSelector('#ledger-table-body [data-fluxy-budget-action]', { timeout: 20000 });
+    const firstChip = page.locator('#ledger-table-body [data-fluxy-budget-action]').first();
+    await expect(firstChip).toBeVisible();
+    await firstChip.click();
+    await page.waitForSelector('#fbx-assignment-drawer:not(.translate-x-full)', { timeout: 5000 });
+    await expect(page.locator('#fbx-assignment-title')).toHaveText(/Change allocation|Exclude from budget|Restore to budget/);
+    await page.screenshot({ path: `${SHOTS}/P3b-ledger-chip-drawer.png`, fullPage: false });
+});
+
 test('P4: bills row carries a budget chip', async ({ page }) => {
     const log = [];
     attachLog(page, log);

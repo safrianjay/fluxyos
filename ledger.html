@@ -1114,42 +1114,74 @@
             }
         }
 
-        // Phase 2: cache the active budget + allocations once so each row
+        // Phase 2: cache active budgets + allocations once so each row
         // can render a small budget badge without N extra Firestore reads.
-        let ledgerBudgetCtx = { activeBudget: null, allocations: [] };
+        let ledgerBudgetCtx = { budgets: [], allocationsByBudgetId: {} };
         async function refreshLedgerBudgetCtx() {
             const user = auth.currentUser;
-            if (!user) { ledgerBudgetCtx = { activeBudget: null, allocations: [] }; return; }
+            if (!user) { ledgerBudgetCtx = { budgets: [], allocationsByBudgetId: {} }; return; }
             try {
-                const activeBudget = await ds.getActiveBudget(user.uid);
-                if (!activeBudget) { ledgerBudgetCtx = { activeBudget: null, allocations: [] }; return; }
-                const allocations = await ds.getBudgetAllocations(user.uid, activeBudget.id);
-                ledgerBudgetCtx = { activeBudget, allocations };
+                const periodBudgets = await ds.getPeriodBudgets(user.uid, null);
+                const annualBudgets = await ds.getAnnualBudgets(user.uid);
+                const budgets = [...periodBudgets, ...annualBudgets].filter(b => b && b.status === 'active');
+                const allocationsByBudgetId = {};
+                await Promise.all(budgets.map(async (budget) => {
+                    allocationsByBudgetId[budget.id] = await ds.getBudgetAllocations(user.uid, budget.id);
+                }));
+                ledgerBudgetCtx = { budgets, allocationsByBudgetId };
             } catch (_) {
-                ledgerBudgetCtx = { activeBudget: null, allocations: [] };
+                ledgerBudgetCtx = { budgets: [], allocationsByBudgetId: {} };
             }
+        }
+        function isAnnualBudget(budget) {
+            const budgetType = String(budget?.budget_type || budget?.period_type || '').toLowerCase();
+            return budgetType === 'annual' || budgetType === 'yearly';
+        }
+        function findLedgerBudgetForDate(dateValue) {
+            const ctx = ledgerBudgetCtx;
+            if (!ctx?.budgets?.length || !dateValue) return null;
+            const txDate = dateValue instanceof Date ? dateValue : new Date(dateValue);
+            if (Number.isNaN(txDate.getTime())) return null;
+            const matchesDate = (budget) => {
+                const startDate = budget.period_start?.toDate?.();
+                const endDate = budget.period_end?.toDate?.();
+                if (!startDate || !endDate) return false;
+                const startCompare = new Date(startDate); startCompare.setHours(0,0,0,0);
+                const endCompare = new Date(endDate); endCompare.setHours(23,59,59,999);
+                return txDate >= startCompare && txDate <= endCompare;
+            };
+            const periodBudget = ctx.budgets.find(b => !isAnnualBudget(b) && matchesDate(b));
+            if (periodBudget) return periodBudget;
+            const annualBudget = ctx.budgets.find(b => isAnnualBudget(b) && matchesDate(b));
+            if (annualBudget) return annualBudget;
+            const activeBudgets = ctx.budgets.filter(b => b.status === 'active');
+            const fallback = activeBudgets
+                .filter(b => !isAnnualBudget(b))
+                .map(b => ({ budget: b, start: b.period_start?.toDate?.() }))
+                .filter(entry => entry.start && entry.start <= txDate)
+                .sort((a, b) => b.start - a.start)[0];
+            return fallback?.budget || activeBudgets[0] || null;
         }
         function resolveLedgerBudgetBadge(tx) {
             const ctx = ledgerBudgetCtx;
-            if (!ctx?.activeBudget) return null;
-            const startDate = ctx.activeBudget.period_start?.toDate?.();
-            const endDate = ctx.activeBudget.period_end?.toDate?.();
+            if (!ctx?.budgets?.length) return null;
             const txDate = tx.timestamp?.toDate?.();
-            if (!startDate || !endDate || !txDate) return null;
-            const startCompare = new Date(startDate); startCompare.setHours(0,0,0,0);
-            const endCompare = new Date(endDate); endCompare.setHours(23,59,59,999);
-            if (txDate < startCompare || txDate > endCompare) return null;
+            if (!txDate) return null;
+            const budget = findLedgerBudgetForDate(txDate);
+            if (!budget) return null;
             const SPEND_TYPES = new Set(['expense', 'fee', 'tax', 'pending_payable']);
             if (!SPEND_TYPES.has(tx.type)) return null;
-            const { allocationId, source } = ds.resolveRecordAssignment(tx, ctx.activeBudget, ctx.allocations);
+            const allocations = ctx.allocationsByBudgetId[budget.id] || [];
+            const { allocationId, source } = ds.resolveRecordAssignment(tx, budget, allocations);
             const allocName = allocationId
-                ? (ctx.allocations.find(a => a.id === allocationId)?.name || '—')
+                ? (allocations.find(a => a.id === allocationId)?.name || '—')
                 : null;
-            if (source === 'excluded') return { label: 'Excluded', cls: 'border-gray-200 bg-gray-50 text-gray-500', allocationId: null, action: 'restore' };
-            if (source === 'manual')   return { label: `${allocName} Budget`, cls: 'border-emerald-200 bg-emerald-50 text-emerald-700', allocationId, action: 'assign' };
-            if (source === 'explicit') return { label: `${allocName} Budget`, cls: 'border-emerald-200 bg-emerald-50 text-emerald-700', allocationId, action: 'assign' };
-            if (source === 'category') return { label: `Auto · ${allocName}`, cls: 'border-blue-200 bg-blue-50 text-blue-700', allocationId, action: 'assign' };
-            return { label: 'Unallocated', cls: 'border-orange-200 bg-orange-50 text-orange-700', allocationId: null, action: 'assign' };
+            const common = { budgetId: budget.id, allocationId };
+            if (source === 'excluded') return { label: 'Excluded', cls: 'border-gray-200 bg-gray-50 text-gray-500', allocationId: null, action: 'restore', ...common };
+            if (source === 'manual')   return { label: `${allocName} Budget`, cls: 'border-emerald-200 bg-emerald-50 text-emerald-700', action: 'assign', ...common };
+            if (source === 'explicit') return { label: `${allocName} Budget`, cls: 'border-emerald-200 bg-emerald-50 text-emerald-700', action: 'assign', ...common };
+            if (source === 'category') return { label: `Auto · ${allocName}`, cls: 'border-blue-200 bg-blue-50 text-blue-700', action: 'assign', ...common };
+            return { label: 'Unallocated', cls: 'border-orange-200 bg-orange-50 text-orange-700', allocationId: null, action: 'assign', ...common };
         }
         window.__resolveLedgerBudgetBadge = resolveLedgerBudgetBadge;
 
@@ -2131,6 +2163,7 @@
                 const budgetChip = badge ? `
                     <div class="mt-1.5 flex items-center gap-2 flex-wrap">
                         <span class="fluxy-table-status ${badge.cls}">${escapeHtml(badge.label)}</span>
+                        <button type="button" class="fluxy-table-action" data-fluxy-budget-action="${badge.action}" data-budget-id="${escapeHtml(badge.budgetId || '')}" data-record-id="${escapeHtml(row.id)}" data-record-type="transactions" data-vendor="${escapeHtml(vendorName)}" data-amount-text="${escapeHtml(amountText)}" data-current-allocation-id="${escapeHtml(badge.allocationId || '')}">${badge.action === 'restore' ? 'Restore' : 'Assign'}</button>
                     </div>` : '';
                 const cashChip = cashBadge ? `
                     <div class="mt-1 flex items-center gap-1.5 flex-wrap">
@@ -2295,6 +2328,30 @@
         });
 
         document.getElementById('ledger-table-body')?.addEventListener('click', (event) => {
+            const budgetBtn = event.target.closest('[data-fluxy-budget-action]');
+            if (budgetBtn) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (!window.FluxyBudgetAssignment?.open) {
+                    window.showToast?.('Create a budget first to assign records.', 'info');
+                    return;
+                }
+                const budgetId = budgetBtn.dataset.budgetId || '';
+                const allocations = budgetId ? ledgerBudgetCtx.allocationsByBudgetId?.[budgetId] || [] : [];
+                window.FluxyBudgetAssignment.open({
+                    action: budgetBtn.dataset.fluxyBudgetAction,
+                    recordType: 'transactions',
+                    recordId: budgetBtn.dataset.recordId,
+                    vendor: budgetBtn.dataset.vendor || '',
+                    amountText: budgetBtn.dataset.amountText || '',
+                    currentAllocationId: budgetBtn.dataset.currentAllocationId || null,
+                    budgetId,
+                    allocations,
+                    onDone: () => window.loadLedger()
+                });
+                return;
+            }
+
             const vendorBtn = event.target.closest('[data-action="ledger-vendor-filter"]');
             if (vendorBtn) {
                 event.preventDefault();
