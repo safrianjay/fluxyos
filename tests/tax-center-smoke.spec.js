@@ -64,6 +64,17 @@ test('Tax Center loads, profile saves through rules, console clean', async ({ pa
     await expect(page.locator('[data-tax-panel="ppn"]')).toBeVisible();
     await expect(page.locator('#ppn-summary-body')).not.toBeEmpty({ timeout: 20000 });
 
+    // Date filter (shared picker): stepping one period back re-scopes the page to
+    // last month — the derived tax-period label updates (Accounting Center parity).
+    const lastMonthLabel = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1)
+        .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    await page.locator('#tax-date-range-picker [data-drp-prev]').click();
+    await expect(page.locator('#tax-period-label')).toHaveText(lastMonthLabel, { timeout: 20000 });
+    await expect(page.locator('#ppn-summary-body')).not.toBeEmpty({ timeout: 20000 });
+    // Step forward again so the rest of the spec runs against the current month.
+    await page.locator('#tax-date-range-picker [data-drp-next]').click();
+    await expect(page.locator('#tax-period-label')).not.toHaveText(lastMonthLabel, { timeout: 20000 });
+
     // Tax calendar: upcoming deadlines render with day-countdown chips.
     await page.locator('[data-tax-tab="overview"]').click();
     const deadlineRows = page.locator('#tax-deadlines [data-deadline]');

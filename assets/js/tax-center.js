@@ -44,6 +44,23 @@ function toast(message, type) {
     if (typeof window !== 'undefined' && typeof window.showToast === 'function') window.showToast(message, type);
 }
 
+// The tax period all tabs scope to. Driven by the topbar date-range picker (same
+// convention as the Accounting Center: the period is the MONTH of the selected
+// range's start day). Defaults to the current Jakarta month.
+let activePeriod = null;
+function getActivePeriod() {
+    if (!activePeriod) activePeriod = currentPeriod();
+    return activePeriod;
+}
+function periodFromStartKey(startKey) {
+    const m = /^(\d{4})-(\d{2})/.exec(String(startKey || ''));
+    if (!m) return currentPeriod();
+    const key = `${m[1]}-${m[2]}`;
+    const label = new Date(Number(m[1]), Number(m[2]) - 1, 1)
+        .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    return { key, label };
+}
+
 const TAX_CODE_LABEL = { PPN_OUT_11: 'PPN Keluaran 11%', PPN_IN_11: 'PPN Masukan 11%' };
 
 // CSV helpers (mirror invoices.js: client-side Blob download + export.create audit).
@@ -85,9 +102,10 @@ async function logExport(ds, user, report, period, count) {
 // Bind export handlers EARLY (before init's data fetch) and read the tax lines fresh
 // at click time — so the buttons work the moment the page is interactive (no race with
 // the async load) and always reflect the latest posted data.
-function wireExports(ds, user, period) {
+function wireExports(ds, user) {
     const ppnBtn = document.getElementById('ppn-export-btn');
     if (ppnBtn) ppnBtn.addEventListener('click', async () => {
+        const period = getActivePeriod();
         const taxTx = await ds.getTaxTransactions(user.uid, { periodKey: period.key }).catch(() => []);
         const rows = taxTx.filter((t) => t.direction === 'output' || t.direction === 'input');
         downloadCsv(`spt_ppn_${period.key}.csv`, buildPpnCsv(taxTx, period));
@@ -96,6 +114,7 @@ function wireExports(ds, user, period) {
     });
     const whtBtn = document.getElementById('wht-export-btn');
     if (whtBtn) whtBtn.addEventListener('click', async () => {
+        const period = getActivePeriod();
         const taxTx = await ds.getTaxTransactions(user.uid, { periodKey: period.key }).catch(() => []);
         const rows = taxTx.filter((t) => t.direction === 'withheld_by_us' || t.direction === 'withheld_by_other' || t.direction === 'final');
         downloadCsv(`bukti_potong_${period.key}.csv`, buildBupotCsv(taxTx, period));
@@ -373,9 +392,9 @@ function renderPeriods(periods, period) {
         <tbody>${rows}</tbody></table></div>`;
 }
 
-async function reloadPeriods(ds, user, period) {
+async function reloadPeriods(ds, user) {
     const periods = await ds.listTaxPeriods(user.uid).catch(() => []);
-    renderPeriods(periods, period);
+    renderPeriods(periods, getActivePeriod());
 }
 
 const FILING_LABEL = { SPT_PPN: 'SPT PPN', SPT_PPh_Unifikasi: 'SPT PPh Unifikasi', SPT_PPh21: 'SPT PPh 21', SPT_Tahunan: 'SPT Tahunan', Tax_Certificate: 'Tax Certificate' };
@@ -407,7 +426,7 @@ async function reloadFilings(ds, user) {
     renderFilings(filings);
 }
 
-function wirePeriods(ds, user, period) {
+function wirePeriods(ds, user) {
     const computeBtn = document.getElementById('period-compute-btn');
     const fileBtn = document.getElementById('period-file-btn');
     if (!canEditTax()) {
@@ -416,10 +435,11 @@ function wirePeriods(ds, user, period) {
     }
     if (computeBtn) {
         computeBtn.addEventListener('click', async () => {
+            const period = getActivePeriod();
             computeBtn.setAttribute('disabled', 'disabled');
             try {
                 await ds.computeTaxPeriod(user.uid, period.key);
-                await reloadPeriods(ds, user, period);
+                await reloadPeriods(ds, user);
                 toast('Period computed', 'success');
             } catch (e) {
                 toast(e && e.message ? e.message : 'Could not compute period', 'error');
@@ -431,6 +451,7 @@ function wirePeriods(ds, user, period) {
     }
     if (fileBtn) {
         fileBtn.addEventListener('click', async () => {
+            const period = getActivePeriod();
             const ok = typeof window.showConfirmDialog === 'function'
                 ? await window.showConfirmDialog({ title: 'Mark period as filed?', body: `This locks ${period.label} from recompute. Do this once you have reported it to DJP.`, confirmLabel: 'Mark filed', cancelLabel: 'Cancel', tone: 'default' })
                 : true;
@@ -442,7 +463,7 @@ function wirePeriods(ds, user, period) {
                 await ds.addTaxFiling(user.uid, { periodKey: period.key, filing_type: filingType, reference_number: ref });
                 const refInput = document.getElementById('period-filing-ref');
                 if (refInput) refInput.value = '';
-                await reloadPeriods(ds, user, period);
+                await reloadPeriods(ds, user);
                 await reloadFilings(ds, user);
                 toast('Period filed & filing recorded', 'success');
             } catch (e) {
@@ -747,57 +768,80 @@ export async function initTaxCenterPage({ ds, user }) {
     content?.classList.add('hidden');
 
     wireTabs();
-    const period = currentPeriod();
-    const label = document.getElementById('tax-period-label');
-    if (label) label.textContent = period.label;
+    activePeriod = currentPeriod();
 
     wireSave(ds, user);
     wireMappings(ds, user);
-    wirePeriods(ds, user, period);
+    wirePeriods(ds, user);
     wireCorporate(ds, user);
-    wireExports(ds, user, period);
+    wireExports(ds, user);
 
-    let profile = null;
-    let taxTx = [];
-    let mappings = [];
-    let ppn = null;
-    let wht = null;
-    let periods = [];
-    let filings = [];
-    let corporate = null;
-    try {
-        [profile, taxTx, mappings, ppn, wht, periods, filings, corporate] = await Promise.all([
-            ds.getTaxProfile(user.uid),
-            ds.getTaxTransactions(user.uid, { periodKey: period.key }),
-            ds.getTaxMappings(user.uid),
-            ds.getPpnLedger(user.uid, period.key),
-            ds.getWhtLedger(user.uid, period.key),
-            ds.listTaxPeriods(user.uid),
-            ds.listTaxFilings(user.uid),
-            ds.getCorporateTaxSummary(user.uid)
-        ]);
-    } catch (err) {
-        console.error('Tax Center load failed', err);
-    } finally {
-        loading?.classList.add('hidden');
-        content?.classList.remove('hidden');
+    // Fetch + render everything for the active period. Reused by the date picker.
+    let refreshSeq = 0;
+    const refreshPeriodData = async ({ firstLoad = false } = {}) => {
+        const seq = ++refreshSeq;
+        const period = getActivePeriod();
+        const label = document.getElementById('tax-period-label');
+        if (label) label.textContent = period.label;
+        if (firstLoad) { loading?.classList.remove('hidden'); content?.classList.add('hidden'); }
+
+        let profile = null, taxTx = [], mappings = [], ppn = null, wht = null, periods = [], filings = [], corporate = null;
+        try {
+            [profile, taxTx, mappings, ppn, wht, periods, filings, corporate] = await Promise.all([
+                ds.getTaxProfile(user.uid),
+                ds.getTaxTransactions(user.uid, { periodKey: period.key }),
+                ds.getTaxMappings(user.uid),
+                ds.getPpnLedger(user.uid, period.key),
+                ds.getWhtLedger(user.uid, period.key),
+                ds.listTaxPeriods(user.uid),
+                ds.listTaxFilings(user.uid),
+                ds.getCorporateTaxSummary(user.uid)
+            ]);
+        } catch (err) {
+            console.error('Tax Center load failed', err);
+        } finally {
+            if (firstLoad) { loading?.classList.add('hidden'); content?.classList.remove('hidden'); }
+        }
+        if (seq !== refreshSeq) return; // a newer period selection superseded this load
+
+        renderProfile(profile);
+        renderOverviewNote(profile);
+        renderPpn(profile, taxTx || [], ppn || { output: 0, input: 0, payable: 0 }, period);
+        renderWithholding(taxTx || [], wht || { payable: 0, credit: 0 }, period);
+        renderMappings(mappings || []);
+        renderPeriods(periods || [], period);
+        renderFilings(filings || []);
+        renderCorporate(corporate);
+
+        // AI Tax Assistant: deterministic compliance findings + live drawer context.
+        const findings = runComplianceChecks({ profile, taxTx: taxTx || [], ppn, wht, periods: periods || [], periodKey: period.key });
+        renderInsights(findings);
+        renderDeadlines();
+        registerAiContext({ profile, ppn, wht, corporate, findings, period });
+    };
+
+    // Topbar date filter (shared picker, same convention as the Accounting Center:
+    // the tax period is the month of the selected range's start day).
+    if (window.FluxyDateRangePicker && document.getElementById('tax-date-range-picker')) {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const startKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+        const endKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+        window.FluxyDateRangePicker.mount('#tax-date-range-picker', {
+            start: startKey,
+            end: endKey,
+            onChange: ({ start }) => {
+                const next = periodFromStartKey(start);
+                if (next.key === getActivePeriod().key) return;
+                activePeriod = next;
+                refreshPeriodData();
+            }
+        });
     }
 
-    renderProfile(profile);
-    renderOverviewNote(profile);
-    renderPpn(profile, taxTx || [], ppn || { output: 0, input: 0, payable: 0 }, period);
-    renderWithholding(taxTx || [], wht || { payable: 0, credit: 0 }, period);
-    renderMappings(mappings || []);
-    renderPeriods(periods || [], period);
-    renderFilings(filings || []);
-    renderCorporate(corporate);
-
-    // AI Tax Assistant: deterministic compliance findings + live drawer context.
-    const findings = runComplianceChecks({ profile, taxTx: taxTx || [], ppn, wht, periods: periods || [], periodKey: period.key });
-    renderInsights(findings);
-    renderDeadlines();
-    registerAiContext({ profile, ppn, wht, corporate, findings, period });
     document.getElementById('tax-ask-ai')?.addEventListener('click', () => {
         if (typeof window.toggleFluxyAI === 'function') window.toggleFluxyAI(true);
     });
+
+    await refreshPeriodData({ firstLoad: true });
 }
