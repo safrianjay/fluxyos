@@ -105,7 +105,9 @@
         if (shown || typeof fetch !== 'function') return;
         var ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
         var timer = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (_) {} }, 6000) : null;
-        fetch('https://firestore.googleapis.com/v1/projects?key=fluxy-conn-probe&_=' + Date.now(), {
+        // Use a stable 204 probe endpoint so an otherwise healthy network does not
+        // generate a harmless 404 console error from the Firestore probe.
+        fetch('https://www.gstatic.com/generate_204?_=' + Date.now(), {
             method: 'GET', mode: 'no-cors', cache: 'no-store', credentials: 'omit',
             signal: ctrl ? ctrl.signal : undefined
         }).then(function () {

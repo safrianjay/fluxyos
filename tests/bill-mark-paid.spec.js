@@ -32,20 +32,19 @@ async function createBill(page, tag) {
     return page.evaluate(async (vendorTag) => {
         const appMod = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
         const authMod = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
-        const fsMod = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        const dsMod = await import('/assets/js/db-service.js');
         const app = appMod.getApps()[0];
         const user = authMod.getAuth(app).currentUser;
         if (!app || !user) return { error: 'no-auth' };
-        const db = fsMod.getFirestore(app);
-        const ref = await fsMod.addDoc(fsMod.collection(db, `users/${user.uid}/bills`), {
+        const ds = new dsMod.default(app);
+        ds.setActor(user.uid);
+        const ref = await ds.addBill(user.uid, {
             amount: 137000,
             vendor_name: vendorTag,
             category: 'Infrastructure',
             type: 'pending_payable',
             status: 'Upcoming',
             icon: '💸',
-            timestamp: fsMod.serverTimestamp(),
-            due_date: fsMod.Timestamp.fromDate(new Date()),
             payment_status: 'unpaid'
         });
         return { id: ref.id, uid: user.uid };
@@ -56,21 +55,21 @@ async function readPaidState(page, billId) {
     return page.evaluate(async (id) => {
         const appMod = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
         const authMod = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
-        const fsMod = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        const dsMod = await import('/assets/js/db-service.js');
         const app = appMod.getApps()[0];
         const user = authMod.getAuth(app).currentUser;
-        const db = fsMod.getFirestore(app);
-        const billSnap = await fsMod.getDoc(fsMod.doc(db, `users/${user.uid}/bills/${id}`));
-        const bill = billSnap.data() || {};
+        if (!app || !user) return { error: 'no-auth' };
+        const ds = new dsMod.default(app);
+        ds.setActor(user.uid);
+        const bill = await ds.getBillById(user.uid, id);
         let tx = null;
-        if (bill.linked_transaction_id) {
-            const txSnap = await fsMod.getDoc(fsMod.doc(db, `users/${user.uid}/transactions/${bill.linked_transaction_id}`));
-            tx = txSnap.exists() ? txSnap.data() : null;
+        if (bill?.linked_transaction_id) {
+            tx = await ds.getTransactionById(user.uid, bill.linked_transaction_id);
         }
         return {
-            payment_status: bill.payment_status,
-            budget_impact_status: bill.budget_impact_status,
-            linked_transaction_id: bill.linked_transaction_id || null,
+            payment_status: bill?.payment_status,
+            budget_impact_status: bill?.budget_impact_status,
+            linked_transaction_id: bill?.linked_transaction_id || null,
             tx: tx ? { type: tx.type, amount: tx.amount, linked_bill_id: tx.linked_bill_id, category: tx.category } : null
         };
     }, billId);
