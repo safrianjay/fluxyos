@@ -410,20 +410,36 @@ The authenticated dashboard is localized differently from the marketing site.
 
 ### Architecture
 
+- **Bahasa Indonesia is the DEFAULT dashboard language** (July 2026 flip). With
+  no stored choice, `getLang()` returns `'id'`; English requires an explicit
+  stored `'en'` (Settings → Language & Region). The landing engine keeps its own
+  default. Playwright's EN-asserting suite pins `'en'` once in
+  `tests/setup-auth.spec.js` before saving the shared storageState; Indonesian
+  smoke coverage lives in `tests/dashboard-i18n.spec.js` (every app page:
+  translated `<title>`, `<html lang="id">`, translated sidebar, zero page errors)
+  plus the feature-level `tests/tax-center-i18n.spec.js`.
 - **Engine:** `assets/js/dashboard-i18n.js` — a self-contained sibling of the
   landing `assets/js/i18n.js`. It walks text nodes **and** the display attributes
-  `placeholder` / `aria-label` / `title` / `alt` (so search boxes, filter labels,
-  and tooltips translate too), swaps English → Indonesian using its own dictionary
-  (~2,000 entries), runs a `PATTERNS` list for interpolated strings ("Menampilkan
-  1–10 dari 58 catatan", "Langkah 1 dari 4 · …", "Menampilkan N tagihan"), and
-  re-translates async-injected DOM (sidebar, entry drawers, dialogs, toasts,
-  re-rendered tables) via a `MutationObserver`.
-- **Coverage report:** a re-runnable Node harvester (kept in `/tmp` during dev)
-  extracts candidate UI strings (static text nodes + the 4 attributes + JS string
-  literals) across app pages and lists what's missing from the dictionary, with an
-  ignore-list for non-UI strings (console logs, dev-thrown errors, SVG path data,
-  pricing-tier brand names, stored enum values). Run it after any copy change to
-  drive remaining English toward zero.
+  `placeholder` / `aria-label` / `title` / `alt` / `data-tooltip` (so search
+  boxes, filter labels, and tooltips translate too), swaps English → Indonesian
+  using its own dictionary (~3,300 entries), runs a `PATTERNS` list for
+  interpolated strings ("Menampilkan 1–10 dari 58 catatan", "Langkah 1 dari 4 ·
+  …", "Menampilkan N tagihan", stored-English `period_label` month names shown
+  in Indonesian), and re-translates async-injected DOM (sidebar, entry drawers,
+  dialogs, toasts, re-rendered tables) via a `MutationObserver`. Dialog bodies
+  built with inline `<strong>` split into text-node SEGMENTS — key each segment,
+  not the whole sentence.
+- **Coverage report:** `node scripts/i18n-audit.js` (permanent home of the old
+  `/tmp` harvester) extracts candidate UI strings (static text nodes + the 5
+  display attributes + JS string literals + HTML built in template literals)
+  across all app pages incl. the internal console, diffs them against the
+  dictionary + PATTERNS, flags duplicate dictionary keys, and writes
+  `.qa/i18n-gap-report.md`. Run it after any copy change to drive remaining
+  English toward zero; `--strict` exits 1 on English gaps (CI-friendly).
+- **Emails:** all `functions/lib/templates.js` notification templates are
+  bilingual; per-user language resolves from `users/{uid}/settings/finance.locale`
+  and the code default is `'id'` (`functions/lib/locale.js`, `DEFAULT_LOCALE`
+  env overrides). The notification system itself stays behind `NOTIFY_ENABLED`.
 - **Why a runtime walker, not `/id/` mirror files:** the dashboard is a JS-driven
   app whose text is largely generated at runtime; static mirror files (the
   marketing approach) don't fit. SEO is irrelevant behind auth.
@@ -469,7 +485,15 @@ Recurring dashboard finance glossary: Transaksi, Pendapatan (Revenue), Pemasukan
 (Income), Pengeluaran (Expense), Saldo, Anggaran (Budget), Alokasi (Allocation),
 Arus kas (Cash flow), Rekonsiliasi, Jatuh tempo (Due), Tagihan (Bill), Langganan
 (Subscription), Faktur/Invoice (keep "Invoice"), Neraca (Balance Sheet), Buku
-Besar (Ledger), Pajak (Tax), Lunas (Paid), Tertunda (Pending). Brand/product
+Besar (Ledger), Pajak (Tax), Lunas (Paid), Tertunda (Pending), Ruang kerja
+(Workspace), Penyiapan (Setup/onboarding), Struk (Receipt), Piutang/Utang
+Tertunda (Pending Receivable/Payable), Kedaluwarsa (Expiry), Penukaran
+(Redemption — vouchers), Prospek (Lead), Peninjau (Viewer role), Waspada (Watch
+status), Berisiko (At risk), Terlampaui/Melebihi (Exceeded), Posting/Memposting
+(Post — accounting), Entri (Entry), Laba Ditahan (Retained Earnings), Neraca
+Saldo (Trial Balance), Bagan Akun (Chart of Accounts). Error-toast rhythm is
+Tokopedia-direct: "Tidak dapat menyimpan. Coba lagi." (no "Silakan" padding);
+empty states are state + action ("Belum ada tagihan." + CTA). Brand/product
 names (FluxyOS, Fluxy AI, Revenue Sync, Vendor Spend, Receipt Capture, Dynamic
 Budgeting) and common loanwords (dashboard, invoice, email, CSV, upload,
 WhatsApp) stay English. Pricing-tier names (Starter, Core Ops, Growth Engine,

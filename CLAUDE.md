@@ -80,6 +80,13 @@ Full localization strategy lives in **`docs/LOCALIZATION_PLAN.md`** — read bef
 making any user-facing copy change.
 
 Quick rules:
+- **The dashboard app is Bahasa-first**: Indonesian is the default language
+  (`assets/js/dashboard-i18n.js`, ~3,300-key dictionary + PATTERNS); English is
+  the opt-out via Settings → Language. Run `node scripts/i18n-audit.js` after
+  any app-page copy change — it writes `.qa/i18n-gap-report.md` and must stay at
+  (near-)zero English gaps. EN Playwright specs stay green because
+  `tests/setup-auth.spec.js` pins `fluxyos-lang='en'` into the shared
+  storageState; ID smoke lives in `tests/dashboard-i18n.spec.js`.
 - Indonesian translations live at `/id/*.html` (mirror of root structure).
 - Tone is **casual professional** for SMB owners — pronoun "Anda", short sentences,
   active verbs, no bureaucratic language. See docs/LOCALIZATION_PLAN.md §2 for the
