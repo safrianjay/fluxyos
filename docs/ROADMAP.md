@@ -192,9 +192,9 @@ Kernel — tax posts as extra journal lines, never a parallel ledger. New sideba
 | Tax filings (`tax_filings`) | ✅ Shipped Phase 3 | SPT type + DJP reference + status recorded on file; Filings list; `tax_filing.submit` audit |
 | Corporate tax — PPh 25 installments (`1140`) | ✅ Shipped Phase 4 | Corporate Tax tab; records Dr 1140 / Cr Cash (creditable prepayment); summary KPIs (1140/1150/2200) |
 | Corporate tax — annual PPh 29 reconciliation (`2200`) | ✅ Shipped Phase 4 | UMKM 0.5% × turnover or ordinary 22% CIT on taxable income; credits 1140/1150; Compute preview + Post (idempotent); annual `tax_periods` doc |
-| AI Tax Assistant (read-only; no auto-file) | 📋 Planned | Phase 5; explain VAT payable, detect missing faktur — confirm-before-act |
-| DJP / Coretax / e-Faktur / e-Bupot integration | 📋 Planned | Phase 5; server-side in FastAPI backend; data model designed for it now |
-| Tax Calendar + reconciliation alerts | 📋 Planned | Deadline reminders (PPN 20th, etc.); VAT output−input and withholding-vs-payable checks |
+| AI Tax Assistant — foundation (insights + drawer context) | ✅ Shipped Phase 5.1 | Deterministic compliance findings on Overview (`runComplianceChecks`: missing faktur/bukti potong, period drift, profile gaps); `/tax-center` as AI page `tax` with tax chips + live `FluxyAIContext` (PPN payable, withholding, PPh 25, issue count); Ask Fluxy AI button. Read-only — never writes or files |
+| DJP / Coretax / e-Faktur / e-Bupot integration | 📋 Planned | Phase 5.2; **blocked on real DJP API access/credentials** — data model seams ready; server-side in FastAPI backend |
+| Tax Calendar + deadline reminders | 📋 Planned | Deadline reminders (PPN 20th, etc.); reconciliation checks now partially covered by the Phase 5.1 insights |
 
 ### Integrations
 | Feature | Status | Notes |

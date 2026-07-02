@@ -6,15 +6,17 @@
 > `DESIGN_SYSTEM.md`, `SECURITY_SYSTEM.md`, `LOCALIZATION_PLAN.md` §2/§12, and
 > `ROADMAP.md` (Tax Center track).
 >
-> **Status: Phases 1–4 SHIPPED (live on main, rules deployed); Phase 5 planned.**
-> Built: `tax-engine.js`, `tax-center.html`/`.js`, the 5 tax collections + rules,
-> PPN (output `2100` / input `1130`), withholding (we-withhold `2110` /
-> customers-withhold `1150`), tax periods (compute/file/lock), SPT PPN + Bukti Potong
-> CSV exports, `tax_filings`, and **corporate tax** (PPh 25 installments → `1140`;
-> annual PPh 29 reconciliation → `2200`, UMKM 0.5% / ordinary 22%). Phase 5 (AI Tax
-> Assistant + Coretax/e-Faktur/e-Bupot integration) is planned. See `ROADMAP.md` →
-> Tax Center for the per-feature status. The sections below are the design of record;
-> where the build refined a decision it is noted in §18a (and §18b for corporate tax).
+> **Status: Phases 1–4 + 5.1 SHIPPED (live on main, rules deployed); Phase 5.2
+> (Coretax) blocked on DJP API access.** Built: `tax-engine.js`,
+> `tax-center.html`/`.js`, the 5 tax collections + rules, PPN (output `2100` / input
+> `1130`), withholding (we-withhold `2110` / customers-withhold `1150`), tax periods
+> (compute/file/lock), SPT PPN + Bukti Potong CSV exports, `tax_filings`, **corporate
+> tax** (PPh 25 installments → `1140`; annual PPh 29 reconciliation → `2200`, UMKM
+> 0.5% / ordinary 22%), and the **AI Tax Assistant foundation** (deterministic
+> compliance insights + Fluxy AI drawer context — see §13 as-built note). Coretax/
+> e-Faktur/e-Bupot integration (§14) needs real DJP credentials before any build. See
+> `ROADMAP.md` → Tax Center for per-feature status. The sections below are the design
+> of record; build refinements are noted in §18a (posting) and §18b (corporate tax).
 >
 > Domain sources: the Indonesia tax deep-research report and the Tax Center product
 > brief (both in the planning thread). This doc condenses them into FluxyOS-shaped
@@ -445,6 +447,15 @@ accountant, all actions need user confirmation). Capabilities beyond Q&A:
 
 Every AI suggestion lands as a draft the user must confirm; nothing posts or files
 autonomously.
+
+**As built (Phase 5.1).** Two read-only halves shipped: (1) **detection** is
+deterministic, not LLM — `runComplianceChecks` in `tax-engine.js` (pure; missing
+faktur/bukti potong, PKP-without-NPWP, period-not-computed, computed-period drift vs
+the live ledger) rendered as severity-badged insights on the Overview tab; (2)
+**explanation** rides the existing Fluxy AI drawer — `/tax-center` registers a
+`FluxyAIContext` provider (PKP status, PPN payable, PPh withheld, prepaid PPh 25,
+issue count) with tax prompt chips and an Ask Fluxy AI topbar button. Deductibility
+suggestions and anomaly prediction remain future work.
 
 ---
 
