@@ -39,6 +39,11 @@ test('authenticate as QA user', async ({ page }) => {
     // Wait until the sidebar is hydrated so subsequent specs find the nav.
     await expect(page.locator('#sidebar')).toBeVisible();
 
+    // The dashboard defaults to Bahasa Indonesia (dashboard-i18n.js). The
+    // EN-asserting suite pins English here so every spec inherits it through
+    // storageState; ID specs opt back in via addInitScript (tax-center-i18n).
+    await page.evaluate(() => localStorage.setItem('fluxyos-lang', 'en'));
+
     const stateDir = path.join(__dirname, '.auth');
     fs.mkdirSync(stateDir, { recursive: true });
     // Firebase Auth persists in IndexedDB by default — include it in the saved
