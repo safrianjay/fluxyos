@@ -17,8 +17,10 @@
  *      key), interpolated (needs a PATTERNS entry or FluxyI18n.t()), or
  *      unclassified (manual review), and writes .qa/i18n-gap-report.md.
  *
- * Usage:  node scripts/i18n-audit.js [--strict]
- *   --strict  exit 1 when any "English" gaps remain (CI-friendly).
+ * Usage:  node scripts/i18n-audit.js [--strict] [--landing]
+ *   --strict   exit 1 when any "English" gaps remain (CI-friendly).
+ *   --landing  audit the marketing/landing pages against assets/js/i18n.js
+ *              (casual register) instead of the dashboard.
  *
  * Caveat: markup candidates are whitespace-collapsed before matching. A text
  * node that hard-wraps inside the HTML source can be reported as covered while
@@ -32,8 +34,15 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const ENGINE = path.join(ROOT, 'assets', 'js', 'dashboard-i18n.js');
-const REPORT = path.join(ROOT, '.qa', 'i18n-gap-report.md');
+const LANDING = process.argv.includes('--landing');
+const ENGINE = path.join(ROOT, 'assets', 'js', LANDING ? 'i18n.js' : 'dashboard-i18n.js');
+const REPORT = path.join(ROOT, '.qa', LANDING ? 'i18n-gap-report-landing.md' : 'i18n-gap-report.md');
+
+// Marketing/landing pages (casual register, assets/js/i18n.js).
+const LANDING_PAGES = [
+    'fluxyos.html', 'pricing.html', 'vendorspend.html', 'revenuesync.html',
+    'receiptcapture.html', 'aiagents.html', 'budgetlanding.html',
+];
 
 // Authenticated app pages in localization scope (docs/LOCALIZATION_PLAN.md §12).
 // login.html and the marketing/landing pages are handled by assets/js/i18n.js.
@@ -114,19 +123,23 @@ const INTERP = '⟨x⟩'; // placeholder for ${…} in template literals
 function loadEngine() {
     const src = fs.readFileSync(ENGINE, 'utf8');
     const idStart = src.indexOf('var ID = {');
-    const patternsStart = src.indexOf('var PATTERNS = [');
+    // The landing engine has no PATTERNS list — its dictionary ends at the
+    // first top-of-IIFE "};" line after the object opens.
+    const patternsStart = LANDING ? src.indexOf('\n    };', idStart) + '\n    };'.length : src.indexOf('var PATTERNS = [');
     if (idStart === -1 || patternsStart === -1) {
-        throw new Error('Could not locate ID dictionary / PATTERNS in dashboard-i18n.js');
+        throw new Error('Could not locate the ID dictionary in ' + path.basename(ENGINE));
     }
     let dictText = src.slice(idStart + 'var ID ='.length, patternsStart);
     dictText = dictText.slice(0, dictText.lastIndexOf('};') + 1);
     const dict = vm.runInNewContext('(' + dictText + ')', {});
 
-    const patternsText = src.slice(patternsStart, src.indexOf('\n    ];', patternsStart));
     const patterns = [];
-    const reLit = /re:\s*\/((?:\\.|[^/\n])+)\/([a-z]*)/g;
     let m;
-    while ((m = reLit.exec(patternsText))) patterns.push(new RegExp(m[1], m[2]));
+    if (!LANDING) {
+        const patternsText = src.slice(patternsStart, src.indexOf('\n    ];', patternsStart));
+        const reLit = /re:\s*\/((?:\\.|[^/\n])+)\/([a-z]*)/g;
+        while ((m = reLit.exec(patternsText))) patterns.push(new RegExp(m[1], m[2]));
+    }
 
     // Duplicate keys silently shadow each other in the object literal — flag them.
     const seen = new Set();
@@ -264,7 +277,7 @@ function main() {
         }
     };
 
-    for (const page of APP_PAGES) {
+    for (const page of (LANDING ? LANDING_PAGES : APP_PAGES)) {
         const file = path.join(ROOT, page);
         if (!fs.existsSync(file)) continue;
         const html = fs.readFileSync(file, 'utf8');
@@ -279,19 +292,21 @@ function main() {
             .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '');
         extractFromMarkup(markup, candidates);
         extractFromJs(inline, candidates);
-        auditSource(page, candidates, !/dashboard-i18n\.js/.test(html));
+        auditSource(page, candidates, LANDING ? !/assets\/js\/i18n\.js/.test(html) : !/dashboard-i18n\.js/.test(html));
     }
 
-    for (const name of fs.readdirSync(path.join(ROOT, 'assets', 'js')).sort()) {
-        if (!name.endsWith('.js') || name.endsWith('.min.js') || JS_EXCLUDE.has(name)) continue;
-        const candidates = new Set();
-        extractFromJs(fs.readFileSync(path.join(ROOT, 'assets', 'js', name), 'utf8'), candidates);
-        auditSource('assets/js/' + name, candidates, false);
+    if (!LANDING) {
+        for (const name of fs.readdirSync(path.join(ROOT, 'assets', 'js')).sort()) {
+            if (!name.endsWith('.js') || name.endsWith('.min.js') || JS_EXCLUDE.has(name)) continue;
+            const candidates = new Set();
+            extractFromJs(fs.readFileSync(path.join(ROOT, 'assets', 'js', name), 'utf8'), candidates);
+            auditSource('assets/js/' + name, candidates, false);
+        }
     }
 
     // ── Report ──
     const lines = [];
-    lines.push('# FluxyOS Dashboard i18n Gap Report');
+    lines.push(LANDING ? '# FluxyOS Landing-Page i18n Gap Report' : '# FluxyOS Dashboard i18n Gap Report');
     lines.push('');
     lines.push(`Generated: ${new Date().toISOString()} · dictionary keys: ${Object.keys(engine.dict).length} · patterns: ${engine.patterns.length}`);
     lines.push('');
