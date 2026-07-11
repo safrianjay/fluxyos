@@ -710,6 +710,7 @@ formatted currency strings.
 | `plan_id`, `payment_method` | string \| null | Denormalized payment fields. |
 | `payment_amount` | number \| null | Raw integer Rupiah. Never a formatted string. |
 | `assigned_reviewer_id`, `last_internal_note`, `risk_level` | string \| null | Internal metadata. |
+| `last_active_at` | Timestamp \| null | Presence heartbeat — last time the user was active in the app. Powers the console Users tab **Activity** column (Online / last-seen). |
 | `created_at`, `updated_at` | Timestamp | `serverTimestamp()`. |
 
 **Population:** each user's own client upserts its own row via
@@ -719,6 +720,16 @@ formatted currency strings.
 status fields on first create** (or advances `not_started`/`in_progress` →
 `submitted` on onboarding completion), so a reviewer's decision is never clobbered.
 Covers only users who sign in after release; a backfill needs the Admin SDK.
+
+**Presence heartbeat:** `DataService.touchActivity(uid)` stamps `last_active_at`
+= `serverTimestamp()` on the user's own `internal_users` row. Wired from
+`sidebar-loader.js` right after the self-sync — fires once on load, then on real
+interaction (`pointerdown`/`keydown`/`scroll`/`focus`/`visibilitychange`) — and is
+self-throttled to **≤1 write/60s** (skipped while the tab is hidden), so an
+actively-used tab keeps beating while an idle-open tab ages into "last seen". The
+console treats activity within 2 minutes as **Online**; otherwise it shows relative
+last-seen, escalating to the absolute stamp past 24h. `firestore.rules`
+(`isValidInternalUser`) validates `last_active_at` as a timestamp.
 
 **Auth deletion cleanup:** `functions/index.js` exports the 1st-gen Firebase Auth
 trigger `cleanupInternalUserOnAuthDelete`. Deleting a single Firebase
@@ -801,6 +812,25 @@ public `sales_leads` (Contact-Sales) collection above.
 These are written by `DataService.syncInternalUserAccessIndex`. Internal
 `payment_status` has no `not_started`; the trial's `not_started` is simply not
 mirrored.
+
+**Extend Trial (console action):** the Users tab shows a per-row **Extend Trial**
+button **only for live trials** (`access_status` `trial_active`/`trial_expiring`).
+It opens a 1 week / 2 weeks / 1 month dropdown that POSTs to the token-gated
+**`extend-trial`** Netlify function (`x-internal-token: INTERNAL_API_TOKEN`, same
+MVP posture as `send-lead-outreach`). Because the canonical trial lives in the
+owner-scoped `billing_subscription/current` (§4k) — which `firestore.rules` lets
+only the signed-in owner write, and the credential-gated console has no Firebase
+Auth — the write **must** go through this Admin-SDK function (it bypasses rules).
+The function guards `status === 'trialing'` server-side, extends **additively**
+(`new_end = max(now, current trial_ends_at) + duration`, calendar month for
+`1m`), and commits in one batch: canonical `billing_subscription/current`
+(`trial_ends_at`, keeps `trial_started_at`), the `workspaces/{uid}` plan summary,
+the `internal_users/{uid}` mirror (`access_status`, `trial_ends_at`,
+`trial_days_remaining`), and an `internal_audit_logs` `trial.extended` entry
+(admin, before/after end, duration, timestamp). It reuses the existing
+`FIREBASE_SERVICE_ACCOUNT` + `INTERNAL_API_TOKEN` envs and the default function
+path (no `netlify.toml` route). This is the automated, per-user counterpart to the
+one-shot `scripts/extend-grace-trial.js`.
 
 ### 4k. Billing Subscription — `users/{userId}/billing_subscription/current`
 
