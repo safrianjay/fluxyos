@@ -122,13 +122,28 @@ function badge(value, toneMap) {
     return `<span class="ibadge ibadge--${tone}">${escapeHtml(labelize(value))}</span>`;
 }
 
+// Live remaining trial days, derived from the canonical trial_ends_at at render
+// time. The denormalized trial_days_remaining mirror is written once when the
+// trial/extension is set and only refreshed when the user's own client
+// re-syncs, so it goes stale (e.g. reads "30" all trial long). Computing from
+// trial_ends_at keeps the countdown honest regardless of sync timing; fall back
+// to the cached value only when trial_ends_at is absent.
+function trialDaysLeft(u) {
+    const end = toDate(u.trial_ends_at);
+    if (end) {
+        const diff = end.getTime() - Date.now();
+        return diff <= 0 ? 0 : Math.ceil(diff / 86400000);
+    }
+    return u.trial_days_remaining != null ? u.trial_days_remaining : null;
+}
+
 // Trial / payment access badge (plan §26). Prioritises payment state over trial
 // state so a paid/under-review/rejected user reads correctly regardless of the
 // stored access_status.
 function accessBadge(u) {
     const access = u.access_status;
     const pay = u.payment_status;
-    const days = u.trial_days_remaining;
+    const days = trialDaysLeft(u);
     if (!access && !pay) return '<span class="text-gray-400">—</span>';
     if (access === 'active' || access === 'payment_verified' || pay === 'verified') return '<span class="ibadge ibadge--green">Active</span>';
     if (pay === 'rejected') return '<span class="ibadge ibadge--red">Payment needs revision</span>';
@@ -145,7 +160,7 @@ function accessBadge(u) {
 // Plain-text trial remaining for the Users table "Trial left" column.
 function trialRemainingText(u) {
     const access = u.access_status;
-    const days = u.trial_days_remaining;
+    const days = trialDaysLeft(u);
     if (access === 'trial_active' || access === 'trial_expiring') {
         if (days != null && days <= 0) return 'Ends today';
         if (days != null && days <= 1) return 'Ends today';
@@ -395,8 +410,8 @@ function renderOverview() {
 // remaining-days countdown since it isn't a persisted status.
 function matchesAccessFilter(x, key) {
     switch (key) {
-        case 'trial_active': return x.access_status === 'trial_active' && !(x.trial_days_remaining != null && x.trial_days_remaining <= 1);
-        case 'ending_today': return (x.access_status === 'trial_active' || x.access_status === 'trial_expiring') && x.trial_days_remaining != null && x.trial_days_remaining <= 1;
+        case 'trial_active': { const d = trialDaysLeft(x); return x.access_status === 'trial_active' && !(d != null && d <= 1); }
+        case 'ending_today': { const d = trialDaysLeft(x); return (x.access_status === 'trial_active' || x.access_status === 'trial_expiring') && d != null && d <= 1; }
         case 'trial_expired': return x.access_status === 'trial_expired';
         case 'payment_not_started': return x.access_status && x.access_status.startsWith('trial') && (x.payment_status === 'pending' || x.payment_status === 'not_required' || x.payment_status == null);
         case 'payment_submitted': return x.payment_status === 'submitted' || x.access_status === 'payment_submitted';
