@@ -1113,12 +1113,12 @@ window.showAddTransactionModal = function(options = {}) {
         const headers = originalHeaders.map(normalizeHeader);
         const findIndex = (names) => names.map(normalizeHeader).map(name => headers.indexOf(name)).find(index => index >= 0);
         const indexes = {
-            vendor: findIndex(['vendor_name', 'vendor', 'description']),
-            category: findIndex(['category']),
-            type: findIndex(['type']),
-            amount: findIndex(['amount']),
+            vendor: findIndex(['vendor_name', 'vendor', 'description', 'deskripsi']),
+            category: findIndex(['category', 'kategori']),
+            type: findIndex(['type', 'jenis']),
+            amount: findIndex(['amount', 'jumlah']),
             status: findIndex(['status']),
-            date: findIndex(['date', 'transaction_date', 'transactiondate'])
+            date: findIndex(['date', 'transaction_date', 'transactiondate', 'tanggal', 'tanggal_transaksi', 'waktu'])
         };
 
         if ([indexes.vendor, indexes.category, indexes.type, indexes.amount].some(index => index === undefined)) {
@@ -1129,12 +1129,54 @@ window.showAddTransactionModal = function(options = {}) {
         const allowedTypes = ['income', 'revenue', 'expense', 'transfer', 'refund', 'adjustment', 'fee', 'tax', 'pending_receivable', 'pending receivable', 'pending_payable', 'pending payable'];
         const allowedStatuses = ['Completed', 'Missing Receipt', 'Pending', 'Reconciled', 'Cancelled'];
 
+        const categoryMap = {
+            'pendapatan': 'Revenue',
+            'pemasaran': 'Marketing',
+            'infrastruktur': 'Infrastructure',
+            'operasional': 'Operations',
+            'saas': 'SaaS'
+        };
+
+        const typeMap = {
+            'pemasukan': 'income',
+            'pendapatan': 'revenue',
+            'pengeluaran': 'expense',
+            'transfer': 'transfer',
+            'pengembalian': 'refund',
+            'penyesuaian': 'adjustment',
+            'biaya': 'fee',
+            'pajak': 'tax',
+            'piutang': 'pending_receivable',
+            'utang': 'pending_payable',
+            'belum diterima': 'pending_receivable',
+            'belum dibayar': 'pending_payable'
+        };
+
+        const statusMap = {
+            'selesai': 'Completed',
+            'struk hilang': 'Missing Receipt',
+            'tertunda': 'Pending',
+            'direkonsiliasi': 'Reconciled',
+            'dibatalkan': 'Cancelled'
+        };
+
         const transactions = rows.slice(1).map((row, index) => {
             const line = index + 2;
             const amount = parseCsvAmount(row[indexes.amount]);
-            const category = row[indexes.category];
-            const type = String(row[indexes.type] || '').toLowerCase().replace(/\s+/g, '_');
-            const status = overrideStatus || row[indexes.status] || 'Completed';
+            
+            let category = String(row[indexes.category] || '').trim();
+            const lowerCat = category.toLowerCase();
+            if (categoryMap[lowerCat]) category = categoryMap[lowerCat];
+
+            let typeRaw = String(row[indexes.type] || '').toLowerCase().trim();
+            if (typeMap[typeRaw]) typeRaw = typeMap[typeRaw];
+            const type = typeRaw.replace(/\s+/g, '_');
+
+            let statusRaw = String(overrideStatus || row[indexes.status] || 'Completed').trim();
+            const lowerStatus = statusRaw.toLowerCase();
+            if (statusMap[lowerStatus]) statusRaw = statusMap[lowerStatus];
+            const status = statusRaw;
+            
             const vendor = row[indexes.vendor];
             const dateKey = indexes.date === undefined || !row[indexes.date] ? defaultDateKey : parseCsvDateInput(row[indexes.date]);
 
