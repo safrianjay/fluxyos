@@ -109,6 +109,11 @@
         .voucher-menu-item.is-danger svg { color: #DC2626; }
         .voucher-menu-item.is-danger:hover { background: #FEF2F2; }
         .voucher-menu-divider { height: 1px; margin: 4px 6px; background: #F1F5F9; }
+
+        /* User activity (Online / last-seen) */
+        .activity-status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+        .activity-status--online { color: #166534; font-weight: 500; }
+        .activity-dot { width: 7px; height: 7px; border-radius: 999px; background: #16A34A; box-shadow: 0 0 0 3px rgba(22,163,74,.16); flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -230,6 +235,7 @@
                                     <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Phone</th>
                                     <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Access</th>
                                     <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Trial left</th>
+                                    <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Activity</th>
                                     <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">KYC</th>
                                     <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Payment</th>
                                     <th class="px-5 py-3 text-[12px] font-bold text-gray-500 uppercase tracking-wider">Account</th>

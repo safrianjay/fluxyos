@@ -40,6 +40,7 @@ const ACTOR_USERNAME = 'fluxyos admin';
 // INTERNAL_API_TOKEN.
 const INTERNAL_API_TOKEN = 'fxod_c2d33ba1bf55ce784d740eb2f8fa036c0cfea7672283253d';
 const OUTREACH_SEND_URL = '/.netlify/functions/send-lead-outreach';
+const EXTEND_TRIAL_URL = '/.netlify/functions/extend-trial';
 const OUTREACH_STATUSES = [['new', 'New'], ['sent', 'Outreach sent'], ['meeting_booked', 'Meeting booked'], ['closed', 'Closed']];
 
 // --- Status models (plan §13) ---
@@ -154,6 +155,34 @@ function trialRemainingText(u) {
     return '—';
 }
 
+// A user counts as "online" when their last activity heartbeat is within this
+// window. Kept comfortably above the client's ~60s heartbeat throttle so an
+// active user doesn't flicker offline between beats.
+const ONLINE_WINDOW_MS = 2 * 60 * 1000;
+
+// Relative "time ago" for an offline user's last-seen. English to match the
+// console convention. Escalates minutes → hours; ≥24h falls back to the
+// absolute stamp via fmtDateTime ("11 Jul 2026, 14:35").
+function timeAgo(date) {
+    const mins = Math.floor((Date.now() - date.getTime()) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+    return fmtDateTime(date);
+}
+
+// Users table "Activity" cell: green "Online" when recently active, otherwise
+// a muted "last seen …" line. Renders "—" when no heartbeat exists yet.
+function userActivityCell(u) {
+    const last = toDate(u.last_active_at);
+    if (!last) return '<span class="text-gray-400">—</span>';
+    if (Date.now() - last.getTime() <= ONLINE_WINDOW_MS) {
+        return '<span class="activity-status activity-status--online"><span class="activity-dot"></span>Online</span>';
+    }
+    return `<span class="activity-status text-gray-500">last seen ${escapeHtml(timeAgo(last))}</span>`;
+}
+
 function userDisplayName(u) {
     return u.display_name || u.email || u.user_id || 'Unknown user';
 }
@@ -256,7 +285,7 @@ function renderLoading() {
     const shimmerRows = (cols) => Array.from({ length: 5 }).map(() =>
         `<tr>${Array.from({ length: cols }).map(() => '<td class="px-5 py-4"><div class="ishimmer h-4 w-full max-w-[120px]"></div></td>').join('')}</tr>`
     ).join('');
-    $('users-tbody').innerHTML = shimmerRows(8);
+    $('users-tbody').innerHTML = shimmerRows(9);
     $('kyc-tbody').innerHTML = shimmerRows(5);
     $('payment-tbody').innerHTML = shimmerRows(6);
     $('audit-tbody').innerHTML = shimmerRows(6);
@@ -408,8 +437,16 @@ function applyFilters(rows) {
     });
 }
 
+// Live trial = Extend Trial is available (never for active/paid/expired/suspended).
+function isLiveTrial(x) {
+    return x.access_status === 'trial_active' || x.access_status === 'trial_expiring';
+}
+
 function userRow(x) {
     const uid = x.user_id || x.id;
+    const extendBtn = isLiveTrial(x)
+        ? `<button class="text-[13px] font-medium text-gray-500 hover:text-gray-900 ml-3" data-extend-trial="${escapeHtml(uid)}" aria-haspopup="menu">Extend Trial</button>`
+        : '';
     return `<tr class="hover:bg-gray-50/60">
         <td class="px-5 py-3.5">
             <div class="font-medium text-gray-900 truncate max-w-[200px]">${escapeHtml(userDisplayName(x))}</div>
@@ -419,12 +456,13 @@ function userRow(x) {
         <td class="px-5 py-3.5 mono text-[13px] text-gray-600">${escapeHtml(x.phone_number || '—')}</td>
         <td class="px-5 py-3.5">${accessBadge(x)}</td>
         <td class="px-5 py-3.5 text-[13px] text-gray-600">${escapeHtml(trialRemainingText(x))}</td>
+        <td class="px-5 py-3.5 text-[13px]">${userActivityCell(x)}</td>
         <td class="px-5 py-3.5">${badge(x.kyc_status, KYC_TONE)}</td>
         <td class="px-5 py-3.5">${badge(x.payment_status, PAYMENT_TONE)}</td>
         <td class="px-5 py-3.5">${badge(x.account_status, ACCOUNT_TONE)}</td>
         <td class="px-5 py-3.5 text-[13px] text-gray-500">${fmtDate(x.created_at)}</td>
         <td class="px-5 py-3.5 text-right whitespace-nowrap">
-            <button class="text-[13px] font-semibold text-[#EA580C] hover:underline" data-review="${escapeHtml(uid)}">Review</button>
+            <button class="text-[13px] font-semibold text-[#EA580C] hover:underline" data-review="${escapeHtml(uid)}">Review</button>${extendBtn}
             <button class="text-[13px] font-medium text-gray-500 hover:text-gray-900 ml-3" data-copy="${escapeHtml(uid)}">Copy UID</button>
         </td>
     </tr>`;
@@ -1216,6 +1254,72 @@ function runVoucherMenuAction(act, code) {
     }
 }
 
+// ----- Extend Trial (Users tab) -----
+// Reuses the portaled voucher-menu shell (open/close/position + the delegated
+// outside-click/scroll/resize/Escape handlers) so trial actions look and behave
+// like the voucher row menu.
+const TRIAL_EXTEND_OPTIONS = [
+    { duration: '1w', label: 'Extend by 1 week' },
+    { duration: '2w', label: 'Extend by 2 weeks' },
+    { duration: '1m', label: 'Extend by 1 month' }
+];
+
+function openTrialExtendMenu(trigger, uid) {
+    const reopen = voucherMenuTrigger === trigger;
+    closeVoucherMenu();
+    if (reopen) return; // clicking the open trigger again just closes it
+
+    const menu = document.createElement('div');
+    menu.className = 'voucher-menu';
+    menu.setAttribute('role', 'menu');
+    menu.innerHTML = TRIAL_EXTEND_OPTIONS.map(it =>
+        `<button type="button" role="menuitem" class="voucher-menu-item"
+            data-trial-act="${it.duration}" data-trial-uid="${escapeHtml(uid)}">
+            ${VOUCHER_MENU_ICONS.extend}<span>${it.label}</span>
+        </button>`).join('');
+    document.body.appendChild(menu);
+    voucherMenuEl = menu;
+    voucherMenuTrigger = trigger;
+    trigger.classList.add('is-open');
+    positionVoucherMenu(menu, trigger);
+    document.addEventListener('scroll', closeVoucherMenu, true);
+    window.addEventListener('resize', closeVoucherMenu);
+}
+
+async function runTrialExtend(uid, duration) {
+    closeVoucherMenu();
+    const opt = TRIAL_EXTEND_OPTIONS.find(o => o.duration === duration);
+    if (!uid || !opt) return;
+    try {
+        const res = await fetch(EXTEND_TRIAL_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-internal-token': INTERNAL_API_TOKEN },
+            body: JSON.stringify({ uid, duration, actor_username: ACTOR_USERNAME })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            const msg = data && data.error === 'not_trialing'
+                ? 'This account is no longer on a trial.'
+                : `Could not extend trial (${(data && data.error) || res.status}).`;
+            window.showToast(msg, 'error');
+            if (data && data.error === 'not_trialing') { await loadData(); renderAll(); }
+            return;
+        }
+        // Patch the in-memory row so Access badge + Trial left + the Extend
+        // gating all refresh without a full reload.
+        const row = state.users.find(u => (u.user_id || u.id) === uid);
+        if (row) {
+            row.access_status = data.access_status;
+            row.trial_days_remaining = data.trial_days_remaining;
+            row.trial_ends_at = data.trial_ends_at;
+        }
+        renderUsersTab();
+        window.showToast(`Trial extended by ${opt.label.replace('Extend by ', '')}`, 'success');
+    } catch (e) {
+        window.showToast('Could not reach the trial service.', 'error');
+    }
+}
+
 // ----- Extend / set expiry -----
 function openVoucherExtendDrawer(code) {
     const v = state.vouchers.find(x => x.code === code);
@@ -1816,6 +1920,10 @@ function initConsoleEvents() {
         if (voucherMenuBtn) { openVoucherActionMenu(voucherMenuBtn, voucherMenuBtn.dataset.voucherMenu); return; }
         const voucherActItem = e.target.closest('[data-voucher-act]');
         if (voucherActItem) { runVoucherMenuAction(voucherActItem.dataset.voucherAct, voucherActItem.dataset.voucherCode); return; }
+        const extendTrialBtn = e.target.closest('[data-extend-trial]');
+        if (extendTrialBtn) { openTrialExtendMenu(extendTrialBtn, extendTrialBtn.dataset.extendTrial); return; }
+        const trialActItem = e.target.closest('[data-trial-act]');
+        if (trialActItem) { runTrialExtend(trialActItem.dataset.trialUid, trialActItem.dataset.trialAct); return; }
         // Click anywhere else with an open menu closes it.
         if (voucherMenuEl && !e.target.closest('.voucher-menu')) closeVoucherMenu();
         const actBtn = e.target.closest('[data-act]');

@@ -565,6 +565,23 @@
                         return ds.syncSelfToInternalIndex(user.uid, {
                             email: user.email || null,
                             display_name: user.displayName || null
+                        }).then(() => {
+                            // Presence heartbeat: stamp last_active_at now, then on
+                            // real interaction (so an actively-used tab keeps beating,
+                            // while an idle open tab ages into "last seen").
+                            // touchActivity() self-throttles to ≤1 write/60s and is
+                            // best-effort, so binding these hot events stays cheap.
+                            const beat = () => { if (!document.hidden) ds.touchActivity(user.uid); };
+                            beat();
+                            if (!window.__fluxyActivityBeatBound) {
+                                window.__fluxyActivityBeatBound = true;
+                                const opts = { passive: true };
+                                document.addEventListener('visibilitychange', beat);
+                                window.addEventListener('focus', beat);
+                                window.addEventListener('pointerdown', beat, opts);
+                                window.addEventListener('keydown', beat, opts);
+                                window.addEventListener('scroll', beat, opts);
+                            }
                         });
                     }).catch((e) => console.warn('[sidebar] internal index sync skipped', e));
 

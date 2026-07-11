@@ -5085,6 +5085,28 @@ class DataService {
         return 'updated';
     }
 
+    // Lightweight presence heartbeat: stamps internal_users/{uid}.last_active_at
+    // so the ops console can show Online / last-seen. Throttled in-process to at
+    // most one write per ACTIVITY_MIN_INTERVAL_MS to keep Firestore writes
+    // negligible; the caller (sidebar-loader) also skips it when the tab is
+    // hidden. Best-effort — never throws into the caller. internal_users is the
+    // open, field-validated ops index, so the user's own client may write here.
+    async touchActivity(userId) {
+        if (!userId) return false;
+        const ACTIVITY_MIN_INTERVAL_MS = 60 * 1000;
+        const now = Date.now();
+        this._lastActivityTouchAt = this._lastActivityTouchAt || 0;
+        if (now - this._lastActivityTouchAt < ACTIVITY_MIN_INTERVAL_MS) return false;
+        this._lastActivityTouchAt = now;
+        try {
+            await setDoc(this._internalUserDoc(userId), { last_active_at: serverTimestamp() }, { merge: true });
+            return true;
+        } catch (e) {
+            this._lastActivityTouchAt = 0; // let the next tick retry after a failed write
+            return false;
+        }
+    }
+
     // ===== BILLING ACCESS & 3-DAY TRIAL =====
     // Owner-scoped access-state doc at users/{uid}/billing/access. The trial starts
     // after onboarding completion (not registration). Client-side trial/expiry logic
