@@ -2654,6 +2654,7 @@
         "We could not load your payment status": "Kami tidak dapat memuat status pembayaran Anda",
         "Please wait while FluxyOS checks your latest billing status.": "Mohon tunggu sementara FluxyOS memeriksa status penagihan terbaru Anda.",
         "Please refresh the page or contact support if the issue continues.": "Silakan muat ulang halaman atau hubungi dukungan jika masalah berlanjut.",
+        "We couldn’t load your transactions. Please refresh the page.": "Kami tidak dapat memuat transaksi Anda. Silakan muat ulang halaman.",
         "Payment received — under review": "Pembayaran diterima — sedang ditinjau",
         "Payment verification in progress": "Verifikasi pembayaran sedang berlangsung",
         "Pending verification": "Menunggu verifikasi",

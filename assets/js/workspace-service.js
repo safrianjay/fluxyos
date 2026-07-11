@@ -229,6 +229,32 @@ async function resolveWorkspace(app, user) {
             }
         }
 
+        // SELF-HEAL (owner): we resolved to the user's OWN workspace but never
+        // confirmed an active members doc (ready=false). Every finance read
+        // (workspaces/{uid}/transactions, /bills, /budgets …) would be
+        // permission-denied in that state — those rules require an active
+        // members/{uid} doc, and the owner-bootstrap read exception only covers
+        // the workspace + members docs themselves, not the finance data. So
+        // provision the owner workspace + membership NOW (the rules explicitly
+        // allow this self-create) so the very next finance read on THIS load
+        // passes isMember(). This previously ran only on settings-team, which is
+        // why an owner who never opened Team settings hit "Missing or insufficient
+        // permissions" on the ledger/dashboard. Idempotent + best-effort — a
+        // failure just leaves the owner-of-self fallback in place. Mirrors
+        // healFromStoredInvite (the invited-member equivalent).
+        if (user.uid && state.id === user.uid && state.role === 'owner' && state.ready !== true) {
+            try {
+                const { default: DataService } = await import('/assets/js/db-service.js');
+                const ds = new DataService(app);
+                ds.setActor(user.uid);
+                await ds.ensureWorkspace(user.uid, { email: user.email || null, displayName: user.displayName || null });
+                state.status = 'active';
+                state.ready = true;
+            } catch (e) {
+                console.warn('[workspace-service] owner membership bootstrap failed', e);
+            }
+        }
+
         // 3) Best-effort workspace name + denormalized plan for display.
         try {
             const wsSnap = await fs.getDoc(fs.doc(db, `workspaces/${state.id}`));

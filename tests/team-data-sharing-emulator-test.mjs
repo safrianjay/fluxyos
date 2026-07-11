@@ -15,6 +15,12 @@
 //      as the owner, and collectionGroup(members) resolves them onto the owner
 //      workspace (not their own).
 //
+// Scenario B covers the OWNER counterpart — the trial-owner "Missing or
+// insufficient permissions" bug: with workspace mode on, an owner who has no
+// members/{uid} doc is DENIED reading/writing their own workspaces/{uid}
+// finance data, and the resolveWorkspace() owner self-heal (ensureWorkspace)
+// creates the doc so the very next read passes.
+//
 //   firebase emulators:exec --only firestore,auth \
 //     "node tests/team-data-sharing-emulator-test.mjs"
 //
@@ -138,6 +144,42 @@ const inviteDoc = (email, role, inviterUid) => ({
     // Direct member-doc read (the index-independent path healFromStoredInvite uses).
     await expectOutcome('RESOLUTION: invitee can read own member doc in owner ws', true, () =>
         getDoc(doc(invitee.db, `workspaces/${wsId}/members/${invitee.uid}`)));
+
+    // =========================================================================
+    // Scenario B — OWNER self-heal (the trial-owner "Missing or insufficient
+    // permissions" bug). With FLUXY_WORKSPACE_MODE on, an owner reads
+    // workspaces/{uid}/<finance>; that rule requires an ACTIVE members/{uid}
+    // doc. ensureWorkspace — now driven centrally by resolveWorkspace's owner
+    // self-heal (previously only settings-team) — creates it. Prove the owner is
+    // DENIED before the member doc exists and ALLOWED after.
+    // =========================================================================
+    const owner3 = makeUserCtx('owner3');
+    await signUp(owner3, 'owner3@test.com');
+    const ws3 = owner3.uid;
+
+    // Owner may create their own workspace doc (bootstrap create exception)...
+    await expectOutcome('OWNER-HEAL: owner creates own workspace doc', true, () =>
+        setDoc(doc(owner3.db, `workspaces/${ws3}`), { owner_uid: owner3.uid, name: null, created_at: serverTimestamp(), updated_at: serverTimestamp() }));
+    // ...but WITHOUT a member doc, finance reads/writes are DENIED (the bug).
+    await expectOutcome('OWNER-HEAL(bug): owner cannot read own finance before member doc', false, () =>
+        getDoc(doc(owner3.db, `workspaces/${ws3}/transactions/tx1`)));
+    await expectOutcome('OWNER-HEAL(bug): owner cannot write finance before member doc', false, () =>
+        setDoc(doc(owner3.db, `workspaces/${ws3}/transactions/tx1`), baseRecord()));
+    // The fix: bootstrap the owner membership (the exact ensureWorkspace payload).
+    await expectOutcome('OWNER-HEAL(fix): owner bootstraps own membership', true, () =>
+        setDoc(doc(owner3.db, `workspaces/${ws3}/members/${owner3.uid}`), memberDoc(owner3.uid, owner3.email, 'owner')));
+    // Now the very same finance read/write succeeds.
+    await expectOutcome('OWNER-HEAL: owner writes finance after bootstrap', true, () =>
+        setDoc(doc(owner3.db, `workspaces/${ws3}/transactions/tx1`), baseRecord()));
+    let o3Snap;
+    await expectOutcome('OWNER-HEAL: owner reads own finance after bootstrap', true, async () => { o3Snap = await getDoc(doc(owner3.db, `workspaces/${ws3}/transactions/tx1`)); });
+    expectEqual('OWNER-HEAL: read-back amount matches', o3Snap?.data()?.amount, 1500000);
+    await expectOutcome('OWNER-HEAL: resolves via collectionGroup(members)', true, async () => {
+        const snap = await getDocs(query(collectionGroup(owner3.db, 'members'), where('uid', '==', owner3.uid)));
+        const wsIds = [];
+        snap.forEach((d) => { const p = d.ref.parent?.parent; if (p) wsIds.push(p.id); });
+        if (!wsIds.includes(ws3)) throw new Error(`expected owner ws ${ws3} in ${JSON.stringify(wsIds)}`);
+    });
 
     console.log(`\nWorkspace data-sharing: ${passed} passed, ${failed} failed`);
     process.exit(failed ? 1 : 0);

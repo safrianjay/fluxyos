@@ -1013,7 +1013,17 @@
                 // Resolve the joined workspace before reading so members see shared data.
                 try { const { resolveWorkspace } = await import('/assets/js/workspace-service.js'); await resolveWorkspace(app, user); } catch (_) {}
                 await prepareLinkedLedgerRecordRange(user);
-                await window.loadLedger();
+                try {
+                    await window.loadLedger();
+                } catch (e) {
+                    // A finance-read denial must never surface as an uncaught console
+                    // rejection or a misleading empty "no transactions" state. The
+                    // owner-membership bootstrap in resolveWorkspace() prevents the
+                    // common case; this catches the residual (removed member, blocked
+                    // transport, network) with an honest retry prompt.
+                    console.warn('[ledger] initial load failed', e && e.message ? e.message : e);
+                    window.showToast?.('We couldn’t load your transactions. Please refresh the page.', 'error');
+                }
                 // Real-time: a teammate's new/edited transaction surfaces a non-disruptive
                 // "New activity · Refresh" pill (preserves the user's filters/pagination).
                 window.FluxyLive?.attach({ collections: ['transactions'], reload: () => window.loadLedger(), mode: 'prompt' });
