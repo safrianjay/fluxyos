@@ -146,7 +146,7 @@ test.describe('Add Transaction drawer — shared attachment mount', () => {
 // ---------- 2. Bill Details drawer Attach Invoice -----------------------
 
 test.describe('Bill Details drawer — Attach Invoice wiring', () => {
-    test('Attach Invoice button is enabled; Convert + Mark as Paid stay disabled', async ({ page }) => {
+    test('Attach Invoice button is enabled; payment controls match bill state', async ({ page }) => {
         const consoleErrors = [];
         page.on('console', (msg) => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
         page.on('pageerror', (err) => consoleErrors.push(`pageerror: ${err.message}`));
@@ -191,12 +191,13 @@ test.describe('Bill Details drawer — Attach Invoice wiring', () => {
         await expect(attachBtn).toBeEnabled();
         await expect(attachBtn).toContainText(/Attach Invoice|Replace Invoice/);
 
-        // Convert to Transaction stays disabled with "Coming soon"
-        const convertBtn = page.getByRole('button', { name: /Convert to Transaction/i });
-        await expect(convertBtn).toBeDisabled();
-        // Mark as Paid stays disabled with "Soon"
-        const markPaidBtn = page.getByRole('button', { name: /Mark as Paid/i });
-        await expect(markPaidBtn).toBeDisabled();
+        // "Convert to Transaction" was removed when Mark as Paid shipped
+        // (DataService.markBillPaid posts the expense instead).
+        await expect(page.getByRole('button', { name: /Convert to Transaction/i })).toHaveCount(0);
+        // Mark as Paid is live: hidden for paid bills, enabled otherwise.
+        const markPaidBtn = page.locator('#bill-mark-paid-btn');
+        const markPaidHidden = await markPaidBtn.evaluate((el) => el.classList.contains('hidden'));
+        if (!markPaidHidden) await expect(markPaidBtn).toBeEnabled();
     });
 });
 

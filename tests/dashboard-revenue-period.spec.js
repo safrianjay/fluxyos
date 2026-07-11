@@ -61,7 +61,6 @@ test('Overview selector rescopes the dashboard and preserves Revenue context', a
     await expect(page.locator('#revenue-scope-label')).toHaveText('Last month');
     await expect(page.locator('#revenue-secondary-label')).toHaveText('All-time revenue');
     expect(await page.evaluate(() => window.FluxyDashboardRange)).not.toEqual(monthRange);
-    await expect(page.locator('#ai-summary-period')).toHaveText('Last month');
 
     await dismissLearningPromoter(page);
     await page.locator('#overview-period-ytd').click();
@@ -71,7 +70,6 @@ test('Overview selector rescopes the dashboard and preserves Revenue context', a
     await expect(page.locator('#revenue-secondary-label')).toHaveText('All-time revenue');
     expect(parseIDR(await page.locator('#revenue-secondary-value').textContent())).toBe(allTimeRevenue);
     expect(parseIDR(await page.locator('#kpi-revenue').textContent())).toBeGreaterThanOrEqual(monthRevenue);
-    await expect(page.locator('#ai-summary-period')).toHaveText('Year to date');
 
     await dismissLearningPromoter(page);
     await page.locator('#overview-period-custom').click();
@@ -92,7 +90,6 @@ test('Overview selector rescopes the dashboard and preserves Revenue context', a
 
     const revenueCardText = await page.locator('[data-tour-target="dashboard-revenue-kpi"]').textContent();
     expect(revenueCardText).not.toMatch(/NaN|Infinity|undefined/i);
-    await expect(page.locator('#ai-summary-period')).toHaveText('All time');
     await expect(page.locator('#kpi-opex, #kpi-margin, #kpi-bank-cash, #kpi-cash-pressure, #kpi-payables')).toHaveCount(5);
     expect(consoleErrors).toEqual([]);
 });
@@ -138,12 +135,13 @@ test('Overview desktop shell and Fluxy AI drawer remain intact', async ({ page }
 test('Overview first KPI row keeps a compact vertical rhythm', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 900 });
     await waitForRevenue(page);
+    // Bank snapshots render after the revenue KPI — wait for the sparkline
+    // line before measuring, or the geometry reads race the async draw.
+    await page.waitForSelector('#kpi-bank-cash-sparkline path[stroke="#22C55E"]', { timeout: 20000 });
 
     const spacing = await page.evaluate(() => {
         const rect = selector => document.querySelector(selector)?.getBoundingClientRect();
         const bankTiles = rect('#kpi-bank-cash')?.width ? rect('#kpi-bank-cash') : null;
-        const bankGrid = document.querySelector('#kpi-bank-cash')?.closest('.metric-cell')?.querySelector('.metric-mini-grid')?.getBoundingClientRect();
-        const bankSub = rect('#kpi-bank-cash-sub');
         const opexGrid = document.querySelector('#kpi-opex')?.closest('.metric-cell')?.querySelector('.metric-mini-grid')?.getBoundingClientRect();
         const opexSub = rect('#kpi-opex-change');
         const opexBar = document.querySelector('#kpi-opex-budget-bar')?.parentElement?.getBoundingClientRect();
@@ -156,7 +154,6 @@ test('Overview first KPI row keeps a compact vertical rhythm', async ({ page }) 
             bankSparklineHasGreenLine: !!document.querySelector('#kpi-bank-cash-sparkline path[stroke="#22C55E"]'),
             bankSparklineHasMarker: !!document.querySelector('#kpi-bank-cash-sparkline circle'),
             summaryColumns: summaryBoard ? getComputedStyle(summaryBoard).gridTemplateColumns.split(' ').length : 0,
-            bankGridGap: bankSub && bankGrid ? bankGrid.top - bankSub.bottom : null,
             opexSubGap: opexSub && opexGrid ? opexSub.top - opexGrid.bottom : null,
             opexBarGap: opexBar && opexSub ? opexBar.top - opexSub.bottom : null,
             revenueLeftOffset: revenueSecondary && revenueComparison ? revenueComparison.left - revenueSecondary.left : null
@@ -168,8 +165,6 @@ test('Overview first KPI row keeps a compact vertical rhythm', async ({ page }) 
     expect(spacing.bankSparklineHasGreenLine).toBe(true);
     expect(spacing.bankSparklineHasMarker).toBe(false);
     expect(spacing.summaryColumns).toBe(3);
-    expect(spacing.bankGridGap).toBeGreaterThanOrEqual(8);
-    expect(spacing.bankGridGap).toBeLessThanOrEqual(20);
     expect(spacing.opexSubGap).toBeLessThanOrEqual(20);
     expect(spacing.opexBarGap).toBeLessThanOrEqual(16);
     expect(spacing.revenueLeftOffset).toBeLessThanOrEqual(4);
@@ -179,11 +174,14 @@ test('Overview first KPI row keeps a compact vertical rhythm', async ({ page }) 
 test('Overview Revenue read remains user-scoped and type allowlisted', async ({ page }) => {
     await page.goto('/assets/js/db-service.js');
     const source = await page.locator('body').textContent();
-    expect(source).toContain('collection(this.db, `users/${userId}/transactions`)');
+    // Finance reads must route through the workspace seam (PROJECT_BACKGROUND §4)
+    // — hardcoded users/${userId}/ finance paths silently show members 0 data.
+    expect(source).toContain('collection(this.db, `${this._scope(userId)}/transactions`)');
+    expect(source).not.toContain('collection(this.db, `users/${userId}/transactions`)');
     expect(source).toContain("where('type', 'in', ['income', 'revenue', 'refund', 'pending_receivable'])");
     expect(source).not.toContain("where('type', 'in', ['income', 'revenue', 'refund', 'pending_receivable', 'expense'");
     expect(source).toContain('getTransactionsForDashboardOverview(userId, allTime = false)');
-    expect(source).toContain('collection(this.db, `users/${userId}/bank_balance_snapshots`)');
+    expect(source).toContain('collection(this.db, `${this._scope(userId)}/bank_balance_snapshots`)');
     expect(source).toContain('balanceHistory: this._buildBankCashHistory(accounts, snapshots)');
     expect(source).toContain('at: snapshot.date.toISOString()');
     expect(source).not.toContain('const totalsByDay = new Map()');

@@ -74,7 +74,9 @@ test('shared date picker keeps deliberate single-day ranges day-scoped', async (
 
     const fixture = page.locator('#shared-picker-fixture');
     await fixture.locator('[data-drp-next]').click();
-    await expect(fixture.locator('[data-drp-label]')).toHaveText('May 16, 2026');
+    // The picker formats via FluxyI18n.locale() — 'en-GB' in the EN-pinned
+    // suite, so single days render day-first ("16 May 2026").
+    await expect(fixture.locator('[data-drp-label]')).toHaveText('16 May 2026');
     expect(await page.evaluate(() => window.sharedPickerFixture.getRange())).toEqual({
         start: '2026-05-16',
         end: '2026-05-16'

@@ -194,7 +194,9 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
             const c = document.getElementById('budget-content');
             return c && !c.classList.contains('hidden');
         }, { timeout: 15000 });
-        const baselineName = (await page.locator('#budget-main-name').textContent())?.trim();
+        // Phase B redesign: the main budget is an explicit selector
+        // (#budget-main-select), not a static #budget-main-name label.
+        const baselineName = await page.locator('#budget-main-select').inputValue();
         const baselineTotal = (await page.locator('#budget-annual-total').textContent())?.trim();
         console.log('[B6] baseline:', { name: baselineName, total: baselineTotal });
         await page.screenshot({ path: `${SHOTS_DIR}/B6a-baseline.png`, fullPage: true });
@@ -205,7 +207,7 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
             const c = document.getElementById('budget-content');
             return c && !c.classList.contains('hidden');
         }, { timeout: 15000 });
-        const afterName = (await page.locator('#budget-main-name').textContent())?.trim();
+        const afterName = await page.locator('#budget-main-select').inputValue();
         const afterTotal = (await page.locator('#budget-annual-total').textContent())?.trim();
         await page.screenshot({ path: `${SHOTS_DIR}/B6c-after-reload.png`, fullPage: true });
         console.log('[B6] after-reload:', { name: afterName, total: afterTotal });
@@ -227,6 +229,44 @@ test.describe('Budget page — Phase 1 + 1.5 verify', () => {
         attachConsole(page, log);
         await page.goto('/bill.html');
         await page.waitForSelector('[data-tour-target="bill-add"]', { timeout: 15000 });
+
+        // The bill only lands in Marketing's Spent + Reserved when an ACTIVE
+        // budget covers today's date. QA data drifts (budgets get created for
+        // past months), so seed a current-month period budget with a Marketing
+        // allocation when the active one doesn't cover now.
+        const fixture = await page.evaluate(async () => {
+            const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+            const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            const cfg = { apiKey: 'AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA', authDomain: 'fluxyos.com', projectId: 'fluxyos', storageBucket: 'fluxyos.firebasestorage.app', messagingSenderId: '1084252368929', appId: '1:1084252368929:web:da73dc0db83fe592c7f360' };
+            const app = getApps().length ? getApps()[0] : initializeApp(cfg);
+            const auth = getAuth(app);
+            if (auth.authStateReady) await auth.authStateReady();
+            const { default: DataService } = await import('/assets/js/db-service.js');
+            const ds = new DataService(app);
+            const uid = auth.currentUser.uid;
+            const now = new Date();
+            const toDate = (v) => (v && typeof v.toDate === 'function') ? v.toDate() : new Date(v);
+            const active = await ds.getActiveBudget(uid);
+            if (active && toDate(active.period_start) <= now && now <= toDate(active.period_end)) {
+                const usage = await ds.getBudgetUsage(uid, active.id);
+                if ((usage?.allocations || []).some(a => (a.scope_values || []).includes('Marketing'))) return 'existing';
+            }
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+            await ds.addBudgetWithAllocations(uid, {
+                name: `QA B7 Budget ${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+                budget_type: 'period', period_type: 'monthly',
+                period_start: start, period_end: end,
+                total_budget: 50000000, currency: 'IDR', status: 'active',
+            }, [{ name: 'Marketing', allocated_amount: 20000000, scope_type: 'category', scope_values: ['Marketing'] }]);
+            return 'seeded';
+        });
+        console.log('[B7] budget fixture:', fixture);
+        if (fixture === 'seeded') {
+            await page.reload();
+            await page.waitForSelector('[data-tour-target="bill-add"]', { timeout: 15000 });
+        }
+
         await page.click('[data-tour-target="bill-add"]');
         await page.waitForSelector('#tx-budget-preview');
         await page.waitForTimeout(1500); // budget prefetch
