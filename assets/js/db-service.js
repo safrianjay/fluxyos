@@ -21,6 +21,21 @@ const BILLING_ACCOUNT_STATUSES = ['trial', 'active', 'suspended'];
 const INTERNAL_PAYMENT_STATUSES = [
     'not_required', 'pending', 'submitted', 'under_review', 'verified', 'rejected', 'expired'
 ];
+// Legacy self-heal: older clients mirrored the raw billing_subscription.status
+// (`trialing`, `awaiting_payment`, …) straight into internal_users.access_status,
+// which is NOT in ACCESS_STATUSES. Because the internal_users UPDATE rule
+// re-validates the ENTIRE doc, such a stray value bricks every reviewer action on
+// that user (permission-denied). This maps a billing status onto the internal
+// access enum so the field can be corrected in-place; unknown → 'trial_active'.
+const BILLING_TO_ACCESS_STATUS = {
+    trialing: 'trial_active',
+    awaiting_payment: 'payment_pending',
+    pending_verification: 'payment_submitted',
+    active: 'active',
+    past_due: 'trial_expired',
+    expired: 'trial_expired',
+    payment_failed: 'payment_pending'
+};
 
 // ===== Accounting Center (Phase 1) =====
 // Starter IDR-focused SMB chart-of-accounts catalog. Codes/names are strings
@@ -4943,6 +4958,24 @@ class DataService {
         return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     }
 
+    // Return a patch that corrects any constrained internal_users enum field
+    // whose stored value is out-of-enum (legacy poison), so a reviewer's update
+    // can pass the whole-doc validation rule. Only invalid fields are touched;
+    // valid docs return {}. access_status maps a stray billing status onto the
+    // internal enum; payment_status falls back to the neutral 'pending'.
+    _healInternalEnumFields(existing = {}) {
+        const out = {};
+        if ('access_status' in existing && existing.access_status != null
+            && !ACCESS_STATUSES.includes(existing.access_status)) {
+            out.access_status = BILLING_TO_ACCESS_STATUS[existing.access_status] || 'trial_active';
+        }
+        if ('payment_status' in existing && existing.payment_status != null
+            && !INTERNAL_PAYMENT_STATUSES.includes(existing.payment_status)) {
+            out.payment_status = 'pending';
+        }
+        return out;
+    }
+
     // Apply a reviewer status change to internal_users/{userId} and write the
     // matching internal audit log atomically (single writeBatch — so a status
     // change is never left unlogged). `auditContext` must carry primitive
@@ -4954,7 +4987,13 @@ class DataService {
         if (!beforeSnap.exists()) {
             throw new Error('internal-user-not-found');
         }
-        const payload = this._cleanDefined({ ...statusPayload, updated_at: serverTimestamp() });
+        // Self-heal legacy poison: the internal_users UPDATE rule re-validates the
+        // ENTIRE merged doc against isValidInternalUser, so any pre-existing field
+        // holding an out-of-enum value makes this write fail with permission-denied
+        // — even though the reviewer only touched status fields. Fold corrections
+        // into the SAME batch so the action succeeds and repairs the doc at once.
+        const corrections = this._healInternalEnumFields(beforeSnap.data() || {});
+        const payload = this._cleanDefined({ ...corrections, ...statusPayload, updated_at: serverTimestamp() });
         const batch = writeBatch(this.db);
         batch.update(ref, payload);
         batch.set(doc(collection(this.db, 'internal_audit_logs')), {
