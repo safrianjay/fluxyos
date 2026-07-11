@@ -1077,17 +1077,35 @@
         });
     }
 
+    // Static /id/ mirror pages are already Indonesian: never client-translate
+    // them, lock the switcher UI to ID, and let the English row NAVIGATE back
+    // to the root page (storing the choice first, so the root page doesn't
+    // immediately re-translate itself from an old stored 'id').
+    function isMirrorPage() {
+        return window.location.pathname.indexOf('/id/') === 0;
+    }
+
     function setupClickHandlers() {
         var links = document.querySelectorAll('a');
         links.forEach(function (a) {
             var t = a.textContent.trim();
             if (t.indexOf('English (EN)') === 0) {
                 a.addEventListener('click', function (e) {
+                    if (isMirrorPage()) {
+                        // Follow the link to the root page; persist the choice.
+                        try { localStorage.setItem(STORAGE_KEY, 'en'); } catch (err) {}
+                        return;
+                    }
                     e.preventDefault();
                     if (getLang() !== 'en') setLang('en');
                 });
             } else if (t.indexOf('Bahasa (ID)') === 0) {
                 a.addEventListener('click', function (e) {
+                    if (isMirrorPage()) {
+                        e.preventDefault(); // already on the Bahasa page
+                        try { localStorage.setItem(STORAGE_KEY, 'id'); } catch (err) {}
+                        return;
+                    }
                     e.preventDefault();
                     if (getLang() !== 'id') setLang('id');
                 });
@@ -1096,6 +1114,11 @@
     }
 
     function init() {
+        if (isMirrorPage()) {
+            updateSwitcherUI('id');
+            setupClickHandlers();
+            return;
+        }
         var lang = getLang();
         if (lang === 'id') {
             translatePage();
@@ -1116,6 +1139,11 @@
         var hasNewNodes = mutations.some(function (m) {
             return m.addedNodes && m.addedNodes.length > 0;
         });
+        if (hasNewNodes && isMirrorPage()) {
+            // Mirror pages are statically Indonesian; just wire any late links.
+            setupClickHandlers();
+            return;
+        }
         if (hasNewNodes && getLang() === 'id') {
             translatePage();
             setupClickHandlers();
