@@ -819,6 +819,10 @@ service cloud.firestore {
         && (!('last_active_at' in data) || data.last_active_at is timestamp)
         && (!('archived' in data) || data.archived is bool)
         && (!('archived_at' in data) || data.archived_at == null || data.archived_at is timestamp)
+        && (!('workspace_role' in data) || data.workspace_role == null
+          || (data.workspace_role is string && data.workspace_role.size() <= 40))
+        && (!('organization' in data) || data.organization == null
+          || (data.organization is string && data.organization.size() <= 160))
         && (!('payment_proof_file_name' in data) || data.payment_proof_file_name == null
           || (data.payment_proof_file_name is string && data.payment_proof_file_name.size() <= 240))
         && (!('last_internal_note' in data) || data.last_internal_note == null

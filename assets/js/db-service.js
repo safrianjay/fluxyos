@@ -5030,12 +5030,21 @@ class DataService {
         // Always refresh identity + onboarding flag. Only write profile-derived
         // fields when an onboarding profile actually loaded, so a transient read
         // failure or a pre-onboarding login never wipes a stored business name.
+        // Organization = the workspace/org name the user belongs to (owner's org for
+        // members); falls back to the user's own onboarding business_name. Only
+        // written when we have a value, so a caller that omits it (e.g. onboarding
+        // pre-workspace) never clobbers a good mirror with null.
+        const orgValue = opts.organization != null
+            ? opts.organization
+            : (profile ? profile.business_name : undefined);
         const profileFields = this._cleanDefined({
             email: this._nullableString(opts.email, 160),
             display_name: this._nullableString(opts.display_name, 160),
             business_name: profile ? this._nullableString(profile.business_name, 120) : undefined,
             role: profile ? this._nullableString(profile.role, 80) : undefined,
             phone_number: profile ? this._nullableString(phoneParts || null, 40) : undefined,
+            organization: orgValue !== undefined ? this._nullableString(orgValue, 160) : undefined,
+            workspace_role: opts.workspace_role != null ? this._nullableString(opts.workspace_role, 40) : undefined,
             onboarding_completed: onboardingCompleted,
             updated_at: serverTimestamp()
         });
@@ -5050,6 +5059,8 @@ class DataService {
                 business_name: profileFields.business_name || null,
                 role: profileFields.role || null,
                 phone_number: profileFields.phone_number || null,
+                organization: profileFields.organization || null,
+                workspace_role: profileFields.workspace_role || null,
                 account_status: accountStatus,
                 kyc_status: kycStatus,
                 payment_status: 'pending',

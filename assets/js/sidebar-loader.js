@@ -564,7 +564,12 @@
                         const ds = new DataService(app);
                         return ds.syncSelfToInternalIndex(user.uid, {
                             email: user.email || null,
-                            display_name: user.displayName || null
+                            display_name: user.displayName || null,
+                            // Workspace role + org name for the internal console's
+                            // Account Type / Organization columns. Solo owners
+                            // (ws === null) are owners of their own workspace.
+                            workspace_role: (ws && ws.role) || 'owner',
+                            organization: (ws && ws.name) || undefined
                         }).then(() => {
                             // Presence heartbeat: stamp last_active_at now, then on
                             // real interaction (so an actively-used tab keeps beating,

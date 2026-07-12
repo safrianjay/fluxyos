@@ -202,6 +202,19 @@ function userDisplayName(u) {
     return u.display_name || u.email || u.user_id || 'Unknown user';
 }
 
+// Workspace permission role → display label (matches perms-service ROLE_META).
+// There is no "member" role; the real set is owner/admin/finance/accountant/viewer.
+const WORKSPACE_ROLE_LABELS = { owner: 'Owner', admin: 'Admin', finance: 'Finance', accountant: 'Accountant', viewer: 'Viewer' };
+
+// Users table "Account Type" cell — the user's actual workspace role. Owner is
+// emphasised (blue); other roles read neutral. "—" until the mirror populates.
+function accountTypeCell(u) {
+    const r = u.workspace_role;
+    if (!r) return '<span class="text-gray-400">—</span>';
+    const label = WORKSPACE_ROLE_LABELS[r] || labelize(r);
+    return `<span class="ibadge ibadge--${r === 'owner' ? 'blue' : 'neutral'}">${escapeHtml(label)}</span>`;
+}
+
 // =============================================================================
 // Credential gate
 // =============================================================================
@@ -300,7 +313,7 @@ function renderLoading() {
     const shimmerRows = (cols) => Array.from({ length: 5 }).map(() =>
         `<tr>${Array.from({ length: cols }).map(() => '<td class="px-5 py-4"><div class="ishimmer h-4 w-full max-w-[120px]"></div></td>').join('')}</tr>`
     ).join('');
-    $('users-tbody').innerHTML = shimmerRows(9);
+    $('users-tbody').innerHTML = shimmerRows(11);
     $('kyc-tbody').innerHTML = shimmerRows(5);
     $('payment-tbody').innerHTML = shimmerRows(6);
     $('audit-tbody').innerHTML = shimmerRows(6);
@@ -450,7 +463,7 @@ function applyFilters(rows) {
         if (f.payment && x.payment_status !== f.payment) return false;
         if (f.access && !matchesAccessFilter(x, f.access)) return false;
         if (q) {
-            const hay = [x.email, x.business_name, x.phone_number, x.display_name].map(v => String(v || '').toLowerCase()).join(' ');
+            const hay = [x.email, x.business_name, x.organization, x.phone_number, x.display_name].map(v => String(v || '').toLowerCase()).join(' ');
             if (!hay.includes(q)) return false;
         }
         return true;
@@ -470,6 +483,8 @@ function userRow(x) {
             <div class="text-[12px] text-gray-500 truncate max-w-[200px]">${escapeHtml(x.email || '—')}</div>
         </td>
         <td class="px-5 py-3.5 text-gray-700">${escapeHtml(x.business_name || '—')}</td>
+        <td class="px-5 py-3.5 text-gray-700">${escapeHtml(x.organization || '—')}</td>
+        <td class="px-5 py-3.5">${accountTypeCell(x)}</td>
         <td class="px-5 py-3.5 mono text-[13px] text-gray-600">${escapeHtml(x.phone_number || '—')}</td>
         <td class="px-5 py-3.5">${accessBadge(x)}</td>
         <td class="px-5 py-3.5 text-[13px] text-gray-600">${escapeHtml(trialRemainingText(x))}</td>
