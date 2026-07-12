@@ -75,7 +75,7 @@ const state = {
     drawerUserId: null,
     // 'user' (review drawer) | 'voucher-create' | 'voucher-usage'
     drawerMode: null,
-    filters: { search: '', account: '', kyc: '', payment: '', access: '' }
+    filters: { search: '', account: '', kyc: '', payment: '', access: '', view: 'active' }
 };
 
 // =============================================================================
@@ -352,7 +352,9 @@ function renderAll() {
 
 // ----- Overview -----
 function renderOverview() {
-    const u = state.users;
+    // Overview reflects active users only — archived accounts drop out of every
+    // KPI and the needs-action list.
+    const u = state.users.filter(x => x.archived !== true);
     const count = (fn) => u.filter(fn).length;
     const cards = [
         { label: 'Total users', value: u.length, tone: 'neutral' },
@@ -440,6 +442,9 @@ function applyFilters(rows) {
     const f = state.filters;
     const q = f.search.trim().toLowerCase();
     return rows.filter(x => {
+        const arch = x.archived === true;
+        if (f.view === 'archived') { if (!arch) return false; }
+        else if (arch) return false;
         if (f.account && x.account_status !== f.account) return false;
         if (f.kyc && x.kyc_status !== f.kyc) return false;
         if (f.payment && x.payment_status !== f.payment) return false;
@@ -459,9 +464,6 @@ function isLiveTrial(x) {
 
 function userRow(x) {
     const uid = x.user_id || x.id;
-    const extendBtn = isLiveTrial(x)
-        ? `<button class="text-[13px] font-medium text-gray-500 hover:text-gray-900 ml-3" data-extend-trial="${escapeHtml(uid)}" aria-haspopup="menu">Extend Trial</button>`
-        : '';
     return `<tr class="hover:bg-gray-50/60">
         <td class="px-5 py-3.5">
             <div class="font-medium text-gray-900 truncate max-w-[200px]">${escapeHtml(userDisplayName(x))}</div>
@@ -477,8 +479,12 @@ function userRow(x) {
         <td class="px-5 py-3.5">${badge(x.account_status, ACCOUNT_TONE)}</td>
         <td class="px-5 py-3.5 text-[13px] text-gray-500">${fmtDate(x.created_at)}</td>
         <td class="px-5 py-3.5 text-right whitespace-nowrap">
-            <button class="text-[13px] font-semibold text-[#EA580C] hover:underline" data-review="${escapeHtml(uid)}">Review</button>${extendBtn}
-            <button class="text-[13px] font-medium text-gray-500 hover:text-gray-900 ml-3" data-copy="${escapeHtml(uid)}">Copy UID</button>
+            <div class="inline-flex items-center gap-1.5 justify-end">
+                <button class="text-[13px] font-semibold text-[#EA580C] hover:underline" data-review="${escapeHtml(uid)}">Review</button>
+                <button type="button" class="voucher-action-trigger" data-user-menu="${escapeHtml(uid)}" aria-haspopup="menu" aria-label="More actions">
+                    ${VOUCHER_MENU_ICONS.dots}
+                </button>
+            </div>
         </td>
     </tr>`;
 }
@@ -486,13 +492,18 @@ function userRow(x) {
 function renderUsersTab() {
     const tbody = $('users-tbody');
     const stateEl = $('users-state');
+    const archivedView = state.filters.view === 'archived';
     const rows = applyFilters(state.users);
-    $('users-count').textContent = `${rows.length} of ${state.users.length} user${state.users.length === 1 ? '' : 's'}`;
+    const scopeTotal = state.users.filter(x => (x.archived === true) === archivedView).length;
+    const noun = archivedView ? 'archived user' : 'user';
+    $('users-count').textContent = `${rows.length} of ${scopeTotal} ${noun}${scopeTotal === 1 ? '' : 's'}`;
 
-    if (!state.users.length) {
+    if (!scopeTotal) {
         tbody.innerHTML = '';
         stateEl.classList.remove('hidden');
-        stateEl.innerHTML = stateBlock('No registered users yet', 'Users are added to the internal index automatically when they sign in or complete onboarding.');
+        stateEl.innerHTML = archivedView
+            ? stateBlock('No archived users', 'Archive a user from the ⋮ menu to move them out of the active list; they stay here for review or restore.')
+            : stateBlock('No registered users yet', 'Users are added to the internal index automatically when they sign in or complete onboarding.');
         return;
     }
     if (!rows.length) {
@@ -509,7 +520,7 @@ function renderUsersTab() {
 function renderKycTab() {
     const tbody = $('kyc-tbody');
     const stateEl = $('kyc-state');
-    const rows = state.users.filter(x => x.kyc_status === 'submitted' || x.kyc_status === 'needs_revision');
+    const rows = state.users.filter(x => !x.archived && (x.kyc_status === 'submitted' || x.kyc_status === 'needs_revision'));
     if (!rows.length) {
         tbody.innerHTML = '';
         stateEl.classList.remove('hidden');
@@ -536,7 +547,7 @@ function renderKycTab() {
 function renderPaymentTab() {
     const tbody = $('payment-tbody');
     const stateEl = $('payment-state');
-    const rows = state.users.filter(x => ['submitted', 'under_review', 'pending'].includes(x.payment_status));
+    const rows = state.users.filter(x => !x.archived && ['submitted', 'under_review', 'pending'].includes(x.payment_status));
     if (!rows.length) {
         tbody.innerHTML = '';
         stateEl.classList.remove('hidden');
@@ -599,8 +610,8 @@ function summarizeChange(before, after) {
 }
 
 function renderTabCounts() {
-    const kycCount = state.users.filter(x => x.kyc_status === 'submitted' || x.kyc_status === 'needs_revision').length;
-    const payCount = state.users.filter(x => ['submitted', 'under_review', 'pending'].includes(x.payment_status)).length;
+    const kycCount = state.users.filter(x => !x.archived && (x.kyc_status === 'submitted' || x.kyc_status === 'needs_revision')).length;
+    const payCount = state.users.filter(x => !x.archived && ['submitted', 'under_review', 'pending'].includes(x.payment_status)).length;
     const newLeads = state.leads.filter(l => (l.status || 'new') === 'new').length;
     setTabCount('tab-count-kyc', kycCount);
     setTabCount('tab-count-payment', payCount);
@@ -1201,7 +1212,10 @@ const VOUCHER_MENU_ICONS = {
     usage: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>',
     extend: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M12 14v4M10 16h4"/></svg>',
     disable: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>',
-    delete: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>'
+    delete: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
+    dots: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>',
+    archive: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>',
+    restore: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3.5 13a9 9 0 1 0 2.3-9.3L3 7"/></svg>'
 };
 
 function openVoucherActionMenu(trigger, code) {
@@ -1269,29 +1283,49 @@ function runVoucherMenuAction(act, code) {
     }
 }
 
-// ----- Extend Trial (Users tab) -----
+// ----- Users tab row action menu (⋮) -----
 // Reuses the portaled voucher-menu shell (open/close/position + the delegated
-// outside-click/scroll/resize/Escape handlers) so trial actions look and behave
-// like the voucher row menu.
+// outside-click/scroll/resize/Escape handlers) so user actions look and behave
+// like the voucher row menu. Holds Extend Trial (trial-only) + Archive/Restore.
 const TRIAL_EXTEND_OPTIONS = [
     { duration: '1w', label: 'Extend by 1 week' },
     { duration: '2w', label: 'Extend by 2 weeks' },
     { duration: '1m', label: 'Extend by 1 month' }
 ];
 
-function openTrialExtendMenu(trigger, uid) {
+function openUserActionMenu(trigger, uid) {
     const reopen = voucherMenuTrigger === trigger;
     closeVoucherMenu();
     if (reopen) return; // clicking the open trigger again just closes it
+    const u = state.users.find(x => (x.user_id || x.id) === uid);
+    if (!u) return;
+
+    let html = '';
+    // Extend Trial group — only for live trials, and never for archived users.
+    if (!u.archived && isLiveTrial(u)) {
+        html += '<div class="voucher-menu-label">Extend Trial</div>';
+        html += TRIAL_EXTEND_OPTIONS.map(it =>
+            `<button type="button" role="menuitem" class="voucher-menu-item"
+                data-trial-act="${it.duration}" data-trial-uid="${escapeHtml(uid)}">
+                ${VOUCHER_MENU_ICONS.extend}<span>${it.label}</span>
+            </button>`).join('');
+        html += '<div class="voucher-menu-divider"></div>';
+    }
+    // Archive / Restore.
+    html += u.archived
+        ? `<button type="button" role="menuitem" class="voucher-menu-item"
+                data-user-act="restore" data-user-uid="${escapeHtml(uid)}">
+                ${VOUCHER_MENU_ICONS.restore}<span>Restore user</span>
+            </button>`
+        : `<button type="button" role="menuitem" class="voucher-menu-item is-danger"
+                data-user-act="archive" data-user-uid="${escapeHtml(uid)}">
+                ${VOUCHER_MENU_ICONS.archive}<span>Archive user</span>
+            </button>`;
 
     const menu = document.createElement('div');
     menu.className = 'voucher-menu';
     menu.setAttribute('role', 'menu');
-    menu.innerHTML = TRIAL_EXTEND_OPTIONS.map(it =>
-        `<button type="button" role="menuitem" class="voucher-menu-item"
-            data-trial-act="${it.duration}" data-trial-uid="${escapeHtml(uid)}">
-            ${VOUCHER_MENU_ICONS.extend}<span>${it.label}</span>
-        </button>`).join('');
+    menu.innerHTML = html;
     document.body.appendChild(menu);
     voucherMenuEl = menu;
     voucherMenuTrigger = trigger;
@@ -1299,6 +1333,49 @@ function openTrialExtendMenu(trigger, uid) {
     positionVoucherMenu(menu, trigger);
     document.addEventListener('scroll', closeVoucherMenu, true);
     window.addEventListener('resize', closeVoucherMenu);
+}
+
+// Archive / restore dispatch from the ⋮ menu.
+function runUserMenuAction(uid, act) {
+    closeVoucherMenu();
+    if (act === 'archive') return confirmArchiveUser(uid);
+    if (act === 'restore') return restoreUser(uid);
+}
+
+async function confirmArchiveUser(uid) {
+    const u = state.users.find(x => (x.user_id || x.id) === uid);
+    if (!u) return;
+    const ok = await window.showConfirmDialog({
+        title: 'Archive this user?',
+        body: `<strong>${escapeHtml(userDisplayName(u))}</strong> will move to Archived and drop out of the active lists. All data — transactions, subscriptions, KYC, payments, and audit history — is preserved and can be restored anytime.`,
+        confirmLabel: 'Archive user',
+        cancelLabel: 'Cancel',
+        tone: 'danger'
+    });
+    if (!ok) return;
+    try {
+        await ds.updateInternalUserStatus(uid, { archived: true, archived_at: serverTimestamp() },
+            { action: 'user.archive', before: { archived: false }, after: { archived: true } });
+        u.archived = true;
+        renderAll();
+        window.showToast('User archived', 'success');
+    } catch (e) {
+        window.showToast('Could not archive user', 'error');
+    }
+}
+
+async function restoreUser(uid) {
+    const u = state.users.find(x => (x.user_id || x.id) === uid);
+    if (!u) return;
+    try {
+        await ds.updateInternalUserStatus(uid, { archived: false, archived_at: null },
+            { action: 'user.restore', before: { archived: true }, after: { archived: false } });
+        u.archived = false;
+        renderAll();
+        window.showToast('User restored', 'success');
+    } catch (e) {
+        window.showToast('Could not restore user', 'error');
+    }
 }
 
 async function runTrialExtend(uid, duration) {
@@ -1888,6 +1965,14 @@ function initConsoleEvents() {
     fKyc.addEventListener('change', () => { state.filters.kyc = fKyc.value; renderUsersTab(); });
     fPayment.addEventListener('change', () => { state.filters.payment = fPayment.value; renderUsersTab(); });
     $('users-search').addEventListener('input', (e) => { state.filters.search = e.target.value; renderUsersTab(); });
+    // Active / Archived view toggle.
+    document.querySelectorAll('[data-users-view]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            state.filters.view = btn.dataset.usersView;
+            document.querySelectorAll('[data-users-view]').forEach(b => b.classList.toggle('is-active', b === btn));
+            renderUsersTab();
+        });
+    });
 
     // Vouchers
     $('voucher-create-btn').addEventListener('click', openVoucherCreateDrawer);
@@ -1920,25 +2005,20 @@ function initConsoleEvents() {
         if (state.drawerUserId || state.drawerMode) closeDrawer();
     });
 
-    // Delegated clicks: Review, Copy UID, voucher actions, drawer actions
+    // Delegated clicks: Review, row ⋮ menu (extend/archive/restore), voucher actions, drawer actions
     document.addEventListener('click', (e) => {
         const reviewBtn = e.target.closest('[data-review]');
         if (reviewBtn) { openDrawer(reviewBtn.dataset.review); return; }
-        const copyBtn = e.target.closest('[data-copy]');
-        if (copyBtn) {
-            navigator.clipboard?.writeText(copyBtn.dataset.copy)
-                .then(() => window.showToast('UID copied', 'success'))
-                .catch(() => window.showToast('Could not copy UID', 'error'));
-            return;
-        }
         const voucherMenuBtn = e.target.closest('[data-voucher-menu]');
         if (voucherMenuBtn) { openVoucherActionMenu(voucherMenuBtn, voucherMenuBtn.dataset.voucherMenu); return; }
         const voucherActItem = e.target.closest('[data-voucher-act]');
         if (voucherActItem) { runVoucherMenuAction(voucherActItem.dataset.voucherAct, voucherActItem.dataset.voucherCode); return; }
-        const extendTrialBtn = e.target.closest('[data-extend-trial]');
-        if (extendTrialBtn) { openTrialExtendMenu(extendTrialBtn, extendTrialBtn.dataset.extendTrial); return; }
+        const userMenuBtn = e.target.closest('[data-user-menu]');
+        if (userMenuBtn) { openUserActionMenu(userMenuBtn, userMenuBtn.dataset.userMenu); return; }
         const trialActItem = e.target.closest('[data-trial-act]');
         if (trialActItem) { runTrialExtend(trialActItem.dataset.trialUid, trialActItem.dataset.trialAct); return; }
+        const userActItem = e.target.closest('[data-user-act]');
+        if (userActItem) { runUserMenuAction(userActItem.dataset.userUid, userActItem.dataset.userAct); return; }
         // Click anywhere else with an open menu closes it.
         if (voucherMenuEl && !e.target.closest('.voucher-menu')) closeVoucherMenu();
         const actBtn = e.target.closest('[data-act]');

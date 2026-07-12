@@ -109,6 +109,16 @@
         .voucher-menu-item.is-danger svg { color: #DC2626; }
         .voucher-menu-item.is-danger:hover { background: #FEF2F2; }
         .voucher-menu-divider { height: 1px; margin: 4px 6px; background: #F1F5F9; }
+        .voucher-menu-label { padding: 6px 10px 3px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #94A3B8; }
+
+        /* Active / Archived segmented toggle (Users tab) */
+        .users-view-btn {
+            display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 7px;
+            font-size: 13px; font-weight: 600; color: #64748B; background: transparent;
+            border: none; cursor: pointer; transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+        }
+        .users-view-btn:hover { color: #0B0F19; }
+        .users-view-btn.is-active { color: #EA580C; background: #fff; box-shadow: 0 1px 2px rgba(11,15,25,.08); }
 
         /* User activity (Online / last-seen) */
         .activity-status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
@@ -214,6 +224,10 @@
             <section id="panel-users" class="itab-panel hidden">
                 <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
                     <div class="p-4 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center gap-3">
+                        <div class="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 p-0.5 shrink-0" role="tablist" aria-label="User view">
+                            <button type="button" data-users-view="active" class="users-view-btn is-active">Active</button>
+                            <button type="button" data-users-view="archived" class="users-view-btn">Archived</button>
+                        </div>
                         <div class="relative flex-1 min-w-0">
                             <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                             <input id="users-search" type="text" placeholder="Search email, business, or phone"

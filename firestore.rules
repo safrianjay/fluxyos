@@ -817,6 +817,8 @@ service cloud.firestore {
         && (!('trial_days_remaining' in data) || data.trial_days_remaining == null
           || (data.trial_days_remaining is number && data.trial_days_remaining >= 0))
         && (!('last_active_at' in data) || data.last_active_at is timestamp)
+        && (!('archived' in data) || data.archived is bool)
+        && (!('archived_at' in data) || data.archived_at == null || data.archived_at is timestamp)
         && (!('payment_proof_file_name' in data) || data.payment_proof_file_name == null
           || (data.payment_proof_file_name is string && data.payment_proof_file_name.size() <= 240))
         && (!('last_internal_note' in data) || data.last_internal_note == null
