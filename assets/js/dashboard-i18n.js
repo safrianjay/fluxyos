@@ -109,6 +109,19 @@
         "OpEx & budget could not be opened.": "OpEx & anggaran tidak dapat dibuka.",
         "Breakdown": "Rincian",
         "Exported ✓": "Terekspor ✓",
+        // KPI tooltips (data-tooltip / aria-label on the "?" info buttons)
+        "Total revenue recorded in the selected period — income, refunds, and receivables, summed as absolute amounts.": "Total pendapatan yang tercatat pada periode yang dipilih — pemasukan, refund, dan piutang, dijumlahkan sebagai nilai absolut.",
+        "The same revenue total for the immediately preceding period of equal length, for comparison.": "Total pendapatan yang sama untuk periode sebelumnya dengan panjang yang setara, sebagai pembanding.",
+        "Period revenue divided by the number of revenue records in the period.": "Pendapatan periode dibagi jumlah catatan pendapatan pada periode tersebut.",
+        "Total revenue recorded across all time, regardless of the selected period.": "Total pendapatan yang tercatat sepanjang waktu, terlepas dari periode yang dipilih.",
+        "Net cash from every transaction marked as already received or paid — cash in minus cash out, across all time.": "Kas bersih dari setiap transaksi yang ditandai sudah diterima atau dibayar — kas masuk dikurangi kas keluar, sepanjang waktu.",
+        "Money received in the selected period from transactions marked as actual cash in.": "Uang yang diterima pada periode yang dipilih dari transaksi yang ditandai sebagai kas masuk aktual.",
+        "Money paid out in the selected period from transactions marked as actual cash out.": "Uang yang dibayarkan pada periode yang dipilih dari transaksi yang ditandai sebagai kas keluar aktual.",
+        "Latest reported balance across your active bank accounts.": "Saldo terakhir yang dilaporkan di seluruh rekening bank aktif Anda.",
+        "Operating spend recorded in the selected period — expenses, fees, and taxes.": "Belanja operasional yang tercatat pada periode yang dipilih — pengeluaran, biaya, dan pajak.",
+        "Total amount of your current active budget, measured over the budget’s own period.": "Total anggaran aktif Anda saat ini, diukur pada periode anggaran itu sendiri.",
+        "Actual plus committed spend as a percentage of the active budget.": "Belanja aktual ditambah komitmen sebagai persentase dari anggaran aktif.",
+        "Budget left after actual and committed spend. Negative means over budget.": "Sisa anggaran setelah belanja aktual dan komitmen. Negatif berarti melebihi anggaran.",
 
         // ── Sidebar: section labels ──────────────────────────────────────────
         "Command": "Pusat Kendali",

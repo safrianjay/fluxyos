@@ -137,10 +137,10 @@ function render() {
 
     // KPI strip
     renderKpiStrip('cash-kpis', [
-        { label: 'Cash position', value: formatSignedRp(net), sub: `${state.ledgerCash.recordCount || 0} cash records`, negative: net < 0 },
-        { label: 'Cash in (period)', value: formatRp(periodIn), sub: `${state.periodTx.filter(t => t.cash_direction === 'in').length} inflow record(s)`, tone: 'positive' },
-        { label: 'Cash out (period)', value: formatRp(periodOut), sub: `${state.periodTx.filter(t => t.cash_direction === 'out').length} outflow record(s)`, negative: periodOut > 0 },
-        { label: 'Bank cash', value: formatRp(bankCash), sub: state.accounts.length ? `${state.accounts.filter(a => a.status !== 'archived').length} account(s)` : 'No bank accounts linked' }
+        { label: 'Cash position', value: formatSignedRp(net), sub: `${state.ledgerCash.recordCount || 0} cash records`, negative: net < 0, info: 'Net cash from every transaction marked as already received or paid — cash in minus cash out, across all time.' },
+        { label: 'Cash in (period)', value: formatRp(periodIn), sub: `${state.periodTx.filter(t => t.cash_direction === 'in').length} inflow record(s)`, tone: 'positive', info: 'Money received in the selected period from transactions marked as actual cash in.' },
+        { label: 'Cash out (period)', value: formatRp(periodOut), sub: `${state.periodTx.filter(t => t.cash_direction === 'out').length} outflow record(s)`, negative: periodOut > 0, info: 'Money paid out in the selected period from transactions marked as actual cash out.' },
+        { label: 'Bank cash', value: formatRp(bankCash), sub: state.accounts.length ? `${state.accounts.filter(a => a.status !== 'archived').length} account(s)` : 'No bank accounts linked', info: 'Latest reported balance across your active bank accounts.' }
     ]);
 
     // Trend — running balance (opening + cumulative period flows)

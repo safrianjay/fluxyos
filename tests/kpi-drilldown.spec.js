@@ -53,6 +53,18 @@ for (const p of PAGES) {
             return el && el.querySelectorAll('.kpi-detail-cell').length >= 3;
         }, p.kpis, { timeout: 15_000 });
 
+        // Every KPI cell has a "?" info button with a tooltip.
+        const cellCount = await page.locator(`${p.kpis} .kpi-detail-cell`).count();
+        const infoCount = await page.locator(`${p.kpis} .metric-info[data-tooltip]`).count();
+        expect(infoCount, 'a "?" info button on every KPI cell').toBe(cellCount);
+
+        // Custom period reveals the date-range picker.
+        const pickerHost = page.locator(`#${p.key === 'cash' ? 'cash' : p.key === 'opex' ? 'opex' : 'revenue'}-date-range-picker`);
+        await page.locator('[data-kpi-period="custom"]').click();
+        await expect(page.locator('[data-kpi-period="custom"]')).toHaveClass(/is-active/);
+        await expect(pickerHost).toBeVisible();
+        await expect.poll(() => new URL(page.url()).searchParams.get('period')).toBe('custom');
+
         // Trend rendered — either an SVG plot or the documented empty-state.
         const trendHtml = (await page.locator(p.trend).innerHTML()).trim();
         expect(trendHtml.length, 'trend rendered something').toBeGreaterThan(0);

@@ -142,10 +142,10 @@ function render() {
     // KPI strip
     const usageBar = usagePct >= 100 ? 'bg-red-500' : usagePct >= 85 ? 'bg-amber-500' : 'bg-emerald-500';
     renderKpiStrip('opex-kpis', [
-        { label: 'OpEx (period)', value: formatRp(total), sub: `${state.rows.length} expense record${state.rows.length === 1 ? '' : 's'}` },
-        { label: 'Active budget', value: budgetTotal > 0 ? formatRp(budgetTotal) : '—', sub: state.usage?.budget ? (state.usage.budget.period_label || state.usage.budget.name || 'Active budget') : 'No active budget' },
-        { label: 'Budget used', value: budgetTotal > 0 ? formatPercent(usagePct) : 'N/A', sub: budgetTotal > 0 ? `${formatRp(summary.total_actual_used)} actual · ${formatRp(summary.total_committed)} committed` : 'Set a budget to track this', progress: budgetTotal > 0 ? usagePct : null, barCls: usageBar },
-        { label: 'Remaining', value: budgetTotal > 0 ? formatRp(remaining) : '—', sub: budgetTotal > 0 ? (remaining < 0 ? 'Over budget' : 'Left in active budget') : 'No active budget', negative: budgetTotal > 0 && remaining < 0 }
+        { label: 'OpEx (period)', value: formatRp(total), sub: `${state.rows.length} expense record${state.rows.length === 1 ? '' : 's'}`, info: 'Operating spend recorded in the selected period — expenses, fees, and taxes.' },
+        { label: 'Active budget', value: budgetTotal > 0 ? formatRp(budgetTotal) : '—', sub: state.usage?.budget ? (state.usage.budget.period_label || state.usage.budget.name || 'Active budget') : 'No active budget', info: 'Total amount of your current active budget, measured over the budget’s own period.' },
+        { label: 'Budget used', value: budgetTotal > 0 ? formatPercent(usagePct) : 'N/A', sub: budgetTotal > 0 ? `${formatRp(summary.total_actual_used)} actual · ${formatRp(summary.total_committed)} committed` : 'Set a budget to track this', progress: budgetTotal > 0 ? usagePct : null, barCls: usageBar, info: 'Actual plus committed spend as a percentage of the active budget.' },
+        { label: 'Remaining', value: budgetTotal > 0 ? formatRp(remaining) : '—', sub: budgetTotal > 0 ? (remaining < 0 ? 'Over budget' : 'Left in active budget') : 'No active budget', negative: budgetTotal > 0 && remaining < 0, info: 'Budget left after actual and committed spend. Negative means over budget.' }
     ]);
 
     // Trend — burn over the selected period

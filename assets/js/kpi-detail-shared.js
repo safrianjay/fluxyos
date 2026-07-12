@@ -179,7 +179,20 @@ export function mountPeriodControls({ period, pickerSelector, onChange }) {
 
     buttons.forEach(btn => {
         btn.addEventListener('click', () => {
-            current = resolvePeriod(btn.dataset.kpiPeriod || 'this_month');
+            const mode = btn.dataset.kpiPeriod || 'this_month';
+            if (mode === 'custom') {
+                // Switch to custom mode and reveal the range picker seeded with
+                // the current range. Don't reload yet — the reload happens when
+                // the user Applies a range (picker onChange). Resolving 'custom'
+                // with no dates would silently fall back to this_month.
+                const seedStart = current.start === '1970-01-01' ? monthStartKey() : current.start;
+                current = { mode: 'custom', label: rangeLabel(seedStart, current.end), start: seedStart, end: current.end };
+                picker?.setRange(seedStart, current.end);
+                syncState();
+                writePeriodToUrl(current);
+                return;
+            }
+            current = resolvePeriod(mode);
             if (current.mode !== 'all_time') picker?.setRange(current.start, current.end);
             syncState();
             emit();
@@ -197,7 +210,10 @@ export function renderKpiStrip(containerId, items) {
     if (!host) return;
     host.innerHTML = items.map(item => `
         <article class="kpi-detail-cell">
-            <p class="kpi-detail-cell-label">${escapeHtml(item.label)}</p>
+            <div class="flex items-center gap-1.5">
+                <p class="kpi-detail-cell-label">${escapeHtml(item.label)}</p>
+                ${item.info ? `<button type="button" class="metric-info" tabindex="0" aria-label="${escapeHtml(item.info)}" data-tooltip="${escapeHtml(item.info)}">?</button>` : ''}
+            </div>
             <p class="kpi-detail-cell-value ${item.negative ? 'text-red-600' : (item.tone === 'positive' ? 'text-emerald-600' : 'text-gray-900')}">${escapeHtml(item.value)}</p>
             <p class="kpi-detail-cell-sub">${item.subHtml || escapeHtml(item.sub || '')}</p>
             ${item.progress != null ? `

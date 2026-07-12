@@ -138,10 +138,10 @@ function render() {
     // KPI strip
     const topCategory = topGroup(state.rows, (r) => r.category || 'Uncategorized');
     renderKpiStrip('revenue-kpis', [
-        { label: 'Revenue (period)', value: formatRp(total), sub: `${state.rows.length} record${state.rows.length === 1 ? '' : 's'}` },
-        { label: 'Vs previous period', value: state.period.mode === 'all_time' ? '—' : formatRp(prevTotal), sub: state.period.mode === 'all_time' ? 'Not applicable' : delta.text, tone: state.period.mode === 'all_time' ? '' : delta.tone },
-        { label: 'Average per record', value: formatRp(avg), sub: 'Mean revenue booking' },
-        { label: 'All-time revenue', value: formatRp(allTime), sub: `${state.allRevenue.length} records total` }
+        { label: 'Revenue (period)', value: formatRp(total), sub: `${state.rows.length} record${state.rows.length === 1 ? '' : 's'}`, info: 'Total revenue recorded in the selected period — income, refunds, and receivables, summed as absolute amounts.' },
+        { label: 'Vs previous period', value: state.period.mode === 'all_time' ? '—' : formatRp(prevTotal), sub: state.period.mode === 'all_time' ? 'Not applicable' : delta.text, tone: state.period.mode === 'all_time' ? '' : delta.tone, info: 'The same revenue total for the immediately preceding period of equal length, for comparison.' },
+        { label: 'Average per record', value: formatRp(avg), sub: 'Mean revenue booking', info: 'Period revenue divided by the number of revenue records in the period.' },
+        { label: 'All-time revenue', value: formatRp(allTime), sub: `${state.allRevenue.length} records total`, info: 'Total revenue recorded across all time, regardless of the selected period.' }
     ]);
 
     // Trend
