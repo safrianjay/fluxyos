@@ -127,7 +127,8 @@
                                 <button id="opex-budget-cta" type="button" class="metric-cta" data-finance-setup-open="budget" hidden>Set budget</button>
                             </article>
 
-                            <article class="metric-cell" data-tour-target="dashboard-margin-kpi">
+                            <article class="metric-cell metric-cell-clickable" data-tour-target="dashboard-margin-kpi" data-kpi-nav="margin" role="link" tabindex="0" aria-label="Open Revenue overview (gross margin is revenue-driven)">
+                                <svg class="metric-drill-chevron h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                                 <div class="metric-label">
                                     <span>Gross margin</span>
                                     <button type="button" class="metric-info" aria-label="Gross margin: revenue left after operating expenses." data-tooltip="Revenue left after operating expenses, shown as a percentage. Higher usually means healthier operating room.">?</button>
@@ -142,7 +143,8 @@
                                 </div>
                             </article>
 
-                            <article class="metric-cell">
+                            <article class="metric-cell metric-cell-clickable" data-kpi-nav="pressure" role="link" tabindex="0" aria-label="Open Cash pressure detail page">
+                                <svg class="metric-drill-chevron h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                                 <div class="metric-label">
                                     <span>Cash pressure</span>
                                     <button type="button" class="metric-info" aria-label="Cash pressure: 30-day cash outlook using bank cash, receivables due soon, and payables due soon." data-tooltip="30-day cash outlook: bank cash + receivables due soon - payables due soon.">?</button>
@@ -157,7 +159,8 @@
                                 <div class="metric-pressure-scale"><span>Low</span><span>High</span></div>
                             </article>
 
-                            <article class="metric-cell">
+                            <article class="metric-cell metric-cell-clickable" data-kpi-nav="payables" role="link" tabindex="0" aria-label="Open Bills to review payables">
+                                <svg class="metric-drill-chevron h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                                 <div class="metric-label">
                                     <span>Payables</span>
                                     <button type="button" class="metric-info" aria-label="Payables: money expected to go out." data-tooltip="Money expected to go out from pending payable records and open obligations in the selected period.">?</button>

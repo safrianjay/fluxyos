@@ -7,6 +7,17 @@ All notable changes to FluxyOS are recorded here, newest first.
 ## [Unreleased]
 > Changes in progress — not yet pushed to main
 
+### Added (Cash Pressure drill-down + all Overview KPIs clickable)
+- **Cash Pressure page** (`cash-pressure.html` / `cash-pressure.js`, `/cash-pressure`) — a forward-looking liquidity runway, distinct from Cash Position's realized view: bank cash + receivables due − payables due over a **30/60/90-day horizon toggle**, a cumulative projected-balance runway chart (positive/negative fill + Today at the left edge), Payables/Receivables/Timing breakdowns, and an upcoming-obligations table (open invoices, unpaid bills, subscription renewals, pending payables/receivables) whose rows deep-link to the original record.
+- **All six Overview KPI cards now clickable** — Gross margin → `/revenue-overview` (margin is revenue-driven), Cash pressure → `/cash-pressure`, Payables → `/bill` (Bills already lists payables — reuse instead of a duplicate page). Each has the drill affordance + a "?" tooltip.
+- **"?" info tooltip on every KPI cell** of the detail pages (reuses the shared delegated `.metric-info` tooltip), with Bahasa translations.
+
+### Fixed (Trend chart on long ranges)
+- **All Time (and any long range) trend chart** no longer overlaps its x-axis labels into an unreadable smear, and no longer dives to Rp0 at the right edge. `bucketSeries` now trims empty leading/trailing month/quarter buckets (anchor to real activity), and `renderTrendChart` thins the axis to ~10 evenly-spaced labels and hides point markers past 16 buckets. Applies everywhere the shared chart is used.
+
+### Fixed (KPI detail Custom date filter)
+- The **Custom** period button on the detail pages now works — it previously resolved to `this_month` with no dates and never revealed the range picker. It now switches to custom mode, seeds + shows the `FluxyDateRangePicker`, and reloads on Apply.
+
 ### Added (Dashboard KPI drill-down pages)
 - **Three new KPI detail pages** — the Overview Revenue, Cash position, and OpEx-vs-budget cards are now clickable and open dedicated drill-down pages: `revenue-overview.html` → `/revenue-overview`, `cash-position.html` → `/cash-position`, `opex-budget.html` → `/opex-budget`. Each answers "where is this number coming from?" with a summary/KPI strip, a larger interactive trend chart, contribution breakdowns, and a searchable/sortable/paginated/exportable records table. Flat routes served by Netlify `pretty_urls` — no `netlify.toml` change.
 - **Clickable Overview KPIs** (`dashboard.html` + `dashboard.js`) — the three cards gain `.metric-cell-clickable` (subtle border/shadow lift + drill chevron, keyboard-focusable `role="link"`). A delegated click/Enter/Space handler (`mountKpiDrillNav`) navigates to the matching page, carrying the current dashboard range in the query string (`?period&start&end`) so the detail page opens on the same period. Clicks on the inner "?" info button and the bank/budget CTAs keep their own behavior.

@@ -461,6 +461,7 @@
             // '/revenue-overview' resolve here first (substring precedence).
             'revenue-overview': 'nav-overview',
             'cash-position': 'nav-overview',
+            'cash-pressure': 'nav-overview',
             'opex-budget': 'nav-overview',
             'ai': 'nav-fluxy-ai',
             'ledger': 'nav-ledger',

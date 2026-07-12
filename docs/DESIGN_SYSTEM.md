@@ -362,8 +362,16 @@ read as one system with the rest of the app. Do not invent a new look for them.
   new drill-downs on these instead of copying page-local styles.
 - **Trend chart:** use `renderTrendChart` from `assets/js/kpi-detail-shared.js` — an
   SVG area/line chart with an optional zero-baseline positive/negative fill (Cash
-  position), a dashed "Today" marker, and the shared `attachChartHover` tooltip. Money
-  stays `Inter` `tabular-nums`, Rp with no space.
+  position / Cash pressure), a dashed "Today" marker, and the shared `attachChartHover`
+  tooltip. Money stays `Inter` `tabular-nums`, Rp with no space. For long ranges it
+  self-manages density: `bucketSeries` trims empty leading/trailing month/quarter
+  buckets (anchor to real activity — matches §4a) and the axis thins to ~10 labels
+  (markers hidden past 16 buckets) so All Time never overlaps into an unreadable smear.
+- **Not every KPI needs a bespoke page.** Route each card to the most relevant surface:
+  a dedicated drill-down only when the KPI has its *own* records to explore; otherwise
+  link to the existing page that owns that data (Payables → Bills) or to its primary
+  driver (Gross margin → Revenue). Cloning the full drill-down for a derived ratio or a
+  metric another page already covers is the banned "repetitive cloned pages" pattern.
 
 ### 5. Dialog (Confirmation & Alert Popups)
 

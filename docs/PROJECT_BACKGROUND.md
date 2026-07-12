@@ -53,6 +53,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Dashboard | `dashboard.html` | App | ✅ | **No** | ✅ |
 | Revenue Overview (KPI drill-down) | `revenue-overview.html` | App | ✅ | **No** | ✅ (Overview) |
 | Cash Position (KPI drill-down) | `cash-position.html` | App | ✅ | **No** | ✅ (Overview) |
+| Cash Pressure (KPI drill-down) | `cash-pressure.html` | App | ✅ | **No** | ✅ (Overview) |
 | OpEx & Budget (KPI drill-down) | `opex-budget.html` | App | ✅ | **No** | ✅ (Overview) |
 | Ledger | `ledger.html` | App | ✅ | **No** | ✅ |
 | Revenue Sync | `revenue-sync.html` | App | ✅ | **No** | ✅ |
@@ -92,20 +93,26 @@ rule in [DESIGN_SYSTEM.md → Dashboard Content Width Standard](DESIGN_SYSTEM.md
 
 ### 3a. Dashboard KPI drill-down pages
 
-The Overview **Revenue**, **Cash position**, and **OpEx-vs-budget** KPI cards are
-navigation entry points. Each opens a dedicated detail page that answers "where
-is this number coming from?" with deeper analysis while keeping the FluxyOS
-design language.
+All six Overview KPI cards are navigation entry points, each routed to the most
+relevant surface (bespoke detail page, existing page, or the primary driver) so
+the click always answers "where is this number coming from?" while keeping the
+FluxyOS design language.
 
 - **Routes (flat, Netlify `pretty_urls` — no redirect needed):** `/revenue-overview`
-  (`revenue-overview.html`), `/cash-position` (`cash-position.html`), `/opex-budget`
-  (`opex-budget.html`). Each boots like every app page (Firebase + `applyToPage(user,
-  { pageKey: 'overview' })`) and calls its page module init.
-- **Clickable KPIs:** the three Overview `<article>`s carry `.metric-cell-clickable`
+  (`revenue-overview.html`), `/cash-position` (`cash-position.html`), `/cash-pressure`
+  (`cash-pressure.html`), `/opex-budget` (`opex-budget.html`). Each boots like every
+  app page (Firebase + `applyToPage(user, { pageKey: 'overview' })`) and calls its page
+  module init. Two cards reuse existing pages instead of a bespoke drill-down:
+  **Gross margin → `/revenue-overview`** (margin is revenue-driven; a margin page would
+  just re-present Revenue + OpEx) and **Payables → `/bill`** (Bills already lists
+  payables — avoids a duplicate surface).
+- **Clickable KPIs:** all six Overview `<article>`s carry `.metric-cell-clickable`
   + `data-kpi-nav` + `role="link"` + `tabindex="0"`. `dashboard.js` `mountKpiDrillNav()`
-  navigates on click/Enter/Space, appending the current dashboard range as
-  `?period=<mode>&start=<key>&end=<key>`. Clicks inside a `button`/`a` (the "?" info
-  tooltip and bank/budget CTAs) are ignored so those keep their own action.
+  navigates on click/Enter/Space. `routes` (period-consuming) append the current
+  dashboard range as `?period=<mode>&start=<key>&end=<key>`; `staticRoutes`
+  (`pressure` → `/cash-pressure`, `payables` → `/bill`) navigate plain. Clicks inside a
+  `button`/`a` (the "?" info tooltip and bank/budget CTAs) are ignored so those keep
+  their own action.
 - **Range persistence:** dashboard period state is in-memory only, so the range is
   passed on the URL. Each detail page reads it with `resolvePeriodFromUrl()` and, when
   its own period strip changes, rewrites the URL via `writePeriodToUrl()`
@@ -126,9 +133,22 @@ design language.
   trend), `getBankAccounts` (by-account + Bank cash), `getInvoices`/`getBills` (upcoming
   receivables/payables), `getTransactionsForPeriod` (cash-effective records table).
   OpEx — `getActiveBudget` + `getBudgetUsage` (budget-vs-actual, over-budget) +
-  `getTransactions` filtered to `expense`/`fee`/`tax`.
-- **Row deep-link:** supporting-table rows link to `/ledger?record=<transactionId>` —
-  the Ledger already opens that record's detail drawer (no Ledger change needed).
+  `getTransactions` filtered to `expense`/`fee`/`tax`. Cash Pressure — **forward**
+  liquidity runway (distinct from Cash Position's realized view): `getBankAccounts`
+  (starting balance) + open invoices (`getInvoices`) + unpaid bills (`getBills`) +
+  subscription renewals (`getSubscriptions`) + `pending_receivable`/`pending_payable`
+  transactions, over a **30/60/90-day horizon toggle** (not the historical period
+  strip). Projected balance = bank cash + receivables due − payables due; the trend is
+  a cumulative runway (`bucketSeries` → `toCumulative(bankCash)`) with overdue items
+  clamped to today.
+- **Trend chart robustness (`renderTrendChart`/`bucketSeries`):** month/quarter ranges
+  trim empty leading/trailing buckets (so All Time isn't padded with a flat zero tail —
+  the fix for the line diving to Rp0 at the right edge), and the x-axis thins to ~10
+  evenly-spaced labels (point markers hidden past 16 buckets) so long ranges don't
+  overlap into an unreadable smear.
+- **Row deep-link:** supporting-table rows link to `/ledger?record=<transactionId>` (or
+  `/bill?record=<id>` for payables, `/invoices` / `/subscription` for other obligations)
+  — the target page opens that record's detail drawer (no target change needed).
 - **Extensibility:** additional KPI drill-downs reuse `kpi-detail-shared.js`, add a flat
   `<kpi>.html` + `<kpi>.js`, a `data-kpi-nav`/route entry in `mountKpiDrillNav()`, a
   `pageIdMap` entry in `sidebar-loader.js`, and page registration in

@@ -114,7 +114,8 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Revenue change % (dynamic) | 📋 Planned | Currently hardcoded `"0%"` |
 | "Resolve Now" link | 🔧 Stub | Link exists on Needs Action card, `href="#"` |
 | FluxyOS Brain chat widget (dashboard) | 🔧 Stub | Input + button exist, no submit handler |
-| **KPI drill-down pages** (Revenue / Cash / OpEx) | ✅ Shipped | Revenue, Cash position, OpEx cards are clickable → `/revenue-overview`, `/cash-position`, `/opex-budget`. Shared scaffold `kpi-detail-shared.js`; trend chart + breakdowns + records table; range persists from Overview via URL. Extensible to other KPIs. |
+| **KPI drill-down pages** (Revenue / Cash position / Cash pressure / OpEx) | ✅ Shipped | Clickable → `/revenue-overview`, `/cash-position`, `/cash-pressure`, `/opex-budget`. Shared scaffold `kpi-detail-shared.js`; trend chart + breakdowns + records table; range persists from Overview via URL. Cash Pressure is a 30/60/90-day forward runway. |
+| KPI cards routed to existing pages | ✅ Shipped | Gross margin → Revenue Overview (revenue-driven); Payables → Bills (already lists payables). All six Overview cards now have a purposeful click target + "?" tooltip. |
 
 ### Reports & Exports
 | Feature | Status | Notes |

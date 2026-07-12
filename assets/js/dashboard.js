@@ -179,8 +179,12 @@ function mountDashboardPeriodControls() {
 // period. Clicks on the inner "?" info button or a CTA (bank/budget setup) keep
 // their own behavior and must not navigate.
 function mountKpiDrillNav() {
-    const routes = { revenue: '/revenue-overview', cash: '/cash-position', opex: '/opex-budget' };
+    // margin → Revenue (gross margin is revenue-driven); payables → Bills (that
+    // page already lists payables); pressure → its own forward-looking page.
+    const routes = { revenue: '/revenue-overview', cash: '/cash-position', opex: '/opex-budget', margin: '/revenue-overview' };
+    const staticRoutes = { pressure: '/cash-pressure', payables: '/bill' };
     const buildUrl = (key) => {
+        if (staticRoutes[key]) return staticRoutes[key]; // period range doesn't apply to these
         const base = routes[key];
         if (!base) return null;
         const params = new URLSearchParams();

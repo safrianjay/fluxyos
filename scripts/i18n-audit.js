@@ -49,7 +49,7 @@ const LANDING_PAGES = [
 const APP_PAGES = [
     'dashboard.html', 'ledger.html', 'bill.html', 'subscription.html', 'invoices.html',
     'budget.html', 'budget-period.html', 'budget-allocation.html',
-    'revenue-overview.html', 'cash-position.html', 'opex-budget.html',
+    'revenue-overview.html', 'cash-position.html', 'cash-pressure.html', 'opex-budget.html',
     'accounting.html', 'accounting-journal.html', 'accounting-journal-new.html', 'accounting-records.html',
     'balance-sheet.html', 'balance-sheet-records.html', 'reports.html', 'report-preview.html',
     'tax-center.html', 'revenue-sync.html', 'integration.html', 'ai.html', 'activity-log.html',

@@ -82,6 +82,55 @@ for (const p of PAGES) {
     });
 }
 
+test('cash pressure page boots, horizon + breakdown toggles work', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/cash-pressure');
+    await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });
+    await expect(page.locator('#pressure-kpis .kpi-detail-cell')).toHaveCount(4);
+    // Every KPI has a "?" tooltip.
+    expect(await page.locator('#pressure-kpis .metric-info[data-tooltip]').count()).toBe(4);
+    // Horizon toggle.
+    await page.locator('[data-kpi-horizon="90"]').click();
+    await expect(page.locator('[data-kpi-horizon="90"]')).toHaveClass(/is-active/);
+    await expect(page.locator('#pressure-horizon-label')).toHaveText(/90/);
+    // Breakdown dims.
+    for (const dim of ['payables', 'receivables', 'timing']) {
+        await page.locator(`[data-breakdown-dim="${dim}"]`).click();
+        await expect(page.locator(`[data-breakdown-dim="${dim}"]`)).toHaveClass(/is-active/);
+    }
+    await expect(page.locator('#pressure-table-body tr').first()).toBeVisible();
+    expect(errors, 'no uncaught errors on /cash-pressure').toEqual([]);
+});
+
+test('All Time trend thins x-axis labels (no overlap smear)', async ({ page }) => {
+    await page.goto('/revenue-overview?period=all_time');
+    await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });
+    // The trend must render an SVG and show at most ~11 non-empty axis labels
+    // even across many quarters (thinning) — the reported All-Time overlap bug.
+    await expect(page.locator('#revenue-trend svg')).toBeVisible();
+    const shownLabels = await page.locator('#revenue-trend >> css=span.truncate').evaluateAll(
+        (spans) => spans.filter((s) => (s.textContent || '').trim().length > 0).length
+    );
+    expect(shownLabels).toBeLessThanOrEqual(11);
+});
+
+test('Overview margin/pressure/payables cards route correctly', async ({ page }) => {
+    await page.goto('/dashboard');
+    await page.waitForSelector('[data-kpi-nav="margin"]', { timeout: 25_000 });
+    await page.locator('[data-kpi-nav="margin"] .metric-value').click();
+    await page.waitForURL(/\/revenue-overview/, { timeout: 15_000 });
+
+    await page.goto('/dashboard');
+    await page.waitForSelector('[data-kpi-nav="pressure"]', { timeout: 25_000 });
+    await page.locator('[data-kpi-nav="pressure"]').click();
+    await page.waitForURL(/\/cash-pressure/, { timeout: 15_000 });
+
+    await page.goto('/dashboard');
+    await page.waitForSelector('[data-kpi-nav="payables"]', { timeout: 25_000 });
+    await page.locator('[data-kpi-nav="payables"]').click();
+    await page.waitForURL(/\/bill/, { timeout: 15_000 });
+});
+
 test('period strip updates the URL and reloads', async ({ page }) => {
     await page.goto('/revenue-overview?period=this_month');
     await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });

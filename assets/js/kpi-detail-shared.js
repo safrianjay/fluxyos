@@ -268,7 +268,7 @@ export function bucketSeries(records, startKey, endKey, { dateOf, valueOf }) {
     const spanDays = Math.max(1, Math.round((e - s) / 86400000) + 1);
     const gran = spanDays <= 14 ? 'day' : spanDays <= 93 ? 'week' : spanDays <= 366 ? 'month' : 'quarter';
 
-    const buckets = [];
+    let buckets = [];
     const label = (d, g) => {
         if (g === 'day') return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
         if (g === 'week') return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
@@ -301,6 +301,16 @@ export function bucketSeries(records, startKey, endKey, { dateOf, valueOf }) {
             }
         }
     });
+
+    // Anchor month/quarter ranges to real activity: trim leading and trailing
+    // empty buckets so a long range (esp. All Time) isn't padded out with a flat
+    // zero tail — which also made the line dive to Rp0 at the right edge.
+    if ((gran === 'month' || gran === 'quarter') && buckets.length > 2) {
+        let lo = 0, hi = buckets.length - 1;
+        while (lo < hi && buckets[lo].value === 0) lo++;
+        while (hi > lo && buckets[hi].value === 0) hi--;
+        if (hi - lo + 1 >= 2) buckets = buckets.slice(lo, hi + 1);
+    }
 
     const now = new Date();
     let todayIndex = buckets.findIndex(b => now >= b.start && now <= new Date(b.end.getFullYear(), b.end.getMonth(), b.end.getDate(), 23, 59, 59));
@@ -398,7 +408,7 @@ export function renderTrendChart(containerId, opts = {}) {
                     ${todayX != null ? `<line x1="${todayX.toFixed(1)}" x2="${todayX.toFixed(1)}" y1="0" y2="${height}" stroke="#94A3B8" stroke-width="1" stroke-dasharray="3 3"></line>` : ''}
                     <polygon points="${area}" fill="url(#${gid})"></polygon>
                     <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
-                    ${pts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#fff" stroke="${p.v < 0 ? negColor : color}" stroke-width="2"></circle>`).join('')}
+                    ${n <= 16 ? pts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#fff" stroke="${p.v < 0 ? negColor : color}" stroke-width="2"></circle>`).join('') : ''}
                 </svg>
                 ${todayX != null ? `<span class="absolute -translate-x-1/2 rounded bg-slate-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white" style="left:${todayX.toFixed(1)}px; top:2px;">Today</span>` : ''}
                 <div class="absolute inset-0 flex">
@@ -409,7 +419,16 @@ export function renderTrendChart(containerId, opts = {}) {
         <div class="mt-1.5 flex gap-2">
             <div class="w-16 flex-shrink-0"></div>
             <div class="flex-1 flex">
-                ${pts.map(p => `<span class="flex-1 text-center text-[10px] text-gray-400 truncate">${escapeHtml(p.label)}</span>`).join('')}
+                ${(() => {
+                    // Thin x-axis labels so a long range (many weeks/months/quarters)
+                    // doesn't overlap into an unreadable smear. Show ~10 evenly, plus
+                    // always the last. Empty slots keep the spacing aligned to points.
+                    const stride = Math.max(1, Math.ceil(n / 10));
+                    return pts.map((p, i) => {
+                        const show = (i % stride === 0) || i === n - 1;
+                        return `<span class="flex-1 text-center text-[10px] text-gray-400 truncate">${show ? escapeHtml(p.label) : ''}</span>`;
+                    }).join('');
+                })()}
             </div>
         </div>`;
 
