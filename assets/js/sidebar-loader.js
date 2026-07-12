@@ -456,6 +456,12 @@
             // every /settings-* page, /settings-team highlights the Settings item.
             'settings': 'nav-settings',
             'dashboard': 'nav-overview',
+            // Overview KPI drill-down detail pages highlight Overview. Listed
+            // before 'budget'/'revenue-sync' so '/opex-budget' and
+            // '/revenue-overview' resolve here first (substring precedence).
+            'revenue-overview': 'nav-overview',
+            'cash-position': 'nav-overview',
+            'opex-budget': 'nav-overview',
             'ai': 'nav-fluxy-ai',
             'ledger': 'nav-ledger',
             'revenue-sync': 'nav-revenue-sync',

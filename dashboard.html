@@ -57,7 +57,8 @@
 
                         <!-- 1. Connected summary board -->
                         <section class="summary-board" aria-label="Finance summary">
-                            <article class="metric-cell metric-cell-trend" data-tour-target="dashboard-revenue-kpi">
+                            <article class="metric-cell metric-cell-trend metric-cell-clickable" data-tour-target="dashboard-revenue-kpi" data-kpi-nav="revenue" role="link" tabindex="0" aria-label="Open Revenue overview detail page">
+                                <svg class="metric-drill-chevron h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                                 <div class="metric-label">
                                     <span>Revenue</span>
                                     <button type="button" class="metric-info" aria-label="Revenue: total income recorded in the selected period." data-tooltip="Total income recorded in the selected period. Includes completed income and legacy revenue records.">?</button>
@@ -80,7 +81,8 @@
                                 <svg id="kpi-revenue-sparkline" class="metric-sparkline metric-sparkline-revenue" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true"></svg>
                             </article>
 
-                            <article class="metric-cell metric-cell-mini metric-cell-bank-trend">
+                            <article class="metric-cell metric-cell-mini metric-cell-bank-trend metric-cell-clickable" data-kpi-nav="cash" role="link" tabindex="0" aria-label="Open Cash position detail page">
+                                <svg class="metric-drill-chevron h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                                 <div class="metric-label">
                                     <span>Cash position</span>
                                     <button type="button" class="metric-info" aria-label="Cash position: net cash from transactions marked as already received or paid." data-tooltip="Net cash from all transactions you marked 'Already received / paid'. Updates immediately when you add transactions. Bank cash balance shows your real bank account if connected.">?</button>
@@ -99,7 +101,8 @@
                                 <svg id="kpi-bank-cash-sparkline" class="metric-sparkline metric-sparkline-bank" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true"></svg>
                             </article>
 
-                            <article class="metric-cell metric-cell-mini" data-tour-target="dashboard-opex-kpi">
+                            <article class="metric-cell metric-cell-mini metric-cell-clickable" data-tour-target="dashboard-opex-kpi" data-kpi-nav="opex" role="link" tabindex="0" aria-label="Open OpEx and Budget detail page">
+                                <svg class="metric-drill-chevron h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                                 <div class="metric-label">
                                     <span>OpEx vs budget</span>
                                     <button type="button" class="metric-info" aria-label="OpEx vs budget: operating spend this month vs the monthly slice of your active budget." data-tooltip="Operating spend in the selected period vs the monthly slice of your active budget. Quarterly budgets divide by 3, yearly by 12 — the full period total still shows on the Budgets page.">?</button>

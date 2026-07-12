@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Cash Position</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="/assets/css/platform-learning.css">
+    <style>
+        body { font-family: Inter, sans-serif; }
+        .kpi-breadcrumb a:hover { color: #EA580C; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="min-h-16 bg-white border-b border-gray-200 flex flex-wrap items-center justify-between px-6 py-3 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-4">
+            <div class="flex items-center gap-4 min-w-0">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <a href="/dashboard" class="inline-flex items-center gap-2 text-[14px] font-semibold text-gray-500 hover:text-gray-900 transition-colors min-w-0">
+                    <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    <span class="truncate">Back to Overview</span>
+                </a>
+            </div>
+            <div class="flex items-center gap-3 flex-wrap">
+                <div class="kpi-period-controls" data-kpi-period-strip aria-label="Cash period">
+                    <button type="button" data-kpi-period="this_month" class="kpi-period-btn is-active">This Month</button>
+                    <button type="button" data-kpi-period="last_month" class="kpi-period-btn">Last Month</button>
+                    <button type="button" data-kpi-period="year_to_date" class="kpi-period-btn">YTD</button>
+                    <button type="button" data-kpi-period="all_time" class="kpi-period-btn">All Time</button>
+                    <button type="button" data-kpi-period="custom" class="kpi-period-btn">Custom</button>
+                </div>
+                <div id="cash-date-range-picker" style="display:none"></div>
+                <button onclick="window.toggleFluxyAI()" data-tour-target="fluxy-ai-entry" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Fluxy AI
+                </button>
+            </div>
+        </header>
+
+        <div class="fluxy-page-shell">
+            <div class="fluxy-page-canvas">
+
+                <div id="kpi-loading" class="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center text-[14px] text-gray-400">
+                    Loading cash position…
+                </div>
+
+                <div id="kpi-error" class="hidden"></div>
+
+                <div id="kpi-content" class="hidden space-y-6">
+                    <!-- Header -->
+                    <section>
+                        <nav class="kpi-breadcrumb flex items-center gap-1.5 text-[12px] text-gray-400">
+                            <a href="/dashboard" class="hover:text-gray-700">Overview</a>
+                            <span>/</span>
+                            <span class="text-gray-600 font-semibold">Cash Position</span>
+                        </nav>
+                        <div class="mt-2 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                            <div class="min-w-0">
+                                <h1 class="text-2xl leading-tight font-bold tracking-tight text-gray-900">Cash Position</h1>
+                                <p class="mt-1 text-[13px] text-gray-500">How cash has moved in and out, your running balance, and what's still coming in the selected period.</p>
+                            </div>
+                            <div class="text-left lg:text-right flex-shrink-0">
+                                <p class="text-[11px] uppercase tracking-wide text-gray-400">Ledger cash position</p>
+                                <p class="text-2xl font-bold tracking-tight text-gray-900 tabular-nums" id="cash-headline">Rp0</p>
+                                <p class="mt-0.5 text-[12px] font-semibold" id="cash-compare">—</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- KPI strip -->
+                    <section id="cash-kpis" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"></section>
+
+                    <!-- Trend + breakdown -->
+                    <section class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.9fr)]">
+                            <div class="p-5 sm:p-6 xl:border-r border-gray-100 min-w-0">
+                                <div class="flex items-center justify-between gap-3">
+                                    <h2 class="text-[12px] font-semibold uppercase tracking-wide text-gray-600">Cash balance</h2>
+                                    <p class="text-[12px] text-gray-400">Running balance over the period</p>
+                                </div>
+                                <div id="cash-trend" class="mt-5 min-w-0"></div>
+                            </div>
+                            <div class="p-5 sm:p-6 min-w-0">
+                                <div class="flex items-center justify-between gap-3">
+                                    <h2 class="text-[12px] font-semibold uppercase tracking-wide text-gray-600">Breakdown</h2>
+                                    <div class="inline-flex items-center gap-1 rounded-lg bg-gray-50 border border-gray-200 p-0.5">
+                                        <button type="button" data-breakdown-dim="accounts" class="kpi-dim-btn is-active px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Accounts</button>
+                                        <button type="button" data-breakdown-dim="flow" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">In / Out</button>
+                                        <button type="button" data-breakdown-dim="upcoming" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Upcoming</button>
+                                    </div>
+                                </div>
+                                <div id="cash-breakdown" class="mt-3 -mx-5 sm:-mx-6 max-h-[280px] overflow-y-auto"></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Supporting table -->
+                    <section class="fluxy-table-card">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">Cash movements</h2>
+                                <p class="fluxy-table-subtitle" id="cash-table-subtitle">Transactions marked as already received or paid. Click a row to open it in the Ledger.</p>
+                            </div>
+                            <div class="fluxy-table-actions">
+                                <input id="cash-search" type="search" placeholder="Search cash movements…" class="px-3 py-2 border border-gray-200 rounded-lg text-[13px] w-full sm:w-56" aria-label="Search cash movements">
+                                <button id="cash-export" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95">Export CSV</button>
+                            </div>
+                        </div>
+                        <div class="fluxy-table-scroll">
+                            <table class="fluxy-table min-w-[820px]">
+                                <thead>
+                                    <tr class="fluxy-table-header">
+                                        <th><button type="button" data-kpi-sort="date" class="inline-flex items-center gap-1">Date <span data-sort-icon></span></button></th>
+                                        <th>Description</th>
+                                        <th><button type="button" data-kpi-sort="category" class="inline-flex items-center gap-1">Category <span data-sort-icon></span></button></th>
+                                        <th>Direction</th>
+                                        <th class="fluxy-table-money"><button type="button" data-kpi-sort="amount" class="inline-flex items-center gap-1">Amount <span data-sort-icon></span></button></th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cash-table-body"></tbody>
+                            </table>
+                        </div>
+                        <div id="cash-pagination" class="fluxy-table-pagination hidden flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 sm:px-6 py-3 border-t border-gray-100">
+                            <p id="cash-page-summary" class="text-[12px] font-medium text-gray-500">Showing 0 records</p>
+                            <div class="flex items-center gap-2">
+                                <button id="cash-prev-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+                                <span id="cash-page-indicator" class="min-w-16 text-center text-[12px] font-bold text-gray-600">1 / 1</span>
+                                <button id="cash-next-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script src="/assets/js/sidebar-loader.js"></script>
+    <script src="/assets/js/shared-dashboard.js"></script>
+    <script src="/assets/js/dashboard-i18n.js"></script>
+    <script src="/assets/js/fluxy-select.js"></script>
+    <script src="/assets/js/date-range-picker.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from '/assets/js/db-service.js';
+        import { applyToPage } from '/assets/js/onboarding-gate.js';
+        import { initCashPositionPage } from '/assets/js/cash-position.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.replace('/login');
+                return;
+            }
+            const gated = await applyToPage(user, { pageKey: 'overview' });
+            if (gated) return;
+            initCashPositionPage({ ds, user });
+        });
+    </script>
+</body>
+</html>

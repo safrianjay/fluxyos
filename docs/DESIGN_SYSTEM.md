@@ -341,6 +341,30 @@ With `preserveAspectRatio="none"` a narrow viewBox stretched to a wide panel
 distorts the line and turns point markers into ovals (visible on short ranges
 like *This/Last Month*). Compute the plot width from the real container width.
 
+### 4b. KPI drill-down detail pages
+
+The Overview Revenue / Cash position / OpEx cards drill into dedicated detail
+pages (`/revenue-overview`, `/cash-position`, `/opex-budget`). These follow the
+`budget-allocation.html` structural template — sticky topbar (back link +
+period strip + Fluxy AI) → `.fluxy-page-shell` → `.fluxy-page-canvas` → header →
+KPI strip → trend + breakdown → records table — and reuse shared classes so they
+read as one system with the rest of the app. Do not invent a new look for them.
+
+- **Clickable KPI affordance:** a card that drills into a detail page uses
+  `.metric-cell-clickable` (dashboard.css): `cursor:pointer`, a subtle border/shadow
+  lift and a `.metric-drill-chevron` that fades in on hover/focus, plus a
+  `focus-visible` ring. It is `role="link"` + `tabindex="0"` and keyboard-activatable.
+  **No orange background** — orange stays an accent (chevron tint only).
+- **Shared detail classes (shared-dashboard.css):** `.kpi-detail-cell` /
+  `-label` / `-value` / `-sub` (KPI strip), `.kpi-detail-breakdown-row` (contribution
+  list), `.kpi-detail-record-row`, `.kpi-period-controls` / `.kpi-period-btn` (the
+  self-contained period strip), and `.kpi-dim-btn` (breakdown dimension toggle). Build
+  new drill-downs on these instead of copying page-local styles.
+- **Trend chart:** use `renderTrendChart` from `assets/js/kpi-detail-shared.js` — an
+  SVG area/line chart with an optional zero-baseline positive/negative fill (Cash
+  position), a dashed "Today" marker, and the shared `attachChartHover` tooltip. Money
+  stays `Inter` `tabular-nums`, Rp with no space.
+
 ### 5. Dialog (Confirmation & Alert Popups)
 
 There is one canonical popup component in FluxyOS. **Never call `window.confirm()` or `window.alert()` directly** — they break the design system and produce unstyled OS dialogs.

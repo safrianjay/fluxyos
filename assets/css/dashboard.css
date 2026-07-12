@@ -969,6 +969,44 @@
 .metric-cell:nth-child(3n) { border-right: 0; }
 .metric-cell:nth-child(n+4) { border-bottom: 0; }
 
+/* KPI cards that drill into a detail page. Subtle lift + pointer only —
+   orange backgrounds are prohibited project-wide, so the affordance is a
+   border tint + shadow, never a fill. Keyboard focus gets a visible ring. */
+.metric-cell-clickable {
+    cursor: pointer;
+    transition: box-shadow 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.metric-cell-clickable:hover {
+    border-color: #D1D5DB;
+    box-shadow: inset 0 0 0 1px rgba(234, 88, 12, 0.28), 0 6px 16px rgba(11, 15, 25, 0.06);
+    z-index: 2;
+}
+.metric-cell-clickable:active { transform: translateY(1px); }
+.metric-cell-clickable:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px #EA580C;
+    z-index: 2;
+}
+/* The drill-in chevron sits top-right, fades in on hover/focus. */
+.metric-cell-clickable .metric-drill-chevron {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    color: #9CA3AF;
+    opacity: 0;
+    transition: opacity 160ms ease, color 160ms ease;
+    z-index: 1;
+}
+.metric-cell-clickable:hover .metric-drill-chevron,
+.metric-cell-clickable:focus-visible .metric-drill-chevron {
+    opacity: 1;
+    color: #EA580C;
+}
+@media (prefers-reduced-motion: reduce) {
+    .metric-cell-clickable,
+    .metric-cell-clickable .metric-drill-chevron { transition: none; }
+}
+
 .metric-cell-trend {
     min-height: 264px;
     padding: 24px;

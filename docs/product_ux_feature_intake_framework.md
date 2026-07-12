@@ -41,8 +41,23 @@ Examples:
 - Invoice Management
 - Vendor Management
 - AI Analyst Page
+- KPI drill-down detail pages (Revenue Overview, Cash Position, OpEx & Budget)
 
 Use this when the feature has its own purpose, navigation, data model, and user workflow.
+
+> **Worked example — KPI drill-down pages.** JTBD: "When I see a headline KPI on
+> the Overview, I want to drill into where it comes from, so I can act without
+> rebuilding the analysis by hand." Page-level feature; entered from the Overview
+> Revenue / Cash position / OpEx cards (nav is the entry point, breadcrumb returns
+> to Overview). Information architecture per page: summary + comparison → trend
+> chart → contribution breakdowns → supporting records table (search/sort/paginate/
+> export, rows deep-link to the Ledger). Data: existing workspace-scoped
+> `DataService` reads only. Acceptance: cards clickable + keyboard-accessible; range
+> persists from Overview via URL; charts use the shared hover; export is
+> access-gated; no page-level horizontal scroll at 375px; console clean; Bahasa
+> localized. Built on the reusable `kpi-detail-shared.js` scaffold so more KPIs can
+> follow the same pattern. Full spec: `PROJECT_BACKGROUND.md` §3a, `SYSTEM_DESIGN.md`
+> §7 "Add a KPI drill-down detail page".
 
 ### B. Section-level feature
 

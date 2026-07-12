@@ -170,7 +170,43 @@ function mountDashboardPeriodControls() {
         });
     });
 
+    mountKpiDrillNav();
     updateDashboardPeriodControlState();
+}
+
+// Revenue / Cash position / OpEx KPI cards drill into dedicated detail pages,
+// carrying the current dashboard range so the detail page opens on the same
+// period. Clicks on the inner "?" info button or a CTA (bank/budget setup) keep
+// their own behavior and must not navigate.
+function mountKpiDrillNav() {
+    const routes = { revenue: '/revenue-overview', cash: '/cash-position', opex: '/opex-budget' };
+    const buildUrl = (key) => {
+        const base = routes[key];
+        if (!base) return null;
+        const params = new URLSearchParams();
+        params.set('period', dashboardPeriodMode);
+        if (dashboardPeriodMode !== 'all_time') {
+            params.set('start', dashboardRangeStart);
+            params.set('end', dashboardRangeEnd);
+        }
+        return `${base}?${params.toString()}`;
+    };
+    const navigate = (card) => {
+        const url = buildUrl(card.dataset.kpiNav);
+        if (url) window.location.href = url;
+    };
+    document.querySelectorAll('[data-kpi-nav]').forEach(card => {
+        card.addEventListener('click', (event) => {
+            if (event.target.closest('button, a')) return; // info "?" + CTAs keep their own action
+            navigate(card);
+        });
+        card.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            if (event.target.closest('button, a')) return;
+            event.preventDefault();
+            navigate(card);
+        });
+    });
 }
 
 function updateDashboardPeriodControlState() {

@@ -387,6 +387,31 @@ Rules:
 5. Document the page in `PROJECT_BACKGROUND.md` and `ROADMAP.md`.
 6. Add QA coverage in `QA_CHECKLIST.md`.
 
+### Add a KPI drill-down detail page
+
+The Overview KPI cards drill into dedicated detail pages built on one shared
+scaffold (`assets/js/kpi-detail-shared.js`). To add another drill-down:
+
+1. Create a flat `<kpi>.html` (clone `revenue-overview.html`: topbar with back
+   link + `.kpi-period-controls` strip + range picker + Fluxy AI; `.fluxy-page-shell`
+   → `.fluxy-page-canvas`; loading/error/content slots; KPI strip; trend + breakdown
+   2-col; `fluxy-table-card`). Flat routes are served by Netlify `pretty_urls` — no
+   `netlify.toml` entry unless the page needs a path parameter.
+2. Create `<kpi>.js` exporting `init…Page({ ds, user })`: `resolvePeriodFromUrl()`,
+   `mountPeriodControls(...)`, `createSupportingTable(...)`, fetch via `DataService`
+   (never hardcode `users/…` for finance), then `renderKpiStrip` / `renderTrendChart`
+   / `renderBreakdownList` and `table.setRows(...)`.
+3. Make the source KPI card clickable: add `.metric-cell-clickable` +
+   `data-kpi-nav="<key>"` + `role="link"` + `tabindex="0"` in `dashboard.html`, and a
+   `<key> → /route` entry in `dashboard.js` `mountKpiDrillNav()` (it carries the range
+   via `?period&start&end`).
+4. Add a `pageIdMap` entry in `sidebar-loader.js` (before any colliding substring) so
+   the route highlights its sidebar owner, and register the page in
+   `scripts/i18n-audit.js` `APP_PAGES`; add Bahasa dictionary/PATTERNS entries.
+5. Deep-link table rows to `/ledger?record=<id>` (existing drawer contract).
+6. Document in `PROJECT_BACKGROUND.md` §3a, `ROADMAP.md`, `CHANGELOG.md`, and add QA
+   coverage.
+
 ### Add a Firestore collection
 
 1. Add the schema to `PROJECT_BACKGROUND.md`.

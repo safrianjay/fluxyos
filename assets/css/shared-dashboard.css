@@ -1246,6 +1246,129 @@ main > header {
     margin-top: 24px;
 }
 
+/* ── KPI drill-down detail pages ────────────────────────────────────
+   Shared styling for the Revenue Overview / Cash Position / OpEx & Budget
+   detail pages (generalized from the budget-allocation `.allocation-*`
+   block). The KPI strip cell, breakdown rows, and record rows all reuse
+   these so the three pages read as one system. */
+.kpi-detail-cell {
+    min-height: 96px;
+    padding: 16px 20px;
+    background: #fff;
+    border-bottom: 1px solid #E5E7EB;
+}
+.kpi-detail-cell-label {
+    color: #6B7280;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.kpi-detail-cell-value {
+    margin-top: 6px;
+    font-family: Inter, sans-serif;
+    font-size: 20px;
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+    white-space: nowrap;
+}
+.kpi-detail-cell-sub {
+    margin-top: 4px;
+    color: #9CA3AF;
+    font-size: 12px;
+    line-height: 1.4;
+}
+/* Breakdown list row — a clickable contribution bar (category/source/account).
+   Left accent + subtle tint on hover/selected, same idiom as allocation rows. */
+.kpi-detail-breakdown-row {
+    width: 100%;
+    padding: 12px 20px;
+    text-align: left;
+    border-left: 3px solid transparent;
+    border-bottom: 1px solid #F3F4F6;
+    transition: background-color 160ms ease, border-color 160ms ease;
+}
+.kpi-detail-breakdown-row:hover,
+.kpi-detail-breakdown-row.is-selected {
+    background: #F9FAFB;
+    border-left-color: #EA580C;
+}
+/* Compact summary bar (right-rail groups) */
+.kpi-detail-summary-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 12px;
+    width: 100%;
+    padding: 5px 0;
+    text-align: left;
+}
+.kpi-detail-record-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid #F3F4F6;
+}
+@media (min-width: 1280px) {
+    .kpi-detail-cell {
+        border-bottom: 0;
+        border-right: 1px solid #E5E7EB;
+    }
+    .kpi-detail-cell:last-child { border-right: 0; }
+}
+@media (max-width: 520px) {
+    .kpi-detail-cell { padding: 14px 16px; min-height: 88px; }
+    .kpi-detail-record-row { grid-template-columns: 1fr; }
+}
+
+/* Period strip for KPI detail topbars (self-contained copy of the Overview
+   period control so detail pages don't need to load dashboard.css). */
+.kpi-period-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid #E5E7EB;
+    border-radius: 999px;
+    background: #F9FAFB;
+}
+.kpi-period-btn {
+    border: 0;
+    border-radius: 999px;
+    padding: 7px 11px;
+    background: transparent;
+    color: #64748B;
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+.kpi-period-btn.is-active {
+    background: #0B0F19;
+    color: #FFFFFF;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.16);
+}
+@media (max-width: 900px) {
+    .kpi-period-controls { width: 100%; overflow-x: auto; }
+    .kpi-period-btn { white-space: nowrap; }
+}
+
+/* Breakdown dimension toggle (Category / Channel / Business) */
+.kpi-dim-btn { cursor: pointer; transition: color 150ms ease, background-color 150ms ease, box-shadow 150ms ease; }
+.kpi-dim-btn.is-active {
+    background: #fff;
+    color: #EA580C;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+/* Sort header active state */
+[data-kpi-sort].is-sort-active { color: #EA580C; }
+
 /* In-page header row: title block on the left, action group on the right.
    Stacks on mobile, sits on one line ≥640px. */
 .fluxy-page-header {

@@ -41,7 +41,75 @@
     // ─────────────────────────────────────────────────────────────────────────
     //  TRANSLATION DICTIONARY  —  English → Indonesian (formal finance register)
     // ─────────────────────────────────────────────────────────────────────────
+    // Localize the embedded period label inside KPI drill-down sentences
+    // (used by the PATTERNS list below). Declared before ID so the audit's
+    // dictionary slice (var ID … var PATTERNS) stays clean.
+    function kpiPeriodID(label) {
+        var map = {
+            'This month': 'Bulan ini', 'Last month': 'Bulan lalu',
+            'Year to date': 'Tahun berjalan', 'All time': 'Sepanjang waktu'
+        };
+        return map[label] || label;
+    }
+
     var ID = {
+        // ── KPI drill-down detail pages (Revenue Overview / Cash Position / OpEx & Budget) ──
+        "Revenue Overview": "Ringkasan Pendapatan",
+        "Where your revenue comes from across businesses, categories, and channels — for the selected period.": "Dari mana pendapatan Anda berasal — lintas bisnis, kategori, dan channel — untuk periode yang dipilih.",
+        "Loading revenue overview…": "Memuat ringkasan pendapatan…",
+        "Revenue trend": "Tren pendapatan",
+        "Recorded revenue over time": "Pendapatan tercatat dari waktu ke waktu",
+        "Revenue records": "Catatan pendapatan",
+        "The transactions powering this view. Click a row to open it in the Ledger.": "Transaksi yang menjadi dasar tampilan ini. Klik baris untuk membukanya di Ledger.",
+        "Search revenue…": "Cari pendapatan…",
+        "Search revenue records": "Cari catatan pendapatan",
+        "Revenue period": "Periode pendapatan",
+        "Revenue (period)": "Pendapatan (periode)",
+        "Vs previous period": "Vs periode sebelumnya",
+        "Average per record": "Rata-rata per catatan",
+        "No revenue recorded in this period yet.": "Belum ada pendapatan tercatat pada periode ini.",
+        "No revenue to break down for this period.": "Belum ada pendapatan untuk dirinci pada periode ini.",
+        "Revenue overview could not be opened.": "Ringkasan pendapatan tidak dapat dibuka.",
+        "How cash has moved in and out, your running balance, and what's still coming in the selected period.": "Bagaimana kas masuk dan keluar, saldo berjalan Anda, dan apa yang masih akan datang pada periode yang dipilih.",
+        "Loading cash position…": "Memuat posisi kas…",
+        "Ledger cash position": "Posisi kas Ledger",
+        "Cash balance": "Saldo kas",
+        "Running balance over the period": "Saldo berjalan sepanjang periode",
+        "Cash movements": "Pergerakan kas",
+        "Transactions marked as already received or paid. Click a row to open it in the Ledger.": "Transaksi yang ditandai sudah diterima atau dibayar. Klik baris untuk membukanya di Ledger.",
+        "Search cash movements…": "Cari pergerakan kas…",
+        "Search cash movements": "Cari pergerakan kas",
+        "Cash period": "Periode kas",
+        "In / Out": "Masuk / Keluar",
+        "Cash in (period)": "Kas masuk (periode)",
+        "Cash out (period)": "Kas keluar (periode)",
+        "Upcoming receivables": "Piutang akan datang",
+        "Upcoming payables": "Utang akan datang",
+        "No cash movements to plot in this period yet.": "Belum ada pergerakan kas untuk digambarkan pada periode ini.",
+        "No bank accounts linked yet.": "Belum ada rekening bank terhubung.",
+        "Cash position could not be opened.": "Posisi kas tidak dapat dibuka.",
+        "Operating spend for the period, how it tracks against your active budget, and where the money went.": "Belanja operasional pada periode ini, bagaimana perbandingannya dengan anggaran aktif Anda, dan ke mana uangnya pergi.",
+        "Loading OpEx & budget…": "Memuat OpEx & anggaran…",
+        "Spend / burn trend": "Tren belanja / burn",
+        "Operating spend over time": "Belanja operasional dari waktu ke waktu",
+        "Operating expenses": "Belanja operasional",
+        "The expense records powering this view. Click a row to open it in the Ledger.": "Catatan pengeluaran yang menjadi dasar tampilan ini. Klik baris untuk membukanya di Ledger.",
+        "Search expenses…": "Cari pengeluaran…",
+        "Search operating expenses": "Cari belanja operasional",
+        "OpEx period": "Periode OpEx",
+        "OpEx (period)": "OpEx (periode)",
+        "Set a budget to track this": "Atur anggaran untuk melacaknya",
+        "Over budget": "Melebihi anggaran",
+        "Left in active budget": "Sisa di anggaran aktif",
+        "No operating spend recorded in this period yet.": "Belum ada belanja operasional tercatat pada periode ini.",
+        "No operating spend to break down for this period.": "Belum ada belanja operasional untuk dirinci pada periode ini.",
+        "This budget has no allocations yet.": "Anggaran ini belum memiliki alokasi.",
+        "No active budget to track against.": "Tidak ada anggaran aktif untuk dijadikan acuan.",
+        "No categories are over budget. Nice.": "Tidak ada kategori yang melebihi anggaran. Bagus.",
+        "OpEx & budget could not be opened.": "OpEx & anggaran tidak dapat dibuka.",
+        "Breakdown": "Rincian",
+        "Exported ✓": "Terekspor ✓",
+
         // ── Sidebar: section labels ──────────────────────────────────────────
         "Command": "Pusat Kendali",
         "Money Movement": "Pergerakan Uang",
@@ -3576,6 +3644,18 @@
     //  Applied (in order) only to nodes that miss an exact dictionary key.
     // ─────────────────────────────────────────────────────────────────────────
     var PATTERNS = [
+        // KPI drill-down detail pages (Revenue / Cash / OpEx). Localize the
+        // embedded period label too so the sentence reads fully in Indonesian.
+        { re: /^(\d[\d.,]*)\s+revenue records?\s+for\s+(.+?)\.\s+Click a row to open it in the Ledger\.$/i,
+          id: function (m) { return m[1] + ' catatan pendapatan untuk ' + kpiPeriodID(m[2]) + '. Klik baris untuk membukanya di Ledger.'; } },
+        { re: /^(\d[\d.,]*)\s+cash movements?\s+for\s+(.+?)\.\s+Click a row to open it in the Ledger\.$/i,
+          id: function (m) { return m[1] + ' pergerakan kas untuk ' + kpiPeriodID(m[2]) + '. Klik baris untuk membukanya di Ledger.'; } },
+        { re: /^(\d[\d.,]*)\s+expense records?\s+for\s+(.+?)\.\s+Click a row to open it in the Ledger\.$/i,
+          id: function (m) { return m[1] + ' catatan pengeluaran untuk ' + kpiPeriodID(m[2]) + '. Klik baris untuk membukanya di Ledger.'; } },
+        { re: /^([+−-])\s*(Rp[\d.]+)\s+net this period\s+·\s+(Rp[\d.]+)\s+in\s+·\s+(Rp[\d.]+)\s+out$/i,
+          id: function (m) { return m[1] + m[2] + ' bersih periode ini · ' + m[3] + ' masuk · ' + m[4] + ' keluar'; } },
+        { re: /^(\d[\d.,]*)\s+expense records$/i,
+          id: function (m) { return m[1] + ' catatan pengeluaran'; } },
         // Tax Center compliance insights (counted findings).
         { re: /^(\d[\d.,]*)\s+output PPN lines?\s+without a faktur number$/i,
           id: function (m) { return m[1] + ' baris PPN keluaran tanpa nomor faktur'; } },

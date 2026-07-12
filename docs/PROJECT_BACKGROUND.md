@@ -51,6 +51,9 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Redirect | `index.html` | Redirect | No | ✅ | No |
 | Sign In | `login.html` | Auth | No | No | No |
 | Dashboard | `dashboard.html` | App | ✅ | **No** | ✅ |
+| Revenue Overview (KPI drill-down) | `revenue-overview.html` | App | ✅ | **No** | ✅ (Overview) |
+| Cash Position (KPI drill-down) | `cash-position.html` | App | ✅ | **No** | ✅ (Overview) |
+| OpEx & Budget (KPI drill-down) | `opex-budget.html` | App | ✅ | **No** | ✅ (Overview) |
 | Ledger | `ledger.html` | App | ✅ | **No** | ✅ |
 | Revenue Sync | `revenue-sync.html` | App | ✅ | **No** | ✅ |
 | Bills | `bill.html` | App | ✅ | **No** | ✅ |
@@ -86,6 +89,50 @@ and Bills are the baseline; Budgets (`budget.html`, `budget-period.html`,
 introduce a page-specific content width (`max-w-7xl`/custom) on a data-heavy page
 without a documented exception (`balance-sheet.html` is the one exception). Full
 rule in [DESIGN_SYSTEM.md → Dashboard Content Width Standard](DESIGN_SYSTEM.md).
+
+### 3a. Dashboard KPI drill-down pages
+
+The Overview **Revenue**, **Cash position**, and **OpEx-vs-budget** KPI cards are
+navigation entry points. Each opens a dedicated detail page that answers "where
+is this number coming from?" with deeper analysis while keeping the FluxyOS
+design language.
+
+- **Routes (flat, Netlify `pretty_urls` — no redirect needed):** `/revenue-overview`
+  (`revenue-overview.html`), `/cash-position` (`cash-position.html`), `/opex-budget`
+  (`opex-budget.html`). Each boots like every app page (Firebase + `applyToPage(user,
+  { pageKey: 'overview' })`) and calls its page module init.
+- **Clickable KPIs:** the three Overview `<article>`s carry `.metric-cell-clickable`
+  + `data-kpi-nav` + `role="link"` + `tabindex="0"`. `dashboard.js` `mountKpiDrillNav()`
+  navigates on click/Enter/Space, appending the current dashboard range as
+  `?period=<mode>&start=<key>&end=<key>`. Clicks inside a `button`/`a` (the "?" info
+  tooltip and bank/budget CTAs) are ignored so those keep their own action.
+- **Range persistence:** dashboard period state is in-memory only, so the range is
+  passed on the URL. Each detail page reads it with `resolvePeriodFromUrl()` and, when
+  its own period strip changes, rewrites the URL via `writePeriodToUrl()`
+  (`history.replaceState`) so a reload keeps the range. "Back to Overview" returns to
+  `/dashboard` (which resets to This Month — a known, accepted limitation).
+- **Shared scaffold — `assets/js/kpi-detail-shared.js`** (ES module) is the single
+  source of the shared behavior: period model, `renderKpiStrip`, `renderTrendChart`
+  (area/line, optional zero-baseline positive/negative fill + today marker, wired to
+  `window.attachChartHover`), `bucketSeries`/`toCumulative`, `renderBreakdownList`, and
+  `createSupportingTable` (search + sort + `createTablePaginator` + CSV export gated by
+  `FluxyAccessGuard`). Page modules (`revenue-overview.js`, `cash-position.js`,
+  `opex-budget.js`) are thin: fetch via `DataService`, aggregate, configure the scaffold.
+- **Data sources (all workspace-scoped via `DataService`):** Revenue —
+  `getRevenueTransactionsForDashboardStats` (revenue amount matches the Overview KPI:
+  `abs(amount)` over `income`/`revenue`/`refund`/`pending_receivable`), broken down by
+  `category` / `source` (labeled "Channel") / `entity_id` ("Business"). Cash —
+  `getLedgerCashPosition` (net + `_entries` for opening balance and the running-balance
+  trend), `getBankAccounts` (by-account + Bank cash), `getInvoices`/`getBills` (upcoming
+  receivables/payables), `getTransactionsForPeriod` (cash-effective records table).
+  OpEx — `getActiveBudget` + `getBudgetUsage` (budget-vs-actual, over-budget) +
+  `getTransactions` filtered to `expense`/`fee`/`tax`.
+- **Row deep-link:** supporting-table rows link to `/ledger?record=<transactionId>` —
+  the Ledger already opens that record's detail drawer (no Ledger change needed).
+- **Extensibility:** additional KPI drill-downs reuse `kpi-detail-shared.js`, add a flat
+  `<kpi>.html` + `<kpi>.js`, a `data-kpi-nav`/route entry in `mountKpiDrillNav()`, a
+  `pageIdMap` entry in `sidebar-loader.js`, and page registration in
+  `scripts/i18n-audit.js`.
 
 ---
 
