@@ -176,6 +176,55 @@ test('dashboard Upcoming excludes paid/voided bills', async ({ page }) => {
     }
 });
 
+test('detail pages resolve the workspace before finance reads (member-safety)', async ({ page }) => {
+    // The member "sees 0 data" bug happens when a page reads finance data before
+    // the workspace is resolved (_scope falls back to workspaces/{memberUid}).
+    // Every drill-down must have workspace mode on + a resolved workspace id by
+    // the time it renders content.
+    for (const route of ['/revenue-overview', '/cash-position', '/cash-pressure', '/opex-budget']) {
+        await page.goto(route);
+        await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });
+        const scope = await page.evaluate(() => ({
+            mode: window.FLUXY_WORKSPACE_MODE === true,
+            id: (window.FluxyWorkspace && window.FluxyWorkspace.id) || null,
+        }));
+        expect(scope.mode, `${route}: workspace mode on`).toBeTruthy();
+        expect(typeof scope.id === 'string' && scope.id.length > 0, `${route}: workspace resolved before read`).toBeTruthy();
+    }
+});
+
+test('detail pages have no page-level horizontal overflow at 375px', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    for (const route of ['/revenue-overview', '/cash-position', '/cash-pressure', '/opex-budget']) {
+        await page.goto(route);
+        await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow, `${route} must not overflow horizontally at 375px`).toBeLessThanOrEqual(1);
+    }
+});
+
+test('invoices ?record= opens the invoice detail', async ({ page }) => {
+    await page.goto('/invoices');
+    await page.waitForSelector('#invoice-list-view, #invoice-detail-view', { timeout: 25_000 });
+    const invoiceId = await page.evaluate(async () => {
+        const appMod = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+        const authMod = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+        const fsMod = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        const app = appMod.getApps()[0];
+        const user = authMod.getAuth(app).currentUser;
+        if (!app || !user) return null;
+        const wsId = window.FLUXY_WORKSPACE_MODE && window.FluxyWorkspace && window.FluxyWorkspace.id;
+        const scope = wsId ? `workspaces/${wsId}` : `users/${user.uid}`;
+        const db = fsMod.getFirestore(app);
+        const snap = await fsMod.getDocs(fsMod.query(fsMod.collection(db, `${scope}/invoices`), fsMod.limit(1)));
+        let id = null; snap.forEach(d => { id = d.id; });
+        return id;
+    });
+    test.skip(!invoiceId, 'no invoices on the QA account to deep-link');
+    await page.goto(`/invoices?record=${encodeURIComponent(invoiceId)}`);
+    await expect(page.locator('#invoice-detail-view')).toBeVisible({ timeout: 15_000 });
+});
+
 test('detail "Back to Overview" preserves the period round-trip', async ({ page }) => {
     await page.goto('/revenue-overview?period=last_month');
     await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });

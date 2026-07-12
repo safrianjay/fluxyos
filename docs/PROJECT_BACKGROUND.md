@@ -150,8 +150,10 @@ FluxyOS design language.
   evenly-spaced labels (point markers hidden past 16 buckets) so long ranges don't
   overlap into an unreadable smear.
 - **Row deep-link:** supporting-table rows link to `/ledger?record=<transactionId>` (or
-  `/bill?record=<id>` for payables, `/invoices` / `/subscription` for other obligations)
-  — the target page opens that record's detail drawer (no target change needed).
+  `/bill?record=<id>` for payables, `/invoices?record=<id>` for receivable invoices,
+  `/subscription?record=<id>` for renewals) — the target page opens that record's detail
+  view. `?record=` is the app-wide deep-link param; `invoices.js` accepts it as an alias
+  for its native `?invoice=`. The dashboard **Upcoming** rail uses the same contract.
 - **Extensibility:** additional KPI drill-downs reuse `kpi-detail-shared.js`, add a flat
   `<kpi>.html` + `<kpi>.js`, a `data-kpi-nav`/route entry in `mountKpiDrillNav()`, a
   `pageIdMap` entry in `sidebar-loader.js`, and page registration in

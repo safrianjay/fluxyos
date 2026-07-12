@@ -105,7 +105,7 @@ async function loadAndRender() {
                 name: inv.customer_name || inv.invoice_number || 'Invoice',
                 dueDate: toDate(inv.due_date) || toDate(inv.issue_date),
                 amount: Math.abs(Number(inv.amount_due ?? inv.total_amount) || 0),
-                kind: 'receivable', status: inv.status || 'open', href: '/invoices'
+                kind: 'receivable', status: inv.status || 'open', href: `/invoices?record=${encodeURIComponent(inv.id)}`
             }));
         (transactions || [])
             .filter(t => String(t.type || '').toLowerCase() === 'pending_receivable' && !t.is_voided)

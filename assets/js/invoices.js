@@ -189,8 +189,10 @@ export function initInvoicesPage({ ds, user }) {
             await openEditor(null, push);
         } else if (params.get('edit')) {
             await openEditor(params.get('edit'), push);
-        } else if (params.get('invoice')) {
-            await openDetail(params.get('invoice'), push);
+        } else if (params.get('invoice') || params.get('record')) {
+            // `record` is the app-wide deep-link param (bills/subscriptions/ledger
+            // use it); accept it here too so drill-downs can link consistently.
+            await openDetail(params.get('invoice') || params.get('record'), push);
         } else {
             openList(push);
         }

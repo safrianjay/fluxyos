@@ -12,6 +12,10 @@ All notable changes to FluxyOS are recorded here, newest first.
 - **All six Overview KPI cards now clickable** — Gross margin → `/revenue-overview` (margin is revenue-driven), Cash pressure → `/cash-pressure`, Payables → `/bill` (Bills already lists payables — reuse instead of a duplicate page). Each has the drill affordance + a "?" tooltip.
 - **"?" info tooltip on every KPI cell** of the detail pages (reuses the shared delegated `.metric-info` tooltip), with Bahasa translations.
 
+### Added (Deep-link parity + QA coverage)
+- **Invoice `?record=` deep-link parity** — `invoices.js` now accepts `?record=<id>` as an alias for its native `?invoice=<id>`, so drill-downs link to invoices with the same param the rest of the app uses. Cash Pressure's receivable-invoice rows now open the specific invoice (`/invoices?record=<id>`).
+- **QA coverage** — the four KPI detail pages are added to `dashboard-layout-consistency.spec.js` (shared 1540px canvas + no 375px overflow). New `kpi-drilldown.spec.js` checks: workspace resolved before finance reads (the member "0 data" failure mode), no page-level horizontal overflow at 375px on rendered content, and the invoice deep-link. (A full invited-member browser session still needs a provisioned member account — out of scope for the single-account QA harness.)
+
 ### Added (Range persists both ways)
 - Returning from a KPI drill-down now reopens the Overview on the **same period**. The detail pages' "Back to Overview" + breadcrumb links (`[data-dashboard-back]`) carry `?period&start&end` (`dashboardBackUrl`), and `dashboard.js` `applyDashboardPeriodFromUrl()` restores it on load — closing the round-trip (previously "Back" always reset to This Month).
 

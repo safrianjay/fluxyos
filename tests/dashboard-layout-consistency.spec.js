@@ -14,7 +14,11 @@ const { installTrialPaywallBypass } = require('./qa-helpers');
  */
 
 const REFERENCE = ['/ledger.html', '/revenue-sync.html', '/bill.html'];
-const MIGRATED = ['/budget.html', '/invoices.html', '/budget-period.html', '/budget-allocation.html'];
+const MIGRATED = [
+    '/budget.html', '/invoices.html', '/budget-period.html', '/budget-allocation.html',
+    // KPI drill-down detail pages share the same 1540px canvas.
+    '/revenue-overview.html', '/cash-position.html', '/cash-pressure.html', '/opex-budget.html',
+];
 const ALL = [...REFERENCE, ...MIGRATED];
 
 test.beforeEach(async ({ page }) => {
