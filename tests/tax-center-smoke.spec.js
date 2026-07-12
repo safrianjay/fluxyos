@@ -75,12 +75,18 @@ test('Tax Center loads, profile saves through rules, console clean', async ({ pa
     await page.locator('#tax-date-range-picker [data-drp-next]').click();
     await expect(page.locator('#tax-period-label')).not.toHaveText(lastMonthLabel, { timeout: 20000 });
 
-    // Tax calendar: upcoming deadlines render with day-countdown chips.
-    await page.locator('[data-tax-tab="overview"]').click();
-    const deadlineRows = page.locator('#tax-deadlines [data-deadline]');
+    // Tax calendar: upcoming deadlines now live in the on-demand help popover
+    // (topbar "?" button), not on the main Overview.
+    await page.locator('#tax-help-btn').click();
+    const helpOverlay = page.locator('#tax-help-overlay');
+    await expect(helpOverlay).toBeVisible({ timeout: 10000 });
+    const deadlineRows = helpOverlay.locator('[data-deadline]');
     await expect(deadlineRows.first()).toBeVisible({ timeout: 20000 });
     expect(await deadlineRows.count()).toBeGreaterThanOrEqual(3);
-    await expect(page.locator('#tax-deadlines .fluxy-table-status').first()).toHaveText(/\d+ days? left|Due today/);
+    await expect(deadlineRows.first().locator('.fluxy-table-status')).toHaveText(/\d+ days? left|Due today/);
+    // Popover dismisses on Escape.
+    await page.keyboard.press('Escape');
+    await expect(helpOverlay).toHaveCount(0);
 
     expect(bad, `console/page errors:\n${bad.join('\n')}`).toEqual([]);
 });

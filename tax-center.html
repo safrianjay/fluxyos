@@ -31,9 +31,15 @@
                     <span class="dashboard-topbar-title">Tax Center</span>
                     <p class="dashboard-topbar-subtitle">Indonesian tax — PPN, withholding, and compliance, derived from your books.</p>
                 </div>
+                <button type="button" id="tax-help-btn" class="inline-flex items-center justify-center w-7 h-7 rounded-full border border-gray-200 text-gray-400 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-colors flex-shrink-0" aria-label="Tax deadlines & filing schedule" title="Tax deadlines & filing schedule">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path stroke-linecap="round" stroke-linejoin="round" d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path stroke-linecap="round" stroke-linejoin="round" d="M12 17h.01"></path></svg>
+                </button>
             </div>
             <div class="flex items-center gap-3">
-                <span id="tax-period-label" class="fluxy-meta"></span>
+                <!-- Visually hidden: the selected period already shows in the date
+                     picker (no redundant on-screen month label). Kept as a polite
+                     live region so screen readers announce the active tax period. -->
+                <span id="tax-period-label" class="sr-only" aria-live="polite"></span>
                 <div id="tax-date-range-picker"></div>
                 <button type="button" id="tax-ask-ai" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group" title="Open Fluxy AI">
                     <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -132,20 +138,14 @@
 
                 <!-- Overview panel -->
                 <div data-tax-panel="overview" class="flex flex-col gap-6 mt-6">
-                    <!-- Compliance + deadlines side by side on wide screens (space-saving). -->
-                    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
-                        <section class="acct-card p-5">
-                            <h2 class="fluxy-table-title">Compliance overview</h2>
-                            <p class="fluxy-table-subtitle mt-1">The Tax Center derives Indonesian tax from your accounting records — it never keeps a separate ledger. Set your tax profile, then PPN and withholding will summarize here as transactions post.</p>
-                            <div id="tax-overview-note" class="mt-4"></div>
-                            <div id="tax-insights" class="mt-4 flex flex-col gap-2"></div>
-                        </section>
-                        <section class="acct-card p-5">
-                            <h2 class="fluxy-table-title">Upcoming tax deadlines</h2>
-                            <p class="fluxy-table-subtitle mt-1">PPh deposits by the 15th, e-Faktur upload and PPh reporting by the 20th, SPT Masa PPN by month-end, SPT Tahunan by 30 April.</p>
-                            <div id="tax-deadlines" class="mt-4"></div>
-                        </section>
-                    </div>
+                    <!-- Compliance overview renders only when there is an actionable
+                         issue (missing profile, missing faktur/bukti potong, period
+                         drift, etc.). Hidden when the period is clean. -->
+                    <section id="tax-compliance-card" class="acct-card p-5 hidden">
+                        <h2 class="fluxy-table-title">Compliance overview</h2>
+                        <p class="fluxy-table-subtitle mt-1">Issues that need your attention before filing this period.</p>
+                        <div id="tax-insights" class="mt-4 flex flex-col gap-2"></div>
+                    </section>
                     <section class="acct-card p-5">
                         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div>

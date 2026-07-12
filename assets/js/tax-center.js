@@ -216,7 +216,13 @@ const INSIGHT_STATUS = { critical: 'fluxy-status-danger', warning: 'fluxy-status
 function renderInsights(findings) {
     const el = document.getElementById('tax-insights');
     if (!el) return;
-    el.innerHTML = (findings || []).map((f) => `
+    // Only actionable findings matter — 'ALL_CLEAR' is a placeholder for "nothing
+    // to show". When there is nothing actionable, hide the whole compliance card
+    // rather than render an empty "no issues" state (keeps the Overview clean).
+    const actionable = (findings || []).filter((f) => f.code !== 'ALL_CLEAR');
+    const card = document.getElementById('tax-compliance-card');
+    if (card) card.classList.toggle('hidden', actionable.length === 0);
+    el.innerHTML = actionable.map((f) => `
         <div class="flex items-start gap-3 border border-gray-200 rounded-lg px-3 py-2.5" data-insight="${f.code}">
             <span class="fluxy-table-status ${INSIGHT_STATUS[f.severity] || 'fluxy-status-neutral'}" style="flex-shrink:0">${f.severity}</span>
             <div>
@@ -233,10 +239,18 @@ const DEADLINE_LABELS = {
     SPT_PPN: 'SPT Masa PPN',
     SPT_TAHUNAN: 'SPT Tahunan Badan'
 };
-function renderDeadlines() {
-    const el = document.getElementById('tax-deadlines');
-    if (!el) return;
-    const rows = upcomingTaxDeadlines(new Date(), { max: 4 }).map((dl) => {
+
+// Static filing-schedule reference (cadence + a one-line explanation per
+// obligation). Shown in the on-demand help popover, not on the main page.
+const FILING_SCHEDULE = [
+    { code: 'PPH_DEPOSIT', when: 'By the 15th', detail: 'Monthly withholding tax (PPh 21/23/4(2)) deposited to DJP for the prior month.' },
+    { code: 'EFAKTUR_REPORT', when: 'By the 20th', detail: 'Upload output Faktur Pajak and file the monthly PPh return (SPT Masa PPh).' },
+    { code: 'SPT_PPN', when: 'By month-end', detail: 'Monthly VAT return reconciling PPN Keluaran against PPN Masukan.' },
+    { code: 'SPT_TAHUNAN', when: 'By 30 April', detail: 'Annual corporate income tax return for the prior fiscal year.' }
+];
+
+function deadlineRowsHtml() {
+    const rows = upcomingTaxDeadlines(new Date(), { max: 6 }).map((dl) => {
         const chip = dl.days_left === 0 ? 'Due today' : `${dl.days_left} day${dl.days_left === 1 ? '' : 's'} left`;
         const tone = dl.days_left <= 7 ? 'fluxy-status-warning' : 'fluxy-status-neutral';
         return `<tr class="fluxy-table-row" data-deadline="${dl.code}">
@@ -244,7 +258,63 @@ function renderDeadlines() {
             <td class="fluxy-table-cell" style="text-align:right"><span class="fluxy-table-status ${tone}">${chip}</span></td>
         </tr>`;
     }).join('');
-    el.innerHTML = `<div class="fluxy-table-scroll"><table class="fluxy-table"><tbody>${rows}</tbody></table></div>`;
+    return `<div class="fluxy-table-scroll"><table class="fluxy-table"><tbody>${rows}</tbody></table></div>`;
+}
+
+function scheduleRowsHtml() {
+    return FILING_SCHEDULE.map((s) => `
+        <div class="flex items-start justify-between gap-3 border border-gray-200 rounded-lg px-3 py-2.5">
+            <div>
+                <p class="text-[14px] font-semibold text-gray-900">${DEADLINE_LABELS[s.code] || s.code}</p>
+                <p class="text-[12px] text-gray-500 mt-0.5">${s.detail}</p>
+            </div>
+            <span class="fluxy-table-status fluxy-status-neutral shrink-0">${s.when}</span>
+        </div>`).join('');
+}
+
+// On-demand reference popover for tax deadlines + filing schedule. Kept off the
+// main page so it never occupies permanent space; opened from the "?" help
+// button in the topbar. Dismiss via ✕, backdrop click, or Escape.
+let taxHelpKeyHandler = null;
+function closeTaxHelp() {
+    const overlay = document.getElementById('tax-help-overlay');
+    if (overlay) overlay.remove();
+    if (taxHelpKeyHandler) { document.removeEventListener('keydown', taxHelpKeyHandler); taxHelpKeyHandler = null; }
+}
+function openTaxHelp() {
+    if (document.getElementById('tax-help-overlay')) { closeTaxHelp(); return; }
+    const overlay = document.createElement('div');
+    overlay.id = 'tax-help-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:24px;background:rgba(11,15,25,0.5);backdrop-filter:blur(6px);overflow-y:auto;';
+    overlay.innerHTML = `
+        <div role="dialog" aria-modal="true" aria-label="Tax deadlines & filing schedule"
+             class="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-lg mt-8"
+             style="box-shadow:0 24px 48px rgba(11,15,25,0.18);">
+            <div class="flex items-start justify-between gap-4 px-5 pt-5">
+                <div>
+                    <h2 class="text-[16px] font-semibold text-gray-900">Tax deadlines &amp; filing schedule</h2>
+                    <p class="fluxy-table-subtitle mt-1">Reference for Indonesian PPN and PPh obligations — derived deadlines and the recurring filing schedule.</p>
+                </div>
+                <button type="button" id="tax-help-close" class="text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0" aria-label="Close">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="px-5 pb-5 mt-4 flex flex-col gap-5">
+                <div>
+                    <p class="fluxy-kpi-label mb-2">Upcoming</p>
+                    ${deadlineRowsHtml()}
+                </div>
+                <div>
+                    <p class="fluxy-kpi-label mb-2">Filing schedule</p>
+                    <div class="flex flex-col gap-2">${scheduleRowsHtml()}</div>
+                </div>
+            </div>
+        </div>`;
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeTaxHelp(); });
+    overlay.querySelector('#tax-help-close')?.addEventListener('click', closeTaxHelp);
+    taxHelpKeyHandler = (e) => { if (e.key === 'Escape') closeTaxHelp(); };
+    document.addEventListener('keydown', taxHelpKeyHandler);
+    document.body.appendChild(overlay);
 }
 
 // Live page context for the Fluxy AI drawer (window.FluxyAIContext — the explain
@@ -265,16 +335,6 @@ function registerAiContext({ profile, ppn, wht, corporate, findings, period }) {
         filters: { period: period.key },
         selectedRecord: null
     }));
-}
-
-function renderOverviewNote(profile) {
-    const el = document.getElementById('tax-overview-note');
-    if (!el) return;
-    if (!profile) {
-        el.innerHTML = '<p class="fluxy-meta">Start by setting your <strong>Company Tax Profile</strong> (NPWP and PKP status).</p>';
-    } else {
-        el.innerHTML = `<p class="fluxy-meta">Profile set: <strong>${profile.pkp_status === 'pkp' ? 'PKP' : 'Non-PKP'}</strong>${profile.umkm_final ? ' · UMKM final scheme' : ''} · default PPN ${Number(profile.default_ppn_rate) || 0}%.</p>`;
-    }
 }
 
 function wireSave(ds, user) {
@@ -303,7 +363,6 @@ function wireSave(ds, user) {
                 umkm_final: (document.getElementById('tax-umkm') || {}).checked === true
             });
             renderProfile(profile);
-            renderOverviewNote(profile);
             toast('Tax profile saved', 'success');
         } catch (err) {
             toast('Could not save tax profile', 'error');
@@ -781,6 +840,8 @@ export async function initTaxCenterPage({ ds, user }) {
     const refreshPeriodData = async ({ firstLoad = false } = {}) => {
         const seq = ++refreshSeq;
         const period = getActivePeriod();
+        // Hidden aria-live label (a11y announcement of the active period). No longer
+        // a visible on-screen "July 2026" — the picker shows the range.
         const label = document.getElementById('tax-period-label');
         if (label) label.textContent = period.label;
         if (firstLoad) { loading?.classList.remove('hidden'); content?.classList.add('hidden'); }
@@ -805,7 +866,6 @@ export async function initTaxCenterPage({ ds, user }) {
         if (seq !== refreshSeq) return; // a newer period selection superseded this load
 
         renderProfile(profile);
-        renderOverviewNote(profile);
         renderPpn(profile, taxTx || [], ppn || { output: 0, input: 0, payable: 0 }, period);
         renderWithholding(taxTx || [], wht || { payable: 0, credit: 0 }, period);
         renderMappings(mappings || []);
@@ -816,17 +876,19 @@ export async function initTaxCenterPage({ ds, user }) {
         // AI Tax Assistant: deterministic compliance findings + live drawer context.
         const findings = runComplianceChecks({ profile, taxTx: taxTx || [], ppn, wht, periods: periods || [], periodKey: period.key });
         renderInsights(findings);
-        renderDeadlines();
         registerAiContext({ profile, ppn, wht, corporate, findings, period });
     };
 
     // Topbar date filter (shared picker, same convention as the Accounting Center:
     // the tax period is the month of the selected range's start day).
     if (window.FluxyDateRangePicker && document.getElementById('tax-date-range-picker')) {
+        // Default to the FULL current month (1st → last day), matching the rest of
+        // FluxyOS — not 1st → today. The tax period is still the month of the start.
         const now = new Date();
         const pad = (n) => String(n).padStart(2, '0');
         const startKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
-        const endKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const endKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(lastDay)}`;
         window.FluxyDateRangePicker.mount('#tax-date-range-picker', {
             start: startKey,
             end: endKey,
@@ -842,6 +904,8 @@ export async function initTaxCenterPage({ ds, user }) {
     document.getElementById('tax-ask-ai')?.addEventListener('click', () => {
         if (typeof window.toggleFluxyAI === 'function') window.toggleFluxyAI(true);
     });
+
+    document.getElementById('tax-help-btn')?.addEventListener('click', openTaxHelp);
 
     await refreshPeriodData({ firstLoad: true });
 }
