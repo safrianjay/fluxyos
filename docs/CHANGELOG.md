@@ -12,6 +12,9 @@ All notable changes to FluxyOS are recorded here, newest first.
 - **All six Overview KPI cards now clickable** — Gross margin → `/revenue-overview` (margin is revenue-driven), Cash pressure → `/cash-pressure`, Payables → `/bill` (Bills already lists payables — reuse instead of a duplicate page). Each has the drill affordance + a "?" tooltip.
 - **"?" info tooltip on every KPI cell** of the detail pages (reuses the shared delegated `.metric-info` tooltip), with Bahasa translations.
 
+### Fixed (Paid bills lingering in Upcoming)
+- A bill marked **paid** (or voided) still appeared in the Overview **Upcoming** rail and inflated the action-item counts and payables/cash-pressure totals — `getDashboardOverview` filtered upcoming/overdue bills by due date only. It now excludes bills with `payment_status === 'paid'` or `is_voided` (`isOpenBill`) before the due-date windows, so paid bills drop out of Upcoming, action items, and the payables/cash-pressure aggregates.
+
 ### Fixed (Trend chart on long ranges)
 - **All Time (and any long range) trend chart** no longer overlaps its x-axis labels into an unreadable smear, and no longer dives to Rp0 at the right edge. `bucketSeries` now trims empty leading/trailing month/quarter buckets (anchor to real activity), and `renderTrendChart` thins the axis to ~10 evenly-spaced labels and hides point markers past 16 buckets. Applies everywhere the shared chart is used.
 

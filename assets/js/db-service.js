@@ -7055,8 +7055,13 @@ class DataService {
         const now = new Date();
         now.setHours(0, 0, 0, 0);
         const attentionEnd = this._addDays(now, 30);
-        const overdueBills = bills.filter(bill => this._isBeforeToday(this._getRecordDate(bill, 'due_date'), now));
-        const billsDueSoon = bills.filter(bill => this._isInUpcomingWindow(this._getRecordDate(bill, 'due_date'), now, attentionEnd, period.startDate, period.endDate));
+        // Only bills that still need paying count as upcoming/overdue. A bill
+        // marked paid (or voided) must drop out of the Upcoming rail, the action
+        // items, and the payables/cash-pressure totals below.
+        const isOpenBill = (bill) => String(bill?.payment_status || '').toLowerCase() !== 'paid' && !bill?.is_voided;
+        const openBills = bills.filter(isOpenBill);
+        const overdueBills = openBills.filter(bill => this._isBeforeToday(this._getRecordDate(bill, 'due_date'), now));
+        const billsDueSoon = openBills.filter(bill => this._isInUpcomingWindow(this._getRecordDate(bill, 'due_date'), now, attentionEnd, period.startDate, period.endDate));
         const renewalsSoon = subscriptions.filter(sub => this._isInUpcomingWindow(this._getRecordDate(sub, 'renewal_date'), now, attentionEnd, period.startDate, period.endDate));
         const missingReceipts = periodTransactions.filter(tx => tx.status === 'Missing Receipt');
         const pendingReceivables = periodTransactions.filter(tx => String(tx.type || '').toLowerCase() === 'pending_receivable');

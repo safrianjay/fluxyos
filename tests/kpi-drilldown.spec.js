@@ -143,6 +143,39 @@ test('dashboard Upcoming rows deep-link to the record', async ({ page }) => {
     await page.waitForURL(/\/(bill|subscription)\?record=/, { timeout: 15_000 });
 });
 
+test('dashboard Upcoming excludes paid/voided bills', async ({ page }) => {
+    await page.goto('/dashboard');
+    await page.waitForSelector('#upcoming-obligations-content .rail-mini-card, #upcoming-obligations-content .overview-empty-copy', { timeout: 25_000 });
+
+    // Paid/voided bill ids straight from Firestore (same scope db-service uses).
+    const paidBillIds = await page.evaluate(async () => {
+        const appMod = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+        const authMod = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+        const fsMod = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        const app = appMod.getApps()[0];
+        const user = authMod.getAuth(app).currentUser;
+        if (!app || !user) return [];
+        const wsId = window.FLUXY_WORKSPACE_MODE && window.FluxyWorkspace && window.FluxyWorkspace.id;
+        const scope = wsId ? `workspaces/${wsId}` : `users/${user.uid}`;
+        const db = fsMod.getFirestore(app);
+        const snap = await fsMod.getDocs(fsMod.collection(db, `${scope}/bills`));
+        const paid = [];
+        snap.forEach(d => { const b = d.data(); if (String(b.payment_status || '').toLowerCase() === 'paid' || b.is_voided) paid.push(d.id); });
+        return paid;
+    });
+
+    const hrefs = await page.locator('#upcoming-obligations-content .rail-mini-card').evaluateAll(
+        (els) => els.map((e) => e.getAttribute('href') || '')
+    );
+    const shownBillIds = hrefs
+        .map((h) => { const m = /\/bill\?record=([^&]+)/.exec(h); return m ? decodeURIComponent(m[1]) : null; })
+        .filter(Boolean);
+
+    for (const id of shownBillIds) {
+        expect(paidBillIds, `paid/voided bill ${id} must not appear in Upcoming`).not.toContain(id);
+    }
+});
+
 test('period strip updates the URL and reloads', async ({ page }) => {
     await page.goto('/revenue-overview?period=this_month');
     await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });
