@@ -113,11 +113,14 @@ FluxyOS design language.
   (`pressure` → `/cash-pressure`, `payables` → `/bill`) navigate plain. Clicks inside a
   `button`/`a` (the "?" info tooltip and bank/budget CTAs) are ignored so those keep
   their own action.
-- **Range persistence:** dashboard period state is in-memory only, so the range is
-  passed on the URL. Each detail page reads it with `resolvePeriodFromUrl()` and, when
-  its own period strip changes, rewrites the URL via `writePeriodToUrl()`
-  (`history.replaceState`) so a reload keeps the range. "Back to Overview" returns to
-  `/dashboard` (which resets to This Month — a known, accepted limitation).
+- **Range persistence (both directions):** dashboard period state is in-memory only, so
+  the range travels on the URL. Dashboard → detail: `mountKpiDrillNav()` appends
+  `?period&start&end`; the page reads it with `resolvePeriodFromUrl()` and rewrites its
+  own URL via `writePeriodToUrl()` on period change so a reload keeps it. Detail →
+  dashboard: the `[data-dashboard-back]` links (topbar "Back to Overview" + breadcrumb)
+  are pointed at `dashboardBackUrl(period)` by `mountPeriodControls`, and `dashboard.js`
+  `applyDashboardPeriodFromUrl()` restores the range on load — so returning reopens the
+  Overview on the same period instead of resetting to This Month.
 - **Shared scaffold — `assets/js/kpi-detail-shared.js`** (ES module) is the single
   source of the shared behavior: period model, `renderKpiStrip`, `renderTrendChart`
   (area/line, optional zero-baseline positive/negative fill + today marker, wired to

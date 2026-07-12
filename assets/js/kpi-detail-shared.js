@@ -151,6 +151,22 @@ export function writePeriodToUrl(period) {
     window.history.replaceState({}, '', `${window.location.pathname}?${p.toString()}`);
 }
 
+// Build a "Back to Overview" URL that carries the current range so the dashboard
+// reopens on the same period instead of resetting to This Month.
+export function dashboardBackUrl(period) {
+    if (!period || !period.mode) return '/dashboard';
+    const p = new URLSearchParams();
+    p.set('period', period.mode);
+    if (period.mode !== 'all_time') { p.set('start', period.start); p.set('end', period.end); }
+    return `/dashboard?${p.toString()}`;
+}
+
+// Point every [data-dashboard-back] link at the range-carrying dashboard URL.
+export function updateDashboardBackLinks(period) {
+    const href = dashboardBackUrl(period);
+    document.querySelectorAll('[data-dashboard-back]').forEach(a => a.setAttribute('href', href));
+}
+
 // Wire the period-strip buttons ([data-kpi-period]) + the range picker.
 // `onChange(period)` fires with the resolved period; the caller reloads data.
 export function mountPeriodControls({ period, pickerSelector, onChange }) {
@@ -171,6 +187,7 @@ export function mountPeriodControls({ period, pickerSelector, onChange }) {
     function syncState() {
         buttons.forEach(b => b.classList.toggle('is-active', b.dataset.kpiPeriod === current.mode));
         if (pickerHost) pickerHost.style.display = current.mode === 'custom' ? '' : 'none';
+        updateDashboardBackLinks(current);
     }
     function emit() {
         writePeriodToUrl(current);

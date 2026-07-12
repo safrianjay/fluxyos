@@ -176,6 +176,18 @@ test('dashboard Upcoming excludes paid/voided bills', async ({ page }) => {
     }
 });
 
+test('detail "Back to Overview" preserves the period round-trip', async ({ page }) => {
+    await page.goto('/revenue-overview?period=last_month');
+    await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });
+    // Back links carry the range.
+    const href = await page.locator('[data-dashboard-back]').first().getAttribute('href');
+    expect(href).toMatch(/\/dashboard\?period=last_month/);
+    // Round-trip: clicking Back reopens the dashboard on Last Month, not This Month.
+    await page.locator('[data-dashboard-back]').first().click();
+    await page.waitForURL(/\/dashboard\?period=last_month/, { timeout: 15_000 });
+    await expect(page.locator('[data-dashboard-period="last_month"]')).toHaveClass(/is-active/);
+});
+
 test('period strip updates the URL and reloads', async ({ page }) => {
     await page.goto('/revenue-overview?period=this_month');
     await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });

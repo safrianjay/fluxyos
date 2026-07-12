@@ -133,7 +133,31 @@ function renderGreeting() {
     updateKPI('overview-user-name', firstName);
 }
 
+// Restore the period from the URL (?period&start&end) when arriving from a KPI
+// drill-down's "Back to Overview" link, so the dashboard reopens on the same
+// range instead of resetting to This Month. Absent/invalid → keep the default.
+function applyDashboardPeriodFromUrl() {
+    const p = new URLSearchParams(window.location.search);
+    const mode = p.get('period');
+    if (!['this_month', 'last_month', 'year_to_date', 'all_time', 'custom'].includes(mode)) return;
+    if (mode === 'custom') {
+        const start = p.get('start');
+        const end = p.get('end');
+        if (!start || !end) return;
+        dashboardPeriodMode = 'custom';
+        dashboardRangeStart = start;
+        dashboardRangeEnd = end;
+    } else {
+        dashboardPeriodMode = mode;
+        const resolved = resolveDashboardPeriod(mode);
+        dashboardRangeStart = resolved.start;
+        dashboardRangeEnd = resolved.end;
+    }
+    window.FluxyDashboardRange = { start: dashboardRangeStart, end: dashboardRangeEnd };
+}
+
 function mountDashboardPeriodControls() {
+    applyDashboardPeriodFromUrl();
     document.querySelectorAll('[data-dashboard-period]').forEach(button => {
         button.addEventListener('click', () => {
             dashboardPeriodMode = button.dataset.dashboardPeriod || 'this_month';

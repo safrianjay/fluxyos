@@ -12,6 +12,9 @@ All notable changes to FluxyOS are recorded here, newest first.
 - **All six Overview KPI cards now clickable** — Gross margin → `/revenue-overview` (margin is revenue-driven), Cash pressure → `/cash-pressure`, Payables → `/bill` (Bills already lists payables — reuse instead of a duplicate page). Each has the drill affordance + a "?" tooltip.
 - **"?" info tooltip on every KPI cell** of the detail pages (reuses the shared delegated `.metric-info` tooltip), with Bahasa translations.
 
+### Added (Range persists both ways)
+- Returning from a KPI drill-down now reopens the Overview on the **same period**. The detail pages' "Back to Overview" + breadcrumb links (`[data-dashboard-back]`) carry `?period&start&end` (`dashboardBackUrl`), and `dashboard.js` `applyDashboardPeriodFromUrl()` restores it on load — closing the round-trip (previously "Back" always reset to This Month).
+
 ### Fixed (Paid bills lingering in Upcoming)
 - A bill marked **paid** (or voided) still appeared in the Overview **Upcoming** rail and inflated the action-item counts and payables/cash-pressure totals — `getDashboardOverview` filtered upcoming/overdue bills by due date only. It now excludes bills with `payment_status === 'paid'` or `is_voided` (`isOpenBill`) before the due-date windows, so paid bills drop out of Upcoming, action items, and the payables/cash-pressure aggregates.
 
