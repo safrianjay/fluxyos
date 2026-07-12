@@ -139,8 +139,10 @@ test('dashboard Upcoming rows deep-link to the record', async ({ page }) => {
     test.skip(n === 0, 'no upcoming obligations on the QA account');
     const href = await cards.first().getAttribute('href');
     expect(href).toMatch(/^\/(bill|subscription)\?record=/);
-    await cards.first().click();
-    await page.waitForURL(/\/(bill|subscription)\?record=/, { timeout: 15_000 });
+    // Navigate to the captured href rather than clicking the live element — the
+    // dashboard's realtime listener can re-render (detach) the rail mid-click.
+    await page.goto(href);
+    await expect(page).toHaveURL(/\/(bill|subscription)\?record=/);
 });
 
 test('dashboard Upcoming excludes paid/voided bills', async ({ page }) => {
