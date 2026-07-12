@@ -54,11 +54,17 @@ One-time provisioning (manual — cannot be automated here):
 
 1. Create a **second** Firebase Auth account (a different email from the owner
    QA account).
-2. Sign in as the **owner** QA account → Settings → Team & roles → invite that
-   email as a member.
-3. Sign in as the **member** account and accept the invite so it joins the
-   owner's workspace.
-4. Save its credentials locally in the git-ignored file:
+2. Invite that email as a member **from the owner QA account** — i.e. the
+   account in `.qa/firebase-test-account.md`, the one the harness signs in as,
+   **not** a personal account. The invite doc must land in that QA account's
+   workspace (`workspaces/{qaOwnerUid}/invites/{email}`), or the member spec
+   won't find it and the member stays on onboarding. (Send it via Settings →
+   Team & roles while signed in as the QA account.)
+3. The member spec accepts the invite for you: it resolves the QA owner's
+   workspace id and sends the member in through the invite link
+   (`/login?invite=<email>&ws=<id>`), which `healFromStoredInvite` accepts on
+   load. You do not need to log in as the member or copy any link manually.
+4. Save the member credentials locally in the git-ignored file:
 
    ```text
    .qa/firebase-test-member-account.md

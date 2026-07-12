@@ -8,26 +8,28 @@ const { installTrialPaywallBypass } = require('./qa-helpers');
  * QA: invited-team-MEMBER data sharing on the KPI drill-down pages.
  *
  * Finance collections are workspace-scoped; a member must read the SAME data as
- * the workspace owner. The failure mode (documented in PROJECT_BACKGROUND §4) is
- * a page reading finance data before the workspace resolves, so `_scope()` falls
- * back to `workspaces/{memberUid}` (which doesn't exist) and the member sees 0
- * data / permission-denied.
+ * the owner. The failure mode (PROJECT_BACKGROUND §4) is a page reading finance
+ * data before the workspace resolves, so `_scope()` falls back to
+ * `workspaces/{memberUid}` (empty) and the member sees 0 data.
  *
- * This spec logs in as a SEPARATE member account (not the owner storageState)
- * and asserts each drill-down: workspace mode on, a resolved workspace id that
- * is NOT the member's own uid (i.e. the shared owner workspace, not the
- * fallback), content renders, and no uncaught error.
+ * Flow (real user path): the member arrives via the invite link
+ * `/login?invite=<email>&ws=<ownerWorkspaceId>`; login.html stores the pending
+ * invite and `healFromStoredInvite` (workspace-service.js) accepts it on load,
+ * creating the member doc and exempting them from onboarding. After that first
+ * join the membership persists, so later plain logins resolve via
+ * collectionGroup(members).
  *
- * Provisioning (manual, one-time — see docs/QA_TEST_ACCOUNT.md):
- *   1. Create a second Firebase account and invite it into the owner QA
- *      workspace as a member; accept the invite.
- *   2. Drop its credentials in `.qa/firebase-test-member-account.md` (same
- *      `Email:` / `Password:` backtick format as the owner file; git-ignored).
- * Until that file exists this whole spec skips.
+ * Prerequisites (manual — see docs/QA_TEST_ACCOUNT.md):
+ *   • `.qa/firebase-test-account.md`         (owner, already used by the suite)
+ *   • `.qa/firebase-test-member-account.md`  (the member login)
+ *   • The owner must have INVITED the member email in Settings → Team & roles.
+ * If the member file is missing the whole spec skips; if the member exists but
+ * hasn't been invited, it lands on /onboarding and the test fails with a clear
+ * "invite it first" message.
  */
 
-function readMemberCreds() {
-    const p = path.join(__dirname, '..', '.qa', 'firebase-test-member-account.md');
+function readCreds(fileName) {
+    const p = path.join(__dirname, '..', '.qa', fileName);
     if (!fs.existsSync(p)) return null;
     const raw = fs.readFileSync(p, 'utf8');
     const email = raw.match(/Email:\s*`([^`]+)`/)?.[1];
@@ -35,27 +37,75 @@ function readMemberCreds() {
     return email && password ? { email, password } : null;
 }
 
-const creds = readMemberCreds();
+const memberCreds = readCreds('firebase-test-member-account.md');
+const ownerCreds = readCreds('firebase-test-account.md');
 const ROUTES = ['/revenue-overview', '/cash-position', '/cash-pressure', '/opex-budget'];
 
-// Start from a fresh context — do NOT inherit the owner storageState.
+let cachedOwnerWsId = null;
+
+// Sign in and settle on an app page. Returns the final pathname so the caller
+// can distinguish dashboard (joined) from onboarding (not a member yet).
+async function signInAndSettle(page, creds, { inviteEmail = null, wsId = null } = {}) {
+    const url = inviteEmail && wsId
+        ? `/login.html?invite=${encodeURIComponent(inviteEmail)}&ws=${encodeURIComponent(wsId)}`
+        : '/login.html';
+    await page.goto(url);
+    if (inviteEmail && wsId) {
+        // Invite mode: login.html collapses the form behind a "Continue with
+        // email" CTA and pre-locks the email to the invited address.
+        await page.locator('#invite-email-cta').click();
+        await page.locator('#password').fill(creds.password);
+    } else {
+        await page.locator('#email').fill(creds.email);
+        await page.locator('#password').fill(creds.password);
+    }
+    await page.locator('form button[type="submit"]').click();
+
+    // Possible destinations: /dashboard (ok), /onboarding (not a member),
+    // or the email-verify gate (skip it, then re-settle).
+    const verifyGate = page.locator('#verify-view')
+        .waitFor({ state: 'visible', timeout: 15_000 })
+        .then(() => page.locator('#verify-skip-link').click())
+        .catch(() => {});
+    const landed = page.waitForURL(/\/(dashboard|onboarding)(\.html)?($|[?#])/, { timeout: 40_000 });
+    await Promise.race([landed, verifyGate]);
+    await page.waitForURL(/\/(dashboard|onboarding)(\.html)?($|[?#])/, { timeout: 40_000 });
+    return new URL(page.url()).pathname;
+}
+
+async function ownerWorkspaceId(browser) {
+    if (cachedOwnerWsId) return cachedOwnerWsId;
+    const ctx = await browser.newContext();
+    try {
+        const page = await ctx.newPage();
+        await signInAndSettle(page, ownerCreds);
+        // The workspace resolves asynchronously after the dashboard loads — wait
+        // for the global before reading it.
+        await page.waitForFunction(() => !!(window.FluxyWorkspace && window.FluxyWorkspace.id), null, { timeout: 20_000 });
+        cachedOwnerWsId = await page.evaluate(() => window.FluxyWorkspace.id);
+        return cachedOwnerWsId;
+    } finally {
+        await ctx.close();
+    }
+}
+
+// Fresh context — do NOT inherit the owner storageState.
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe('member data sharing (KPI drill-downs)', () => {
-    test.beforeEach(async ({ page }) => {
-        test.skip(!creds, 'Missing .qa/firebase-test-member-account.md — see docs/QA_TEST_ACCOUNT.md.');
+    test.beforeEach(async ({ page, browser }) => {
+        test.skip(!memberCreds, 'Missing .qa/firebase-test-member-account.md — see docs/QA_TEST_ACCOUNT.md.');
+        test.skip(!ownerCreds, 'Missing .qa/firebase-test-account.md (owner) — needed to resolve the workspace id.');
 
-        // Log in as the member (mirrors tests/setup-auth.spec.js).
-        await page.goto('/login.html');
-        await page.locator('#email').fill(creds.email);
-        await page.locator('#password').fill(creds.password);
-        await page.locator('form button[type="submit"]').click();
-        const dashboard = page.waitForURL(/\/dashboard(\.html)?($|\?)/, { timeout: 30_000 });
-        const verifyGate = page.locator('#verify-view')
-            .waitFor({ state: 'visible', timeout: 30_000 })
-            .then(() => page.locator('#verify-skip-link').click());
-        await Promise.race([dashboard, verifyGate]);
-        await page.waitForURL(/\/dashboard(\.html)?($|\?)/, { timeout: 30_000 });
+        const wsId = await ownerWorkspaceId(browser);
+        expect(wsId, 'owner workspace id resolved').toBeTruthy();
+
+        const landing = await signInAndSettle(page, memberCreds, { inviteEmail: memberCreds.email, wsId });
+        expect(
+            /onboarding/.test(landing),
+            `member landed on ${landing} — it is not a member yet. Invite ${memberCreds.email} in Settings → Team & roles, then re-run.`
+        ).toBeFalsy();
+
         await page.evaluate(() => localStorage.setItem('fluxyos-lang', 'en'));
         await installTrialPaywallBypass(page);
     });
@@ -81,9 +131,9 @@ test.describe('member data sharing (KPI drill-downs)', () => {
 
             expect(info.mode, `${route}: workspace mode on`).toBeTruthy();
             expect(info.wsId, `${route}: workspace resolved`).toBeTruthy();
-            // The linchpin: a resolved workspace id different from the member's
-            // own uid proves the read hit the shared owner workspace, not the
-            // `workspaces/{memberUid}` fallback that yields 0 data.
+            // Linchpin: a resolved workspace id different from the member's own uid
+            // proves the read hit the shared owner workspace, not the
+            // workspaces/{memberUid} fallback that yields 0 data.
             expect(info.wsId, `${route}: member must read the shared workspace, not their own uid`).not.toBe(info.uid);
             expect(errors, `${route}: no uncaught error (a mis-scoped read throws permission-denied)`).toEqual([]);
         }
