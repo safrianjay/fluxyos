@@ -131,6 +131,18 @@ test('Overview margin/pressure/payables cards route correctly', async ({ page })
     await page.waitForURL(/\/bill/, { timeout: 15_000 });
 });
 
+test('dashboard Upcoming rows deep-link to the record', async ({ page }) => {
+    await page.goto('/dashboard');
+    await page.waitForSelector('#upcoming-obligations-content .rail-mini-card, #upcoming-obligations-content .overview-empty-copy', { timeout: 25_000 });
+    const cards = page.locator('#upcoming-obligations-content .rail-mini-card');
+    const n = await cards.count();
+    test.skip(n === 0, 'no upcoming obligations on the QA account');
+    const href = await cards.first().getAttribute('href');
+    expect(href).toMatch(/^\/(bill|subscription)\?record=/);
+    await cards.first().click();
+    await page.waitForURL(/\/(bill|subscription)\?record=/, { timeout: 15_000 });
+});
+
 test('period strip updates the URL and reloads', async ({ page }) => {
     await page.goto('/revenue-overview?period=this_month');
     await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });

@@ -1196,8 +1196,8 @@ function renderUpcomingObligations(overview) {
     const bills = overview.upcoming?.bills || [];
     const subscriptions = overview.upcoming?.subscriptions || [];
     const rows = [
-        ...bills.map(bill => ({ type: 'Bill', href: '/bill', dateField: 'due_date', record: bill })),
-        ...subscriptions.map(sub => ({ type: 'Renewal', href: '/subscription', dateField: 'renewal_date', record: sub }))
+        ...bills.map(bill => ({ type: 'Bill', base: '/bill', dateField: 'due_date', record: bill })),
+        ...subscriptions.map(sub => ({ type: 'Renewal', base: '/subscription', dateField: 'renewal_date', record: sub }))
     ].slice(0, 3);
 
     if (!rows.length) {
@@ -1205,10 +1205,17 @@ function renderUpcomingObligations(overview) {
         return;
     }
 
+    // Deep-link each row to its own record — the Bills / Subscriptions pages
+    // open that record's detail drawer via ?record=<id> (same contract the KPI
+    // drill-down tables use). Falls back to the list page if the id is missing.
+    const rowHref = (row) => row.record?.id
+        ? `${row.base}?record=${encodeURIComponent(row.record.id)}`
+        : row.base;
+
     setHtml('upcoming-obligations-content', `
         <div class="rail-mini-list">
             ${rows.map(row => `
-                <a class="rail-mini-card" href="${row.href}">
+                <a class="rail-mini-card" href="${rowHref(row)}">
                     <div class="rail-mini-body">
                         <div class="rail-mini-title">${escapeHtml(row.record.vendor_name || row.record.name || 'Untitled record')}</div>
                         <div class="rail-mini-sub">${escapeHtml(row.type)} &middot; ${escapeHtml(formatRecordDate(row.record, row.dateField) || 'No date')} &middot; ${formatIDR(row.record.amount)}</div>
