@@ -711,6 +711,8 @@ formatted currency strings.
 | `payment_amount` | number \| null | Raw integer Rupiah. Never a formatted string. |
 | `assigned_reviewer_id`, `last_internal_note`, `risk_level` | string \| null | Internal metadata. |
 | `last_active_at` | Timestamp \| null | Presence heartbeat — last time the user was active in the app. Powers the console Users tab **Activity** column (Online / last-seen). |
+| `archived` | bool | Soft-archive flag. `true` hides the user from the console's active surfaces (Users table default view, KYC/Payment queues, Overview, tab badges) — reversible, and never deletes data. |
+| `archived_at` | Timestamp \| null | When the user was archived; cleared to `null` on restore. |
 | `created_at`, `updated_at` | Timestamp | `serverTimestamp()`. |
 
 **Population:** each user's own client upserts its own row via
@@ -748,7 +750,7 @@ is required. Production activation requires a Blaze-plan Firebase project and:
 | `actor_uid` | string \| null | `null` in the credential-gate MVP. |
 | `actor_username` | string | `"fluxyos admin"`. |
 | `actor_role` | string | `"internal_admin"`. |
-| `action` | string | `kyc.approve`, `kyc.request_revision`, `kyc.reject`, `payment.under_review`, `payment.verify`, `payment.reject`, `user.activate`, `user.suspend`, `internal.note.update`. |
+| `action` | string | `kyc.approve`, `kyc.request_revision`, `kyc.reject`, `payment.under_review`, `payment.verify`, `payment.reject`, `user.activate`, `user.suspend`, `user.archive`, `user.restore`, `trial.extended`, `internal.note.update`. |
 | `target_user_id` | string | Affected `internal_users` doc id. |
 | `before` / `after` | map \| null | Primitive status snapshots only. |
 | `reason` | string \| null | Required for revision/reject/suspend. |
@@ -831,6 +833,21 @@ the `internal_users/{uid}` mirror (`access_status`, `trial_ends_at`,
 `FIREBASE_SERVICE_ACCOUNT` + `INTERNAL_API_TOKEN` envs and the default function
 path (no `netlify.toml` route). This is the automated, per-user counterpart to the
 one-shot `scripts/extend-grace-trial.js`.
+
+**Row actions & Archive User (console):** each Users-tab row has a primary
+**Review** button plus a **⋮ overflow menu** (reuses the voucher-menu shell) —
+secondary actions live there so the table stays scannable. The menu holds
+**Extend Trial** (the trial-only group above) and **Archive user** / **Restore
+user**. Archiving is a **soft, reversible hide that touches only the open
+`internal_users` index** — no owner-scoped finance data, so (unlike Extend Trial)
+**no server function**: the console writes `archived` + `archived_at` client-side
+through `DataService.updateInternalUserStatus` (the `internal_users` update +
+`internal_audit_logs` write in one batch, actions `user.archive` / `user.restore`).
+Archive prompts a danger-tone `showConfirmDialog`. A per-tab **Active / Archived**
+toggle switches the Users view; archived users are excluded from the active Users
+list, the KYC and Payment review queues, the Overview KPIs/action list, and the
+KYC/Payment tab-count badges. All historical records (transactions, subscriptions,
+KYC, payments, audit logs) are preserved — archive never deletes.
 
 ### 4k. Billing Subscription — `users/{userId}/billing_subscription/current`
 
