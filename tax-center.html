@@ -41,7 +41,7 @@
                      live region so screen readers announce the active tax period. -->
                 <span id="tax-period-label" class="sr-only" aria-live="polite"></span>
                 <div id="tax-date-range-picker"></div>
-                <button type="button" id="tax-ask-ai" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group" title="Open Fluxy AI">
+                <button type="button" id="tax-ask-ai" onclick="window.toggleFluxyAI()" data-tour-target="fluxy-ai-entry" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group" title="Open Fluxy AI">
                     <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     Ask Fluxy AI
                 </button>
@@ -138,14 +138,9 @@
 
                 <!-- Overview panel -->
                 <div data-tax-panel="overview" class="flex flex-col gap-6 mt-6">
-                    <!-- Compliance overview renders only when there is an actionable
-                         issue (missing profile, missing faktur/bukti potong, period
-                         drift, etc.). Hidden when the period is clean. -->
-                    <section id="tax-compliance-card" class="acct-card p-5 hidden">
-                        <h2 class="fluxy-table-title">Compliance overview</h2>
-                        <p class="fluxy-table-subtitle mt-1">Issues that need your attention before filing this period.</p>
-                        <div id="tax-insights" class="mt-4 flex flex-col gap-2"></div>
-                    </section>
+                    <!-- Compliance issues are surfaced through the shared notifications
+                         bell (topbar, left of Ask Fluxy AI) — each is clickable and
+                         drills into the relevant tab. No on-page compliance card. -->
                     <section class="acct-card p-5">
                         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div>

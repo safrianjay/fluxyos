@@ -212,24 +212,51 @@ function renderPpn(profile, taxTx, ledgerPpn, period) {
 }
 
 // Deterministic compliance findings (the detect half of the AI Tax Assistant).
-const INSIGHT_STATUS = { critical: 'fluxy-status-danger', warning: 'fluxy-status-warning', info: 'fluxy-status-neutral' };
-function renderInsights(findings) {
-    const el = document.getElementById('tax-insights');
-    if (!el) return;
-    // Only actionable findings matter — 'ALL_CLEAR' is a placeholder for "nothing
-    // to show". When there is nothing actionable, hide the whole compliance card
-    // rather than render an empty "no issues" state (keeps the Overview clean).
+// These surface through the shared notifications bell (window.FluxyBudgetNotifications)
+// rather than a page card — each is clickable and drills into the relevant tab.
+const FINDING_TAB = {
+    NO_PROFILE: 'profile',
+    PKP_NO_NPWP: 'profile',
+    MISSING_FAKTUR: 'ppn',
+    MISSING_BUPOT: 'withholding',
+    PERIOD_NOT_COMPUTED: 'overview',
+    PERIOD_DRIFT: 'overview'
+};
+
+// Drill-down: switch to the tab that owns the issue and bring it into view.
+function drillToFinding(code) {
+    const tab = FINDING_TAB[code] || 'overview';
+    const btn = document.querySelector(`[data-tax-tab="${tab}"]`);
+    if (btn) btn.click();
+    // Period-hygiene findings live on the Overview period card — focus the compute
+    // control; other findings just reveal their panel.
+    if (tab === 'overview') {
+        document.getElementById('period-compute-btn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+        document.querySelector(`[data-tax-panel="${tab}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+// Push actionable compliance findings into the notifications bell. 'ALL_CLEAR' is
+// a placeholder for "nothing to show" — filtering it leaves an empty group, which
+// clears the bell's Compliance tab and badge.
+function publishComplianceNotifications(findings) {
+    const api = (typeof window !== 'undefined') ? window.FluxyBudgetNotifications : null;
+    if (!api || typeof api.setPageGroup !== 'function') return;
     const actionable = (findings || []).filter((f) => f.code !== 'ALL_CLEAR');
-    const card = document.getElementById('tax-compliance-card');
-    if (card) card.classList.toggle('hidden', actionable.length === 0);
-    el.innerHTML = actionable.map((f) => `
-        <div class="flex items-start gap-3 border border-gray-200 rounded-lg px-3 py-2.5" data-insight="${f.code}">
-            <span class="fluxy-table-status ${INSIGHT_STATUS[f.severity] || 'fluxy-status-neutral'}" style="flex-shrink:0">${f.severity}</span>
-            <div>
-                <p class="text-[14px] font-semibold text-gray-900">${f.title}</p>
-                <p class="text-[12px] text-gray-500">${f.detail}</p>
-            </div>
-        </div>`).join('');
+    api.setPageGroup({
+        id: 'tax-compliance',
+        tabLabel: 'Compliance',
+        title: 'Tax notifications',
+        emptyText: 'No compliance issues this period.',
+        items: actionable.map((f) => ({
+            key: f.code,
+            severity: f.severity,
+            title: f.title,
+            detail: f.detail,
+            onSelect: () => drillToFinding(f.code)
+        }))
+    });
 }
 
 // Tax Calendar: deterministic upcoming deadlines (pure engine math).
@@ -875,7 +902,7 @@ export async function initTaxCenterPage({ ds, user }) {
 
         // AI Tax Assistant: deterministic compliance findings + live drawer context.
         const findings = runComplianceChecks({ profile, taxTx: taxTx || [], ppn, wht, periods: periods || [], periodKey: period.key });
-        renderInsights(findings);
+        publishComplianceNotifications(findings);
         registerAiContext({ profile, ppn, wht, corporate, findings, period });
     };
 
@@ -901,9 +928,8 @@ export async function initTaxCenterPage({ ds, user }) {
         });
     }
 
-    document.getElementById('tax-ask-ai')?.addEventListener('click', () => {
-        if (typeof window.toggleFluxyAI === 'function') window.toggleFluxyAI(true);
-    });
+    // Ask Fluxy AI opens the drawer via the shared onclick="toggleFluxyAI()"
+    // convention (also what the notifications bell anchors to).
 
     document.getElementById('tax-help-btn')?.addEventListener('click', openTaxHelp);
 

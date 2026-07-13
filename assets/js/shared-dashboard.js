@@ -2859,6 +2859,12 @@ window.attachChartHover = function attachChartHover(container, options) {
     let ds = null;
     let lastData = null;
     let loading = false;
+    // A page (e.g. Tax Center) can contribute its own notification group — a
+    // first tab with clickable, drill-downable items — via setPageGroup(). Shape:
+    //   { id, tabLabel, title, emptyText, items: [{ key, severity, title, detail, onSelect }] }
+    let pageGroup = null;
+    let pageGroupInitialized = false;
+    const SEV_CLASS = { critical: 'fluxy-status-danger', warning: 'fluxy-status-warning', info: 'fluxy-status-neutral' };
 
     function whenReady(fn) {
         if (document.readyState === 'loading') {
@@ -2888,12 +2894,12 @@ window.attachChartHover = function attachChartHover(container, options) {
             </button>
             <div id="fbx-notif-panel" class="hidden absolute right-0 top-full mt-2 w-[360px] max-w-[calc(100vw-32px)] bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden z-50">
                 <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                    <p class="text-[13px] font-bold text-gray-900">Budget notifications</p>
+                    <p id="fbx-notif-title" class="text-[13px] font-bold text-gray-900">Budget notifications</p>
                     <button id="fbx-notif-close" type="button" class="p-1 text-gray-400 hover:text-gray-700">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
-                <div class="flex border-b border-gray-100">
+                <div id="fbx-notif-tabs" class="flex border-b border-gray-100">
                     <button id="fbx-notif-tab-variance" type="button" data-fbx-tab="variance" class="flex-1 px-3 py-2.5 text-[12px] font-bold text-[#EA580C] border-b-2 border-[#EA580C] transition-colors">
                         Variance attention <span id="fbx-notif-variance-count" class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-orange-50 text-[10px] font-bold text-[#EA580C] px-1 hidden">0</span>
                     </button>
@@ -2904,7 +2910,7 @@ window.attachChartHover = function attachChartHover(container, options) {
                 <div id="fbx-notif-body" class="max-h-[420px] overflow-y-auto">
                     <p class="px-4 py-8 text-[12px] text-gray-400 text-center">Loading notifications…</p>
                 </div>
-                <div class="px-4 py-2 border-t border-gray-100 bg-gray-50">
+                <div id="fbx-notif-footer" class="px-4 py-2 border-t border-gray-100 bg-gray-50">
                     <a href="/budget" class="text-[12px] font-bold text-[#EA580C] hover:underline">Open Budgets →</a>
                 </div>
             </div>
@@ -2938,9 +2944,41 @@ window.attachChartHover = function attachChartHover(container, options) {
         });
 
         injected = true;
+        applyPageGroup(); // render a page-contributed tab if one was registered pre-mount
         // Best-effort dot refresh on mount (so users see the indicator even
         // before opening the panel for the first time).
         refresh().catch(() => {});
+    }
+
+    // Insert/remove/refresh the page-contributed tab button (kept first, before
+    // the budget Variance/Activity tabs) and update chrome (title, footer).
+    function applyPageGroup() {
+        const tabs = document.getElementById('fbx-notif-tabs');
+        const titleEl = document.getElementById('fbx-notif-title');
+        const footerEl = document.getElementById('fbx-notif-footer');
+        if (!tabs) return;
+        let tabBtn = document.getElementById('fbx-notif-tab-page');
+        const count = pageGroup?.items?.length || 0;
+
+        if (pageGroup) {
+            if (!tabBtn) {
+                tabBtn = document.createElement('button');
+                tabBtn.id = 'fbx-notif-tab-page';
+                tabBtn.type = 'button';
+                tabBtn.setAttribute('data-fbx-tab', 'page');
+                tabBtn.addEventListener('click', () => switchTab('page'));
+                tabs.insertBefore(tabBtn, tabs.firstChild);
+            }
+            tabBtn.innerHTML = `${escapeHtmlSafe(pageGroup.tabLabel || 'Notifications')} <span id="fbx-notif-page-count" class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-orange-50 text-[10px] font-bold text-[#EA580C] px-1 ${count ? '' : 'hidden'}">${count}</span>`;
+            if (titleEl && pageGroup.title) titleEl.textContent = pageGroup.title;
+            // The budget footer link is out of context for a page group — hide it
+            // while the page tab is active.
+            if (footerEl) footerEl.classList.toggle('hidden', activeTab === 'page');
+        } else {
+            if (tabBtn) tabBtn.remove();
+            if (titleEl) titleEl.textContent = 'Budget notifications';
+            if (footerEl) footerEl.classList.remove('hidden');
+        }
     }
 
     async function loadDS() {
@@ -3007,9 +3045,17 @@ window.attachChartHover = function attachChartHover(container, options) {
         const dot = document.getElementById('fbx-notif-dot');
         const vCount = document.getElementById('fbx-notif-variance-count');
         const aCount = document.getElementById('fbx-notif-activity-count');
+        const pCount = document.getElementById('fbx-notif-page-count');
         const variance = lastData?.variance?.length || 0;
         const activity = lastData?.activity?.length || 0;
-        if (dot) dot.classList.toggle('hidden', variance === 0);
+        const pageCount = pageGroup?.items?.length || 0;
+        // The dot means "something needs attention": budget variance OR a
+        // page-contributed issue (e.g. Tax Center compliance).
+        if (dot) dot.classList.toggle('hidden', variance === 0 && pageCount === 0);
+        if (pCount) {
+            pCount.textContent = String(pageCount);
+            pCount.classList.toggle('hidden', pageCount === 0);
+        }
         if (vCount) {
             vCount.textContent = String(variance);
             vCount.classList.toggle('hidden', variance === 0);
@@ -3023,6 +3069,13 @@ window.attachChartHover = function attachChartHover(container, options) {
     function renderBody() {
         const body = document.getElementById('fbx-notif-body');
         if (!body) return;
+        // Page-contributed tab (e.g. Tax Center compliance) is independent of the
+        // budget data fetch, so render it first regardless of lastData.
+        if (activeTab === 'page') {
+            body.innerHTML = renderPageList(pageGroup);
+            wirePageListClicks(body);
+            return;
+        }
         if (!lastData) {
             body.innerHTML = `<p class="px-4 py-8 text-[12px] text-gray-400 text-center">Loading…</p>`;
             return;
@@ -3035,6 +3088,46 @@ window.attachChartHover = function attachChartHover(container, options) {
             return;
         }
         body.innerHTML = activeTab === 'variance' ? renderVarianceList(lastData.variance) : renderActivityList(lastData.activity);
+    }
+
+    function renderPageList(group) {
+        const items = group?.items || [];
+        if (items.length === 0) {
+            return `<p class="px-4 py-8 text-[12px] text-gray-400 text-center">${escapeHtmlSafe(group?.emptyText || 'Nothing needs attention.')}</p>`;
+        }
+        return `<ul class="divide-y divide-gray-100">${items.map((it, i) => {
+            const drillable = typeof it.onSelect === 'function';
+            const chevron = drillable
+                ? `<svg class="w-4 h-4 text-gray-300 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`
+                : '';
+            return `
+                <li>
+                    <button type="button" data-fbx-page-idx="${i}" data-fbx-page-key="${escapeHtmlSafe(it.key || '')}"
+                        class="w-full text-left px-4 py-3 flex items-start gap-2 transition-colors ${drillable ? 'hover:bg-gray-50 cursor-pointer' : 'cursor-default'} focus:outline-none focus-visible:bg-gray-50"${drillable ? '' : ' tabindex="-1"'}>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-start justify-between gap-2">
+                                <p class="text-[13px] font-semibold text-gray-900 truncate">${escapeHtmlSafe(it.title)}</p>
+                                <span class="fluxy-table-status ${SEV_CLASS[it.severity] || 'fluxy-status-neutral'} shrink-0">${escapeHtmlSafe(it.severity || '')}</span>
+                            </div>
+                            <p class="mt-1 text-[11px] text-gray-500">${escapeHtmlSafe(it.detail || '')}</p>
+                        </div>
+                        ${chevron}
+                    </button>
+                </li>`;
+        }).join('')}</ul>`;
+    }
+
+    function wirePageListClicks(body) {
+        body.querySelectorAll('[data-fbx-page-idx]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const idx = Number(btn.getAttribute('data-fbx-page-idx'));
+                const item = pageGroup?.items?.[idx];
+                if (item && typeof item.onSelect === 'function') {
+                    closePanel();
+                    try { item.onSelect(item); } catch (err) { console.warn('Notification drill-down failed:', err); }
+                }
+            });
+        });
     }
 
     function renderVarianceList(allocations) {
@@ -3093,14 +3186,42 @@ window.attachChartHover = function attachChartHover(container, options) {
         activeTab = tab;
         const v = document.getElementById('fbx-notif-tab-variance');
         const a = document.getElementById('fbx-notif-tab-activity');
+        const p = document.getElementById('fbx-notif-tab-page');
         const activeCls = 'text-[#EA580C] border-[#EA580C]';
         const inactiveCls = 'text-gray-500 border-transparent hover:text-gray-900';
-        if (v) v.className = `flex-1 px-3 py-2.5 text-[12px] font-bold border-b-2 transition-colors ${tab === 'variance' ? activeCls : inactiveCls}`;
-        if (a) a.className = `flex-1 px-3 py-2.5 text-[12px] font-bold border-b-2 transition-colors ${tab === 'activity' ? activeCls : inactiveCls}`;
+        const base = 'flex-1 px-3 py-2.5 text-[12px] font-bold border-b-2 transition-colors';
+        if (v) v.className = `${base} ${tab === 'variance' ? activeCls : inactiveCls}`;
+        if (a) a.className = `${base} ${tab === 'activity' ? activeCls : inactiveCls}`;
+        if (p) p.className = `${base} ${tab === 'page' ? activeCls : inactiveCls}`;
+        // The budget footer link only makes sense on the budget tabs.
+        const footerEl = document.getElementById('fbx-notif-footer');
+        if (footerEl) footerEl.classList.toggle('hidden', tab === 'page');
         // Counts get re-appended on every render — preserve them.
         renderBody();
         // Re-add the badge spans so counts stay visible after className swap.
         updateBadgeAndCounts();
+    }
+
+    // Public: a page contributes/updates its own notification group. Passing null
+    // or an empty item list clears it. Safe to call before the bell is injected.
+    function setPageGroup(group) {
+        const items = Array.isArray(group?.items) ? group.items : [];
+        pageGroup = (group && items.length) ? { ...group, items } : null;
+        // Default the panel to the page tab the first time a page registers a
+        // non-empty group (so opening the bell on that page shows it first).
+        if (pageGroup && !pageGroupInitialized) {
+            activeTab = 'page';
+            pageGroupInitialized = true;
+        }
+        if (pageGroup && activeTab === 'page') {
+            // keep page tab active
+        } else if (!pageGroup && activeTab === 'page') {
+            activeTab = 'variance'; // fall back when the page group clears
+        }
+        if (!injected) return; // will be applied on injectBell()
+        applyPageGroup();
+        // Re-assert active-tab styling now that the page tab exists/was removed.
+        switchTab(activeTab);
     }
 
     function openPanel() {
@@ -3133,6 +3254,7 @@ window.attachChartHover = function attachChartHover(container, options) {
     window.FluxyBudgetNotifications = {
         refresh,
         close: closePanel,
-        open: openPanel
+        open: openPanel,
+        setPageGroup
     };
 })();

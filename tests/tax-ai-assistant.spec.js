@@ -2,9 +2,10 @@
 const { test, expect } = require('@playwright/test');
 
 // Phase 5: AI Tax Assistant foundation. Two halves, both read-only:
-//   1. Deterministic compliance insights on the Overview tab (runComplianceChecks in
-//      tax-engine.js) — posts a withholding bill WITHOUT a bukti potong and asserts
-//      the MISSING_BUPOT finding renders.
+//   1. Deterministic compliance findings surfaced through the shared notifications
+//      bell (runComplianceChecks in tax-engine.js) — posts a withholding bill
+//      WITHOUT a bukti potong and asserts the MISSING_BUPOT finding shows in the
+//      bell and drills into the Withholding tab.
 //   2. Fluxy AI drawer context — detectPage resolves 'tax', FluxyAIContext.get()
 //      carries the live tax figures, and the drawer shows the Tax Center context
 //      card + tax-aware prompt chips. No prompt is submitted (backend not running
@@ -35,9 +36,19 @@ test('Tax Center: compliance insights render and the AI drawer is tax-aware', as
     await page.reload();
     await expect(page.locator('#tax-period-label')).not.toBeEmpty({ timeout: 30000 });
 
-    // 1) Deterministic insight renders.
-    await expect(page.locator('[data-insight="MISSING_BUPOT"]')).toBeVisible({ timeout: 20000 });
-    await expect(page.locator('[data-insight="MISSING_BUPOT"]')).toContainText(/bukti potong/i);
+    // 1) Deterministic compliance finding now surfaces in the shared notifications
+    //    bell (topbar, left of Ask Fluxy AI) — not an on-page card. The badge dot
+    //    lights up; opening the bell shows the finding; clicking it drills down.
+    await page.waitForSelector('#fbx-notif-btn', { timeout: 20000 });
+    await expect(page.locator('#fbx-notif-dot')).toBeVisible({ timeout: 20000 });
+    await page.click('#fbx-notif-btn');
+    const bupot = page.locator('[data-fbx-page-key="MISSING_BUPOT"]');
+    await expect(bupot).toBeVisible({ timeout: 20000 });
+    await expect(bupot).toContainText(/bukti potong/i);
+    // Drill-down: clicking the item opens the Withholding tab and closes the panel.
+    await bupot.click();
+    await expect(page.locator('[data-tax-panel="withholding"]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#fbx-notif-panel')).toBeHidden();
 
     // 2) Page detection + live context.
     const detected = await page.evaluate(() => window.FluxyAIContext.detectPage());
