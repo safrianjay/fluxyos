@@ -32,8 +32,10 @@ const { ENV, flagEnabled } = require('./constants');
 // fails requests for that platform, and unregistered platforms cost nothing.
 const CONNECTOR_LOADERS = {
     tiktok_shop: () => require('./connectors/tiktok-shop'),      // Phase 4
-    // shopee:      () => require('./connectors/shopee'),        // Phase 5
-    // tokopedia:   () => require('./connectors/tokopedia'),     // Phase 6
+    shopee: () => require('./connectors/shopee'),                // Phase 5
+    // tokopedia: () => require('./connectors/tokopedia'),       // Phase 6 —
+    // likely via the TikTok-linked path (Partner Center "Link Tokopedia"
+    // banner) rather than the legacy Seller API; decide at Phase 6.
 };
 
 // The mock connector is only visible when explicitly enabled — never register
