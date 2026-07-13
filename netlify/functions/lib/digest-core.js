@@ -124,12 +124,17 @@ async function generateWeeklyDigest(db, uid, prefs = {}, { now = new Date(), log
     const tools = finance.executeFinancePlan(plan, transactions, bills, subscriptions, 'Weekly financial digest');
     const coverage = finance.calculateDataCoverage(plan, tools);
 
-    let answer = finance.buildPlannedDeterministicAnswer({ plan, message: 'Weekly financial digest', pageContext: 'global', tools });
+    // Resolve the email language FIRST so the AI-generated content (executive
+    // summary, insights, recommended actions) is written in the same language
+    // as the template chrome — never mixed within one email.
+    const locale = await resolveUserLocale(db, uid);
+
+    let answer = finance.buildPlannedDeterministicAnswer({ plan, message: 'Weekly financial digest', pageContext: 'global', tools, language: locale });
     if (process.env.OPENAI_API_KEY) {
         try {
             const ai = await finance.callOpenAIFinanceAnalyst({
                 message: 'Weekly financial digest', pageContext: 'global', period,
-                intent: 'period_performance', plan, dataCoverage: coverage, deterministicAnswer: answer, tools,
+                intent: 'period_performance', plan, dataCoverage: coverage, deterministicAnswer: answer, tools, language: locale,
             });
             const validated = finance.validateFinanceAnswer(ai, 'period_performance', period);
             if (validated) answer = validated;
@@ -138,7 +143,6 @@ async function generateWeeklyDigest(db, uid, prefs = {}, { now = new Date(), log
         }
     }
 
-    const locale = await resolveUserLocale(db, uid);
     const metrics = prefs.metrics || DEFAULT_METRICS;
     const emailData = {
         name: prefs.name || null,

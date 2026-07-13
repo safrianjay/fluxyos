@@ -115,6 +115,7 @@ const L = {
         revByCat: 'Revenue by category', topSpend: 'Top spending categories', vendors: 'Top vendors',
         category: 'Category', vendor: 'Vendor', amount: 'Amount', share: 'Share',
         insights: 'AI insights', actions: 'Recommended actions', cta: 'Open finance dashboard',
+        overduePill: (n) => `${n} overdue`, overBudget: 'Over budget', onTrack: 'On track',
         none: 'No activity recorded.', riskWord: { low: 'Low risk', medium: 'Medium risk', high: 'High risk', unknown: 'Unknown' },
         footnote: 'You are receiving this weekly digest because it is enabled in your FluxyOS email preferences. Manage it in Settings → Notifications & email.',
     },
@@ -130,6 +131,7 @@ const L = {
         revByCat: 'Pendapatan per kategori', topSpend: 'Kategori pengeluaran teratas', vendors: 'Vendor teratas',
         category: 'Kategori', vendor: 'Vendor', amount: 'Jumlah', share: 'Porsi',
         insights: 'Insight AI', actions: 'Tindakan yang disarankan', cta: 'Buka dashboard keuangan',
+        overduePill: (n) => `${n} terlambat`, overBudget: 'Melebihi anggaran', onTrack: 'Sesuai rencana',
         none: 'Tidak ada aktivitas tercatat.', riskWord: { low: 'Risiko rendah', medium: 'Risiko sedang', high: 'Risiko tinggi', unknown: 'Tidak diketahui' },
         footnote: 'Anda menerima ringkasan mingguan ini karena diaktifkan di preferensi email FluxyOS. Atur di Settings → Notifications & email.',
     },
@@ -170,11 +172,11 @@ function buildWeeklyDigest({ locale, data }) {
         if (m.bills && tools.billsAnalysis) {
             const b = tools.billsAnalysis;
             const overdue = (b.overdue_bills || []).length; const due = (b.due_soon_bills || []).length;
-            sections.push({ html: metricCard({ icon: '🧾', eyebrow: t.bills, title: t.unpaidBills, value: formatRupiah(b.total_unpaid_amount), badgeHtml: overdue ? tonePill(`${overdue} overdue`, 'bad') : '', sub: t.billsSub(b.total_unpaid_bills || 0, overdue, due) }), text: `${t.unpaidBills}: ${formatRupiah(b.total_unpaid_amount)}` });
+            sections.push({ html: metricCard({ icon: '🧾', eyebrow: t.bills, title: t.unpaidBills, value: formatRupiah(b.total_unpaid_amount), badgeHtml: overdue ? tonePill(t.overduePill(overdue), 'bad') : '', sub: t.billsSub(b.total_unpaid_bills || 0, overdue, due) }), text: `${t.unpaidBills}: ${formatRupiah(b.total_unpaid_amount)}` });
         }
         if (m.budgets && d.budget) {
             const bd = d.budget; const over = num(bd.percent) > 100;
-            sections.push({ html: metricCard({ icon: '🎯', eyebrow: t.budget, title: bd.label ? `${t.budgetUsed} — ${bd.label}` : t.budgetUsed, value: fpct(bd.percent, 0), badgeHtml: tonePill(over ? 'Over budget' : 'On track', over ? 'bad' : 'good'), sub: t.budgetSub(formatRupiah(bd.used), formatRupiah(bd.total)) }), text: `${t.budgetUsed}: ${fpct(bd.percent, 0)}` });
+            sections.push({ html: metricCard({ icon: '🎯', eyebrow: t.budget, title: bd.label ? `${t.budgetUsed} — ${bd.label}` : t.budgetUsed, value: fpct(bd.percent, 0), badgeHtml: tonePill(over ? t.overBudget : t.onTrack, over ? 'bad' : 'good'), sub: t.budgetSub(formatRupiah(bd.used), formatRupiah(bd.total)) }), text: `${t.budgetUsed}: ${fpct(bd.percent, 0)}` });
         }
         if (m.subscriptions && tools.subscriptionAnalysis) {
             const s = tools.subscriptionAnalysis;

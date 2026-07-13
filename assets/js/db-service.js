@@ -720,6 +720,10 @@ class DataService {
         const m = data.metrics || {};
         const payload = this._cleanDefined({
             weekly_digest_enabled: data.weekly_digest_enabled !== false,
+            // Email Language — applies to ALL system-generated emails (digest,
+            // billing, reminders, account). Omitted when not provided so older
+            // callers never clobber a stored choice (merge: true).
+            language: this._allowedValue(data.language, ['id', 'en'], undefined),
             delivery_day: this._allowedValue(data.delivery_day, days, 'monday'),
             delivery_hour: Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : 9,
             timezone: this._stringOrDefault(data.timezone, 'Asia/Jakarta', 64),

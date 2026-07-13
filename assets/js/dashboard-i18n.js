@@ -380,8 +380,8 @@
         "Language & Region": "Bahasa & Wilayah",
         "Contact information, password, authentication methods, and active sessions.":
             "Informasi kontak, kata sandi, metode autentikasi, dan sesi aktif.",
-        "Weekly financial digest and email preferences.":
-            "Ringkasan keuangan mingguan dan preferensi email.",
+        "Email language, weekly financial digest, and email preferences.":
+            "Bahasa email, ringkasan keuangan mingguan, dan preferensi email.",
         "Business profile, entity label, country, timezone, and workspace identity.":
             "Profil bisnis, label entitas, negara, zona waktu, dan identitas ruang kerja.",
         "Roles, account access, security rules, and authorized sessions.":
@@ -1044,6 +1044,12 @@
         "A weekly CFO-style briefing of how your business performed.": "Pengarahan mingguan ala CFO tentang kinerja bisnis Anda.",
         "Digest numbers always come from your real data.": "Angka ringkasan selalu berasal dari data nyata Anda.",
         "Control which emails FluxyOS sends you. All numbers in your digest come from your own data — never invented.": "Kendalikan email yang dikirim FluxyOS kepada Anda. Semua angka di ringkasan berasal dari data Anda sendiri — tidak pernah dikarang.",
+        "Email language": "Bahasa email",
+        "The language used for every email FluxyOS sends you — weekly digest, billing and payment reminders, invoices, and account notifications.": "Bahasa yang digunakan untuk setiap email yang dikirim FluxyOS kepada Anda — ringkasan mingguan, pengingat penagihan dan pembayaran, invoice, serta notifikasi akun.",
+        "Until you save a choice, emails follow your dashboard language.": "Sebelum Anda menyimpan pilihan, email mengikuti bahasa dashboard Anda.",
+        "Applies to all future emails.": "Berlaku untuk semua email berikutnya.",
+        "Email language saved.": "Bahasa email disimpan.",
+        "Email preferences saved.": "Preferensi email disimpan.",
 
         // ── Billing & plan ───────────────────────────────────────────────────
         "Billing history": "Riwayat penagihan",

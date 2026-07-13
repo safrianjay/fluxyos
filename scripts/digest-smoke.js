@@ -9,6 +9,9 @@
 delete process.env.OPENAI_API_KEY; // force deterministic narrative
 process.env.RESEND_API_KEY = 're_smoke_dummy';
 process.env.APP_BASE_URL = 'https://fluxyos.com';
+// Pin the fallback locale so the EN assertions are deterministic (the product
+// default is Bahasa-first). Explicit language preferences are tested below.
+process.env.DEFAULT_LOCALE = 'en';
 
 const sent = [];
 const _realFetch = global.fetch;
@@ -113,7 +116,38 @@ async function main() {
     const s2 = await generateWeeklyDigest(db5, 'uS', { metrics: ALL, email: 's@example.com' }, { now: NOW, logger: silent });
     check('re-run same week → deduped (no resend)', s2.skipped === 'duplicate' && sent.length === before);
 
-    // 6) Delivery-time matching.
+    // 6) Email Language preference — settings/email_preferences.language = 'id'
+    // must localize the ENTIRE email: subject, chrome, AND the generated
+    // summary/insights/actions (deterministic path here). No mixed languages.
+    const db6 = makeDb({
+        colls: financeSeed('uID', IN_PERIOD),
+        docs: { 'users/uID/settings/email_preferences': { language: 'id' } },
+    });
+    const r6 = await generateWeeklyDigest(db6, 'uID', { metrics: ALL, name: 'Andi', email: 'id@example.com' }, { now: NOW, logger: silent, dryRun: true });
+    const html6 = r6.prebuilt.html;
+    check('language=id → ID subject', r6.prebuilt.subject.includes('Ringkasan keuangan mingguan'));
+    check('language=id → ID chrome (executive summary, actions)', html6.includes('Ringkasan eksekutif') && html6.includes('Tindakan yang disarankan'));
+    check('language=id → ID generated summary (no English sentence)', html6.includes('pendapatan Anda') && html6.includes('minggu lalu') && !html6.includes('For last week'));
+    check('language=id → ID recommended action', html6.includes('Tinjau pendorong utama periode ini') && !html6.includes('Review period drivers'));
+    // Explicit 'en' wins over an Indonesian finance locale.
+    const db6b = makeDb({
+        colls: financeSeed('uEN', IN_PERIOD),
+        docs: {
+            'users/uEN/settings/email_preferences': { language: 'en' },
+            'users/uEN/settings/finance': { locale: 'id-ID' },
+        },
+    });
+    const r6b = await generateWeeklyDigest(db6b, 'uEN', { metrics: ALL, email: 'en@example.com' }, { now: NOW, logger: silent, dryRun: true });
+    check('language=en beats finance locale id-ID', /weekly digest/i.test(r6b.prebuilt.subject) && r6b.prebuilt.html.includes('Executive summary'));
+    // No explicit language → finance locale drives it (legacy behavior).
+    const db6c = makeDb({
+        colls: financeSeed('uFL', IN_PERIOD),
+        docs: { 'users/uFL/settings/finance': { locale: 'id-ID' } },
+    });
+    const r6c = await generateWeeklyDigest(db6c, 'uFL', { metrics: ALL, email: 'fl@example.com' }, { now: NOW, logger: silent, dryRun: true });
+    check('no explicit language → finance locale (id-ID) used', r6c.prebuilt.subject.includes('Ringkasan keuangan mingguan'));
+
+    // 7) Delivery-time matching.
     const tz = 'Asia/Jakarta';
     const lp = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long', hour: 'numeric', hour12: false }).formatToParts(NOW);
     const wd = lp.find((p) => p.type === 'weekday').value.toLowerCase();

@@ -1296,11 +1296,14 @@ service cloud.firestore {
     // Enums/bools/bounds only — no secrets. See docs/PROJECT_BACKGROUND.md §4e.
     function isValidEmailPreferencesSettings(data) {
       return data.keys().hasOnly([
-          'weekly_digest_enabled', 'delivery_day', 'delivery_hour', 'timezone', 'metrics', 'updated_at'
+          'weekly_digest_enabled', 'language', 'delivery_day', 'delivery_hour', 'timezone', 'metrics', 'updated_at'
         ])
         && data.keys().hasAll([
           'weekly_digest_enabled', 'delivery_day', 'delivery_hour', 'timezone', 'metrics', 'updated_at'
         ])
+        // Email Language ('id' | 'en') — optional: absent means "follow the
+        // dashboard/finance locale" (see functions/lib/locale.js fallbacks).
+        && (!data.keys().hasAny(['language']) || data.language in ['id', 'en'])
         && data.weekly_digest_enabled is bool
         && data.delivery_day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
         && data.delivery_hour is int && data.delivery_hour >= 0 && data.delivery_hour <= 23

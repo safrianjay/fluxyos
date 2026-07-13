@@ -1600,6 +1600,26 @@ function action(title, description, priority = 'medium') {
     return { title, description, priority };
 }
 
+// Bahasa Indonesia rendering of the engine's English period labels, used when
+// a deterministic answer is composed with language === 'id'. Unknown labels
+// pass through unchanged.
+const PERIOD_LABEL_ID = {
+    'last week': 'minggu lalu',
+    'this week': 'minggu ini',
+    'last month': 'bulan lalu',
+    'this month': 'bulan ini',
+    'last quarter': 'kuartal lalu',
+    'this quarter': 'kuartal ini',
+    'last year': 'tahun lalu',
+    'this year': 'tahun ini',
+    'all time': 'sepanjang waktu',
+    'today': 'hari ini',
+    'yesterday': 'kemarin',
+};
+function periodLabelId(label) {
+    return PERIOD_LABEL_ID[String(label || '').toLowerCase()] || label;
+}
+
 function baseAnswer(intent, answerType, period, language = 'en') {
     void language;
     return {
@@ -1978,19 +1998,30 @@ function buildPlannedDeterministicAnswer({ plan, message, pageContext, tools, la
     }
     if (plan.intent === 'period_performance') {
         const perf = tools.periodPerformance;
-        const answer = baseAnswer('period_performance', 'analysis', plan.period);
+        const id = language === 'id';
+        const answer = baseAnswer('period_performance', 'analysis', plan.period, language);
         const marginStatus = perf.revenue === 0 ? 'warning' : perf.gross_margin < 20 ? 'critical' : perf.gross_margin < 40 ? 'warning' : 'good';
-        answer.direct_answer = `For ${plan.period.label}, revenue is ${formatIDR(perf.revenue)}, OpEx is ${formatIDR(perf.opex)}, and gross margin is ${perf.revenue > 0 ? formatPercent(perf.gross_margin) : 'unavailable'}.`;
+        answer.direct_answer = id
+            ? `Untuk ${periodLabelId(plan.period.label)}, pendapatan Anda ${formatIDR(perf.revenue)}, beban operasional ${formatIDR(perf.opex)}, dan margin kotor ${perf.revenue > 0 ? formatPercent(perf.gross_margin) : 'belum tersedia'}.`
+            : `For ${plan.period.label}, revenue is ${formatIDR(perf.revenue)}, OpEx is ${formatIDR(perf.opex)}, and gross margin is ${perf.revenue > 0 ? formatPercent(perf.gross_margin) : 'unavailable'}.`;
         answer.key_numbers = [
-            keyNumber('Revenue', perf.revenue, perf.revenue > 0 ? 'good' : 'warning'),
-            keyNumber('OpEx', perf.opex, perf.opex > perf.revenue && perf.revenue > 0 ? 'critical' : 'neutral'),
-            keyNumber('Gross margin', perf.gross_margin, marginStatus, formatPercent),
-            keyNumber('Transactions', perf.transaction_count, 'neutral', value => String(value)),
+            keyNumber(id ? 'Pendapatan' : 'Revenue', perf.revenue, perf.revenue > 0 ? 'good' : 'warning'),
+            keyNumber(id ? 'Beban operasional' : 'OpEx', perf.opex, perf.opex > perf.revenue && perf.revenue > 0 ? 'critical' : 'neutral'),
+            keyNumber(id ? 'Margin kotor' : 'Gross margin', perf.gross_margin, marginStatus, formatPercent),
+            keyNumber(id ? 'Transaksi' : 'Transactions', perf.transaction_count, 'neutral', value => String(value)),
         ];
-        if (perf.related_records.length) answer.insights.push(insight('Largest period records', 'These records have the largest impact in the selected period.', 'info', perf.related_records));
-        answer.recommended_actions = [action('Review period drivers', 'Check the largest revenue and OpEx records before making decisions from this period.', 'medium')];
+        if (perf.related_records.length) answer.insights.push(insight(
+            id ? 'Catatan terbesar pada periode ini' : 'Largest period records',
+            id ? 'Catatan berikut memberi dampak terbesar pada periode terpilih.' : 'These records have the largest impact in the selected period.',
+            'info', perf.related_records));
+        answer.recommended_actions = [action(
+            id ? 'Tinjau pendorong utama periode ini' : 'Review period drivers',
+            id ? 'Periksa catatan pendapatan dan beban operasional terbesar sebelum mengambil keputusan dari periode ini.' : 'Check the largest revenue and OpEx records before making decisions from this period.',
+            'medium')];
         answer.limitations = perf.limitations || [];
-        answer.follow_up_questions = ['Compare with previous period', 'Why is OpEx high?', 'What should I fix first?'];
+        answer.follow_up_questions = id
+            ? ['Bandingkan dengan periode sebelumnya', 'Kenapa beban operasional tinggi?', 'Apa yang perlu saya perbaiki lebih dulu?']
+            : ['Compare with previous period', 'Why is OpEx high?', 'What should I fix first?'];
         return answer;
     }
     const legacyIntent = legacyIntentFromPlan(plan.intent);

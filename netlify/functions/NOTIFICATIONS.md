@@ -43,7 +43,7 @@ sweep turns those into emails within ~5 minutes. Logic lives in `lib/notify-core
    | `EMAIL_FROM` | `FluxyOS <notifications@fluxyos.com>` |
    | `EMAIL_REPLY_TO` | `support@fluxyos.com` |
    | `APP_BASE_URL` | `https://dashboard.fluxyos.com` (the app origin — email deep links land on the dashboard site; the code fallback is the apex, which still works via its app-path 301s) |
-   | `DEFAULT_LOCALE` | `en` or `id` |
+   | `DEFAULT_LOCALE` | `en` or `id` — last-resort fallback only. Per-user language resolves as: `settings/email_preferences.language` (the **Email Language** setting, Settings → Notifications & email) → `settings/finance.locale` → this env. See `functions/lib/locale.js`. |
    | `WELCOME_AFTER` | **deploy timestamp**, ISO (e.g. `2026-06-14T12:00:00Z`) — only users created after this get a welcome email. Set it to "now" at first deploy so existing users are never emailed. |
    | `NOTIFY_AFTER` | KYC/payment recency cutoff, ISO. A decision is emailed only if its review timestamp is ≥ this. Defaults to `WELCOME_AFTER` if unset. Set to "now" so pre-existing decisions are never back-emailed. |
    | `NOTIFY_ENABLED` | **kill switch — default off.** Both notification sweeps run **only** when this is exactly `"true"`. Anything else (incl. unset) = paused. |
@@ -111,6 +111,13 @@ A per-user AI-narrated weekly summary, separate from the notification sweeps.
 - **Content:** dynamic sections per the user's `metrics`; AI Insights +
   Recommended Actions always render. Low-activity weeks send **summary-only**
   (AI summary + actions); accounts with zero finance records are skipped.
+- **Language:** the whole email — subject, chrome, AND the AI/deterministic
+  narrative (executive summary, insights, recommended actions) — renders in one
+  language, resolved by `resolveUserLocale`: `email_preferences.language` →
+  `finance.locale` → `DEFAULT_LOCALE`. The locale is resolved *before* the
+  narrative is generated and passed as `language` to both
+  `buildPlannedDeterministicAnswer` and `callOpenAIFinanceAnalyst`, so content
+  and template can never mix languages.
 - **Audit:** `weekly_digest.generated` / `.sent` / `.failed`.
 - **Enable:** set `DIGEST_ENABLED=true`. Code lives in `lib/digest-core.js`;
   the email builder is `functions/lib/digest-template.js`. Local test:

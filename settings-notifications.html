@@ -46,6 +46,30 @@
                     Could not load email preferences. Refresh the page or try again in a moment.
                 </div>
 
+                <form id="email-language-form" class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-section="email_language">
+                    <div class="p-5 border-b border-gray-100">
+                        <h2 class="text-[16px] font-bold text-gray-900">Email language</h2>
+                        <p class="mt-1 text-[13px] text-gray-500">The language used for every email FluxyOS sends you — weekly digest, billing and payment reminders, invoices, and account notifications.</p>
+                    </div>
+                    <div class="p-5">
+                        <label for="email-language" class="block sm:max-w-xs">
+                            <span class="text-[12px] font-bold text-gray-500">Language</span>
+                            <select id="email-language" name="language" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] text-gray-900 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
+                                <option value="id">Bahasa Indonesia</option>
+                                <option value="en">English</option>
+                            </select>
+                        </label>
+                        <p class="mt-2 text-[12px] text-gray-500">Until you save a choice, emails follow your dashboard language.</p>
+                    </div>
+                    <div class="px-5 py-4 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <p id="email-language-status" class="text-[12px] text-gray-500">Applies to all future emails.</p>
+                        <div class="flex items-center gap-2">
+                            <button type="reset" class="settings-cancel-btn inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-[14px] font-bold text-gray-700 hover:bg-gray-50">Cancel</button>
+                            <button type="submit" class="settings-save-btn inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60">Save</button>
+                        </div>
+                    </div>
+                </form>
+
                 <form id="email-prefs-form" class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-section="email_preferences">
                     <div class="p-5 border-b border-gray-100">
                         <h2 class="text-[16px] font-bold text-gray-900">Weekly Financial Digest</h2>
@@ -169,6 +193,7 @@
                 currentPrefs = settings.email_preferences || {};
                 renderPrefs(currentPrefs);
                 bindForm('email-prefs-form', savePrefs);
+                bindForm('email-language-form', saveLanguage);
                 wireResets();
                 setLoadState('ready', 'Settings ready');
             } catch (error) {
@@ -178,7 +203,16 @@
             }
         }
 
+        // Email language default: an explicit saved choice wins; otherwise
+        // inherit the dashboard language (Bahasa-first); English as last resort.
+        function defaultEmailLanguage(ep) {
+            if (ep.language === 'id' || ep.language === 'en') return ep.language;
+            try { const l = window.FluxyI18n?.getLang?.(); if (l === 'id' || l === 'en') return l; } catch (e) { /* fall through */ }
+            return 'en';
+        }
+
         function renderPrefs(ep) {
+            setValue('email-language', defaultEmailLanguage(ep));
             setChecked('weekly-digest-enabled', ep.weekly_digest_enabled !== false);
             setValue('digest-delivery-day', ep.delivery_day || 'monday');
             setValue('digest-delivery-hour', String(Number.isInteger(ep.delivery_hour) ? ep.delivery_hour : 9));
@@ -213,6 +247,16 @@
             };
             const saved = await saveSection(event.currentTarget, 'email-prefs-status', () => ds.saveEmailPreferences(auth.currentUser.uid, payload), 'Email preferences saved.');
             if (saved) currentPrefs = { ...currentPrefs, ...payload };
+        }
+
+        async function saveLanguage(event) {
+            event.preventDefault();
+            const language = getValue('email-language') === 'en' ? 'en' : 'id';
+            // Carry the stored preferences so the full-payload save keeps them;
+            // seed the detected timezone when none has been saved yet.
+            const payload = { timezone: DETECTED_TZ, ...currentPrefs, language };
+            const saved = await saveSection(event.currentTarget, 'email-language-status', () => ds.saveEmailPreferences(auth.currentUser.uid, payload), 'Email language saved.');
+            if (saved) currentPrefs = { ...currentPrefs, language };
         }
 
         async function saveSection(form, statusId, action, successMessage) {
