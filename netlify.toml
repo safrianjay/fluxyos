@@ -5,7 +5,11 @@
   # (replaces the render-blocking cdn.tailwindcss.com on marketing pages — see
   # tailwind.config.js). The artifact is also committed so the site renders even
   # if the build step is skipped.
-  command = "npm run build:css"
+  # prepare-deploy.js shapes the output for the two-site split (SITE_ROLE=
+  # marketing|app, set per site in the Netlify UI; NO-OP when unset — local dev,
+  # deploy previews, rollback). It must run AFTER build:css: the tailwind
+  # content globs scan the marketing HTML, so pruning can't come first.
+  command = "npm run build:css && node scripts/prepare-deploy.js"
   # Pin the build + functions runtime so pdfjs-dist (Node >=20, used by the bank
   # statement extractor) runs on a supported runtime.
   [build.environment]
@@ -21,7 +25,11 @@
     Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=()"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
     # Tighten script-src once all CDN origins are audited.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://accounts.google.com https://www.googleapis.com https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://www.gstatic.com https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com wss://*.firebaseio.com; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://apis.google.com; frame-ancestors 'none';"
+    # https://fluxyos.com in frame-src/connect-src: Firebase authDomain stays
+    # fluxyos.com, and signInWithPopup embeds an iframe to
+    # https://fluxyos.com/__/auth/iframe — on dashboard.fluxyos.com 'self' no
+    # longer covers it (same-origin no-op on the apex).
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://accounts.google.com https://www.googleapis.com https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://fluxyos.com https://www.gstatic.com https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com wss://*.firebaseio.com; frame-src 'self' https://fluxyos.com https://*.firebaseapp.com https://accounts.google.com https://apis.google.com; frame-ancestors 'none';"
 
 [build.processing.html]
   pretty_urls = true

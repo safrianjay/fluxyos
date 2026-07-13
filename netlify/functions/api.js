@@ -1,5 +1,6 @@
 const ALLOWED_ORIGINS = [
     'https://fluxyos.com',
+    'https://dashboard.fluxyos.com',
     'https://www.fluxyos.com',
     'http://localhost:8000',
     'http://127.0.0.1:5500',

@@ -1,0 +1,38 @@
+# GENERATED SOURCE — installed as _redirects by scripts/prepare-deploy.js when
+# SITE_ROLE=marketing (the fluxyos.com apex site). Never ships as-is.
+#
+# _redirects rules are processed by Netlify BEFORE netlify.toml [[redirects]],
+# which keep the full monolith rule set as the SITE_ROLE-unset fallback.
+
+# --- Host canonicalization ---
+https://fluxyos.netlify.app/*   https://fluxyos.com/:splat   301!
+https://www.fluxyos.com/*       https://fluxyos.com/:splat   301!
+
+# --- Firebase Auth helper proxy ---
+# authDomain is fluxyos.com: the dashboard origin's signInWithPopup iframe and
+# password-reset action handler load THROUGH this proxy. Do not remove.
+/__/auth/*   https://fluxyos.firebaseapp.com/__/auth/:splat   200!
+
+# --- Legacy use-case shortcuts ---
+/ecommerce-brands           /use-cases/ecommerce-brands           301!
+/marketing-agencies         /use-cases/marketing-agencies         301!
+/dropshippers-digital-ads   /use-cases/dropshippers-digital-ads   301!
+/manufacturing              /use-cases/manufacturing              301!
+/retail-franchises          /use-cases/retail-franchises          301!
+
+# --- API stays served LOCALLY on this origin too ---
+# netlify/functions deploy to both sites. Never convert these to cross-origin
+# redirects: Netlify has no 307/308, and a 301/302 turns POST into GET — that
+# would silently break API calls from stale app sessions during cutover.
+/api/v1/bank-statements/extract   /.netlify/functions/bank-statement-extract-background   200
+/api/v1/*                         /.netlify/functions/api/:splat                           200
+
+# --- App split: every app path 301s to the dashboard origin ---
+# Query strings are preserved automatically (covers already-sent
+# /login?invite=...&ws=... team-invite emails).
+/budget-period/*       https://dashboard.fluxyos.com/budget-period/:splat       301!
+/budget-allocation/*   https://dashboard.fluxyos.com/budget-allocation/:splat   301!
+# {{APP_PAGE_REDIRECTS}}
+
+# --- Root ---
+/   /fluxyos.html   200!

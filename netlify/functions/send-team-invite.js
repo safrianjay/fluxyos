@@ -20,7 +20,7 @@ const { buildEmail } = require('../../functions/lib/templates');
 const EMAIL_FROM = 'FluxyOS <hello@fluxyos.com>';
 const REPLY_TO = 'hello@fluxyos.com';
 const APP_BASE_URL = process.env.APP_BASE_URL || 'https://fluxyos.com';
-const ALLOWED = ['https://fluxyos.com', 'https://www.fluxyos.com', 'http://localhost:8000', 'http://127.0.0.1:5500', 'http://127.0.0.1:8765'];
+const ALLOWED = ['https://fluxyos.com', 'https://dashboard.fluxyos.com', 'https://www.fluxyos.com', 'http://localhost:8000', 'http://127.0.0.1:5500', 'http://127.0.0.1:8765'];
 
 const ROLE_LABELS = { admin: 'Admin', finance: 'Finance', viewer: 'Viewer' };
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');

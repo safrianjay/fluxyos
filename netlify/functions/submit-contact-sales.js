@@ -57,7 +57,7 @@ async function notifyNewLead(lead) {
 }
 
 const ALLOWED = [
-    'https://fluxyos.com', 'https://www.fluxyos.com',
+    'https://fluxyos.com', 'https://dashboard.fluxyos.com', 'https://www.fluxyos.com',
     'http://localhost:8000', 'http://127.0.0.1:5500', 'http://127.0.0.1:8765',
 ];
 const TEAM_SIZES = ['1-10', '11-50', '51-200', '201-1000', '1000+'];

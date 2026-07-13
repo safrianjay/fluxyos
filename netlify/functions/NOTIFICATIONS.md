@@ -42,7 +42,7 @@ sweep turns those into emails within ~5 minutes. Logic lives in `lib/notify-core
    | `RESEND_API_KEY` | your Resend API key |
    | `EMAIL_FROM` | `FluxyOS <notifications@fluxyos.com>` |
    | `EMAIL_REPLY_TO` | `support@fluxyos.com` |
-   | `APP_BASE_URL` | `https://fluxyos.com` |
+   | `APP_BASE_URL` | `https://dashboard.fluxyos.com` (the app origin — email deep links land on the dashboard site; the code fallback is the apex, which still works via its app-path 301s) |
    | `DEFAULT_LOCALE` | `en` or `id` |
    | `WELCOME_AFTER` | **deploy timestamp**, ISO (e.g. `2026-06-14T12:00:00Z`) — only users created after this get a welcome email. Set it to "now" at first deploy so existing users are never emailed. |
    | `NOTIFY_AFTER` | KYC/payment recency cutoff, ISO. A decision is emailed only if its review timestamp is ≥ this. Defaults to `WELCOME_AFTER` if unset. Set to "now" so pre-existing decisions are never back-emailed. |

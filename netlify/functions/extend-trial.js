@@ -18,7 +18,7 @@
 const admin = require('firebase-admin');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const ALLOWED = ['https://fluxyos.com', 'https://www.fluxyos.com', 'http://localhost:8000', 'http://127.0.0.1:5500', 'http://127.0.0.1:8765'];
+const ALLOWED = ['https://fluxyos.com', 'https://dashboard.fluxyos.com', 'https://www.fluxyos.com', 'http://localhost:8000', 'http://127.0.0.1:5500', 'http://127.0.0.1:8765'];
 
 // Extension durations offered by the console dropdown.
 const DURATIONS = {
