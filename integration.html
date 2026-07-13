@@ -2,33 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FluxyOS | Integrations</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/shared-dashboard.css">
+    <style>
+        body { font-family: Inter, sans-serif; }
+    </style>
 </head>
 <body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
 
-    <!-- SIDEBAR -->
     <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
-        <!-- Sidebar content will be loaded by sidebar-loader.js -->
+        <!-- Sidebar content loaded by sidebar-loader.js -->
     </aside>
 
     <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
-        
-        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
-            <div class="flex items-center gap-4 flex-1">
-                <button class="md:hidden text-gray-500 hover:text-gray-900">
+        <header class="min-h-16 bg-white border-b border-gray-200 flex flex-wrap items-center justify-between px-6 py-3 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-4">
+            <div class="flex items-center gap-4 min-w-0">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
-                <h1 class="text-lg font-bold text-gray-900">Integrations</h1>
+                <h1 class="text-[16px] font-bold text-gray-900">Integrations</h1>
             </div>
-
-            <!-- Right: AI Entry Point -->
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3 flex-wrap">
                 <button onclick="window.toggleFluxyAI()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
                     <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     Fluxy AI
@@ -36,70 +34,198 @@
             </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-            <div class="max-w-7xl mx-auto space-y-6">
-                
-                <div class="mb-8">
-                    <h2 class="text-2xl font-bold text-gray-900 tracking-tight">Connected Apps</h2>
-                    <p class="text-[14px] text-gray-500 mt-1">Connect your financial stack to automate data synchronization.</p>
-                </div>
+        <div class="fluxy-page-shell">
+            <div class="fluxy-page-canvas">
+                <div class="integrations-shell space-y-6">
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <!-- Bank Central Asia -->
-                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center text-center">
-                        <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
-                            <span class="text-blue-600 font-bold">BCA</span>
-                        </div>
-                        <h3 class="font-bold text-gray-900">BCA Business</h3>
-                        <p class="text-[12px] text-gray-400 mt-1 mb-4 italic">Bank / Indonesia</p>
-                        <button class="w-full py-2 bg-gray-50 border border-gray-200 rounded-lg text-[14px] font-bold text-gray-600 hover:bg-gray-100 transition-colors">Connect</button>
+                    <!-- Page heading -->
+                    <section>
+                        <h2 class="text-2xl leading-tight font-bold tracking-tight text-gray-900">Integration Center</h2>
+                        <p class="mt-1 text-[14px] text-gray-500">Connect your financial stack to automate data synchronization.</p>
+                    </section>
+
+                    <!-- Read-only notice (viewer/finance/accountant) -->
+                    <div id="integration-readonly-banner" class="hidden bg-white border border-gray-200 rounded-xl shadow-sm px-4 py-3 text-[12px] text-gray-500">
+                        You have read-only access to integrations. Ask an owner or admin to manage connections.
                     </div>
 
-                    <!-- Meta Ads -->
-                    <div class="bg-white p-6 rounded-xl border border-blue-100 shadow-sm flex flex-col items-center text-center ring-2 ring-blue-50">
-                        <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
-                            <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                        </div>
-                        <h3 class="font-bold text-gray-900">Meta Ads</h3>
-                        <p class="text-[12px] text-green-500 mt-1 mb-4 font-bold flex items-center gap-1">
-                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                            Linked
-                        </p>
-                        <button class="w-full py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-red-500 hover:bg-red-50 transition-colors">Disconnect</button>
+                    <!-- Category tabs -->
+                    <div id="integration-tabs" class="inline-flex flex-wrap items-center gap-1 rounded-lg bg-gray-50 border border-gray-200 p-0.5" role="tablist">
+                        <button type="button" data-category="commerce" role="tab" aria-selected="true" class="px-3 py-1.5 rounded-md text-[12px] font-bold bg-white text-gray-900 shadow-sm border border-gray-200">Commerce</button>
+                        <button type="button" data-category="payment" role="tab" aria-selected="false" class="px-3 py-1.5 rounded-md text-[12px] font-bold text-gray-500 hover:text-gray-700">Payment</button>
+                        <button type="button" data-category="accounting" role="tab" aria-selected="false" class="px-3 py-1.5 rounded-md text-[12px] font-bold text-gray-500 hover:text-gray-700">Accounting</button>
+                        <button type="button" data-category="bank" role="tab" aria-selected="false" class="px-3 py-1.5 rounded-md text-[12px] font-bold text-gray-500 hover:text-gray-700">Bank</button>
+                        <button type="button" data-category="marketing" role="tab" aria-selected="false" class="px-3 py-1.5 rounded-md text-[12px] font-bold text-gray-500 hover:text-gray-700">Marketing</button>
+                        <button type="button" data-category="communication" role="tab" aria-selected="false" class="px-3 py-1.5 rounded-md text-[12px] font-bold text-gray-500 hover:text-gray-700">Communication</button>
                     </div>
 
-                    <!-- Stripe -->
-                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center text-center">
-                        <div class="w-16 h-16 bg-[#635BFF] rounded-full flex items-center justify-center mb-4">
-                            <span class="text-white font-bold text-2xl italic">s</span>
+                    <!-- Commerce panel (live) -->
+                    <section id="panel-commerce" data-category-panel="commerce">
+                        <p id="commerce-hint" class="hidden mb-3 text-[12px] text-gray-400">No integrations connected yet. Connect a sales channel to sync revenue automatically.</p>
+                        <div id="commerce-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                            <!-- Skeletons until the first commerce_accounts snapshot -->
+                            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm animate-pulse" data-commerce-skeleton>
+                                <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-gray-100"></div><div class="h-4 w-28 bg-gray-100 rounded"></div></div>
+                                <div class="mt-4 h-3 w-full bg-gray-100 rounded"></div>
+                                <div class="mt-2 h-3 w-2/3 bg-gray-100 rounded"></div>
+                                <div class="mt-5 h-8 w-full bg-gray-100 rounded-lg"></div>
+                            </div>
+                            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm animate-pulse" data-commerce-skeleton>
+                                <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-gray-100"></div><div class="h-4 w-28 bg-gray-100 rounded"></div></div>
+                                <div class="mt-4 h-3 w-full bg-gray-100 rounded"></div>
+                                <div class="mt-2 h-3 w-2/3 bg-gray-100 rounded"></div>
+                                <div class="mt-5 h-8 w-full bg-gray-100 rounded-lg"></div>
+                            </div>
+                            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm animate-pulse" data-commerce-skeleton>
+                                <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-gray-100"></div><div class="h-4 w-28 bg-gray-100 rounded"></div></div>
+                                <div class="mt-4 h-3 w-full bg-gray-100 rounded"></div>
+                                <div class="mt-2 h-3 w-2/3 bg-gray-100 rounded"></div>
+                                <div class="mt-5 h-8 w-full bg-gray-100 rounded-lg"></div>
+                            </div>
                         </div>
-                        <h3 class="font-bold text-gray-900">Stripe</h3>
-                        <p class="text-[12px] text-gray-400 mt-1 mb-4 italic">Payments / Global</p>
-                        <button class="w-full py-2 bg-gray-50 border border-gray-200 rounded-lg text-[14px] font-bold text-gray-600 hover:bg-gray-100 transition-colors">Connect</button>
-                    </div>
+                    </section>
 
-                    <!-- Add New -->
-                    <div class="bg-gray-50 p-6 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-[#EA580C] transition-colors">
-                        <div class="w-12 h-12 rounded-full border-2 border-gray-300 flex items-center justify-center mb-2 group-hover:border-[#EA580C]">
-                            <svg class="w-6 h-6 text-gray-400 group-hover:text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    <!-- Coming-soon panels (no dead buttons) -->
+                    <section class="hidden" data-category-panel="payment">
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                            <div class="flex items-center justify-between gap-3">
+                                <h3 class="text-[14px] font-semibold text-gray-900">Payment integrations</h3>
+                                <span class="text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400 bg-gray-50 border border-gray-200 rounded-full px-2.5 py-1">Coming soon</span>
+                            </div>
+                            <p class="mt-1 text-[12px] text-gray-500">Reconcile payment gateway fees and payouts directly in your ledger.</p>
+                            <div class="mt-4 flex flex-wrap gap-2" data-provider-chips>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Midtrans</span>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Xendit</span>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Stripe</span>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">PayPal</span>
+                            </div>
                         </div>
-                        <span class="text-[14px] font-bold text-gray-500 group-hover:text-[#EA580C]">Request Connector</span>
-                    </div>
+                    </section>
+                    <section class="hidden" data-category-panel="accounting">
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                            <div class="flex items-center justify-between gap-3">
+                                <h3 class="text-[14px] font-semibold text-gray-900">Accounting integrations</h3>
+                                <span class="text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400 bg-gray-50 border border-gray-200 rounded-full px-2.5 py-1">Coming soon</span>
+                            </div>
+                            <p class="mt-1 text-[12px] text-gray-500">Push journals and balances to your accounting software.</p>
+                            <div class="mt-4 flex flex-wrap gap-2" data-provider-chips>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Jurnal</span>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Accurate</span>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Xero</span>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">QuickBooks</span>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="hidden" data-category-panel="bank">
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                            <div class="flex items-center justify-between gap-3">
+                                <h3 class="text-[14px] font-semibold text-gray-900">Bank integrations</h3>
+                                <span class="text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400 bg-gray-50 border border-gray-200 rounded-full px-2.5 py-1">Coming soon</span>
+                            </div>
+                            <p class="mt-1 text-[12px] text-gray-500">Read-only sync via Open Finance providers.</p>
+                            <div class="mt-4 flex flex-wrap gap-2" data-provider-chips>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">BCA</span>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Mandiri</span>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">BRI</span>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">BNI</span>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="hidden" data-category-panel="marketing">
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                            <div class="flex items-center justify-between gap-3">
+                                <h3 class="text-[14px] font-semibold text-gray-900">Marketing integrations</h3>
+                                <span class="text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400 bg-gray-50 border border-gray-200 rounded-full px-2.5 py-1">Coming soon</span>
+                            </div>
+                            <p class="mt-1 text-[12px] text-gray-500">Track ad spend as expenses automatically.</p>
+                            <div class="mt-4 flex flex-wrap gap-2" data-provider-chips>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Google Ads</span>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Meta Ads</span>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">TikTok Ads</span>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="hidden" data-category-panel="communication">
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                            <div class="flex items-center justify-between gap-3">
+                                <h3 class="text-[14px] font-semibold text-gray-900">Communication integrations</h3>
+                                <span class="text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400 bg-gray-50 border border-gray-200 rounded-full px-2.5 py-1">Coming soon</span>
+                            </div>
+                            <p class="mt-1 text-[12px] text-gray-500">Capture receipts and reminders where you already work.</p>
+                            <div class="mt-4 flex flex-wrap gap-2" data-provider-chips>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">WhatsApp</span>
+                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Gmail</span>
+                            </div>
+                        </div>
+                    </section>
+
                 </div>
             </div>
         </div>
     </main>
 
-    <script src="assets/js/sidebar-loader.js"></script>
-    <script src="assets/js/shared-dashboard.js"></script>
-    <script src="assets/js/dashboard-i18n.js"></script>
-    <script src="assets/js/fluxy-select.js"></script>
+    <!-- Connection drawer -->
+    <div id="integration-drawer-backdrop" class="fixed inset-0 bg-gray-900/30 z-40 hidden"></div>
+    <div id="integration-drawer" class="fixed top-0 right-0 h-full w-full max-w-[440px] bg-white shadow-2xl z-50 translate-x-full transition-transform duration-200 ease-out flex flex-col" role="dialog" aria-modal="true" aria-label="Connection details">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+            <div class="flex items-center gap-3 min-w-0">
+                <div id="drawer-logo" class="w-9 h-9 rounded-lg flex items-center justify-center text-[12px] font-bold flex-shrink-0"></div>
+                <div class="min-w-0">
+                    <h3 id="drawer-title" class="text-[14px] font-semibold text-gray-900 truncate"></h3>
+                    <p id="drawer-subtitle" class="text-[12px] text-gray-400 truncate"></p>
+                </div>
+            </div>
+            <button type="button" id="drawer-close" class="text-gray-400 hover:text-gray-600 p-1" aria-label="Close">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+            <section>
+                <h4 class="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-400">Connection details</h4>
+                <dl id="drawer-details" class="mt-2 space-y-1.5"></dl>
+            </section>
+            <section id="drawer-initial-sync" class="hidden">
+                <h4 class="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-400">Initial import progress</h4>
+                <div class="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div id="drawer-initial-sync-bar" class="h-full bg-[#EA580C] rounded-full transition-all" style="width:0%"></div>
+                </div>
+                <p id="drawer-initial-sync-label" class="mt-1 text-[12px] text-gray-500 tabular-nums"></p>
+            </section>
+            <section id="drawer-autopost-section" class="hidden">
+                <div class="flex items-start justify-between gap-3 bg-gray-50 border border-gray-200 rounded-xl p-3">
+                    <div class="min-w-0">
+                        <p class="text-[14px] font-medium text-gray-900">Auto-post to Ledger</p>
+                        <p class="mt-0.5 text-[12px] text-gray-500">Synced sales are recorded as ledger transactions automatically. Turn off to review them first.</p>
+                    </div>
+                    <button type="button" id="drawer-autopost-toggle" role="switch" aria-checked="true" aria-label="Auto-post to Ledger" class="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors bg-gray-900">
+                        <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6" data-autopost-knob></span>
+                    </button>
+                </div>
+            </section>
+            <section>
+                <h4 class="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-400">Sync history</h4>
+                <div id="drawer-jobs" class="mt-2 space-y-1.5"></div>
+            </section>
+            <section>
+                <h4 class="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-400">Recent errors</h4>
+                <div id="drawer-errors" class="mt-2 space-y-1.5"></div>
+            </section>
+        </div>
+        <div id="drawer-footer" class="hidden px-5 py-4 border-t border-gray-100 flex-shrink-0">
+            <button type="button" id="drawer-disconnect" class="w-full py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-red-500 hover:bg-red-50 transition-colors">Disconnect</button>
+        </div>
+    </div>
 
-    <!-- AUTH GUARD -->
+    <script src="/assets/js/sidebar-loader.js"></script>
+    <script src="/assets/js/shared-dashboard.js"></script>
+    <script src="/assets/js/dashboard-i18n.js"></script>
+
     <script type="module">
-        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { applyToPage } from './assets/js/onboarding-gate.js';
+        import DataService from '/assets/js/db-service.js';
+        import { applyToPage } from '/assets/js/onboarding-gate.js';
+        import { initIntegrationPage } from '/assets/js/integration.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -107,23 +233,21 @@
             projectId: "fluxyos",
             storageBucket: "fluxyos.firebasestorage.app",
             messagingSenderId: "1084252368929",
-            appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
-            measurementId: "G-ZN7J6DRD2L"
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
         };
 
-        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
         const auth = getAuth(app);
-
-        // SMART AUTH GUARD
-        let checkTimeout = setTimeout(() => {
-            window.location.replace('/login');
-        }, 2000);
+        const ds = new DataService(app);
 
         onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                clearTimeout(checkTimeout);
-                await applyToPage(user, { pageKey: 'integrations' });
+            if (!user) {
+                window.location.replace('/login');
+                return;
             }
+            const gated = await applyToPage(user, { pageKey: 'integrations' });
+            if (gated) return;
+            initIntegrationPage({ ds, user });
         });
     </script>
 </body>

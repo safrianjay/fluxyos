@@ -355,6 +355,20 @@ Data handling rules:
 - Avoid logging sensitive financial details to the browser console.
 - Public landing pages must not read or write dashboard Firestore data.
 
+**Commerce Integration Platform (shipped, Phase 3).** Marketplace OAuth
+tokens are AES-256-GCM-encrypted (`COMMERCE_TOKEN_KEY` env, rotation via
+`COMMERCE_TOKEN_KEY_PREVIOUS`) in the top-level `commerce_credentials`
+collection with `allow read, write: if false` — only Netlify functions (Admin
+SDK) touch it, and no endpoint ever returns token material. Webhook payloads
+are HMAC-verified against exact raw bytes before parsing; OAuth callbacks are
+authorized by an HMAC-signed single-use state nonce (15-min TTL). Connect /
+disconnect / manual sync require `integrations.manage` (owner/admin, verified
+server-side) and audit-log as `integration.connect` / `integration.disconnect`
+/ `integration.sync` with `source: 'integration'`. Kill switches (all default
+off, app site only): `COMMERCE_ENABLED`, `COMMERCE_SYNC_ENABLED`,
+`COMMERCE_WEBHOOKS_ENABLED`, `COMMERCE_MOCK_ENABLED` (never in production).
+Full design: `docs/COMMERCE_INTEGRATION_PHASE0_REVIEW.md`.
+
 Recommended future controls:
 
 - Session/device review panel

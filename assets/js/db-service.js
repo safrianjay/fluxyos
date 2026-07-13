@@ -1454,6 +1454,65 @@ class DataService {
         }, (err) => console.warn('[watchCollection] ' + collectionName, err && err.message ? err.message : err));
     }
 
+    // ====================================================================
+    // COMMERCE INTEGRATION PLATFORM (Integration Center)
+    //
+    // Workspace-scoped, mostly SERVER-written collections (the Netlify sync
+    // worker writes via Admin SDK; clients read). The only client write is
+    // the owner/admin auto_post toggle. Token material never appears in any
+    // of these docs — secrets live in the top-level deny-all
+    // commerce_credentials collection. docs/COMMERCE_INTEGRATION_PHASE0_REVIEW.md.
+    // ====================================================================
+
+    // Live-bind the Integration Center cards. Unlike watchCollection (which
+    // skips the initial snapshot — change-notification semantics), this
+    // delivers the FIRST snapshot too so the page can render its initial
+    // state from the same stream. Returns an unsubscribe function.
+    watchCommerceAccounts(userId, callback) {
+        const ref = collection(this.db, `${this._scope(userId)}/commerce_accounts`);
+        return onSnapshot(ref, (snap) => {
+            const accounts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            try { callback(accounts); } catch (_) {}
+        }, (err) => console.warn('[watchCommerceAccounts]', err && err.message ? err.message : err));
+    }
+
+    // Sync history for the connection drawer (most recent first).
+    async getCommerceSyncJobs(userId, accountId, { max = 10 } = {}) {
+        const q = query(
+            collection(this.db, `${this._scope(userId)}/commerce_sync_jobs`),
+            where('account_id', '==', accountId),
+            orderBy('created_at', 'desc'),
+            limit(max)
+        );
+        const snap = await getDocs(q);
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    // Recent sync errors for the connection drawer (most recent first).
+    async getCommerceSyncErrors(userId, accountId, { max = 10 } = {}) {
+        const q = query(
+            collection(this.db, `${this._scope(userId)}/commerce_sync_errors`),
+            where('account_id', '==', accountId),
+            orderBy('created_at', 'desc'),
+            limit(max)
+        );
+        const snap = await getDocs(q);
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    // Owner/admin toggle: auto-post synced commerce transactions to the ledger
+    // (true) or hold them in commerce_transactions as pending_review (false).
+    // The ONLY client-writable field on commerce_accounts (rules-enforced).
+    async setCommerceAutoPost(userId, accountId, value) {
+        await updateDoc(doc(this.db, `${this._scope(userId)}/commerce_accounts/${accountId}`), {
+            auto_post: value === true,
+            updated_at: serverTimestamp()
+        });
+        await this._auditCreateBestEffort(userId, 'integration.autopost', 'commerce_accounts', accountId, {
+            auto_post: value === true
+        });
+    }
+
     async getMembers(workspaceId) {
         const snap = await getDocs(collection(this.db, `workspaces/${workspaceId}/members`));
         return snap.docs.map(d => ({ id: d.id, ...d.data() }));

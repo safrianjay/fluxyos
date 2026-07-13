@@ -97,6 +97,18 @@
   to = "/.netlify/functions/bank-statement-extract-background"
   status = 200
 
+# Commerce Integration Platform. Order matters: webhooks (public, HMAC-verified)
+# before the commerce API, both before the /api/v1/* catch-all.
+[[redirects]]
+  from = "/api/v1/commerce/webhooks/*"
+  to = "/.netlify/functions/commerce-webhook/webhooks/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/v1/commerce/*"
+  to = "/.netlify/functions/commerce/:splat"
+  status = 200
+
 [[redirects]]
   from = "/api/v1/*"
   to = "/.netlify/functions/api/:splat"

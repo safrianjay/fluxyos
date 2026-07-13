@@ -120,6 +120,8 @@ const MARKETING_DIRS = ['use-cases', 'id'];
 const SCHEDULED_FUNCTIONS = [
     'announce-id-language.js',
     'billing-reminders.js',
+    'commerce-reconcile.js',
+    'commerce-sync-worker.js',
     'digest-broadcast-worker.js',
     'notify-sweep.js',
     'payment-reminders.js',

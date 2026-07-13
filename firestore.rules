@@ -2118,7 +2118,9 @@ service cloud.firestore {
             'bank_statement_row_id',
             'imported_at',
             'bank_account_id',
-            'linked_bill_id'
+            'linked_bill_id',
+            'commerce_order_id',
+            'commerce_account_id'
           ])
           && isValidBaseRecord(request.resource.data)
           && (!('created_at' in request.resource.data) || request.resource.data.created_at == request.time)
@@ -2126,6 +2128,7 @@ service cloud.firestore {
           && (!('linked_bill_id' in request.resource.data) || request.resource.data.linked_bill_id == null || (request.resource.data.linked_bill_id is string && request.resource.data.linked_bill_id.size() <= 120))
           && isValidTransactionBudgetFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
+          && isValidCommerceLink(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow update: if isOwner(userId)
           && request.resource.data.keys().hasOnly([
@@ -2184,13 +2187,16 @@ service cloud.firestore {
             'bank_statement_row_id',
             'imported_at',
             'bank_account_id',
-            'linked_bill_id'
+            'linked_bill_id',
+            'commerce_order_id',
+            'commerce_account_id'
           ])
           && isValidTransactionRecordUpdate(request.resource.data, resource.data)
           && preservesLegacyRecordDate(request.resource.data, resource.data)
           && (!('linked_bill_id' in request.resource.data) || request.resource.data.linked_bill_id == null || (request.resource.data.linked_bill_id is string && request.resource.data.linked_bill_id.size() <= 120))
           && isValidTransactionBudgetFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
+          && isValidCommerceLink(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow delete: if false;
       }
@@ -2939,7 +2945,10 @@ service cloud.firestore {
           'bank_statement_imports', 'documents', 'billing',
           'billing_payment_requests', 'payment_verifications', 'accounting_mappings',
           'chart_of_accounts', 'journals', 'ledger_balances', 'periods', 'counters',
-          'company_tax_profile', 'tax_mappings', 'tax_transactions', 'tax_periods', 'tax_filings'
+          'company_tax_profile', 'tax_mappings', 'tax_transactions', 'tax_periods', 'tax_filings',
+          'commerce_accounts', 'commerce_orders', 'commerce_transactions', 'commerce_refunds',
+          'commerce_settlements', 'commerce_payouts', 'commerce_sync_jobs',
+          'commerce_sync_errors', 'commerce_webhook_logs'
         ]
         && data.target_id is string && data.target_id.size() <= 200
         && data.source in ['dashboard', 'ai', 'integration', 'system']
@@ -2961,6 +2970,14 @@ service cloud.firestore {
     function isValidAccountingLink(data) {
       return (!('journal_ref' in data) || data.journal_ref == null || (data.journal_ref is string && data.journal_ref.size() <= 120))
         && (!('accounting_status' in data) || data.accounting_status in ['posted', 'pending', 'excluded', 'reversed']);
+    }
+    // Commerce Integration back-links: the server-side sync worker stamps these
+    // onto ledger transactions it creates (source:'commerce') so the doc can
+    // drill to its commerce_orders / commerce_accounts records. Optional +
+    // bounded. See docs/COMMERCE_INTEGRATION_PHASE0_REVIEW.md D2.
+    function isValidCommerceLink(data) {
+      return (!('commerce_order_id' in data) || data.commerce_order_id == null || (data.commerce_order_id is string && data.commerce_order_id.size() <= 200))
+        && (!('commerce_account_id' in data) || data.commerce_account_id == null || (data.commerce_account_id is string && data.commerce_account_id.size() <= 200));
     }
     // Tax Center per-document tax fields (optional, bounded). Allowed on
     // transactions/bills/invoices so a document can carry its own PPN treatment.
@@ -2994,7 +3011,7 @@ service cloud.firestore {
           'cash_effective', 'cash_status', 'cash_direction', 'cash_account_id', 'cash_source',
           'cash_match_status', 'cash_effective_at', 'bank_statement_import_id', 'bank_statement_row_id',
           'imported_at', 'bank_account_id', 'linked_bill_id', 'linked_invoice_id',
-          'journal_ref', 'accounting_status',
+          'journal_ref', 'accounting_status', 'commerce_order_id', 'commerce_account_id',
           'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no',
           'customer_npwp', 'customer_withholding_amount', 'customer_withholding_rate',
@@ -3007,6 +3024,7 @@ service cloud.firestore {
         && isValidTransactionBudgetFields(data)
         && isValidAttachedDocuments(data)
         && isValidAccountingLink(data)
+        && isValidCommerceLink(data)
         && isValidTaxDocFields(data)
         && isValidAICaptureMetadata(data);
     }
@@ -3025,6 +3043,7 @@ service cloud.firestore {
           'cash_assignment_updated_by', 'updated_at', 'updated_by', 'is_voided', 'voided_at', 'voided_by',
           'void_reason', 'bank_statement_import_id', 'bank_statement_row_id', 'imported_at',
           'bank_account_id', 'linked_bill_id', 'linked_invoice_id', 'journal_ref', 'accounting_status',
+          'commerce_order_id', 'commerce_account_id',
           'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no',
           'customer_npwp', 'customer_withholding_amount', 'customer_withholding_rate',
@@ -3036,6 +3055,7 @@ service cloud.firestore {
         && isValidTransactionBudgetFields(data)
         && isValidAttachedDocuments(data)
         && isValidAccountingLink(data)
+        && isValidCommerceLink(data)
         && isValidTaxDocFields(data)
         && isValidAICaptureMetadata(data);
     }
@@ -3514,11 +3534,73 @@ service cloud.firestore {
         allow update: if hasRole(workspaceId, ['owner', 'admin']);
         allow delete: if false;
       }
+
+      // ---- Commerce Integration Platform (workspace-scoped, mostly server-written) ----
+      // Marketplace connections + normalized commerce data synced by the
+      // backend (Admin SDK, which bypasses these rules). Clients read; the ONLY
+      // client write in the whole family is the owner/admin auto_post toggle on
+      // commerce_accounts. Token material NEVER lives in these collections — it
+      // is in the top-level deny-all commerce_credentials (see end of file).
+      // See docs/COMMERCE_INTEGRATION_PHASE0_REVIEW.md (D1, D2, §4).
+      match /commerce_accounts/{accountId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, delete: if false;
+        allow update: if hasRole(workspaceId, ['owner', 'admin'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['auto_post', 'updated_at'])
+          && request.resource.data.auto_post is bool;
+      }
+      match /commerce_orders/{orderId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update, delete: if false;
+      }
+      match /commerce_transactions/{txId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update, delete: if false;
+      }
+      match /commerce_refunds/{refundId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update, delete: if false;
+      }
+      match /commerce_settlements/{settlementId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update, delete: if false;
+      }
+      match /commerce_payouts/{payoutId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update, delete: if false;
+      }
+      match /commerce_sync_jobs/{jobId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update, delete: if false;
+      }
+      match /commerce_sync_errors/{errorId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update, delete: if false;
+      }
+      // Webhook delivery log (payload summaries only, never raw payloads) —
+      // operational detail, owner/admin only.
+      match /commerce_webhook_logs/{logId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin']);
+        allow create, update, delete: if false;
+      }
     }
 
     // Reverse lookup: a user may read/write only their own pointer doc.
     match /user_workspaces/{uid} {
       allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ---- Commerce Integration secrets (SERVER-ONLY, explicit deny) ----
+    // Encrypted marketplace OAuth tokens and the webhook shop→workspace lookup.
+    // Deliberately TOP-LEVEL (not under workspaces/) so no future edit to the
+    // workspace block can accidentally expose them, and deliberately explicit
+    // (the catch-all below would already deny) so the intent is visible. Only
+    // the Admin SDK (Netlify functions) touches these. NEVER weaken.
+    match /commerce_credentials/{credentialId} {
+      allow read, write: if false;
+    }
+    match /commerce_shop_directory/{shopKey} {
+      allow read, write: if false;
     }
 
     match /{document=**} {
