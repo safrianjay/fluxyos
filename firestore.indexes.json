@@ -43,6 +43,14 @@
   ],
   "fieldOverrides": [
     {
+      "collectionGroup": "commerce_accounts",
+      "fieldPath": "status",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    },
+    {
       "collectionGroup": "billing_subscription",
       "fieldPath": "status",
       "indexes": [
