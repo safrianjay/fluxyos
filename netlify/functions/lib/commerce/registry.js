@@ -31,7 +31,7 @@ const { ENV, flagEnabled } = require('./constants');
 // platform id -> lazy loader. Lazy so a broken/missing connector file only
 // fails requests for that platform, and unregistered platforms cost nothing.
 const CONNECTOR_LOADERS = {
-    // tiktok_shop: () => require('./connectors/tiktok-shop'),   // Phase 4
+    tiktok_shop: () => require('./connectors/tiktok-shop'),      // Phase 4
     // shopee:      () => require('./connectors/shopee'),        // Phase 5
     // tokopedia:   () => require('./connectors/tokopedia'),     // Phase 6
 };
