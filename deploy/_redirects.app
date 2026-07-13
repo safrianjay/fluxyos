@@ -12,6 +12,8 @@ https://fluxyos-dashboard.netlify.app/*   https://dashboard.fluxyos.com/:splat  
 
 # --- API function routes (background extractor MUST precede the catch-all) ---
 /api/v1/bank-statements/extract   /.netlify/functions/bank-statement-extract-background   200
+/api/v1/commerce/webhooks/*       /.netlify/functions/commerce-webhook/webhooks/:splat     200
+/api/v1/commerce/*                /.netlify/functions/commerce/:splat                      200
 /api/v1/*                         /.netlify/functions/api/:splat                           200
 
 # --- Deep-link rewrites ---

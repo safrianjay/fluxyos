@@ -25,6 +25,8 @@ https://www.fluxyos.com/*       https://fluxyos.com/:splat   301!
 # redirects: Netlify has no 307/308, and a 301/302 turns POST into GET — that
 # would silently break API calls from stale app sessions during cutover.
 /api/v1/bank-statements/extract   /.netlify/functions/bank-statement-extract-background   200
+/api/v1/commerce/webhooks/*       /.netlify/functions/commerce-webhook/webhooks/:splat     200
+/api/v1/commerce/*                /.netlify/functions/commerce/:splat                      200
 /api/v1/*                         /.netlify/functions/api/:splat                           200
 
 # --- App split: every app path 301s to the dashboard origin ---
