@@ -559,6 +559,7 @@ export function initInvoicesPage({ ds, user }) {
         editor.currency = window.FluxyMoney.isSupported(event.target.value) ? event.target.value : 'IDR';
         // Re-render amounts under the new currency (stored minor-unit values are
         // reinterpreted — set the currency before entering line items).
+        syncItemPriceCurrency();
         renderItemsList();
         updatePreview();
         markDirty();
@@ -672,9 +673,16 @@ export function initInvoicesPage({ ds, user }) {
         }
     });
 
+    // Reflect the invoice currency in the unit-price label + placeholder.
+    function syncItemPriceCurrency() {
+        el('inv-item-price-currency').textContent = `(${window.FluxyMoney.symbol(editor.currency)})`;
+        el('inv-item-price').placeholder = editor.currency === 'IDR' ? '1.000.000' : '1,000.00';
+    }
+
     function openItemForm(index = null) {
         editor.editingItemIndex = index;
         const item = index != null ? editor.items[index] : null;
+        syncItemPriceCurrency();
         el('inv-item-description').value = item ? item.description : '';
         el('inv-item-qty').value = item ? String(item.quantity) : '1';
         el('inv-item-price').value = item ? window.FluxyMoney.formatMoneyInput(window.FluxyMoney.fromMinor(item.unit_price, editor.currency).toString(), editor.currency) : '';

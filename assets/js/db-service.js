@@ -2016,10 +2016,19 @@ class DataService {
         // Finalizing issues the invoice: post INV-ISSUE (Dr Accounts Receivable /
         // Cr Revenue) for the total. Merge the journal pointer into the same
         // invoice update (one write per doc per batch).
-        const issueDoc = { ...invoice, ...patch, status: 'open' };
-        await this._postSourceJournal(userId, batch, 'invoices', invoiceRef, issueDoc, { date: invoice.issue_date });
-        if (issueDoc.journal_ref) patch.journal_ref = issueDoc.journal_ref;
-        if (issueDoc.accounting_status) patch.accounting_status = issueDoc.accounting_status;
+        //
+        // Foreign-currency invoices are a plain receivable: the accounting kernel
+        // and tax center are IDR-only, so posting a USD/SGD (cent) amount into the
+        // IDR journals is both wrong and rules-rejected. Skip the INV-ISSUE journal
+        // — the IDR ledger entry is created only on payment (markInvoicePaid, at
+        // the converted Rupiah amount).
+        const isForeign = (invoice.currency || 'IDR') !== 'IDR';
+        if (!isForeign) {
+            const issueDoc = { ...invoice, ...patch, status: 'open' };
+            await this._postSourceJournal(userId, batch, 'invoices', invoiceRef, issueDoc, { date: invoice.issue_date });
+            if (issueDoc.journal_ref) patch.journal_ref = issueDoc.journal_ref;
+            if (issueDoc.accounting_status) patch.accounting_status = issueDoc.accounting_status;
+        }
         batch.update(invoiceRef, patch);
         batch.set(
             this._invoiceAuditRef(userId),
