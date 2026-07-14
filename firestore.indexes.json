@@ -39,6 +39,22 @@
         { "fieldPath": "account_id", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "invoice_email_jobs",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "next_attempt_at", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "invoice_email_jobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "invoice_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

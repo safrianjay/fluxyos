@@ -723,6 +723,89 @@ const COPY = {
             footnote: 'Jika Anda tidak mengenali undangan ini, abaikan email ini. · If you didn’t expect this invitation, you can safely ignore this email.',
         };
     },
+
+    // Customer-facing invoice delivery. Localized by `locale` (the customer's
+    // language, resolved from invoice.customer_language) — NOT bilingual, since
+    // we know the recipient. The invoice PDF is attached to the email; there is
+    // no customer portal in v1, so no CTA button. data: { businessName,
+    // invoiceNumber, customerName, amountDue (raw int), dueDateText, message
+    // (optional custom body), subject (optional custom), logoUrl, baseUrl }.
+    invoice_email(locale, d) {
+        const id = locale === 'id';
+        const business = escapeHtml(String(d.businessName || 'FluxyOS'));
+        const number = escapeHtml(String(d.invoiceNumber || ''));
+        const customer = d.customerName ? escapeHtml(String(d.customerName)) : '';
+        const amount = formatRupiah(d.amountDue);
+        const due = escapeHtml(String(d.dueDateText || ''));
+        const line = (html, text) => ({ html, text: text != null ? text : html.replace(/<[^>]+>/g, '') });
+
+        const greeting = customer
+            ? (id ? `Halo ${customer},` : `Hi ${customer},`)
+            : (id ? 'Halo,' : 'Hi there,');
+        // Custom message overrides the default intro line; newlines → <br>.
+        const intro = d.message
+            ? escapeHtml(String(d.message)).replace(/\n/g, '<br>')
+            : (id
+                ? `Berikut invoice Anda dari <strong>${business}</strong>. Dokumen lengkap terlampir sebagai PDF di email ini.`
+                : `Please find your invoice from <strong>${business}</strong> attached to this email as a PDF.`);
+
+        const card = line(
+            `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:#F9FAFB;border:1px solid ${BORDER};border-radius:12px;"><tr><td style="padding:16px 20px;">`
+            + `<div style="font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:${MUTED};">${id ? 'Invoice' : 'Invoice'} ${number}</div>`
+            + `<div style="padding-top:6px;font-size:20px;font-weight:700;color:${NAVY};letter-spacing:-0.01em;">${amount}</div>`
+            + `<div style="padding-top:4px;font-size:13px;color:${MUTED};">${id ? 'Jatuh tempo' : 'Due'} ${due}</div>`
+            + `</td></tr></table>`,
+            `Invoice ${number} — ${amount} (${id ? 'jatuh tempo' : 'due'} ${due})`,
+        );
+
+        return {
+            subject: d.subject
+                ? String(d.subject)
+                : (id ? `Invoice ${number} dari ${d.businessName || 'FluxyOS'}` : `Invoice ${number} from ${d.businessName || 'FluxyOS'}`),
+            heading: id ? `Invoice ${number}` : `Invoice ${number}`,
+            paragraphs: [
+                line(greeting),
+                line(intro),
+                card,
+                line(id
+                    ? 'Jika ada pertanyaan mengenai invoice ini, cukup balas email ini.'
+                    : 'If you have any questions about this invoice, just reply to this email.'),
+            ],
+            footnote: id
+                ? `Invoice ini dikirim oleh ${business} melalui FluxyOS.`
+                : `This invoice was sent by ${business} via FluxyOS.`,
+        };
+    },
+
+    // Owner-facing alert: automatic delivery of an invoice email failed after
+    // all retries. Sent to the workspace owner (not the customer). Localized by
+    // the owner's resolved locale. data: { invoiceNumber, customerEmail,
+    // viewUrl, errorMessage, baseUrl }.
+    invoice_email_failed(locale, d) {
+        const id = locale === 'id';
+        const number = escapeHtml(String(d.invoiceNumber || ''));
+        const to = escapeHtml(String(d.customerEmail || ''));
+        const err = d.errorMessage ? escapeHtml(String(d.errorMessage)) : '';
+        const viewUrl = d.viewUrl || d.baseUrl || 'https://fluxyos.com';
+        const line = (html, text) => ({ html, text: text != null ? text : html.replace(/<[^>]+>/g, '') });
+        return {
+            subject: id ? `Gagal mengirim invoice ${number}` : `Couldn't email invoice ${number}`,
+            heading: id ? 'Pengiriman invoice gagal' : 'Invoice email failed',
+            paragraphs: [
+                line(id
+                    ? `Kami mencoba mengirim invoice <strong>${number}</strong> ke <strong>${to}</strong>, tetapi pengiriman gagal setelah beberapa kali percobaan.`
+                    : `We tried to email invoice <strong>${number}</strong> to <strong>${to}</strong>, but delivery failed after several automatic attempts.`),
+                line(id
+                    ? 'Anda dapat mengirim ulang invoice ini kapan saja dari halaman detail invoice.'
+                    : 'You can resend this invoice at any time from its detail page.'),
+                ...(err ? [line(`<span style="color:${MUTED};font-size:13px;">${id ? 'Detail error' : 'Error detail'}: ${err}</span>`, `${id ? 'Detail error' : 'Error detail'}: ${err}`)] : []),
+            ],
+            cta: { label: id ? 'Buka invoice' : 'Open invoice', url: viewUrl },
+            footnote: id
+                ? 'Anda menerima email ini karena pengiriman otomatis invoice di workspace Anda gagal.'
+                : 'You’re receiving this because an automatic invoice email in your workspace failed to send.',
+        };
+    },
 };
 
 // Build a renderable email. locale is "en" | "id"; falls back to "en".
@@ -734,7 +817,8 @@ function buildEmail(templateKey, locale, data) {
     const paragraphsHtml = c.paragraphs.map((p) => p.html);
     const paragraphsText = c.paragraphs.map((p) => p.text);
     const baseUrl = (data && data.baseUrl) || 'https://fluxyos.com';
-    const logoUrl = `${baseUrl}/assets/images/email-logo.png`;
+    // A per-workspace logo (e.g. invoice email branding) overrides the default.
+    const logoUrl = (data && data.logoUrl) || `${baseUrl}/assets/images/email-logo.png`;
     const html = layout({ previewText: c.subject, heading: c.heading, paragraphsHtml, cta: c.cta, footnote: c.footnote, logoUrl });
     const text = toText({ heading: c.heading, paragraphsText, cta: c.cta, footnote: c.footnote });
     return { subject: c.subject, html, text };

@@ -33,8 +33,14 @@ function isAlreadyExists(err) {
  * `eventKey` MUST be deterministic for a given notification (e.g. include the
  * Cloud Functions event id so redelivery dedupes, but distinct transitions
  * each send once).
+ *
+ * Optional overrides (all default to the module constants / no attachment):
+ *   - `from`        — envelope From, e.g. a per-workspace sender display name.
+ *   - `replyTo`     — Reply-To override.
+ *   - `attachments` — Resend attachments array [{ filename, content }] where
+ *     `content` is a base64 string or Buffer (used to attach the invoice PDF).
  */
-async function sendNotificationEmail({ db, uid, to, eventKey, templateKey, locale, data, logger, prebuilt }) {
+async function sendNotificationEmail({ db, uid, to, eventKey, templateKey, locale, data, logger, prebuilt, from, replyTo, attachments }) {
     const log = logger || console;
     if (!to) {
         log.warn?.('Skip email: no recipient', { uid, templateKey });
@@ -64,12 +70,13 @@ async function sendNotificationEmail({ db, uid, to, eventKey, templateKey, local
         // rendered email while still reusing idempotency + audit + Resend.
         const { subject, html, text } = prebuilt || buildEmail(templateKey, locale, data);
         const res = await getResend().emails.send({
-            from: EMAIL_FROM,
+            from: from || EMAIL_FROM,
             to,
-            replyTo: REPLY_TO,
+            replyTo: replyTo || REPLY_TO,
             subject,
             html,
             text,
+            ...(attachments && attachments.length ? { attachments } : {}),
         });
         if (res && res.error) throw new Error(res.error.message || 'Resend send error');
         providerId = (res && res.data && res.data.id) || null;

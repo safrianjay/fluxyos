@@ -945,7 +945,14 @@ export function initInvoicesPage({ ds, user }) {
             await ds.finalizeInvoice(uid, editor.invoiceId, { markSent });
             editor.dirty = false;
             closeReviewModal();
-            window.showToast?.('Invoice finalized and added to receivables.', 'success');
+            if (markSent) {
+                // "Finalize and send": trigger the backend auto-email (async).
+                // Delivery status shows in the detail view; the user doesn't wait.
+                enqueueInvoiceEmail(editor.invoiceId, 'auto');
+                window.showToast?.('Invoice finalized — emailing it to the customer…', 'success');
+            } else {
+                window.showToast?.('Invoice finalized and added to receivables.', 'success');
+            }
             invoicesLoaded = false;
             await loadInvoices();
             openDetail(editor.invoiceId, true);
@@ -1083,14 +1090,87 @@ export function initInvoicesPage({ ds, user }) {
         footerWrap.classList.toggle('hidden', !invoice.footer);
         el('detail-footer').textContent = invoice.footer || '';
 
+        paintActivity(invoice, []);
+        // Delivery status + resend + attempt-log timeline (async; server-owned).
+        renderEmailDelivery(invoice);
+    }
+
+    // Render the activity timeline, optionally interleaving auto-email events.
+    function paintActivity(invoice, emailLines) {
         const activity = [];
         if (invoice.created_at) activity.push(`Draft created · ${formatDate(invoice.created_at)} ${formatTime(invoice.created_at)}`);
         if (invoice.finalized_at) activity.push(`Finalized · ${formatDate(invoice.finalized_at)} ${formatTime(invoice.finalized_at)}`);
         if (invoice.sent_at) activity.push(`Marked as sent · ${formatDate(invoice.sent_at)} ${formatTime(invoice.sent_at)}`);
+        (emailLines || []).forEach(line => activity.push(line));
         if (invoice.paid_at) activity.push(`Payment completed · ${formatDate(invoice.paid_at)} ${formatTime(invoice.paid_at)}`);
         if (invoice.voided_at) activity.push(`Voided · ${formatDate(invoice.voided_at)} ${formatTime(invoice.voided_at)}`);
         el('detail-activity').innerHTML = activity.map(line => `<li class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-gray-300"></span>${esc(line)}</li>`).join('')
             || '<li class="text-gray-400">No activity yet.</li>';
+    }
+
+    // POST to the backend enqueue function (auth token + resolved workspace id).
+    // The invoice email itself is generated + sent server-side; this only kicks
+    // the job. Fire-and-forget: delivery is async and tracked in the detail view.
+    async function enqueueInvoiceEmail(invoiceId, type = 'auto') {
+        try {
+            const token = await user.getIdToken();
+            const workspaceId = (window.FluxyWorkspace && window.FluxyWorkspace.id) || uid;
+            const res = await fetch('/.netlify/functions/enqueue-invoice-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ workspaceId, invoiceId, type })
+            });
+            return res.ok ? await res.json().catch(() => ({})) : null;
+        } catch (error) {
+            console.error('[invoices] enqueue invoice email failed', error);
+            return null;
+        }
+    }
+
+    // Read the server-owned delivery job + attempts and paint the status pill,
+    // Resend button, and per-attempt timeline entries. Guards against a stale
+    // paint after the user navigates to another invoice.
+    async function renderEmailDelivery(invoice) {
+        const statusEl = el('detail-email-status');
+        const resendBtn = el('detail-resend-btn');
+        statusEl.classList.add('hidden');
+        resendBtn.classList.add('hidden');
+        resendBtn.classList.remove('inline-flex');
+
+        const emailable = invoice.status === 'open' && Boolean(invoice.customer_email);
+        if (emailable) {
+            resendBtn.classList.remove('hidden');
+            resendBtn.classList.add('inline-flex');
+        }
+
+        const forId = invoice.id;
+        let job = null;
+        try { job = await ds.getInvoiceEmailJob(uid, invoice.id); } catch (error) { /* index/perms not ready */ }
+        if (!detailInvoice || detailInvoice.id !== forId) return;
+        if (!job) return; // never emailed
+
+        const to = job.to || invoice.customer_email || 'the customer';
+        let text = '';
+        let cls = '';
+        if (job.status === 'pending' || job.status === 'processing') { text = `Sending email to ${to}…`; cls = 'text-blue-600'; }
+        else if (job.status === 'done') { text = `Emailed to ${to}`; cls = 'text-[#16A34A]'; }
+        else if (job.status === 'dead') { text = `Email to ${to} failed after ${job.attempts || 0} attempts — try Resend`; cls = 'text-red-600'; }
+        if (text) {
+            statusEl.textContent = text;
+            statusEl.className = `mt-2 text-[12px] font-medium ${cls}`;
+            statusEl.classList.remove('hidden');
+        }
+
+        let attempts = [];
+        try { attempts = await ds.getInvoiceEmailAttempts(uid, job.id); } catch (error) { /* ignore */ }
+        if (!detailInvoice || detailInvoice.id !== forId) return;
+        const lines = attempts.map(a => {
+            const when = a.at ? ` · ${formatDate(a.at)} ${formatTime(a.at)}` : '';
+            return a.status === 'sent'
+                ? `Email delivered to ${a.to || to}${when}`
+                : `Email attempt failed${a.error ? ` (${a.error})` : ''}${when}`;
+        });
+        if (lines.length) paintActivity(invoice, lines);
     }
 
 
@@ -1256,6 +1336,38 @@ export function initInvoicesPage({ ds, user }) {
         } catch (error) {
             console.error('[invoices] mark sent failed', error);
             window.showToast?.(error?.message || 'Could not update invoice. Try again.', 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    // Manual resend — always available on an open invoice with a customer email.
+    // Each click enqueues a fresh delivery job (distinct from the once-per-issue
+    // auto send), then refreshes the detail view to show "Sending…".
+    el('detail-resend-btn').addEventListener('click', async (event) => {
+        if (!detailInvoice) return;
+        const btn = event.currentTarget;
+        const ok = await window.showConfirmDialog({
+            title: 'Resend this invoice by email?',
+            body: `FluxyOS will email <strong>${esc(detailInvoice.invoice_number)}</strong> with the PDF attached to <strong>${esc(detailInvoice.customer_email || '')}</strong>.`,
+            confirmLabel: 'Resend email',
+            cancelLabel: 'Cancel',
+            tone: 'default'
+        });
+        if (!ok) return;
+        btn.disabled = true;
+        try {
+            const result = await enqueueInvoiceEmail(detailInvoice.id, 'manual');
+            if (result && (result.enqueued || result.skipped)) {
+                window.showToast?.(result.skipped ? 'Email could not be queued — check the customer email.' : 'Resending invoice by email…', result.skipped ? 'info' : 'success');
+            } else {
+                window.showToast?.('Could not queue the email. Try again.', 'error');
+            }
+            // Repaint delivery status (best-effort; the job may still be pending).
+            renderEmailDelivery(detailInvoice);
+        } catch (error) {
+            console.error('[invoices] resend failed', error);
+            window.showToast?.('Could not queue the email. Try again.', 'error');
         } finally {
             btn.disabled = false;
         }

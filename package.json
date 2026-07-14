@@ -4,14 +4,17 @@
     "build:css": "tailwindcss -i assets/css/tailwind.src.css -o assets/css/tailwind.min.css --minify",
     "smoke:notify": "node scripts/notify-smoke.js",
     "smoke:digest": "node scripts/digest-smoke.js",
-    "smoke:announce": "node scripts/announce-smoke.js"
+    "smoke:announce": "node scripts/announce-smoke.js",
+    "smoke:invoice-email": "node scripts/invoice-email-smoke.js"
   },
   "dependencies": {
     "@netlify/functions": "^2.8.2",
+    "@sparticuz/chromium": "^123.0.1",
     "agentation": "^3.0.2",
     "firebase": "^12.13.0",
     "firebase-admin": "^13.10.0",
     "pdfjs-dist": "^4.10.38",
+    "puppeteer-core": "^22.15.0",
     "resend": "^4.0.0",
     "xlsx": "^0.18.5"
   },

@@ -15,6 +15,16 @@
   [build.environment]
     NODE_VERSION = "20"
 
+# The invoice-email PDF renderer loads headless Chromium. Bundle ONLY this
+# function with esbuild and keep the browser packages external — @sparticuz/
+# chromium's binary is loaded from disk at runtime, so it must be copied whole
+# (not tree-shaken/inlined). Scoped to this one function so no other function's
+# bundling changes. See netlify/functions/invoice-email-background.js.
+[functions."invoice-email-background"]
+  node_bundler = "esbuild"
+  external_node_modules = ["@sparticuz/chromium", "puppeteer-core"]
+  included_files = ["node_modules/@sparticuz/chromium/**"]
+
 # Security headers — applied to every response
 [[headers]]
   for = "/*"

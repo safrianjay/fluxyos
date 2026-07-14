@@ -148,3 +148,43 @@ Bahasa Indonesia below) is the `announce_id_language` template in
 - **Re-announce (rare):** bump the `EVENT_KEY` version suffix in the function to
   intentionally send to everyone again.
 - **Local logic test:** `node scripts/announce-smoke.js` (mocked, sends nothing).
+
+## Invoice auto-email (`enqueue-invoice-email.js` + `invoice-email-background.js` + `invoice-email-worker.js`)
+
+Emails a finalized invoice — with the invoice rendered to a **PDF attachment** —
+to the customer's `customer_email`, entirely from the backend. Triggered by the
+**"Finalize and send"** button (type `auto`) and the detail-view **Resend**
+button (type `manual`). Templates `invoice_email` (customer) + `invoice_email_failed`
+(owner alert) live in `functions/lib/templates.js`.
+
+| File | Kind | Role |
+|---|---|---|
+| `enqueue-invoice-email.js` | HTTP (POST, auth) | Verify token → authorize workspace member → re-read invoice → enqueue an idempotent job → kick the background send. Never sends mail itself. |
+| `invoice-email-background.js` | Background (`-background`, ~15 min) | Claims the job, renders the PDF via headless Chromium (`lib/invoice-pdf.js` — the **only** Chromium bundle), sends via `sendNotificationEmail` (+ attachment), records the attempt, completes/backs-off/dead-letters. |
+| `invoice-email-worker.js` | Schedule `*/5 * * * *` | Retry sweep: drains due `invoice_email_jobs` and re-delegates to the background function. Registered in `scripts/prepare-deploy.js` (pruned from marketing). |
+
+- **State (server-owned, client-read):** `workspaces/{ws}/invoice_email_jobs/{jobId}`
+  (status `pending`→`processing`→`done`|`dead`) + an `attempts/{n}` subcollection
+  (per-attempt audit: recipient, status, error, timestamp). The **invoice doc is
+  never modified** — delivery status lives only in these job docs, read by the
+  detail view's badge + timeline. Mirrors the `commerce_sync_jobs` engine
+  (`lib/invoice-email/jobs.js` — enqueue/claim/complete/fail + exp-backoff, base
+  60s ·2^(n-1) ±20% jitter, `JOB_MAX_ATTEMPTS=5` → `dead`).
+- **Idempotency (two layers):** deterministic job id — `auto_{invoiceId}` (a
+  double-submit `.create()`s once) vs `manual_{invoiceId}_{ts}` (each resend is a
+  fresh job); plus the `mail_log` `eventKey` — `invoice_email_{invoiceId}_issue`
+  (auto: one delivery per issuance, retries dedupe) vs
+  `invoice_email_{invoiceId}_resend_{jobId}` (manual). `mail_log`/audit are keyed
+  under the **owner** uid (the customer has no account).
+- **All retries exhausted → owner alert:** on `dead`, the background function
+  emails the workspace **owner** once (`invoice_email_failed`, guarded by the
+  job's `notified_user_of_failure` flag), pointing at the invoice to resend.
+- **Kill switch:** default-off `INVOICE_EMAIL_ENABLED` (checked `=== 'true'`) on
+  the enqueue function, the worker, AND the background function. Reuses
+  `RESEND_API_KEY`, `EMAIL_FROM`, `INTERNAL_API_TOKEN` (worker→background
+  shared-secret header, like commerce), `APP_BASE_URL`, `FIREBASE_SERVICE_ACCOUNT`.
+- **Manual deploy required:** `firebase deploy --only firestore:rules,firestore:indexes`
+  (new `invoice_email_jobs` + `settings/invoice_email` rules; collection-group
+  index `status,next_attempt_at` + `invoice_id,created_at` — the UI read and the
+  worker drain fail until both are live).
+- **Local logic test:** `node scripts/invoice-email-smoke.js` (mocked, sends nothing).

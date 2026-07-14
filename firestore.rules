@@ -2914,6 +2914,19 @@ service cloud.firestore {
         && (!('trial_ends_at' in data) || data.trial_ends_at == null || data.trial_ends_at is timestamp)
         && (!('current_period_end' in data) || data.current_period_end == null || data.current_period_end is timestamp);
     }
+    // Invoice-email branding/customization (workspaces/{ws}/settings/invoice_email).
+    // Non-sensitive presentation config only; read by any member, written by
+    // owner/admin (editing UI is a follow-up). The backend also reads it via the
+    // Admin SDK. No secrets, no formatted currency.
+    function isValidInvoiceEmailSettings(data) {
+      return data.keys().hasOnly(['sender_name', 'subject_template', 'message', 'logo_url', 'reply_to', 'updated_at', 'updated_by'])
+        && (!('sender_name' in data) || data.sender_name == null || (data.sender_name is string && data.sender_name.size() <= 80))
+        && (!('subject_template' in data) || data.subject_template == null || (data.subject_template is string && data.subject_template.size() <= 200))
+        && (!('message' in data) || data.message == null || (data.message is string && data.message.size() <= 2000))
+        && (!('logo_url' in data) || data.logo_url == null || (data.logo_url is string && data.logo_url.size() <= 500))
+        && (!('reply_to' in data) || data.reply_to == null || (data.reply_to is string && data.reply_to.size() <= 200))
+        && (!('updated_by' in data) || data.updated_by == null || data.updated_by == request.auth.uid);
+    }
     function isValidMember(data) {
       return data.keys().hasOnly(['uid', 'email', 'display_name', 'role', 'status', 'invited_by', 'joined_at', 'updated_at'])
         && data.uid is string
@@ -3582,6 +3595,26 @@ service cloud.firestore {
       match /commerce_webhook_logs/{logId} {
         allow read: if hasRole(workspaceId, ['owner', 'admin']);
         allow create, update, delete: if false;
+      }
+
+      // ---- Invoice auto-email delivery (server-written; client reads only) ----
+      // The delivery-status badge + attempts timeline in the invoice detail view
+      // read these; only the Admin SDK (Netlify functions) writes them.
+      match /invoice_email_jobs/{jobId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update, delete: if false;
+        match /attempts/{attemptId} {
+          allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+          allow create, update, delete: if false;
+        }
+      }
+
+      // ---- Invoice email branding/customization (member-read, owner/admin-write) ----
+      match /settings/invoice_email {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin'])
+          && isValidInvoiceEmailSettings(request.resource.data);
+        allow delete: if false;
       }
     }
 

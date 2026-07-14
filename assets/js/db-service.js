@@ -1795,6 +1795,30 @@ class DataService {
         return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     }
 
+    // Latest auto-email delivery job for an invoice (Sending/Sent/Failed badge
+    // in the detail view). invoice_email_jobs are server-written (Admin SDK);
+    // the client only reads. Returns null when no email was ever attempted.
+    async getInvoiceEmailJob(userId, invoiceId) {
+        const q = query(
+            collection(this.db, `${this._scope(userId)}/invoice_email_jobs`),
+            where('invoice_id', '==', invoiceId),
+            orderBy('created_at', 'desc'),
+            limit(1)
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.empty ? null : { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+    }
+
+    // Per-attempt delivery log for one job (folded into the activity timeline).
+    async getInvoiceEmailAttempts(userId, jobId) {
+        const q = query(
+            collection(this.db, `${this._scope(userId)}/invoice_email_jobs/${jobId}/attempts`),
+            orderBy('at', 'asc')
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
     // Creates the draft invoice + its items + the audit log in ONE batch so a
     // rules rejection leaves nothing half-written. invoiceData.items is the
     // full editor item list.

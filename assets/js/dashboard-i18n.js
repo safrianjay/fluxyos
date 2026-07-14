@@ -1824,8 +1824,14 @@
         "Invoice changes saved.": "Perubahan invoice tersimpan.",
         "Invoice draft saved.": "Draf invoice tersimpan.",
         "Invoice finalized and added to receivables.": "Invoice difinalisasi dan ditambahkan ke piutang.",
+        "Invoice finalized — emailing it to the customer…": "Invoice difinalisasi — sedang mengirim email ke pelanggan…",
         "Invoice item not found.": "Item invoice tidak ditemukan.",
         "Invoice marked as sent.": "Invoice ditandai terkirim.",
+        "Resend email": "Kirim ulang email",
+        "Resend this invoice by email?": "Kirim ulang invoice ini melalui email?",
+        "Resending invoice by email…": "Mengirim ulang invoice melalui email…",
+        "Email could not be queued — check the customer email.": "Email tidak dapat diantrekan — periksa email pelanggan.",
+        "Could not queue the email. Try again.": "Tidak dapat mengantrekan email. Coba lagi.",
         "Invoice not found.": "Invoice tidak ditemukan.",
         "Invoice total must be greater than zero.": "Total invoice harus lebih besar dari nol.",
         "Invoice voided.": "Invoice dibatalkan.",
@@ -3763,6 +3769,22 @@
     //  Applied (in order) only to nodes that miss an exact dictionary key.
     // ─────────────────────────────────────────────────────────────────────────
     var PATTERNS = [
+        // Invoice auto-email delivery status pill + activity timeline (interpolated
+        // with the customer email / attempt count / timestamp). Specific → general.
+        { re: /^Sending email to (.+?)…$/i,
+          id: function (m) { return 'Mengirim email ke ' + m[1] + '…'; } },
+        { re: /^Email to (.+?) failed after (\d+) attempts? — try Resend$/i,
+          id: function (m) { return 'Email ke ' + m[1] + ' gagal setelah ' + m[2] + ' percobaan — coba Kirim ulang'; } },
+        { re: /^Emailed to (.+)$/i,
+          id: function (m) { return 'Terkirim ke ' + m[1]; } },
+        { re: /^Email delivered to (.+?) · (.+)$/i,
+          id: function (m) { return 'Email terkirim ke ' + m[1] + ' · ' + m[2]; } },
+        { re: /^Email delivered to (.+)$/i,
+          id: function (m) { return 'Email terkirim ke ' + m[1]; } },
+        { re: /^Email attempt failed \((.+?)\)(?: · (.+))?$/i,
+          id: function (m) { return 'Percobaan email gagal (' + m[1] + ')' + (m[2] ? ' · ' + m[2] : ''); } },
+        { re: /^Email attempt failed(?: · (.+))?$/i,
+          id: function (m) { return 'Percobaan email gagal' + (m[1] ? ' · ' + m[1] : ''); } },
         // KPI drill-down detail pages (Revenue / Cash / OpEx). Localize the
         // embedded period label too so the sentence reads fully in Indonesian.
         { re: /^(\d[\d.,]*)\s+revenue records?\s+for\s+(.+?)\.\s+Click a row to open it in the Ledger\.$/i,

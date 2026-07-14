@@ -123,6 +123,7 @@ const SCHEDULED_FUNCTIONS = [
     'commerce-reconcile.js',
     'commerce-sync-worker.js',
     'digest-broadcast-worker.js',
+    'invoice-email-worker.js',
     'notify-sweep.js',
     'payment-reminders.js',
     'trial-reminders.js',
