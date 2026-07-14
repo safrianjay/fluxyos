@@ -1198,81 +1198,14 @@ export function initInvoicesPage({ ds, user }) {
     // Renders the invoice as a standalone document; Download PDF prints just
     // the document via the browser's Save-as-PDF (no backend generation, and
     // the app never claims the file was saved).
+    // Delegates to the shared template (assets/js/invoice-doc-template.js) so the
+    // on-screen document and the emailed PDF render from one source. Page keeps
+    // its own locale-aware formatters, so this output is identical to before.
     function buildInvoiceDocHTML(invoice, items) {
-        const due = formatDate(invoice.due_date);
-        const isVoid = invoice.status === 'void';
-        const isPaid = invoice.status === 'paid';
-        const amountDue = (isVoid || isPaid) ? 0 : invoice.amount_due;
-        const itemRows = items.length
-            ? items.map(item => `
-                <tr class="border-b border-gray-100">
-                    <td class="py-2 text-gray-900">${esc(item.description)}</td>
-                    <td class="py-2 text-right invoice-doc-money text-gray-700">${formatQty(item.quantity)}</td>
-                    <td class="py-2 text-right invoice-doc-money text-gray-700">${formatRp(item.unit_price)}</td>
-                    <td class="py-2 text-right invoice-doc-money text-gray-900">${formatRp(item.amount)}</td>
-                </tr>`).join('')
-            : '<tr><td colspan="4" class="py-3 text-center text-gray-400">No line items</td></tr>';
-        const taxRow = Number(invoice.tax_amount) > 0
-            ? `<tr><td colspan="3" class="py-1.5 text-right text-gray-500">Tax${invoice.tax_rate_percent ? ` (${esc(invoice.tax_rate_percent)}%)` : ''}</td><td class="py-1.5 text-right text-gray-900">${formatRp(invoice.tax_amount)}</td></tr>`
-            : '';
-        return `
-            <div class="invoice-doc bg-white p-6 sm:p-8">
-                <div class="flex items-start justify-between gap-4">
-                    <div>
-                        <h3 class="text-[20px] font-semibold text-gray-900">Invoice</h3>
-                        ${isVoid ? '<p class="mt-1 text-[12px] font-bold uppercase tracking-[0.08em] text-red-600">Void</p>' : ''}
-                        ${isPaid ? '<p class="mt-1 text-[12px] font-bold uppercase tracking-[0.08em] text-[#16A34A]">Paid</p>' : ''}
-                    </div>
-                    <p class="max-w-[45%] truncate text-right text-[14px] font-semibold text-gray-500">${esc(businessName)}</p>
-                </div>
-                <dl class="mt-5 space-y-1 text-[12px]">
-                    <div class="flex gap-3"><dt class="w-28 font-medium text-gray-500">Invoice number</dt><dd class="font-mono text-gray-900">${esc(invoice.invoice_number || '—')}</dd></div>
-                    <div class="flex gap-3"><dt class="w-28 font-medium text-gray-500">Issue date</dt><dd class="text-gray-900">${formatDate(invoice.issue_date)}</dd></div>
-                    <div class="flex gap-3"><dt class="w-28 font-medium text-gray-500">Due date</dt><dd class="text-gray-900">${due}</dd></div>
-                </dl>
-                <div class="mt-5 grid grid-cols-2 gap-4 text-[12px]">
-                    <div>
-                        <p class="font-semibold text-gray-900">From</p>
-                        <p class="mt-1 text-gray-600">${esc(businessName)}</p>
-                    </div>
-                    <div>
-                        <p class="font-semibold text-gray-900">Bill to</p>
-                        <p class="mt-1 text-gray-600">${esc(invoice.customer_name || 'Customer name')}</p>
-                        <p class="text-gray-500">${esc(invoice.customer_email || '')}</p>
-                        ${invoice.customer_address ? `<p class="whitespace-pre-line text-gray-500">${esc(invoice.customer_address)}</p>` : ''}
-                    </div>
-                </div>
-                <p class="mt-6 text-[16px] font-semibold text-gray-900 invoice-doc-money">${formatRp(amountDue)} due ${due}</p>
-                ${invoice.memo ? `<p class="mt-2 text-[12px] text-gray-600">${esc(invoice.memo)}</p>` : ''}
-                <table class="mt-4 w-full text-[12px]">
-                    <thead>
-                        <tr class="border-b border-gray-300 text-left text-gray-500">
-                            <th class="py-2 font-medium">Description</th>
-                            <th class="py-2 text-right font-medium">Qty</th>
-                            <th class="py-2 text-right font-medium">Unit price</th>
-                            <th class="py-2 text-right font-medium">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>${itemRows}</tbody>
-                    <tfoot class="invoice-doc-money">
-                        <tr class="border-t border-gray-200">
-                            <td colspan="3" class="py-1.5 text-right text-gray-500">Subtotal</td>
-                            <td class="py-1.5 text-right text-gray-900">${formatRp(invoice.subtotal_amount)}</td>
-                        </tr>
-                        ${taxRow}
-                        <tr class="border-t border-gray-200">
-                            <td colspan="3" class="py-1.5 text-right text-gray-500">Total</td>
-                            <td class="py-1.5 text-right text-gray-900">${formatRp(invoice.total_amount)}</td>
-                        </tr>
-                        <tr>
-                            <td colspan="3" class="py-1.5 text-right font-semibold text-gray-900">Amount due</td>
-                            <td class="py-1.5 text-right font-semibold text-gray-900">${formatRp(amountDue)}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-                ${invoice.footer ? `<p class="mt-8 border-t border-gray-100 pt-3 text-[12px] text-gray-500">${esc(invoice.footer)}</p>` : ''}
-                <p class="mt-3 text-[10px] uppercase tracking-[0.06em] text-gray-400">${esc(invoice.invoice_number || '')} · ${formatRp(amountDue)} due ${due}</p>
-            </div>`;
+        return window.FluxyInvoiceDoc.buildInvoiceDocHTML(invoice, items, {
+            businessName,
+            fmt: { esc, money: formatRp, qty: formatQty, date: formatDate }
+        });
     }
 
     function openPdfModal() {
