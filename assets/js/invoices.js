@@ -108,6 +108,9 @@ function statusBadgeHTML(statusKey) {
 export function initInvoicesPage({ ds, user }) {
     const uid = user.uid;
     const el = (id) => document.getElementById(id);
+    // Currency-aware money formatter (IDR/USD/SGD). Amounts are integer minor
+    // units; the currency comes from the invoice (list/detail) or editor state.
+    const money = (value, currency) => window.FluxyMoney.formatMoney(value, currency || 'IDR');
 
     const views = {
         list: el('invoice-list-view'),
@@ -133,6 +136,7 @@ export function initInvoicesPage({ ds, user }) {
         customerName: '',
         customerEmail: '',
         customerAddress: '',
+        currency: 'IDR',
         items: [],
         dueTerms: 'due_in_30_days',
         customDueKey: null,
@@ -262,18 +266,22 @@ export function initInvoicesPage({ ds, user }) {
             const paidAt = toDateObj(i.paid_at);
             return paidAt && paidAt.getFullYear() === now.getFullYear() && paidAt.getMonth() === now.getMonth();
         });
-        const openAmount = open.reduce((sum, i) => sum + (Number(i.amount_due) || 0), 0);
-        const overdueAmount = overdue.reduce((sum, i) => sum + (Number(i.amount_due) || 0), 0);
-        const paidAmount = paidThisMonth.reduce((sum, i) => sum + (Number(i.total_amount) || 0), 0);
+        // Summary money totals are in the IDR base currency only — mixed-currency
+        // amounts can't be summed into one figure without a rate. Foreign-currency
+        // invoices still appear in the list and counts; their money is excluded here.
+        const isIdr = (i) => (i.currency || 'IDR') === 'IDR';
+        const openAmount = open.filter(isIdr).reduce((sum, i) => sum + (Number(i.amount_due) || 0), 0);
+        const overdueAmount = overdue.filter(isIdr).reduce((sum, i) => sum + (Number(i.amount_due) || 0), 0);
+        const paidAmount = paidThisMonth.filter(isIdr).reduce((sum, i) => sum + (Number(i.total_amount) || 0), 0);
 
         el('invoice-summary-open-count').textContent = String(open.length);
-        el('invoice-summary-open-amount').textContent = formatRp(openAmount);
+        el('invoice-summary-open-amount').textContent = money(openAmount, 'IDR');
         el('invoice-summary-draft-count').textContent = String(drafts.length);
-        el('invoice-summary-due-amount').textContent = formatRp(openAmount);
+        el('invoice-summary-due-amount').textContent = money(openAmount, 'IDR');
         el('invoice-summary-overdue-note').textContent = overdue.length
-            ? `${overdue.length} overdue · ${formatRp(overdueAmount)}`
+            ? `${overdue.length} overdue · ${money(overdueAmount, 'IDR')}`
             : 'No overdue invoices';
-        el('invoice-summary-paid-amount').textContent = formatRp(paidAmount);
+        el('invoice-summary-paid-amount').textContent = money(paidAmount, 'IDR');
         el('invoice-summary-paid-count').textContent = String(paidThisMonth.length);
     }
 
@@ -309,7 +317,7 @@ export function initInvoicesPage({ ds, user }) {
                             <span class="fluxy-table-cell-primary">${esc(invoice.customer_name || 'No customer yet')}</span>
                             <span class="fluxy-table-cell-meta">${esc(invoice.customer_email || '')}</span>
                         </td>
-                        <td class="fluxy-table-cell fluxy-table-money">${formatRp(['void', 'paid'].includes(invoice.status) ? 0 : invoice.amount_due)}</td>
+                        <td class="fluxy-table-cell fluxy-table-money">${money(['void', 'paid'].includes(invoice.status) ? 0 : invoice.amount_due, invoice.currency)}</td>
                         <td class="fluxy-table-cell">${formatDate(invoice.due_date)}</td>
                         <td class="fluxy-table-cell">${statusBadgeHTML(shown)}</td>
                         <td class="fluxy-table-cell">${formatDate(invoice.updated_at)}</td>
@@ -444,6 +452,7 @@ export function initInvoicesPage({ ds, user }) {
             editor.customerName = invoice.customer_name || '';
             editor.customerEmail = invoice.customer_email || '';
             editor.customerAddress = invoice.customer_address || '';
+            editor.currency = window.FluxyMoney.isSupported(invoice.currency) ? invoice.currency : 'IDR';
             editor.items = items.map(item => ({
                 id: item.id,
                 description: item.description,
@@ -504,6 +513,7 @@ export function initInvoicesPage({ ds, user }) {
         el('inv-customer-name').value = editor.customerName;
         el('inv-customer-email').value = editor.customerEmail;
         el('inv-customer-address').value = editor.customerAddress;
+        el('inv-currency').value = editor.currency;
         el('inv-due-terms').value = editor.dueTerms;
         // Native select is enhanced by fluxy-select; notify it of the new value.
         el('inv-due-terms').dispatchEvent(new Event('change', { bubbles: true }));
@@ -545,6 +555,14 @@ export function initInvoicesPage({ ds, user }) {
     el('inv-customer-name').addEventListener('input', (event) => { editor.customerName = event.target.value; markDirty(); });
     el('inv-customer-email').addEventListener('input', (event) => { editor.customerEmail = event.target.value; markDirty(); });
     el('inv-customer-address').addEventListener('input', (event) => { editor.customerAddress = event.target.value; markDirty(); });
+    el('inv-currency').addEventListener('change', (event) => {
+        editor.currency = window.FluxyMoney.isSupported(event.target.value) ? event.target.value : 'IDR';
+        // Re-render amounts under the new currency (stored minor-unit values are
+        // reinterpreted — set the currency before entering line items).
+        renderItemsList();
+        updatePreview();
+        markDirty();
+    });
     el('inv-memo').addEventListener('input', (event) => { editor.memo = event.target.value; markDirty(); });
     el('inv-footer').addEventListener('input', (event) => { editor.footer = event.target.value; markDirty(); });
     el('inv-tax-rate').addEventListener('input', (event) => {
@@ -628,10 +646,10 @@ export function initInvoicesPage({ ds, user }) {
                 <div class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2.5">
                     <div class="min-w-0">
                         <p class="truncate text-[14px] font-medium text-gray-900">${esc(item.description)}</p>
-                        <p class="text-[12px] text-gray-500"><span class="font-mono">${formatQty(item.quantity)}</span> × <span class="font-mono">${formatRp(item.unit_price)}</span></p>
+                        <p class="text-[12px] text-gray-500"><span class="font-mono">${formatQty(item.quantity)}</span> × <span class="font-mono">${money(item.unit_price, editor.currency)}</span></p>
                     </div>
                     <div class="flex flex-shrink-0 items-center gap-1.5">
-                        <span class="font-mono text-[14px] font-semibold text-gray-900">${formatRp(amount)}</span>
+                        <span class="font-mono text-[14px] font-semibold text-gray-900">${money(amount, editor.currency)}</span>
                         <button type="button" data-item-edit="${index}" class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700" aria-label="Edit item">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                         </button>
@@ -659,7 +677,7 @@ export function initInvoicesPage({ ds, user }) {
         const item = index != null ? editor.items[index] : null;
         el('inv-item-description').value = item ? item.description : '';
         el('inv-item-qty').value = item ? String(item.quantity) : '1';
-        el('inv-item-price').value = item ? formatAmountInput(String(item.unit_price)) : '';
+        el('inv-item-price').value = item ? window.FluxyMoney.formatMoneyInput(window.FluxyMoney.fromMinor(item.unit_price, editor.currency).toString(), editor.currency) : '';
         el('invoice-item-form-error').classList.add('hidden');
         el('invoice-item-form').classList.remove('hidden');
         el('invoice-item-add').classList.add('hidden');
@@ -675,14 +693,14 @@ export function initInvoicesPage({ ds, user }) {
 
     function updateItemAmountHint() {
         const qty = parseQtyInput(el('inv-item-qty').value);
-        const price = parseAmountInput(el('inv-item-price').value);
-        el('invoice-item-amount-hint').textContent = formatRp(Math.round(qty * price));
+        const price = window.FluxyMoney.toMinor(el('inv-item-price').value, editor.currency);
+        el('invoice-item-amount-hint').textContent = money(Math.round(qty * price), editor.currency);
     }
 
     el('invoice-item-add').addEventListener('click', () => openItemForm(null));
     el('invoice-item-cancel').addEventListener('click', closeItemForm);
     el('inv-item-price').addEventListener('input', (event) => {
-        event.target.value = formatAmountInput(event.target.value);
+        event.target.value = window.FluxyMoney.formatMoneyInput(event.target.value, editor.currency);
         updateItemAmountHint();
     });
     el('inv-item-qty').addEventListener('input', updateItemAmountHint);
@@ -690,7 +708,7 @@ export function initInvoicesPage({ ds, user }) {
     el('invoice-item-save').addEventListener('click', () => {
         const description = el('inv-item-description').value.trim();
         const quantity = parseQtyInput(el('inv-item-qty').value);
-        const unitPrice = parseAmountInput(el('inv-item-price').value);
+        const unitPrice = window.FluxyMoney.toMinor(el('inv-item-price').value, editor.currency);
         const errorNode = el('invoice-item-form-error');
         let error = '';
         if (!description) error = 'Item description is required.';
@@ -739,7 +757,7 @@ export function initInvoicesPage({ ds, user }) {
         el('pv-customer-name').textContent = editor.customerName.trim() || 'Customer name';
         el('pv-customer-email').textContent = editor.customerEmail.trim();
         el('pv-customer-address').textContent = editor.customerAddress.trim();
-        el('pv-amount-line').textContent = `${formatRp(totals.amountDue)} due ${due ? formatDate(due) : '—'}`;
+        el('pv-amount-line').textContent = `${money(totals.amountDue, editor.currency)} due ${due ? formatDate(due) : '—'}`;
 
         const memo = editor.memo.trim();
         el('pv-memo').textContent = memo;
@@ -758,19 +776,19 @@ export function initInvoicesPage({ ds, user }) {
                     <tr class="border-b border-gray-100">
                         <td class="py-2 text-gray-900">${esc(item.description)}</td>
                         <td class="py-2 text-right invoice-doc-money text-gray-700">${formatQty(item.quantity)}</td>
-                        <td class="py-2 text-right invoice-doc-money text-gray-700">${formatRp(item.unit_price)}</td>
-                        <td class="py-2 text-right invoice-doc-money text-gray-900">${formatRp(amount)}</td>
+                        <td class="py-2 text-right invoice-doc-money text-gray-700">${money(item.unit_price, editor.currency)}</td>
+                        <td class="py-2 text-right invoice-doc-money text-gray-900">${money(amount, editor.currency)}</td>
                     </tr>`;
             }).join('');
         }
 
-        el('pv-subtotal').textContent = formatRp(totals.subtotal);
+        el('pv-subtotal').textContent = money(totals.subtotal, editor.currency);
         el('pv-tax-row').classList.toggle('hidden', !totals.rate);
         el('pv-tax-rate').textContent = totals.rate ? String(totals.rate) : '0';
-        el('pv-tax').textContent = formatRp(totals.tax);
-        el('pv-total').textContent = formatRp(totals.total);
-        el('pv-amount-due').textContent = formatRp(totals.amountDue);
-        el('pv-doc-meta').textContent = `${number} · ${formatRp(totals.amountDue)} due ${due ? formatDate(due) : '—'}`;
+        el('pv-tax').textContent = money(totals.tax, editor.currency);
+        el('pv-total').textContent = money(totals.total, editor.currency);
+        el('pv-amount-due').textContent = money(totals.amountDue, editor.currency);
+        el('pv-doc-meta').textContent = `${number} · ${money(totals.amountDue, editor.currency)} due ${due ? formatDate(due) : '—'}`;
         updateDueHint();
     }
 
@@ -801,6 +819,7 @@ export function initInvoicesPage({ ds, user }) {
             customer_email: editor.customerEmail.trim() || null,
             customer_address: editor.customerAddress.trim() || null,
             customer_language: 'English',
+            currency: editor.currency,
             issue_date: editor.issueDate,
             due_date: computeDueDate(),
             due_terms: editor.dueTerms,
@@ -874,13 +893,13 @@ export function initInvoicesPage({ ds, user }) {
         const email = editor.customerEmail.trim();
 
         el('review-title').textContent = editor.customerName.trim()
-            ? `Review ${formatRp(totals.amountDue)} invoice for ${editor.customerName.trim()}`
-            : `Review ${formatRp(totals.amountDue)} invoice`;
+            ? `Review ${money(totals.amountDue, editor.currency)} invoice for ${editor.customerName.trim()}`
+            : `Review ${money(totals.amountDue, editor.currency)} invoice`;
         el('review-customer').textContent = editor.customerName.trim() || '—';
         el('review-email').textContent = email || 'Not provided';
         el('review-due').textContent = due ? formatDate(due) : '—';
         el('review-items-count').textContent = String(editor.items.length);
-        el('review-amount').textContent = formatRp(totals.amountDue);
+        el('review-amount').textContent = money(totals.amountDue, editor.currency);
         el('review-method').textContent = editor.paymentMethod === 'manual_only' ? 'Manual only' : 'Request payment';
 
         const errorNode = el('review-error');
@@ -1005,8 +1024,9 @@ export function initInvoicesPage({ ds, user }) {
     function buildInvoiceGmailUrl(invoice, items) {
         const due = formatDate(invoice.due_date);
         const subject = `Invoice ${invoice.invoice_number} from ${businessName}`;
+        const cur = invoice.currency || 'IDR';
         const itemLines = items.slice(0, 20).map(item =>
-            `- ${item.description} — ${formatQty(item.quantity)} × ${formatRp(item.unit_price)} = ${formatRp(item.amount)}`
+            `- ${item.description} — ${formatQty(item.quantity)} × ${money(item.unit_price, cur)} = ${money(item.amount, cur)}`
         );
         if (items.length > 20) itemLines.push(`… and ${items.length - 20} more item(s)`);
         const lines = [
@@ -1021,8 +1041,8 @@ export function initInvoicesPage({ ds, user }) {
             'Items:',
             ...itemLines,
             '',
-            `Total: ${formatRp(invoice.total_amount)}`,
-            `Amount due: ${formatRp(invoice.amount_due)} (due ${due})`
+            `Total: ${money(invoice.total_amount, cur)}`,
+            `Amount due: ${money(invoice.amount_due, cur)} (due ${due})`
         ];
         if (invoice.memo) lines.push('', invoice.memo);
         if (invoice.footer) lines.push('', invoice.footer);
@@ -1038,7 +1058,9 @@ export function initInvoicesPage({ ds, user }) {
         el('detail-number').textContent = invoice.invoice_number || '—';
         el('detail-status').outerHTML = statusBadgeHTML(shown).replace('<span', '<span id="detail-status"');
         el('detail-customer').textContent = invoice.customer_name || 'No customer';
-        el('detail-amount-due').textContent = formatRp(['void', 'paid'].includes(invoice.status) ? 0 : invoice.amount_due);
+        const cur = invoice.currency || 'IDR';
+        el('detail-currency').textContent = cur;
+        el('detail-amount-due').textContent = money(['void', 'paid'].includes(invoice.status) ? 0 : invoice.amount_due, cur);
 
         const voidBanner = el('detail-void-banner');
         if (invoice.status === 'void') {
@@ -1075,14 +1097,14 @@ export function initInvoicesPage({ ds, user }) {
                 <tr class="fluxy-table-row">
                     <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${esc(item.description)}</span></td>
                     <td class="fluxy-table-cell fluxy-table-money">${formatQty(item.quantity)}</td>
-                    <td class="fluxy-table-cell fluxy-table-money">${formatRp(item.unit_price)}</td>
-                    <td class="fluxy-table-cell fluxy-table-money">${formatRp(item.amount)}</td>
+                    <td class="fluxy-table-cell fluxy-table-money">${money(item.unit_price, cur)}</td>
+                    <td class="fluxy-table-cell fluxy-table-money">${money(item.amount, cur)}</td>
                 </tr>`).join('')
             : '<tr><td colspan="4" class="fluxy-table-loading-cell">No line items.</td></tr>';
-        el('detail-subtotal').textContent = formatRp(invoice.subtotal_amount);
+        el('detail-subtotal').textContent = money(invoice.subtotal_amount, cur);
         el('detail-tax-row').classList.toggle('hidden', !(Number(invoice.tax_amount) > 0));
-        el('detail-tax').textContent = formatRp(invoice.tax_amount);
-        el('detail-amount-due-2').textContent = formatRp(['void', 'paid'].includes(invoice.status) ? 0 : invoice.amount_due);
+        el('detail-tax').textContent = money(invoice.tax_amount, cur);
+        el('detail-amount-due-2').textContent = money(['void', 'paid'].includes(invoice.status) ? 0 : invoice.amount_due, cur);
 
         el('detail-issue-date').textContent = formatDate(invoice.issue_date);
         el('detail-due-date').textContent = formatDate(invoice.due_date);
@@ -1202,9 +1224,10 @@ export function initInvoicesPage({ ds, user }) {
     // on-screen document and the emailed PDF render from one source. Page keeps
     // its own locale-aware formatters, so this output is identical to before.
     function buildInvoiceDocHTML(invoice, items) {
+        const cur = invoice.currency || 'IDR';
         return window.FluxyInvoiceDoc.buildInvoiceDocHTML(invoice, items, {
             businessName,
-            fmt: { esc, money: formatRp, qty: formatQty, date: formatDate }
+            fmt: { esc, money: (v) => money(v, cur), qty: formatQty, date: formatDate }
         });
     }
 
@@ -1372,6 +1395,40 @@ export function initInvoicesPage({ ds, user }) {
     // transaction (category Revenue, full total) in a single batch.
     let paidDatePicker = null;
     let paidDateKey = null;
+    let paidFxRate = null;
+
+    // Live IDR-per-unit rate for the selected payment date (backend proxy → no
+    // CSP change, no key). Returns null on failure so the user can enter the
+    // Rupiah amount manually.
+    async function fetchFxRate(fromCurrency, dayKey) {
+        try {
+            const date = dayKey || window.FluxyDateRangePicker.getDayKey();
+            const res = await fetch(`/.netlify/functions/fx-rate?from=${encodeURIComponent(fromCurrency)}&to=IDR&date=${encodeURIComponent(date)}`);
+            if (!res.ok) return null;
+            const data = await res.json();
+            return Number(data.rate) || null;
+        } catch (_) { return null; }
+    }
+
+    // For a foreign-currency invoice, fetch the payment-date rate and prefill the
+    // IDR amount that will post to the ledger. IDR invoices hide the FX block.
+    async function refreshFxConversion() {
+        const cur = detailInvoice.currency || 'IDR';
+        if (cur === 'IDR') { el('paid-fx').classList.add('hidden'); paidFxRate = null; return; }
+        el('paid-fx').classList.remove('hidden');
+        el('paid-fx-rate').textContent = 'Fetching payment-date rate…';
+        const reqKey = paidDateKey;
+        const rate = await fetchFxRate(cur, paidDateKey);
+        if (!detailInvoice || (detailInvoice.currency || 'IDR') !== cur || paidDateKey !== reqKey) return; // stale
+        paidFxRate = rate;
+        if (rate) {
+            const idr = Math.round(window.FluxyMoney.fromMinor(detailInvoice.total_amount, cur) * rate);
+            el('paid-fx-rate').textContent = `1 ${cur} = ${money(rate, 'IDR')} · ${money(detailInvoice.total_amount, cur)} ≈ ${money(idr, 'IDR')}`;
+            el('paid-fx-idr').value = window.FluxyMoney.formatMoneyInput(String(idr), 'IDR');
+        } else {
+            el('paid-fx-rate').textContent = 'Could not fetch the rate — enter the Rupiah amount you received.';
+        }
+    }
 
     function openPaidModal() {
         if (!detailInvoice) return;
@@ -1379,18 +1436,19 @@ export function initInvoicesPage({ ds, user }) {
         paidDateKey = picker.getDayKey();
         el('paid-number').textContent = detailInvoice.invoice_number || '—';
         el('paid-customer').textContent = detailInvoice.customer_name || '—';
-        el('paid-amount').textContent = formatRp(detailInvoice.total_amount);
+        el('paid-amount').textContent = money(detailInvoice.total_amount, detailInvoice.currency);
         el('paid-error').classList.add('hidden');
         if (!paidDatePicker) {
             paidDatePicker = picker.mount(el('paid-date-picker'), {
                 mode: 'single',
                 start: paidDateKey,
                 maxDate: picker.getDayKey(),
-                onChange: ({ start }) => { paidDateKey = start; }
+                onChange: ({ start }) => { paidDateKey = start; refreshFxConversion(); }
             });
         } else {
             paidDatePicker.setRange(paidDateKey);
         }
+        refreshFxConversion();
         const modal = el('invoice-paid-modal');
         modal.classList.remove('hidden');
         modal.classList.add('flex');
@@ -1407,19 +1465,39 @@ export function initInvoicesPage({ ds, user }) {
     el('detail-paid-btn').addEventListener('click', openPaidModal);
     el('paid-cancel').addEventListener('click', closePaidModal);
     document.querySelector('[data-paid-overlay]').addEventListener('click', closePaidModal);
+    el('paid-fx-idr').addEventListener('input', (event) => {
+        event.target.value = window.FluxyMoney.formatMoneyInput(event.target.value, 'IDR');
+    });
 
     el('paid-confirm').addEventListener('click', async (event) => {
         if (!detailInvoice) return;
         // Capture before any await — event.currentTarget is null post-dispatch.
         const btn = event.currentTarget;
+        const cur = detailInvoice.currency || 'IDR';
+        // Foreign-currency invoices post the (rate-converted, user-confirmable)
+        // Rupiah amount to the IDR ledger; IDR invoices post their total as-is.
+        const opts = {
+            paymentDate: paidDateKey ? window.FluxyDateRangePicker.parseDayKey(paidDateKey) : new Date()
+        };
+        let recorded = money(detailInvoice.total_amount, 'IDR');
+        if (cur !== 'IDR') {
+            const idr = window.FluxyMoney.toMinor(el('paid-fx-idr').value, 'IDR');
+            if (!(idr > 0)) {
+                const errorNode = el('paid-error');
+                errorNode.textContent = 'Enter the Rupiah amount received before recording the payment.';
+                errorNode.classList.remove('hidden');
+                return;
+            }
+            opts.amountPaidIdr = idr;
+            opts.fxRate = paidFxRate || null;
+            opts.fxRateDate = paidDateKey || null;
+            recorded = money(idr, 'IDR');
+        }
         btn.disabled = true;
         try {
-            const paymentDate = paidDateKey
-                ? window.FluxyDateRangePicker.parseDayKey(paidDateKey)
-                : new Date();
-            const result = await ds.markInvoicePaid(uid, detailInvoice.id, { paymentDate });
+            const result = await ds.markInvoicePaid(uid, detailInvoice.id, opts);
             closePaidModal();
-            window.showToast?.(`Payment recorded — ${formatRp(detailInvoice.total_amount)} added to your ledger as Revenue.`, 'success');
+            window.showToast?.(`Payment recorded — ${recorded} added to your ledger as Revenue.`, 'success');
             invoicesLoaded = false;
             await loadInvoices();
             openDetail(result.id, false);

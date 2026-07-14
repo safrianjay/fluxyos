@@ -1,6 +1,6 @@
 'use strict';
 
-const { formatRupiah, escapeHtml } = require('./format');
+const { formatRupiah, escapeHtml, formatMoney } = require('./format');
 
 // Brand tokens (docs/DESIGN_SYSTEM.md). Orange is an ACCENT only — the primary
 // button mirrors the app's dark-navy primary, never an orange background.
@@ -735,7 +735,7 @@ const COPY = {
         const business = escapeHtml(String(d.businessName || 'FluxyOS'));
         const number = escapeHtml(String(d.invoiceNumber || ''));
         const customer = d.customerName ? escapeHtml(String(d.customerName)) : '';
-        const amount = formatRupiah(d.amountDue);
+        const amount = formatMoney(d.amountDue, d.currency);
         const due = escapeHtml(String(d.dueDateText || ''));
         const line = (html, text) => ({ html, text: text != null ? text : html.replace(/<[^>]+>/g, '') });
 

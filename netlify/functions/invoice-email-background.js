@@ -137,6 +137,7 @@ exports.handler = async (event) => {
                 invoiceNumber: invoice.invoice_number,
                 customerName: invoice.customer_name,
                 amountDue: invoice.amount_due,
+                currency: invoice.currency || 'IDR',
                 dueDateText,
                 message: cfg.message || '',
                 subject,

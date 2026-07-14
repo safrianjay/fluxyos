@@ -33,4 +33,19 @@ function firstName(full) {
     return part || null;
 }
 
-module.exports = { formatRupiah, formatDate, escapeHtml, firstName };
+// Multi-currency money formatting for invoice surfaces (mirror of the client
+// assets/js/money-format.js). Amounts are integer minor units — IDR in rupiah
+// (0 decimals), USD/SGD in cents. No space after the symbol.
+const CURRENCY_CFG = {
+    IDR: { symbol: 'Rp', decimals: 0, minorPerUnit: 1, locale: 'id-ID' },
+    USD: { symbol: '$', decimals: 2, minorPerUnit: 100, locale: 'en-US' },
+    SGD: { symbol: 'S$', decimals: 2, minorPerUnit: 100, locale: 'en-US' },
+};
+function formatMoney(minor, currency) {
+    const c = CURRENCY_CFG[currency] || CURRENCY_CFG.IDR;
+    const n = Number(minor);
+    const units = (Number.isFinite(n) ? Math.abs(n) : 0) / c.minorPerUnit;
+    return c.symbol + units.toLocaleString(c.locale, { minimumFractionDigits: c.decimals, maximumFractionDigits: c.decimals });
+}
+
+module.exports = { formatRupiah, formatDate, escapeHtml, firstName, formatMoney, CURRENCY_CFG };

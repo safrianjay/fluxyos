@@ -1660,7 +1660,10 @@ service cloud.firestore {
           'customer_npwp',
           'customer_withholding_rate',
           'customer_withholding_type',
-          'customer_withholding_code'
+          'customer_withholding_code',
+          'amount_paid_idr',
+          'fx_rate',
+          'fx_rate_date'
         ])
         && isValidAccountingLink(data)
         && isValidTaxDocFields(data)
@@ -1688,7 +1691,10 @@ service cloud.firestore {
         && data.invoice_number.size() > 0
         && data.invoice_number.size() <= 40
         && data.status in ['draft', 'open', 'void', 'paid']
-        && data.currency == 'IDR'
+        && data.currency in ['IDR', 'USD', 'SGD']
+        && (!('amount_paid_idr' in data) || data.amount_paid_idr == null || (data.amount_paid_idr is int && data.amount_paid_idr >= 0))
+        && (!('fx_rate' in data) || data.fx_rate == null || data.fx_rate is number)
+        && (!('fx_rate_date' in data) || data.fx_rate_date == null || (data.fx_rate_date is string && data.fx_rate_date.size() <= 20))
         && data.customer_name is string
         && data.customer_name.size() <= 160
         && (data.customer_email == null
@@ -1799,8 +1805,10 @@ service cloud.firestore {
             && data.paid_at == request.time
             && data.linked_transaction_id is string
             && data.linked_transaction_id.size() > 0
+            // Foreign-currency payments also stamp the FX provenance + the Rupiah
+            // amount posted to the ledger (see markInvoicePaid).
             && data.diff(existingData).affectedKeys().hasOnly(
-                 ['status', 'paid_at', 'linked_transaction_id', 'updated_at', 'updated_by']))
+                 ['status', 'paid_at', 'linked_transaction_id', 'updated_at', 'updated_by', 'amount_paid_idr', 'fx_rate', 'fx_rate_date']))
           // Void instead of delete: draft/open -> void with a required reason.
           || (data.status == 'void'
             && data.voided_at == request.time

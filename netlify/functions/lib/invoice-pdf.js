@@ -15,7 +15,7 @@
 // per docs/DESIGN_SYSTEM.md; the customer's language drives date formatting.
 // =============================================================================
 
-const { formatRupiah, escapeHtml } = require('../../../functions/lib/format');
+const { formatMoney, escapeHtml } = require('../../../functions/lib/format');
 const { buildInvoiceDocHTML, INVOICE_DOC_CSS } = require('../../../assets/js/invoice-doc-template');
 
 function toMillis(v) {
@@ -29,10 +29,10 @@ function toMillis(v) {
     return Number.isNaN(t) ? null : t;
 }
 
-function makeFormatters(locale) {
+function makeFormatters(locale, currency) {
     return {
         esc: escapeHtml,
-        money: formatRupiah,
+        money: (v) => formatMoney(v, currency),
         qty(v) {
             const n = Number(v);
             if (!Number.isFinite(n)) return '0';
@@ -49,7 +49,7 @@ function makeFormatters(locale) {
 // Full standalone HTML document (shared markup + frozen CSS). A modest page
 // margin gives print whitespace; the .invoice-doc card supplies the rest.
 function buildInvoiceHtml({ invoice, items, businessName, locale = 'en' }) {
-    const doc = buildInvoiceDocHTML(invoice, items, { businessName, fmt: makeFormatters(locale) });
+    const doc = buildInvoiceDocHTML(invoice, items, { businessName, fmt: makeFormatters(locale, invoice.currency || 'IDR') });
     return `<!DOCTYPE html>
 <html lang="${locale === 'id' ? 'id' : 'en'}">
 <head>

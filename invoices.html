@@ -262,11 +262,12 @@
                                 <!-- Currency -->
                                 <section class="px-5 py-5 sm:px-6">
                                     <h2 class="text-[14px] font-semibold text-gray-900">Currency</h2>
-                                    <div class="mt-3 flex h-10 w-full items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 sm:w-72">
-                                        <span class="text-[14px] font-medium text-gray-500">IDR — Indonesian Rupiah</span>
-                                        <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                                    </div>
-                                    <p class="mt-2 text-[12px] text-gray-500">FluxyOS invoices currently use Indonesian Rupiah.</p>
+                                    <select id="inv-currency" class="mt-3 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-[14px] font-medium text-gray-900 outline-none focus:ring-2 focus:ring-[#EA580C] sm:w-72">
+                                        <option value="IDR">IDR — Indonesian Rupiah</option>
+                                        <option value="USD">USD — US Dollar</option>
+                                        <option value="SGD">SGD — Singapore Dollar</option>
+                                    </select>
+                                    <p class="mt-2 text-[12px] text-gray-500">Set the invoice currency before adding line items. Payments in a foreign currency are converted to Rupiah in your ledger at the payment-date rate.</p>
                                 </section>
 
                                 <!-- Items -->
@@ -551,7 +552,7 @@
                                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Due date</dt><dd id="detail-due-date" class="text-gray-900">—</dd></div>
                                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Customer email</dt><dd id="detail-email" class="max-w-[60%] truncate text-gray-900">—</dd></div>
                                     <div id="detail-address-row" class="hidden justify-between gap-3"><dt class="text-gray-500">Customer address</dt><dd id="detail-address" class="max-w-[60%] whitespace-pre-line text-right text-gray-900">—</dd></div>
-                                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Currency</dt><dd class="text-gray-900">IDR</dd></div>
+                                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Currency</dt><dd id="detail-currency" class="text-gray-900">IDR</dd></div>
                                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Collection</dt><dd id="detail-method" class="text-gray-900">—</dd></div>
                                 </dl>
                                 <div id="detail-memo-wrap" class="mt-4 hidden border-t border-gray-100 pt-3">
@@ -674,8 +675,18 @@
                 <dl class="mt-4 space-y-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-3 text-[14px]">
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Invoice</dt><dd id="paid-number" class="font-mono text-gray-900">—</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Customer</dt><dd id="paid-customer" class="max-w-[60%] truncate font-medium text-gray-900">—</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Amount received</dt><dd id="paid-amount" class="font-mono font-semibold text-gray-900">Rp0</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-gray-500">Invoice total</dt><dd id="paid-amount" class="font-mono font-semibold text-gray-900">Rp0</dd></div>
                 </dl>
+                <!-- Foreign-currency conversion (shown only for non-IDR invoices). -->
+                <div id="paid-fx" class="mt-4 hidden rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
+                    <p class="text-[12px] font-medium text-gray-700">Recorded in your ledger (Rupiah)</p>
+                    <p id="paid-fx-rate" class="mt-1 text-[12px] text-gray-500">Fetching payment-date rate…</p>
+                    <div class="mt-2 flex items-center gap-2">
+                        <span class="text-[14px] font-medium text-gray-500">Rp</span>
+                        <input id="paid-fx-idr" type="text" inputmode="numeric" class="h-9 flex-1 rounded-lg border border-gray-200 bg-white px-3 font-mono text-[14px] text-gray-900 outline-none focus:ring-2 focus:ring-[#EA580C]" placeholder="0">
+                    </div>
+                    <p class="mt-1.5 text-[11px] text-gray-400">Auto-filled from the live rate — edit if your bank settled at a different amount.</p>
+                </div>
                 <label class="mt-4 block text-[12px] font-medium text-gray-700">Payment date</label>
                 <div id="paid-date-picker" class="mt-1"></div>
                 <p id="paid-error" class="mt-2 hidden text-[12px] font-medium text-red-600"></p>
@@ -692,7 +703,8 @@
     <script src="assets/js/dashboard-i18n.js"></script>
     <script src="assets/js/fluxy-select.js"></script>
     <script src="assets/js/date-range-picker.js"></script>
-    <!-- Shared invoice-document template (same markup the emailed PDF renders). -->
+    <!-- Multi-currency money helpers + shared invoice-document template. -->
+    <script src="assets/js/money-format.js"></script>
     <script src="assets/js/invoice-doc-template.js"></script>
 
     <script type="module">

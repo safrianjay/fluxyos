@@ -1719,7 +1719,7 @@ class DataService {
                 ? this._stringOrDefault(invoiceData.customer_address, '', 500) || null
                 : null,
             customer_language: this._stringOrDefault(invoiceData.customer_language, 'English', 40),
-            currency: 'IDR',
+            currency: ['IDR', 'USD', 'SGD'].includes(invoiceData.currency) ? invoiceData.currency : 'IDR',
             issue_date: this._coerceTimestampOrNow(invoiceData.issue_date),
             due_date: invoiceData.due_date ? this._coerceTimestampOrNow(invoiceData.due_date) : null,
             due_terms: this._allowedValue(invoiceData.due_terms, dueTermsAllowed, 'due_in_30_days'),
@@ -2067,12 +2067,19 @@ class DataService {
     // stamps paid_at + linked_transaction_id, and writes the audit log — all in
     // one batch so a rules rejection leaves nothing half-written. Paid is
     // terminal: no edit, void, or un-pay path exists after this.
-    async markInvoicePaid(userId, invoiceId, { paymentDate = null } = {}) {
+    async markInvoicePaid(userId, invoiceId, { paymentDate = null, amountPaidIdr = null, fxRate = null, fxRateDate = null } = {}) {
         const invoice = await this.getInvoice(userId, invoiceId);
         if (!invoice) throw new Error('Invoice not found.');
         if (invoice.status !== 'open') throw new Error('Only open invoices can be marked as paid.');
-        const amount = Math.round(Number(invoice.total_amount) || 0);
-        if (!(amount > 0)) throw new Error('Invoice total must be greater than zero.');
+        const currency = invoice.currency || 'IDR';
+        // The ledger is IDR: an IDR invoice posts its total verbatim; a foreign
+        // invoice posts the caller-supplied Rupiah amount (live rate at the
+        // payment date, user-confirmable). fx_* provenance is stored on the invoice.
+        const isForeign = currency !== 'IDR';
+        const amount = isForeign
+            ? Math.round(Number(amountPaidIdr) || 0)
+            : Math.round(Number(invoice.total_amount) || 0);
+        if (!(amount > 0)) throw new Error(isForeign ? 'Enter the Rupiah amount received.' : 'Invoice total must be greater than zero.');
 
         const txRef = doc(collection(this.db, `${this._scope(userId)}/transactions`));
         const transaction = {
@@ -2098,7 +2105,7 @@ class DataService {
         // stamp the computed amount on the payment so the engine reclasses it to 1150
         // (creditable) and books Cash at the net received. Base is the invoice subtotal.
         const cwRate = Number(invoice.customer_withholding_rate) || 0;
-        if (cwRate > 0 && invoice.journal_ref) {
+        if (cwRate > 0 && invoice.journal_ref && !isForeign) {
             const base = Math.round(Number(invoice.subtotal_amount) || 0);
             const pph = Math.round((base * cwRate) / 100);
             if (pph > 0) {
@@ -2114,13 +2121,21 @@ class DataService {
         const batch = writeBatch(this.db);
         await this._postSourceJournal(userId, batch, 'transactions', txRef, transaction, { date: transaction.timestamp });
         batch.set(txRef, transaction);
-        batch.update(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`), {
+        const invoicePatch = {
             status: 'paid',
             paid_at: serverTimestamp(),
             linked_transaction_id: txRef.id,
             updated_at: serverTimestamp(),
             updated_by: (this.actorUid || userId)
-        });
+        };
+        // FX provenance for a foreign-currency payment: the rate used, its date,
+        // and the Rupiah amount recorded in the ledger.
+        if (isForeign) {
+            invoicePatch.amount_paid_idr = amount;
+            invoicePatch.fx_rate = fxRate != null ? Number(fxRate) : null;
+            invoicePatch.fx_rate_date = fxRateDate ? String(fxRateDate).slice(0, 20) : null;
+        }
+        batch.update(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`), invoicePatch);
         batch.set(
             this._invoiceAuditRef(userId),
             this._invoiceAuditPayload(userId, 'invoice.mark_paid', invoiceId, {
