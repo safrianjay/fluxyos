@@ -1671,7 +1671,7 @@ class DataService {
 
     _invoiceAuditSnapshot(invoice = {}) {
         const keys = [
-            'invoice_number', 'status', 'currency', 'customer_name', 'customer_email',
+            'invoice_number', 'status', 'currency', 'customer_name', 'customer_email', 'customer_address',
             'due_terms', 'item_count', 'subtotal_amount', 'tax_amount', 'discount_amount',
             'total_amount', 'amount_due', 'payment_collection_method'
         ];
@@ -1714,6 +1714,9 @@ class DataService {
             customer_name: this._stringOrDefault(invoiceData.customer_name, '', 160),
             customer_email: invoiceData.customer_email
                 ? this._stringOrDefault(invoiceData.customer_email, '', 160) || null
+                : null,
+            customer_address: invoiceData.customer_address
+                ? this._stringOrDefault(invoiceData.customer_address, '', 500) || null
                 : null,
             customer_language: this._stringOrDefault(invoiceData.customer_language, 'English', 40),
             currency: 'IDR',

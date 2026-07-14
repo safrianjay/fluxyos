@@ -831,6 +831,7 @@
         "Customer": "Pelanggan",
         "Customer name": "Nama pelanggan",
         "Customer email": "Email pelanggan",
+        "Customer address": "Alamat pelanggan",
         "Item details": "Detail item",
         "Line items": "Item baris",
         "Line item": "Item baris",
@@ -1210,6 +1211,7 @@
         "e.g. 11": "mis. 11",
         "e.g. Consulting service": "mis. Layanan konsultasi",
         "e.g. PT Maju Bersama": "mis. PT Maju Bersama",
+        "e.g. Jl. Sudirman No. 1, Jakarta 10210": "mis. Jl. Sudirman No. 1, Jakarta 10210",
         "e.g. Duplicate invoice, wrong customer, order cancelled.": "mis. Invoice ganda, salah pelanggan, pesanan dibatalkan.",
 
         // ── Final coverage: remaining labels, helper text, KPI tooltips ──────

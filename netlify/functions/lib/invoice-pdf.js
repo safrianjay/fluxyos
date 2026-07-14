@@ -147,6 +147,7 @@ function buildInvoiceHtml({ invoice, items, businessName, locale, logoUrl }) {
         <h4>${t('Bill to', 'Ditagihkan ke')}</h4>
         <div class="val">${escapeHtml(invoice.customer_name || t('Customer', 'Pelanggan'))}</div>
         ${invoice.customer_email ? `<div class="muted">${escapeHtml(invoice.customer_email)}</div>` : ''}
+        ${invoice.customer_address ? `<div class="muted" style="white-space:pre-line;">${escapeHtml(invoice.customer_address)}</div>` : ''}
       </div>
       <div>
         <h4>${t('Invoice number', 'Nomor invoice')}</h4>

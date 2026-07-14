@@ -132,6 +132,7 @@ export function initInvoicesPage({ ds, user }) {
         status: 'draft',
         customerName: '',
         customerEmail: '',
+        customerAddress: '',
         items: [],
         dueTerms: 'due_in_30_days',
         customDueKey: null,
@@ -442,6 +443,7 @@ export function initInvoicesPage({ ds, user }) {
             editor.status = invoice.status || 'draft';
             editor.customerName = invoice.customer_name || '';
             editor.customerEmail = invoice.customer_email || '';
+            editor.customerAddress = invoice.customer_address || '';
             editor.items = items.map(item => ({
                 id: item.id,
                 description: item.description,
@@ -501,6 +503,7 @@ export function initInvoicesPage({ ds, user }) {
     function hydrateEditorForm() {
         el('inv-customer-name').value = editor.customerName;
         el('inv-customer-email').value = editor.customerEmail;
+        el('inv-customer-address').value = editor.customerAddress;
         el('inv-due-terms').value = editor.dueTerms;
         // Native select is enhanced by fluxy-select; notify it of the new value.
         el('inv-due-terms').dispatchEvent(new Event('change', { bubbles: true }));
@@ -541,6 +544,7 @@ export function initInvoicesPage({ ds, user }) {
     // Customer + options inputs
     el('inv-customer-name').addEventListener('input', (event) => { editor.customerName = event.target.value; markDirty(); });
     el('inv-customer-email').addEventListener('input', (event) => { editor.customerEmail = event.target.value; markDirty(); });
+    el('inv-customer-address').addEventListener('input', (event) => { editor.customerAddress = event.target.value; markDirty(); });
     el('inv-memo').addEventListener('input', (event) => { editor.memo = event.target.value; markDirty(); });
     el('inv-footer').addEventListener('input', (event) => { editor.footer = event.target.value; markDirty(); });
     el('inv-tax-rate').addEventListener('input', (event) => {
@@ -734,6 +738,7 @@ export function initInvoicesPage({ ds, user }) {
         el('pv-due-date').textContent = due ? formatDate(due) : '—';
         el('pv-customer-name').textContent = editor.customerName.trim() || 'Customer name';
         el('pv-customer-email').textContent = editor.customerEmail.trim();
+        el('pv-customer-address').textContent = editor.customerAddress.trim();
         el('pv-amount-line').textContent = `${formatRp(totals.amountDue)} due ${due ? formatDate(due) : '—'}`;
 
         const memo = editor.memo.trim();
@@ -794,6 +799,7 @@ export function initInvoicesPage({ ds, user }) {
         return {
             customer_name: editor.customerName.trim(),
             customer_email: editor.customerEmail.trim() || null,
+            customer_address: editor.customerAddress.trim() || null,
             customer_language: 'English',
             issue_date: editor.issueDate,
             due_date: computeDueDate(),
@@ -1081,6 +1087,10 @@ export function initInvoicesPage({ ds, user }) {
         el('detail-issue-date').textContent = formatDate(invoice.issue_date);
         el('detail-due-date').textContent = formatDate(invoice.due_date);
         el('detail-email').textContent = invoice.customer_email || '—';
+        const hasAddress = Boolean(invoice.customer_address);
+        el('detail-address-row').classList.toggle('hidden', !hasAddress);
+        el('detail-address-row').classList.toggle('flex', hasAddress);
+        el('detail-address').textContent = invoice.customer_address || '—';
         el('detail-method').textContent = invoice.payment_collection_method === 'manual_only' ? 'Manual only' : 'Request payment';
 
         const memoWrap = el('detail-memo-wrap');
@@ -1229,6 +1239,7 @@ export function initInvoicesPage({ ds, user }) {
                         <p class="font-semibold text-gray-900">Bill to</p>
                         <p class="mt-1 text-gray-600">${esc(invoice.customer_name || 'Customer name')}</p>
                         <p class="text-gray-500">${esc(invoice.customer_email || '')}</p>
+                        ${invoice.customer_address ? `<p class="whitespace-pre-line text-gray-500">${esc(invoice.customer_address)}</p>` : ''}
                     </div>
                 </div>
                 <p class="mt-6 text-[16px] font-semibold text-gray-900 invoice-doc-money">${formatRp(amountDue)} due ${due}</p>

@@ -252,6 +252,10 @@
                                             <label for="inv-customer-email" class="text-[12px] font-medium text-gray-700">Customer email</label>
                                             <input id="inv-customer-email" type="email" maxlength="160" placeholder="billing@customer.com" class="mt-1 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-[14px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C]">
                                         </div>
+                                        <div class="sm:col-span-2">
+                                            <label for="inv-customer-address" class="text-[12px] font-medium text-gray-700">Customer address <span class="text-gray-400">(optional)</span></label>
+                                            <textarea id="inv-customer-address" rows="2" maxlength="500" placeholder="e.g. Jl. Sudirman No. 1, Jakarta 10210" class="mt-1 w-full resize-y rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C]"></textarea>
+                                        </div>
                                     </div>
                                 </section>
 
@@ -412,6 +416,7 @@
                                             <p class="font-semibold text-gray-900">Bill to</p>
                                             <p id="pv-customer-name" class="mt-1 text-gray-600">Customer name</p>
                                             <p id="pv-customer-email" class="text-gray-500"></p>
+                                            <p id="pv-customer-address" class="whitespace-pre-line text-gray-500"></p>
                                         </div>
                                     </div>
                                     <p class="mt-6 text-[16px] font-semibold text-gray-900 invoice-doc-money" id="pv-amount-line">Rp0 due —</p>
@@ -545,6 +550,7 @@
                                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Issue date</dt><dd id="detail-issue-date" class="text-gray-900">—</dd></div>
                                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Due date</dt><dd id="detail-due-date" class="text-gray-900">—</dd></div>
                                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Customer email</dt><dd id="detail-email" class="max-w-[60%] truncate text-gray-900">—</dd></div>
+                                    <div id="detail-address-row" class="hidden justify-between gap-3"><dt class="text-gray-500">Customer address</dt><dd id="detail-address" class="max-w-[60%] whitespace-pre-line text-right text-gray-900">—</dd></div>
                                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Currency</dt><dd class="text-gray-900">IDR</dd></div>
                                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Collection</dt><dd id="detail-method" class="text-gray-900">—</dd></div>
                                 </dl>

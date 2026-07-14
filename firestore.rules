@@ -1628,6 +1628,7 @@ service cloud.firestore {
           'currency',
           'customer_name',
           'customer_email',
+          'customer_address',
           'customer_language',
           'issue_date',
           'due_date',
@@ -1692,6 +1693,8 @@ service cloud.firestore {
         && data.customer_name.size() <= 160
         && (data.customer_email == null
           || (data.customer_email is string && data.customer_email.size() <= 160))
+        && (!('customer_address' in data) || data.customer_address == null
+          || (data.customer_address is string && data.customer_address.size() <= 500))
         && (!('customer_language' in data)
           || (data.customer_language is string && data.customer_language.size() <= 40))
         && data.issue_date is timestamp
