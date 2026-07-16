@@ -119,6 +119,7 @@ const MARKETING_DIRS = ['use-cases', 'id'];
 // Request-driven functions (api, invites, contact-sales, ...) stay on both.
 const SCHEDULED_FUNCTIONS = [
     'announce-id-language.js',
+    'announce-invoice-multicurrency.js',
     'billing-reminders.js',
     'commerce-reconcile.js',
     'commerce-sync-worker.js',
