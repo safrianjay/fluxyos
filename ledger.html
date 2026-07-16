@@ -182,7 +182,10 @@
                     </div>
                 </section>
 
-                <section id="ledger-attention-section" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <!-- Hidden by default; renderLedgerAttention() reveals it only when
+                     the filtered period actually has issues (an all-clear panel is
+                     noise, and this also avoids a zero-count flash during load). -->
+                <section id="ledger-attention-section" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                     <div class="px-5 py-4 border-b border-gray-100">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
@@ -1935,10 +1938,15 @@
             if (chipRow) chipRow.innerHTML = ['all', ...LEDGER_ISSUE_ORDER].map(type => renderAttentionTab(type, items)).join('');
             if (!list) return;
 
+            // Show the section only when the period has issues — an all-clear
+            // "Needs your attention" panel is noise, so hide it entirely.
+            const section = document.getElementById('ledger-attention-section');
             if (!items.length) {
+                section?.classList.add('hidden');
                 renderLedgerAttentionEmpty();
                 return;
             }
+            section?.classList.remove('hidden');
 
             if (!activeItems.length) {
                 renderLedgerAttentionTabEmpty(ledgerAttentionTab);
