@@ -514,6 +514,7 @@ export function initInvoicesPage({ ds, user }) {
         el('inv-customer-email').value = editor.customerEmail;
         el('inv-customer-address').value = editor.customerAddress;
         el('inv-currency').value = editor.currency;
+        syncTaxVisibility();
         el('inv-due-terms').value = editor.dueTerms;
         // Native select is enhanced by fluxy-select; notify it of the new value.
         el('inv-due-terms').dispatchEvent(new Event('change', { bubbles: true }));
@@ -560,6 +561,7 @@ export function initInvoicesPage({ ds, user }) {
         // Re-render amounts under the new currency (stored minor-unit values are
         // reinterpreted — set the currency before entering line items).
         syncItemPriceCurrency();
+        syncTaxVisibility();
         renderItemsList();
         updatePreview();
         markDirty();
@@ -677,6 +679,23 @@ export function initInvoicesPage({ ds, user }) {
     function syncItemPriceCurrency() {
         el('inv-item-price-currency').textContent = `(${window.FluxyMoney.symbol(editor.currency)})`;
         el('inv-item-price').placeholder = editor.currency === 'IDR' ? '1.000.000' : '1,000.00';
+    }
+
+    // PPN tax rate + PPh customer-withholding are Indonesia-specific and only
+    // apply to IDR invoices (foreign invoices are export-style / no-PPN in v1).
+    // Hide + clear them for USD/SGD so they can't be applied by mistake.
+    function syncTaxVisibility() {
+        const foreign = editor.currency !== 'IDR';
+        el('inv-tax-field').classList.toggle('hidden', foreign);
+        el('inv-wht-field').classList.toggle('hidden', foreign);
+        if (foreign) {
+            editor.taxRate = null;
+            el('inv-tax-rate').value = '';
+            editor.custWhtRate = null;
+            if (el('inv-cust-wht-rate')) el('inv-cust-wht-rate').value = '';
+            editor.custWhtType = '';
+            if (el('inv-cust-wht-type')) el('inv-cust-wht-type').value = '';
+        }
     }
 
     function openItemForm(index = null) {

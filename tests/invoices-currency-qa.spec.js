@@ -17,6 +17,7 @@ test.describe.configure({ mode: 'serial' });
 test('invoices: USD invoice finalizes (no permission error) + displays in $ + pays in IDR', async ({ page }) => {
     const pageErrors = [];
     page.on('pageerror', (err) => pageErrors.push(String(err)));
+    page.on('console', (m) => { if(/DIAG|mark paid|permission/i.test(m.text())) console.log('BROWSER>', m.text()); });
 
     await page.goto('/invoices');
     await page.waitForTimeout(1500);
@@ -35,6 +36,16 @@ test('invoices: USD invoice finalizes (no permission error) + displays in $ + pa
     await page.locator('#inv-customer-email').fill(`qa+usd${stamp}@example.com`);
     await page.locator('#inv-currency').selectOption('USD');
 
+    // Indonesia-specific PPN/PPh fields are hidden for a foreign currency.
+    await expect(page.locator('#inv-tax-field')).toBeHidden();
+    await expect(page.locator('#inv-wht-field')).toBeHidden();
+
+    // Reproduce the reported bug: a foreign invoice that DOES carry tax (pre-hide
+    // / legacy) must still finalize AND mark paid — both posted into the IDR
+    // accounting kernel/tax before and were rejected. Force-show + set 11%.
+    await page.evaluate(() => document.getElementById('inv-tax-field').classList.remove('hidden'));
+    await page.locator('#inv-tax-rate').fill('11');
+
     // Unit-price label reflects the selected currency.
     await page.locator('#invoice-item-add').click();
     await expect(page.locator('#invoice-item-form')).toBeVisible();
@@ -50,20 +61,20 @@ test('invoices: USD invoice finalizes (no permission error) + displays in $ + pa
     // --- Finalize only: MUST succeed (the bug threw a permissions error here) ---
     await page.locator('#invoice-review-btn').click();
     await expect(page.locator('#invoice-review-modal')).toBeVisible();
-    await expect(page.locator('#review-amount')).toContainText('$8,100.00');
+    await expect(page.locator('#review-amount')).toContainText('$8,991.00'); // 8,100 + 11% tax
     await page.locator('#review-finalize-btn').click();
 
     // Lands on detail as an open invoice — no permission error, no stuck modal.
     await expect(page.locator('#invoice-detail-view')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('#detail-status')).toContainText(/open/i);
     await expect(page.locator('#detail-currency')).toHaveText('USD');
-    await expect(page.locator('#detail-amount-due')).toContainText('$8,100.00');
+    await expect(page.locator('#detail-amount-due')).toContainText('$8,991.00');
     await expect(page.locator('#detail-subtotal')).toContainText('$8,100.00');
 
     // --- Mark paid: foreign invoice shows the IDR conversion block ---
     await page.locator('#detail-paid-btn').click();
     await expect(page.locator('#invoice-paid-modal')).toBeVisible();
-    await expect(page.locator('#paid-amount')).toContainText('$8,100.00'); // invoice total in USD
+    await expect(page.locator('#paid-amount')).toContainText('$8,991.00'); // invoice total in USD
     await expect(page.locator('#paid-fx')).toBeVisible();
     // The static test server has no fx-rate function, so enter the IDR manually
     // (the same path a user takes to override the rate).

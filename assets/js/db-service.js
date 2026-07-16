@@ -2128,7 +2128,16 @@ class DataService {
         }
 
         const batch = writeBatch(this.db);
-        await this._postSourceJournal(userId, batch, 'transactions', txRef, transaction, { date: transaction.timestamp });
+        // Foreign-currency invoices stay outside the IDR accounting kernel + tax
+        // center (v1, mirrors finalizeInvoice): record the payment as a plain
+        // income ledger row — revenue still shows in dashboard KPIs — but don't
+        // post a journal / PPN appendix, which posts foreign-context lines the
+        // IDR tax rules reject. IDR invoices post to the kernel as before.
+        if (isForeign) {
+            transaction.accounting_status = 'excluded';
+        } else {
+            await this._postSourceJournal(userId, batch, 'transactions', txRef, transaction, { date: transaction.timestamp });
+        }
         batch.set(txRef, transaction);
         const invoicePatch = {
             status: 'paid',
