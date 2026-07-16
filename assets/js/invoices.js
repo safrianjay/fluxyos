@@ -1135,6 +1135,18 @@ export function initInvoicesPage({ ds, user }) {
 
         el('detail-issue-date').textContent = formatDate(invoice.issue_date);
         el('detail-due-date').textContent = formatDate(invoice.due_date);
+        // Foreign-currency payment provenance: the Rupiah amount that posted to
+        // the ledger and the rate used (stamped by markInvoicePaid; rate may be
+        // null when the user entered the amount manually).
+        const paidIdr = Number(invoice.amount_paid_idr) || 0;
+        el('detail-paid-idr-row').classList.toggle('hidden', !(paidIdr > 0));
+        el('detail-paid-idr-row').classList.toggle('flex', paidIdr > 0);
+        el('detail-paid-idr').textContent = paidIdr > 0 ? money(paidIdr, 'IDR') : '—';
+        const fxRate = Number(invoice.fx_rate) || 0;
+        const showRate = paidIdr > 0 && fxRate > 0;
+        el('detail-fx-rate-row').classList.toggle('hidden', !showRate);
+        el('detail-fx-rate-row').classList.toggle('flex', showRate);
+        el('detail-fx-rate').textContent = showRate ? `1 ${cur} = ${money(fxRate, 'IDR')}` : '—';
         // Paid invoices link to the income ledger record created by Mark-Paid
         // (the ledger opens that record's detail via the app-wide ?record= param).
         const hasLedgerLink = invoice.status === 'paid' && Boolean(invoice.linked_transaction_id);

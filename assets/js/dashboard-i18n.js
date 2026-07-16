@@ -2368,6 +2368,8 @@
         "Linked invoice": "Invoice tertaut",
         "View invoice": "Lihat invoice",
         "Payment record": "Catatan pembayaran",
+        "Paid in Rupiah": "Dibayar dalam Rupiah",
+        "Exchange rate": "Kurs",
         "View payment status": "Lihat status pembayaran",
         "View plans": "Lihat paket",
         "Void reason is required.": "Alasan pembatalan wajib diisi.",
