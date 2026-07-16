@@ -1789,6 +1789,22 @@ class DataService {
         return snap.exists() ? { id: snap.id, ...snap.data() } : null;
     }
 
+    // Resolve an invoice by its human number (INV-YYYYMM-0001). Used by the
+    // ledger drawer's "Linked invoice" card for older payment transactions that
+    // carry invoice_number but predate linked_invoice_id. Single-field where +
+    // limit — no composite index needed.
+    async findInvoiceByNumber(userId, invoiceNumber) {
+        const number = String(invoiceNumber || '').trim();
+        if (!number) return null;
+        const q = query(
+            collection(this.db, `${this._scope(userId)}/invoices`),
+            where('invoice_number', '==', number),
+            limit(1)
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.empty ? null : { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+    }
+
     async getInvoiceItems(userId, invoiceId) {
         const q = query(
             collection(this.db, `${this._scope(userId)}/invoices/${invoiceId}/items`),
@@ -2107,8 +2123,11 @@ class DataService {
         // If the invoice was issued under the accounting kernel (has a journal),
         // link the payment so it posts INV-PAY (Dr Cash / Cr A/R) — settling the
         // receivable instead of recognizing revenue twice. Legacy invoices with no
-        // INV-ISSUE journal fall back to a plain income posting (Dr Cash/Cr Revenue).
-        if (invoice.journal_ref) transaction.linked_invoice_id = invoiceId;
+        // INV-ISSUE journal fall back to a plain income posting (Dr Cash/Cr Revenue)
+        // and deliberately OMIT the link (it would flip their journal to INV-PAY).
+        // Foreign invoices skip the kernel entirely, so linking is side-effect-free
+        // there — and the ledger drawer uses it for the "Linked invoice" card.
+        if (invoice.journal_ref || isForeign) transaction.linked_invoice_id = invoiceId;
 
         // Customer withholding: if the invoice records that the customer withholds PPh,
         // stamp the computed amount on the payment so the engine reclasses it to 1150

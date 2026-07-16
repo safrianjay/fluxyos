@@ -1135,6 +1135,12 @@ export function initInvoicesPage({ ds, user }) {
 
         el('detail-issue-date').textContent = formatDate(invoice.issue_date);
         el('detail-due-date').textContent = formatDate(invoice.due_date);
+        // Paid invoices link to the income ledger record created by Mark-Paid
+        // (the ledger opens that record's detail via the app-wide ?record= param).
+        const hasLedgerLink = invoice.status === 'paid' && Boolean(invoice.linked_transaction_id);
+        el('detail-ledger-row').classList.toggle('hidden', !hasLedgerLink);
+        el('detail-ledger-row').classList.toggle('flex', hasLedgerLink);
+        el('detail-ledger-link').href = hasLedgerLink ? `/ledger?record=${encodeURIComponent(invoice.linked_transaction_id)}` : '#';
         el('detail-email').textContent = invoice.customer_email || '—';
         const hasAddress = Boolean(invoice.customer_address);
         el('detail-address-row').classList.toggle('hidden', !hasAddress);
