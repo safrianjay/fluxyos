@@ -118,14 +118,23 @@ test('ledger trust cards and attention queue render safely above the table', asy
     await expect(page.locator('#ledger-uncategorized-count')).toBeVisible();
     await expect(page.locator('#ledger-pending-approval-count')).toBeVisible();
     await expect(page.locator('#ledger-unreconciled-count')).toBeVisible();
-    await expect(page.locator('#ledger-attention-section')).toBeVisible();
-    await expect(page.locator('#ledger-attention-list')).toBeVisible();
-    await expect(page.locator('[data-action="ledger-attention-tab"]')).toHaveCount(5);
-    await expect(page.locator('[data-issue-tab="all"]')).toHaveAttribute('aria-selected', 'true');
-    await page.locator('[data-issue-tab="missingReceipt"]').click();
-    await expect(page.locator('[data-issue-tab="missingReceipt"]')).toHaveAttribute('aria-selected', 'true');
-    await page.locator('[data-issue-tab="all"]').click();
-    await expect(page.locator('[data-issue-tab="all"]')).toHaveAttribute('aria-selected', 'true');
+    // The "Needs your attention" panel renders only when the current period has
+    // data-quality issues; an all-clear panel is intentionally hidden (ledger.html
+    // renderAttention: `if (!items.length) section.classList.add('hidden')`). Branch
+    // so this spec is correct whether the shared QA account is clean or not, instead
+    // of assuming issues always exist (a clean account left it perpetually red).
+    if (await page.locator('#ledger-attention-section').isVisible()) {
+        await expect(page.locator('#ledger-attention-list')).toBeVisible();
+        await expect(page.locator('[data-action="ledger-attention-tab"]')).toHaveCount(5);
+        await expect(page.locator('[data-issue-tab="all"]')).toHaveAttribute('aria-selected', 'true');
+        await page.locator('[data-issue-tab="missingReceipt"]').click();
+        await expect(page.locator('[data-issue-tab="missingReceipt"]')).toHaveAttribute('aria-selected', 'true');
+        await page.locator('[data-issue-tab="all"]').click();
+        await expect(page.locator('[data-issue-tab="all"]')).toHaveAttribute('aria-selected', 'true');
+    } else {
+        // All-clear account: the panel is hidden by design, not broken.
+        await expect(page.locator('#ledger-attention-section')).toHaveClass(/\bhidden\b/);
+    }
 
     const unsafeText = await page.locator('#ledger-control-cards, #ledger-attention-section').evaluateAll(els => els.map(el => el.textContent || '').join(' '));
     expect(unsafeText).not.toMatch(/NaN|Infinity|undefined|null/);
