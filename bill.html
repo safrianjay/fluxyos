@@ -1004,7 +1004,7 @@
             if (!bill) return;
             if (window.FluxyAccessGuard && !window.FluxyAccessGuard.requireWriteAccess()) return;
             payModalBill = bill;
-            payInFlight = false;
+            resetPayConfirmButton();
             payPickerSelectedKey = todayDayKey();
 
             const allocName = billAllocationName(bill);
@@ -1049,11 +1049,23 @@
             document.body.classList.add('overflow-hidden');
         }
 
+        // Restore the confirm button to its idle state. The success path closes
+        // the modal without touching the button, so without this the shared
+        // #bill-pay-confirm stays disabled + "Recording…" and the NEXT bill's
+        // modal opens with a stuck button. Reset on both open and close so it is
+        // always clean regardless of how the previous attempt ended.
+        function resetPayConfirmButton() {
+            const confirmBtn = document.getElementById('bill-pay-confirm');
+            if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Mark as Paid'; }
+            payInFlight = false;
+        }
+
         function closePayModal() {
             document.getElementById('bill-pay-modal').classList.add('hidden');
             document.body.classList.remove('overflow-hidden');
             payModalBill = null;
             payCashController = null;
+            resetPayConfirmButton();
         }
 
         async function confirmPay() {
@@ -1061,7 +1073,6 @@
             const confirmBtn = document.getElementById('bill-pay-confirm');
             payInFlight = true;
             confirmBtn.disabled = true;
-            const original = confirmBtn.textContent;
             confirmBtn.textContent = 'Recording…';
             try {
                 const paymentDate = dayKeyToDate(payPickerSelectedKey);
@@ -1075,9 +1086,7 @@
             } catch (err) {
                 console.error('Mark bill paid failed:', err);
                 window.showToast?.(err?.message || 'Could not mark this bill as paid. Please try again.', 'error');
-                confirmBtn.disabled = false;
-                confirmBtn.textContent = original;
-                payInFlight = false;
+                resetPayConfirmButton();
             }
         }
 
