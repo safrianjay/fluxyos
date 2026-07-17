@@ -120,6 +120,9 @@ exports.handler = async (event) => {
         if (path === '/sync-now' && method === 'POST') {
             return await handleSyncNow(db, event, headers);
         }
+        if (path === '/internal/install-credentials' && method === 'POST') {
+            return await handleInstallCredentials(db, event, headers);
+        }
         return json(404, { error: 'not found' }, headers);
     } catch (e) {
         console.error('[commerce] unhandled', e.message);
@@ -310,6 +313,33 @@ async function handleSyncNow(db, event, headers) {
         after: { account_id: accId, type: 'manual' },
     });
     return json(202, { queued: true, job_id: id }, headers);
+}
+
+// Ops/sandbox path: install CONSOLE-ISSUED tokens (TikTok's sandbox hands out
+// access tokens directly, with no OAuth dance) as a connected account. Guarded
+// by the INTERNAL_API_TOKEN shared secret (same server-to-server pattern as
+// extend-trial / the background delegator) — never exposed to browsers.
+// Body: { workspace_id, platform, shop: {shopId, shopName, region, currency},
+//         tokens: {accessToken, refreshToken?, accessExpiresAt?, refreshExpiresAt?},
+//         platform_meta? }
+async function handleInstallCredentials(db, event, headers) {
+    const provided = event.headers['x-internal-token'] || event.headers['X-Internal-Token'];
+    if (!process.env.INTERNAL_API_TOKEN || provided !== process.env.INTERNAL_API_TOKEN) {
+        return json(401, { error: 'unauthorized' }, headers);
+    }
+    const body = safeJson(event.body);
+    const { workspace_id: workspaceId, platform, shop, tokens } = body;
+    if (!workspaceId || !platform || !shop || !shop.shopId || !tokens || !tokens.accessToken) {
+        return json(400, { error: 'workspace_id, platform, shop.shopId, tokens.accessToken required' }, headers);
+    }
+    if (!registry.get(platform)) return json(404, { error: `unknown platform '${platform}'` }, headers);
+    await finishConnect(db, {
+        workspaceId,
+        platform,
+        uid: 'internal-ops',
+        result: { tokens, shop, platformMeta: body.platform_meta || {} },
+    });
+    return json(200, { installed: true, account_id: makeAccountId(platform, shop.shopId) }, headers);
 }
 
 function safeJson(body) {

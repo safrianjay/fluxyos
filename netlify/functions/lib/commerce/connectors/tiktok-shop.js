@@ -39,7 +39,9 @@
 const crypto = require('crypto');
 const { ENV, AUTH_TYPES } = require('../constants');
 
-const AUTH_HOST = 'https://auth.tiktok-shops.com';
+// Overridable for TikTok's SANDBOX (App Review demos): point these at
+// auth-sandbox.tiktok-shops.com / open-api-sandbox.tiktokglobalshop.com.
+const AUTH_HOST = process.env.TIKTOK_SHOP_AUTH_HOST || 'https://auth.tiktok-shops.com';
 const API_HOST = process.env.TIKTOK_SHOP_API_HOST || 'https://open-api.tiktokglobalshop.com';
 const PAGE_SIZE = 50;
 // Token/authorization failure codes → err.code 'auth' (account expires, no retry).
