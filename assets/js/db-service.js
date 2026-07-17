@@ -7424,6 +7424,71 @@ class DataService {
             .filter(account => account.status !== 'archived');
     }
 
+    // Reconciliation read (NON-destructive). For each active bank account,
+    // compute the balance the ledger implies:
+    //   expected = last reported balance
+    //            + net of cash-effective transactions LINKED to that account
+    //              (cash_account_id) that occurred AFTER the reported-balance date.
+    // The reported balance stays the source of truth — this never writes. Powers
+    // the "Expected from ledger / difference" hint and the opt-in
+    // "Update balance to match ledger" action on Settings → Cash & Bank.
+    // Reuses the cash_effective query shape from getLedgerCashPosition (no new
+    // composite index) and groups by cash_account_id client-side.
+    async getBankAccountsLedgerReconciliation(userId) {
+        const accounts = await this.getBankAccounts(userId);
+        if (!accounts.length) return accounts;
+        const linked = [];
+        try {
+            const q = query(
+                collection(this.db, `${this._scope(userId)}/transactions`),
+                where('cash_effective', '==', true),
+                limit(2000)
+            );
+            const snapshot = await getDocs(q);
+            snapshot.forEach(d => {
+                const x = d.data();
+                if (x.is_voided) return;
+                if (!x.cash_account_id) return;
+                if (x.cash_direction !== 'in' && x.cash_direction !== 'out') return;
+                const ts = x.cash_effective_at?.toDate?.() || x.timestamp?.toDate?.() || null;
+                linked.push({
+                    accountId: x.cash_account_id,
+                    signed: x.cash_direction === 'in' ? this._safeInteger(x.amount) : -this._safeInteger(x.amount),
+                    tsMs: ts ? ts.getTime() : null
+                });
+            });
+        } catch {
+            // Best-effort: on a read failure return accounts without ledger info
+            // so the page still renders the reported balances.
+            return accounts.map(a => ({ ...a, ledger: null }));
+        }
+        return accounts.map(account => {
+            const reported = this._safeInteger(account.latest_balance);
+            const asOf = account.latest_balance_at?.toDate?.() || null;
+            const asOfMs = asOf ? asOf.getTime() : null;
+            let delta = 0, sinceCount = 0;
+            for (const t of linked) {
+                if (t.accountId !== account.id) continue;
+                // Skip activity already baked into the reported balance (dated on
+                // or before the reported-balance timestamp). If a record can't be
+                // dated, count it rather than hide activity.
+                if (asOfMs !== null && t.tsMs !== null && t.tsMs <= asOfMs) continue;
+                delta += t.signed;
+                sinceCount++;
+            }
+            return {
+                ...account,
+                ledger: {
+                    reported,
+                    expected: reported + delta,
+                    delta,
+                    sinceCount,
+                    matches: delta === 0
+                }
+            };
+        });
+    }
+
     async addManualBankAccount(userId, data) {
         const balance = Math.round(Math.max(0, Number(data.current_balance) || 0));
         const balanceDate = this._coerceTimestampOrNow(data.balance_date);

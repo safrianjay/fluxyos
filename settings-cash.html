@@ -19,6 +19,12 @@
         .cash-action-btn:hover { background: #F8FAFC; border-color: #CBD5F5; }
         .cash-action-btn.is-danger { color: #B91C1C; border-color: #FECACA; }
         .cash-action-btn.is-danger:hover { background: #FEF2F2; }
+        .cash-recon { margin-top: 3px; font-size: 11px; line-height: 1.3; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .cash-recon--ok { color: #16A34A; font-weight: 600; }
+        .cash-recon--diff { color: #64748B; }
+        .cash-recon-delta { font-weight: 700; color: #B45309; font-variant-numeric: tabular-nums; }
+        .cash-recon-sync { font-size: 11px; font-weight: 700; color: #EA580C; background: none; border: 0; padding: 0; cursor: pointer; }
+        .cash-recon-sync:hover { color: #D94E0B; text-decoration: underline; }
         .cash-modal-backdrop { position: fixed; inset: 0; background: rgba(11,15,25,0.5); backdrop-filter: blur(6px); z-index: 50; display: none; align-items: center; justify-content: center; }
         .cash-modal-backdrop.is-open { display: flex; }
         .cash-modal { width: min(440px, calc(100vw - 32px)); background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 16px; box-shadow: 0 24px 48px rgba(11,15,25,0.18); padding: 22px; }
@@ -260,7 +266,7 @@
             setLoadState('loading', 'Loading bank accounts');
             try {
                 const [accounts, history] = await Promise.all([
-                    ds.getBankAccounts(uid),
+                    ds.getBankAccountsLedgerReconciliation(uid),
                     ds.getBankBalanceSnapshots(uid, { limit: 50 })
                 ]);
                 accountsCache = accounts;
@@ -304,13 +310,34 @@
                 const updated = toDate(account.latest_balance_at);
                 const sourceLabel = account.source_type === 'manual' ? 'Manual' : (account.source_type === 'statement_upload' ? 'Statement' : 'Sync');
                 const nameLine = `${escapeHtml(account.account_name || '')}${account.last_four ? ' · ••' + escapeHtml(account.last_four) : ''}`;
+                // Non-destructive reconciliation hint: what the linked cash-effective
+                // transactions imply vs the reported balance. Only shown when there
+                // is linked activity since the last balance update.
+                const L = account.ledger;
+                let reconLine = '';
+                if (L && L.sinceCount > 0) {
+                    if (L.matches) {
+                        reconLine = `<div class="cash-recon cash-recon--ok">Matches ledger</div>`;
+                    } else {
+                        const sign = L.delta > 0 ? '+' : '−';
+                        reconLine = `<div class="cash-recon cash-recon--diff" title="Based on transactions linked to this account since your last balance update">
+                            <span class="cash-recon-label">Ledger</span>
+                            <span class="tabular-nums">${formatIDR(L.expected)}</span>
+                            <span class="cash-recon-delta">${sign}${formatIDR(Math.abs(L.delta))}</span>
+                            <button type="button" class="cash-recon-sync" data-sync-id="${escapeHtml(account.id)}" data-sync-amount="${L.expected}">Update to match</button>
+                        </div>`;
+                    }
+                }
                 return `
                     <div class="cash-row">
                         <div>
                             <div class="text-[14px] font-bold text-gray-900">${nameLine}</div>
                             <div class="text-[12px] text-gray-500">${escapeHtml(account.bank_name || '')}</div>
                         </div>
-                        <div class="text-[14px] font-bold text-gray-900 tabular-nums">${formatIDR(balance)}</div>
+                        <div>
+                            <div class="text-[14px] font-bold text-gray-900 tabular-nums">${formatIDR(balance)}</div>
+                            ${reconLine}
+                        </div>
                         <div class="text-[12px] text-gray-700">${escapeHtml(sourceLabel)}</div>
                         <div class="text-[12px] text-gray-700">${updated ? escapeHtml(formatRelative(updated)) : '—'}</div>
                         <div class="flex items-center justify-end gap-2">
@@ -325,6 +352,9 @@
             });
             accountsList.querySelectorAll('[data-archive-id]').forEach(btn => {
                 btn.addEventListener('click', () => onArchive(btn.dataset.archiveId));
+            });
+            accountsList.querySelectorAll('[data-sync-id]').forEach(btn => {
+                btn.addEventListener('click', () => onSyncToLedger(btn.dataset.syncId, Number(btn.dataset.syncAmount)));
             });
         }
 
@@ -471,6 +501,41 @@
                 window.showToast?.('Could not update balance. Please try again.', 'error');
             } finally {
                 btn.disabled = false; btn.textContent = original;
+            }
+        }
+
+        // Opt-in reconcile: set the reported balance to the ledger-implied figure
+        // (as of today). Explicit + audited — never a silent overwrite. Reuses
+        // updateBankAccountBalance, so it writes a snapshot + audit log like a
+        // manual update. Does not touch the ledger or any transaction.
+        async function onSyncToLedger(accountId, expected) {
+            const account = accountsCache.find(a => a.id === accountId);
+            if (!account || !Number.isFinite(expected)) return;
+            if (window.showConfirmDialog) {
+                const nameStr = `<strong>${escapeHtml(account.account_name || 'this account')}</strong>`;
+                const amountStr = `<strong>${formatIDR(Math.max(0, Math.round(expected)))}</strong>`;
+                const tmpl = 'This sets {name} to {amount} — the balance your linked transactions imply — as of today. Your ledger and transactions are not changed.';
+                const body = window.FluxyI18n?.t
+                    ? window.FluxyI18n.t(tmpl, { name: nameStr, amount: amountStr })
+                    : tmpl.replace('{name}', nameStr).replace('{amount}', amountStr);
+                const ok = await window.showConfirmDialog({
+                    title: 'Update balance to match ledger?',
+                    body,
+                    confirmLabel: 'Update balance',
+                    cancelLabel: 'Cancel',
+                    tone: 'default'
+                });
+                if (!ok) return;
+            }
+            try {
+                await ds.updateBankAccountBalance(auth.currentUser.uid, accountId, {
+                    balance: Math.max(0, Math.round(expected)),
+                    notes: 'Synced to ledger activity'
+                });
+                window.showToast?.('Balance updated to match ledger.', 'success');
+                await loadAll(auth.currentUser.uid);
+            } catch (error) {
+                window.showToast?.('Could not update balance. Please try again.', 'error');
             }
         }
 
