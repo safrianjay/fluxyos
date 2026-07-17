@@ -11,6 +11,12 @@
     --fluxy-orange-hover: #D94E0B;
     --fluxy-orange-ring: rgba(234, 88, 12, 0.14);
     --sidebar-bg: #FFFFFF;
+    /* Floating drawer container — gap from viewport, rounded corners, elevated
+       shadow (Linear/Stripe-style). Consumed by .fluxy-drawer-panel and the
+       .fluxy-drawer-floating helper on the static shells. */
+    --fluxy-drawer-gap: 20px;
+    --fluxy-drawer-radius: 20px;
+    --fluxy-drawer-shadow: 0 24px 48px -16px rgba(11, 15, 25, 0.24), 0 8px 20px -12px rgba(11, 15, 25, 0.16);
 }
 
 main > header {
@@ -663,6 +669,7 @@ main > header {
     z-index: 100;
     display: flex;
     justify-content: flex-end;
+    align-items: center; /* vertically centers the floating panel → equal top/bottom gap */
     overflow: hidden;
 }
 .fluxy-drawer-overlay {
@@ -671,16 +678,22 @@ main > header {
     background: rgba(11, 15, 25, 0.55);
 }
 
+/* Floating panel: inset from the top/right/bottom edges, rounded on all four
+   corners, elevated with an all-around shadow — reads as a floating workspace
+   rather than an extension of the page. The slide-in still rides the Tailwind
+   `translate-x-full` transform, unaffected by the margin. */
 .fluxy-drawer-panel {
     position: relative;
     z-index: 10;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    height: calc(100% - 2 * var(--fluxy-drawer-gap));
     width: 100%;
     max-width: 480px;
+    margin-right: var(--fluxy-drawer-gap);
     background: #FFFFFF;
-    box-shadow: -24px 0 48px rgba(11, 15, 25, 0.14);
+    border-radius: var(--fluxy-drawer-radius);
+    box-shadow: var(--fluxy-drawer-shadow);
     overflow: hidden;
     transition: transform 0.3s ease-out;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -689,15 +702,42 @@ main > header {
 .fluxy-drawer-panel--md { max-width: 480px; }
 .fluxy-drawer-panel--lg { max-width: 560px; }
 
+/* Same floating treatment for the static-shell drawers (Scan, Bill, Tx detail,
+   dashboard setup) that own their own fixed/absolute `top-0 right-0 h-full`
+   positioning. Applied as a class alongside their existing markup; !important
+   overrides the Tailwind edge utilities without needing to edit each one. */
+.fluxy-drawer-floating {
+    top: var(--fluxy-drawer-gap) !important;
+    right: var(--fluxy-drawer-gap) !important;
+    bottom: var(--fluxy-drawer-gap) !important;
+    height: auto !important;
+    border-radius: var(--fluxy-drawer-radius);
+    box-shadow: var(--fluxy-drawer-shadow);
+    overflow: hidden;
+}
+
 @media (max-width: 1024px) {
     .fluxy-drawer-panel { max-width: min(560px, 92vw); }
 }
 @media (max-width: 640px) {
+    /* Mobile stays full-screen (no float) — preserves the existing responsive
+       behavior: edge-to-edge sheet, no gap, no rounding. */
     .fluxy-drawer-panel,
     .fluxy-drawer-panel--sm,
     .fluxy-drawer-panel--md,
     .fluxy-drawer-panel--lg {
         max-width: 100%;
+        height: 100%;
+        margin-right: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    .fluxy-drawer-floating {
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        height: 100% !important;
+        border-radius: 0;
         box-shadow: none;
     }
 }
