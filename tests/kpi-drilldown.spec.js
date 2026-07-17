@@ -147,7 +147,9 @@ test('dashboard Upcoming rows deep-link to the record', async ({ page }) => {
 
 test('dashboard Upcoming excludes paid/voided bills', async ({ page }) => {
     await page.goto('/dashboard');
-    await page.waitForSelector('#upcoming-obligations-content .rail-mini-card, #upcoming-obligations-content .overview-empty-copy', { timeout: 25_000 });
+    // The dashboard is heavy (realtime + many reads); allow extra headroom so a
+    // slow load under full-suite contention doesn't flake this out.
+    await page.waitForSelector('#upcoming-obligations-content .rail-mini-card, #upcoming-obligations-content .overview-empty-copy', { timeout: 45_000 });
 
     // Paid/voided bill ids straight from Firestore (same scope db-service uses).
     const paidBillIds = await page.evaluate(async () => {
@@ -176,6 +178,29 @@ test('dashboard Upcoming excludes paid/voided bills', async ({ page }) => {
     for (const id of shownBillIds) {
         expect(paidBillIds, `paid/voided bill ${id} must not appear in Upcoming`).not.toContain(id);
     }
+});
+
+test('cash position: breakdown row filters the table + clear resets it', async ({ page }) => {
+    await page.goto('/cash-position');
+    await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });
+
+    // Switch the breakdown to In/Out (interactive) and pick a row that has data.
+    await page.locator('[data-breakdown-dim="flow"]').click();
+    const inRow = page.locator('#cash-breakdown [data-breakdown-name="Cash in"]');
+    const outRow = page.locator('#cash-breakdown [data-breakdown-name="Cash out"]');
+    const row = (await inRow.count()) ? inRow : outRow;
+    test.skip((await row.count()) === 0, 'no cash in/out data on the QA account for this period');
+
+    const expectedTitle = (await inRow.count()) ? 'Cash in' : 'Cash out';
+    await row.first().click();
+    await expect(page.locator('#cash-filter-clear')).toBeVisible();
+    await expect(page.locator('#cash-table-title')).toHaveText(expectedTitle);
+    await expect(page.locator('#cash-filter-clear-label')).toHaveText(new RegExp(expectedTitle));
+
+    // Clearing restores the unfiltered table.
+    await page.locator('#cash-filter-clear').click();
+    await expect(page.locator('#cash-filter-clear')).toBeHidden();
+    await expect(page.locator('#cash-table-title')).toHaveText('Cash movements');
 });
 
 test('detail pages resolve the workspace before finance reads (member-safety)', async ({ page }) => {

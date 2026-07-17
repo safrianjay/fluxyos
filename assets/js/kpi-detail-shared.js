@@ -409,6 +409,12 @@ export function renderTrendChart(containerId, opts = {}) {
 
     const todayIndex = Number.isInteger(opts.todayIndex) ? opts.todayIndex : -1;
     const todayX = todayIndex >= 0 && todayIndex < n ? pts[todayIndex].x : null;
+    // The SVG stretches to fill the plot (preserveAspectRatio="none"), so a
+    // viewBox x-coordinate maps to `x / width` of the plot's real pixel width.
+    // The "Today" badge is HTML, not SVG, so it must be positioned by that
+    // fraction — using the raw viewBox px would drift off the right edge into
+    // the neighbouring panel. Clamp the centre so the badge never overflows.
+    const todayPct = todayX != null ? Math.max(6, Math.min(94, (todayX / width) * 100)) : null;
 
     host.innerHTML = `
         <div class="flex gap-2">
@@ -427,7 +433,7 @@ export function renderTrendChart(containerId, opts = {}) {
                     <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
                     ${n <= 16 ? pts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#fff" stroke="${p.v < 0 ? negColor : color}" stroke-width="2"></circle>`).join('') : ''}
                 </svg>
-                ${todayX != null ? `<span class="absolute -translate-x-1/2 rounded bg-slate-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white" style="left:${todayX.toFixed(1)}px; top:2px;">Today</span>` : ''}
+                ${todayPct != null ? `<span class="absolute -translate-x-1/2 rounded bg-slate-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white" style="left:${todayPct.toFixed(2)}%; top:2px;">Today</span>` : ''}
                 <div class="absolute inset-0 flex">
                     ${pts.map(p => `<div class="flex-1" data-chart-bar data-label="${escapeHtml(p.label)}" data-value="${p.v}" data-sub="${escapeHtml(p.sub || '')}"></div>`).join('')}
                 </div>
@@ -472,8 +478,16 @@ export function renderTrendChart(containerId, opts = {}) {
 
 // ── Breakdown contribution list ─────────────────────────────────────
 // rows: [{ name, amount, count?, meta? }] — sorted + bar widths relative to
-// the largest. onSelect(name|null) toggles a filter on the table.
-export function renderBreakdownList(containerId, { rows, total, selected, color = '#EA580C', valueFormat = formatRp, emptyText } = {}) {
+// the largest.
+//
+// Pass `interactive: true` + `onSelect(name)` to turn the rows into a filter
+// control: each row becomes a keyboard-focusable button, and clicking (or
+// Enter/Space) fires onSelect with that row's name so the caller can filter the
+// supporting table. `selected` renders the active row's highlight. When
+// `interactive` is omitted the list stays purely informational (unchanged for
+// callers that don't opt in). The click/keydown handler is delegated on the
+// host and bound once, so it survives the innerHTML re-render on every call.
+export function renderBreakdownList(containerId, { rows, total, selected, color = '#EA580C', valueFormat = formatRp, emptyText, interactive = false, onSelect } = {}) {
     const host = document.getElementById(containerId);
     if (!host) return;
     const list = (rows || []).filter(r => Math.abs(Number(r.amount) || 0) > 0);
@@ -488,8 +502,9 @@ export function renderBreakdownList(containerId, { rows, total, selected, color 
         const pctOfMax = Math.max(2, Math.min(100, Math.abs(amt) / max * 100));
         const share = grand > 0 ? (amt / grand) * 100 : 0;
         const isSel = selected && selected === r.name;
+        const attrs = interactive ? ` role="button" tabindex="0" aria-pressed="${isSel ? 'true' : 'false'}"` : '';
         return `
-            <div class="kpi-detail-breakdown-row ${isSel ? 'is-selected' : ''}" data-breakdown-name="${escapeHtml(r.name)}">
+            <div class="kpi-detail-breakdown-row ${interactive ? 'is-interactive' : ''} ${isSel ? 'is-selected' : ''}" data-breakdown-name="${escapeHtml(r.name)}"${attrs}>
                 <div class="flex items-start justify-between gap-4">
                     <div class="min-w-0">
                         <p class="font-semibold text-[13px] text-gray-900 truncate">${escapeHtml(r.name)}</p>
@@ -505,6 +520,18 @@ export function renderBreakdownList(containerId, { rows, total, selected, color 
                 </div>
             </div>`;
     }).join('');
+
+    if (interactive && typeof onSelect === 'function' && !host.dataset.breakdownBound) {
+        host.dataset.breakdownBound = '1';
+        const fire = (target) => {
+            const row = target.closest?.('[data-breakdown-name]');
+            if (row && host.contains(row) && row.classList.contains('is-interactive')) onSelect(row.dataset.breakdownName);
+        };
+        host.addEventListener('click', (e) => fire(e.target));
+        host.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fire(e.target); }
+        });
+    }
 }
 
 // ── Supporting records table ────────────────────────────────────────

@@ -3,7 +3,7 @@
 // upcoming receivables/payables for the period the dashboard passed. All
 // reads route through DataService (workspace-scoped).
 import {
-    escapeHtml, formatRp, formatSignedRp, formatDate, recordDate,
+    escapeHtml, formatRp, formatSignedRp, formatDate, recordDate, toDate,
     resolvePeriodFromUrl, mountPeriodControls,
     renderKpiStrip, bucketSeries, toCumulative, renderTrendChart,
     renderBreakdownList, createSupportingTable, ledgerRecordUrl, parseKey
@@ -19,8 +19,15 @@ const state = {
     bills: [],
     periodTx: [],   // cash-effective transactions inside the period (with ids)
     dim: 'accounts',
+    // Active breakdown filter driving the table below, or null for "all cash
+    // movements". { dim, key: 'in'|'out'|'receivable'|'payable', name }.
+    filter: null,
     table: null
 };
+
+const INVOICE_OPEN_STATUSES = ['open', 'sent', 'overdue'];
+const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 const el = (id) => document.getElementById(id);
 const isCashTx = (tx) => tx?.cash_effective === true && (tx.cash_direction === 'in' || tx.cash_direction === 'out') && !tx.is_voided;
@@ -55,16 +62,20 @@ export function initCashPositionPage({ ds, user }) {
         defaultSortKey: 'date',
         defaultSortDir: 'desc',
         searchText: (r) => `${r.vendor_name || ''} ${r.category || ''}`,
-        rowLink: (r) => ledgerRecordUrl(r.id),
+        // Cash movements deep-link into the Ledger; normalized upcoming rows
+        // carry their own _href into Invoices / Bills.
+        rowLink: (r) => r._href || ledgerRecordUrl(r.id),
         emptyTitle: 'No cash movements',
         emptyDesc: 'No transactions were marked as received or paid in this period.',
         columns: [
             { key: 'date', label: 'Date', sortValue: (r) => (recordDate(r)?.getTime() || 0), csv: (r) => formatDate(recordDate(r)), render: (r) => `<span class="text-gray-600">${escapeHtml(formatDate(recordDate(r)))}</span>` },
             { key: 'desc', label: 'Description', csv: (r) => r.vendor_name || '', render: (r) => `<span class="fluxy-table-cell-primary">${escapeHtml(r.vendor_name || 'Cash movement')}</span>` },
             { key: 'category', label: 'Category', sortValue: (r) => String(r.category || '').toLowerCase(), csv: (r) => r.category || '', render: (r) => `<span class="text-gray-600">${escapeHtml(r.category || '—')}</span>` },
-            { key: 'direction', label: 'Direction', csv: (r) => (r.cash_direction === 'in' ? 'In' : 'Out'), render: (r) => r.cash_direction === 'in'
-                ? `<span class="fluxy-table-status fluxy-status-success">Cash in</span>`
-                : `<span class="fluxy-table-status fluxy-status-danger">Cash out</span>` },
+            { key: 'direction', label: 'Direction', csv: (r) => r._directionLabel || (r.cash_direction === 'in' ? 'In' : 'Out'), render: (r) => {
+                const label = r._directionLabel || (r.cash_direction === 'in' ? 'Cash in' : 'Cash out');
+                const tone = r.cash_direction === 'in' ? 'fluxy-status-success' : 'fluxy-status-danger';
+                return `<span class="fluxy-table-status ${tone}">${escapeHtml(label)}</span>`;
+            } },
             { key: 'amount', label: 'Amount', align: 'right', sortValue: (r) => signedCash(r), csv: (r) => signedCash(r), render: (r) => `<span class="tabular-nums font-semibold ${r.cash_direction === 'in' ? 'text-emerald-600' : 'text-red-600'}">${r.cash_direction === 'in' ? '+' : '−'}${escapeHtml(formatRp(Math.abs(Number(r.amount) || 0)))}</span>` },
             { key: 'status', label: 'Status', csv: (r) => r.status || '', render: (r) => `<span class="fluxy-table-status fluxy-status-neutral">${escapeHtml(r.status || '—')}</span>` }
         ]
@@ -79,12 +90,33 @@ export function initCashPositionPage({ ds, user }) {
     document.querySelectorAll('[data-breakdown-dim]').forEach(btn => {
         btn.addEventListener('click', () => {
             state.dim = btn.dataset.breakdownDim;
+            state.filter = null; // a filter belongs to one dimension — reset on switch
             document.querySelectorAll('[data-breakdown-dim]').forEach(b => b.classList.toggle('is-active', b === btn));
             renderBreakdown();
+            applyTableFilter();
         });
     });
 
+    el('cash-filter-clear')?.addEventListener('click', () => {
+        state.filter = null;
+        renderBreakdown();
+        applyTableFilter();
+    });
+
     loadAndRender();
+}
+
+// A breakdown row was clicked — toggle it as the table filter. Only the In/Out
+// and Upcoming dimensions are interactive; Accounts stays informational.
+function onBreakdownSelect(name) {
+    let key = null;
+    if (state.dim === 'flow') key = name === 'Cash in' ? 'in' : name === 'Cash out' ? 'out' : null;
+    else if (state.dim === 'upcoming') key = name === 'Upcoming receivables' ? 'receivable' : name === 'Upcoming payables' ? 'payable' : null;
+    if (!key) return;
+    const isSame = state.filter && state.filter.dim === state.dim && state.filter.name === name;
+    state.filter = isSame ? null : { dim: state.dim, key, name };
+    renderBreakdown();
+    applyTableFilter();
 }
 
 async function loadAndRender() {
@@ -112,6 +144,7 @@ function render() {
     el('kpi-loading')?.classList.add('hidden');
     el('kpi-error')?.classList.add('hidden');
     el('kpi-content')?.classList.remove('hidden');
+    state.filter = null; // fresh data (period/reload) clears any active filter
 
     const { start } = rangeBounds(state.period);
     const startMs = start.getTime();
@@ -161,10 +194,99 @@ function render() {
     });
 
     renderBreakdown();
-    state.table.setRows(state.periodTx);
-    el('cash-table-subtitle').textContent = `${state.periodTx.length} cash movement${state.periodTx.length === 1 ? '' : 's'} for ${state.period.label}. Click a row to open it in the Ledger.`;
+    applyTableFilter();
 
     if (window.FluxyI18n?.getLang?.() === 'id') window.FluxyI18n.translate?.();
+}
+
+// Normalize the open invoices behind "Upcoming receivables" into rows the
+// supporting table understands (matches the breakdown's math: total_amount,
+// open/sent/overdue). Amount is positive → the Amount column shows it as cash in.
+function receivableRows() {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return state.invoices
+        .filter(inv => INVOICE_OPEN_STATUSES.includes(String(inv.status || '').toLowerCase()))
+        .map(inv => {
+            const due = toDate(inv.due_date);
+            const statusRaw = String(inv.status || '').toLowerCase();
+            const status = (due && due < today && statusRaw !== 'paid') ? 'Overdue' : (capitalize(statusRaw) || 'Open');
+            return {
+                id: inv.id,
+                vendor_name: inv.customer_name || inv.invoice_number || 'Invoice',
+                category: inv.invoice_number || 'Receivable',
+                cash_direction: 'in',
+                amount: Number(inv.total_amount) || 0,
+                status,
+                timestamp: due,
+                _directionLabel: 'Expected in',
+                _href: `/invoices?invoice=${encodeURIComponent(inv.id)}`
+            };
+        });
+}
+
+// Normalize the unpaid bills behind "Upcoming payables" (matches the breakdown:
+// any bill not marked paid, |amount|). Amount is positive with cash_direction
+// 'out' → the Amount column shows it as a negative cash outflow.
+function payableRows() {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return state.bills
+        .filter(b => String(b.payment_status || '').toLowerCase() !== 'paid')
+        .map(b => {
+            const due = toDate(b.due_date) || recordDate(b, ['timestamp', 'date']);
+            return {
+                id: b.id,
+                vendor_name: b.vendor_name || 'Bill',
+                category: b.category || 'Unpaid bill',
+                cash_direction: 'out',
+                amount: Math.abs(Number(b.amount) || 0),
+                status: (due && due < today) ? 'Overdue' : 'Unpaid',
+                timestamp: due,
+                _directionLabel: 'Expected out',
+                _href: `/bill?record=${encodeURIComponent(b.id)}`
+            };
+        });
+}
+
+// Point the supporting table (title, rows, subtitle, clear chip) at whatever
+// breakdown row is currently selected — or all cash movements when none is.
+function applyTableFilter() {
+    const f = state.filter;
+    const periodLabel = state.period.label;
+    let rows = state.periodTx;
+    let title = 'Cash movements';
+    let subtitle;
+
+    if (!f) {
+        subtitle = `${plural(state.periodTx.length, 'cash movement', 'cash movements')} for ${periodLabel}. Click a row to open it in the Ledger.`;
+    } else if (f.key === 'in' || f.key === 'out') {
+        rows = state.periodTx.filter(t => t.cash_direction === f.key);
+        title = f.key === 'in' ? 'Cash in' : 'Cash out';
+        subtitle = `${plural(rows.length, f.key === 'in' ? 'cash inflow' : 'cash outflow', f.key === 'in' ? 'cash inflows' : 'cash outflows')} for ${periodLabel}. Click a row to open it in the Ledger.`;
+    } else if (f.key === 'receivable') {
+        rows = receivableRows();
+        title = 'Upcoming receivables';
+        subtitle = `${plural(rows.length, 'open invoice', 'open invoices')} still expected in. Click a row to open it in Invoices.`;
+    } else if (f.key === 'payable') {
+        rows = payableRows();
+        title = 'Upcoming payables';
+        subtitle = `${plural(rows.length, 'unpaid bill', 'unpaid bills')} still due out. Click a row to open it in Bills.`;
+    }
+
+    el('cash-table-title').textContent = title;
+    el('cash-table-subtitle').textContent = subtitle;
+    state.table.setRows(rows);
+
+    const chip = el('cash-filter-clear');
+    if (chip) {
+        if (f) {
+            el('cash-filter-clear-label').textContent = `Showing ${f.name}`;
+            chip.classList.remove('hidden');
+            chip.classList.add('inline-flex');
+        } else {
+            chip.classList.add('hidden');
+            chip.classList.remove('inline-flex');
+        }
+    }
 }
 
 function renderBreakdown() {
@@ -199,8 +321,13 @@ function renderBreakdown() {
             .map(a => ({ name: a.account_name || a.bank_name || 'Account', amount: Number(a.latest_balance) || 0, meta: a.bank_name || '' }));
     }
     const total = rows.reduce((s, r) => s + r.amount, 0);
+    // In/Out and Upcoming rows double as a table filter; Accounts is read-only.
+    const interactive = state.dim === 'flow' || state.dim === 'upcoming';
     renderBreakdownList('cash-breakdown', {
         rows, total, color, valueFormat,
+        interactive,
+        selected: (state.filter && state.filter.dim === state.dim) ? state.filter.name : null,
+        onSelect: onBreakdownSelect,
         emptyText: state.dim === 'accounts' ? 'No bank accounts linked yet.' : 'Nothing to show for this period.'
     });
 }

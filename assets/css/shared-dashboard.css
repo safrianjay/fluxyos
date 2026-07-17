@@ -1296,6 +1296,12 @@ main > header {
     background: #F9FAFB;
     border-left-color: #EA580C;
 }
+/* Interactive breakdown rows double as a table filter (In/Out, Upcoming). */
+.kpi-detail-breakdown-row.is-interactive { cursor: pointer; }
+.kpi-detail-breakdown-row.is-interactive:focus-visible {
+    outline: 2px solid #EA580C;
+    outline-offset: -2px;
+}
 /* Compact summary bar (right-rail groups) */
 .kpi-detail-summary-row {
     display: grid;
