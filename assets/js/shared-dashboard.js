@@ -470,7 +470,7 @@ window.FluxyCashImpact = (function () {
             <div>
                 <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Link cash account <span class="normal-case font-normal">(optional)</span></label>
                 ${bankAccounts && bankAccounts.length
-                    ? `<select data-fci="account" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]"><option value="">No account linked</option>${accountOptions}</select>`
+                    ? `<select data-fci="account" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#EA580C] text-[13px]"><option value="">No account linked</option>${accountOptions}</select>`
                     : `<p class="text-[13px] text-gray-500 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl">No bank accounts added yet. Add one in Settings → Cash &amp; Bank Accounts.</p>`}
             </div>`;
     }
@@ -534,6 +534,162 @@ window.FluxyCashImpact = (function () {
     return { buildHtml, wire, derive, stateFromRecord };
 })();
 
+/* ── FluxyDrawer — universal right-side Entry Drawer shell ──────────────
+   ONE shared shell + behavior for every create / upload / import / review
+   / edit drawer. Paired with the .fluxy-drawer-* CSS in shared-dashboard.css.
+
+   Design contract (keeps existing open/close JS untouched):
+   - build() emits the standard shell markup using the caller's EXISTING
+     ids + inline onClose handler, so current open/close code (which toggles
+     the Tailwind `translate-x-full` utility) keeps working verbatim.
+   - It never toggles translate-x-full, never locks scroll by default, and
+     never renames ids. It only standardizes structure + shared behavior.
+   - No transform/filter is introduced on the panel/body/sections, so the
+     body-portaled fluxy-select + date-picker menus are never clipped.
+
+   API:
+     FluxyDrawer.build({ ids, title, description, size, formId, formClass,
+                         stepper, bodyHTML, footerHTML, onClose, eyebrow }) -> HTML string
+     FluxyDrawer.stepper(steps, currentKey) -> stepper HTML  (steps:[{key,label}])
+     FluxyDrawer.updateStepper(rootEl, key) -> retoggle is-done/is-current/is-upcoming BY KEY
+     FluxyDrawer.mountBehavior(panelEl, opts) -> wire focus-trap (+ optional
+                         Escape / overlay), returns a disposer function.        */
+window.FluxyDrawer = (function () {
+    const CLOSE_SVG = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+    const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>';
+
+    function stepper(steps, currentKey) {
+        const list = Array.isArray(steps) ? steps : [];
+        const idx = Math.max(0, list.findIndex(s => s.key === currentKey));
+        return '<div class="fluxy-drawer-stepper" role="list" aria-label="Progress">' +
+            list.map((s, i) => {
+                const state = i < idx ? 'is-done' : (i === idx ? 'is-current' : 'is-upcoming');
+                const step =
+                    '<span class="fluxy-drawer-step ' + state + '" role="listitem" data-step-key="' + s.key + '" aria-current="' + (i === idx ? 'step' : 'false') + '">' +
+                        '<span class="fluxy-drawer-step-node"><span class="fluxy-drawer-step-num">' + (i + 1) + '</span>' + CHECK_SVG + '</span>' +
+                        '<span class="fluxy-drawer-step-label">' + s.label + '</span>' +
+                    '</span>';
+                const line = i < list.length - 1 ? '<span class="fluxy-drawer-step-line"></span>' : '';
+                return step + line;
+            }).join('') +
+        '</div>';
+    }
+
+    function updateStepper(rootEl, key) {
+        if (!rootEl) return;
+        const steps = Array.from(rootEl.querySelectorAll('.fluxy-drawer-step'));
+        const idx = steps.findIndex(s => s.getAttribute('data-step-key') === key);
+        if (idx < 0) return;
+        steps.forEach((s, i) => {
+            s.classList.remove('is-done', 'is-current', 'is-upcoming');
+            s.classList.add(i < idx ? 'is-done' : (i === idx ? 'is-current' : 'is-upcoming'));
+            s.setAttribute('aria-current', i === idx ? 'step' : 'false');
+        });
+    }
+
+    function build(opts) {
+        const o = opts || {};
+        const ids = o.ids || {};
+        const rootId = ids.root || '';
+        const overlayId = ids.overlay || '';
+        const panelId = ids.panel || '';
+        const titleId = ids.title || '';
+        const bodyId = ids.body || '';
+        const footerId = ids.footer || '';
+        const size = o.size || 'md';
+        const onClose = o.onClose || '';
+        const onCloseAttr = onClose ? ' onclick="' + onClose + '"' : '';
+        const eyebrow = o.eyebrow
+            ? '<p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">' + o.eyebrow + '</p>'
+            : '';
+        const desc = o.description
+            ? '<p class="fluxy-drawer-desc">' + o.description + '</p>'
+            : '';
+        const stepperHTML = o.stepper ? stepper(o.stepper.steps, o.stepper.current) : '';
+        const body = '<div' + (bodyId ? ' id="' + bodyId + '"' : '') + ' class="fluxy-drawer-body">' + (o.bodyHTML || '') + '</div>';
+        const footer = o.footerHTML
+            ? '<div' + (footerId ? ' id="' + footerId + '"' : '') + ' class="fluxy-drawer-footer">' + o.footerHTML + '</div>'
+            : '';
+        // When a formId is given, the body + footer live inside the <form> so
+        // the submit button keeps submitting the form (exact current structure).
+        const inner = o.formId
+            ? '<form id="' + o.formId + '" class="' + (o.formClass || 'flex flex-1 flex-col overflow-hidden') + '">' + body + footer + '</form>'
+            : body + footer;
+
+        return '' +
+        '<div' + (rootId ? ' id="' + rootId + '"' : '') + ' class="fluxy-drawer-root">' +
+            '<div' + (overlayId ? ' id="' + overlayId + '"' : '') + ' class="fluxy-drawer-overlay opacity-0 transition-opacity duration-300 ease-out"' + onCloseAttr + '></div>' +
+            '<div' + (panelId ? ' id="' + panelId + '"' : '') + ' role="dialog" aria-modal="true"' + (titleId ? ' aria-labelledby="' + titleId + '"' : '') + ' class="fluxy-drawer-panel fluxy-drawer-panel--' + size + ' translate-x-full">' +
+                '<div class="fluxy-drawer-header">' +
+                    '<div>' + eyebrow +
+                        '<h2' + (titleId ? ' id="' + titleId + '"' : '') + ' class="fluxy-drawer-title">' + (o.title || '') + '</h2>' +
+                        desc +
+                    '</div>' +
+                    '<button type="button" class="fluxy-drawer-close" aria-label="Close"' + onCloseAttr + '>' + CLOSE_SVG + '</button>' +
+                '</div>' +
+                stepperHTML +
+                inner +
+            '</div>' +
+        '</div>';
+    }
+
+    const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    function focusablesIn(container) {
+        return Array.from(container.querySelectorAll(FOCUSABLE))
+            .filter(el => el.offsetParent !== null || el.getClientRects().length);
+    }
+
+    // Standardized shared behavior. Focus trap by default; Escape/overlay are
+    // OPT-IN so callers that already wire them don't double-fire. Never toggles
+    // translate-x-full and never locks scroll unless asked (existing openers do).
+    function mountBehavior(panelEl, opts) {
+        if (!panelEl) return function () {};
+        const o = opts || {};
+        const closeOnEscape = !!o.closeOnEscape;
+        const closeOnOverlay = !!o.closeOnOverlay;
+        const focusTrap = o.focusTrap !== false;
+        const onClose = typeof o.onClose === 'function' ? o.onClose : null;
+        const prevFocus = document.activeElement;
+
+        function onKeydown(e) {
+            if (closeOnEscape && e.key === 'Escape') { if (onClose) onClose(); return; }
+            if (!focusTrap || e.key !== 'Tab') return;
+            // Let an open fluxy-select menu (portaled to <body>) own the Tab key.
+            if (document.querySelector('.fluxy-select-menu')) return;
+            const f = focusablesIn(panelEl);
+            if (!f.length) return;
+            const first = f[0];
+            const last = f[f.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+        document.addEventListener('keydown', onKeydown);
+
+        let overlayHandler = null;
+        if (closeOnOverlay && o.overlayEl && onClose) {
+            overlayHandler = function () { onClose(); };
+            o.overlayEl.addEventListener('click', overlayHandler);
+        }
+
+        if (o.autofocus !== false) {
+            window.requestAnimationFrame(() => {
+                const f = focusablesIn(panelEl).filter(el => !el.classList.contains('fluxy-drawer-close'));
+                (f[0] || panelEl).focus({ preventScroll: true });
+            });
+        }
+
+        return function dispose() {
+            document.removeEventListener('keydown', onKeydown);
+            if (overlayHandler && o.overlayEl) o.overlayEl.removeEventListener('click', overlayHandler);
+            if (o.restoreFocus !== false && prevFocus && typeof prevFocus.focus === 'function') {
+                prevFocus.focus({ preventScroll: true });
+            }
+        };
+    }
+
+    return { build, stepper, updateStepper, mountBehavior };
+})();
+
 window.showAddTransactionModal = function(options = {}) {
     // Trial/payment access guard: block record creation once the trial has expired
     // or while payment is pending verification. Fails open if state isn't loaded.
@@ -562,57 +718,45 @@ window.showAddTransactionModal = function(options = {}) {
         document.removeEventListener('keydown', window.__closeAddTransactionModalOnEscape);
     }
 
+    const drawerDescription = context === 'bill'
+        ? 'Track a bill you need to pay so it appears in payables and cash flow.'
+        : context === 'subscription'
+            ? 'Track a recurring subscription so renewals appear in your forecasts.'
+            : 'Record revenue or expenses that will appear in your financial reports.';
+    const detailsTitle = context === 'bill'
+        ? 'Bill Details'
+        : context === 'subscription' ? 'Subscription Details' : 'Transaction Details';
     const modalHTML = `
-        <div id="global-tx-modal" class="fixed inset-0 z-[100] flex justify-end overflow-hidden">
-            <div id="global-tx-overlay" class="absolute inset-0 bg-black/55 opacity-0 transition-opacity duration-300 ease-out" onclick="window.closeAddTransactionModal()"></div>
-            <div id="global-tx-drawer" role="dialog" aria-modal="true" aria-labelledby="global-tx-title" class="relative z-10 flex h-full w-full max-w-[440px] translate-x-full flex-col overflow-hidden bg-white shadow-2xl transition-transform duration-300 ease-out sm:max-w-[480px]">
-                <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div id="global-tx-modal" class="fluxy-drawer-root">
+            <div id="global-tx-overlay" class="fluxy-drawer-overlay opacity-0 transition-opacity duration-300 ease-out" onclick="window.closeAddTransactionModal()"></div>
+            <div id="global-tx-drawer" role="dialog" aria-modal="true" aria-labelledby="global-tx-title" class="fluxy-drawer-panel fluxy-drawer-panel--md translate-x-full">
+                <div class="fluxy-drawer-header">
                     <div>
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Finance entry</p>
-                        <h3 id="global-tx-title" class="mt-1 text-lg font-bold text-gray-900">${title}</h3>
+                        <h2 id="global-tx-title" class="fluxy-drawer-title">${title}</h2>
+                        <p class="fluxy-drawer-desc">${drawerDescription}</p>
                     </div>
-                    <button onclick="window.closeAddTransactionModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    <button type="button" onclick="window.closeAddTransactionModal()" class="fluxy-drawer-close" aria-label="Close">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
                 <form id="global-tx-form" class="flex flex-1 flex-col overflow-hidden">
-                    <div class="flex-1 space-y-5 overflow-y-auto p-6">
+                    <div class="fluxy-drawer-body">
                     ${supportsBulkCsv ? `
-                    <div class="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" role="tablist" aria-label="Transaction entry method">
-                        <button type="button" id="tx-tab-single" class="tx-entry-tab rounded-lg px-3 py-2 text-[13px] font-bold transition-all bg-white text-gray-900 shadow-sm" aria-selected="true" aria-controls="tx-single-panel">Single transaction</button>
-                        <button type="button" id="tx-tab-bulk" class="tx-entry-tab rounded-lg px-3 py-2 text-[13px] font-bold transition-all text-gray-500 hover:text-gray-900" aria-selected="false" aria-controls="tx-bulk-panel">CSV bulk upload</button>
+                    <div class="fluxy-drawer-segment" role="tablist" aria-label="Transaction entry method">
+                        <button type="button" id="tx-tab-single" class="fluxy-drawer-segment-btn is-active" aria-selected="true" aria-controls="tx-single-panel">Single transaction</button>
+                        <button type="button" id="tx-tab-bulk" class="fluxy-drawer-segment-btn" aria-selected="false" aria-controls="tx-bulk-panel">CSV bulk upload</button>
                     </div>
                     ` : ''}
-                    <div id="tx-single-panel" class="space-y-5">
-                        <div>
-                            <label for="tx-amount" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Amount (Rp)</label>
-                            <input type="text" id="tx-amount" name="amount" required placeholder="0" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E85D19] focus:border-[#E85D19] outline-none font-mono font-bold text-lg">
-                        </div>
-                        <div>
-                            <label for="tx-vendor" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Vendor / Description</label>
-                            <input type="text" id="tx-vendor" name="vendor" required placeholder="e.g. AWS, Client Payment" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
-                        </div>
-                        <div>
-                            <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">${context === 'bill' ? 'Due Date' : 'Transaction Date'}</p>
-                            <div id="tx-date-picker"></div>
-                            <p class="mt-2 text-[12px] text-gray-500">${context === 'bill' ? 'Set when this bill is due for payment. Future dates are allowed.' : 'Defaults to today. Choose a previous day for backdated records.'}</p>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label for="tx-category" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Category</label>
-                                <select id="tx-category" name="category" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
-                                    <option value="Revenue" ${defaultCategory === 'Revenue' ? 'selected' : ''}>Revenue</option>
-                                    <option value="Marketing" ${defaultCategory === 'Marketing' ? 'selected' : ''}>Marketing</option>
-                                    <option value="Infrastructure" ${defaultCategory === 'Infrastructure' ? 'selected' : ''}>Infrastructure</option>
-                                    <option value="Operations" ${defaultCategory === 'Operations' ? 'selected' : ''}>Operations</option>
-                                    <option value="SaaS" ${defaultCategory === 'SaaS' ? 'selected' : ''}>SaaS</option>
-                                    <option value="Others">Others</option>
-                                </select>
-                                <input id="tx-category-custom" type="text" maxlength="20" placeholder="Type category (max 20 chars)" class="hidden mt-2 w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]" />
+                    <div id="tx-single-panel" class="fluxy-drawer-stack">
+                        <section class="fluxy-drawer-section">
+                            <h3 class="fluxy-drawer-section-title">${detailsTitle}</h3>
+                            <div class="fluxy-drawer-field">
+                                <label for="tx-amount" class="fluxy-drawer-label">Amount (Rp)</label>
+                                <input type="text" id="tx-amount" name="amount" required placeholder="0" class="fluxy-drawer-input fluxy-drawer-input--mono">
                             </div>
-                            <div>
-                                <label for="tx-type" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Type</label>
-                                <select id="tx-type" name="type" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                            <div class="fluxy-drawer-field">
+                                <label for="tx-type" class="fluxy-drawer-label">Type</label>
+                                <select id="tx-type" name="type" class="fluxy-drawer-select">
                                     ${context === 'bill' ? `
                                     <option value="expense" selected>Expense</option>
                                     <option value="pending_payable">Pending payable</option>
@@ -629,65 +773,98 @@ window.showAddTransactionModal = function(options = {}) {
                                     <option value="Others">Others</option>
                                     `}
                                 </select>
-                                ${context === 'bill' ? '' : `<input id="tx-type-custom" type="text" maxlength="20" placeholder="Type custom (max 20 chars)" class="hidden mt-2 w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]" />`}
+                                ${context === 'bill' ? '' : `<input id="tx-type-custom" type="text" maxlength="20" placeholder="Type custom (max 20 chars)" class="fluxy-drawer-input hidden" />`}
                             </div>
-                        </div>
-                        ${context === 'bill' ? `<div id="tx-budget-preview" class="hidden rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600"></div>` : ''}
+                            <div class="fluxy-drawer-field">
+                                <label class="fluxy-drawer-label">${context === 'bill' ? 'Due Date' : 'Transaction Date'}</label>
+                                <div id="tx-date-picker"></div>
+                                <p class="fluxy-drawer-hint">${context === 'bill' ? 'Set when this bill is due for payment. Future dates are allowed.' : 'Defaults to today. Choose a previous day for backdated records.'}</p>
+                            </div>
+                        </section>
+
+                        <section class="fluxy-drawer-section">
+                            <h3 class="fluxy-drawer-section-title">Business Information</h3>
+                            <div class="fluxy-drawer-field">
+                                <label for="tx-vendor" class="fluxy-drawer-label">Vendor / Description</label>
+                                <input type="text" id="tx-vendor" name="vendor" required placeholder="e.g. AWS, Client Payment" class="fluxy-drawer-input">
+                            </div>
+                            <div class="fluxy-drawer-field">
+                                <label for="tx-category" class="fluxy-drawer-label">Category</label>
+                                <select id="tx-category" name="category" class="fluxy-drawer-select">
+                                    <option value="Revenue" ${defaultCategory === 'Revenue' ? 'selected' : ''}>Revenue</option>
+                                    <option value="Marketing" ${defaultCategory === 'Marketing' ? 'selected' : ''}>Marketing</option>
+                                    <option value="Infrastructure" ${defaultCategory === 'Infrastructure' ? 'selected' : ''}>Infrastructure</option>
+                                    <option value="Operations" ${defaultCategory === 'Operations' ? 'selected' : ''}>Operations</option>
+                                    <option value="SaaS" ${defaultCategory === 'SaaS' ? 'selected' : ''}>SaaS</option>
+                                    <option value="Others">Others</option>
+                                </select>
+                                <input id="tx-category-custom" type="text" maxlength="20" placeholder="Type category (max 20 chars)" class="fluxy-drawer-input hidden" />
+                            </div>
+                        </section>
+
                         ${context === 'bill' ? `
-                        <div>
-                            <label for="tx-bill-tax-rate" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">PPN rate (%) <span class="normal-case font-normal text-gray-400">— optional, tax-inclusive</span></label>
-                            <input id="tx-bill-tax-rate" type="text" inputmode="decimal" placeholder="e.g. 11" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[14px] tabular-nums" />
-                            <p class="mt-2 text-[12px] text-gray-500">If set (PKP workspaces), PPN is extracted from the amount to input VAT (1130).</p>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label for="tx-bill-wht-rate" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">PPh withholding (%)</label>
-                                <input id="tx-bill-wht-rate" type="text" inputmode="decimal" placeholder="e.g. 2" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[14px] tabular-nums" />
+                        <section class="fluxy-drawer-section">
+                            <h3 class="fluxy-drawer-section-title">Tax</h3>
+                            <div id="tx-budget-preview" class="hidden rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600"></div>
+                            <div class="fluxy-drawer-field">
+                                <label for="tx-bill-tax-rate" class="fluxy-drawer-label">PPN rate (%) — optional, tax-inclusive</label>
+                                <input id="tx-bill-tax-rate" type="text" inputmode="decimal" placeholder="e.g. 11" class="fluxy-drawer-input tabular-nums" />
+                                <p class="fluxy-drawer-hint">If set (PKP workspaces), PPN is extracted from the amount to input VAT (1130).</p>
                             </div>
-                            <div>
-                                <label for="tx-bill-wht-type" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Withholding type</label>
-                                <select id="tx-bill-wht-type" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[14px]">
-                                    <option value="">None</option>
-                                    <option value="PPh 23">PPh 23</option>
-                                    <option value="PPh 4(2)">PPh 4(2)</option>
-                                    <option value="PPh 26">PPh 26</option>
+                            <div class="fluxy-drawer-field-grid">
+                                <div class="fluxy-drawer-field">
+                                    <label for="tx-bill-wht-rate" class="fluxy-drawer-label">PPh withholding (%)</label>
+                                    <input id="tx-bill-wht-rate" type="text" inputmode="decimal" placeholder="e.g. 2" class="fluxy-drawer-input tabular-nums" />
+                                </div>
+                                <div class="fluxy-drawer-field">
+                                    <label for="tx-bill-wht-type" class="fluxy-drawer-label">Withholding type</label>
+                                    <select id="tx-bill-wht-type" class="fluxy-drawer-select">
+                                        <option value="">None</option>
+                                        <option value="PPh 23">PPh 23</option>
+                                        <option value="PPh 4(2)">PPh 4(2)</option>
+                                        <option value="PPh 26">PPh 26</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <p class="fluxy-drawer-hint">We withhold PPh from the vendor on the base; it posts to PPh Payable (2110) and reduces what you pay them.</p>
+                        </section>
+                        ` : ''}
+
+                        ${context !== 'bill' ? `
+                        <section class="fluxy-drawer-section">
+                            <h3 class="fluxy-drawer-section-title">Additional Information</h3>
+                            ${context === 'transaction' ? `
+                            <div id="tx-allocation-section" class="fluxy-drawer-field hidden">
+                                <label for="tx-allocation" class="fluxy-drawer-label">Budget allocation</label>
+                                <select id="tx-allocation" name="allocation" class="fluxy-drawer-select">
+                                    <option value="">Auto-match by category</option>
+                                </select>
+                                <p class="fluxy-drawer-hint">Pin this expense to a budget allocation now, or leave it to match by category.</p>
+                            </div>
+                            <div id="tx-cash-impact-section" class="hidden space-y-3">
+                                <div id="tx-cash-impact-control" class="space-y-3"></div>
+                            </div>
+                            <div id="tx-cash-impact-helper" class="hidden rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[12px] text-blue-800"></div>
+                            ` : ''}
+                            <div class="fluxy-drawer-field">
+                                <label for="tx-status" class="fluxy-drawer-label">Status</label>
+                                <select id="tx-status" name="status" class="fluxy-drawer-select">
+                                    <option value="Completed">Completed</option>
+                                    <option value="Reconciled">Reconciled</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Missing Receipt">Missing Receipt</option>
+                                    <option value="Cancelled">Cancelled</option>
                                 </select>
                             </div>
-                            <p class="col-span-2 text-[12px] text-gray-500">We withhold PPh from the vendor on the base; it posts to PPh Payable (2110) and reduces what you pay them.</p>
-                        </div>
+                            <div id="tx-receipt-section" data-fluxy-doc-mount></div>
+                        </section>
                         ` : ''}
-                        ${context === 'transaction' ? `
-                        <div id="tx-allocation-section" class="hidden">
-                            <label for="tx-allocation" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Budget allocation</label>
-                            <select id="tx-allocation" name="allocation" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
-                                <option value="">Auto-match by category</option>
-                            </select>
-                            <p class="mt-2 text-[12px] text-gray-500">Pin this expense to a budget allocation now, or leave it to match by category.</p>
-                        </div>
-                        ` : ''}
-                        ${context === 'transaction' ? `
-                        <div id="tx-cash-impact-section" class="hidden space-y-3">
-                            <div id="tx-cash-impact-control" class="space-y-3"></div>
-                        </div>
-                        <div id="tx-cash-impact-helper" class="hidden rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[12px] text-blue-800"></div>
-                        ` : ''}
-                        ${context !== 'bill' ? `<div>
-                            <label for="tx-status" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Status</label>
-                            <select id="tx-status" name="status" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
-                                <option value="Completed">Completed</option>
-                                <option value="Reconciled">Reconciled</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Missing Receipt">Missing Receipt</option>
-                                <option value="Cancelled">Cancelled</option>
-                            </select>
-                        </div>` : ''}
-                        ${context !== 'bill' ? `<div id="tx-receipt-section" data-fluxy-doc-mount></div>` : ''}
                     </div>
                     ${supportsBulkCsv ? `
                     <div id="tx-bulk-panel" class="hidden space-y-4">
                         <div class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 transition-all duration-200" id="tx-csv-dropzone">
-                            <label for="tx-csv-file" class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-7 text-center transition-all duration-200 hover:border-[#E85D19] hover:bg-gray-50">
-                                <span class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#E85D19]">
+                            <label for="tx-csv-file" class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-7 text-center transition-all duration-200 hover:border-[#EA580C] hover:bg-gray-50">
+                                <span class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#EA580C]">
                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
                                 </span>
                                 <span id="tx-csv-file-label" class="max-w-full truncate text-[13px] font-bold text-gray-900">Choose or drop a CSV file</span>
@@ -736,7 +913,7 @@ window.showAddTransactionModal = function(options = {}) {
                             </div>
                             <div id="tx-bulk-status-panel" class="hidden space-y-2">
                                 <select id="tx-bulk-status-select"
-                                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]">
+                                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#EA580C] text-[13px]">
                                     <option value="Completed">Completed</option>
                                     <option value="Reconciled">Reconciled</option>
                                     <option value="Pending">Pending</option>
@@ -752,7 +929,7 @@ window.showAddTransactionModal = function(options = {}) {
                                 <p class="text-[11px] text-gray-500">Apply one allocation to every expense row — income rows stay unallocated</p>
                             </div>
                             <select id="tx-bulk-allocation-select"
-                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]">
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#EA580C] text-[13px]">
                                 <option value="">Match by category (default)</option>
                             </select>
                         </div>
@@ -827,12 +1004,15 @@ window.showAddTransactionModal = function(options = {}) {
                     </div>
                     ` : ''}
                     </div>
-                    <div class="border-t border-gray-100 bg-white/95 p-4 shadow-[0_-12px_24px_rgba(15,23,42,0.06)] backdrop-blur">
-                        <div id="tx-date-warning" class="hidden mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] font-medium text-amber-800"></div>
-                        <button type="submit" id="tx-submit-btn" class="w-full py-4 bg-[#E85D19] hover:bg-[#D44400] text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none disabled:active:scale-100" disabled>
-                            <span>${submitLabel}</span>
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                        </button>
+                    <div class="fluxy-drawer-footer fluxy-drawer-footer--stack">
+                        <div id="tx-date-warning" class="hidden rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] font-medium text-amber-800"></div>
+                        <div class="flex items-center justify-end gap-3">
+                            <button type="button" onclick="window.closeAddTransactionModal()" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Cancel</button>
+                            <button type="submit" id="tx-submit-btn" class="fluxy-drawer-btn fluxy-drawer-btn--primary" disabled>
+                                <span>${submitLabel}</span>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -852,6 +1032,15 @@ window.showAddTransactionModal = function(options = {}) {
         if (event.key === 'Escape') window.closeAddTransactionModal();
     };
     document.addEventListener('keydown', window.__closeAddTransactionModalOnEscape);
+    // Focus trap + focus restore via the shared drawer shell. Escape/overlay
+    // stay owned by the existing handlers above (closeOnEscape/Overlay left off)
+    // so nothing double-fires; the trap whitelists the body-portaled select menu.
+    try {
+        window.__fluxyTxDrawerDispose = window.FluxyDrawer?.mountBehavior?.(
+            document.getElementById('global-tx-drawer'),
+            { focusTrap: true, autofocus: false, restoreFocus: true }
+        );
+    } catch (_) { window.__fluxyTxDrawerDispose = null; }
     let activeEntryMode = 'single';
     let selectedEntryDate = todayKey;
     let updateSelectedCsvDateState = updateDateWarning;
@@ -1713,8 +1902,8 @@ window.showAddTransactionModal = function(options = {}) {
             const isBulk = mode === 'bulk';
             singlePanel.classList.toggle('hidden', isBulk);
             bulkPanel.classList.toggle('hidden', !isBulk);
-            singleTab.className = `tx-entry-tab rounded-lg px-3 py-2 text-[13px] font-bold transition-all ${isBulk ? 'text-gray-500 hover:text-gray-900' : 'bg-white text-gray-900 shadow-sm'}`;
-            bulkTab.className = `tx-entry-tab rounded-lg px-3 py-2 text-[13px] font-bold transition-all ${isBulk ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`;
+            singleTab.classList.toggle('is-active', !isBulk);
+            bulkTab.classList.toggle('is-active', isBulk);
             singleTab.setAttribute('aria-selected', String(!isBulk));
             bulkTab.setAttribute('aria-selected', String(isBulk));
             singleFields.forEach(field => {
@@ -1742,7 +1931,7 @@ window.showAddTransactionModal = function(options = {}) {
             };
             setSubmitButton('Parsing CSV', true);
             fileLabel.textContent = file ? file.name : 'Choose or drop a CSV file';
-            dropzone.classList.toggle('border-[#E85D19]', Boolean(file));
+            dropzone.classList.toggle('border-[#EA580C]', Boolean(file));
             dropzone.classList.toggle('ring-2', Boolean(file));
             dropzone.classList.toggle('ring-orange-100', Boolean(file));
             setCsvFeedback(file ? 'Reading CSV and building preview...' : '', 'info');
@@ -1805,7 +1994,7 @@ window.showAddTransactionModal = function(options = {}) {
             const nowOn = bulkToggleBtn.getAttribute('aria-checked') !== 'true';
             bulkToggleBtn.setAttribute('aria-checked', String(nowOn));
             bulkToggleBtn.classList.toggle('bg-gray-200', !nowOn);
-            bulkToggleBtn.classList.toggle('bg-[#E85D19]', nowOn);
+            bulkToggleBtn.classList.toggle('bg-[#EA580C]', nowOn);
             bulkToggleBtn.querySelector('span').classList.toggle('translate-x-0.5', !nowOn);
             bulkToggleBtn.querySelector('span').classList.toggle('translate-x-5', nowOn);
             bulkStatusPanel.classList.toggle('hidden', !nowOn);
@@ -1823,12 +2012,12 @@ window.showAddTransactionModal = function(options = {}) {
 
         dropzone.ondragover = (event) => {
             event.preventDefault();
-            dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#E85D19]');
+            dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#EA580C]');
         };
 
         dropzone.ondragleave = () => {
             if (!fileInput.files?.[0]) {
-                dropzone.classList.remove('ring-2', 'ring-orange-100', 'border-[#E85D19]');
+                dropzone.classList.remove('ring-2', 'ring-orange-100', 'border-[#EA580C]');
             }
         };
 
@@ -1926,7 +2115,7 @@ window.showAddTransactionModal = function(options = {}) {
                     return;
                 }
 
-                dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#E85D19]');
+                dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#EA580C]');
                 const csvText = csvImportState.csvText || await file.text();
                 const { ds, user, scopeId, Timestamp } = await getTransactionDataService();
                 const transactions = parseBulkTransactions(csvText, todayKey, Timestamp, bulkStatusOverride);
@@ -1956,7 +2145,7 @@ window.showAddTransactionModal = function(options = {}) {
                 window.setTimeout(() => {
                     window.closeAddTransactionModal();
                     setSubmitButton('Upload CSV', true);
-                    dropzone.classList.remove('ring-2', 'ring-orange-100', 'border-[#E85D19]');
+                    dropzone.classList.remove('ring-2', 'ring-orange-100', 'border-[#EA580C]');
                 }, 1200);
                 return;
             }
@@ -2216,6 +2405,10 @@ window.closeAddTransactionModal = function() {
             document.removeEventListener('keydown', window.__closeAddTransactionModalOnEscape);
             window.__closeAddTransactionModalOnEscape = null;
         }
+        if (window.__fluxyTxDrawerDispose) {
+            try { window.__fluxyTxDrawerDispose(); } catch (_) {}
+            window.__fluxyTxDrawerDispose = null;
+        }
         // Fully remove so next open creates fresh context
         window.setTimeout(() => {
             modal.parentElement?.remove();
@@ -2232,7 +2425,7 @@ window.renderEmptyState = function(containerId, config) {
         description: "Start by adding your first record to see the engine in motion.",
         buttonText: "Add Record",
         onAction: () => window.showAddTransactionModal(),
-        icon: `<svg class="w-8 h-8 text-[#E85D19]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>`
+        icon: `<svg class="w-8 h-8 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>`
     };
 
     const c = { ...defaultConfig, ...config };
@@ -2244,7 +2437,7 @@ window.renderEmptyState = function(containerId, config) {
             </div>
             <h3 class="text-xl font-bold text-gray-900 mb-2 tracking-tight">${c.title}</h3>
             <p class="text-[14px] text-gray-500 max-w-[320px] leading-relaxed mb-8">${c.description}</p>
-            <button id="empty-state-action" class="inline-flex items-center gap-2 bg-[#E85D19] hover:bg-[#D44400] text-white font-bold text-[13px] px-6 py-3 rounded-xl transition-all shadow-md hover:shadow-lg">
+            <button id="empty-state-action" class="inline-flex items-center gap-2 bg-[#EA580C] hover:bg-[#D94E0B] text-white font-bold text-[13px] px-6 py-3 rounded-xl transition-all shadow-md hover:shadow-lg">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                 ${c.buttonText}
             </button>
@@ -2630,11 +2823,11 @@ window.attachChartHover = function attachChartHover(container, options) {
                         </div>
                         <div id="fbx-assignment-allocation-row">
                             <label for="fbx-assignment-allocation" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Allocation</label>
-                            <select id="fbx-assignment-allocation" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]"></select>
+                            <select id="fbx-assignment-allocation" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#EA580C] text-[13px]"></select>
                         </div>
                         <div>
                             <label for="fbx-assignment-reason" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reason <span class="text-[#EA580C]">*</span></label>
-                            <textarea id="fbx-assignment-reason" rows="3" maxlength="500" required placeholder="Why is this record being updated?" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px] resize-none"></textarea>
+                            <textarea id="fbx-assignment-reason" rows="3" maxlength="500" required placeholder="Why is this record being updated?" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#EA580C] text-[13px] resize-none"></textarea>
                             <p class="mt-1 text-[11px] text-gray-400">Recorded in the audit log for traceability.</p>
                         </div>
                     </div>

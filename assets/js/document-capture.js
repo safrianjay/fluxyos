@@ -221,7 +221,26 @@
 
     // ── Renderers ────────────────────────────────────────────────────────
 
+    // Progress stepper for the scan flow (Upload → Processing → Review). Only
+    // rendered where the shell provides a #scan-drawer-stepper host (ai.html,
+    // bill.html); ledger.html uses its Receipt/Bank tab strip instead, so the
+    // host is absent there and this no-ops. Error/offline steps hide it.
+    function renderStepper() {
+        const host = $('scan-drawer-stepper');
+        if (!host || !window.FluxyDrawer) return;
+        const isFlow = ['upload', 'scanning', 'review'].includes(state.step);
+        if (!isFlow) { host.classList.add('hidden'); host.innerHTML = ''; return; }
+        const stepKey = state.step === 'scanning' ? 'processing' : state.step;
+        host.classList.remove('hidden');
+        host.innerHTML = window.FluxyDrawer.stepper([
+            { key: 'upload', label: 'Upload' },
+            { key: 'processing', label: 'Processing' },
+            { key: 'review', label: 'Review' }
+        ], stepKey);
+    }
+
     function renderDrawer() {
+        renderStepper();
         switch (state.step) {
             case 'upload':   return renderUploadStep();
             case 'scanning': return renderScanningStep();
@@ -261,7 +280,7 @@
                 </div>
             `;
             footer.innerHTML = `
-                <button id="scan-cancel-btn" type="button" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Cancel</button>
+                <button id="scan-cancel-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Cancel</button>
             `;
             wireUploadHandlers();
             return;
@@ -294,8 +313,8 @@
             </div>
         `;
         footer.innerHTML = `
-            <button id="scan-cancel-btn" type="button" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Cancel</button>
-            <button id="scan-start-btn" type="button" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center justify-center gap-2 active:scale-95">
+            <button id="scan-cancel-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Cancel</button>
+            <button id="scan-start-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--primary">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                 ${escapeHtml(modeCfg().title)}
             </button>
@@ -337,8 +356,8 @@
             </div>
         `;
         footer.innerHTML = `
-            <button type="button" disabled class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-400 rounded-lg text-[13px] font-medium cursor-not-allowed">Cancel</button>
-            <button type="button" disabled class="flex-1 px-4 py-2.5 bg-orange-200 text-white rounded-lg text-[13px] font-bold cursor-not-allowed">Scanning…</button>
+            <button type="button" disabled class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Cancel</button>
+            <button type="button" disabled class="fluxy-drawer-btn fluxy-drawer-btn--primary">Scanning…</button>
         `;
     }
 
@@ -415,6 +434,10 @@
 
         content.innerHTML = `
             <form id="scan-review-form" class="space-y-4">
+                <div class="fluxy-drawer-section-head">
+                    <h3 class="fluxy-drawer-section-title">Review before saving</h3>
+                    <p class="fluxy-drawer-section-desc">Check what FluxyOS extracted, edit anything that needs fixing, then save.</p>
+                </div>
                 ${mockBanner}
                 ${warningsBlock}
                 <div id="scan-duplicate-warning" class="hidden rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-800"></div>
@@ -467,8 +490,8 @@
             </form>
         `;
         footer.innerHTML = `
-            <button id="scan-rescan-btn" type="button" class="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-50 transition-colors">Rescan</button>
-            <button id="scan-save-btn" type="button" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">${escapeHtml(cfg.saveLabel)}</button>
+            <button id="scan-rescan-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Rescan</button>
+            <button id="scan-save-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--primary">${escapeHtml(cfg.saveLabel)}</button>
         `;
         mountReviewDatePickers();
         wireReviewHandlers();
@@ -563,7 +586,7 @@
         `;
         footer.innerHTML = `
             <button id="scan-manual-link" type="button" class="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-50 transition-colors">Add manually</button>
-            <button id="scan-retry-btn" type="button" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors active:scale-95">Try again</button>
+            <button id="scan-retry-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--primary">Try again</button>
         `;
         $('scan-retry-btn')?.addEventListener('click', () => {
             state.errorMessage = null;
@@ -587,8 +610,8 @@
             </div>
         `;
         footer.innerHTML = `
-            <button id="scan-cancel-btn" type="button" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Close</button>
-            <button id="scan-manual-link" type="button" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors active:scale-95">Add manually</button>
+            <button id="scan-cancel-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Close</button>
+            <button id="scan-manual-link" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--primary">Add manually</button>
         `;
         $('scan-cancel-btn')?.addEventListener('click', closeDrawer);
         $('scan-manual-link')?.addEventListener('click', openManualEntry);

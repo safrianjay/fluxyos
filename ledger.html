@@ -291,17 +291,17 @@
     <!-- TRANSACTION DETAIL DRAWER -->
     <div id="tx-detail-overlay" class="fixed inset-0 z-[90] hidden">
         <div class="absolute inset-0 bg-black/55 opacity-0 transition-opacity duration-300 ease-out" onclick="window.closeTxDetailDrawer()"></div>
-        <div id="tx-detail-drawer" role="dialog" aria-modal="true" class="absolute right-0 top-0 h-full w-full max-w-[440px] translate-x-full flex flex-col bg-white shadow-2xl transition-transform duration-300 ease-out sm:max-w-[480px]">
-            <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 flex-shrink-0">
+        <div id="tx-detail-drawer" role="dialog" aria-modal="true" class="absolute right-0 top-0 h-full w-full max-w-[480px] translate-x-full flex flex-col bg-white shadow-2xl transition-transform duration-300 ease-out">
+            <div class="fluxy-drawer-header">
                 <div>
-                    <p id="tx-detail-eyebrow" class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Transaction Detail</p>
-                    <h3 id="tx-detail-vendor" class="mt-1 text-lg font-bold text-gray-900">—</h3>
+                    <h2 id="tx-detail-vendor" class="fluxy-drawer-title">—</h2>
+                    <p id="tx-detail-eyebrow" class="fluxy-drawer-desc">Transaction Detail</p>
                 </div>
-                <button onclick="window.closeTxDetailDrawer()" class="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                <button onclick="window.closeTxDetailDrawer()" class="fluxy-drawer-close" aria-label="Close">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
-            <div id="tx-detail-content" class="flex-1 overflow-y-auto p-6 space-y-6">
+            <div id="tx-detail-content" class="fluxy-drawer-body">
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Amount</p>
@@ -343,42 +343,42 @@
                 </div>
                 <div id="tx-detail-receipt-section"></div>
             </div>
-            <div id="tx-detail-footer" class="border-t border-gray-100 bg-white/95 p-4 shadow-[0_-12px_24px_rgba(15,23,42,0.06)] flex-shrink-0">
+            <div id="tx-detail-footer" class="fluxy-drawer-footer fluxy-drawer-footer--stack">
                 <div id="tx-detail-footer-actions" class="flex flex-col gap-2"></div>
             </div>
         </div>
     </div>
 
     <!-- Document Scan Drawer — Backdrop -->
-    <div id="scan-drawer-backdrop" class="fixed inset-0 bg-black/30 z-40 hidden"></div>
+    <div id="scan-drawer-backdrop" class="fixed inset-0 bg-black/50 z-40 hidden"></div>
 
     <!-- Document Scan Drawer (unified Scan / Import) -->
     <div id="scan-drawer" class="fixed top-0 right-0 h-full w-full max-w-[520px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+        <div class="fluxy-drawer-header">
             <div>
-                <h2 id="scan-drawer-title" class="text-[14px] font-bold text-gray-900">Scan / Import</h2>
-                <p id="scan-drawer-subtitle" class="text-[12px] text-gray-400 mt-0.5">Upload a receipt, invoice, payment confirmation, or bank statement. FluxyOS reviews each before anything is saved.</p>
+                <h2 id="scan-drawer-title" class="fluxy-drawer-title">Scan / Import</h2>
+                <p id="scan-drawer-subtitle" class="fluxy-drawer-desc">Upload a receipt, invoice, payment confirmation, or bank statement. FluxyOS reviews each before anything is saved.</p>
             </div>
-            <button id="scan-drawer-close-btn" type="button" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <button id="scan-drawer-close-btn" type="button" class="fluxy-drawer-close" aria-label="Close">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
-        <div class="px-6 pt-4 flex-shrink-0">
-            <div class="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" role="tablist" aria-label="Scan or import">
-                <button type="button" id="scan-tab-document" data-scan-tab="document" class="scan-tab-btn rounded-lg px-3 py-2 text-[14px] font-bold transition-all bg-white text-gray-900 shadow-sm" role="tab" aria-selected="true" aria-controls="scan-drawer-content">Receipt / Invoice</button>
-                <button type="button" id="scan-tab-bank" data-scan-tab="bank" class="scan-tab-btn rounded-lg px-3 py-2 text-[14px] font-bold transition-all text-gray-500 hover:text-gray-900" role="tab" aria-selected="false" aria-controls="scan-drawer-bsi-content">Bank Statement</button>
+        <div class="px-8 pt-4 flex-shrink-0">
+            <div class="fluxy-drawer-segment" role="tablist" aria-label="Scan or import">
+                <button type="button" id="scan-tab-document" data-scan-tab="document" class="scan-tab-btn fluxy-drawer-segment-btn is-active" role="tab" aria-selected="true" aria-controls="scan-drawer-content">Receipt / Invoice</button>
+                <button type="button" id="scan-tab-bank" data-scan-tab="bank" class="scan-tab-btn fluxy-drawer-segment-btn" role="tab" aria-selected="false" aria-controls="scan-drawer-bsi-content">Bank Statement</button>
             </div>
         </div>
         <!-- Tab panel: Receipt / Invoice (legacy scan flow, owned by document-capture.js) -->
-        <div id="scan-drawer-content" class="flex-1 overflow-y-auto px-6 py-5" data-step="upload" role="tabpanel" aria-labelledby="scan-tab-document">
+        <div id="scan-drawer-content" class="fluxy-drawer-body" data-step="upload" role="tabpanel" aria-labelledby="scan-tab-document">
             <!-- Injected by document-capture.js -->
         </div>
-        <div id="scan-drawer-footer" class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
+        <div id="scan-drawer-footer" class="fluxy-drawer-footer">
             <!-- Injected by document-capture.js based on step -->
         </div>
         <!-- Tab panel: Bank Statement (owned by bank-statement-import.js) -->
-        <div id="scan-drawer-bsi-content" class="hidden flex-1 overflow-y-auto px-6 py-5" role="tabpanel" aria-labelledby="scan-tab-bank"></div>
-        <div id="scan-drawer-bsi-footer" class="hidden px-6 py-4 border-t border-gray-100 items-center gap-3 flex-shrink-0"></div>
+        <div id="scan-drawer-bsi-content" class="hidden fluxy-drawer-body" role="tabpanel" aria-labelledby="scan-tab-bank"></div>
+        <div id="scan-drawer-bsi-footer" class="hidden fluxy-drawer-footer"></div>
     </div>
 
     <script src="assets/js/sidebar-loader.js"></script>
@@ -1067,14 +1067,8 @@
 
                 docTab.setAttribute('aria-selected', showDoc ? 'true' : 'false');
                 bankTab.setAttribute('aria-selected', showDoc ? 'false' : 'true');
-                docTab.classList.toggle('bg-white', showDoc);
-                docTab.classList.toggle('text-gray-900', showDoc);
-                docTab.classList.toggle('shadow-sm', showDoc);
-                docTab.classList.toggle('text-gray-500', !showDoc);
-                bankTab.classList.toggle('bg-white', !showDoc);
-                bankTab.classList.toggle('text-gray-900', !showDoc);
-                bankTab.classList.toggle('shadow-sm', !showDoc);
-                bankTab.classList.toggle('text-gray-500', showDoc);
+                docTab.classList.toggle('is-active', showDoc);
+                bankTab.classList.toggle('is-active', !showDoc);
 
                 if (showDoc) {
                     teardownBsi();
@@ -2741,57 +2735,64 @@
             const FCI = window.FluxyCashImpact;
             const cashInit = FCI ? FCI.stateFromRecord(row) : { impact: 'not_classified', direction: 'in', accountId: '' };
             const allocSectionHtml = `
-                <div id="tx-edit-allocation-section" class="${(FBP && FBP.isExpenseLike(normalizedType) && allocationCtx.budget) ? '' : 'hidden'}">
-                    <label for="tx-edit-allocation" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Budget allocation</label>
-                    <select id="tx-edit-allocation" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                <div id="tx-edit-allocation-section" class="fluxy-drawer-field ${(FBP && FBP.isExpenseLike(normalizedType) && allocationCtx.budget) ? '' : 'hidden'}">
+                    <label for="tx-edit-allocation" class="fluxy-drawer-label">Budget allocation</label>
+                    <select id="tx-edit-allocation" class="fluxy-drawer-select">
                         ${FBP ? FBP.buildOptionsHtml(allocationCtx.allocations, curAllocation) : ''}
                     </select>
                 </div>`;
 
             content.innerHTML = `
-                <form id="tx-edit-form" class="space-y-5">
-                    <div>
-                        <label for="tx-edit-amount" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Amount (Rp)</label>
-                        <input type="text" id="tx-edit-amount" required value="${escapeHtml(String(Number(row.amount || 0).toLocaleString('id-ID')))}" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E85D19] focus:border-[#E85D19] outline-none font-mono font-bold text-lg">
-                    </div>
-                    <div>
-                        <label for="tx-edit-vendor" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Vendor / Description</label>
-                        <input type="text" id="tx-edit-vendor" required value="${escapeHtml(row.vendor_name || '')}" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label for="tx-edit-type" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Type</label>
-                            <select id="tx-edit-type" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                <form id="tx-edit-form" class="fluxy-drawer-stack">
+                    <section class="fluxy-drawer-section">
+                        <h3 class="fluxy-drawer-section-title">Transaction Details</h3>
+                        <div class="fluxy-drawer-field">
+                            <label for="tx-edit-amount" class="fluxy-drawer-label">Amount (Rp)</label>
+                            <input type="text" id="tx-edit-amount" required value="${escapeHtml(String(Number(row.amount || 0).toLocaleString('id-ID')))}" class="fluxy-drawer-input fluxy-drawer-input--mono">
+                        </div>
+                        <div class="fluxy-drawer-field">
+                            <label for="tx-edit-type" class="fluxy-drawer-label">Type</label>
+                            <select id="tx-edit-type" class="fluxy-drawer-select">
                                 ${typeOptions.map(type => `<option value="${escapeHtml(type)}" ${type === normalizedType ? 'selected' : ''}>${escapeHtml(getTypeFilterLabel(type))}</option>`).join('')}
                             </select>
                         </div>
-                        <div>
-                            <label for="tx-edit-status" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Status</label>
-                            <select id="tx-edit-status" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
+                        <div class="fluxy-drawer-field">
+                            <label for="tx-edit-date" class="fluxy-drawer-label">Transaction Date</label>
+                            <input type="date" id="tx-edit-date" required value="${escapeHtml(initialDate)}" class="fluxy-drawer-input">
+                        </div>
+                    </section>
+                    <section class="fluxy-drawer-section">
+                        <h3 class="fluxy-drawer-section-title">Business Information</h3>
+                        <div class="fluxy-drawer-field">
+                            <label for="tx-edit-vendor" class="fluxy-drawer-label">Vendor / Description</label>
+                            <input type="text" id="tx-edit-vendor" required value="${escapeHtml(row.vendor_name || '')}" class="fluxy-drawer-input">
+                        </div>
+                        <div class="fluxy-drawer-field">
+                            <label for="tx-edit-category" class="fluxy-drawer-label">Category</label>
+                            <input type="text" id="tx-edit-category" required maxlength="40" value="${escapeHtml(row.category || '')}" class="fluxy-drawer-input">
+                        </div>
+                    </section>
+                    <section class="fluxy-drawer-section">
+                        <h3 class="fluxy-drawer-section-title">Additional Information</h3>
+                        <div class="fluxy-drawer-field">
+                            <label for="tx-edit-status" class="fluxy-drawer-label">Status</label>
+                            <select id="tx-edit-status" class="fluxy-drawer-select">
                                 ${statusOptions.map(status => `<option value="${escapeHtml(status)}" ${status === row.status ? 'selected' : ''}>${escapeHtml(status)}</option>`).join('')}
                             </select>
                         </div>
-                    </div>
-                    <div>
-                        <label for="tx-edit-category" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Category</label>
-                        <input type="text" id="tx-edit-category" required maxlength="40" value="${escapeHtml(row.category || '')}" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
-                    </div>
-                    <div>
-                        <label for="tx-edit-date" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Transaction Date</label>
-                        <input type="date" id="tx-edit-date" required value="${escapeHtml(initialDate)}" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19]">
-                    </div>
-                    ${allocSectionHtml}
-                    <div id="tx-edit-cash-control" class="space-y-3 pt-4 border-t border-gray-100"></div>
-                    <div class="pt-4 border-t border-gray-100">
-                        <label for="tx-edit-reason" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reason for change <span class="normal-case font-normal text-red-500">*</span></label>
-                        <textarea id="tx-edit-reason" required maxlength="500" rows="2" placeholder="What changed and why? (recorded in the audit log)" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#E85D19] text-[13px]"></textarea>
-                    </div>
+                        ${allocSectionHtml}
+                        <div id="tx-edit-cash-control" class="space-y-3"></div>
+                        <div class="fluxy-drawer-field">
+                            <label for="tx-edit-reason" class="fluxy-drawer-label">Reason for change <span class="font-normal text-red-500">*</span></label>
+                            <textarea id="tx-edit-reason" required maxlength="500" rows="2" placeholder="What changed and why? (recorded in the audit log)" class="fluxy-drawer-textarea"></textarea>
+                        </div>
+                    </section>
                 </form>
             `;
             actions.innerHTML = `
-                <div class="flex gap-2">
-                    <button id="tx-edit-cancel-btn" type="button" class="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
-                    <button id="tx-edit-save-btn" type="submit" form="tx-edit-form" class="flex-1 rounded-xl bg-gray-900 px-4 py-3 text-[14px] font-bold text-white hover:bg-gray-800 transition-colors">Save changes</button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="tx-edit-cancel-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary fluxy-drawer-btn--block">Cancel</button>
+                    <button id="tx-edit-save-btn" type="submit" form="tx-edit-form" class="fluxy-drawer-btn fluxy-drawer-btn--primary fluxy-drawer-btn--block">Save changes</button>
                 </div>
             `;
 

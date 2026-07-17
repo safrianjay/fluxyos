@@ -371,25 +371,24 @@
             return `<button type="button" disabled class="ml-auto rounded-xl bg-gray-200 px-5 py-3 text-[13px] font-bold text-gray-500">Uploading…</button>`;
         }
         if (ctx.state === STATE_PROCESSING) {
-            return `<button type="button" disabled class="ml-auto rounded-xl bg-gray-200 px-5 py-3 text-[13px] font-bold text-gray-500">Reading statement…</button>`;
+            return `<button type="button" disabled class="ml-auto fluxy-drawer-btn fluxy-drawer-btn--primary">Reading statement…</button>`;
         }
         if (ctx.state === STATE_IMPORTED) {
             const closeBtn = showStandaloneClose
-                ? `<button type="button" data-bsi-close class="ml-auto rounded-xl bg-[#EA580C] px-5 py-3 text-[13px] font-bold text-white transition-colors hover:bg-[#D44400] active:scale-95">Done</button>`
+                ? `<button type="button" data-bsi-close class="ml-auto fluxy-drawer-btn fluxy-drawer-btn--primary">Done</button>`
                 : `<span class="ml-auto text-[12px] font-bold text-emerald-600">Import complete</span>`;
             return closeBtn;
         }
         if (ctx.state === STATE_UPLOADED) {
             const rejectBtn = ctx.draft?.review_status === 'rejected'
                 ? `<span class="text-[12px] font-bold text-gray-500">Draft rejected</span>`
-                : `<button type="button" data-bsi-reject class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-[13px] font-bold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95">Reject draft</button>`;
+                : `<button type="button" data-bsi-reject class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Reject draft</button>`;
             const count = selectedCount(ctx.rows);
             const confirmDisabled = count === 0 || ctx.draft?.review_status === 'rejected';
-            const confirmClass = confirmDisabled ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-[#EA580C] text-white hover:bg-[#D44400]';
             return `
                 ${rejectBtn}
                 <span class="ml-auto mr-1 text-[12px] text-gray-500">${count} selected</span>
-                <button type="button" data-bsi-confirm ${confirmDisabled ? 'disabled' : ''} class="rounded-xl px-5 py-3 text-[13px] font-bold transition-colors active:scale-95 ${confirmClass}">Confirm Import</button>
+                <button type="button" data-bsi-confirm ${confirmDisabled ? 'disabled' : ''} class="fluxy-drawer-btn fluxy-drawer-btn--primary">Confirm Import</button>
             `;
         }
         if (ctx.state === STATE_ERROR) {
@@ -398,19 +397,16 @@
                 : `<span class="ml-auto"></span>`;
             return `
                 ${closeBtn}
-                <button type="button" data-bsi-retry class="rounded-xl bg-[#EA580C] px-5 py-3 text-[13px] font-bold text-white transition-colors hover:bg-[#D44400] active:scale-95">Try again</button>
+                <button type="button" data-bsi-retry class="fluxy-drawer-btn fluxy-drawer-btn--primary">Try again</button>
             `;
         }
         const stageDisabled = !ctx.file ? 'disabled' : '';
-        const stageClass = ctx.file
-            ? 'bg-[#EA580C] text-white hover:bg-[#D44400]'
-            : 'bg-gray-200 text-gray-500 cursor-not-allowed';
         const cancelBtn = showStandaloneClose
-            ? `<button type="button" data-bsi-close class="ml-auto rounded-xl border border-gray-200 bg-white px-4 py-2 text-[13px] font-bold text-gray-700 transition-colors hover:bg-gray-50 active:scale-95">Cancel</button>`
+            ? `<button type="button" data-bsi-close class="ml-auto fluxy-drawer-btn fluxy-drawer-btn--secondary">Cancel</button>`
             : `<span class="ml-auto"></span>`;
         return `
             ${cancelBtn}
-            <button type="button" data-bsi-stage ${stageDisabled} class="rounded-xl px-5 py-3 text-[13px] font-bold transition-colors active:scale-95 ${stageClass}">Stage statement</button>
+            <button type="button" data-bsi-stage ${stageDisabled} class="fluxy-drawer-btn fluxy-drawer-btn--primary">Stage statement</button>
         `;
     }
 
@@ -721,22 +717,21 @@
         if (standaloneMounted) return;
         const wrapper = document.createElement('div');
         wrapper.id = 'bsi-modal';
-        wrapper.className = 'fixed inset-0 z-[100] flex justify-end overflow-hidden';
+        wrapper.className = 'fluxy-drawer-root';
         wrapper.innerHTML = `
-            <div id="bsi-overlay" class="absolute inset-0 bg-black/55 opacity-0 transition-opacity duration-300 ease-out" data-bsi-close></div>
-            <div id="bsi-drawer" role="dialog" aria-modal="true" aria-labelledby="bsi-title" class="relative z-10 ml-auto flex h-full w-full max-w-[520px] translate-x-full flex-col overflow-hidden bg-white shadow-2xl transition-transform duration-300 ease-out">
-                <div class="flex items-start justify-between gap-4 border-b border-gray-100 bg-gray-50/50 px-6 py-5">
+            <div id="bsi-overlay" class="fluxy-drawer-overlay opacity-0 transition-opacity duration-300 ease-out" data-bsi-close></div>
+            <div id="bsi-drawer" role="dialog" aria-modal="true" aria-labelledby="bsi-title" class="fluxy-drawer-panel fluxy-drawer-panel--lg translate-x-full">
+                <div class="fluxy-drawer-header">
                     <div class="min-w-0">
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Bank statement</p>
-                        <h3 id="bsi-title" class="mt-1 text-lg font-bold text-gray-900">Import Bank Statement</h3>
-                        <p class="mt-1 text-[12px] text-gray-500">Upload, review the extracted rows, then confirm. Nothing is saved to your ledger or bank balance without explicit confirmation.</p>
+                        <h2 id="bsi-title" class="fluxy-drawer-title">Import Bank Statement</h2>
+                        <p class="fluxy-drawer-desc">Upload, review the extracted rows, then confirm. Nothing is saved to your ledger or bank balance without explicit confirmation.</p>
                     </div>
-                    <button type="button" data-bsi-close class="flex-shrink-0 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600" aria-label="Close">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    <button type="button" data-bsi-close class="fluxy-drawer-close" aria-label="Close">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
-                <div id="bsi-content" class="flex-1 overflow-y-auto px-6 py-5"></div>
-                <div id="bsi-footer" class="flex flex-shrink-0 items-center gap-3 border-t border-gray-100 bg-white/95 px-6 py-4 shadow-[0_-12px_24px_rgba(15,23,42,0.06)]"></div>
+                <div id="bsi-content" class="fluxy-drawer-body"></div>
+                <div id="bsi-footer" class="fluxy-drawer-footer"></div>
             </div>`;
         document.body.appendChild(wrapper);
         document.body.classList.add('overflow-hidden');

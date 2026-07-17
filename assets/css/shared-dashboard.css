@@ -3,8 +3,13 @@
  */
 
 :root {
-    --fluxy-orange: #E85D19;
-    --fluxy-orange-hover: #D44400;
+    /* Reconciled to the documented brand orange (docs/DESIGN_SYSTEM.md).
+       Nothing consumed this token before, so the change is ripple-free; the
+       new .fluxy-drawer-* family + future accents read it. Orange is an
+       ACCENT only (focus rings, links) — never a CTA fill or surface. */
+    --fluxy-orange: #EA580C;
+    --fluxy-orange-hover: #D94E0B;
+    --fluxy-orange-ring: rgba(234, 88, 12, 0.14);
     --sidebar-bg: #FFFFFF;
 }
 
@@ -632,6 +637,386 @@ main > header {
     .fluxy-dialog-card,
     .fluxy-dialog.is-closing,
     .fluxy-dialog.is-closing .fluxy-dialog-card { animation: none; }
+}
+
+/* ── Entry Drawer (universal right-side drawer system) ─────────────────
+   ONE shared shell for every create / upload / import / review / edit
+   drawer (Add Transaction/Bill/Subscription, Scan + AI Review, CSV,
+   Bank Statement Import, Bill/Tx detail, dashboard setup). Built by
+   window.FluxyDrawer (shared-dashboard.js) for JS-built drawers, and
+   applied as classes to the static-HTML shells.
+
+   Contract that keeps existing open/close JS working:
+   - The panel sets NO `transform` — the slide state stays on the
+     Tailwind `translate-x-full` utility the markup already toggles.
+   - Overlay opacity / hidden state stays on the markup's existing
+     utilities; these classes only own layout + color.
+   - No `transform`/`filter` on the panel, sections, or fields, so the
+     body-portaled fluxy-select + date-picker menus are never clipped.
+   Primary action = deep-navy #0B0F19 (matches the confirm dialog).
+   Orange is accent-only (focus rings, stepper never uses an orange
+   surface). Values sit on the 4px scale + --fluxy-text-* tokens. */
+
+.fluxy-drawer-root {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: flex-end;
+    overflow: hidden;
+}
+.fluxy-drawer-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(11, 15, 25, 0.55);
+}
+
+.fluxy-drawer-panel {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    max-width: 480px;
+    background: #FFFFFF;
+    box-shadow: -24px 0 48px rgba(11, 15, 25, 0.14);
+    overflow: hidden;
+    transition: transform 0.3s ease-out;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+.fluxy-drawer-panel--sm { max-width: 440px; }
+.fluxy-drawer-panel--md { max-width: 480px; }
+.fluxy-drawer-panel--lg { max-width: 560px; }
+
+@media (max-width: 1024px) {
+    .fluxy-drawer-panel { max-width: min(560px, 92vw); }
+}
+@media (max-width: 640px) {
+    .fluxy-drawer-panel,
+    .fluxy-drawer-panel--sm,
+    .fluxy-drawer-panel--md,
+    .fluxy-drawer-panel--lg {
+        max-width: 100%;
+        box-shadow: none;
+    }
+}
+
+/* Header — sticky, white, title + description + divider + close top-right */
+.fluxy-drawer-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 32px;
+    border-bottom: 1px solid #F3F4F6;
+    background: #FFFFFF;
+}
+.fluxy-drawer-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    color: #111827;
+}
+.fluxy-drawer-desc {
+    margin: 4px 0 0;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: #6B7280;
+}
+.fluxy-drawer-close {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #9CA3AF;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.fluxy-drawer-close:hover { background: #F3F4F6; color: #4B5563; }
+.fluxy-drawer-close:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(11, 15, 25, 0.14); }
+.fluxy-drawer-close svg { width: 20px; height: 20px; }
+
+/* Stepper — done / current / upcoming. Navy progress (calm, matches CTA). */
+.fluxy-drawer-stepper {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 32px;
+    border-bottom: 1px solid #F3F4F6;
+    background: #FFFFFF;
+}
+.fluxy-drawer-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+.fluxy-drawer-step-node {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 9999px;
+    border: 1.5px solid #E5E7EB;
+    background: #FFFFFF;
+    color: #9CA3AF;
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.fluxy-drawer-step-node svg { width: 14px; height: 14px; display: none; }
+.fluxy-drawer-step-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #9CA3AF;
+    letter-spacing: -0.005em;
+}
+.fluxy-drawer-step-line {
+    flex: 1;
+    height: 2px;
+    min-width: 12px;
+    border-radius: 2px;
+    background: #E5E7EB;
+    transition: background 0.15s;
+}
+.fluxy-drawer-step.is-current .fluxy-drawer-step-node {
+    border-color: #0B0F19;
+    color: #0B0F19;
+    background: #FFFFFF;
+}
+.fluxy-drawer-step.is-current .fluxy-drawer-step-label { color: #111827; font-weight: 600; }
+.fluxy-drawer-step.is-done .fluxy-drawer-step-node {
+    border-color: #0B0F19;
+    background: #0B0F19;
+    color: #FFFFFF;
+}
+.fluxy-drawer-step.is-done .fluxy-drawer-step-num { display: none; }
+.fluxy-drawer-step.is-done .fluxy-drawer-step-node svg { display: block; }
+.fluxy-drawer-step.is-done + .fluxy-drawer-step-line { background: #0B0F19; }
+@media (max-width: 640px) {
+    .fluxy-drawer-step .fluxy-drawer-step-label { display: none; }
+    .fluxy-drawer-step.is-current .fluxy-drawer-step-label { display: inline; }
+}
+
+/* Body + section cards */
+.fluxy-drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+.fluxy-drawer-section {
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    background: #FFFFFF;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.fluxy-drawer-section--muted { background: #F9FAFB; }
+.fluxy-drawer-section-head { display: flex; flex-direction: column; gap: 2px; }
+.fluxy-drawer-section-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    color: #111827;
+}
+.fluxy-drawer-section-desc {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: #6B7280;
+}
+
+/* Vertical stack helper (24px rhythm) for panels that wrap multiple sections. */
+.fluxy-drawer-stack { display: flex; flex-direction: column; gap: 24px; }
+
+/* A JS-toggled `hidden` must always beat a drawer flex/grid display, whatever
+   the Tailwind CDN source order is. Covers both descendants and the panel
+   element itself (e.g. a hidden bsi body/footer tab). Scoped so it can't leak. */
+.fluxy-drawer-body .hidden,
+.fluxy-drawer-footer .hidden,
+.fluxy-drawer-body.hidden,
+.fluxy-drawer-footer.hidden { display: none !important; }
+
+/* Segmented control (e.g. Single vs CSV entry mode). Not a stepper. */
+.fluxy-drawer-segment {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    background: #F3F4F6;
+    border-radius: 12px;
+}
+.fluxy-drawer-segment-btn {
+    border: none;
+    background: transparent;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6B7280;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.fluxy-drawer-segment-btn:hover { color: #111827; }
+.fluxy-drawer-segment-btn.is-active {
+    background: #FFFFFF;
+    color: #111827;
+    box-shadow: 0 1px 2px rgba(11, 15, 25, 0.08);
+}
+
+/* Fields */
+.fluxy-drawer-field { display: flex; flex-direction: column; gap: 8px; }
+.fluxy-drawer-field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+.fluxy-drawer-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    line-height: 1.3;
+    color: #374151;
+}
+.fluxy-drawer-input,
+.fluxy-drawer-select,
+.fluxy-drawer-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 12px 14px;
+    background: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    color: #111827;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.fluxy-drawer-textarea { min-height: 88px; resize: vertical; line-height: 1.5; }
+.fluxy-drawer-input::placeholder,
+.fluxy-drawer-textarea::placeholder { color: #9CA3AF; }
+.fluxy-drawer-input:focus,
+.fluxy-drawer-select:focus,
+.fluxy-drawer-textarea:focus {
+    border-color: var(--fluxy-orange);
+    box-shadow: 0 0 0 3px var(--fluxy-orange-ring);
+}
+.fluxy-drawer-input--mono {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+}
+.fluxy-drawer-hint {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: #6B7280;
+}
+
+/* Callouts — never orange */
+.fluxy-drawer-callout {
+    display: flex;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+.fluxy-drawer-callout svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
+.fluxy-drawer-callout--info { background: #EFF6FF; border: 1px solid #DBEAFE; color: #1E40AF; }
+.fluxy-drawer-callout--warning { background: #FFFBEB; border: 1px solid #FEF3C7; color: #92400E; }
+.fluxy-drawer-callout--success { background: #ECFDF5; border: 1px solid #D1FAE5; color: #065F46; }
+
+/* Footer — sticky. Secondary left, primary right → identical everywhere. */
+.fluxy-drawer-footer {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 32px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    border-top: 1px solid #F3F4F6;
+    background: #FFFFFF;
+}
+.fluxy-drawer-footer--spread { justify-content: space-between; }
+.fluxy-drawer-footer--stack { flex-direction: column; align-items: stretch; }
+.fluxy-drawer-btn {
+    font-family: inherit;
+    min-height: 44px;
+    padding: 10px 18px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+.fluxy-drawer-btn svg { width: 18px; height: 18px; }
+.fluxy-drawer-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(11, 15, 25, 0.18); }
+.fluxy-drawer-btn:active { transform: scale(0.98); }
+.fluxy-drawer-btn--primary { background: #0B0F19; color: #FFFFFF; }
+.fluxy-drawer-btn--primary:hover { background: #1F2937; }
+.fluxy-drawer-btn--primary:disabled,
+.fluxy-drawer-btn--primary[disabled] {
+    background: #E5E7EB;
+    color: #9CA3AF;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+.fluxy-drawer-btn--secondary { background: #FFFFFF; color: #374151; border-color: #E5E7EB; }
+.fluxy-drawer-btn--secondary:hover { background: #F9FAFB; color: #0B0F19; }
+.fluxy-drawer-btn--danger { background: #DC2626; color: #FFFFFF; }
+.fluxy-drawer-btn--danger:hover { background: #B91C1C; }
+.fluxy-drawer-btn--block { width: 100%; }
+
+@media (max-width: 640px) {
+    .fluxy-drawer-header { padding: 16px 20px; }
+    .fluxy-drawer-stepper { padding: 12px 20px; }
+    .fluxy-drawer-body { padding: 20px; gap: 20px; }
+    .fluxy-drawer-footer { padding: 12px 20px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+    .fluxy-drawer-title { font-size: 18px; }
+}
+@media (max-width: 420px) {
+    .fluxy-drawer-field-grid { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .fluxy-drawer-panel { transition: none; }
 }
 
 /* ── Charts (Amplitude-style hover) ───────────────────────────────────

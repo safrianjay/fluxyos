@@ -287,19 +287,20 @@
         </div>
     </div>
 
-    <div id="scan-drawer-backdrop" class="fixed inset-0 bg-black/30 z-40 hidden"></div>
+    <div id="scan-drawer-backdrop" class="fixed inset-0 bg-black/50 z-40 hidden"></div>
     <div id="scan-drawer" class="fixed top-0 right-0 h-full w-full max-w-[480px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+        <div class="fluxy-drawer-header">
             <div>
-                <h2 id="scan-drawer-title" class="text-[14px] font-bold text-gray-900">Review Document</h2>
-                <p id="scan-drawer-subtitle" class="text-[12px] text-gray-400 mt-0.5">FluxyOS will extract the key details for review before anything is saved.</p>
+                <h2 id="scan-drawer-title" class="fluxy-drawer-title">Review Document</h2>
+                <p id="scan-drawer-subtitle" class="fluxy-drawer-desc">FluxyOS will extract the key details for review before anything is saved.</p>
             </div>
-            <button id="scan-drawer-close-btn" type="button" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0" aria-label="Close scanner">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <button id="scan-drawer-close-btn" type="button" class="fluxy-drawer-close" aria-label="Close scanner">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
-        <div id="scan-drawer-content" class="flex-1 overflow-y-auto px-6 py-5" data-step="upload"></div>
-        <div id="scan-drawer-footer" class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0"></div>
+        <div id="scan-drawer-stepper" class="hidden"></div>
+        <div id="scan-drawer-content" class="fluxy-drawer-body" data-step="upload"></div>
+        <div id="scan-drawer-footer" class="fluxy-drawer-footer"></div>
     </div>
 
     <script src="assets/js/sidebar-loader.js"></script>
