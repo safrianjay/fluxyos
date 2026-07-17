@@ -344,9 +344,9 @@
             if (!state.canInvite) return;
             closeInviteDrawer();
             const html = `
-            <div id="team-invite-modal" class="fixed inset-0 z-[100] flex justify-end overflow-hidden">
-                <div id="team-invite-overlay" class="absolute inset-0 bg-black/55 opacity-0 transition-opacity duration-300"></div>
-                <div id="team-invite-drawer" role="dialog" aria-modal="true" class="relative z-10 flex h-full w-full max-w-[440px] translate-x-full flex-col bg-white shadow-2xl transition-transform duration-300">
+            <div id="team-invite-modal" class="fluxy-drawer-root">
+                <div id="team-invite-overlay" class="fluxy-drawer-overlay opacity-0 transition-opacity duration-300"></div>
+                <div id="team-invite-drawer" role="dialog" aria-modal="true" class="fluxy-drawer-panel fluxy-drawer-panel--sm translate-x-full">
                     <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                         <div>
                             <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Team management</p>

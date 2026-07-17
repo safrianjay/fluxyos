@@ -716,6 +716,15 @@ main > header {
     overflow: hidden;
 }
 
+/* Closed state must clear the viewport completely. `translate-x-full` only
+   shifts the panel by its own width, but the floating gap (right/margin inset)
+   leaves a sliver peeking at the edge — add the gap so a closed drawer hides
+   fully instead of showing a thin card on the right. */
+.fluxy-drawer-panel.translate-x-full,
+.fluxy-drawer-floating.translate-x-full {
+    transform: translateX(calc(100% + var(--fluxy-drawer-gap))) !important;
+}
+
 @media (max-width: 1024px) {
     .fluxy-drawer-panel { max-width: min(560px, 92vw); }
 }
