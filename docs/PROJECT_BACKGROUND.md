@@ -777,7 +777,9 @@ formatted currency strings.
 |-------|------|-------|
 | `user_id` | string | Matches the Firebase Auth UID / doc id. |
 | `email`, `display_name`, `phone_number` | string \| null | Identity, refreshed by self-sync. |
-| `business_name`, `role` | string \| null | Derived from `onboarding/profile`. |
+| `business_name`, `role` | string \| null | Derived from `onboarding/profile` (`role` is the self-described onboarding title, not the workspace permission role). |
+| `organization` | string \| null | Workspace/org name the user belongs to (owner's org for members); falls back to the user's own `business_name`. Powers the console Users tab **Organization** column. |
+| `workspace_role` | string \| null | The user's **actual workspace permission role** — `owner` / `admin` / `finance` / `accountant` / `viewer` (per `perms-service.js`). Powers the **Account Type** column. Distinct from the onboarding `role` above. |
 | `account_status` | string | See §13 of the plan (`registered`…`suspended`). |
 | `kyc_status` | string | `not_started`…`rejected`. |
 | `payment_status` | string | `not_required`…`expired`. |
