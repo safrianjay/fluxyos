@@ -98,8 +98,9 @@
 
                 <!-- Accounts table -->
                 <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                    <div class="px-5 py-3 border-b border-gray-100">
+                    <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
                         <h2 class="text-[14px] font-bold text-gray-900">Accounts</h2>
+                        <button type="button" id="cash-reconcile-all-btn" class="cash-action-btn" style="display:none;">Reconcile all</button>
                     </div>
                     <div class="cash-row cash-row-head">
                         <span>Account</span>
@@ -356,6 +357,20 @@
             accountsList.querySelectorAll('[data-sync-id]').forEach(btn => {
                 btn.addEventListener('click', () => onSyncToLedger(btn.dataset.syncId, Number(btn.dataset.syncAmount)));
             });
+            // Bulk "Reconcile all" is only worth surfacing when 2+ accounts drift;
+            // a single account is handled by its own "Update to match".
+            const drifted = accounts.filter(a => a.ledger && a.ledger.sinceCount > 0 && !a.ledger.matches);
+            const reconcileAllBtn = document.getElementById('cash-reconcile-all-btn');
+            if (reconcileAllBtn) {
+                if (drifted.length >= 2) {
+                    reconcileAllBtn.style.display = '';
+                    reconcileAllBtn.innerHTML = `Reconcile all <span class="opacity-60">(${drifted.length})</span>`;
+                    reconcileAllBtn.onclick = () => onReconcileAll(drifted.map(a => ({ id: a.id, name: a.account_name, expected: a.ledger.expected })));
+                } else {
+                    reconcileAllBtn.style.display = 'none';
+                    reconcileAllBtn.onclick = null;
+                }
+            }
         }
 
         function renderHistory(accounts, snapshots) {
@@ -537,6 +552,34 @@
             } catch (error) {
                 window.showToast?.('Could not update balance. Please try again.', 'error');
             }
+        }
+
+        // Bulk reconcile: sync every drifted account to its ledger-implied balance
+        // in one confirmed action. Reuses updateBankAccountBalance per account
+        // (each writes a snapshot + audit) — still explicit and non-destructive.
+        async function onReconcileAll(items) {
+            if (!Array.isArray(items) || items.length < 1) return;
+            if (window.showConfirmDialog) {
+                const ok = await window.showConfirmDialog({
+                    title: 'Reconcile all accounts?',
+                    body: 'This updates each account with unreconciled ledger activity to its ledger-implied balance, as of today. Your ledger and transactions are not changed.',
+                    confirmLabel: 'Reconcile all',
+                    cancelLabel: 'Cancel',
+                    tone: 'default'
+                });
+                if (!ok) return;
+            }
+            let failed = 0;
+            for (const i of items) {
+                try {
+                    await ds.updateBankAccountBalance(auth.currentUser.uid, i.id, {
+                        balance: Math.max(0, Math.round(Number(i.expected) || 0)),
+                        notes: 'Synced to ledger activity'
+                    });
+                } catch (error) { failed++; }
+            }
+            window.showToast?.(failed ? 'Some balances could not be updated.' : 'Balances updated to match ledger.', failed ? 'error' : 'success');
+            await loadAll(auth.currentUser.uid);
         }
 
         async function onArchive(accountId) {
