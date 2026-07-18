@@ -110,6 +110,11 @@
                             <div>
                                 <h2 class="fluxy-table-title">Revenue records</h2>
                                 <p class="fluxy-table-subtitle" id="revenue-table-subtitle">The transactions powering this view. Click a row to open it in the Ledger.</p>
+                                <button id="revenue-filter-clear" type="button" class="hidden mt-2 items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-[11px] font-bold text-gray-600 hover:bg-gray-100 transition-colors">
+                                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-[#EA580C]"></span>
+                                    <span id="revenue-filter-clear-label">Filtered</span>
+                                    <span class="text-gray-400" aria-hidden="true">✕</span>
+                                </button>
                             </div>
                             <div class="fluxy-table-actions">
                                 <input id="revenue-search" type="search" placeholder="Search revenue…" class="px-3 py-2 border border-gray-200 rounded-lg text-[13px] w-full sm:w-56" aria-label="Search revenue records">

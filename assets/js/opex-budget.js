@@ -19,6 +19,7 @@ const state = {
     rows: [],         // spend records inside the current period
     usage: null,      // getBudgetUsage result (active budget period)
     dim: 'categories',
+    filter: null,     // active breakdown filter driving the table, or null for all
     table: null
 };
 
@@ -85,9 +86,17 @@ export function initOpexBudgetPage({ ds, user }) {
     document.querySelectorAll('[data-breakdown-dim]').forEach(btn => {
         btn.addEventListener('click', () => {
             state.dim = btn.dataset.breakdownDim;
+            state.filter = null; // a filter belongs to one dimension — reset on switch
             document.querySelectorAll('[data-breakdown-dim]').forEach(b => b.classList.toggle('is-active', b === btn));
             renderBreakdown();
+            applyTableFilter();
         });
+    });
+
+    el('opex-filter-clear')?.addEventListener('click', () => {
+        state.filter = null;
+        renderBreakdown();
+        applyTableFilter();
     });
 
     loadAndRender();
@@ -161,9 +170,9 @@ function render() {
         emptyText: 'No operating spend recorded in this period yet.'
     });
 
+    state.filter = null; // fresh data (period/reload) clears any active filter
     renderBreakdown();
-    state.table.setRows(state.rows);
-    el('opex-table-subtitle').textContent = `${state.rows.length} expense record${state.rows.length === 1 ? '' : 's'} for ${state.period.label}. Click a row to open it in the Ledger.`;
+    applyTableFilter();
 
     if (window.FluxyI18n?.getLang?.() === 'id') window.FluxyI18n.translate?.();
 }
@@ -182,34 +191,75 @@ function groupBy(rows, keyFn) {
 
 function renderBreakdown() {
     const allocations = state.usage?.allocations || [];
+    let rows, color = '#EA580C', emptyText;
     if (state.dim === 'allocations') {
-        const rows = allocations.map(a => ({
+        rows = allocations.map(a => ({
             name: a.name,
             amount: a.actual_used + a.committed_amount,
             meta: `of ${formatRp(a.allocated_amount)} · ${formatPercent(a.usage_percent)}`
         }));
-        renderBreakdownList('opex-breakdown', {
-            rows, total: rows.reduce((s, r) => s + r.amount, 0), color: '#EA580C',
-            emptyText: state.usage?.budget ? 'This budget has no allocations yet.' : 'No active budget to track against.'
-        });
+        emptyText = state.usage?.budget ? 'This budget has no allocations yet.' : 'No active budget to track against.';
     } else if (state.dim === 'over') {
-        const rows = allocations
+        rows = allocations
             .filter(a => a.usage_percent >= 100)
             .map(a => ({
                 name: a.name,
                 amount: a.actual_used + a.committed_amount,
                 meta: `${formatPercent(a.usage_percent)} of ${formatRp(a.allocated_amount)}`
             }));
-        renderBreakdownList('opex-breakdown', {
-            rows, total: rows.reduce((s, r) => s + r.amount, 0), color: '#EF4444',
-            emptyText: state.usage?.budget ? 'No categories are over budget. Nice.' : 'No active budget to track against.'
-        });
+        color = '#EF4444';
+        emptyText = state.usage?.budget ? 'No categories are over budget. Nice.' : 'No active budget to track against.';
     } else {
-        const rows = groupBy(state.rows, (r) => r.category || 'Uncategorized');
-        renderBreakdownList('opex-breakdown', {
-            rows, total: rows.reduce((s, r) => s + r.amount, 0), color: '#EA580C',
-            emptyText: 'No operating spend to break down for this period.'
-        });
+        rows = groupBy(state.rows, (r) => r.category || 'Uncategorized');
+        emptyText = 'No operating spend to break down for this period.';
+    }
+    renderBreakdownList('opex-breakdown', {
+        rows, total: rows.reduce((s, r) => s + r.amount, 0), color,
+        interactive: true,
+        selected: (state.filter && state.filter.dim === state.dim) ? state.filter.name : null,
+        onSelect: onBreakdownSelect,
+        emptyText
+    });
+}
+
+// Clicking a breakdown row toggles it as the expense-table filter.
+function onBreakdownSelect(name) {
+    const isSame = state.filter && state.filter.dim === state.dim && state.filter.name === name;
+    state.filter = isSame ? null : { dim: state.dim, name };
+    renderBreakdown();
+    applyTableFilter();
+}
+
+// Category dim filters by exact category; the allocation dims (Budget / Over
+// budget) filter to the transactions the clicked allocation covers (scope_values).
+function filterPredicate(dim, name) {
+    if (dim === 'categories') return (r) => (r.category || 'Uncategorized') === name;
+    const alloc = (state.usage?.allocations || []).find(a => a.name === name);
+    const scope = alloc ? (alloc.scope_values || []) : [];
+    return (r) => scope.includes(r.category);
+}
+
+// Point the expense table at the selected breakdown row (or all records).
+function applyTableFilter() {
+    const f = state.filter;
+    let rows = state.rows;
+    let subtitle;
+    if (f) {
+        rows = state.rows.filter(filterPredicate(f.dim, f.name));
+        subtitle = `${rows.length} expense record${rows.length === 1 ? '' : 's'} in ${f.name} for ${state.period.label}. Click a row to open it in the Ledger.`;
+    } else {
+        subtitle = `${state.rows.length} expense record${state.rows.length === 1 ? '' : 's'} for ${state.period.label}. Click a row to open it in the Ledger.`;
+    }
+    state.table.setRows(rows);
+    el('opex-table-subtitle').textContent = subtitle;
+    const chip = el('opex-filter-clear');
+    if (chip) {
+        if (f) {
+            el('opex-filter-clear-label').textContent = `Showing ${f.name}`;
+            chip.classList.remove('hidden'); chip.classList.add('inline-flex');
+        } else {
+            chip.classList.add('hidden'); chip.classList.remove('inline-flex');
+        }
     }
 }
 

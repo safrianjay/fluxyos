@@ -17,6 +17,7 @@ const state = {
     accountCount: 0,
     obligations: [],   // normalized {id, name, dueDate, amount(signed), kind, status, href}
     dim: 'payables',
+    filter: null,     // active breakdown filter driving the table, or null for all
     table: null
 };
 
@@ -68,9 +69,17 @@ export function initCashPressurePage({ ds, user }) {
     document.querySelectorAll('[data-breakdown-dim]').forEach(btn => {
         btn.addEventListener('click', () => {
             state.dim = btn.dataset.breakdownDim;
+            state.filter = null; // a filter belongs to one dimension — reset on switch
             document.querySelectorAll('[data-breakdown-dim]').forEach(b => b.classList.toggle('is-active', b === btn));
             renderBreakdown();
+            applyTableFilter();
         });
+    });
+
+    el('pressure-filter-clear')?.addEventListener('click', () => {
+        state.filter = null;
+        renderBreakdown();
+        applyTableFilter();
     });
 
     loadAndRender();
@@ -212,9 +221,9 @@ function render() {
         emptyText: 'No upcoming obligations to project in this window.'
     });
 
+    state.filter = null; // fresh data (horizon/reload) clears any active filter
     renderBreakdown();
-    state.table.setRows(items);
-    el('pressure-table-subtitle').textContent = `${items.length} obligation${items.length === 1 ? '' : 's'} due in the next ${state.horizon} days. Click a row to open the original record.`;
+    applyTableFilter();
 
     if (window.FluxyI18n?.getLang?.() === 'id') window.FluxyI18n.translate?.();
 }
@@ -235,6 +244,15 @@ function groupBy(rows, keyFn, signed) {
     return Array.from(map.values()).sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 }
 
+// Timing buckets for the "Timing" breakdown — shared with the table filter.
+function timingBucket(o) {
+    const today = startOfToday();
+    const wk = new Date(today.getTime()); wk.setDate(wk.getDate() + 7);
+    if (o.dueDate && o.dueDate < today) return 'Overdue';
+    if (!o.dueDate || o.dueDate <= wk) return 'This week';
+    return 'Later in window';
+}
+
 function renderBreakdown() {
     const items = inWindow();
     let rows, color = '#EA580C', valueFormat = formatRp;
@@ -242,14 +260,7 @@ function renderBreakdown() {
         rows = groupBy(items.filter(o => o.kind === 'receivable'), (o) => o.name, false);
         color = '#16A34A';
     } else if (state.dim === 'timing') {
-        const today = startOfToday();
-        const wk = new Date(today.getTime()); wk.setDate(wk.getDate() + 7);
-        const bucket = (o) => {
-            if (o.dueDate && o.dueDate < today) return 'Overdue';
-            if (!o.dueDate || o.dueDate <= wk) return 'This week';
-            return 'Later in window';
-        };
-        rows = groupBy(items, bucket, true);
+        rows = groupBy(items, timingBucket, true);
         valueFormat = formatSignedRp;
     } else {
         rows = groupBy(items.filter(o => o.kind === 'payable'), (o) => o.name, false);
@@ -257,8 +268,50 @@ function renderBreakdown() {
     }
     renderBreakdownList('pressure-breakdown', {
         rows, total: rows.reduce((s, r) => s + Math.abs(r.amount), 0), color, valueFormat,
+        interactive: true,
+        selected: (state.filter && state.filter.dim === state.dim) ? state.filter.name : null,
+        onSelect: onBreakdownSelect,
         emptyText: 'Nothing to break down for this window.'
     });
+}
+
+// Clicking a breakdown row toggles it as the obligations-table filter.
+function onBreakdownSelect(name) {
+    const isSame = state.filter && state.filter.dim === state.dim && state.filter.name === name;
+    state.filter = isSame ? null : { dim: state.dim, name };
+    renderBreakdown();
+    applyTableFilter();
+}
+
+function filterPredicate(dim, name) {
+    if (dim === 'receivables') return (o) => o.kind === 'receivable' && o.name === name;
+    if (dim === 'timing') return (o) => timingBucket(o) === name;
+    return (o) => o.kind === 'payable' && o.name === name;
+}
+
+// Point the obligations table at the selected breakdown row (or all obligations).
+function applyTableFilter() {
+    const f = state.filter;
+    const items = inWindow();
+    let rows = items;
+    let subtitle;
+    if (f) {
+        rows = items.filter(filterPredicate(f.dim, f.name));
+        subtitle = `${rows.length} obligation${rows.length === 1 ? '' : 's'} in ${f.name}, due in the next ${state.horizon} days. Click a row to open the original record.`;
+    } else {
+        subtitle = `${items.length} obligation${items.length === 1 ? '' : 's'} due in the next ${state.horizon} days. Click a row to open the original record.`;
+    }
+    state.table.setRows(rows);
+    el('pressure-table-subtitle').textContent = subtitle;
+    const chip = el('pressure-filter-clear');
+    if (chip) {
+        if (f) {
+            el('pressure-filter-clear-label').textContent = `Showing ${f.name}`;
+            chip.classList.remove('hidden'); chip.classList.add('inline-flex');
+        } else {
+            chip.classList.add('hidden'); chip.classList.remove('inline-flex');
+        }
+    }
 }
 
 function renderError() {

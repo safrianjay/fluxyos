@@ -18,6 +18,7 @@ const state = {
     allRevenue: [],   // every revenue-family transaction (active)
     rows: [],         // revenue records inside the current period
     dim: 'category',
+    filter: null,     // active breakdown filter driving the table, or null for all
     table: null
 };
 
@@ -88,9 +89,17 @@ export function initRevenueOverviewPage({ ds, user }) {
     document.querySelectorAll('[data-breakdown-dim]').forEach(btn => {
         btn.addEventListener('click', () => {
             state.dim = btn.dataset.breakdownDim;
+            state.filter = null; // a filter belongs to one dimension — reset on switch
             document.querySelectorAll('[data-breakdown-dim]').forEach(b => b.classList.toggle('is-active', b === btn));
             renderBreakdown();
+            applyTableFilter();
         });
+    });
+
+    el('revenue-filter-clear')?.addEventListener('click', () => {
+        state.filter = null;
+        renderBreakdown();
+        applyTableFilter();
     });
 
     loadAndRender();
@@ -157,9 +166,9 @@ function render() {
         emptyText: 'No revenue recorded in this period yet.'
     });
 
+    state.filter = null; // fresh data (period/reload) clears any active filter
     renderBreakdown();
-    state.table.setRows(state.rows);
-    el('revenue-table-subtitle').textContent = `${state.rows.length} revenue record${state.rows.length === 1 ? '' : 's'} for ${state.period.label}. Click a row to open it in the Ledger.`;
+    applyTableFilter();
 
     if (window.FluxyI18n?.getLang?.() === 'id') window.FluxyI18n.translate?.();
 }
@@ -190,16 +199,57 @@ function groupBy(rows, keyFn) {
     return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
 }
 
+// The grouping key for each breakdown dimension — shared by the breakdown list
+// and the table filter so a clicked row filters the table to exactly that group.
+function dimKeyFn(dim) {
+    if (dim === 'source') return (r) => sourceLabel(r);
+    if (dim === 'business') return (r) => r.entity_name || r.entity_id || 'Unassigned';
+    return (r) => r.category || 'Uncategorized';
+}
+
 function renderBreakdown() {
-    let rows;
-    if (state.dim === 'source') rows = groupBy(state.rows, (r) => sourceLabel(r));
-    else if (state.dim === 'business') rows = groupBy(state.rows, (r) => r.entity_name || r.entity_id || 'Unassigned');
-    else rows = groupBy(state.rows, (r) => r.category || 'Uncategorized');
+    const rows = groupBy(state.rows, dimKeyFn(state.dim));
     const total = rows.reduce((s, r) => s + r.amount, 0);
     renderBreakdownList('revenue-breakdown', {
         rows, total, color: '#16A34A',
+        interactive: true,
+        selected: (state.filter && state.filter.dim === state.dim) ? state.filter.name : null,
+        onSelect: onBreakdownSelect,
         emptyText: 'No revenue to break down for this period.'
     });
+}
+
+// Clicking a breakdown row toggles it as the records-table filter.
+function onBreakdownSelect(name) {
+    const isSame = state.filter && state.filter.dim === state.dim && state.filter.name === name;
+    state.filter = isSame ? null : { dim: state.dim, name };
+    renderBreakdown();
+    applyTableFilter();
+}
+
+// Point the records table at the selected breakdown group (or all records).
+function applyTableFilter() {
+    const f = state.filter;
+    let rows = state.rows;
+    let subtitle;
+    if (f) {
+        const keyFn = dimKeyFn(f.dim);
+        rows = state.rows.filter(r => keyFn(r) === f.name);
+        subtitle = `${rows.length} revenue record${rows.length === 1 ? '' : 's'} in ${f.name} for ${state.period.label}. Click a row to open it in the Ledger.`;
+    } else {
+        subtitle = `${state.rows.length} revenue record${state.rows.length === 1 ? '' : 's'} for ${state.period.label}. Click a row to open it in the Ledger.`;
+    }
+    state.table.setRows(rows);
+    el('revenue-table-subtitle').textContent = subtitle;
+    const chip = el('revenue-filter-clear');
+    if (chip) {
+        if (f) {
+            el('revenue-filter-clear-label').textContent = `Showing ${f.name}`;
+            chip.classList.remove('hidden'); chip.classList.add('inline-flex');
+        } else {
+            chip.classList.add('hidden'); chip.classList.remove('inline-flex');
+        }
+    }
 }
 
 function renderError() {
