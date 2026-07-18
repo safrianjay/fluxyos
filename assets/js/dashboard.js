@@ -492,6 +492,11 @@ function renderBankCashCell(bankCash, rp) {
     }
 
     toggleKpiCta('bank-cash-cta', accountsSynced === 0);
+    // Best-effort, non-blocking: only when accounts exist, check whether linked
+    // ledger activity has drifted from the reported balances and surface a
+    // "Reconcile with ledger" nudge → Settings → Cash. Never delays the paint.
+    if (accountsSynced > 0) maybeShowBankReconcileNudge();
+    else toggleBankReconcileNudge(false);
     const bankSparklineValues = balanceHistory.map(snapshot => safeNumber(snapshot.balance));
     if (bankSparklineValues.length === 1) bankSparklineValues.push(bankSparklineValues[0]);
     renderMetricSparkline(
@@ -499,6 +504,27 @@ function renderBankCashCell(bankCash, rp) {
         bankSparklineValues,
         'revenue'
     );
+}
+
+// Show a "Reconcile with ledger" nudge on the Bank Cash card when linked
+// cash-effective transactions have moved a balance since it was last reported.
+// Read-only and fire-and-forget so it never blocks the dashboard; on any
+// failure the nudge simply stays hidden.
+async function maybeShowBankReconcileNudge() {
+    try {
+        const user = auth.currentUser;
+        if (!user) return;
+        const accounts = await ds.getBankAccountsLedgerReconciliation(user.uid);
+        const drifted = (accounts || []).filter(a => a.ledger && a.ledger.sinceCount > 0 && !a.ledger.matches);
+        toggleBankReconcileNudge(drifted.length > 0);
+    } catch (_) {
+        toggleBankReconcileNudge(false);
+    }
+}
+
+function toggleBankReconcileNudge(show) {
+    const nudge = document.getElementById('bank-cash-reconcile-nudge');
+    if (nudge) nudge.hidden = !show;
 }
 
 function formatRelativeTimestamp(date) {

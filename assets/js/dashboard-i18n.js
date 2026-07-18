@@ -512,6 +512,7 @@
         "This updates each account with unreconciled ledger activity to its ledger-implied balance, as of today. Your ledger and transactions are not changed.": "Ini memperbarui setiap akun dengan aktivitas Buku Besar yang belum disamakan ke saldo yang tersirat dari Buku Besar, per hari ini. Buku Besar dan transaksi Anda tidak diubah.",
         "Balances updated to match ledger.": "Saldo diperbarui agar sesuai Buku Besar.",
         "Some balances could not be updated.": "Beberapa saldo tidak dapat diperbarui.",
+        "Reconcile with ledger": "Samakan dengan Buku Besar",
         "Budget": "Anggaran",
         "Open": "Buka",
         "Show more": "Tampilkan lebih banyak",
