@@ -18,29 +18,41 @@ import { can } from '/assets/js/perms-service.js';
 
 const API_BASE = '/api/v1/commerce';
 
+// Rounded-square brand mark: a plain storefront/bag glyph in white on the
+// platform's official brand color. NOTE: this is a hand-authored generic
+// pictogram, not each company's exact trademarked logotype — there's no
+// network/asset-fetch access in this environment to pull official brand-kit
+// SVGs, and reproducing multi-color trademarked artwork from memory risks an
+// inaccurate result. Swap in official assets here if/when available.
+function brandMark(bgColor) {
+    return `<svg viewBox="0 0 40 40" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect width="40" height="40" rx="10" fill="${bgColor}"/>
+        <path d="M13 15h14l1.4 16.5a2.5 2.5 0 0 1-2.5 2.5H14.1a2.5 2.5 0 0 1-2.5-2.5L13 15Z" fill="#fff"/>
+        <path d="M16 15v-2.5a4 4 0 0 1 8 0V15" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
+    </svg>`;
+}
+
 // Card metadata for the Phase-1 commerce platforms. `id` must equal the
-// backend registry key and the commerce_accounts.platform value.
+// backend registry key and the commerce_accounts.platform value. Colors are
+// each platform's real brand color.
 const COMMERCE_PLATFORMS = [
     {
         id: 'tiktok_shop',
         name: 'TikTok Shop',
         description: 'Sync orders, revenue, fees, and settlements from TikTok Shop.',
-        initials: 'TT',
-        logoClass: 'bg-gray-900 text-white',
+        logo: brandMark('#000000'),
     },
     {
         id: 'shopee',
         name: 'Shopee',
         description: 'Sync orders, escrow, fees, and payouts from Shopee.',
-        initials: 'SP',
-        logoClass: 'bg-orange-50 text-[#EA580C] border border-orange-100',
+        logo: brandMark('#EE4D2D'),
     },
     {
         id: 'tokopedia',
         name: 'Tokopedia',
         description: 'Sync orders, revenue, and settlements from Tokopedia.',
-        initials: 'TP',
-        logoClass: 'bg-green-50 text-green-700 border border-green-100',
+        logo: brandMark('#03AC0E'),
     },
 ];
 
@@ -176,7 +188,7 @@ export function initIntegrationPage({ ds, user }) {
         header.className = 'flex items-center justify-between gap-3';
         header.innerHTML = `
             <div class="flex items-center gap-3 min-w-0">
-                <div class="w-10 h-10 rounded-lg flex items-center justify-center text-[12px] font-bold ${platform.logoClass}">${platform.initials}</div>
+                <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">${platform.logo}</div>
                 <div class="min-w-0">
                     <h3 class="text-[14px] font-semibold text-gray-900 truncate">${platform.name}</h3>
                     ${account && account.shop_name ? `<p class="text-[12px] text-gray-400 truncate">${escapeHtml(account.shop_name)}</p>` : ''}
@@ -350,7 +362,7 @@ export function initIntegrationPage({ ds, user }) {
 
     function renderDrawer(platform, account) {
         const logo = document.getElementById('drawer-logo');
-        if (logo) { logo.className = `w-9 h-9 rounded-lg flex items-center justify-center text-[12px] font-bold flex-shrink-0 ${platform.logoClass}`; logo.textContent = platform.initials; }
+        if (logo) { logo.className = 'w-9 h-9 rounded-lg overflow-hidden flex-shrink-0'; logo.innerHTML = platform.logo; }
         const title = document.getElementById('drawer-title');
         if (title) title.textContent = platform.name;
         const subtitle = document.getElementById('drawer-subtitle');
