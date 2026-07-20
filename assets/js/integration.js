@@ -18,41 +18,36 @@ import { can } from '/assets/js/perms-service.js';
 
 const API_BASE = '/api/v1/commerce';
 
-// Rounded-square brand mark: a plain storefront/bag glyph in white on the
-// platform's official brand color. NOTE: this is a hand-authored generic
-// pictogram, not each company's exact trademarked logotype — there's no
-// network/asset-fetch access in this environment to pull official brand-kit
-// SVGs, and reproducing multi-color trademarked artwork from memory risks an
-// inaccurate result. Swap in official assets here if/when available.
-function brandMark(bgColor) {
-    return `<svg viewBox="0 0 40 40" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <rect width="40" height="40" rx="10" fill="${bgColor}"/>
-        <path d="M13 15h14l1.4 16.5a2.5 2.5 0 0 1-2.5 2.5H14.1a2.5 2.5 0 0 1-2.5-2.5L13 15Z" fill="#fff"/>
-        <path d="M16 15v-2.5a4 4 0 0 1 8 0V15" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
-    </svg>`;
+// Real brand logo tiles at assets/images/integrations/{platform-id}.png —
+// square PNGs, brand color fill, no baked-in rounding (the wrapping element
+// applies rounded-lg + overflow-hidden). `ring` gives the tile a hairline
+// border where the tile itself is white/light (Shopee's official asset is
+// designed for a white backdrop) so it doesn't disappear into the card.
+function brandLogo(platformId, { ring = false } = {}) {
+    return `<img src="/assets/images/integrations/${platformId}.png" alt=""
+        class="w-full h-full object-cover${ring ? ' ring-1 ring-inset ring-gray-200' : ''}" width="40" height="40">`;
 }
 
 // Card metadata for the Phase-1 commerce platforms. `id` must equal the
-// backend registry key and the commerce_accounts.platform value. Colors are
-// each platform's real brand color.
+// backend registry key and the commerce_accounts.platform value.
 const COMMERCE_PLATFORMS = [
     {
         id: 'tiktok_shop',
         name: 'TikTok Shop',
         description: 'Sync orders, revenue, fees, and settlements from TikTok Shop.',
-        logo: brandMark('#000000'),
+        logo: brandLogo('tiktok_shop'),
     },
     {
         id: 'shopee',
         name: 'Shopee',
         description: 'Sync orders, escrow, fees, and payouts from Shopee.',
-        logo: brandMark('#EE4D2D'),
+        logo: brandLogo('shopee', { ring: true }),
     },
     {
         id: 'tokopedia',
         name: 'Tokopedia',
         description: 'Sync orders, revenue, and settlements from Tokopedia.',
-        logo: brandMark('#03AC0E'),
+        logo: brandLogo('tokopedia'),
     },
 ];
 
