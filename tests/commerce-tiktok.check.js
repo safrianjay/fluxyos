@@ -157,5 +157,63 @@ check('settlement normalizes + maps to cash movement', () => {
     assert.strictEqual(entries[0].data.cash_direction, 'in');
 });
 
-console.log(`\n──────── ${passed} passed, ${failed} failed ────────`);
-process.exit(failed === 0 ? 0 : 1);
+async function checkAsync(label, fn) {
+    try { await fn(); passed += 1; console.log(`  PASS  ${label}`); }
+    catch (e) { failed += 1; console.error(`  FAIL  ${label} → ${e.message}`); }
+}
+
+// Stub global.fetch to return a canned TikTok API response, restoring after.
+function stubFetch(status, body) {
+    const original = global.fetch;
+    global.fetch = async () => ({ json: async () => body, status });
+    return () => { global.fetch = original; };
+}
+
+async function errorClassification() {
+    console.log('\n— error classification (scope vs dead-token) — live bug 2026-07-20 —');
+    const credentials = { accessToken: 'tok', shopId: 'shop1', platformMeta: { shop_cipher: 'cipher1' } };
+
+    await checkAsync('105005 (missing scope) classifies as forbidden, NOT auth', async () => {
+        // Observed live: TikTok returns HTTP 401 alongside code 105005 for a
+        // missing-scope endpoint — same status as a genuinely dead token.
+        // The connector must disambiguate via the JSON code, not the status.
+        const restore = stubFetch(401, { code: 105005, message: 'Access denied.' });
+        try {
+            await tiktok.fetchRefunds({ credentials, since: new Date(0), until: new Date() });
+            throw new Error('expected fetchRefunds to throw');
+        } catch (e) {
+            assert.strictEqual(e.code, 'forbidden', `expected 'forbidden', got '${e.code}'`);
+        } finally {
+            restore();
+        }
+    });
+
+    await checkAsync('a real dead-token code (105000) still classifies as auth', async () => {
+        const restore = stubFetch(401, { code: 105000, message: 'Token invalid.' });
+        try {
+            await tiktok.fetchRefunds({ credentials, since: new Date(0), until: new Date() });
+            throw new Error('expected fetchRefunds to throw');
+        } catch (e) {
+            assert.strictEqual(e.code, 'auth', `expected 'auth', got '${e.code}'`);
+        } finally {
+            restore();
+        }
+    });
+
+    await checkAsync('an unrecognized 401 with no code still falls back to auth', async () => {
+        const restore = stubFetch(401, {});
+        try {
+            await tiktok.fetchRefunds({ credentials, since: new Date(0), until: new Date() });
+            throw new Error('expected fetchRefunds to throw');
+        } catch (e) {
+            assert.strictEqual(e.code, 'auth');
+        } finally {
+            restore();
+        }
+    });
+}
+
+errorClassification().then(() => {
+    console.log(`\n──────── ${passed} passed, ${failed} failed ────────`);
+    process.exit(failed === 0 ? 0 : 1);
+});

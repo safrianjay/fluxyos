@@ -44,8 +44,17 @@ const { ENV, AUTH_TYPES } = require('../constants');
 const AUTH_HOST = process.env.TIKTOK_SHOP_AUTH_HOST || 'https://auth.tiktok-shops.com';
 const API_HOST = process.env.TIKTOK_SHOP_API_HOST || 'https://open-api.tiktokglobalshop.com';
 const PAGE_SIZE = 50;
-// Token/authorization failure codes → err.code 'auth' (account expires, no retry).
+// Token/authorization DEAD codes → err.code 'auth' (account genuinely expires,
+// stop retrying — the seller must re-consent).
 const AUTH_ERROR_CODES = new Set([105000, 105001, 105002, 105003, 106001, 36009009]);
+// MISSING-SCOPE codes → err.code 'forbidden' (the token is fine; the app just
+// wasn't granted this particular API's scope). Observed live 2026-07-20 on
+// BOTH /authorization/202309/shops and /return_refund/202309/returns/search —
+// 105005 is TikTok's generic "insufficient API scope" code, reused across
+// endpoints, and TikTok returns it with HTTP 401 (same status as a dead
+// token). It must NOT expire the account or abort orders/settlements sync —
+// only the one endpoint's data is skipped. See pipeline.js per-fetch handling.
+const SCOPE_ERROR_CODES = new Set([105005]);
 
 function appKey() { return process.env[ENV.TIKTOK_SHOP_APP_KEY]; }
 function appSecret() { return process.env[ENV.TIKTOK_SHOP_APP_SECRET]; }
@@ -63,6 +72,12 @@ function toEpochSeconds(d) {
 function authError(message) {
     const e = new Error(message);
     e.code = 'auth';
+    return e;
+}
+
+function scopeError(message) {
+    const e = new Error(message);
+    e.code = 'forbidden';
     return e;
 }
 
@@ -104,7 +119,13 @@ async function apiCall({ method, path, credentials, query = {}, body = null }) {
     const data = await res.json().catch(() => ({}));
     if (data.code !== 0) {
         const msg = `tiktok ${path} → code ${data.code}: ${data.message || res.status}`;
-        if (AUTH_ERROR_CODES.has(Number(data.code)) || res.status === 401) throw authError(msg);
+        const code = Number(data.code);
+        // Scope check FIRST: TikTok reuses HTTP 401 for missing-scope (105005)
+        // the same as a dead token, so status alone can't disambiguate — the
+        // JSON code is the source of truth. Only fall back to "401 with no
+        // recognized code" (a network/edge-level auth failure) as auth.
+        if (SCOPE_ERROR_CODES.has(code)) throw scopeError(msg);
+        if (AUTH_ERROR_CODES.has(code) || res.status === 401) throw authError(msg);
         throw new Error(msg);
     }
     return data.data || {};

@@ -295,6 +295,34 @@ async function e2e() {
         await store.updateAccount(db, WS, ACC, { auto_post: true });
     });
 
+    await checkAsync('a forbidden (missing-scope) refunds failure does NOT block orders/ledger', async () => {
+        // Regression for the live 2026-07-20 bug: a connector's optional
+        // fetch (refunds/settlements) throwing a scope-denial must degrade
+        // gracefully — orders still sync and post to the ledger, the gap is
+        // logged, and the account is NOT touched (definitely not expired).
+        const original = mock.fetchRefunds;
+        mock.fetchRefunds = async () => {
+            const e = new Error('mock scope denied');
+            e.code = 'forbidden';
+            throw e;
+        };
+        try {
+            const day5 = { since: new Date(Date.UTC(2026, 6, 5)), until: new Date(Date.UTC(2026, 6, 5, 23, 59)) };
+            const acc = await store.getAccount(db, WS, ACC);
+            const stats = await pipeline.syncWindow(db, { workspaceId: WS, account: acc, ...day5 });
+            assert.strictEqual(stats.refunds, 0, 'refunds fetch was skipped, not attempted');
+            assert.strictEqual(stats.orders, 2, 'orders still synced');
+            assert.strictEqual(stats.ledger_writes, 6, 'orders still posted to the ledger');
+            const errors = await db.collection(`workspaces/${WS}/commerce_sync_errors`)
+                .where('code', '==', 'scope_missing_refunds').get();
+            assert.ok(errors.size >= 1, 'scope gap was logged');
+            const accAfter = await store.getAccount(db, WS, ACC);
+            assert.strictEqual(accAfter.status, 'connected', 'account must NOT be expired over a scope gap');
+        } finally {
+            mock.fetchRefunds = original;
+        }
+    });
+
     await checkAsync('expiring token triggers serialized refresh + rotation', async () => {
         const ref = tokenManager.credRef(db, WS, 'mock', 'mockshop01');
         await ref.update({ access_expires_at: admin.firestore.Timestamp.fromMillis(Date.now() + 60 * 1000) });

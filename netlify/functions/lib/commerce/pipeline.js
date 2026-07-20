@@ -50,23 +50,42 @@ async function syncWindow(db, { workspaceId, account, since, until, jobId = null
     const stats = { orders: 0, refunds: 0, settlements: 0, ledger_writes: 0, rejects: 0 };
     const accountId = account.id;
 
-    // ---- orders (source of truth for the order-level money math)
+    // ---- orders (source of truth for the order-level money math; REQUIRED —
+    // a failure here (including a missing scope) aborts the job, since there
+    // is nothing to sync without it).
     const rawOrders = await fetchAll(connector, 'order', { credentials, since, until });
     const orders = normalizeBatch(connector, 'order', rawOrders, { accountId });
     await recordRejects(db, workspaceId, accountId, jobId, orders.rejects, stats);
     stats.orders = await store.upsertCommerceDocs(db, workspaceId, 'commerce_orders', orders.valid, store.idForOrder);
 
-    // ---- refunds
-    const rawRefunds = await fetchAll(connector, 'refund', { credentials, since, until });
-    const refunds = normalizeBatch(connector, 'refund', rawRefunds, { accountId });
-    await recordRejects(db, workspaceId, accountId, jobId, refunds.rejects, stats);
-    stats.refunds = await store.upsertCommerceDocs(db, workspaceId, 'commerce_refunds', refunds.valid, store.idForRefund);
+    // ---- refunds & settlements (OPTIONAL — independent of the order-level
+    // revenue math). A `forbidden` error (app not granted this endpoint's
+    // scope, e.g. TikTok's Return & Refund API) must never abort the whole
+    // sync or expire the account: it's degraded to "this data type is
+    // unavailable," logged, and the run continues so orders still post to
+    // the ledger. Any OTHER error (auth, network, unknown) still aborts —
+    // only a confirmed scope gap gets this soft-fail treatment.
+    let refunds = { valid: [], rejects: [] };
+    try {
+        const rawRefunds = await fetchAll(connector, 'refund', { credentials, since, until });
+        refunds = normalizeBatch(connector, 'refund', rawRefunds, { accountId });
+        await recordRejects(db, workspaceId, accountId, jobId, refunds.rejects, stats);
+        stats.refunds = await store.upsertCommerceDocs(db, workspaceId, 'commerce_refunds', refunds.valid, store.idForRefund);
+    } catch (e) {
+        if (e.code !== 'forbidden') throw e;
+        await store.writeSyncError(db, workspaceId, { accountId, jobId, code: 'scope_missing_refunds', message: e.message });
+    }
 
-    // ---- settlements
-    const rawSettlements = await fetchAll(connector, 'settlement', { credentials, since, until });
-    const settlements = normalizeBatch(connector, 'settlement', rawSettlements, { accountId });
-    await recordRejects(db, workspaceId, accountId, jobId, settlements.rejects, stats);
-    stats.settlements = await store.upsertCommerceDocs(db, workspaceId, 'commerce_settlements', settlements.valid, store.idForSettlement);
+    let settlements = { valid: [], rejects: [] };
+    try {
+        const rawSettlements = await fetchAll(connector, 'settlement', { credentials, since, until });
+        settlements = normalizeBatch(connector, 'settlement', rawSettlements, { accountId });
+        await recordRejects(db, workspaceId, accountId, jobId, settlements.rejects, stats);
+        stats.settlements = await store.upsertCommerceDocs(db, workspaceId, 'commerce_settlements', settlements.valid, store.idForSettlement);
+    } catch (e) {
+        if (e.code !== 'forbidden') throw e;
+        await store.writeSyncError(db, workspaceId, { accountId, jobId, code: 'scope_missing_settlements', message: e.message });
+    }
 
     // ---- universal commerce transactions (derived from orders)
     const commerceTxs = orders.valid
