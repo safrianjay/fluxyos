@@ -472,12 +472,22 @@ export function initIntegrationPage({ ds, user }) {
         if (params.get('connected')) {
             window.showToast(t('Connection successful. Initial sync is running.'), 'success');
         } else if (params.get('error')) {
-            window.showToast(t('Connection failed. Try again.'), 'error');
+            // `detail` is a short diagnostic from the connector (e.g. TikTok's
+            // "missing access scope" text) so a failure is actionable without
+            // a production log pull. It rides an unauthenticated redirect URL,
+            // so it's attacker-forgeable — escape before any innerHTML use
+            // (showToast renders via innerHTML). Full text goes to console
+            // for engineers; the toast keeps a short escaped excerpt.
+            const detail = params.get('detail');
+            if (detail) console.warn('[integration] connect failed:', detail);
+            const suffix = detail ? ` (${escapeHtml(detail.slice(0, 80))})` : '';
+            window.showToast(t('Connection failed. Try again.') + suffix, 'error');
         } else {
             return;
         }
         params.delete('connected');
         params.delete('error');
+        params.delete('detail');
         const qs = params.toString();
         window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''));
     }

@@ -190,7 +190,10 @@ async function handleCallback(db, platform, query) {
         return integrationRedirect({ connected: platform });
     } catch (e) {
         console.error('[commerce] callback failed', platform, e.message);
-        return integrationRedirect({ error: 'exchange_failed' });
+        // Surface a short diagnostic in the redirect so the UI toast is
+        // actionable without needing a production log pull for every failure
+        // (e.g. TikTok's "missing access scope" 105005 class of errors).
+        return integrationRedirect({ error: 'exchange_failed', detail: String(e.message).slice(0, 150) });
     }
 }
 
