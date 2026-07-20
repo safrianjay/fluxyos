@@ -143,8 +143,52 @@ async function writeSyncError(db, workspaceId, { accountId, jobId, code, message
         account_id: accountId || null,
         job_id: jobId || null,
         code: String(code || 'error').slice(0, 80),
+        severity: 'error',
         message: String(message || '').slice(0, 500),
         created_at: FV().serverTimestamp(),
+    });
+}
+
+// A missing OPTIONAL scope is a persistent configuration state, not a
+// transient failure: it recurs on every sync until the seller enables that
+// scope in the marketplace's partner console. Appending a new error doc each
+// cycle would write ~288/day per account and bury genuine errors, so this
+// uses a deterministic id — one row per (account, kind) that refreshes its
+// last_seen_at — and mirrors the state onto the account as `degraded_scopes`
+// so the UI can render an actionable notice instead of a wall of red.
+async function recordScopeGap(db, workspaceId, { accountId, jobId, kind, message }) {
+    const ref = db.doc(`${wsPath(workspaceId, 'commerce_sync_errors')}/scope_${accountId}_${kind}`);
+    const payload = {
+        account_id: accountId,
+        job_id: jobId || null,
+        code: `scope_missing_${kind}`,
+        severity: 'degraded',
+        kind,
+        message: String(message || '').slice(0, 500),
+        last_seen_at: FV().serverTimestamp(),
+    };
+    try {
+        // create() keeps the ORIGINAL created_at across refreshes, so the
+        // drawer can show how long the gap has existed.
+        await ref.create({ ...payload, created_at: FV().serverTimestamp() });
+    } catch (e) {
+        if (e.code !== 6 /* ALREADY_EXISTS */) throw e;
+        await ref.update(payload);
+    }
+    await updateAccount(db, workspaceId, accountId, {
+        degraded_scopes: admin.firestore.FieldValue.arrayUnion(kind),
+    });
+}
+
+// Self-heal: the seller enabled the scope and the fetch now works, so drop
+// the notice. Callers only invoke this when the account actually lists the
+// kind as degraded, so the happy path costs zero extra writes.
+async function clearScopeGap(db, workspaceId, accountId, kind) {
+    await db.doc(`${wsPath(workspaceId, 'commerce_sync_errors')}/scope_${accountId}_${kind}`)
+        .delete()
+        .catch(() => {});
+    await updateAccount(db, workspaceId, accountId, {
+        degraded_scopes: admin.firestore.FieldValue.arrayRemove(kind),
     });
 }
 
@@ -203,6 +247,8 @@ module.exports = {
     writeLedgerEntries,
     markCommerceTxLedger,
     writeSyncError,
+    recordScopeGap,
+    clearScopeGap,
     logWebhook,
     writeAudit,
 };

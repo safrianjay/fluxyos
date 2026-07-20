@@ -314,13 +314,52 @@ async function e2e() {
             assert.strictEqual(stats.orders, 2, 'orders still synced');
             assert.strictEqual(stats.ledger_writes, 6, 'orders still posted to the ledger');
             const errors = await db.collection(`workspaces/${WS}/commerce_sync_errors`)
-                .where('code', '==', 'scope_missing_refunds').get();
+                .where('code', '==', 'scope_missing_refund').get();
             assert.ok(errors.size >= 1, 'scope gap was logged');
             const accAfter = await store.getAccount(db, WS, ACC);
             assert.strictEqual(accAfter.status, 'connected', 'account must NOT be expired over a scope gap');
         } finally {
             mock.fetchRefunds = original;
         }
+    });
+
+    await checkAsync('a repeated scope gap stays ONE self-healing row (no error spam)', async () => {
+        // The gap recurs every sync until the seller enables the scope. It
+        // must not append a doc per cycle (~288/day at */5), and it must
+        // disappear on its own once the scope starts working.
+        const original = mock.fetchRefunds;
+        mock.fetchRefunds = async () => {
+            const e = new Error('mock scope denied');
+            e.code = 'forbidden';
+            throw e;
+        };
+        const errorsCol = db.collection(`workspaces/${WS}/commerce_sync_errors`);
+        try {
+            const day6 = { since: new Date(Date.UTC(2026, 6, 6)), until: new Date(Date.UTC(2026, 6, 6, 23, 59)) };
+            for (let i = 0; i < 3; i += 1) {
+                const acc = await store.getAccount(db, WS, ACC);
+                await pipeline.syncWindow(db, { workspaceId: WS, account: acc, ...day6 });
+            }
+            const gaps = await errorsCol.where('code', '==', 'scope_missing_refund').get();
+            assert.strictEqual(gaps.size, 1, 'three syncs must collapse into one gap row');
+            const gap = gaps.docs[0];
+            assert.strictEqual(gap.get('severity'), 'degraded');
+            assert.ok(gap.get('last_seen_at'), 'refreshes last_seen_at');
+            assert.ok(gap.get('created_at'), 'preserves original created_at');
+            const acc = await store.getAccount(db, WS, ACC);
+            assert.deepStrictEqual(acc.degraded_scopes, ['refund'], 'account mirrors the degraded kind');
+        } finally {
+            mock.fetchRefunds = original;
+        }
+
+        // Scope enabled → next sync clears the notice automatically.
+        const day7 = { since: new Date(Date.UTC(2026, 6, 7)), until: new Date(Date.UTC(2026, 6, 7, 23, 59)) };
+        const accBefore = await store.getAccount(db, WS, ACC);
+        await pipeline.syncWindow(db, { workspaceId: WS, account: accBefore, ...day7 });
+        const after = await errorsCol.where('code', '==', 'scope_missing_refund').get();
+        assert.strictEqual(after.size, 0, 'gap row is removed once the scope works');
+        const accAfter = await store.getAccount(db, WS, ACC);
+        assert.deepStrictEqual(accAfter.degraded_scopes || [], [], 'account no longer degraded');
     });
 
     await checkAsync('expiring token triggers serialized refresh + rotation', async () => {

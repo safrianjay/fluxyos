@@ -61,31 +61,33 @@ async function syncWindow(db, { workspaceId, account, since, until, jobId = null
     // ---- refunds & settlements (OPTIONAL — independent of the order-level
     // revenue math). A `forbidden` error (app not granted this endpoint's
     // scope, e.g. TikTok's Return & Refund API) must never abort the whole
-    // sync or expire the account: it's degraded to "this data type is
-    // unavailable," logged, and the run continues so orders still post to
-    // the ledger. Any OTHER error (auth, network, unknown) still aborts —
-    // only a confirmed scope gap gets this soft-fail treatment.
-    let refunds = { valid: [], rejects: [] };
-    try {
-        const rawRefunds = await fetchAll(connector, 'refund', { credentials, since, until });
-        refunds = normalizeBatch(connector, 'refund', rawRefunds, { accountId });
-        await recordRejects(db, workspaceId, accountId, jobId, refunds.rejects, stats);
-        stats.refunds = await store.upsertCommerceDocs(db, workspaceId, 'commerce_refunds', refunds.valid, store.idForRefund);
-    } catch (e) {
-        if (e.code !== 'forbidden') throw e;
-        await store.writeSyncError(db, workspaceId, { accountId, jobId, code: 'scope_missing_refunds', message: e.message });
-    }
+    // sync or expire the account: the data type is recorded as degraded and
+    // the run continues so orders still post to the ledger. Any OTHER error
+    // (auth, network, unknown) still aborts — only a confirmed scope gap
+    // gets this soft-fail treatment.
+    const degraded = Array.isArray(account.degraded_scopes) ? account.degraded_scopes : [];
+    const syncOptional = async (kind, collectionName, idFor) => {
+        try {
+            const raw = await fetchAll(connector, kind, { credentials, since, until });
+            const batch = normalizeBatch(connector, kind, raw, { accountId });
+            await recordRejects(db, workspaceId, accountId, jobId, batch.rejects, stats);
+            const written = await store.upsertCommerceDocs(db, workspaceId, collectionName, batch.valid, idFor);
+            // Self-heal: the scope was enabled since the last run.
+            if (degraded.includes(kind)) await store.clearScopeGap(db, workspaceId, accountId, kind);
+            return { batch, written };
+        } catch (e) {
+            if (e.code !== 'forbidden') throw e;
+            await store.recordScopeGap(db, workspaceId, { accountId, jobId, kind, message: e.message });
+            return { batch: { valid: [], rejects: [] }, written: 0 };
+        }
+    };
 
-    let settlements = { valid: [], rejects: [] };
-    try {
-        const rawSettlements = await fetchAll(connector, 'settlement', { credentials, since, until });
-        settlements = normalizeBatch(connector, 'settlement', rawSettlements, { accountId });
-        await recordRejects(db, workspaceId, accountId, jobId, settlements.rejects, stats);
-        stats.settlements = await store.upsertCommerceDocs(db, workspaceId, 'commerce_settlements', settlements.valid, store.idForSettlement);
-    } catch (e) {
-        if (e.code !== 'forbidden') throw e;
-        await store.writeSyncError(db, workspaceId, { accountId, jobId, code: 'scope_missing_settlements', message: e.message });
-    }
+    const refundResult = await syncOptional('refund', 'commerce_refunds', store.idForRefund);
+    stats.refunds = refundResult.written;
+
+    const settlementResult = await syncOptional('settlement', 'commerce_settlements', store.idForSettlement);
+    stats.settlements = settlementResult.written;
+    const settlements = settlementResult.batch;
 
     // ---- universal commerce transactions (derived from orders)
     const commerceTxs = orders.valid

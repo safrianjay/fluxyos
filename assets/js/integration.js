@@ -72,6 +72,13 @@ const JOB_TYPE_LABELS = {
     webhook: 'Webhook',
     reconcile: 'Reconciliation',
 };
+// Human-facing labels for a degraded (missing-scope) data type. Keyed by the
+// pipeline's `kind`, so a new optional data type only needs a label here.
+const SCOPE_GAP_LABELS = {
+    refund: 'Refund sync unavailable — permission not granted',
+    settlement: 'Settlement sync unavailable — permission not granted',
+};
+
 const JOB_STATUS_LABELS = {
     pending: 'Pending',
     processing: 'Processing',
@@ -458,19 +465,48 @@ export function initIntegrationPage({ ds, user }) {
                     </div>`).join('')
                     : `<p class="text-[12px] text-gray-400">${t('No sync activity yet.')}</p>`;
             }
-            if (errorsEl) {
-                errorsEl.innerHTML = errors.length ? errors.map((err) => `
-                    <div class="bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                        <p class="text-[12px] font-medium text-red-600">${escapeHtml(err.code || 'error')}</p>
-                        <p class="text-[12px] text-red-500/80 break-words">${escapeHtml(err.message || '')}</p>
-                    </div>`).join('')
-                    : `<p class="text-[12px] text-gray-400">${t('No errors.')}</p>`;
-            }
+            if (errorsEl) errorsEl.innerHTML = renderIssues(errors, account);
         } catch (e) {
             console.warn('[integration] drawer activity', e);
             if (jobsEl) jobsEl.innerHTML = `<p class="text-[12px] text-gray-400">${t('No sync activity yet.')}</p>`;
             if (errorsEl) errorsEl.innerHTML = `<p class="text-[12px] text-gray-400">${t('No errors.')}</p>`;
         }
+    }
+
+    // Two very different things share commerce_sync_errors, and conflating
+    // them is what made the drawer a wall of red:
+    //   • severity 'degraded' — a marketplace scope the app was never granted.
+    //     A standing configuration state the OWNER must fix in the partner
+    //     console; it recurs every sync until they do. Shown as an amber
+    //     notice with the fix, never as a failure.
+    //   • severity 'error' — an actual failed run. Once a LATER sync has
+    //     succeeded, it's history: the drawer hides errors older than the
+    //     last successful sync so only live problems are shown.
+    function renderIssues(issues, account) {
+        const degraded = issues.filter((i) => i.severity === 'degraded');
+        const lastOkAt = account.last_sync_status === 'ok' ? toDate(account.last_sync_at) : null;
+        const live = issues.filter((i) => {
+            if (i.severity === 'degraded') return false;
+            if (!lastOkAt) return true;
+            const at = toDate(i.created_at);
+            return !at || at > lastOkAt; // superseded by a later success → hide
+        });
+
+        const parts = degraded.map((i) => {
+            const label = SCOPE_GAP_LABELS[i.kind] || i.kind || '';
+            return `
+            <div class="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                <p class="text-[12px] font-medium text-amber-800">${escapeHtml(t(label))}</p>
+                <p class="mt-0.5 text-[12px] text-amber-700/90">${escapeHtml(t('Everything else keeps syncing. Enable this permission for the app in the marketplace partner console, then reconnect.'))}</p>
+            </div>`;
+        }).concat(live.map((i) => `
+            <div class="bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                <p class="text-[12px] font-medium text-red-600">${escapeHtml(i.code || 'error')}</p>
+                <p class="text-[12px] text-red-500/80 break-words">${escapeHtml(i.message || '')}</p>
+                <p class="mt-0.5 text-[12px] text-red-500/60 tabular-nums">${escapeHtml(formatDateTime(i.created_at) || '')}</p>
+            </div>`));
+
+        return parts.length ? parts.join('') : `<p class="text-[12px] text-gray-400">${t('No errors.')}</p>`;
     }
 
     // ------------------------------------------------- OAuth callback params
