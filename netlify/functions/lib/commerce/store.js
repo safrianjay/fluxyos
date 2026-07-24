@@ -192,6 +192,22 @@ async function clearScopeGap(db, workspaceId, accountId, kind) {
     });
 }
 
+// Wipe ALL standing scope-gap notices for an account (any kind) — used on a
+// fresh re-consent so the reconnect starts visually clean; genuine gaps
+// re-appear on the first sync if the scope is still missing. Two equality
+// filters need no composite index. The caller resets degraded_scopes on the
+// account doc itself.
+async function resetScopeGaps(db, workspaceId, accountId) {
+    const snap = await db.collection(wsPath(workspaceId, 'commerce_sync_errors'))
+        .where('account_id', '==', accountId)
+        .where('severity', '==', 'degraded')
+        .get();
+    if (snap.empty) return;
+    const batch = db.batch();
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+}
+
 // Webhook delivery log with a deterministic id (platform event id when the
 // connector surfaces one, else a body hash) — redeliveries dedupe via create().
 async function logWebhook(db, workspaceId, { platform, shopId, eventType, eventId, rawBody, signatureValid, jobId }) {
@@ -249,6 +265,7 @@ module.exports = {
     writeSyncError,
     recordScopeGap,
     clearScopeGap,
+    resetScopeGaps,
     logWebhook,
     writeAudit,
 };

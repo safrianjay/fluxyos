@@ -25,7 +25,7 @@ const registry = require('./lib/commerce/registry');
 const { signState, verifyState } = require('./lib/commerce/crypto');
 const tokenManager = require('./lib/commerce/token-manager');
 const store = require('./lib/commerce/store');
-const { enqueueJob, hasActiveJob } = require('./lib/commerce/jobs');
+const { enqueueJob, hasActiveJob, jobsCol } = require('./lib/commerce/jobs');
 const { ENV, flagEnabled, accountId: makeAccountId, AUDIT_ACTIONS, AUTH_TYPES } = require('./lib/commerce/constants');
 
 const ALLOWED_ORIGINS = [
@@ -211,6 +211,11 @@ async function finishConnect(db, { workspaceId, platform, uid, result }) {
         tokens,
         platformMeta,
     });
+    // Reconnect is a deliberate "start fresh": clear the standing scope-gap
+    // notices (real gaps re-appear on the first sync if the scope is still
+    // missing) and reset the connection/import state on the (possibly
+    // pre-existing, merge:true) account doc.
+    await store.resetScopeGaps(db, workspaceId, accId);
     await store.upsertAccount(db, workspaceId, {
         platform,
         shop_id: shop.shopId,
@@ -221,6 +226,7 @@ async function finishConnect(db, { workspaceId, platform, uid, result }) {
         last_sync_at: null,
         last_sync_status: null,
         sync_health: null,
+        degraded_scopes: [],
         initial_sync: { status: 'pending', progress_pct: 0 },
         token_expires_at: tokens.accessExpiresAt ? admin.firestore.Timestamp.fromMillis(Number(new Date(tokens.accessExpiresAt))) : null,
         auto_post: true,
@@ -228,6 +234,13 @@ async function finishConnect(db, { workspaceId, platform, uid, result }) {
         connected_at: admin.firestore.FieldValue.serverTimestamp(),
     });
     await store.setShopDirectory(db, { platform, shopId: shop.shopId, workspaceId, accountId: accId });
+    // The initial job id is deterministic so a same-consent double callback is
+    // idempotent — but a FRESH re-consent must actually re-run the import, and
+    // the prior init_ doc may be sitting in a terminal (done/dead) state that
+    // enqueueJob's create() would silently no-op on. Delete it first so the
+    // enqueue always yields a runnable pending job. (Safe: the callback nonce
+    // is single-use, so finishConnect runs exactly once per consent.)
+    await jobsCol(db, workspaceId).doc(`init_${accId}`).delete().catch(() => {});
     await enqueueJob(db, workspaceId, {
         accountId: accId,
         platform,

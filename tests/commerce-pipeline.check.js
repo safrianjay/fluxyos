@@ -418,6 +418,41 @@ async function e2e() {
         await store.setShopDirectory(db, { platform: 'mock', shopId: 'mockshop01', workspaceId: WS, accountId: ACC, status: 'disconnected' });
         assert.strictEqual(await store.lookupShopDirectory(db, 'mock', 'mockshop01'), null);
     });
+
+    await checkAsync('reconnect re-runs the initial import even when a terminal init job exists', async () => {
+        // Reproduces the live bug: a deterministic-id init job left in a
+        // terminal state makes enqueueJob's create() a silent no-op, so a
+        // reconnect would never re-run the import. finishConnect deletes it
+        // first — modeled here with delete-then-enqueue.
+        const RWS = 'ws_reconnect_test';
+        const RACC = 'mock_reshop';
+        const jobId = `init_${RACC}`;
+        // First connect's init job, later ends up 'dead'.
+        await jobs.enqueueJob(db, RWS, { accountId: RACC, platform: 'mock', type: 'initial' }, { jobId });
+        await jobs.jobsCol(db, RWS).doc(jobId).update({ status: 'dead' });
+        // Naive re-enqueue (old behavior) no-ops on the existing id.
+        const naive = await jobs.enqueueJob(db, RWS, { accountId: RACC, platform: 'mock', type: 'initial' }, { jobId });
+        assert.strictEqual(naive.created, false, 'create() silently no-ops on the terminal job — the bug');
+        assert.strictEqual((await jobs.jobsCol(db, RWS).doc(jobId).get()).get('status'), 'dead', 'still dead → never runs');
+        // The fix: delete first, then enqueue → a fresh runnable pending job.
+        await jobs.jobsCol(db, RWS).doc(jobId).delete();
+        const fixed = await jobs.enqueueJob(db, RWS, { accountId: RACC, platform: 'mock', type: 'initial' }, { jobId });
+        assert.strictEqual(fixed.created, true);
+        assert.strictEqual((await jobs.jobsCol(db, RWS).doc(jobId).get()).get('status'), 'pending', 'now runnable');
+    });
+
+    await checkAsync('resetScopeGaps clears degraded notices but leaves real errors', async () => {
+        const GWS = 'ws_reset_test';
+        const GACC = 'mock_gshop';
+        await store.recordScopeGap(db, GWS, { accountId: GACC, kind: 'refund', message: 'x' });
+        await store.recordScopeGap(db, GWS, { accountId: GACC, kind: 'settlement', message: 'y' });
+        await store.writeSyncError(db, GWS, { accountId: GACC, code: 'sync_failed', message: 'real error' });
+        await store.resetScopeGaps(db, GWS, GACC);
+        const remaining = await db.collection(`workspaces/${GWS}/commerce_sync_errors`)
+            .where('account_id', '==', GACC).get();
+        assert.strictEqual(remaining.size, 1, 'only the genuine error survives');
+        assert.strictEqual(remaining.docs[0].get('severity'), 'error');
+    });
 }
 
 e2e().then(() => {
