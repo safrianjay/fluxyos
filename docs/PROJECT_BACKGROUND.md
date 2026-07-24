@@ -799,7 +799,25 @@ formatted currency strings.
 `onSubmit`. Self-sync always refreshes identity/profile fields but **only seeds
 status fields on first create** (or advances `not_started`/`in_progress` →
 `submitted` on onboarding completion), so a reviewer's decision is never clobbered.
-Covers only users who sign in after release; a backfill needs the Admin SDK.
+Self-sync only covers a user who signs in and whose own client can write.
+
+**Roster mirror (invited members):** because self-sync is per-user, an invited
+teammate who never personally opened a dashboard — or whose own client is blocked
+from Firestore (shields/extensions) — would never get a row and would be invisible
+in the console (or appear with a blank **Account Type** because `workspace_role`
+was never stamped). To close that gap, the **workspace owner's** session mirrors
+the whole roster: after the owner's self-sync, `sidebar-loader.js` calls
+`DataService.mirrorWorkspaceMembersToInternalIndex(workspaceId, orgName, { skipUid })`,
+which reads `workspaces/{wsId}/members` (owners can) and upserts each member's
+`internal_users/{memberUid}` via `mirrorMemberInternalRow`. The mirror only knows
+roster facts (uid, email, display_name, `workspace_role`, shared `organization`):
+it **creates** a minimal row with safe default statuses, or on an existing row
+**patches only** `workspace_role`/`organization` (+ email/display_name when
+missing) and only when they changed — it never reads the member's user-scoped
+onboarding and never touches their KYC/payment/account status. Throttled to
+**≤1 sweep / 5 min per workspace** (sessionStorage) so repeated owner page loads
+don't re-read the roster. Pending invites (no Auth uid yet) still can't appear —
+`internal_users` is uid-keyed. A full historical backfill still needs the Admin SDK.
 
 **Presence heartbeat:** `DataService.touchActivity(uid)` stamps `last_active_at`
 = `serverTimestamp()` on the user's own `internal_users` row. Wired from

@@ -594,6 +594,26 @@
                                 window.addEventListener('keydown', beat, opts);
                                 window.addEventListener('scroll', beat, opts);
                             }
+
+                            // Roster mirror: the owner's session mirrors EVERY member
+                            // of the workspace into internal_users, so invited members
+                            // who haven't personally synced (never opened a dashboard,
+                            // or their own client is blocked from Firestore) still show
+                            // in the ops console with the right Account Type. Owners
+                            // only — members can't read the full members collection.
+                            // Throttled to ≤1 sweep / 5 min per workspace so repeated
+                            // page loads don't re-read the roster each time.
+                            try {
+                                if (ws && ws.role === 'owner' && ws.id) {
+                                    const throttleKey = 'fluxy_roster_mirror_' + ws.id;
+                                    const last = Number(sessionStorage.getItem(throttleKey) || 0);
+                                    if (Date.now() - last > 5 * 60 * 1000) {
+                                        sessionStorage.setItem(throttleKey, String(Date.now()));
+                                        ds.mirrorWorkspaceMembersToInternalIndex(ws.id, ws.name || undefined, { skipUid: user.uid })
+                                            .catch(() => { try { sessionStorage.removeItem(throttleKey); } catch (_) {} });
+                                    }
+                                }
+                            } catch (_) { /* non-fatal */ }
                         });
                     }).catch((e) => console.warn('[sidebar] internal index sync skipped', e));
 

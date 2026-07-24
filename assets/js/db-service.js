@@ -5238,6 +5238,102 @@ class DataService {
         return 'updated';
     }
 
+    // Mirror ONE workspace member into the open internal_users index from an
+    // AUTHORITATIVE caller (the workspace owner's session, or an invite-accept
+    // flow) — not the member's own self-sync. This is how invited teammates who
+    // haven't personally loaded a dashboard (or whose own client can't write to
+    // Firestore, e.g. shields/extensions blocking it) still surface in the ops
+    // console with the right Account Type.
+    //
+    // The owner only knows roster-level facts: the member's uid, email,
+    // display name, their workspace permission role, and the shared org name.
+    // It NEVER reads the member's user-scoped onboarding (no access) and NEVER
+    // touches the member's KYC/payment/account status — those stay owned by the
+    // member's own syncSelfToInternalIndex and by reviewer decisions.
+    // - Create: seed a minimal row (identity + workspace_role + organization +
+    //   safe default statuses) so the member appears immediately.
+    // - Update: patch ONLY the roster-owned fields (workspace_role, organization,
+    //   and email/display_name when the row is still missing them), and only when
+    //   something actually changed, so steady-state owner logins write nothing.
+    async mirrorMemberInternalRow(memberUid, opts = {}) {
+        if (!memberUid) return null;
+        const ref = this._internalUserDoc(memberUid);
+        let snap;
+        try { snap = await getDoc(ref); } catch (_) { return null; }
+
+        const org = opts.organization != null ? this._nullableString(opts.organization, 160) : undefined;
+        const role = opts.workspace_role != null ? this._nullableString(opts.workspace_role, 40) : undefined;
+        const email = opts.email != null ? this._nullableString(opts.email, 160) : undefined;
+        const displayName = opts.display_name != null ? this._nullableString(opts.display_name, 160) : undefined;
+
+        if (!snap.exists()) {
+            await setDoc(ref, {
+                user_id: memberUid,
+                email: email || null,
+                display_name: displayName || null,
+                business_name: null,
+                role: null,
+                phone_number: null,
+                organization: org || null,
+                workspace_role: role || null,
+                account_status: 'registered',
+                kyc_status: 'not_started',
+                payment_status: 'pending',
+                onboarding_completed: false,
+                kyc_submitted_at: null,
+                kyc_reviewed_at: null,
+                payment_submitted_at: null,
+                payment_verified_at: null,
+                plan_id: null,
+                payment_amount: null,
+                payment_method: null,
+                assigned_reviewer_id: null,
+                last_internal_note: null,
+                risk_level: null,
+                created_at: serverTimestamp(),
+                updated_at: serverTimestamp()
+            });
+            return 'created';
+        }
+
+        const existing = snap.data() || {};
+        const patch = {};
+        if (role !== undefined && (existing.workspace_role || null) !== role) patch.workspace_role = role;
+        if (org !== undefined && (existing.organization || null) !== org) patch.organization = org;
+        if (email !== undefined && !existing.email && email) patch.email = email;
+        if (displayName !== undefined && !existing.display_name && displayName) patch.display_name = displayName;
+        if (Object.keys(patch).length === 0) return 'unchanged';
+        patch.updated_at = serverTimestamp();
+        await setDoc(ref, patch, { merge: true });
+        return 'updated';
+    }
+
+    // Enumerate a workspace's members and mirror each into internal_users. Run
+    // from the OWNER's authenticated session (owners can read their own members
+    // collection and the open internal_users index). `skipUid` skips the owner
+    // themselves, who already runs the richer syncSelfToInternalIndex. Best-effort
+    // and cheap: reads one members collection, then writes only rows that changed.
+    async mirrorWorkspaceMembersToInternalIndex(workspaceId, orgName, { skipUid = null } = {}) {
+        const result = { created: 0, updated: 0, unchanged: 0 };
+        if (!workspaceId) return result;
+        let members = [];
+        try { members = await this.getMembers(workspaceId); } catch (_) { return result; }
+        for (const m of members) {
+            const uid = m.uid || m.id;
+            if (!uid || uid === skipUid) continue;
+            const res = await this.mirrorMemberInternalRow(uid, {
+                email: m.email || null,
+                display_name: m.display_name || null,
+                organization: orgName != null ? orgName : undefined,
+                workspace_role: m.role || 'viewer'
+            }).catch(() => null);
+            if (res === 'created') result.created++;
+            else if (res === 'updated') result.updated++;
+            else if (res === 'unchanged') result.unchanged++;
+        }
+        return result;
+    }
+
     // Lightweight presence heartbeat: stamps internal_users/{uid}.last_active_at
     // so the ops console can show Online / last-seen. Throttled in-process to at
     // most one write per ACTIVITY_MIN_INTERVAL_MS to keep Firestore writes
