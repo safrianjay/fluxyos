@@ -817,7 +817,12 @@ missing) and only when they changed — it never reads the member's user-scoped
 onboarding and never touches their KYC/payment/account status. Throttled to
 **≤1 sweep / 5 min per workspace** (sessionStorage) so repeated owner page loads
 don't re-read the roster. Pending invites (no Auth uid yet) still can't appear —
-`internal_users` is uid-keyed. A full historical backfill still needs the Admin SDK.
+`internal_users` is uid-keyed. For an immediate whole-fleet backfill (rather than
+waiting for each owner to next log in), run the hand-run Admin SDK script
+`scripts/backfill-internal-roster.js` (`--dry-run` supported), which walks every
+workspace's `members` subcollection and applies the exact same create/patch
+semantics. It only reflects **members that have a member doc** — a still-pending
+invite has no uid to key on.
 
 **Presence heartbeat:** `DataService.touchActivity(uid)` stamps `last_active_at`
 = `serverTimestamp()` on the user's own `internal_users` row. Wired from
