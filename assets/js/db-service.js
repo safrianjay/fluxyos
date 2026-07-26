@@ -3,6 +3,7 @@ import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
 import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, CHART_OF_ACCOUNTS_SEED, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, periodKey as acctPeriodKey } from "./accounting-engine.js";
 import { buildTaxAppendix, TAX_RATES } from "./tax-engine.js";
+import { computeAging } from "./aging-engine.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
 // See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
@@ -3590,6 +3591,82 @@ class DataService {
         if (!journalId) return null;
         const s = await getDoc(doc(this.db, `${this._scope(userId)}/journals/${journalId}`));
         return s.exists() ? { id: s.id, ...s.data() } : null;
+    }
+
+    // A/R + A/P aging (Accounting Center → Aging tab). Sources mirror the
+    // Balance Sheet's receivable/payable composition so the aging totals tie to
+    // its A/R and A/P lines: open IDR invoices + pending_receivable accruals on
+    // the receivable side; unpaid bills + pending_payable accruals on the
+    // payable side. Foreign-currency invoices are excluded from IDR totals
+    // (same rule as the invoice summary cards) and surfaced as a count.
+    // Bucketing is pure (assets/js/aging-engine.js).
+    async getAgingReport(userId, { asOf = new Date() } = {}) {
+        const [invoiceSnap, billSnap, pendingSnap] = await Promise.all([
+            getDocs(collection(this.db, `${this._scope(userId)}/invoices`)),
+            getDocs(collection(this.db, `${this._scope(userId)}/bills`)),
+            getDocs(query(
+                collection(this.db, `${this._scope(userId)}/transactions`),
+                where('type', 'in', ['pending_receivable', 'pending_payable'])
+            ))
+        ]);
+
+        const receivables = [];
+        const payables = [];
+        let fxInvoiceCount = 0;
+
+        invoiceSnap.docs.forEach((d) => {
+            const inv = d.data();
+            if (inv.status !== 'open') return;
+            if (inv.currency && inv.currency !== 'IDR') { fxInvoiceCount += 1; return; }
+            receivables.push({
+                id: d.id,
+                kind: 'invoice',
+                label: inv.customer_name || inv.invoice_number || 'Invoice',
+                ref: inv.invoice_number || null,
+                amount: inv.total_amount,
+                due_date: inv.due_date || null,
+                fallback_date: inv.issue_date || inv.created_at || null
+            });
+        });
+
+        billSnap.docs.forEach((d) => {
+            const bill = d.data();
+            if (bill.payment_status === 'paid' || bill.linked_transaction_id) return;
+            payables.push({
+                id: d.id,
+                kind: 'bill',
+                label: bill.vendor_name || 'Bill',
+                ref: null,
+                amount: bill.amount,
+                due_date: bill.due_date || null,
+                fallback_date: bill.timestamp || bill.created_at || null
+            });
+        });
+
+        pendingSnap.docs.forEach((d) => {
+            const tx = d.data();
+            if (tx.is_voided) return;
+            // Settled accruals carry a journal-settling payment via linked ids
+            // on the settling transaction, not on this doc — an accrual row is
+            // outstanding as long as its status has not been completed/voided.
+            const target = tx.type === 'pending_receivable' ? receivables : payables;
+            target.push({
+                id: d.id,
+                kind: 'accrual',
+                label: tx.vendor_name || (tx.type === 'pending_receivable' ? 'Accrued receivable' : 'Accrued payable'),
+                ref: null,
+                amount: tx.amount,
+                due_date: null,
+                fallback_date: tx.timestamp || tx.created_at || null
+            });
+        });
+
+        return {
+            asOf,
+            fxInvoiceCount,
+            receivables: computeAging(receivables, { asOf }),
+            payables: computeAging(payables, { asOf })
+        };
     }
 
     // Trial balance from the running ledger_balances snapshots (not by summing all

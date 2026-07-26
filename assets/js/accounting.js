@@ -175,6 +175,91 @@ function setTab(tab) {
     // Ledger views read the new accounting collections lazily — only when their
     // tab is first opened for the active period, so the page load stays light.
     if (KERNEL_TABS.has(tab)) loadKernel();
+    // Aging is as-of-today (not period-scoped) and loads lazily on first open.
+    if (tab === 'aging') loadAging();
+}
+
+// --- A/R + A/P Aging tab (as-of today; sources tie to the Balance Sheet) ---
+
+async function loadAging(force = false) {
+    if (state.agingLoaded && !force) return;
+    state.agingLoaded = true; // claim early to avoid duplicate fetches
+    const rWrap = el('aging-receivables-content');
+    const pWrap = el('aging-payables-content');
+    if (rWrap) rWrap.innerHTML = '<div class="fluxy-table-loading-cell">Loading…</div>';
+    if (pWrap) pWrap.innerHTML = '<div class="fluxy-table-loading-cell">Loading…</div>';
+    try {
+        const report = await state.ds.getAgingReport(state.user.uid);
+        renderAgingSection(rWrap, report.receivables, {
+            empty: ['No open receivables', 'Finalized invoices and accrued receivables appear here until they are paid.'],
+            link: (row) => row.kind === 'invoice' ? `/invoices?invoice=${encodeURIComponent(row.id)}` : `/ledger?record=${encodeURIComponent(row.id)}`,
+            fxNote: report.fxInvoiceCount
+        });
+        renderAgingSection(pWrap, report.payables, {
+            empty: ['No open payables', 'Unpaid bills and accrued payables appear here until they are settled.'],
+            link: (row) => row.kind === 'bill' ? `/bill?record=${encodeURIComponent(row.id)}` : `/ledger?record=${encodeURIComponent(row.id)}`,
+            fxNote: 0
+        });
+    } catch (err) {
+        console.error('Aging load failed:', err);
+        state.agingLoaded = false; // allow retry on next tab open
+        const fail = emptyState('Could not load aging', 'Reload the page or try again in a moment.');
+        if (rWrap) rWrap.innerHTML = fail;
+        if (pWrap) pWrap.innerHTML = fail;
+    }
+}
+
+function agingKindLabel(kind) {
+    return kind === 'invoice' ? 'Invoice' : kind === 'bill' ? 'Bill' : 'Accrual';
+}
+
+function renderAgingSection(wrap, aging, { empty, link, fxNote }) {
+    if (!wrap) return;
+    if (!aging || !aging.rows.length) {
+        wrap.innerHTML = emptyState(empty[0], empty[1]);
+        return;
+    }
+    const summary = `
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 px-5 pt-4 pb-2">
+            ${aging.buckets.map(b => `
+                <div class="rounded-xl border ${b.id === 'current' ? 'border-gray-200 bg-gray-50/60' : b.amount > 0 ? 'border-amber-200 bg-amber-50/60' : 'border-gray-200 bg-gray-50/60'} px-3 py-2.5">
+                    <p class="text-[12px] font-semibold text-gray-500">${escapeHtml(b.label)}</p>
+                    <p class="mt-1 text-[14px] font-semibold tabular-nums ${b.amount > 0 && b.id !== 'current' ? 'text-amber-700' : 'text-gray-900'}">${escapeHtml(formatRupiah(b.amount) || 'Rp0')}</p>
+                    <p class="text-[12px] text-gray-400">${b.count} item${b.count === 1 ? '' : 's'}</p>
+                </div>`).join('')}
+        </div>`;
+    const body = aging.rows.map(row => {
+        const overdue = row.daysOverdue > 0;
+        const dueText = row.no_due_date
+            ? 'No due date — aged from record date'
+            : (overdue ? `${row.daysOverdue} day${row.daysOverdue === 1 ? '' : 's'} overdue` : 'Not yet due');
+        return `<tr class="fluxy-table-row fluxy-table-row-clickable" data-href="${escapeHtml(link(row))}" tabindex="0">
+            <td class="fluxy-table-cell"><div class="fluxy-table-cell-primary">${escapeHtml(row.label)}</div><div class="fluxy-table-cell-meta">${escapeHtml(agingKindLabel(row.kind))}${row.ref ? ` · ${escapeHtml(row.ref)}` : ''}</div></td>
+            <td class="fluxy-table-cell"><span class="fluxy-table-cell-meta ${overdue ? 'text-amber-700' : ''}">${escapeHtml(dueText)}</span></td>
+            <td class="fluxy-table-cell fluxy-table-money">${escapeHtml(formatRupiah(row.amount) || 'Rp0')}</td>
+        </tr>`;
+    }).join('');
+    const totalRow = `<tr class="fluxy-table-row">
+        <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">Total outstanding</span></td>
+        <td class="fluxy-table-cell"><span class="fluxy-table-cell-meta">${aging.count} item${aging.count === 1 ? '' : 's'}</span></td>
+        <td class="fluxy-table-cell fluxy-table-money"><strong>${escapeHtml(formatRupiah(aging.total) || 'Rp0')}</strong></td>
+    </tr>`;
+    const fxLine = fxNote > 0
+        ? `<p class="px-5 pb-4 text-[12px] text-gray-500">${fxNote} foreign-currency invoice${fxNote === 1 ? '' : 's'} excluded from IDR totals.</p>`
+        : '';
+    wrap.innerHTML = summary
+        + tableShell([{ label: 'Item' }, { label: 'Status' }, { label: 'Amount', money: true }], body + totalRow)
+        + fxLine;
+    bindAgingRowNav(wrap);
+}
+
+function bindAgingRowNav(wrap) {
+    const go = (target) => {
+        const row = target.closest('tr[data-href]');
+        if (row) window.location.href = row.getAttribute('data-href');
+    };
+    wrap.addEventListener('click', (e) => go(e.target));
+    wrap.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(e.target); });
 }
 
 // Fetch CoA + journals + trial balance for the active period and render the four

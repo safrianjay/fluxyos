@@ -1215,8 +1215,13 @@ audit log (`accounting_mapping.created`/`.updated`, target `accounting_mappings`
 **Accounting Center.** `accounting.html` + `assets/js/accounting.js`. The
 **primary tab is the Income Statement Preview** (a deterministic P&L); readiness
 is a supporting **report confidence** banner + KPI. Tabs are **Income Statement /
-Journals / General Ledger / Trial Balance / Chart of Accounts / Cleanup /
-Account Mapping / Close**. The historical "Phase 1 read-only" description is
+Journals / General Ledger / Trial Balance / Chart of Accounts / Aging / Cleanup /
+Account Mapping / Close**. The Aging tab is the standard 30/60/90 A/R + A/P
+aging (as-of today, not period-scoped): open IDR invoices + `pending_receivable`
+accruals vs unpaid bills + `pending_payable` accruals — the same composition as
+the Balance Sheet lines, so totals tie. Bucketing is pure
+(`assets/js/aging-engine.js`); data via `DataService.getAgingReport`. Rows
+deep-link to `/invoices?invoice=`, `/bill?record=`, `/ledger?record=`. The historical "Phase 1 read-only" description is
 obsolete: the kernel tabs are live — journal posting, manual journals, period
 close/reopen, and Chart of Accounts archive/reactivate all ship via the
 Accounting Kernel (§4m.3; CoA Phase 1 details in

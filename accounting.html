@@ -119,6 +119,7 @@
                         <button type="button" class="acct-tab" data-acct-tab="ledger" role="tab">General Ledger</button>
                         <button type="button" class="acct-tab" data-acct-tab="trial" role="tab">Trial Balance</button>
                         <button type="button" class="acct-tab" data-acct-tab="coa" role="tab">Chart of Accounts</button>
+                        <button type="button" class="acct-tab" data-acct-tab="aging" role="tab">Aging</button>
                         <button type="button" class="acct-tab" data-acct-tab="cleanup" role="tab">Cleanup <span class="acct-tab-count" id="tab-cleanup-count">0</span></button>
                         <button type="button" class="acct-tab" data-acct-tab="mapping" role="tab">Account Mapping</button>
                         <button type="button" class="acct-tab" data-acct-tab="close" role="tab">Close</button>
@@ -246,6 +247,30 @@
                             </div>
                             <div id="coa-content" class="fluxy-table-scroll"></div>
                         </section>
+                    </div>
+
+                    <!-- AGING TAB (A/R + A/P) -->
+                    <div data-acct-panel="aging" class="hidden">
+                        <div class="flex flex-col gap-6">
+                        <section class="acct-card fluxy-table-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">Accounts Receivable Aging</h2>
+                                    <p class="fluxy-table-subtitle">Open invoices and accrued receivables by days overdue, as of today. Totals tie to the Balance Sheet A/R line.</p>
+                                </div>
+                            </div>
+                            <div id="aging-receivables-content" class="fluxy-table-scroll"></div>
+                        </section>
+                        <section class="acct-card fluxy-table-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">Accounts Payable Aging</h2>
+                                    <p class="fluxy-table-subtitle">Unpaid bills and accrued payables by days overdue, as of today. Totals tie to the Balance Sheet A/P line.</p>
+                                </div>
+                            </div>
+                            <div id="aging-payables-content" class="fluxy-table-scroll"></div>
+                        </section>
+                        </div>
                     </div>
 
                     <!-- CLEANUP TAB -->
