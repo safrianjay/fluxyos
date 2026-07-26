@@ -135,7 +135,10 @@ Quick rules:
 - **Workspace data scoping (MANDATORY)**: Finance/operational collections
   (`transactions`, `bills`, `subscriptions`, `budgets`, `budget_allocations`,
   `invoices`, `audit_logs`, `bank_accounts`, `bank_balance_snapshots`,
-  `bank_statement_imports`, `documents`, `report_exports`, `accounting_mappings`)
+  `bank_statement_imports`, `documents`, `report_exports`, `accounting_mappings`,
+  `chart_of_accounts`, `business_categories`, `journals`, `counters`,
+  `ledger_balances`, `periods`, plus the Tax Center and Commerce collections —
+  full list in `docs/PROJECT_BACKGROUND.md` §4)
   are **workspace-scoped** and shared across team members. **NEVER hardcode
   `users/${userId}/<financeCollection>`** — always route through the seam:
   `${this._scope(userId)}/…` in `db-service.js`, or `${ds._scope(userId)}/…` for

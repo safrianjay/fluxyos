@@ -180,7 +180,8 @@ FluxyOS design language.
 >    `transactions`, `bills`, `subscriptions`, `budgets`, `budget_allocations`,
 >    `invoices`(+`items`), `audit_logs`, `bank_accounts`, `bank_balance_snapshots`,
 >    `bank_statement_imports`(+`rows`), `documents`, `report_exports`, `accounting_mappings`,
->    `chart_of_accounts`, `journals`, `counters`, `ledger_balances`, `periods`,
+>    `chart_of_accounts`, `business_categories`, `journals`, `counters`,
+>    `ledger_balances`, `periods`,
 >    **(Tax Center, §4o)** `company_tax_profile`, `tax_mappings`,
 >    `tax_transactions`, `tax_periods`, `tax_filings`, and
 >    **(Commerce Integration, §4p)** `commerce_accounts`, `commerce_orders`,
@@ -202,7 +203,7 @@ FluxyOS design language.
 >    directly in the HTML (`collection(ds.db, …)`) instead of calling a
 >    DataService method — these bypass the seam and are the easiest place to
 >    reintroduce the bug. Grep guard:
->    `grep -rnE 'users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|audit_logs|company_tax_profile|tax_mappings|tax_transactions|tax_periods|tax_filings|commerce_accounts|commerce_orders|commerce_transactions|commerce_refunds|commerce_settlements|commerce_payouts|commerce_sync_jobs|commerce_sync_errors|commerce_webhook_logs)' *.html assets/js/*.js | grep -v db-service.js`
+>    `grep -rnE 'users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|chart_of_accounts|business_categories|journals|counters|ledger_balances|periods|audit_logs|company_tax_profile|tax_mappings|tax_transactions|tax_periods|tax_filings|commerce_accounts|commerce_orders|commerce_transactions|commerce_refunds|commerce_settlements|commerce_payouts|commerce_sync_jobs|commerce_sync_errors|commerce_webhook_logs)' *.html assets/js/*.js | grep -v db-service.js`
 >    must return nothing.
 
 ### 4a. Transactions — `users/{userId}/transactions`
@@ -1204,14 +1205,17 @@ updates the same doc instead of duplicating.
 immutable on update; field-validated by `isValidAccountingMapping`. Saving writes an
 audit log (`accounting_mapping.created`/`.updated`, target `accounting_mappings`).
 
-**Accounting Center (Phase 1, read-only).** `accounting.html` + `assets/js/accounting.js`.
-The **primary tab is the Income Statement Preview** (a deterministic P&L); readiness was
-demoted from the main experience to a supporting **report confidence** banner + KPI.
-Tabs are **Income Statement / Cleanup / Account Mapping / Close** (the old readiness-first
-"Overview" tab was replaced). The page still renders the cleanup queue, mapping preview,
-and close-readiness checklist from existing user-scoped records. There is **no** journal
-posting, period close, or AI write in Phase 1 (the Close action is a disabled "Planned"
-control; no `accounting_periods` collection is created).
+**Accounting Center.** `accounting.html` + `assets/js/accounting.js`. The
+**primary tab is the Income Statement Preview** (a deterministic P&L); readiness
+is a supporting **report confidence** banner + KPI. Tabs are **Income Statement /
+Journals / General Ledger / Trial Balance / Chart of Accounts / Cleanup /
+Account Mapping / Close**. The historical "Phase 1 read-only" description is
+obsolete: the kernel tabs are live — journal posting, manual journals, period
+close/reopen, and Chart of Accounts archive/reactivate all ship via the
+Accounting Kernel (§4m.3; CoA Phase 1 details in
+`docs/data-model/chart-of-accounts.md`). The cleanup queue, mapping preview, and
+close-readiness checklist still render from existing records; there is no AI
+write anywhere on the page.
 
 `DataService` accounting methods:
 - `getIncomeStatementPreview(uid, period, comparisonPeriod)` — **primary Accounting
