@@ -1,3 +1,5 @@
+import { CHART_OF_ACCOUNTS_SEED } from './accounting-engine.js';
+
 // Accounting Center page controller — Phase 1.
 // Primary surface is the Income Statement Preview (a deterministic P&L built from
 // ledger transactions). Readiness is reused as supporting "report confidence"
@@ -17,20 +19,12 @@ const state = {
     rowsById: {}
 };
 
-// Display-only account catalog for the mapping <select>. Mirrors the catalog in
-// db-service.js (which is the source of truth used for validation/save).
-const ACCOUNT_OPTIONS = [
-    { code: '1100', name: 'Accounts Receivable', type: 'asset' },
-    { code: '2000', name: 'Accounts Payable', type: 'liability' },
-    { code: '4000', name: 'Revenue', type: 'revenue' },
-    { code: '6100', name: 'Marketing Expense', type: 'expense' },
-    { code: '6200', name: 'Software / SaaS Expense', type: 'expense' },
-    { code: '6300', name: 'Infrastructure Expense', type: 'expense' },
-    { code: '6400', name: 'Operations Expense', type: 'expense' },
-    { code: '6500', name: 'Tax Expense', type: 'expense' },
-    { code: '6600', name: 'Bank Fees', type: 'expense' },
-    { code: '6999', name: 'Other Expense', type: 'expense' }
-];
+// Display catalog for the mapping <select>, derived from the canonical seed so
+// it can never drift from the validation catalog in db-service.js (same filter:
+// structural accounts are not mapping targets).
+const ACCOUNT_OPTIONS = CHART_OF_ACCOUNTS_SEED
+    .filter(a => a.mappable !== false)
+    .map(a => ({ code: a.code, name: a.name, type: a.type }));
 
 const TONE_COLOR = { success: '#16A34A', warning: '#EA580C', danger: '#EF4444', neutral: '#94A3B8' };
 const TONE_PILL = { success: 'acct-pill-ready', warning: 'acct-pill-almost', danger: 'acct-pill-needs', neutral: 'acct-pill-planned' };
@@ -86,11 +80,14 @@ export function initAccountingPage({ ds, user }) {
     state.endKey = getMonthEndKey();
     state.kernel = { loadedPeriod: null, coa: [], journals: [], trial: null, period: null };
 
-    // Idempotent: seed the Chart of Accounts so the ledger views and posting
-    // engine have accounts to reference. Best-effort — a viewer without write
-    // access simply reads whatever already exists. loadKernel() awaits this so the
-    // first ledger read never races an empty (un-seeded) chart.
-    state.seedPromise = ds.seedChartOfAccounts(user.uid).catch(() => {});
+    // Idempotent: seed the Chart of Accounts (then the founder-category
+    // taxonomy, which maps onto it) so the ledger views and posting engine have
+    // accounts to reference. Best-effort — a viewer without write access simply
+    // reads whatever already exists. loadKernel() awaits this so the first
+    // ledger read never races an empty (un-seeded) chart.
+    state.seedPromise = ds.seedChartOfAccounts(user.uid)
+        .then(() => ds.seedBusinessCategories(user.uid))
+        .catch(() => {});
 
     mountPicker();
     wireStaticControls();
@@ -868,6 +865,15 @@ function drillToLedger(accountCode) {
     renderGeneralLedger(accountCode);
 }
 
+// Human labels for the SAK classification enum (kebab values on the docs).
+const SAK_LABELS = {
+    cash_bank: 'Cash & Bank', accounts_receivable: 'Receivable', other_current_asset: 'Other Current Asset',
+    inventory: 'Inventory', fixed_asset: 'Fixed Asset', accumulated_depreciation: 'Accum. Depreciation',
+    other_asset: 'Other Asset', accounts_payable: 'Payable', other_current_liability: 'Other Current Liability',
+    long_term_liability: 'Long-term Liability', equity: 'Equity', revenue: 'Revenue',
+    other_income: 'Other Income', cogs: 'COGS', operating_expense: 'Operating Expense', other_expense: 'Other Expense'
+};
+
 function renderChartOfAccounts() {
     const wrap = el('coa-content');
     if (!wrap) return;
@@ -876,14 +882,55 @@ function renderChartOfAccounts() {
         wrap.innerHTML = emptyState('Chart of Accounts not seeded yet', 'Open this page with edit access to seed the Indonesian SMB starter chart.');
         return;
     }
-    const body = coa.map(a => `<tr class="fluxy-table-row">
-        <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${escapeHtml(a.code)}</span></td>
-        <td class="fluxy-table-cell">${escapeHtml(a.name)}</td>
+    const canManage = !!window.FluxyWorkspace?.can?.('accounting.post');
+    const body = coa.map(a => {
+        const child = !!a.parent_code;
+        const active = a.is_active !== false;
+        const systemBadge = a.is_system ? ' <span class="fluxy-table-cell-meta" title="System accounts cannot be edited or archived.">🔒 System</span>' : '';
+        const action = canManage && !a.is_system
+            ? `<button type="button" class="acct-btn acct-btn-ghost" data-coa-toggle="${escapeHtml(a.code)}" data-coa-active="${active ? '1' : '0'}">${active ? 'Archive' : 'Reactivate'}</button>`
+            : '';
+        return `<tr class="fluxy-table-row">
+        <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary"${child ? ' style="padding-left:16px;"' : ''}>${child ? '└ ' : ''}${escapeHtml(a.code)}</span></td>
+        <td class="fluxy-table-cell">${escapeHtml(a.name)}${systemBadge}</td>
+        <td class="fluxy-table-cell"><span class="fluxy-table-cell-meta">${escapeHtml(SAK_LABELS[a.sak_category] || a.sak_category || '—')}</span></td>
         <td class="fluxy-table-cell"><span class="fluxy-table-cell-meta">${escapeHtml(a.type)}</span></td>
         <td class="fluxy-table-cell"><span class="fluxy-table-cell-meta">${escapeHtml(a.normal_balance)}</span></td>
-        <td class="fluxy-table-cell">${a.is_active !== false ? '<span class="fluxy-table-status fluxy-status-success">Active</span>' : '<span class="fluxy-table-status fluxy-status-neutral">Archived</span>'}</td>
-    </tr>`).join('');
-    wrap.innerHTML = tableShell([{ label: 'Code' }, { label: 'Account' }, { label: 'Type' }, { label: 'Normal' }, { label: 'Status' }], body);
+        <td class="fluxy-table-cell">${active ? '<span class="fluxy-table-status fluxy-status-success">Active</span>' : '<span class="fluxy-table-status fluxy-status-neutral">Archived</span>'}</td>
+        <td class="fluxy-table-cell" style="text-align:right;">${action}</td>
+    </tr>`;
+    }).join('');
+    wrap.innerHTML = tableShell(
+        [{ label: 'Code' }, { label: 'Account' }, { label: 'SAK Category' }, { label: 'Type' }, { label: 'Normal' }, { label: 'Status' }, { label: '' }],
+        body
+    );
+    wrap.querySelectorAll('[data-coa-toggle]').forEach(btn => {
+        btn.addEventListener('click', () => handleCoaToggle(btn.getAttribute('data-coa-toggle'), btn.getAttribute('data-coa-active') === '1'));
+    });
+}
+
+async function handleCoaToggle(code, isActive) {
+    const account = (state.kernel.coa || []).find(a => a.code === code);
+    if (!account) return;
+    const confirmed = await window.showConfirmDialog?.({
+        title: isActive ? 'Archive this account?' : 'Reactivate this account?',
+        body: isActive
+            ? `<strong>${escapeHtml(code)} ${escapeHtml(account.name)}</strong> will be hidden from account pickers. Its posted history stays in the ledger and trial balance.`
+            : `<strong>${escapeHtml(code)} ${escapeHtml(account.name)}</strong> will be available in account pickers again.`,
+        confirmLabel: isActive ? 'Archive' : 'Reactivate',
+        cancelLabel: 'Cancel',
+        tone: isActive ? 'danger' : 'default'
+    });
+    if (confirmed === false) return;
+    try {
+        if (isActive) await state.ds.archiveAccount(state.user.uid, code);
+        else await state.ds.reactivateAccount(state.user.uid, code);
+        window.showToast?.(isActive ? 'Account archived.' : 'Account reactivated.', 'success');
+        await loadKernel(true);
+    } catch (err) {
+        console.error('CoA toggle failed:', err);
+        window.showToast?.(err?.message || 'Could not update the account. Try again.', 'error');
+    }
 }
 
 const GL_ALL = '__all__';
@@ -891,7 +938,9 @@ const GL_ALL = '__all__';
 function renderLedgerSelector() {
     const sel = el('ledger-account-select');
     if (!sel) return;
-    const coa = state.kernel.coa || [];
+    // Archived accounts drop out of the picker; their history still shows in
+    // the trial balance (which reads ledger_balances, not this list).
+    const coa = (state.kernel.coa || []).filter(a => a.is_active !== false);
     const prev = sel.value;
     const opts = coa.map(a => `<option value="${escapeHtml(a.code)}">${escapeHtml(a.code)} · ${escapeHtml(a.name)}</option>`).join('');
     sel.innerHTML = `<option value="${GL_ALL}">All accounts</option>${opts}`;

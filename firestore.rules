@@ -3402,12 +3402,28 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Founder-facing category taxonomy over the Chart of Accounts (CoA Phase 1;
+      // docs/data-model/chart-of-accounts.md). Names/codes only, never amounts.
+      // Never deleted — deactivate via is_active. Validation kept lean on purpose
+      // (rules eval budget); the client validator + audit trail compensate.
+      match /business_categories/{categoryId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 80
+          && request.resource.data.default_account_code is string
+          && request.resource.data.is_active is bool;
+        allow delete: if false;
+      }
+
       // --- ACCOUNTING KERNEL (double-entry) -------------------------------
-      // Chart of Accounts. Archive via is_active; never hard-deleted.
+      // Chart of Accounts. Archive via is_active; never hard-deleted. The code
+      // field can never diverge from the doc id (codes are immutable).
       match /chart_of_accounts/{accountCode} {
         allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
         allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
-          && request.resource.data.code is string
+          && request.resource.data.code == accountCode
           && request.resource.data.name is string && request.resource.data.name.size() <= 120
           && request.resource.data.type in ['asset', 'liability', 'equity', 'revenue', 'expense']
           && request.resource.data.normal_balance in ['debit', 'credit'];

@@ -1,7 +1,7 @@
 import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
-import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, CHART_OF_ACCOUNTS_SEED, signedBalance, periodKey as acctPeriodKey } from "./accounting-engine.js";
+import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, CHART_OF_ACCOUNTS_SEED, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, periodKey as acctPeriodKey } from "./accounting-engine.js";
 import { buildTaxAppendix, TAX_RATES } from "./tax-engine.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
@@ -38,20 +38,15 @@ const BILLING_TO_ACCESS_STATUS = {
 };
 
 // ===== Accounting Center (Phase 1) =====
-// Starter IDR-focused SMB chart-of-accounts catalog. Codes/names are strings
+// Mapping/validation catalog derived from the canonical seed (single source of
+// truth in accounting-engine.js — no drift). `mappable: false` keeps structural
+// accounts (cash, equity, tax) out of category mapping. Codes/names are strings
 // only — these are display/mapping references, never financial values.
-const ACCOUNTING_ACCOUNT_CATALOG = {
-    '1100': { name: 'Accounts Receivable', type: 'asset' },
-    '2000': { name: 'Accounts Payable', type: 'liability' },
-    '4000': { name: 'Revenue', type: 'revenue' },
-    '6100': { name: 'Marketing Expense', type: 'expense' },
-    '6200': { name: 'Software / SaaS Expense', type: 'expense' },
-    '6300': { name: 'Infrastructure Expense', type: 'expense' },
-    '6400': { name: 'Operations Expense', type: 'expense' },
-    '6500': { name: 'Tax Expense', type: 'expense' },
-    '6600': { name: 'Bank Fees', type: 'expense' },
-    '6999': { name: 'Other Expense', type: 'expense' }
-};
+const ACCOUNTING_ACCOUNT_CATALOG = Object.fromEntries(
+    CHART_OF_ACCOUNTS_SEED
+        .filter((a) => a.mappable !== false)
+        .map((a) => [a.code, { name: a.name, type: a.type }])
+);
 // Built-in category → account code. Only these categories are considered
 // confidently mappable by default; anything else (custom / "Others") is treated
 // as unmapped until the user saves an explicit mapping.
@@ -74,6 +69,37 @@ const ACCOUNTING_TYPE_DEFAULTS = {
 };
 // Fallback suggestion for unmapped spend so the preview always shows a target.
 const ACCOUNTING_UNMAPPED_FALLBACK_CODE = '6999';
+// Founder-facing category taxonomy seed (docs/data-model/chart-of-accounts.md).
+// The built-in six keep their exact ledger-wide names and stay active; expanded
+// categories seed inactive until Phase 3 activates them in the pickers, but
+// their account mappings are written now (see seedBusinessCategories). Slugs
+// are the deterministic doc ids.
+const BUSINESS_CATEGORY_SEED = [
+    { slug: 'revenue', name: 'Revenue', name_id: 'Pendapatan', type: 'income', default_account_code: '4000', is_builtin: true },
+    { slug: 'marketing', name: 'Marketing', name_id: 'Pemasaran', type: 'expense', default_account_code: '6100', is_builtin: true },
+    { slug: 'infrastructure', name: 'Infrastructure', name_id: 'Infrastruktur', type: 'expense', default_account_code: '6300', is_builtin: true },
+    { slug: 'operations', name: 'Operations', name_id: 'Operasional', type: 'expense', default_account_code: '6400', is_builtin: true },
+    { slug: 'saas', name: 'SaaS', name_id: 'SaaS', type: 'expense', default_account_code: '6200', is_builtin: true },
+    { slug: 'others', name: 'Others', name_id: 'Lainnya', type: 'expense', default_account_code: '6999', is_builtin: true },
+    { slug: 'payroll-salaries', name: 'Payroll & Salaries', name_id: 'Gaji & Upah', type: 'expense', default_account_code: '6410' },
+    { slug: 'rent', name: 'Rent', name_id: 'Sewa', type: 'expense', default_account_code: '6420' },
+    { slug: 'utilities', name: 'Utilities', name_id: 'Listrik, Air & Internet', type: 'expense', default_account_code: '6430' },
+    { slug: 'office-supplies', name: 'Office Supplies', name_id: 'Perlengkapan Kantor', type: 'expense', default_account_code: '6440' },
+    { slug: 'travel', name: 'Travel', name_id: 'Perjalanan Dinas', type: 'expense', default_account_code: '6450' },
+    { slug: 'meals-entertainment', name: 'Meals & Entertainment', name_id: 'Konsumsi & Entertain', type: 'expense', default_account_code: '6450' },
+    { slug: 'professional-services', name: 'Professional Services', name_id: 'Jasa Profesional', type: 'expense', default_account_code: '6460' },
+    { slug: 'insurance', name: 'Insurance', name_id: 'Asuransi', type: 'expense', default_account_code: '6400' },
+    { slug: 'training', name: 'Training & Development', name_id: 'Pelatihan', type: 'expense', default_account_code: '6400' },
+    { slug: 'cost-of-goods', name: 'Cost of Goods', name_id: 'Harga Pokok Penjualan', type: 'expense', default_account_code: '5100' },
+    { slug: 'bank-fees', name: 'Bank Fees', name_id: 'Biaya Bank', type: 'expense', default_account_code: '6600' },
+    { slug: 'taxes', name: 'Taxes', name_id: 'Pajak', type: 'expense', default_account_code: '6500' },
+    { slug: 'owner-drawing', name: 'Owner Drawing', name_id: 'Prive', type: 'expense', default_account_code: '3200' },
+    { slug: 'discounts-refunds', name: 'Discounts & Refunds', name_id: 'Diskon & Retur', type: 'expense', default_account_code: '4900' },
+    // Income-side categories are dormant until Phase 3 (TXN-INC-CASH posts to
+    // 4000 regardless of mappings today) — seeded so activation is data-only.
+    { slug: 'owner-capital', name: 'Owner Capital Injection', name_id: 'Setoran Modal', type: 'income', default_account_code: '3100' },
+    { slug: 'interest-income', name: 'Interest Income', name_id: 'Pendapatan Bunga', type: 'income', default_account_code: '7100' }
+];
 // Per-bucket readiness penalty weights and the cap applied to each bucket so a
 // single noisy bucket can never dominate the whole score.
 const ACCOUNTING_PENALTY_WEIGHTS = {
@@ -3247,33 +3273,271 @@ class DataService {
     }
 
     // Idempotent Chart of Accounts seed. Writes only the accounts that don't yet
-    // exist, so it is safe to call on every Accounting Center load.
+    // exist, so it is safe to call on every Accounting Center load. Existing docs
+    // that predate the SAK metadata (no sak_category) get a one-time merge
+    // backfill of the classification fields only — user-editable fields (name,
+    // type, is_active, opening_balance) are never touched, so the backfill can
+    // never undo an edit. Once every doc carries sak_category, the call is a
+    // single read again.
     async seedChartOfAccounts(userId) {
         const scope = this._scope(userId);
         const existing = await getDocs(collection(this.db, `${scope}/chart_of_accounts`));
-        const have = new Set(existing.docs.map((d) => d.id));
+        const have = new Map(existing.docs.map((d) => [d.id, d.data()]));
         const entityId = this._resolvedScopeId(userId);
         const batch = writeBatch(this.db);
         let created = 0;
+        let backfilled = 0;
         CHART_OF_ACCOUNTS_SEED.forEach((a) => {
-            if (have.has(a.code)) return;
-            batch.set(doc(this.db, `${scope}/chart_of_accounts/${a.code}`), {
-                code: a.code,
-                name: a.name,
-                type: a.type,
-                subtype: null,
-                parent_code: null,
-                normal_balance: (a.type === 'asset' || a.type === 'expense') ? 'debit' : 'credit',
-                is_active: true,
-                currency: 'IDR',
-                entity_id: entityId,
-                opening_balance: 0,
-                created_at: serverTimestamp()
-            });
-            created += 1;
+            const ref = doc(this.db, `${scope}/chart_of_accounts/${a.code}`);
+            const normalBalance = a.normal_balance
+                || ((a.type === 'asset' || a.type === 'expense') ? 'debit' : 'credit');
+            const current = have.get(a.code);
+            if (!current) {
+                batch.set(ref, {
+                    code: a.code,
+                    name: a.name,
+                    name_id: a.name_id || a.name,
+                    type: a.type,
+                    subtype: null,
+                    sak_category: a.sak_category || null,
+                    parent_code: a.parent_code || null,
+                    is_system: !!a.is_system,
+                    normal_balance: normalBalance,
+                    is_active: true,
+                    currency: 'IDR',
+                    entity_id: entityId,
+                    opening_balance: 0,
+                    created_at: serverTimestamp()
+                });
+                created += 1;
+            } else if (!current.sak_category) {
+                batch.set(ref, {
+                    sak_category: a.sak_category || null,
+                    parent_code: current.parent_code ?? (a.parent_code || null),
+                    is_system: !!a.is_system,
+                    name_id: current.name_id || a.name_id || a.name,
+                    updated_at: serverTimestamp()
+                }, { merge: true });
+                backfilled += 1;
+            }
         });
-        if (created) await batch.commit();
+        if (created || backfilled) {
+            await batch.commit();
+            await this._auditCreateBestEffort(userId, 'chart_of_accounts.seeded', 'chart_of_accounts', '', { created, backfilled });
+        }
         return created;
+    }
+
+    // Idempotent founder-facing category taxonomy seed (docs/data-model/
+    // chart-of-accounts.md). The built-in six stay active with their exact
+    // current names; expanded categories seed inactive (Phase 3 activates them)
+    // but their category → account mappings are written now as system defaults
+    // so the shipped posting resolution (accounting_mappings → engine defaults →
+    // 6999) already routes them. Existing mapping docs — user_confirmed or
+    // otherwise — are never overwritten. No mapping is written for the built-in
+    // six (engine CATEGORY_DEFAULTS covers them) or Others (6999 stays a
+    // fallback-health signal, not a mapping).
+    async seedBusinessCategories(userId) {
+        const scope = this._scope(userId);
+        const [existing, existingMappings] = await Promise.all([
+            getDocs(collection(this.db, `${scope}/business_categories`)),
+            getDocs(collection(this.db, `${scope}/accounting_mappings`))
+        ]);
+        const have = new Set(existing.docs.map((d) => d.id));
+        const haveMapping = new Set(existingMappings.docs.map((d) => d.id));
+        const batch = writeBatch(this.db);
+        let created = 0;
+        let mapped = 0;
+        BUSINESS_CATEGORY_SEED.forEach((c, idx) => {
+            if (!have.has(c.slug)) {
+                batch.set(doc(this.db, `${scope}/business_categories/${c.slug}`), {
+                    name: c.name,
+                    name_id: c.name_id,
+                    type: c.type,
+                    default_account_code: c.default_account_code,
+                    icon: c.icon || null,
+                    color: c.color || null,
+                    is_active: !!c.is_builtin,
+                    is_builtin: !!c.is_builtin,
+                    sort_order: idx,
+                    created_at: serverTimestamp()
+                });
+                created += 1;
+            }
+            if (c.is_builtin || c.slug === 'others') return;
+            const account = ACCOUNTING_ACCOUNT_CATALOG[c.default_account_code];
+            if (!account) return;
+            const mappingId = `transaction_category__${c.name}`.toLowerCase().replace(/[^a-z0-9_]+/g, '-').slice(0, 140);
+            if (haveMapping.has(mappingId)) return;
+            batch.set(doc(this.db, `${scope}/accounting_mappings/${mappingId}`), {
+                source_type: 'transaction_category',
+                source_value: c.name,
+                target_account_code: c.default_account_code,
+                target_account_name: account.name,
+                target_account_type: account.type,
+                confidence: 'system_default',
+                status: 'active',
+                created_at: serverTimestamp(),
+                updated_at: serverTimestamp()
+            });
+            haveMapping.add(mappingId);
+            mapped += 1;
+        });
+        if (created || mapped) {
+            await batch.commit();
+            this._acctMapCache = {}; // new mappings must reach the posting engine
+            await this._auditCreateBestEffort(userId, 'business_categories.seeded', 'business_categories', '', { created, mappings_created: mapped });
+        }
+        return created;
+    }
+
+    async getBusinessCategories(userId, { activeOnly = false } = {}) {
+        if (!userId) return [];
+        try {
+            const snap = await getDocs(collection(this.db, `${this._scope(userId)}/business_categories`));
+            return snap.docs
+                .map((d) => ({ id: d.id, ...d.data() }))
+                .filter((c) => !activeOnly || c.is_active !== false)
+                .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+        } catch (_) {
+            return [];
+        }
+    }
+
+    // True when the account has any posted activity (ledger_balances rows carry
+    // per-period totals — same source the trial balance reads). Used to block
+    // structure-changing edits on accounts with history.
+    async _accountInUse(userId, code) {
+        const snap = await getDocs(query(
+            collection(this.db, `${this._scope(userId)}/ledger_balances`),
+            where('account_code', '==', String(code))
+        ));
+        return snap.docs.some((d) => {
+            const b = d.data();
+            return (Number(b.debit_total) || 0) + (Number(b.credit_total) || 0) > 0;
+        });
+    }
+
+    // Create or update a Chart of Accounts entry. Guard matrix (docs/data-model/
+    // chart-of-accounts.md): code immutable (doc id); system accounts accept no
+    // edits here (posting engines denormalize their names); type/normal_balance
+    // are never editable in Phase 1. Update allowlist: name, name_id,
+    // sak_category, parent_code.
+    async saveAccount(userId, data = {}) {
+        if (!userId) throw new Error('userId required');
+        const code = String(data.code || '').trim();
+        const ref = doc(this.db, `${this._scope(userId)}/chart_of_accounts/${code}`);
+        const existing = await getDoc(ref);
+
+        if (existing.exists()) {
+            const current = existing.data();
+            if (current.is_system || SYSTEM_ACCOUNT_CODES.includes(code)) {
+                throw new Error('System accounts cannot be edited.');
+            }
+            const draft = {
+                code,
+                type: current.type,
+                name: data.name ?? current.name,
+                name_id: data.name_id ?? current.name_id,
+                sak_category: data.sak_category ?? current.sak_category,
+                parent_code: data.parent_code !== undefined ? data.parent_code : current.parent_code
+            };
+            const parent = draft.parent_code
+                ? await getDoc(doc(this.db, `${this._scope(userId)}/chart_of_accounts/${draft.parent_code}`))
+                : null;
+            const check = validateAccountDraft(draft, { parent: parent?.exists() ? parent.data() : null });
+            if (!check.ok) throw new Error(check.errors.join(' '));
+            const payload = {
+                name: String(draft.name).trim(),
+                name_id: draft.name_id ? String(draft.name_id).trim() : null,
+                sak_category: draft.sak_category || null,
+                parent_code: draft.parent_code || null,
+                updated_at: serverTimestamp()
+            };
+            await setDoc(ref, payload, { merge: true });
+            await this.addAuditLog(userId, {
+                action: 'chart_of_accounts.updated',
+                target_collection: 'chart_of_accounts',
+                target_id: code,
+                before: { name: current.name, sak_category: current.sak_category || null, parent_code: current.parent_code || null },
+                after: { name: payload.name, sak_category: payload.sak_category, parent_code: payload.parent_code },
+                source: 'dashboard'
+            });
+            return { id: code, ...current, ...payload };
+        }
+
+        const draft = {
+            code,
+            type: data.type,
+            name: data.name,
+            name_id: data.name_id,
+            sak_category: data.sak_category,
+            parent_code: data.parent_code || null
+        };
+        const parent = draft.parent_code
+            ? await getDoc(doc(this.db, `${this._scope(userId)}/chart_of_accounts/${draft.parent_code}`))
+            : null;
+        const check = validateAccountDraft(draft, { parent: parent?.exists() ? parent.data() : null });
+        if (!check.ok) throw new Error(check.errors.join(' '));
+        const payload = {
+            code,
+            name: String(draft.name).trim(),
+            name_id: draft.name_id ? String(draft.name_id).trim() : null,
+            type: draft.type,
+            subtype: null,
+            sak_category: draft.sak_category || null,
+            parent_code: draft.parent_code || null,
+            is_system: false,
+            normal_balance: (draft.type === 'asset' || draft.type === 'expense') ? 'debit' : 'credit',
+            is_active: true,
+            currency: 'IDR',
+            entity_id: this._resolvedScopeId(userId),
+            opening_balance: 0,
+            created_at: serverTimestamp()
+        };
+        await setDoc(ref, payload);
+        await this.addAuditLog(userId, {
+            action: 'chart_of_accounts.created',
+            target_collection: 'chart_of_accounts',
+            target_id: code,
+            after: { code, name: payload.name, type: payload.type, sak_category: payload.sak_category },
+            source: 'dashboard'
+        });
+        return { id: code, ...payload };
+    }
+
+    // Archive / reactivate. Archived accounts keep their history (trial balance
+    // reads ledger_balances) and simply drop out of pickers. System accounts
+    // can never be archived — posting fallbacks may still target them.
+    async archiveAccount(userId, code) {
+        return this._setAccountActive(userId, code, false);
+    }
+
+    async reactivateAccount(userId, code) {
+        return this._setAccountActive(userId, code, true);
+    }
+
+    async _setAccountActive(userId, code, active) {
+        if (!userId) throw new Error('userId required');
+        const key = String(code || '').trim();
+        const ref = doc(this.db, `${this._scope(userId)}/chart_of_accounts/${key}`);
+        const existing = await getDoc(ref);
+        if (!existing.exists()) throw new Error('Account not found.');
+        const current = existing.data();
+        if (!active && (current.is_system || SYSTEM_ACCOUNT_CODES.includes(key))) {
+            throw new Error('System accounts cannot be archived.');
+        }
+        if ((current.is_active !== false) === active) return { id: key, ...current };
+        await setDoc(ref, { is_active: active, updated_at: serverTimestamp() }, { merge: true });
+        await this.addAuditLog(userId, {
+            action: active ? 'chart_of_accounts.reactivated' : 'chart_of_accounts.archived',
+            target_collection: 'chart_of_accounts',
+            target_id: key,
+            before: { is_active: current.is_active !== false },
+            after: { is_active: active },
+            source: 'dashboard'
+        });
+        return { id: key, ...current, is_active: active };
     }
 
     async getChartOfAccounts(userId) {

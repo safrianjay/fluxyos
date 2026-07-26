@@ -28,39 +28,80 @@ export const NORMAL_BALANCE = {
     revenue: 'credit'
 };
 
-// Canonical Chart of Accounts seed. Extends the display catalog in db-service.js
-// (ACCOUNTING_ACCOUNT_CATALOG) with the accounts double-entry posting requires
-// but that catalog lacks: Cash (1000), Retained Earnings (3000), and Opening
-// Balance Equity (3900). This is the single source of truth shared by the seed
-// script and db-service so they can never drift.
+// SAK-aligned account classification (Jurnal-by-Mekari-style categories, kebab
+// enum values). Drives statement grouping and validation; inventory/fixed-asset
+// values are reserved for Phase 2 accounts so the enum never churns.
+// See docs/data-model/chart-of-accounts.md.
+export const SAK_CATEGORIES = [
+    'cash_bank', 'accounts_receivable', 'other_current_asset', 'inventory',
+    'fixed_asset', 'accumulated_depreciation', 'other_asset',
+    'accounts_payable', 'other_current_liability', 'long_term_liability',
+    'equity', 'revenue', 'other_income', 'cogs', 'operating_expense', 'other_expense'
+];
+
+// Canonical Chart of Accounts seed — the single source of truth shared by the
+// seeder, db-service catalogs, and the mapping UI so they can never drift.
+// Per entry: `is_system` marks accounts the posting/tax engines or default
+// resolution depend on (rename/archive locked); `mappable: false` keeps
+// structural accounts (cash, equity, tax) out of the category-mapping catalog;
+// `normal_balance` is only stated on contra accounts (3200, 4900) — everything
+// else derives from type. `name_id` is the Bahasa display name (data for
+// reports/AI; UI localization still flows through dashboard-i18n.js).
 export const CHART_OF_ACCOUNTS_SEED = [
-    { code: '1000', name: 'Cash & Bank', type: 'asset' },
-    { code: '1100', name: 'Accounts Receivable', type: 'asset' },
-    { code: '2000', name: 'Accounts Payable', type: 'liability' },
-    { code: '3000', name: 'Retained Earnings', type: 'equity' },
-    { code: '3900', name: 'Opening Balance Equity', type: 'equity' },
-    { code: '4000', name: 'Revenue', type: 'revenue' },
-    { code: '6100', name: 'Marketing Expense', type: 'expense' },
-    { code: '6200', name: 'Software / SaaS Expense', type: 'expense' },
-    { code: '6300', name: 'Infrastructure Expense', type: 'expense' },
-    { code: '6400', name: 'Operations Expense', type: 'expense' },
-    { code: '6500', name: 'Tax Expense', type: 'expense' },
-    { code: '6600', name: 'Bank Fees', type: 'expense' },
-    { code: '6999', name: 'Other Expense', type: 'expense' },
+    // --- Assets
+    { code: '1000', name: 'Cash & Bank', name_id: 'Kas & Bank', type: 'asset', sak_category: 'cash_bank', is_system: true, mappable: false },
+    { code: '1100', name: 'Accounts Receivable', name_id: 'Piutang Usaha', type: 'asset', sak_category: 'accounts_receivable', is_system: true },
+    // --- Liabilities
+    { code: '2000', name: 'Accounts Payable', name_id: 'Utang Usaha', type: 'liability', sak_category: 'accounts_payable', is_system: true },
+    { code: '2500', name: 'Deferred Revenue', name_id: 'Pendapatan Diterima di Muka', type: 'liability', sak_category: 'other_current_liability' },
+    // --- Equity
+    { code: '3000', name: 'Retained Earnings', name_id: 'Laba Ditahan', type: 'equity', sak_category: 'equity', is_system: true, mappable: false },
+    { code: '3100', name: 'Owner Capital', name_id: 'Modal Pemilik', type: 'equity', sak_category: 'equity' },
+    { code: '3200', name: 'Owner Drawings (Prive)', name_id: 'Prive', type: 'equity', sak_category: 'equity', normal_balance: 'debit' },
+    { code: '3900', name: 'Opening Balance Equity', name_id: 'Ekuitas Saldo Awal', type: 'equity', sak_category: 'equity', is_system: true, mappable: false },
+    // --- Revenue
+    { code: '4000', name: 'Revenue', name_id: 'Pendapatan', type: 'revenue', sak_category: 'revenue', is_system: true },
+    { code: '4900', name: 'Sales Discounts & Returns', name_id: 'Diskon & Retur Penjualan', type: 'revenue', sak_category: 'revenue', parent_code: '4000', normal_balance: 'debit' },
+    // --- Cost of Goods Sold
+    { code: '5100', name: 'Cost of Goods Sold', name_id: 'Harga Pokok Penjualan', type: 'expense', sak_category: 'cogs' },
+    // --- Operating expenses. 61xx-66xx system entries are default resolution
+    // targets (CATEGORY_DEFAULTS / TYPE_EXPENSE_DEFAULTS below).
+    { code: '6100', name: 'Marketing Expense', name_id: 'Beban Pemasaran', type: 'expense', sak_category: 'operating_expense', is_system: true },
+    { code: '6200', name: 'Software / SaaS Expense', name_id: 'Beban Software / SaaS', type: 'expense', sak_category: 'operating_expense', is_system: true },
+    { code: '6300', name: 'Infrastructure Expense', name_id: 'Beban Infrastruktur', type: 'expense', sak_category: 'operating_expense', is_system: true },
+    { code: '6400', name: 'Operations Expense', name_id: 'Beban Operasional', type: 'expense', sak_category: 'operating_expense', is_system: true },
+    { code: '6410', name: 'Salaries & Wages', name_id: 'Beban Gaji', type: 'expense', sak_category: 'operating_expense', parent_code: '6400' },
+    { code: '6420', name: 'Rent Expense', name_id: 'Beban Sewa', type: 'expense', sak_category: 'operating_expense', parent_code: '6400' },
+    { code: '6430', name: 'Utilities', name_id: 'Beban Utilitas', type: 'expense', sak_category: 'operating_expense', parent_code: '6400' },
+    { code: '6440', name: 'Office Supplies', name_id: 'Perlengkapan Kantor', type: 'expense', sak_category: 'operating_expense', parent_code: '6400' },
+    { code: '6450', name: 'Travel & Entertainment', name_id: 'Perjalanan & Entertain', type: 'expense', sak_category: 'operating_expense', parent_code: '6400' },
+    { code: '6460', name: 'Professional Services', name_id: 'Jasa Profesional', type: 'expense', sak_category: 'operating_expense', parent_code: '6400' },
+    { code: '6500', name: 'Tax Expense', name_id: 'Beban Pajak', type: 'expense', sak_category: 'operating_expense', is_system: true },
+    { code: '6600', name: 'Bank Fees', name_id: 'Biaya Bank', type: 'expense', sak_category: 'operating_expense', is_system: true },
+    { code: '6999', name: 'Other Expense', name_id: 'Beban Lainnya', type: 'expense', sak_category: 'other_expense', is_system: true },
+    // --- Other income
+    { code: '7100', name: 'Interest Income', name_id: 'Pendapatan Bunga', type: 'revenue', sak_category: 'other_income' },
+    { code: '7200', name: 'FX Gain/Loss', name_id: 'Laba/Rugi Selisih Kurs', type: 'revenue', sak_category: 'other_income' },
     // --- Indonesia Tax Center accounts (see docs/INDONESIA_TAX_CENTER_ARCHITECTURE.md
     // §5). Inactive for posting until tax-engine.js emits lines against them; seeded so
     // the chart is complete and tax journals resolve account names without a lookup.
-    { code: '1130', name: 'PPN Masukan (Input VAT)', type: 'asset' },
-    { code: '1140', name: 'Prepaid PPh 25', type: 'asset' },
-    { code: '1150', name: 'PPh Dipotong Pihak Lain', type: 'asset' },
-    { code: '2100', name: 'PPN Keluaran (Output VAT)', type: 'liability' },
-    { code: '2110', name: 'PPh Payable', type: 'liability' },
-    { code: '2200', name: 'PPh 29 Payable', type: 'liability' }
+    { code: '1130', name: 'PPN Masukan (Input VAT)', name_id: 'PPN Masukan', type: 'asset', sak_category: 'other_current_asset', is_system: true, mappable: false },
+    { code: '1140', name: 'Prepaid PPh 25', name_id: 'PPh 25 Dibayar di Muka', type: 'asset', sak_category: 'other_current_asset', is_system: true, mappable: false },
+    { code: '1150', name: 'PPh Dipotong Pihak Lain', name_id: 'PPh Dipotong Pihak Lain', type: 'asset', sak_category: 'other_current_asset', is_system: true, mappable: false },
+    { code: '2100', name: 'PPN Keluaran (Output VAT)', name_id: 'PPN Keluaran', type: 'liability', sak_category: 'other_current_liability', is_system: true, mappable: false },
+    { code: '2110', name: 'PPh Payable', name_id: 'Utang PPh', type: 'liability', sak_category: 'other_current_liability', is_system: true, mappable: false },
+    { code: '2200', name: 'PPh 29 Payable', name_id: 'Utang PPh 29', type: 'liability', sak_category: 'other_current_liability', is_system: true, mappable: false }
 ];
 
-// Fast lookup: code -> { name, type }.
+// Codes whose rename/archive is locked: the posting/tax engines hardcode them
+// or default resolution can post to them. Derived so guards/tests share one list.
+export const SYSTEM_ACCOUNT_CODES = CHART_OF_ACCOUNTS_SEED
+    .filter((a) => a.is_system)
+    .map((a) => a.code);
+
+// Fast lookup: code -> { name, name_id, type, sak_category }.
 const ACCOUNT_INDEX = CHART_OF_ACCOUNTS_SEED.reduce((acc, a) => {
-    acc[a.code] = { name: a.name, type: a.type };
+    acc[a.code] = { name: a.name, name_id: a.name_id || a.name, type: a.type, sak_category: a.sak_category || null };
     return acc;
 }, {});
 
@@ -107,6 +148,54 @@ export function signedBalance(type, debitTotal, creditTotal) {
     const d = toInt(debitTotal);
     const c = toInt(creditTotal);
     return normalBalanceOf(type) === 'debit' ? d - c : c - d;
+}
+
+// --- Chart of Accounts validation (pure; Firestore I/O stays in db-service) ---
+
+// Account codes are 4 digits, first digit 1-9 (thousand-block numbering, §A of
+// docs/CHART_OF_ACCOUNTS_STRATEGY.md). Codes are append-only and never renumbered.
+export function isValidAccountCode(code) {
+    return /^[1-9][0-9]{3}$/.test(String(code || ''));
+}
+
+// Expected account type per thousand-range. 5xxx (COGS), 6xxx (opex), and 8xxx
+// are all `expense` at the type layer — sak_category carries the finer split.
+export function accountTypeForCode(code) {
+    const block = String(code || '').charAt(0);
+    return {
+        1: 'asset', 2: 'liability', 3: 'equity', 4: 'revenue',
+        5: 'expense', 6: 'expense', 7: 'revenue', 8: 'expense'
+    }[block] || null;
+}
+
+export function isValidSakCategory(value) {
+    return SAK_CATEGORIES.includes(value);
+}
+
+// Validate a create/update draft. `parent` is the resolved parent account doc
+// when draft.parent_code is set (the caller fetches it — this stays pure).
+// Returns { ok, errors } so the UI can surface every problem at once.
+export function validateAccountDraft(draft = {}, { parent = null } = {}) {
+    const errors = [];
+    const code = String(draft.code || '').trim();
+    if (!isValidAccountCode(code)) errors.push('Account code must be 4 digits (1000-9999).');
+    const expectedType = accountTypeForCode(code);
+    if (!ACCOUNT_TYPES.includes(draft.type)) errors.push('Account type is invalid.');
+    else if (expectedType && draft.type !== expectedType) errors.push(`Code ${code} must be a ${expectedType} account.`);
+    const name = String(draft.name || '').trim();
+    if (!name || name.length > 120) errors.push('Account name is required (max 120 characters).');
+    if (draft.name_id != null && String(draft.name_id).length > 120) errors.push('Indonesian name is too long (max 120 characters).');
+    if (draft.sak_category != null && !isValidSakCategory(draft.sak_category)) errors.push('SAK category is invalid.');
+    if (draft.parent_code) {
+        const parentCode = String(draft.parent_code).trim();
+        if (parentCode === code) errors.push('An account cannot be its own parent.');
+        else if (!parent) errors.push('Parent account does not exist.');
+        else {
+            if (parent.type !== draft.type) errors.push('Parent account must have the same type.');
+            if (String(parent.code || '').charAt(0) !== code.charAt(0)) errors.push('Parent account must share the same code range.');
+        }
+    }
+    return { ok: errors.length === 0, errors };
 }
 
 // Deterministic period key 'YYYY-MM' in Asia/Jakarta (Indonesian business
