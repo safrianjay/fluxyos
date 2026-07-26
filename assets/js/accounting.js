@@ -1,4 +1,4 @@
-import { CHART_OF_ACCOUNTS_SEED } from './accounting-engine.js';
+import { CHART_OF_ACCOUNTS_SEED, SAK_CATEGORIES, validateAccountDraft } from './accounting-engine.js';
 
 // Accounting Center page controller — Phase 1.
 // Primary surface is the Income Statement Preview (a deterministic P&L built from
@@ -25,6 +25,34 @@ const state = {
 const ACCOUNT_OPTIONS = CHART_OF_ACCOUNTS_SEED
     .filter(a => a.mappable !== false)
     .map(a => ({ code: a.code, name: a.name, type: a.type }));
+
+// Mapping targets = the seed catalog PLUS live user-created accounts, so a custom
+// expense/revenue account (added via the New Account drawer) can be chosen as a
+// category-mapping target and Transactions/Bills post to it. System/structural
+// seed accounts already come from ACCOUNT_OPTIONS; live accounts are non-system,
+// active, expense/revenue, and not already present in the seed.
+function mappingAccountOptions() {
+    const seedCodes = new Set(ACCOUNT_OPTIONS.map(a => a.code));
+    const live = (state.kernel?.coa || [])
+        .filter(a => a.is_active !== false && a.is_system !== true
+            && (a.type === 'expense' || a.type === 'revenue') && !seedCodes.has(a.code))
+        .map(a => ({ code: a.code, name: a.name, type: a.type }));
+    return [...ACCOUNT_OPTIONS, ...live].sort((a, b) => String(a.code).localeCompare(String(b.code)));
+}
+
+// SAK category → account type. One entry per SAK_CATEGORIES value; the create
+// drawer derives `type` from the chosen category so code↔type stays consistent.
+const SAK_CATEGORY_TYPE = {
+    cash_bank: 'asset', accounts_receivable: 'asset', other_current_asset: 'asset',
+    inventory: 'asset', fixed_asset: 'asset', accumulated_depreciation: 'asset', other_asset: 'asset',
+    accounts_payable: 'liability', other_current_liability: 'liability', long_term_liability: 'liability',
+    equity: 'equity', revenue: 'revenue', other_income: 'revenue',
+    cogs: 'expense', operating_expense: 'expense', other_expense: 'expense'
+};
+
+// First code digit for each account type (FluxyOS 4-digit convention). Expense
+// accounts live in the 5xxx-6xxx block; suggestions use 6xxx (operating).
+const TYPE_CODE_PREFIX = { asset: '1', liability: '2', equity: '3', revenue: '4', expense: '6' };
 
 const TONE_COLOR = { success: '#16A34A', warning: '#EA580C', danger: '#EF4444', neutral: '#94A3B8' };
 const TONE_PILL = { success: 'acct-pill-ready', warning: 'acct-pill-almost', danger: 'acct-pill-needs', neutral: 'acct-pill-planned' };
@@ -132,6 +160,7 @@ function wireStaticControls() {
     el('reopen-period-btn')?.addEventListener('click', () => onReopenPeriod());
     el('journals-new-manual')?.addEventListener('click', () => { window.location.href = 'accounting-journal-new.html'; });
     el('journals-post-pending')?.addEventListener('click', () => onPostPending());
+    el('coa-new-account')?.addEventListener('click', () => openCreateAccountDrawer());
 }
 
 // Imported entries (CSV / bank statements) post their journals via a sweep rather
@@ -745,7 +774,7 @@ function renderMapping(data) {
         return;
     }
     const rows = data.mappingPreview.map((m, idx) => {
-        const options = ACCOUNT_OPTIONS.map(opt =>
+        const options = mappingAccountOptions().map(opt =>
             `<option value="${opt.code}" ${opt.code === m.target_account_code ? 'selected' : ''}>${escapeHtml(opt.code)} · ${escapeHtml(opt.name)}</option>`
         ).join('');
         return `
@@ -771,7 +800,7 @@ async function handleMappingSave(idx) {
     if (!mapping) return;
     const select = document.querySelector(`[data-mapping-select="${idx}"]`);
     const code = select ? select.value : mapping.target_account_code;
-    const account = ACCOUNT_OPTIONS.find(a => a.code === code);
+    const account = mappingAccountOptions().find(a => a.code === code);
     if (!account) {
         window.showToast?.('Pick an account before saving.', 'error');
         return;
@@ -1109,6 +1138,7 @@ function renderChartOfAccounts() {
         return;
     }
     const canManage = !!window.FluxyWorkspace?.can?.('accounting.post');
+    el('coa-new-account')?.classList.toggle('hidden', !canManage);
     const body = coa.map(a => {
         const child = !!a.parent_code;
         const active = a.is_active !== false;
@@ -1137,6 +1167,236 @@ function renderChartOfAccounts() {
 
 function accountDetailLink(code) {
     return `/accounting-account?code=${encodeURIComponent(code)}`;
+}
+
+// ===================================================================
+// New Account drawer — create a custom Chart of Accounts entry.
+// Writes through DataService.saveAccount (create path already validates,
+// audit-logs, sets is_system:false + derived normal_balance). The form derives
+// `type` from the chosen SAK category so code↔type stays consistent, then
+// re-validates with the shared validateAccountDraft before submit.
+// ===================================================================
+
+// SAK categories grouped into <optgroup>s by the type they map to.
+function categoryOptionsHtml() {
+    const groups = [
+        ['Assets', 'asset'], ['Liabilities', 'liability'], ['Equity', 'equity'],
+        ['Revenue', 'revenue'], ['Expenses', 'expense']
+    ];
+    return groups.map(([label, type]) => {
+        const opts = SAK_CATEGORIES
+            .filter(c => SAK_CATEGORY_TYPE[c] === type)
+            .map(c => `<option value="${c}">${escapeHtml(SAK_LABELS[c] || c)}</option>`)
+            .join('');
+        return `<optgroup label="${escapeHtml(label)}">${opts}</optgroup>`;
+    }).join('');
+}
+
+// Next free 4-digit code in the type's block. Custom accounts start at <prefix>900
+// (below the seed's structural codes) and step by 10 so they read as a set.
+function suggestAccountCode(type) {
+    const prefix = TYPE_CODE_PREFIX[type] || '6';
+    const used = new Set((state.kernel?.coa || []).map(a => String(a.code)));
+    for (let n = parseInt(`${prefix}900`, 10); n <= parseInt(`${prefix}999`, 10); n += 10) {
+        if (!used.has(String(n))) return String(n);
+    }
+    for (let n = parseInt(`${prefix}000`, 10); n <= parseInt(`${prefix}999`, 10); n += 1) {
+        if (!used.has(String(n))) return String(n);
+    }
+    return '';
+}
+
+// Active accounts of the same type — candidate parents. The leading-digit rule is
+// enforced by validateAccountDraft on submit; this just keeps the list relevant.
+function parentOptionsHtml(type, excludeCode) {
+    const parents = (state.kernel?.coa || [])
+        .filter(a => a.type === type && a.is_active !== false && a.code !== excludeCode)
+        .sort((a, b) => String(a.code).localeCompare(String(b.code)));
+    if (!parents.length) return '<option value="">No eligible parent accounts</option>';
+    return '<option value="">— None —</option>' + parents
+        .map(a => `<option value="${escapeHtml(a.code)}">${escapeHtml(a.code)} · ${escapeHtml(a.name)}</option>`)
+        .join('');
+}
+
+function caEl(id) { return document.getElementById(id); }
+function caType() { return SAK_CATEGORY_TYPE[caEl('ca-category')?.value] || 'expense'; }
+
+function refreshCaDerived() {
+    const type = caType();
+    const codeInput = caEl('ca-code');
+    // Only re-suggest when the user hasn't hand-edited the code.
+    if (codeInput && codeInput.dataset.autofill !== '0') {
+        codeInput.value = suggestAccountCode(type);
+    }
+    const parentSel = caEl('ca-parent');
+    if (parentSel) parentSel.innerHTML = parentOptionsHtml(type, codeInput?.value || '');
+}
+
+function openCreateAccountDrawer() {
+    if (window.FluxyWorkspace && typeof window.FluxyWorkspace.can === 'function'
+        && !window.FluxyWorkspace.can('accounting.post')) {
+        window.showToast?.('You do not have permission to create accounts.', 'error');
+        return;
+    }
+    document.getElementById('ca-drawer-root')?.remove();
+
+    const html = `
+    <div id="ca-drawer-root" class="fluxy-drawer-root">
+        <div id="ca-drawer-overlay" class="fluxy-drawer-overlay opacity-0 transition-opacity duration-300 ease-out"></div>
+        <div id="ca-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="ca-drawer-title" class="fluxy-drawer-panel fluxy-drawer-panel--md translate-x-full">
+            <div class="fluxy-drawer-header">
+                <div>
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Chart of Accounts</p>
+                    <h2 id="ca-drawer-title" class="fluxy-drawer-title">New Account</h2>
+                    <p class="fluxy-drawer-desc">Add a custom account to your chart. It becomes available in manual journals, account mapping, and reports.</p>
+                </div>
+                <button type="button" id="ca-close" class="fluxy-drawer-close" aria-label="Close">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <form id="ca-form" class="flex flex-1 flex-col overflow-hidden">
+                <div class="fluxy-drawer-body">
+                    <section class="fluxy-drawer-section">
+                        <h3 class="fluxy-drawer-section-title">Account information</h3>
+                        <div class="fluxy-drawer-field">
+                            <label for="ca-category" class="fluxy-drawer-label">Account category</label>
+                            <select id="ca-category" class="fluxy-drawer-select">${categoryOptionsHtml()}</select>
+                            <p class="fluxy-drawer-hint">Determines the account type and where it appears in your reports.</p>
+                        </div>
+                        <div class="fluxy-drawer-field-grid">
+                            <div class="fluxy-drawer-field">
+                                <label for="ca-code" class="fluxy-drawer-label">Account code</label>
+                                <input type="text" id="ca-code" inputmode="numeric" maxlength="4" placeholder="e.g. 6900" class="fluxy-drawer-input tabular-nums">
+                                <p class="fluxy-drawer-hint">4 digits (1000–9999). The first digit must match the category type.</p>
+                            </div>
+                            <div class="fluxy-drawer-field">
+                                <label for="ca-name" class="fluxy-drawer-label">Account name</label>
+                                <input type="text" id="ca-name" maxlength="120" required placeholder="e.g. Consulting Revenue" class="fluxy-drawer-input">
+                            </div>
+                        </div>
+                        <div class="fluxy-drawer-field">
+                            <label for="ca-name-id" class="fluxy-drawer-label">Indonesian name <span class="text-gray-400 font-normal">(optional)</span></label>
+                            <input type="text" id="ca-name-id" maxlength="120" placeholder="e.g. Pendapatan Konsultasi" class="fluxy-drawer-input">
+                        </div>
+                    </section>
+
+                    <section class="fluxy-drawer-section">
+                        <h3 class="fluxy-drawer-section-title">Hierarchy & notes</h3>
+                        <label class="flex items-center gap-2 text-[14px] text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="ca-parent-toggle" class="h-4 w-4 rounded border-gray-300">
+                            <span>Set this account as part of another account</span>
+                        </label>
+                        <div id="ca-parent-field" class="fluxy-drawer-field hidden" style="margin-top:12px;">
+                            <label for="ca-parent" class="fluxy-drawer-label">Parent account</label>
+                            <select id="ca-parent" class="fluxy-drawer-select"></select>
+                            <p class="fluxy-drawer-hint">Must be an active account of the same type and code range.</p>
+                        </div>
+                        <div class="fluxy-drawer-field" style="margin-top:12px;">
+                            <label for="ca-description" class="fluxy-drawer-label">Description <span class="text-gray-400 font-normal">(optional)</span></label>
+                            <textarea id="ca-description" maxlength="255" rows="2" placeholder="Example: Account for employee receivables" class="fluxy-drawer-input"></textarea>
+                        </div>
+                    </section>
+
+                    <div id="ca-error" class="hidden rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700"></div>
+                </div>
+                <div class="fluxy-drawer-footer">
+                    <button type="button" id="ca-cancel" class="acct-btn acct-btn-secondary">Cancel</button>
+                    <button type="submit" id="ca-save" class="acct-btn acct-btn-primary">Save account</button>
+                </div>
+            </form>
+        </div>
+    </div>`;
+
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    document.body.appendChild(container.firstElementChild);
+    document.body.classList.add('overflow-hidden');
+
+    const panel = caEl('ca-drawer-panel');
+    const overlay = caEl('ca-drawer-overlay');
+    window.requestAnimationFrame(() => {
+        panel?.classList.remove('translate-x-full');
+        overlay?.classList.remove('opacity-0');
+    });
+
+    // Wire interactions.
+    caEl('ca-close')?.addEventListener('click', closeCreateAccountDrawer);
+    caEl('ca-cancel')?.addEventListener('click', closeCreateAccountDrawer);
+    overlay?.addEventListener('click', closeCreateAccountDrawer);
+    caEl('ca-category')?.addEventListener('change', refreshCaDerived);
+    caEl('ca-code')?.addEventListener('input', (e) => { e.target.dataset.autofill = '0'; });
+    caEl('ca-parent-toggle')?.addEventListener('change', (e) => {
+        caEl('ca-parent-field')?.classList.toggle('hidden', !e.target.checked);
+        if (e.target.checked) refreshCaDerived();
+    });
+    caEl('ca-form')?.addEventListener('submit', (e) => { e.preventDefault(); submitCreateAccount(); });
+
+    refreshCaDerived();
+
+    state.caDispose = window.FluxyDrawer?.mountBehavior?.(panel, {
+        closeOnEscape: true,
+        closeOnOverlay: false, // overlay click already wired above
+        onClose: closeCreateAccountDrawer,
+        overlayEl: overlay
+    });
+
+    if (typeof window.translateDashboardPage === 'function') window.translateDashboardPage();
+}
+
+function closeCreateAccountDrawer() {
+    const root = caEl('ca-drawer-root');
+    if (!root) return;
+    caEl('ca-drawer-panel')?.classList.add('translate-x-full');
+    caEl('ca-drawer-overlay')?.classList.add('opacity-0');
+    document.body.classList.remove('overflow-hidden');
+    if (typeof state.caDispose === 'function') { state.caDispose(); state.caDispose = null; }
+    setTimeout(() => root.remove(), 300);
+}
+
+function showCaError(msg) {
+    const box = caEl('ca-error');
+    if (!box) return;
+    if (!msg) { box.classList.add('hidden'); box.textContent = ''; return; }
+    box.classList.remove('hidden');
+    box.textContent = msg;
+}
+
+async function submitCreateAccount() {
+    const type = caType();
+    const code = String(caEl('ca-code')?.value || '').trim();
+    const name = String(caEl('ca-name')?.value || '').trim();
+    const nameId = String(caEl('ca-name-id')?.value || '').trim();
+    const sakCategory = caEl('ca-category')?.value || '';
+    const parentCode = caEl('ca-parent-toggle')?.checked ? String(caEl('ca-parent')?.value || '').trim() : '';
+    const description = String(caEl('ca-description')?.value || '').trim();
+
+    // Client-side uniqueness — the DAL also guards with { create: true }.
+    if ((state.kernel?.coa || []).some(a => String(a.code) === code)) {
+        showCaError('Account code already exists.');
+        return;
+    }
+    const parent = parentCode ? (state.kernel?.coa || []).find(a => String(a.code) === parentCode) : null;
+    const draft = { code, type, name, name_id: nameId || null, sak_category: sakCategory, parent_code: parentCode || null };
+    const check = validateAccountDraft(draft, { parent: parent || null });
+    if (!check.ok) { showCaError(check.errors.join(' ')); return; }
+    showCaError('');
+
+    const saveBtn = caEl('ca-save');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+    try {
+        await state.ds.saveAccount(state.user.uid, {
+            code, name, name_id: nameId || null, type,
+            sak_category: sakCategory, parent_code: parentCode || null,
+            description: description || null
+        }, { create: true });
+        window.showToast?.('Account created.', 'success');
+        closeCreateAccountDrawer();
+        await loadKernel(true);
+    } catch (err) {
+        console.error('Create account failed:', err);
+        showCaError(err?.message || 'Could not create the account. Try again.');
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save account'; }
+    }
 }
 
 async function handleCoaToggle(code, isActive) {

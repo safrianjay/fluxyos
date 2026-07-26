@@ -3425,11 +3425,16 @@ class DataService {
     // edits here (posting engines denormalize their names); type/normal_balance
     // are never editable in Phase 1. Update allowlist: name, name_id,
     // sak_category, parent_code.
-    async saveAccount(userId, data = {}) {
+    async saveAccount(userId, data = {}, { create = false } = {}) {
         if (!userId) throw new Error('userId required');
         const code = String(data.code || '').trim();
         const ref = doc(this.db, `${this._scope(userId)}/chart_of_accounts/${code}`);
         const existing = await getDoc(ref);
+
+        // Create-only flows (the "New Account" drawer) must never silently route
+        // an existing code into the update branch — that would overwrite a live
+        // account. Reject the duplicate instead.
+        if (create && existing.exists()) throw new Error('Account code already exists.');
 
         if (existing.exists()) {
             const current = existing.data();
@@ -3489,6 +3494,7 @@ class DataService {
             subtype: null,
             sak_category: draft.sak_category || null,
             parent_code: draft.parent_code || null,
+            description: data.description ? String(data.description).trim().slice(0, 255) : null,
             is_system: false,
             normal_balance: (draft.type === 'asset' || draft.type === 'expense') ? 'debit' : 'credit',
             is_active: true,
