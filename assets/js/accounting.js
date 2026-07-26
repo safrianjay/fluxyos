@@ -54,6 +54,21 @@ const SAK_CATEGORY_TYPE = {
 // accounts live in the 5xxx-6xxx block; suggestions use 6xxx (operating).
 const TYPE_CODE_PREFIX = { asset: '1', liability: '2', equity: '3', revenue: '4', expense: '6' };
 
+// PPN treatments selectable as an account's default tax. Values are the tax-engine
+// TAX_CODES; the empty value is "No tax". Labels use the canonical Indonesian tax
+// names so they read the same as the Tax Center.
+const TAX_OPTIONS = [
+    ['', 'No tax'],
+    ['PPN_OUT_11', 'PPN Keluaran 11%'],
+    ['PPN_IN_11', 'PPN Masukan 11%'],
+    ['PPN_ZERO', 'PPN 0%'],
+    ['PPN_EXEMPT', 'PPN Dibebaskan']
+];
+const TAX_OPTION_CODES = new Set(TAX_OPTIONS.map(([code]) => code).filter(Boolean));
+function taxOptionsHtml() {
+    return TAX_OPTIONS.map(([code, label]) => `<option value="${escapeHtml(code)}">${escapeHtml(label)}</option>`).join('');
+}
+
 const TONE_COLOR = { success: '#16A34A', warning: '#EA580C', danger: '#EF4444', neutral: '#94A3B8' };
 const TONE_PILL = { success: 'acct-pill-ready', warning: 'acct-pill-almost', danger: 'acct-pill-needs', neutral: 'acct-pill-planned' };
 const TONE_STATUS = { success: 'fluxy-status-success', warning: 'fluxy-status-warning', danger: 'fluxy-status-danger', neutral: 'fluxy-status-neutral' };
@@ -1275,8 +1290,9 @@ function openCreateAccountDrawer() {
                             </div>
                         </div>
                         <div class="fluxy-drawer-field">
-                            <label for="ca-name-id" class="fluxy-drawer-label">Indonesian name <span class="text-gray-400 font-normal">(optional)</span></label>
-                            <input type="text" id="ca-name-id" maxlength="120" placeholder="e.g. Pendapatan Konsultasi" class="fluxy-drawer-input">
+                            <label for="ca-tax" class="fluxy-drawer-label">Tax <span class="text-gray-400 font-normal">(optional)</span></label>
+                            <select id="ca-tax" class="fluxy-drawer-select">${taxOptionsHtml()}</select>
+                            <p class="fluxy-drawer-hint">Default PPN treatment recorded on this account. Choose "No tax" to leave it unset.</p>
                         </div>
                     </section>
 
@@ -1365,7 +1381,7 @@ async function submitCreateAccount() {
     const type = caType();
     const code = String(caEl('ca-code')?.value || '').trim();
     const name = String(caEl('ca-name')?.value || '').trim();
-    const nameId = String(caEl('ca-name-id')?.value || '').trim();
+    const taxCode = TAX_OPTION_CODES.has(caEl('ca-tax')?.value) ? caEl('ca-tax').value : '';
     const sakCategory = caEl('ca-category')?.value || '';
     const parentCode = caEl('ca-parent-toggle')?.checked ? String(caEl('ca-parent')?.value || '').trim() : '';
     const description = String(caEl('ca-description')?.value || '').trim();
@@ -1376,7 +1392,7 @@ async function submitCreateAccount() {
         return;
     }
     const parent = parentCode ? (state.kernel?.coa || []).find(a => String(a.code) === parentCode) : null;
-    const draft = { code, type, name, name_id: nameId || null, sak_category: sakCategory, parent_code: parentCode || null };
+    const draft = { code, type, name, name_id: null, sak_category: sakCategory, parent_code: parentCode || null };
     const check = validateAccountDraft(draft, { parent: parent || null });
     if (!check.ok) { showCaError(check.errors.join(' ')); return; }
     showCaError('');
@@ -1385,9 +1401,9 @@ async function submitCreateAccount() {
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
     try {
         await state.ds.saveAccount(state.user.uid, {
-            code, name, name_id: nameId || null, type,
+            code, name, type,
             sak_category: sakCategory, parent_code: parentCode || null,
-            description: description || null
+            description: description || null, tax_code: taxCode || null
         }, { create: true });
         window.showToast?.('Account created.', 'success');
         closeCreateAccountDrawer();

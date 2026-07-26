@@ -3495,6 +3495,7 @@ class DataService {
             sak_category: draft.sak_category || null,
             parent_code: draft.parent_code || null,
             description: data.description ? String(data.description).trim().slice(0, 255) : null,
+            tax_code: (data.tax_code && TAX_RATES[data.tax_code]) ? data.tax_code : null,
             is_system: false,
             normal_balance: (draft.type === 'asset' || draft.type === 'expense') ? 'debit' : 'credit',
             is_active: true,

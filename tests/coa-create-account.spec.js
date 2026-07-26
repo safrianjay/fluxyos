@@ -32,18 +32,25 @@ test('New Account drawer creates a custom account; it lands in the CoA table and
     const bad = collectErrors(page);
     await openCoaDrawer(page);
 
-    // Pick an operating-expense category → type expense, auto-suggested 6xxx code.
+    // Pick an operating-expense category → type expense, auto-suggested 6xxx code,
+    // and a default input-VAT treatment.
     await page.locator('#ca-category').selectOption('operating_expense');
     const code = await page.locator('#ca-code').inputValue();
     expect(code).toMatch(/^6\d{3}$/);
     const name = `QA Custom Expense ${Date.now()}`;
     await page.locator('#ca-name').fill(name);
+    await page.locator('#ca-tax').selectOption('PPN_IN_11');
     await page.locator('#ca-save').click();
 
     // Drawer closes; the new account appears in the CoA table with a detail link.
     await expect(page.locator('#ca-drawer-panel')).toBeHidden({ timeout: 15000 });
     const row = page.locator(`#coa-content a.acct-link[href="/accounting-account?code=${code}"]`);
     await expect(row).toBeVisible({ timeout: 15000 });
+
+    // The chosen tax persists and surfaces on the Account Detail summary.
+    await page.goto(`/accounting-account?code=${code}`);
+    await expect(page.locator('#account-content')).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('#account-detail-body')).toContainText('PPN Masukan 11%');
 
     // Available immediately in Manual Journal Entry (reads the live collection).
     await page.goto('/accounting-journal-new.html');

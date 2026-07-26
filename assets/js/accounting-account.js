@@ -14,6 +14,12 @@ const SAK_LABELS = {
     other_income: 'Other Income', cogs: 'COGS', operating_expense: 'Operating Expense', other_expense: 'Other Expense'
 };
 
+// PPN treatment codes → display label (matches the New Account drawer / Tax Center).
+const TAX_LABELS = {
+    PPN_OUT_11: 'PPN Keluaran 11%', PPN_IN_11: 'PPN Masukan 11%',
+    PPN_ZERO: 'PPN 0%', PPN_EXEMPT: 'PPN Dibebaskan'
+};
+
 const SOURCE_OPTIONS = [
     ['manual', 'Manual journals'],
     ['transactions', 'Transactions'],
@@ -228,6 +234,7 @@ function render() {
                 ${metaItem('Current balance', escapeHtml(signedRupiah(account.current_balance || 0)))}
                 ${metaItem('Type', escapeHtml(translate(account.type || '-')))}
                 ${metaItem('Normal balance', escapeHtml(translate(account.normal_balance || '-')))}
+                ${metaItem('Tax', escapeHtml(TAX_LABELS[account.tax_code] || translate('No tax')))}
             </div>
         </section>
 
