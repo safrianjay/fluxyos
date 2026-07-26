@@ -1215,8 +1215,27 @@ audit log (`accounting_mapping.created`/`.updated`, target `accounting_mappings`
 **Accounting Center.** `accounting.html` + `assets/js/accounting.js`. The
 **primary tab is the Income Statement Preview** (a deterministic P&L); readiness
 is a supporting **report confidence** banner + KPI. Tabs are **Income Statement /
-Journals / General Ledger / Trial Balance / Chart of Accounts / Aging / Cleanup /
-Account Mapping / Close**. The Aging tab is the standard 30/60/90 A/R + A/P
+Journals / General Ledger / Trial Balance / Statements / Chart of Accounts /
+Aging / Cleanup / Account Mapping / Close**.
+
+The **Statements** tab is the ledger-derived Income Statement + Balance Sheet
+(`DataService.getFinancialStatements`, pure `assets/js/statements-engine.js`).
+It reads `ledger_balances` — the SAME source as the Trial Balance — so it can
+never disagree with it, unlike the transactions-only Income Statement *preview*
+on the first tab. The P&L is period-range MOVEMENT (Revenue → COGS → Gross
+Profit → OpEx → Operating Income → Other Income/Expense → Net Income); the
+Balance Sheet is CUMULATIVE through the period end with a real equity section
+(owner capital, retained earnings, prive, opening equity, + a computed
+Current-period-earnings line) and a tie-out badge. The tie-out is a real
+integrity signal — Assets = Liabilities + Equity holds for balanced journals, so
+a non-zero delta means the `ledger_balances` snapshot itself drifted (repair via
+`scripts/reconcile-ledger-balances.js`).
+
+The **Close** tab's readiness checklist is kernel-aware: it leads with the gates
+that actually block a clean close — all entries posted to the ledger (pending
+count) and a balanced trial balance — then the transaction-cleanup signals.
+
+The Aging tab is the standard 30/60/90 A/R + A/P
 aging (as-of today, not period-scoped): open IDR invoices + `pending_receivable`
 accruals vs unpaid bills + `pending_payable` accruals — the same composition as
 the Balance Sheet lines, so totals tie. Bucketing is pure
