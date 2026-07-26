@@ -12,7 +12,10 @@
 //   • Let the user select/edit rows and Confirm Import to create linked ledger
 //     transactions (DataService.confirmBankStatementImport). "Reject draft"
 //     flips review_status to "rejected".
-//   • Never update a bank account balance (Phase 3).
+//   • Phase 3 (docs/BANK_RECONCILIATION_PLAN.md Phase A): link the statement to
+//     a bank account, stamp cash_account_id on imported rows, and — after
+//     import, behind an explicit confirm — certify the statement's closing
+//     balance onto that account (balance + snapshot; never touches journals).
 //
 // Two ways to use this module:
 //   window.FluxyBankStatementImport.open({ app, auth, ds, user })
@@ -209,15 +212,72 @@
             </div>`;
     }
 
+    function accountOptionLabel(account) {
+        const last4 = account.last_four ? ` ····${account.last_four}` : '';
+        return `${account.bank_name || 'Bank'} · ${account.account_name || 'Account'}${last4}`;
+    }
+
+    // Bank-account link block (Phase 3 / docs/BANK_RECONCILIATION_PLAN.md Phase A).
+    // Shown on review and, if still unlinked, on the imported step before certify.
+    function accountPickerMarkup(ctx) {
+        const draft = ctx.draft || {};
+        const accounts = Array.isArray(ctx.accounts) ? ctx.accounts : [];
+        const options = [
+            `<option value=""${!draft.bank_account_id ? ' selected' : ''}>Not linked yet</option>`,
+            ...accounts.map(a => `<option value="${escapeHtml(a.id)}"${a.id === draft.bank_account_id ? ' selected' : ''}>${escapeHtml(accountOptionLabel(a))}</option>`),
+            `<option value="__create__">＋ Create new bank account</option>`
+        ].join('');
+        return `
+            <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-[13px] font-bold text-gray-900">Bank account</p>
+                        <p class="text-[12px] text-gray-500">Link this statement to an account so its closing balance can be certified after import.</p>
+                    </div>
+                    <select data-bsi-account class="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-[12px] font-medium text-gray-900" ${ctx.accountBusy ? 'disabled' : ''}>${options}</select>
+                </div>
+            </div>`;
+    }
+
+    function certifyCardMarkup(ctx) {
+        const draft = ctx.draft || {};
+        const closingLine = (value) => `
+            <p class="mt-2 text-[13px] font-bold tabular-nums text-gray-900">${escapeHtml(formatIDR(value))} <span class="font-medium text-gray-500">· ${escapeHtml(formatDate(draft.statement_end_date))}</span></p>`;
+        if (draft.reconciliation_status === 'certified') {
+            return `
+                <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left">
+                    <p class="text-[13px] font-bold text-emerald-800">Balance certified</p>
+                    <p class="mt-1 text-[12px] text-emerald-700">The linked account now reports this statement's closing balance.</p>
+                    ${closingLine(draft.certified_closing_balance)}
+                </div>`;
+        }
+        if (draft.closing_balance == null) {
+            return `
+                <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-left text-[12px] text-gray-600">
+                    No closing balance was detected on this statement, so the bank balance stays unchanged.
+                </div>`;
+        }
+        const linked = !!draft.bank_account_id;
+        return `
+            <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-left">
+                <p class="text-[13px] font-bold text-gray-900">Certify bank balance</p>
+                <p class="mt-1 text-[12px] text-gray-500">Set the linked account's reported balance to this statement's closing balance. A snapshot is kept; ledger records are not changed.</p>
+                ${closingLine(draft.closing_balance)}
+                ${linked ? '' : `<div class="mt-3">${accountPickerMarkup(ctx)}</div>`}
+                <button type="button" data-bsi-certify ${linked && !ctx.certifyBusy ? '' : 'disabled'} class="mt-3 rounded-xl px-4 py-2 text-[13px] font-bold ${linked ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-200 text-gray-500'}">${ctx.certifyBusy ? 'Certifying…' : 'Certify balance'}</button>
+            </div>`;
+    }
+
     function importedStepMarkup(ctx) {
         const count = ctx.importedCount || 0;
         return `
-            <div class="flex h-full flex-col items-center justify-center py-12 text-center">
+            <div class="flex h-full flex-col items-center justify-center py-10 text-center">
                 <span class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
                     <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                 </span>
                 <p class="mt-4 text-[14px] font-bold text-gray-900">${count} transaction${count === 1 ? '' : 's'} imported</p>
-                <p class="mt-1 text-[12px] text-gray-500">They are now in your Ledger, tagged as imported from this statement. Balances were not changed.</p>
+                <p class="mt-1 text-[12px] text-gray-500">They are now in your Ledger, tagged as imported from this statement.</p>
+                <div class="mt-6 w-full max-w-md space-y-3">${certifyCardMarkup(ctx)}</div>
             </div>`;
     }
 
@@ -352,6 +412,7 @@
         return `
             <div class="space-y-5">
                 ${summary}
+                ${accountPickerMarkup(ctx)}
                 ${balanceWarn}
                 ${reviewTable}
             </div>`;
@@ -507,6 +568,86 @@
                 renderContent(ctx);
             };
         });
+        ctx.contentEl.querySelectorAll('[data-bsi-account]').forEach(sel => {
+            sel.onchange = () => setLinkedAccount(ctx, sel.value);
+        });
+        ctx.contentEl.querySelectorAll('[data-bsi-certify]').forEach(btn => {
+            btn.onclick = () => runCertify(ctx);
+        });
+    }
+
+    async function loadAccounts(ctx) {
+        try { ctx.accounts = await ctx.ds.getBankAccounts(ctx.user.uid); }
+        catch (_) { ctx.accounts = []; }
+    }
+
+    // Link (or create-and-link) the bank account for this statement. Persisted
+    // immediately so the choice survives a drawer re-open.
+    async function setLinkedAccount(ctx, value) {
+        const user = resolveUser(ctx);
+        if (!user || !ctx.ds || !ctx.draft?.id || ctx.accountBusy) return;
+        ctx.accountBusy = true;
+        renderContent(ctx);
+        try {
+            let accountId = value || null;
+            if (value === '__create__') {
+                const draft = ctx.draft || {};
+                const last4 = String(draft.account_number_masked || '').replace(/[^0-9]/g, '').slice(-4) || null;
+                const created = await ctx.ds.addManualBankAccount(user.uid, {
+                    account_name: draft.account_holder || draft.bank_name || 'Bank account',
+                    bank_name: draft.bank_name || 'Bank',
+                    last_four: last4,
+                    current_balance: draft.opening_balance ?? 0,
+                    balance_date: draft.statement_start_date || null,
+                    notes: 'Created from a bank statement import'
+                });
+                accountId = created.id;
+                (ctx.accounts = ctx.accounts || []).unshift(created);
+                window.showToast?.('Bank account created and linked.', 'success');
+            }
+            await ctx.ds.updateBankStatementImport(user.uid, ctx.draft.id, { bank_account_id: accountId });
+            ctx.draft = { ...ctx.draft, bank_account_id: accountId };
+        } catch (error) {
+            console.warn('Linking bank account failed:', error?.message || error);
+            window.showToast?.('Could not link the bank account. Try again.', 'error');
+        } finally {
+            ctx.accountBusy = false;
+            renderContent(ctx);
+        }
+    }
+
+    async function runCertify(ctx) {
+        const user = resolveUser(ctx);
+        if (!user || !ctx.ds || !ctx.draft?.id || ctx.certifyBusy) return;
+        const draft = ctx.draft || {};
+        const ok = await (window.showConfirmDialog
+            ? window.showConfirmDialog({
+                title: 'Certify this balance?',
+                body: `The linked bank account's reported balance becomes <strong>${escapeHtml(formatIDR(draft.closing_balance))}</strong> (as of <strong>${escapeHtml(formatDate(draft.statement_end_date))}</strong>).<br>A balance snapshot is recorded; ledger transactions are not changed.`,
+                confirmLabel: 'Certify balance',
+                cancelLabel: 'Cancel',
+                tone: 'default'
+            })
+            : Promise.resolve(window.confirm('Certify this balance?')));
+        if (!ok) return;
+        ctx.certifyBusy = true;
+        renderContent(ctx);
+        try {
+            const result = await ctx.ds.certifyBankStatementImport(user.uid, ctx.draft.id);
+            ctx.draft = {
+                ...ctx.draft,
+                reconciliation_status: 'certified',
+                certified_closing_balance: result?.balance ?? draft.closing_balance
+            };
+            window.showToast?.('Bank balance certified.', 'success');
+            window.dispatchEvent(new CustomEvent('fluxy:bank-balance-certified', { detail: { importId: ctx.draft.id } }));
+        } catch (error) {
+            console.warn('Certify failed:', error?.message || error);
+            window.showToast?.(error?.message || 'Could not certify the balance. Try again.', 'error');
+        } finally {
+            ctx.certifyBusy = false;
+            renderContent(ctx);
+        }
     }
 
     function resolveUser(ctx) {
@@ -615,6 +756,7 @@
             stopWatch(ctx);
             try { ctx.rows = await ctx.ds.getBankStatementRows(ctx.user.uid, ctx.draft.id); }
             catch (_) { ctx.rows = []; }
+            await loadAccounts(ctx);
             ctx.page = 0;
             ctx.state = STATE_UPLOADED;
             renderContent(ctx);

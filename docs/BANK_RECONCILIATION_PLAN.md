@@ -1,7 +1,13 @@
 # Bank Reconciliation — Implementation Plan (Import Phases 3–4)
 
-**Status:** planning — written 2026-07-26, ahead of implementation, in parallel
-with the accounting-expert discovery sessions. Decision points the expert must
+**Status:** Phase A (account wiring + certification, §7) **shipped 2026-07-26**
+— account picker + create-from-detected-identity in the import review panel,
+`cash_account_id`/cash-impact stamp on imported rows, certify step writing
+`latest_balance` + snapshot + `reconciliation_status: 'certified'` (rules
+deployed; emulator test `tests/bank-recon-phase-a-rules-emulator-test.mjs`).
+Phases B–C remain planned; Phase B thresholds await expert Session 3.
+Originally written 2026-07-26 in parallel with the accounting-expert discovery
+sessions. Decision points the expert must
 validate are marked **[EXPERT]** and map to Session 3 of
 `ACCOUNTING_EXPERT_INTERVIEW_GUIDE.md`.
 **Supersedes** the Phase 3–5 sketches in

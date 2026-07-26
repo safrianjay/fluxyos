@@ -8116,6 +8116,9 @@ class DataService {
         if ('storage_path' in data) {
             allowed.storage_path = this._nullableString(data.storage_path, 400);
         }
+        if ('bank_account_id' in data) {
+            allowed.bank_account_id = this._nullableString(data.bank_account_id, 120);
+        }
         if ('review_status' in data) {
             allowed.review_status = this._allowedValue(data.review_status,
                 ['draft', 'needs_review', 'ready_to_import', 'imported', 'rejected'], 'draft');
@@ -8294,6 +8297,14 @@ class DataService {
 
         const txCol = collection(this.db, `${this._scope(userId)}/transactions`);
         const importPath = `${this._scope(userId)}/bank_statement_imports/${importId}`;
+        // Statement rows are actual cash movement by definition; if the draft is
+        // linked to a bank account (Phase 3), stamp it so the ledger/cash views
+        // attribute the movement to that account.
+        let bankAccountId = null;
+        try {
+            const draftSnap = await getDoc(doc(this.db, importPath));
+            bankAccountId = draftSnap.exists() ? (draftSnap.data().bank_account_id || null) : null;
+        } catch (_) { /* best-effort — cash_account_id stays null */ }
         let created = 0;
 
         // ~200 rows/batch keeps ops (tx create + row update = 2 each) under 500.
@@ -8311,6 +8322,7 @@ class DataService {
                     ? row.suggested_category : (type === 'income' || type === 'refund' ? 'Revenue' : 'Operations');
 
                 const txRef = doc(txCol);
+                const txTimestamp = row.transaction_date ? this._coerceTimestampOrNow(row.transaction_date) : serverTimestamp();
                 batch.set(txRef, {
                     amount,
                     vendor_name: vendor,
@@ -8318,12 +8330,20 @@ class DataService {
                     type,
                     status: 'Completed',
                     icon: (type === 'income' || type === 'refund') ? '💰' : '💸',
-                    timestamp: row.transaction_date ? this._coerceTimestampOrNow(row.transaction_date) : serverTimestamp(),
+                    timestamp: txTimestamp,
                     created_at: serverTimestamp(),
                     source: 'bank_statement_import',
                     bank_statement_import_id: importId,
                     bank_statement_row_id: row.id,
                     imported_at: serverTimestamp(),
+                    // A statement row is money that already moved on the account.
+                    cash_effective: true,
+                    cash_status: 'actual',
+                    cash_direction: isIncome ? 'in' : 'out',
+                    cash_account_id: bankAccountId,
+                    cash_source: 'bank_statement_import',
+                    cash_match_status: 'imported',
+                    cash_effective_at: txTimestamp,
                     // Posted later by the Accounting Center sweep (postPendingJournals).
                     accounting_status: 'pending'
                 });
@@ -8354,6 +8374,73 @@ class DataService {
         } catch (_) { /* non-fatal */ }
 
         return { created };
+    }
+
+    // Certify a fully-imported statement against its linked bank account
+    // (docs/BANK_RECONCILIATION_PLAN.md Phase A). Certification is a detective
+    // control: it updates the account's reported balance to the statement's
+    // closing balance, emits an append-only snapshot, and stamps the import —
+    // it never posts or mutates journals. Idempotent via the certified check.
+    async certifyBankStatementImport(userId, importId) {
+        if (!userId || !importId) throw new Error('userId and importId required');
+        const importPath = `${this._scope(userId)}/bank_statement_imports/${importId}`;
+        const draftSnap = await getDoc(doc(this.db, importPath));
+        if (!draftSnap.exists()) throw new Error('Bank statement import not found.');
+        const draft = draftSnap.data();
+        if (draft.reconciliation_status === 'certified') {
+            return { certified: false, alreadyCertified: true };
+        }
+        if (draft.review_status !== 'imported') throw new Error('Confirm the import before certifying the balance.');
+        if (!draft.bank_account_id) throw new Error('Link a bank account before certifying the balance.');
+        const closing = draft.closing_balance;
+        if (closing == null || !Number.isFinite(Number(closing))) throw new Error('No closing balance was detected on this statement.');
+        const balance = Math.round(Number(closing));
+        if (balance < 0) throw new Error('Negative closing balances cannot be certified yet.');
+
+        const accountRef = doc(this.db, `${this._scope(userId)}/bank_accounts/${draft.bank_account_id}`);
+        const accountSnap = await getDoc(accountRef);
+        if (!accountSnap.exists()) throw new Error('The linked bank account no longer exists.');
+        const account = accountSnap.data() || {};
+        if (account.status === 'archived') throw new Error('The linked bank account is archived.');
+        const asOf = draft.statement_end_date
+            ? this._coerceTimestampOrNow(draft.statement_end_date)
+            : Timestamp.fromDate(new Date());
+
+        const batch = writeBatch(this.db);
+        batch.update(accountRef, {
+            latest_balance: balance,
+            latest_balance_at: asOf,
+            confidence: 'extracted',
+            updated_at: serverTimestamp()
+        });
+        batch.set(doc(collection(this.db, `${this._scope(userId)}/bank_balance_snapshots`)), {
+            bank_account_id: draft.bank_account_id,
+            balance,
+            currency: 'IDR',
+            source_type: 'statement_upload',
+            snapshot_at: asOf,
+            confidence: 'extracted',
+            notes: this._nullableString(`Certified from statement ${draft.file_name || importId}`, 500),
+            created_at: serverTimestamp()
+        });
+        batch.update(doc(this.db, importPath), {
+            reconciliation_status: 'certified',
+            certified_at: serverTimestamp(),
+            certified_by: this.actorUid || userId,
+            certified_closing_balance: balance,
+            updated_at: serverTimestamp()
+        });
+        await batch.commit();
+
+        await this._auditCreateBestEffort(userId, 'bank_account.balance_certified', 'bank_accounts', draft.bank_account_id, {
+            latest_balance: balance,
+            statement_import_id: importId
+        });
+        await this._auditCreateBestEffort(userId, 'bank_statement.certified', 'bank_statement_imports', importId, {
+            bank_account_id: draft.bank_account_id,
+            certified_closing_balance: balance
+        });
+        return { certified: true, balance, bankAccountId: draft.bank_account_id };
     }
 
     async archiveBudget(userId, budgetId, reason = null) {

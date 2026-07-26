@@ -1919,7 +1919,11 @@ service cloud.firestore {
           'created_at',
           'updated_at',
           'confirmed_at',
-          'imported_at'
+          'imported_at',
+          'reconciliation_status',
+          'certified_at',
+          'certified_by',
+          'certified_closing_balance'
         ])
         && data.file_name is string
         && data.file_name.size() > 0
@@ -1955,7 +1959,14 @@ service cloud.firestore {
         && data.created_at is timestamp
         && data.updated_at is timestamp
         && (!('confirmed_at' in data) || data.confirmed_at == null || data.confirmed_at is timestamp)
-        && (!('imported_at' in data) || data.imported_at == null || data.imported_at is timestamp);
+        && (!('imported_at' in data) || data.imported_at == null || data.imported_at is timestamp)
+        // Certification (reconciliation Phase A): certified_* only exists on a
+        // certified import; kept lean for the rules eval budget.
+        && (!('reconciliation_status' in data) || data.reconciliation_status == null || data.reconciliation_status in ['in_progress', 'certified'])
+        && (!('certified_at' in data) || data.certified_at == null || data.certified_at is timestamp)
+        && (!('certified_by' in data) || data.certified_by == null || (data.certified_by is string && data.certified_by.size() <= 120))
+        && (!('certified_closing_balance' in data) || data.certified_closing_balance == null
+            || (data.certified_closing_balance is number && data.certified_closing_balance >= 0));
     }
 
     function isValidBankStatementImportCreate(userId, data) {

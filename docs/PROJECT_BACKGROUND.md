@@ -675,10 +675,15 @@ legacy `document-capture.js` flow) and **Bank Statement** (this draft
 flow). The secondary entry point on the Overview Bank Cash Balance card
 is reserved for Phase 3.
 
-The draft is never auto-converted into ledger transactions and never
-updates a `bank_accounts.latest_balance`. **Extraction and the Phase 2
-confirm-to-ledger flow are now built**; the bank-account/balance update
-(Phase 3) is still deferred.
+The draft is never auto-converted into ledger transactions and never updates a
+balance without an explicit user action. **Extraction, the Phase 2
+confirm-to-ledger flow, and the Phase 3/A bank-account link + balance
+certification are all built** (`docs/BANK_RECONCILIATION_PLAN.md`): the review
+panel links a `bank_accounts` doc, imported transactions carry the full
+cash-impact stamp (`cash_effective: true`, direction, `cash_account_id`), and
+after import an explicit **Certify balance** action sets the account's
+`latest_balance` to the statement's closing balance and appends a snapshot.
+Statement-line ↔ ledger matching (Phase B) is still planned.
 
 **Extraction (built).** After upload the client calls the Netlify
 *background* function `bank-statement-extract-background.js` (route
@@ -710,7 +715,9 @@ that already carry a `created_transaction_id` are skipped on re-confirm.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `bank_account_id` | string \| null | Reserved for Phase 3 reconciliation. Always null in Phase 1. |
+| `bank_account_id` | string \| null | **Live (recon Phase A):** linked via the review-panel account picker (or created from the detected identity); stamped onto imported transactions as `cash_account_id`. Null until the user links. |
+| `reconciliation_status` | string \| null | Recon Phase A: `null` \| `'in_progress'` \| `'certified'`. |
+| `certified_at` / `certified_by` / `certified_closing_balance` | mixed \| null | Set only by `certifyBankStatementImport` — updates the linked account's `latest_balance`, emits a `bank_balance_snapshots` doc (`source_type: 'statement_upload'`, `confidence: 'extracted'`), never touches journals. See `docs/BANK_RECONCILIATION_PLAN.md`. |
 | `file_name` | string | Sanitized uploaded file name (≤240 chars). |
 | `file_mime_type` | string | One of `application/pdf`, `text/csv`, `application/vnd.ms-excel`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`. |
 | `file_size` | number | Bytes, ≤ 10 MB. |
