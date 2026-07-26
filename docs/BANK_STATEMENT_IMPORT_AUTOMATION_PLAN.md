@@ -1,5 +1,11 @@
 # FluxyOS — Bank Statement Import & Cash Balance Automation Plan
 
+> **Phases 1–2 are shipped and documented in `PROJECT_BACKGROUND.md` §4i.**
+> The Phase 3–5 sketches below are superseded by
+> **`BANK_RECONCILIATION_PLAN.md`** (2026-07-26), which merges the bank-account
+> balance update and the reconciliation engine into one design. Do not build
+> from the Phase 3–5 sections here.
+
 ## 1. Feature Name
 
 Bank Statement Import & Cash Balance Automation
