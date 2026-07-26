@@ -116,6 +116,50 @@ async function main() {
         updateDoc(snapRef, { balance: 1 }));
     await expectOutcome('deleting a snapshot is denied', false, () => deleteDoc(snapRef));
 
+    console.log('\n— Phase B: recon fields + row match metadata —');
+    await setMemberRole(uid, 'finance');
+    const reconTxRef = doc(collection(db, `workspaces/${WS}/transactions`));
+    await expectOutcome('created row tx may be born reconciled (recon fields on create)', true, () =>
+        setDoc(reconTxRef, {
+            amount: 250000, vendor_name: 'PLN', category: 'Operations', type: 'expense',
+            status: 'Completed', icon: '💸', timestamp: serverTimestamp(), created_at: serverTimestamp(),
+            source: 'bank_statement_import', bank_statement_import_id: 'imp1', bank_statement_row_id: 'row2',
+            imported_at: serverTimestamp(), accounting_status: 'pending',
+            cash_effective: true, cash_status: 'actual', cash_direction: 'out',
+            cash_account_id: 'acct1', cash_source: 'bank_statement_import',
+            cash_match_status: 'imported', cash_effective_at: serverTimestamp(),
+            recon_status: 'reconciled', recon_import_id: 'imp1', recon_row_id: 'row2', recon_at: serverTimestamp()
+        }));
+    await expectOutcome('reconciling an EXISTING tx via update is allowed', true, () =>
+        updateDoc(reconTxRef, {
+            recon_status: 'reconciled', recon_import_id: 'imp1', recon_row_id: 'row3',
+            recon_at: serverTimestamp(), cash_account_id: 'acct1', updated_at: serverTimestamp()
+        }));
+    await expectOutcome('un-reconciling (nulling recon fields) is allowed', true, () =>
+        updateDoc(reconTxRef, {
+            recon_status: null, recon_import_id: null, recon_row_id: null,
+            recon_at: null, updated_at: serverTimestamp()
+        }));
+    const rowRef = doc(db, `workspaces/${WS}/bank_statement_imports/imp1/rows/row3`);
+    await expectOutcome('row with match metadata is allowed', true, () =>
+        setDoc(rowRef, {
+            row_index: 3, transaction_date: serverTimestamp(), posting_date: null,
+            description_raw: 'TRSF PLN', debit: 250000, credit: null, running_balance: null,
+            suggested_vendor_name: 'PLN', suggested_category: 'Operations', suggested_type: 'expense',
+            match_status: 'matched_existing', matched_transaction_id: reconTxRef.id,
+            match_rule: 'R2', match_confidence: 'exact',
+            confidence: null, selected_for_import: false, review_status: 'reconciled',
+            created_transaction_id: null, created_at: serverTimestamp()
+        }));
+    await expectOutcome('bad match_confidence is denied', false, () =>
+        setDoc(rowRef, { match_confidence: 'certain' }, { merge: true }));
+    await expectOutcome('import counters (created/matched) are allowed', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/bank_statement_imports/imp1`),
+            { created_count: 3, matched_count: 2, updated_at: serverTimestamp() }, { merge: true }));
+    await expectOutcome('negative matched_count is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/bank_statement_imports/imp1`),
+            { matched_count: -1, updated_at: serverTimestamp() }, { merge: true }));
+
     console.log('\n— viewer is read-only —');
     await setMemberRole(uid, 'viewer');
     await expectOutcome('viewer cannot certify an import', false, () =>

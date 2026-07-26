@@ -8285,15 +8285,46 @@ class DataService {
         return { id: rowId, ...allowed };
     }
 
-    // Confirm-to-ledger: create a transaction for each selected, not-yet-imported
-    // row and link them back. Mirrors addTransactions' batched-write pattern;
-    // chunked under the 500-op batch limit. Idempotent — rows already carrying a
-    // created_transaction_id are skipped. Cash-balance update is Phase 3.
+    // Ledger candidates for statement matching (recon Phase B): cash-window
+    // query around the statement period. Single-field timestamp range — no
+    // composite index needed; recon-engine filters the rest client-side.
+    async getReconciliationCandidates(userId, draft = {}) {
+        if (!userId) return [];
+        const coll = collection(this.db, `${this._scope(userId)}/transactions`);
+        const startMs = draft.statement_start_date?.toDate?.()?.getTime?.();
+        const endMs = draft.statement_end_date?.toDate?.()?.getTime?.();
+        try {
+            let q;
+            if (startMs && endMs) {
+                const pad = 7 * 24 * 60 * 60 * 1000; // R4 window on both sides
+                q = query(coll,
+                    where('timestamp', '>=', Timestamp.fromMillis(startMs - pad)),
+                    where('timestamp', '<=', Timestamp.fromMillis(endMs + pad)),
+                    limit(1500));
+            } else {
+                q = query(coll, orderBy('timestamp', 'desc'), limit(500));
+            }
+            const snap = await getDocs(q);
+            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (_) {
+            return [];
+        }
+    }
+
+    // Confirm-to-ledger: for each acted-on row either CREATE a transaction (as
+    // before) or RECONCILE it against an existing transaction the user accepted
+    // a match for (recon Phase B — reconcile-instead-of-create). Chunked under
+    // the 500-op batch limit. Idempotent — rows already carrying a
+    // created_transaction_id or matched_transaction_id are skipped.
     async confirmBankStatementImport(userId, importId, rows = []) {
         if (!userId || !importId) throw new Error('userId and importId required');
-        const importable = (Array.isArray(rows) ? rows : []).filter(r =>
-            r && r.selected_for_import !== false && r.review_status !== 'ignored'
-            && !r.created_transaction_id && ((Number(r.credit) || 0) > 0 || (Number(r.debit) || 0) > 0));
+        const actionable = (Array.isArray(rows) ? rows : []).filter(r =>
+            r && !r.created_transaction_id && !r.matched_transaction_id
+            && ((Number(r.credit) || 0) > 0 || (Number(r.debit) || 0) > 0));
+        const reconcilable = actionable.filter(r =>
+            r.action === 'reconcile' && r.match && r.match.transaction_id);
+        const importable = actionable.filter(r =>
+            r.action !== 'reconcile' && r.selected_for_import !== false && r.review_status !== 'ignored');
 
         const txCol = collection(this.db, `${this._scope(userId)}/transactions`);
         const importPath = `${this._scope(userId)}/bank_statement_imports/${importId}`;
@@ -8344,6 +8375,11 @@ class DataService {
                     cash_source: 'bank_statement_import',
                     cash_match_status: 'imported',
                     cash_effective_at: txTimestamp,
+                    // A created row IS its statement line — born reconciled.
+                    recon_status: 'reconciled',
+                    recon_import_id: importId,
+                    recon_row_id: row.id,
+                    recon_at: serverTimestamp(),
                     // Posted later by the Accounting Center sweep (postPendingJournals).
                     accounting_status: 'pending'
                 });
@@ -8356,9 +8392,42 @@ class DataService {
             await batch.commit();
         }
 
+        // Reconcile matched rows: stamp the EXISTING transaction as verified by
+        // this statement line and link the row back. No journal is touched and
+        // no new transaction is created — that is the whole point.
+        let matched = 0;
+        for (let i = 0; i < reconcilable.length; i += 200) {
+            const batch = writeBatch(this.db);
+            reconcilable.slice(i, i + 200).forEach((row) => {
+                const txUpdate = {
+                    recon_status: 'reconciled',
+                    recon_import_id: importId,
+                    recon_row_id: row.id,
+                    recon_at: serverTimestamp(),
+                    updated_at: serverTimestamp()
+                };
+                // The engine never proposes a transaction linked to a DIFFERENT
+                // account, so attributing the statement's account is safe here.
+                if (bankAccountId) txUpdate.cash_account_id = bankAccountId;
+                batch.update(doc(this.db, `${this._scope(userId)}/transactions/${row.match.transaction_id}`), txUpdate);
+                batch.update(doc(this.db, `${importPath}/rows/${row.id}`), {
+                    matched_transaction_id: row.match.transaction_id,
+                    match_status: 'matched_existing',
+                    match_rule: row.match.rule || null,
+                    match_confidence: row.match.confidence || null,
+                    review_status: 'reconciled'
+                });
+                matched += 1;
+            });
+            await batch.commit();
+        }
+
         // Mark the draft imported and log the action (best-effort).
         await updateDoc(doc(this.db, importPath), {
             review_status: 'imported',
+            reconciliation_status: 'in_progress',
+            created_count: created,
+            matched_count: matched,
             confirmed_at: serverTimestamp(),
             imported_at: serverTimestamp(),
             updated_at: serverTimestamp()
@@ -8368,12 +8437,51 @@ class DataService {
                 action: 'bank_statement.import_confirmed',
                 target_collection: 'bank_statement_imports',
                 target_id: importId,
-                after: { imported_transactions: created },
+                after: { imported_transactions: created, reconciled_transactions: matched },
                 source: 'dashboard'
             });
         } catch (_) { /* non-fatal */ }
 
-        return { created };
+        return { created, matched };
+    }
+
+    // Undo a single row's reconciliation while the statement is not yet
+    // certified (mistake recovery; docs/BANK_RECONCILIATION_PLAN.md §5.6).
+    // Clears the transaction's recon stamp and re-opens the row.
+    async unreconcileStatementRow(userId, importId, rowId) {
+        if (!userId || !importId || !rowId) throw new Error('userId, importId and rowId required');
+        const importPath = `${this._scope(userId)}/bank_statement_imports/${importId}`;
+        const [draftSnap, rowSnap] = await Promise.all([
+            getDoc(doc(this.db, importPath)),
+            getDoc(doc(this.db, `${importPath}/rows/${rowId}`))
+        ]);
+        if (!draftSnap.exists() || !rowSnap.exists()) throw new Error('Statement row not found.');
+        if (draftSnap.data().reconciliation_status === 'certified') {
+            throw new Error('This statement is already certified. Certified statements cannot be un-reconciled.');
+        }
+        const row = rowSnap.data();
+        const txId = row.matched_transaction_id;
+        if (!txId) throw new Error('This row is not reconciled to a transaction.');
+        const batch = writeBatch(this.db);
+        batch.update(doc(this.db, `${this._scope(userId)}/transactions/${txId}`), {
+            recon_status: null,
+            recon_import_id: null,
+            recon_row_id: null,
+            recon_at: null,
+            updated_at: serverTimestamp()
+        });
+        batch.update(doc(this.db, `${importPath}/rows/${rowId}`), {
+            matched_transaction_id: null,
+            match_rule: null,
+            match_confidence: null,
+            review_status: 'pending'
+        });
+        await batch.commit();
+        await this._auditCreateBestEffort(userId, 'transaction.unreconciled', 'transactions', txId, {
+            statement_import_id: importId,
+            statement_row_id: rowId
+        });
+        return { transactionId: txId };
     }
 
     // Certify a fully-imported statement against its linked bank account

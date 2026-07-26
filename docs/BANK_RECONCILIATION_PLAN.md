@@ -1,11 +1,21 @@
 # Bank Reconciliation — Implementation Plan (Import Phases 3–4)
 
-**Status:** Phase A (account wiring + certification, §7) **shipped 2026-07-26**
-— account picker + create-from-detected-identity in the import review panel,
-`cash_account_id`/cash-impact stamp on imported rows, certify step writing
-`latest_balance` + snapshot + `reconciliation_status: 'certified'` (rules
-deployed; emulator test `tests/bank-recon-phase-a-rules-emulator-test.mjs`).
-Phases B–C remain planned; Phase B thresholds await expert Session 3.
+**Status:** Phases A **and B shipped 2026-07-26**.
+Phase A — account picker + create-from-detected-identity in the review panel,
+cash-impact stamp (`cash_account_id`) on imported rows, certify step writing
+`latest_balance` + snapshot + `reconciliation_status: 'certified'`.
+Phase B — pure matching engine `assets/js/recon-engine.js` (tiers R1–R4,
+greedy one-to-one, evidence strings; windows/thresholds are exported constants
+**pending expert Session 3 tuning**), reconcile-instead-of-create in the review
+table (three-way action: Reconcile / Create new / Ignore; suggestions are
+in-memory until the user confirms), `recon_*` fields on transactions (created
+rows born reconciled; matched rows stamped via update),
+`unreconcileStatementRow` (blocked once certified; **no UI surface yet** —
+DAL + rules + tests only), `created_count`/`matched_count` on the import, and
+the opening+movement-vs-closing tie-out line on the certify card.
+Rules deployed; tests: `tests/recon-engine.spec.js`,
+`tests/bank-recon-phase-a-rules-emulator-test.mjs` (19 cases).
+Phase C (many-to-one settlements, learned rules) remains planned.
 Originally written 2026-07-26 in parallel with the accounting-expert discovery
 sessions. Decision points the expert must
 validate are marked **[EXPERT]** and map to Session 3 of

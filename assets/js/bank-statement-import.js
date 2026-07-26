@@ -54,13 +54,21 @@
 
     let standaloneMounted = null;
 
-    // True for any row that money actually flows on and the user kept selected.
+    // True for any row that money actually flows on and the user kept selected
+    // for CREATE (reconcile-action rows link an existing transaction instead).
     function isImportableRow(row) {
-        return row && row.selected_for_import !== false && row.review_status !== 'ignored'
-            && !row.created_transaction_id && ((Number(row.credit) || 0) > 0 || (Number(row.debit) || 0) > 0);
+        return row && row.action !== 'reconcile' && row.selected_for_import !== false && row.review_status !== 'ignored'
+            && !row.created_transaction_id && !row.matched_transaction_id
+            && ((Number(row.credit) || 0) > 0 || (Number(row.debit) || 0) > 0);
+    }
+    function isReconcileRow(row) {
+        return row && row.action === 'reconcile' && row.match && !row.created_transaction_id && !row.matched_transaction_id;
     }
     function selectedCount(rows) {
         return (Array.isArray(rows) ? rows : []).filter(isImportableRow).length;
+    }
+    function reconcileCount(rows) {
+        return (Array.isArray(rows) ? rows : []).filter(isReconcileRow).length;
     }
 
     function escapeHtml(value) {
@@ -258,11 +266,24 @@
                 </div>`;
         }
         const linked = !!draft.bank_account_id;
+        // Tie-out (recon Phase B): opening + row movement vs the stated closing
+        // balance. Zero delta = the statement internally ties out.
+        const tieOut = ctx.engine?.computeTieOut?.({
+            openingBalance: draft.opening_balance,
+            closingBalance: draft.closing_balance,
+            rows: ctx.rows || []
+        });
+        const tieOutLine = tieOut
+            ? (tieOut.delta === 0
+                ? `<p class="mt-2 text-[12px] font-bold text-emerald-700">Statement ties out: opening + movement equals the closing balance.</p>`
+                : `<p class="mt-2 text-[12px] font-bold text-amber-700">Movement does not fully explain the closing balance.<br>Difference: <span class="tabular-nums">${escapeHtml(formatIDR(tieOut.delta))}</span></p>`)
+            : '';
         return `
             <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-left">
                 <p class="text-[13px] font-bold text-gray-900">Certify bank balance</p>
                 <p class="mt-1 text-[12px] text-gray-500">Set the linked account's reported balance to this statement's closing balance. A snapshot is kept; ledger records are not changed.</p>
                 ${closingLine(draft.closing_balance)}
+                ${tieOutLine}
                 ${linked ? '' : `<div class="mt-3">${accountPickerMarkup(ctx)}</div>`}
                 <button type="button" data-bsi-certify ${linked && !ctx.certifyBusy ? '' : 'disabled'} class="mt-3 rounded-xl px-4 py-2 text-[13px] font-bold ${linked ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-200 text-gray-500'}">${ctx.certifyBusy ? 'Certifying…' : 'Certify balance'}</button>
             </div>`;
@@ -270,6 +291,10 @@
 
     function importedStepMarkup(ctx) {
         const count = ctx.importedCount || 0;
+        const recon = ctx.reconciledCount || 0;
+        const reconLine = recon
+            ? `<p class="mt-1 text-[12px] text-blue-700">${recon} existing transaction${recon === 1 ? '' : 's'} reconciled against this statement.</p>`
+            : '';
         return `
             <div class="flex h-full flex-col items-center justify-center py-10 text-center">
                 <span class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
@@ -277,6 +302,7 @@
                 </span>
                 <p class="mt-4 text-[14px] font-bold text-gray-900">${count} transaction${count === 1 ? '' : 's'} imported</p>
                 <p class="mt-1 text-[12px] text-gray-500">They are now in your Ledger, tagged as imported from this statement.</p>
+                ${reconLine}
                 <div class="mt-6 w-full max-w-md space-y-3">${certifyCardMarkup(ctx)}</div>
             </div>`;
     }
@@ -295,7 +321,18 @@
             </div>`;
     }
 
-    function matchBadge(status) {
+    function matchBadge(row) {
+        // Engine proposal (in-memory until confirm) wins over the extraction's
+        // coarse duplicate flag — it names the tier and carries evidence.
+        if (row.match) {
+            const tone = row.match.confidence === 'review'
+                ? 'border-amber-200 bg-amber-50 text-amber-700'
+                : 'border-blue-200 bg-blue-50 text-blue-700';
+            const label = row.match.confidence === 'exact' ? 'Match' : row.match.confidence === 'strong' ? 'Likely match' : 'Possible match';
+            const evidence = (row.match.evidence || []).join(' · ');
+            return `<span class="rounded-full border ${tone} px-2 py-0.5 text-[11px] font-bold" title="${escapeHtml(evidence)}">${label}</span>`;
+        }
+        const status = row.match_status;
         if (status === 'possible_duplicate') return '<span class="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">Possible duplicate</span>';
         if (status === 'needs_review') return '<span class="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">Needs review</span>';
         if (status === 'matched_existing') return '<span class="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">Matched</span>';
@@ -364,17 +401,28 @@
             ? `<tbody><tr><td colspan="9" class="px-3 py-6 text-center text-[12px] text-gray-400">No rows were extracted from this statement.</td></tr></tbody>`
             : `<tbody class="divide-y divide-gray-100 text-[12px]">${pageRows.map(row => {
                 const selected = isImportableRow(row);
+                // Matched rows get a three-way action instead of the checkbox:
+                // reconcile the existing transaction (default), create anyway,
+                // or ignore the line.
+                const actionCell = row.match
+                    ? `<select data-bsi-action class="rounded-lg border border-blue-200 bg-blue-50/60 px-2 py-1 text-[12px] font-medium">
+                            <option value="reconcile"${row.action === 'reconcile' ? ' selected' : ''}>Reconcile</option>
+                            <option value="create"${row.action === 'create' ? ' selected' : ''}>Create new</option>
+                            <option value="ignore"${row.action === 'ignore' ? ' selected' : ''}>Ignore</option>
+                        </select>`
+                    : `<input type="checkbox" data-bsi-select class="h-4 w-4 rounded border-gray-300 text-[#EA580C] focus:ring-[#EA580C]"${selected ? ' checked' : ''}>`;
+                const rowTone = row.match ? ' class="bg-blue-50/30"' : (row.match_status === 'possible_duplicate' ? ' class="bg-amber-50/40"' : '');
                 return `
-                <tr data-bsi-row="${escapeHtml(row.id)}"${row.match_status === 'possible_duplicate' ? ' class="bg-amber-50/40"' : ''}>
-                    <td class="px-3 py-2"><input type="checkbox" data-bsi-select class="h-4 w-4 rounded border-gray-300 text-[#EA580C] focus:ring-[#EA580C]"${selected ? ' checked' : ''}></td>
+                <tr data-bsi-row="${escapeHtml(row.id)}"${rowTone}>
+                    <td class="px-3 py-2">${actionCell}</td>
                     <td class="px-3 py-2 whitespace-nowrap text-gray-700">${escapeHtml(formatDate(row.transaction_date))}</td>
                     <td class="px-3 py-2 text-gray-900 max-w-[220px] truncate" title="${escapeHtml(row.description_raw || '')}">${escapeHtml(row.description_raw || '')}</td>
                     <td class="px-3 py-2 text-right tabular-nums text-emerald-700">${row.credit ? escapeHtml(formatIDR(row.credit)) : '—'}</td>
                     <td class="px-3 py-2 text-right tabular-nums text-gray-900">${row.debit ? escapeHtml(formatIDR(row.debit)) : '—'}</td>
                     <td class="px-3 py-2 text-right tabular-nums text-gray-700">${row.running_balance != null ? escapeHtml(formatIDR(row.running_balance)) : '—'}</td>
-                    <td class="px-3 py-2"><select data-bsi-type class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[12px]">${optionList(REVIEW_TYPES, row.suggested_type)}</select></td>
-                    <td class="px-3 py-2"><select data-bsi-cat class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[12px]">${optionList(REVIEW_CATEGORIES, row.suggested_category)}</select></td>
-                    <td class="px-3 py-2">${matchBadge(row.match_status)}</td>
+                    <td class="px-3 py-2"><select data-bsi-type class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[12px]" ${row.action === 'reconcile' ? 'disabled' : ''}>${optionList(REVIEW_TYPES, row.suggested_type)}</select></td>
+                    <td class="px-3 py-2"><select data-bsi-cat class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[12px]" ${row.action === 'reconcile' ? 'disabled' : ''}>${optionList(REVIEW_CATEGORIES, row.suggested_category)}</select></td>
+                    <td class="px-3 py-2">${matchBadge(row)}</td>
                 </tr>`; }).join('')}</tbody>`;
 
         const pagination = rows.length > PAGE_SIZE
@@ -445,10 +493,15 @@
                 ? `<span class="text-[12px] font-bold text-gray-500">Draft rejected</span>`
                 : `<button type="button" data-bsi-reject class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Reject draft</button>`;
             const count = selectedCount(ctx.rows);
-            const confirmDisabled = count === 0 || ctx.draft?.review_status === 'rejected';
+            const recon = reconcileCount(ctx.rows);
+            const confirmDisabled = (count + recon) === 0 || ctx.draft?.review_status === 'rejected';
+            const counts = [
+                `${count} to create`,
+                recon ? `${recon} to reconcile` : ''
+            ].filter(Boolean).join(' · ');
             return `
                 ${rejectBtn}
-                <span class="ml-auto mr-1 text-[12px] text-gray-500">${count} selected</span>
+                <span class="ml-auto mr-1 text-[12px] text-gray-500">${counts}</span>
                 <button type="button" data-bsi-confirm ${confirmDisabled ? 'disabled' : ''} class="fluxy-drawer-btn fluxy-drawer-btn--primary">Confirm Import</button>
             `;
         }
@@ -574,11 +627,43 @@
         ctx.contentEl.querySelectorAll('[data-bsi-certify]').forEach(btn => {
             btn.onclick = () => runCertify(ctx);
         });
+        ctx.contentEl.querySelectorAll('[data-bsi-action]').forEach(sel => {
+            sel.onchange = () => {
+                const row = findRow(sel);
+                if (!row) return;
+                row.action = sel.value;
+                if (sel.value === 'create') row.selected_for_import = true;
+                renderContent(ctx);
+            };
+        });
     }
 
     async function loadAccounts(ctx) {
         try { ctx.accounts = await ctx.ds.getBankAccounts(ctx.user.uid); }
         catch (_) { ctx.accounts = []; }
+    }
+
+    // Recon Phase B: propose statement-line → ledger matches (deterministic
+    // tiers, in-memory until the user confirms — nothing auto-applies).
+    async function runMatching(ctx) {
+        try {
+            ctx.engine = ctx.engine || await import('/assets/js/recon-engine.js');
+            const candidates = await ctx.ds.getReconciliationCandidates(ctx.user.uid, ctx.draft || {});
+            const { assignments } = ctx.engine.matchStatementRows({
+                rows: ctx.rows || [],
+                transactions: candidates,
+                bankAccountId: ctx.draft?.bank_account_id || null
+            });
+            (ctx.rows || []).forEach((row) => {
+                const match = assignments[row.id];
+                if (match) {
+                    row.match = match;
+                    row.action = 'reconcile';
+                }
+            });
+        } catch (error) {
+            console.warn('Statement matching skipped:', error?.message || error);
+        }
     }
 
     // Link (or create-and-link) the bank account for this statement. Persisted
@@ -757,6 +842,7 @@
             try { ctx.rows = await ctx.ds.getBankStatementRows(ctx.user.uid, ctx.draft.id); }
             catch (_) { ctx.rows = []; }
             await loadAccounts(ctx);
+            await runMatching(ctx);
             ctx.page = 0;
             ctx.state = STATE_UPLOADED;
             renderContent(ctx);
@@ -775,22 +861,28 @@
         const user = resolveUser(ctx);
         if (!user || !ctx.ds || !ctx.draft?.id) return;
         const count = selectedCount(ctx.rows);
-        if (count === 0) return;
-        const dupSkipped = (ctx.rows || []).filter(r => r.match_status === 'possible_duplicate' && !isImportableRow(r)).length;
-        const body = `This adds <strong>${count}</strong> transaction${count === 1 ? '' : 's'} to your Ledger`
-            + (dupSkipped ? `, skipping <strong>${dupSkipped}</strong> possible duplicate${dupSkipped === 1 ? '' : 's'}` : '')
-            + '. Balances are not changed and this can be edited in the Ledger afterwards.';
+        const recon = reconcileCount(ctx.rows);
+        if (count + recon === 0) return;
+        const parts = [];
+        if (count) parts.push(`creates <strong>${count}</strong> transaction${count === 1 ? '' : 's'}`);
+        if (recon) parts.push(`reconciles <strong>${recon}</strong> existing transaction${recon === 1 ? '' : 's'} against their statement lines`);
+        const body = `This ${parts.join(' and ')}. Balances are not changed and this can be edited in the Ledger afterwards.`;
         const ok = await (window.showConfirmDialog
             ? window.showConfirmDialog({ title: 'Import these transactions?', body, confirmLabel: 'Confirm Import', cancelLabel: 'Cancel', tone: 'default' })
-            : Promise.resolve(window.confirm(`Import ${count} transactions?`)));
+            : Promise.resolve(window.confirm(`Import ${count + recon} transactions?`)));
         if (!ok) return;
         try {
             const result = await ctx.ds.confirmBankStatementImport(user.uid, ctx.draft.id, ctx.rows);
             ctx.importedCount = result?.created ?? count;
+            ctx.reconciledCount = result?.matched ?? recon;
+            ctx.draft = { ...ctx.draft, review_status: 'imported', reconciliation_status: 'in_progress' };
             ctx.state = STATE_IMPORTED;
             renderContent(ctx);
-            window.showToast?.(`${ctx.importedCount} transaction${ctx.importedCount === 1 ? '' : 's'} imported to your Ledger.`, 'success');
-            window.dispatchEvent(new CustomEvent('fluxy:bank-statement-imported', { detail: { count: ctx.importedCount } }));
+            const toastParts = [];
+            if (ctx.importedCount) toastParts.push(`${ctx.importedCount} imported`);
+            if (ctx.reconciledCount) toastParts.push(`${ctx.reconciledCount} reconciled`);
+            window.showToast?.(`${toastParts.join(' · ')} — see your Ledger.`, 'success');
+            window.dispatchEvent(new CustomEvent('fluxy:bank-statement-imported', { detail: { count: ctx.importedCount, reconciled: ctx.reconciledCount } }));
         } catch (error) {
             console.warn('Bank statement confirm failed:', error?.message || error);
             window.showToast?.('Could not import the transactions. Try again.', 'error');
