@@ -108,7 +108,13 @@ function mountPicker() {
         onChange: ({ start, end }) => {
             state.startKey = start;
             state.endKey = end;
+            // Period-scoped lazy tabs must refresh for the new range. Aging is
+            // as-of-today, so it is deliberately left cached.
+            state.statementsKey = null;
+            if (state.kernel) state.kernel.loadedPeriod = null;
             load();
+            if (KERNEL_TABS.has(state.activeTab)) loadKernel(true);
+            if (state.activeTab === 'statements') loadStatements(true);
         }
     });
 }
@@ -177,6 +183,109 @@ function setTab(tab) {
     if (KERNEL_TABS.has(tab)) loadKernel();
     // Aging is as-of-today (not period-scoped) and loads lazily on first open.
     if (tab === 'aging') loadAging();
+    // Statements are period-scoped (like the ledger tabs) and load lazily.
+    if (tab === 'statements') loadStatements();
+}
+
+// --- Statements tab: ledger-derived Income Statement + Balance Sheet --------
+
+async function loadStatements(force = false) {
+    const start = String(state.startKey || '').slice(0, 7);
+    const end = String(state.endKey || '').slice(0, 7);
+    const key = `${start}..${end}`;
+    if (state.statementsKey === key && !force) return;
+    state.statementsKey = key;
+    const label = el('statements-period');
+    if (label) label.textContent = start === end ? start : `${start} – ${end}`;
+    const incWrap = el('statements-income-content');
+    const balWrap = el('statements-balance-content');
+    if (incWrap) incWrap.innerHTML = '<div class="fluxy-table-loading-cell">Loading…</div>';
+    if (balWrap) balWrap.innerHTML = '<div class="fluxy-table-loading-cell">Loading…</div>';
+    if (el('statements-tieout')) el('statements-tieout').innerHTML = '';
+    try {
+        const report = await state.ds.getFinancialStatements(state.user.uid, { startPeriod: start, endPeriod: end });
+        renderStmtIncome(incWrap, report.incomeStatement);
+        renderStmtBalance(balWrap, report.balanceSheet);
+    } catch (err) {
+        console.error('Statements load failed:', err);
+        state.statementsKey = null; // allow retry
+        const fail = emptyState('Could not load statements', 'Reload the page or try again in a moment.');
+        if (incWrap) incWrap.innerHTML = fail;
+        if (balWrap) balWrap.innerHTML = fail;
+    }
+}
+
+function stmtLineRow(line, { indent = true } = {}) {
+    return `<tr class="fluxy-table-row">
+        <td class="fluxy-table-cell"${indent ? ' style="padding-left:24px;"' : ''}><span class="fluxy-table-cell-meta">${escapeHtml(line.code)}</span> ${escapeHtml(line.name)}</td>
+        <td class="fluxy-table-cell fluxy-table-money">${escapeHtml(signedRupiah(line.amount))}</td>
+    </tr>`;
+}
+function stmtSubtotalRow(label, amount, { strong = false } = {}) {
+    const val = strong ? `<strong>${escapeHtml(signedRupiah(amount))}</strong>` : escapeHtml(signedRupiah(amount));
+    const lbl = strong ? `<strong>${escapeHtml(label)}</strong>` : escapeHtml(label);
+    return `<tr class="fluxy-table-row" style="border-top:1px solid #e5e7eb;">
+        <td class="fluxy-table-cell">${lbl}</td>
+        <td class="fluxy-table-cell fluxy-table-money">${val}</td>
+    </tr>`;
+}
+function stmtGroupHeader(label) {
+    return `<tr class="fluxy-table-row"><td class="fluxy-table-cell" colspan="2"><span class="fluxy-table-cell-primary" style="text-transform:uppercase;letter-spacing:0.06em;font-size:12px;color:#6b7280;">${escapeHtml(label)}</span></td></tr>`;
+}
+
+function renderStmtIncome(wrap, is) {
+    if (!wrap) return;
+    if (!is || !is.hasData) {
+        wrap.innerHTML = emptyState('No ledger activity for this period', 'Post transactions, bills, or invoices — they appear here once journals exist for the selected period.');
+        return;
+    }
+    const parts = [];
+    parts.push(stmtGroupHeader('Revenue'));
+    is.revenue.forEach(l => parts.push(stmtLineRow(l)));
+    parts.push(stmtSubtotalRow('Total revenue', is.totalRevenue));
+    if (is.cogs.length) {
+        parts.push(stmtGroupHeader('Cost of goods sold'));
+        is.cogs.forEach(l => parts.push(stmtLineRow(l)));
+        parts.push(stmtSubtotalRow('Gross profit', is.grossProfit, { strong: true }));
+    }
+    parts.push(stmtGroupHeader('Operating expenses'));
+    is.operatingExpenses.forEach(l => parts.push(stmtLineRow(l)));
+    parts.push(stmtSubtotalRow('Total operating expenses', is.totalOpEx));
+    parts.push(stmtSubtotalRow('Operating income', is.operatingIncome, { strong: true }));
+    if (is.otherIncome.length || is.otherExpense.length) {
+        parts.push(stmtGroupHeader('Other income & expenses'));
+        is.otherIncome.forEach(l => parts.push(stmtLineRow(l)));
+        is.otherExpense.forEach(l => parts.push(stmtLineRow({ ...l, amount: -l.amount })));
+    }
+    parts.push(stmtSubtotalRow('Net income', is.netIncome, { strong: true }));
+    wrap.innerHTML = tableShell([{ label: 'Account' }, { label: 'Amount', money: true }], parts.join(''));
+}
+
+function renderStmtBalance(wrap, bs) {
+    if (!wrap) return;
+    if (!bs || !bs.hasData) {
+        wrap.innerHTML = emptyState('No ledger position yet', 'The balance sheet appears once journals have posted.');
+        return;
+    }
+    const parts = [];
+    parts.push(stmtGroupHeader('Assets'));
+    bs.assets.forEach(l => parts.push(stmtLineRow(l)));
+    parts.push(stmtSubtotalRow('Total assets', bs.totalAssets, { strong: true }));
+    parts.push(stmtGroupHeader('Liabilities'));
+    if (bs.liabilities.length) bs.liabilities.forEach(l => parts.push(stmtLineRow(l)));
+    parts.push(stmtSubtotalRow('Total liabilities', bs.totalLiabilities));
+    parts.push(stmtGroupHeader('Equity'));
+    bs.equity.forEach(l => parts.push(stmtLineRow(l)));
+    parts.push(stmtSubtotalRow('Total equity', bs.totalEquity));
+    parts.push(stmtSubtotalRow('Total liabilities & equity', bs.liabilitiesPlusEquity, { strong: true }));
+    wrap.innerHTML = tableShell([{ label: 'Account' }, { label: 'Amount', money: true }], parts.join(''));
+
+    const tie = el('statements-tieout');
+    if (tie) {
+        tie.innerHTML = bs.balanced
+            ? `<span class="fluxy-table-status fluxy-status-success">Balanced ✓</span>`
+            : `<span class="fluxy-table-status fluxy-status-danger">Out of balance by ${escapeHtml(signedRupiah(bs.tieOutDelta))}</span>`;
+    }
 }
 
 // --- A/R + A/P Aging tab (as-of today; sources tie to the Balance Sheet) ---
@@ -284,6 +393,7 @@ async function loadKernel(force = false) {
         renderChartOfAccounts();
         renderLedgerSelector();
         renderClosePanel();
+        renderCloseChecklist(); // refresh with the kernel gates now that they loaded
     } catch (err) {
         console.error('Accounting kernel load failed:', err);
         state.kernel.loadedPeriod = null; // allow a retry on next tab open
@@ -332,7 +442,7 @@ function render(data) {
     if (readiness) {
         renderCleanup(readiness);
         renderMapping(readiness);
-        renderClose(readiness);
+        renderCloseChecklist();
         el('tab-cleanup-count').textContent = `${readiness.cleanupItems.length}`;
     }
     setTab(state.activeTab);
@@ -696,24 +806,55 @@ async function handleMappingSave(idx) {
     }
 }
 
-function checkRow(label, done) {
+function checkRow(label, done, hint) {
     const icon = done
         ? `<span class="acct-check-icon acct-check-done">✓</span>`
         : `<span class="acct-check-icon acct-check-pending">!</span>`;
-    return `<div class="acct-check">${icon}<span>${escapeHtml(label)}</span></div>`;
+    const hintHtml = hint ? `<span class="fluxy-meta" style="margin-left:auto;padding-left:12px;">${escapeHtml(hint)}</span>` : '';
+    return `<div class="acct-check" style="display:flex;align-items:center;">${icon}<span>${escapeHtml(label)}</span>${hintHtml}</div>`;
 }
 
-function renderClose(data) {
+// Kernel-aware close readiness checklist. Merges the transaction-cleanup signals
+// (from the readiness preview) with the accounting-kernel gates the actual close
+// depends on — all entries posted to the ledger, and a balanced trial balance —
+// so the checklist reflects what really blocks a clean close, not just data
+// hygiene. Rendered from both load() (readiness) and loadKernel() (kernel), so it
+// refreshes as each data source arrives.
+function renderCloseChecklist() {
     const wrap = el('close-readiness-content');
     if (!wrap) return;
-    const c = data.closeChecklist;
-    wrap.innerHTML = [
-        checkRow('Transactions reviewed', c.transactions_reviewed),
-        checkRow('Missing receipts resolved', c.missing_receipts_resolved),
-        checkRow('Bills reviewed', c.bills_reviewed),
-        checkRow('Categories mapped to accounts', c.categories_mapped),
-        checkRow('Bank imports reviewed', c.bank_imports_reviewed)
-    ].join('');
+    const c = state.data?.readiness?.closeChecklist;
+    const kernel = state.kernel || {};
+    const rows = [];
+
+    // Kernel gates first — these directly determine whether close can proceed.
+    if (kernel.loadedPeriod === currentPeriodKey()) {
+        const pending = Number(kernel.pending) || 0;
+        rows.push(checkRow('All entries posted to the ledger', pending === 0,
+            pending > 0 ? `${pending} pending` : 'Up to date'));
+        const tb = kernel.trial;
+        if (tb) {
+            rows.push(checkRow('Trial balance is in balance', !!tb.balanced,
+                tb.balanced ? 'Balanced' : 'Out of balance'));
+        }
+        const period = kernel.period;
+        if (period && (period.status === 'closed' || period.status === 'locked')) {
+            rows.push(checkRow(`Period is ${period.status}`, true, 'Done'));
+        }
+    }
+
+    // Transaction-cleanup signals from the readiness preview.
+    if (c) {
+        rows.push(checkRow('Transactions reviewed', c.transactions_reviewed));
+        rows.push(checkRow('Missing receipts resolved', c.missing_receipts_resolved));
+        rows.push(checkRow('Bills reviewed', c.bills_reviewed));
+        rows.push(checkRow('Categories mapped to accounts', c.categories_mapped));
+        rows.push(checkRow('Bank imports reviewed', c.bank_imports_reviewed));
+    }
+
+    wrap.innerHTML = rows.length
+        ? rows.join('')
+        : '<p class="fluxy-meta">Loading close readiness…</p>';
 }
 
 // =====================================================================
@@ -977,7 +1118,7 @@ function renderChartOfAccounts() {
             : '';
         return `<tr class="fluxy-table-row">
         <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary"${child ? ' style="padding-left:16px;"' : ''}>${child ? '└ ' : ''}${escapeHtml(a.code)}</span></td>
-        <td class="fluxy-table-cell">${escapeHtml(a.name)}${systemBadge}</td>
+        <td class="fluxy-table-cell"><a class="acct-link" href="${accountDetailLink(a.code)}" title="Open account ledger">${escapeHtml(a.name)}</a>${systemBadge}</td>
         <td class="fluxy-table-cell"><span class="fluxy-table-cell-meta">${escapeHtml(SAK_LABELS[a.sak_category] || a.sak_category || '—')}</span></td>
         <td class="fluxy-table-cell"><span class="fluxy-table-cell-meta">${escapeHtml(a.type)}</span></td>
         <td class="fluxy-table-cell"><span class="fluxy-table-cell-meta">${escapeHtml(a.normal_balance)}</span></td>
@@ -992,6 +1133,10 @@ function renderChartOfAccounts() {
     wrap.querySelectorAll('[data-coa-toggle]').forEach(btn => {
         btn.addEventListener('click', () => handleCoaToggle(btn.getAttribute('data-coa-toggle'), btn.getAttribute('data-coa-active') === '1'));
     });
+}
+
+function accountDetailLink(code) {
+    return `/accounting-account?code=${encodeURIComponent(code)}`;
 }
 
 async function handleCoaToggle(code, isActive) {

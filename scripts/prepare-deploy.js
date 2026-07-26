@@ -64,6 +64,7 @@ const MARKETING_PAGES = [
 
 const APP_PAGES = [
     'accounting.html',
+    'accounting-account.html',
     'accounting-journal.html',
     'accounting-journal-new.html',
     'accounting-records.html',

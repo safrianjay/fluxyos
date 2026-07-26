@@ -151,11 +151,11 @@ function render(j, coa, audit) {
         <td class="fluxy-table-cell fluxy-table-money">${formatRupiah(j.total_credit)}</td>
     </tr>`;
 
-    // Per-account ledger links (drill into the General Ledger tab for each account).
+    // Per-account ledger links (drill into the dedicated Account Detail page).
     const accounts = [...new Set((j.lines || []).map(l => l.account_code))];
     const ledgerLinks = accounts.map(code => {
         const meta = (coa || []).find(a => a.code === code);
-        return `<a class="acct-link" href="/accounting" title="Open the General Ledger and choose this account">${escapeHtml(code)} · ${escapeHtml(meta ? meta.name : code)} →</a>`;
+        return `<a class="acct-link" href="/accounting-account?code=${encodeURIComponent(code)}" title="Open account ledger">${escapeHtml(code)} · ${escapeHtml(meta ? meta.name : code)} →</a>`;
     }).join('<span style="color:#D1D5DB;"> | </span>');
 
     const auditRows = audit.length ? audit

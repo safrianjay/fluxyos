@@ -4,6 +4,7 @@ import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePa
 import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, CHART_OF_ACCOUNTS_SEED, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, periodKey as acctPeriodKey } from "./accounting-engine.js";
 import { buildTaxAppendix, TAX_RATES } from "./tax-engine.js";
 import { computeAging } from "./aging-engine.js";
+import { buildIncomeStatement, buildBalanceSheet } from "./statements-engine.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
 // See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
@@ -3593,6 +3594,64 @@ class DataService {
         return s.exists() ? { id: s.id, ...s.data() } : null;
     }
 
+    // Kernel-derived financial statements (Accounting Center → Statements tab).
+    // Reads ledger_balances (the same source as the Trial Balance and GL, so the
+    // statements can never disagree with them) once, then aggregates two ways:
+    //   • Income Statement: MOVEMENT within [startPeriod, endPeriod] (revenue and
+    //     expense earned/incurred in the range).
+    //   • Balance Sheet: CUMULATIVE through endPeriod (every posting up to and
+    //     including it) — a point-in-time position with a real equity section.
+    // Period keys are 'YYYY-MM' and compare lexically. Bucketing/grouping is pure
+    // (assets/js/statements-engine.js).
+    async getFinancialStatements(userId, { startPeriod = null, endPeriod = null } = {}) {
+        const end = endPeriod || acctPeriodKey(new Date());
+        const start = startPeriod || end;
+        const [snap, coa] = await Promise.all([
+            getDocs(collection(this.db, `${this._scope(userId)}/ledger_balances`)),
+            this.getChartOfAccounts(userId)
+        ]);
+        const meta = {};
+        coa.forEach((a) => { meta[a.code] = { name: a.name, name_id: a.name_id || null, type: a.type, sak_category: a.sak_category || null }; });
+
+        // Aggregate into a code → { movement, cumulative } pair in one pass.
+        const agg = {};
+        const ensure = (code, accountType) => {
+            if (!agg[code]) {
+                const m = meta[code] || {};
+                agg[code] = {
+                    account_code: code,
+                    account_type: m.type || accountType || 'asset',
+                    account_name: m.name || code,
+                    account_name_id: m.name_id || null,
+                    sak_category: m.sak_category || null,
+                    move_debit: 0, move_credit: 0, cum_debit: 0, cum_credit: 0
+                };
+            }
+            return agg[code];
+        };
+        snap.docs.forEach((d) => {
+            const b = d.data();
+            const pk = b.period_key;
+            if (!pk || pk > end) return; // future periods never count
+            const row = ensure(b.account_code, b.account_type);
+            const debit = Number(b.debit_total || 0);
+            const credit = Number(b.credit_total || 0);
+            row.cum_debit += debit;
+            row.cum_credit += credit;
+            if (pk >= start) { row.move_debit += debit; row.move_credit += credit; }
+        });
+
+        const rows = Object.values(agg);
+        const movementRows = rows.map((r) => ({ ...r, debit_total: r.move_debit, credit_total: r.move_credit }));
+        const cumulativeRows = rows.map((r) => ({ ...r, debit_total: r.cum_debit, credit_total: r.cum_credit }));
+
+        return {
+            period: { start, end },
+            incomeStatement: buildIncomeStatement(movementRows),
+            balanceSheet: buildBalanceSheet(cumulativeRows)
+        };
+    }
+
     // A/R + A/P aging (Accounting Center → Aging tab). Sources mirror the
     // Balance Sheet's receivable/payable composition so the aging totals tie to
     // its A/R and A/P lines: open IDR invoices + pending_receivable accruals on
@@ -3742,6 +3801,125 @@ class DataService {
         return { account_code: accountCode, account_name: acct ? acct.name : accountCode, account_type: type, entries, closing: running };
     }
 
+    // Account Detail page: one account's full ledger-style activity with enough
+    // journal/source metadata for drill-down, search, filters, export, and a
+    // date-range opening balance. Journals remain the source of truth; this
+    // method intentionally avoids introducing a second account-entry store.
+    async getAccountDetail(userId, accountCode, {
+        startDate = null, endDate = null, search = '', sourceCollection = '', max = 1000
+    } = {}) {
+        const code = String(accountCode || '').trim();
+        if (!code) return null;
+        const [coa, journals] = await Promise.all([
+            this.getChartOfAccounts(userId),
+            this.listJournals(userId, { accountCode: code, max })
+        ]);
+        const account = coa.find((a) => a.code === code);
+        if (!account) return null;
+
+        const startMs = this._dateBoundaryMs(startDate, false);
+        const endMs = this._dateBoundaryMs(endDate, true);
+        const queryText = String(search || '').trim().toLowerCase();
+        const selectedSource = String(sourceCollection || '').trim();
+        const sourceLabel = (source) => {
+            const c = source?.collection || '';
+            return {
+                transactions: 'Transactions',
+                bills: 'Bills',
+                subscriptions: 'Subscriptions',
+                invoices: 'Invoices',
+                bank_statement_imports: 'Bank transactions',
+                periods: 'Period close'
+            }[c] || (c ? c.replace(/_/g, ' ') : 'Manual journal');
+        };
+        const sourceHref = (source) => {
+            if (!source || !source.collection || !source.id) return '';
+            const base = {
+                transactions: '/ledger',
+                bills: '/bill',
+                subscriptions: '/subscription',
+                invoices: '/invoices',
+                bank_statement_imports: '/integration'
+            }[source.collection];
+            if (!base) return '';
+            const param = source.collection === 'invoices' ? 'invoice' : 'record';
+            return `${base}?${param}=${encodeURIComponent(source.id)}`;
+        };
+
+        const ordered = journals.slice().sort((a, b) => this._journalSortKey(a) - this._journalSortKey(b));
+        const type = account.type || 'asset';
+        let running = Number(account.opening_balance || 0);
+        let openingBalanceForRange = running;
+        let openingCaptured = !startMs;
+        const entries = [];
+
+        ordered.forEach((j) => {
+            const journalMs = this._journalSortKey(j);
+            const source = j.source || null;
+            (j.lines || []).filter((l) => l.account_code === code).forEach((l) => {
+                const debit = Number(l.debit) || 0;
+                const credit = Number(l.credit) || 0;
+                running += signedBalance(type, debit, credit);
+                if (startMs && !openingCaptured && journalMs >= startMs) {
+                    openingBalanceForRange = running - signedBalance(type, debit, credit);
+                    openingCaptured = true;
+                }
+                if (startMs && journalMs < startMs) return;
+                if (endMs && journalMs > endMs) return;
+                if (selectedSource) {
+                    const actual = source?.collection || 'manual';
+                    if (actual !== selectedSource) return;
+                }
+                const row = {
+                    journal_id: j.id,
+                    journal_number: j.journal_number || '',
+                    journal_status: j.status || 'posted',
+                    date: j.posted_at || j.created_at || null,
+                    period_key: j.period_key || '',
+                    description: j.description || j.memo || l.memo || '',
+                    memo: l.memo || j.memo || '',
+                    reference_number: j.source_number || j.reference || j.journal_number || '',
+                    posting_rule_id: j.posting_rule_id || '',
+                    source,
+                    source_collection: source?.collection || 'manual',
+                    source_id: source?.id || '',
+                    source_module_label: sourceLabel(source),
+                    source_href: sourceHref(source),
+                    debit,
+                    credit,
+                    running_balance: running,
+                    status: j.status || 'posted'
+                };
+                if (queryText) {
+                    const hay = [
+                        row.journal_number, row.description, row.memo, row.reference_number,
+                        row.posting_rule_id, row.source_module_label, row.period_key
+                    ].join(' ').toLowerCase();
+                    if (!hay.includes(queryText)) return;
+                }
+                entries.push(row);
+            });
+        });
+
+        if (startMs && !openingCaptured) openingBalanceForRange = running;
+        const totalDebit = entries.reduce((sum, e) => sum + e.debit, 0);
+        const totalCredit = entries.reduce((sum, e) => sum + e.credit, 0);
+        return {
+            account: {
+                id: account.id || code,
+                ...account,
+                current_balance: running,
+                is_locked: !!(account.is_system || SYSTEM_ACCOUNT_CODES.includes(code)),
+                lock_reasons: (account.is_system || SYSTEM_ACCOUNT_CODES.includes(code)) ? ['system_account'] : []
+            },
+            entries,
+            openingBalanceForRange,
+            closingBalance: entries.length ? entries[entries.length - 1].running_balance : openingBalanceForRange,
+            totalDebit,
+            totalCredit
+        };
+    }
+
     // General ledger for EVERY account that has activity, built from a single
     // journals fetch (posted only — drafts are not in the ledger) and grouped by
     // account, each with its own running balance. Powers the GL "All accounts"
@@ -3789,6 +3967,20 @@ class DataService {
         if (t && typeof t.toMillis === 'function') return t.toMillis();
         if (t && typeof t.seconds === 'number') return t.seconds * 1000;
         return 0;
+    }
+
+    _dateBoundaryMs(value, endOfDay = false) {
+        if (!value) return null;
+        let d = null;
+        if (value instanceof Date) d = new Date(value.getTime());
+        else if (typeof value?.toDate === 'function') d = value.toDate();
+        else if (typeof value?.seconds === 'number') d = new Date(value.seconds * 1000);
+        else if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) d = new Date(`${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}`);
+        else d = new Date(value);
+        if (!d || Number.isNaN(d.getTime())) return null;
+        if (endOfDay) d.setHours(23, 59, 59, 999);
+        else d.setHours(0, 0, 0, 0);
+        return d.getTime();
     }
 
     async getPeriod(userId, pk) {

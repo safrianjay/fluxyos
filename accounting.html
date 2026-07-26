@@ -118,6 +118,7 @@
                         <button type="button" class="acct-tab" data-acct-tab="journals" role="tab">Journals</button>
                         <button type="button" class="acct-tab" data-acct-tab="ledger" role="tab">General Ledger</button>
                         <button type="button" class="acct-tab" data-acct-tab="trial" role="tab">Trial Balance</button>
+                        <button type="button" class="acct-tab" data-acct-tab="statements" role="tab">Statements</button>
                         <button type="button" class="acct-tab" data-acct-tab="coa" role="tab">Chart of Accounts</button>
                         <button type="button" class="acct-tab" data-acct-tab="aging" role="tab">Aging</button>
                         <button type="button" class="acct-tab" data-acct-tab="cleanup" role="tab">Cleanup <span class="acct-tab-count" id="tab-cleanup-count">0</span></button>
@@ -247,6 +248,31 @@
                             </div>
                             <div id="coa-content" class="fluxy-table-scroll"></div>
                         </section>
+                    </div>
+
+                    <!-- STATEMENTS TAB (ledger-derived P&L + Balance Sheet) -->
+                    <div data-acct-panel="statements" class="hidden">
+                        <div class="flex flex-col gap-6">
+                        <section class="acct-card fluxy-table-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">Income Statement</h2>
+                                    <p class="fluxy-table-subtitle">Built from the general ledger for <span id="statements-period">this period</span> — ties to your trial balance.</p>
+                                </div>
+                            </div>
+                            <div id="statements-income-content" class="fluxy-table-scroll"></div>
+                        </section>
+                        <section class="acct-card fluxy-table-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">Balance Sheet</h2>
+                                    <p class="fluxy-table-subtitle">Position as of the end of the period, with a full equity section. Assets must equal Liabilities plus Equity.</p>
+                                </div>
+                                <div class="fluxy-table-actions" id="statements-tieout"></div>
+                            </div>
+                            <div id="statements-balance-content" class="fluxy-table-scroll"></div>
+                        </section>
+                        </div>
                     </div>
 
                     <!-- AGING TAB (A/R + A/P) -->
