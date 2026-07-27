@@ -1585,7 +1585,12 @@ window.showAddTransactionModal = function(options = {}) {
             const { ds, scopeId } = await resolveTxServiceWhenReady();
             const baseType = context === 'bill' ? (typeSelectEl?.value || 'expense') : (DIRECTION_TO_TYPE[dir] || 'expense');
             const catEl = document.getElementById('tx-category');
-            const sug = await ds.suggestAccountForEntry(scopeId, { type: baseType, category: catEl ? catEl.value : defaultCategory });
+            const vendorEl = document.getElementById('tx-vendor');
+            const sug = await ds.suggestAccountForEntry(scopeId, {
+                type: baseType,
+                category: catEl ? catEl.value : defaultCategory,
+                vendor_name: vendorEl ? vendorEl.value : ''  // vendor memory (Phase 3): pre-fill the account last used for this vendor
+            });
             if (sug && sug.code) { accountPicker.setValue(sug.code); accountUserTouched = false; setDerivedCategory(accountPicker.getAccount()); }
         } catch (_) { /* non-fatal — the field simply stays empty */ }
     }
@@ -1632,6 +1637,14 @@ window.showAddTransactionModal = function(options = {}) {
     // direction SYNCHRONOUSLY (before the cash-impact section reads #tx-type, and
     // independent of the async picker mount or whether the picker script loaded).
     applyDirection(true);
+
+    // Vendor memory (Phase 3): when the user finishes typing a vendor, re-fetch the
+    // suggested account (pre-fills the account last used for that vendor). Skipped
+    // once the user has manually picked an account (refreshSuggestedAccount guards).
+    if (vendorInput) {
+        vendorInput.addEventListener('change', () => refreshSuggestedAccount(false));
+        vendorInput.addEventListener('blur', () => refreshSuggestedAccount(false));
+    }
 
     // Cash impact section — transaction context only
     if (context === 'transaction') {
@@ -2491,6 +2504,14 @@ window.showAddTransactionModal = function(options = {}) {
                     if (window.loadDashboard) await window.loadDashboard();
                     if (window.loadLedger) await window.loadLedger();
                     window.showToast("Transaction successfully deployed to your live ledger!", "success");
+                }
+                // Vendor memory (Phase 3): remember the account chosen for this vendor
+                // so the next entry for it pre-fills that account. Best-effort +
+                // fire-and-forget — learning must never block or fail the save.
+                if (data.account_code && data.vendor_name) {
+                    ds.learnVendorAccount(scopeId, {
+                        vendor_name: data.vendor_name, account_code: data.account_code, account_name: data.account_name
+                    }).catch(() => {});
                 }
             } else {
                 window.showToast("Session expired. Please log in again.", "error");

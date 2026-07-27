@@ -123,6 +123,21 @@ async function main() {
     await expectOutcome('tx create with over-long account_code is denied', false, () =>
         setDoc(doc(collection(db, `workspaces/${WS}/transactions`)), txn({ account_code: '1234567890123' })));
 
+    // Vendor→account memory (Phase 3) writes an accounting_mappings doc with the new
+    // source_type 'vendor'. The mapping validator must accept it and still reject a
+    // bad source_type.
+    console.log('\n— accounting_mappings: vendor source_type —');
+    const mapping = (extra = {}) => ({
+        source_type: 'vendor', source_value: 'aws', target_account_code: '6300',
+        target_account_name: 'Infrastructure Expense', target_account_type: 'expense',
+        confidence: 'user_confirmed', status: 'active',
+        created_at: serverTimestamp(), updated_at: serverTimestamp(), ...extra
+    });
+    await expectOutcome('create a vendor→account mapping', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/accounting_mappings/vendor__aws`), mapping()));
+    await expectOutcome('reject a bad mapping source_type', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/accounting_mappings/bad__x`), mapping({ source_type: 'nonsense' })));
+
     console.log('\n— journals: balance + immutability —');
     const okRef = doc(collection(db, `workspaces/${WS}/journals`));
     await expectOutcome('post a balanced journal (open period)', true, () => setDoc(okRef, journal('2026-06')));

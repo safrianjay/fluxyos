@@ -71,6 +71,12 @@ const ACCOUNTING_TYPE_DEFAULTS = {
 };
 // Fallback suggestion for unmapped spend so the preview always shows a target.
 const ACCOUNTING_UNMAPPED_FALLBACK_CODE = '6999';
+// Normalized key for vendor→account memory (Phase 3): case/space-insensitive,
+// bounded to the accounting_mappings source_value limit (60). Used as both the
+// map key and the stored source_value so lookups always match.
+function normalizeVendorKey(name) {
+    return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 60);
+}
 // Founder-facing category taxonomy seed (docs/data-model/chart-of-accounts.md).
 // The built-in six keep their exact ledger-wide names and stay active; expanded
 // categories seed inactive until Phase 3 activates them in the pickers, but
@@ -3754,11 +3760,78 @@ class DataService {
         return list;
     }
 
-    // Suggest the categorizing account the posting engine would resolve for a new
-    // entry, so the drawer's Account field pre-fills to exactly what would post.
-    // Delegates to the pure engine (single source of truth) with the workspace's
-    // saved mappings. Returns { code, name, type }.
-    async suggestAccountForEntry(userId, { type, category } = {}) {
+    // Workspace vendor→account memory (Phase 3): normalized vendor name → the last
+    // account it was categorized to. Cached per scope for the session. Suggestion
+    // layer only — it never feeds the raw posting engine, so bulk/CSV imports stay
+    // category-driven and a vendor spanning categories is never silently mis-posted.
+    async _loadVendorAccountMap(userId) {
+        this._vendorAcctCache = this._vendorAcctCache || {};
+        const key = this._scope(userId);
+        if (this._vendorAcctCache[key]) return this._vendorAcctCache[key];
+        const map = {};
+        try {
+            const raw = await this.getAccountingMappings(userId); // active only
+            raw.forEach((m) => {
+                if (m.source_type !== 'vendor' || !m.target_account_code) return;
+                map[normalizeVendorKey(m.source_value)] = {
+                    code: m.target_account_code, name: m.target_account_name, type: m.target_account_type
+                };
+            });
+        } catch (_) { /* collection may be empty */ }
+        this._vendorAcctCache[key] = map;
+        return map;
+    }
+
+    // Remember the account a vendor was categorized to, so the next entry for that
+    // vendor pre-fills it. Best-effort + non-blocking (learning must never break a
+    // save). Skips the unmapped fallback (6999) so we only remember real choices.
+    // Deterministic doc id → upsert (one mapping per vendor).
+    async learnVendorAccount(userId, { vendor_name, account_code, account_name, account_type } = {}) {
+        const vkey = normalizeVendorKey(vendor_name);
+        const code = this._nullableString(account_code, 12);
+        if (!userId || !vkey || !code || code === ACCOUNTING_UNMAPPED_FALLBACK_CODE) return null;
+        const catalog = ACCOUNTING_ACCOUNT_CATALOG[code];
+        const name = this._nullableString(account_name, 80) || (catalog ? catalog.name : code);
+        const type = account_type || (catalog ? catalog.type : null);
+        if (!type) return null;
+        const safeKey = `vendor__${vkey}`.toLowerCase().replace(/[^a-z0-9_]+/g, '-').slice(0, 140);
+        const ref = doc(this.db, `${this._scope(userId)}/accounting_mappings/${safeKey}`);
+        try {
+            const existing = await getDoc(ref);
+            if (existing.exists() && existing.data().target_account_code === code) { return { id: safeKey, unchanged: true }; }
+            await setDoc(ref, {
+                source_type: 'vendor',
+                source_value: vkey,
+                target_account_code: code,
+                target_account_name: name,
+                target_account_type: type,
+                confidence: 'user_confirmed',
+                status: 'active',
+                created_at: existing.exists() ? (existing.data().created_at || serverTimestamp()) : serverTimestamp(),
+                updated_at: serverTimestamp()
+            });
+            this._vendorAcctCache = {}; // next suggestion must see the new memory
+            return { id: safeKey };
+        } catch (_) { return null; }
+    }
+
+    // Suggest the categorizing account for a new entry, so the drawer's Account
+    // field pre-fills. Vendor memory wins when it exists AND is compatible with the
+    // money direction (a revenue account for income-like, expense/COGS otherwise) —
+    // so a remembered account never fights the direction. Otherwise delegates to the
+    // pure engine (mappings → category/type defaults). Returns { code, name, type }.
+    async suggestAccountForEntry(userId, { type, category, vendor_name } = {}) {
+        const t = String(type || '').toLowerCase().trim();
+        const vkey = normalizeVendorKey(vendor_name);
+        if (vkey) {
+            const vmap = await this._loadVendorAccountMap(userId).catch(() => ({}));
+            const hit = vmap[vkey];
+            if (hit && hit.code) {
+                const incomeLike = t === 'income' || t === 'revenue' || t === 'refund' || t === 'pending_receivable';
+                const compatible = incomeLike ? hit.type === 'revenue' : hit.type === 'expense';
+                if (compatible) return { code: hit.code, name: hit.name, type: hit.type };
+            }
+        }
         const map = await this._loadAcctMappings(userId).catch(() => ({}));
         const code = suggestCategorizingAccount({ type, category }, map);
         return this._accountInfo(code);
