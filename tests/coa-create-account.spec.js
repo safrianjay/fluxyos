@@ -80,6 +80,30 @@ test('New Account drawer rejects a duplicate code inline and does not create', a
     expect(bad, `console/page errors: ${bad.join(' | ')}`).toHaveLength(0);
 });
 
+test('Tax options are restricted by account type (no wrong-direction VAT)', async ({ page }) => {
+    const bad = collectErrors(page);
+    await openCoaDrawer(page);
+
+    // Expense → input VAT (Masukan) only.
+    await page.locator('#ca-category').selectOption('operating_expense');
+    await expect(page.locator('#ca-tax-field')).toBeVisible();
+    await expect(page.locator('#ca-tax option[value="PPN_IN_11"]')).toHaveCount(1);
+    await expect(page.locator('#ca-tax option[value="PPN_OUT_11"]')).toHaveCount(0);
+
+    // Revenue → output VAT (Keluaran) + zero/exempt, never input VAT.
+    await page.locator('#ca-category').selectOption('revenue');
+    await expect(page.locator('#ca-tax option[value="PPN_OUT_11"]')).toHaveCount(1);
+    await expect(page.locator('#ca-tax option[value="PPN_ZERO"]')).toHaveCount(1);
+    await expect(page.locator('#ca-tax option[value="PPN_IN_11"]')).toHaveCount(0);
+
+    // Equity → VAT not applicable, the Tax field is hidden entirely.
+    await page.locator('#ca-category').selectOption('equity');
+    await expect(page.locator('#ca-tax-field')).toBeHidden();
+
+    await page.locator('#ca-cancel').click();
+    expect(bad, `console/page errors: ${bad.join(' | ')}`).toHaveLength(0);
+});
+
 test('Edit drawer opens for a user-created account (code immutable) and renames it', async ({ page }) => {
     const bad = collectErrors(page);
 

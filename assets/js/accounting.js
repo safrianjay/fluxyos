@@ -65,8 +65,28 @@ const TAX_OPTIONS = [
     ['PPN_EXEMPT', 'PPN Dibebaskan']
 ];
 const TAX_OPTION_CODES = new Set(TAX_OPTIONS.map(([code]) => code).filter(Boolean));
-function taxOptionsHtml(selected = '') {
-    return TAX_OPTIONS.map(([code, label]) => `<option value="${escapeHtml(code)}"${code === (selected || '') ? ' selected' : ''}>${escapeHtml(label)}</option>`).join('');
+
+// Which tax treatments make sense per account type, so the picker can't offer a
+// wrong-direction VAT: output PPN (Keluaran) belongs on sales/revenue, input PPN
+// (Masukan) on purchases (asset/expense). Zero/exempt are output-side (zero-rated
+// or exempt sales). Liability/equity accounts carry no default VAT → "No tax" only,
+// and the field is hidden for them.
+const TAX_OPTIONS_BY_TYPE = {
+    asset: ['', 'PPN_IN_11'],
+    expense: ['', 'PPN_IN_11'],
+    revenue: ['', 'PPN_OUT_11', 'PPN_ZERO', 'PPN_EXEMPT'],
+    liability: [''],
+    equity: ['']
+};
+function taxAppliesToType(type) {
+    return (TAX_OPTIONS_BY_TYPE[type] || ['']).some(Boolean);
+}
+function taxOptionsHtml(selected = '', type = null) {
+    const allowed = type ? (TAX_OPTIONS_BY_TYPE[type] || ['']) : TAX_OPTIONS.map(([c]) => c);
+    return TAX_OPTIONS
+        .filter(([code]) => allowed.includes(code))
+        .map(([code, label]) => `<option value="${escapeHtml(code)}"${code === (selected || '') ? ' selected' : ''}>${escapeHtml(label)}</option>`)
+        .join('');
 }
 
 const TONE_COLOR = { success: '#16A34A', warning: '#EA580C', danger: '#EF4444', neutral: '#94A3B8' };
@@ -1325,6 +1345,19 @@ function refreshCaDerived() {
         const want = keep || (state.caMode === 'edit' ? (state.caAccount?.parent_code || '') : '');
         if (want && parentSel.querySelector(`option[value="${CSS.escape(want)}"]`)) parentSel.value = want;
     }
+    refreshCaTax(type);
+}
+
+// Rebuild the Tax options for the current account type and hide the field for
+// types that carry no VAT (liability/equity). Preserves a still-valid selection.
+function refreshCaTax(type) {
+    const sel = caEl('ca-tax');
+    const field = caEl('ca-tax-field');
+    if (!sel || !field) return;
+    field.classList.toggle('hidden', !taxAppliesToType(type));
+    const keep = sel.value;
+    sel.innerHTML = taxOptionsHtml(keep, type);
+    if (!Array.from(sel.options).some(o => o.value === keep)) sel.value = '';
 }
 
 function openCreateAccountDrawer() { openAccountDrawer(null, false); }
@@ -1387,9 +1420,9 @@ function openAccountDrawer(account = null, inUse = false) {
                                 <input type="text" id="ca-name" maxlength="120" required placeholder="e.g. Consulting Revenue" value="${isEdit ? escapeHtml(account.name || '') : ''}" class="fluxy-drawer-input">
                             </div>
                         </div>
-                        <div class="fluxy-drawer-field">
+                        <div class="fluxy-drawer-field${isEdit && !taxAppliesToType(account.type) ? ' hidden' : ''}" id="ca-tax-field">
                             <label for="ca-tax" class="fluxy-drawer-label">Tax <span class="text-gray-400 font-normal">(optional)</span></label>
-                            <select id="ca-tax" class="fluxy-drawer-select">${taxOptionsHtml(isEdit ? account.tax_code : '')}</select>
+                            <select id="ca-tax" class="fluxy-drawer-select">${taxOptionsHtml(isEdit ? account.tax_code : '', isEdit ? account.type : 'asset')}</select>
                             <p class="fluxy-drawer-hint">Default PPN treatment recorded on this account. Choose "No tax" to leave it unset.</p>
                         </div>
                     </section>
