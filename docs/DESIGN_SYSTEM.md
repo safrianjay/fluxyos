@@ -594,6 +594,16 @@ page-level padding/max-width.
 10. **New pages reuse the shell.** Build new dashboard/app pages on the shared
     shell classes above rather than copying one-off Tailwind padding/max-width
     into the page.
+11. **Breadcrumb placement (hard rule).** When a detail/records page shows a
+    breadcrumb (`.acct-breadcrumb`), it renders at the **top of the page content —
+    above any filter/search/toolbar section and above the primary card.** The
+    reading order is always: breadcrumb → (title/summary) → filters → data. Never
+    place a filter card above the breadcrumb, and never bury the breadcrumb inside
+    a JS-rendered body that follows the filters. `accounting-records.html` and
+    `balance-sheet-records.html` are the reference (breadcrumb in the
+    `.acct-records-hero` before the filter card); `accounting-account.html` renders
+    its breadcrumb into `#account-breadcrumb` above the filter section for the
+    same reason.
 
 #### Dashboard Content Width Standard (hard rule)
 

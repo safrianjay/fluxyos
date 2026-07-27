@@ -43,6 +43,14 @@ test('CoA account name links to Account Detail; page renders summary + history w
     await expect(page.locator('#account-detail-body')).toContainText('Current balance');
     await expect(page.locator('#account-detail-body')).toContainText('Transaction history');
 
+    // Breadcrumb renders at the TOP of the content, above the filter section
+    // (design rule: breadcrumb → filters → data).
+    const crumb = page.locator('#account-breadcrumb');
+    await expect(crumb).toContainText('Chart of Accounts');
+    const crumbBox = await crumb.boundingBox();
+    const filtersBox = await page.locator('#account-filter-search').boundingBox();
+    expect(crumbBox.y).toBeLessThan(filtersBox.y);
+
     // Filters + pager controls exist.
     await expect(page.locator('#account-filter-source')).toBeVisible();
     await expect(page.locator('#account-export')).toBeVisible();

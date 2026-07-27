@@ -207,13 +207,15 @@ function render() {
     const exportBtn = el('account-export');
     if (exportBtn) exportBtn.disabled = !detail.entries.length;
 
-    el('account-detail-body').innerHTML = `
-        <nav class="acct-breadcrumb" aria-label="Breadcrumb">
-            <a href="/accounting">${escapeHtml(translate('Accounting Center'))}</a><span>/</span>
-            <a href="/accounting">${escapeHtml(translate('Chart of Accounts'))}</a><span>/</span>
-            <span style="color:#374151;font-weight:500;">${escapeHtml(codeName)}</span>
-        </nav>
+    // Breadcrumb renders above the filter section (design rule), not inside the
+    // detail body that follows it.
+    const crumb = el('account-breadcrumb');
+    if (crumb) crumb.innerHTML = `
+        <a href="/accounting">${escapeHtml(translate('Accounting Center'))}</a><span>/</span>
+        <a href="/accounting">${escapeHtml(translate('Chart of Accounts'))}</a><span>/</span>
+        <span style="color:#374151;font-weight:500;">${escapeHtml(codeName)}</span>`;
 
+    el('account-detail-body').innerHTML = `
         <section class="acct-card" style="padding:24px;margin-bottom:20px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
                 <div style="min-width:0;">
