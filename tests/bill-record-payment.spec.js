@@ -45,23 +45,27 @@ test('Bills: Record payment button is never stuck on "Recording…"', async ({ p
     });
     test.skip(!unpaid, 'no unpaid bill on the QA account to exercise Record payment');
 
+    // Open the bill's detail drawer via the universal deep-link (/bill?record=<id>)
+    // instead of vendor search + pagination — robust no matter how many bills share
+    // a vendor name in the QA workspace (search could otherwise page the target off
+    // screen). openLinkedBillRecord() opens the drawer (sets activeDrawerBill),
+    // falling back to a prefetched row if a filter still hides it.
+    await page.goto(`/bill?record=${encodeURIComponent(unpaid.id)}`);
+    await page.waitForFunction(() => {
+        const d = document.getElementById('bill-drawer');
+        return d && !d.classList.contains('translate-x-full');
+    }, null, { timeout: 30_000 });
+
     // openPayModal() is gated by FluxyAccessGuard.requireWriteAccess(); the QA
-    // account may be trial-restricted. This test never submits, so allow the
-    // modal to open (the paywall itself is covered elsewhere).
+    // account may be trial-restricted (the navigation above reset the override).
+    // This test never submits, so allow the modal to open (paywall covered elsewhere).
     await page.waitForFunction(() => !!window.FluxyAccessGuard, null, { timeout: 15_000 }).catch(() => {});
     await page.evaluate(() => { if (window.FluxyAccessGuard) window.FluxyAccessGuard.requireWriteAccess = () => true; });
 
-    // Surface it via search so it renders on page 1, then open its drawer.
-    await page.locator('#bill-search-input').fill(unpaid.vendor);
-    const targetRow = page.locator(`#bill-table-body tr[data-bill-id="${unpaid.id}"]`).first();
-    await targetRow.waitFor({ state: 'visible', timeout: 10_000 });
-
-    // Open the bill drawer once (sets activeDrawerBill). The pay modal's Cancel
-    // closes only the modal, leaving the drawer open, so both the first open and
-    // the reopen just fire the Mark-as-Paid handler directly. (The button lives in
-    // the drawer footer and stays present even when the drawer is off-screen, so
-    // its DOM click handler is the reliable trigger — not a viewport click.)
-    await targetRow.click();
+    // The pay modal's Cancel closes only the modal, leaving the drawer open, so both
+    // the first open and the reopen just fire the Mark-as-Paid handler directly. (The
+    // button lives in the drawer footer; its DOM click handler is the reliable
+    // trigger — not a viewport click.)
     const markPaidBtn = page.locator('#bill-mark-paid-btn');
     const openPayModal = async () => {
         await markPaidBtn.evaluate((b) => b.click());
