@@ -462,6 +462,12 @@
                     </select>
                 </div>
 
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Account <span id="scan-account-source"></span></label>
+                    <div data-scan-account-mount></div>
+                    <p class="mt-1 text-[11px] text-gray-400">We suggest the account from your vendor &amp; keyword rules — change it if needed.</p>
+                </div>
+
                 ${typeStatusBlock}
 
                 ${allocationBlock}
@@ -497,6 +503,75 @@
         wireReviewHandlers();
         updateSaveEnabled();
         mountReviewAllocationPicker();
+        mountReviewAccountPicker();
+    }
+
+    // Account picker for the scan review (Phase 3b): the searchable CoA picker,
+    // pre-filled with the account resolved from vendor memory / keyword rules /
+    // category, with a small "source" badge so the user can trust or override it.
+    function reviewAccountDirection() {
+        const cfg = modeCfg();
+        let type = cfg.defaultType;
+        const sel = $('scan-review-form')?.querySelector('select[name="type"]');
+        if (cfg.showTypeStatus && sel && sel.value) type = sel.value;
+        return ['income', 'revenue', 'refund', 'pending_receivable'].includes(String(type).toLowerCase()) ? 'in' : 'out';
+    }
+
+    function setReviewAccountSource(source) {
+        const el = $('scan-account-source');
+        if (!el) return;
+        const map = {
+            vendor: { text: 'From vendor', cls: 'text-emerald-600' },
+            keyword: { text: 'From keyword rule', cls: 'text-emerald-600' },
+            chain: { text: 'From category', cls: 'text-gray-400' },
+            fallback: { text: 'Review — no match', cls: 'text-[#EA580C]' }
+        };
+        const m = source && map[source];
+        el.innerHTML = m ? `<span class="ml-2 text-[10px] font-bold ${m.cls}">${escapeHtml(m.text)}</span>` : '';
+    }
+
+    async function refreshReviewAccount(force) {
+        if (!state.accountPicker) return;
+        if (!force && state.accountUserTouched) return;
+        const ctx = getContext();
+        const uid = ctx?.auth?.currentUser?.uid;
+        if (!ctx?.ds || !uid) return;
+        const form = $('scan-review-form');
+        const vendor = form?.querySelector('input[name="vendor_name"]')?.value || '';
+        const category = form?.querySelector('select[name="category"]')?.value || '';
+        const cfg = modeCfg();
+        const typeSel = form?.querySelector('select[name="type"]');
+        const type = (cfg.showTypeStatus && typeSel?.value) ? typeSel.value : cfg.defaultType;
+        try {
+            state.accountPicker.setDirection(reviewAccountDirection());
+            const sug = await ctx.ds.suggestAccountForEntry(uid, { type, category, vendor_name: vendor });
+            if (sug && sug.code) {
+                state.accountPicker.setValue(sug.code);
+                state.accountUserTouched = false;
+                setReviewAccountSource(sug.source);
+            }
+        } catch (_) { /* non-fatal — the field simply stays as-is */ }
+    }
+
+    async function mountReviewAccountPicker() {
+        const mountEl = $('scan-drawer-content')?.querySelector('[data-scan-account-mount]');
+        if (!mountEl || !window.FluxyAccountPicker) return;
+        const ctx = getContext();
+        const uid = ctx?.auth?.currentUser?.uid;
+        if (!ctx?.ds || !uid) return;
+        try {
+            const chart = await ctx.ds.getChartForPicker(uid);
+            state.accountUserTouched = false;
+            state.accountPicker = window.FluxyAccountPicker.mount(mountEl, {
+                name: 'account_code',
+                accounts: chart,
+                direction: reviewAccountDirection(),
+                placeholder: 'Select an account',
+                onChange: () => { state.accountUserTouched = true; setReviewAccountSource(null); },
+                onCreateAccount: () => window.open('/accounting', '_blank')
+            });
+            await refreshReviewAccount(true);
+        } catch (_) { /* non-fatal — the review still saves without an explicit account */ }
     }
 
     // Budget allocation picker for the receipt-capture review (transaction mode).
@@ -666,6 +741,11 @@
             hideDuplicateWarning();
             updateSaveEnabled();
         });
+        // Re-suggest the account when the vendor / category / type changes (unless
+        // the user has already picked one — refreshReviewAccount guards that).
+        form?.querySelector('input[name="vendor_name"]')?.addEventListener('blur', () => refreshReviewAccount(false));
+        form?.querySelector('select[name="category"]')?.addEventListener('change', () => refreshReviewAccount(false));
+        form?.querySelector('select[name="type"]')?.addEventListener('change', () => refreshReviewAccount(false));
         $('scan-save-btn')?.addEventListener('click', saveScannedDocument);
         $('scan-rescan-btn')?.addEventListener('click', () => {
             state.extraction = null;
@@ -977,17 +1057,19 @@
             }
         }
 
-        // Smart account (Phase 3b): resolve the categorizing account from vendor
-        // memory / keyword rules / category so an AI-captured bill or receipt posts
-        // to the right account instead of the generic category default. Non-fatal —
-        // on any failure the posting engine still resolves it from the category.
+        // Smart account (Phase 3b): stamp the account the user confirmed in the
+        // review picker (pre-filled from vendor memory / keyword rules / category)
+        // so the record posts to the right account. Falls back to a fresh resolve
+        // if the picker didn't mount, then to the engine's category resolution.
         try {
             if (type !== 'transfer' && type !== 'adjustment') {
-                const sug = await ctx.ds.suggestAccountForEntry(user.uid, { type, category, vendor_name });
-                if (sug && sug.code) {
-                    payload.account_code = sug.code;
-                    if (sug.name) payload.account_name = sug.name;
+                let code = state.accountPicker?.getValue?.() || '';
+                let name = code ? (state.accountPicker?.getAccount?.()?.name || null) : null;
+                if (!code) {
+                    const sug = await ctx.ds.suggestAccountForEntry(user.uid, { type, category, vendor_name });
+                    if (sug && sug.code) { code = sug.code; name = sug.name || null; }
                 }
+                if (code) { payload.account_code = code; if (name) payload.account_name = name; }
             }
         } catch (_) { /* fall back to the engine's category-driven resolution */ }
 

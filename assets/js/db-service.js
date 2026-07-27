@@ -3902,7 +3902,7 @@ class DataService {
         if (vkey) {
             const vmap = await this._loadVendorAccountMap(userId).catch(() => ({}));
             const hit = vmap[vkey];
-            if (hit && hit.code && compatible(hit.type)) return { code: hit.code, name: hit.name, type: hit.type };
+            if (hit && hit.code && compatible(hit.type)) return { code: hit.code, name: hit.name, type: hit.type, source: 'vendor' };
         }
         // 2. Keyword rules — a rule whose keyword is contained in the vendor/
         //    description text wins over the category default (longest keyword first).
@@ -3911,14 +3911,16 @@ class DataService {
             const rules = await this._loadKeywordAccountRules(userId).catch(() => []);
             for (const r of rules) {
                 if (r.keyword && text.indexOf(r.keyword) !== -1 && compatible(r.type)) {
-                    return { code: r.code, name: r.name, type: r.type };
+                    return { code: r.code, name: r.name, type: r.type, source: 'keyword' };
                 }
             }
         }
-        // 3. Engine chain — saved category/type mappings → defaults → fallback.
+        // 3. Engine chain — saved category/type mappings → defaults → fallback. The
+        //    `source` distinguishes a confident mapping/default ('chain') from the
+        //    generic unmapped fallback ('fallback') so the UI can flag it for review.
         const map = await this._loadAcctMappings(userId).catch(() => ({}));
         const code = suggestCategorizingAccount({ type, category }, map);
-        return this._accountInfo(code);
+        return { ...this._accountInfo(code), source: code === ACCOUNTING_UNMAPPED_FALLBACK_CODE ? 'fallback' : 'chain' };
     }
 
     // Recent journals (newest first). Posted journals come from the posted_at-ordered

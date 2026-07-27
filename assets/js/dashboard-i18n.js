@@ -328,6 +328,13 @@
         "Could not save the rule. Try again.": "Tidak dapat menyimpan aturan. Coba lagi.",
         "Could not remove the rule. Try again.": "Tidak dapat menghapus aturan. Coba lagi.",
         "Adding…": "Menambahkan…",
+        // Scan review account field (document-capture.js) — Phase 3b
+        "We suggest the account from your vendor & keyword rules — change it if needed.":
+            "Kami menyarankan akun dari aturan vendor & kata kunci Anda — ubah bila perlu.",
+        "From vendor": "Dari vendor",
+        "From keyword rule": "Dari aturan kata kunci",
+        "From category": "Dari kategori",
+        "Review — no match": "Tinjau — tidak ada kecocokan",
         "No unpaid bills for this vendor.": "Tidak ada tagihan belum dibayar untuk vendor ini.",
         "No unpaid bills to pay right now.": "Tidak ada tagihan yang perlu dibayar saat ini.",
         "Select at least one bill to pay.": "Pilih minimal satu tagihan untuk dibayar.",
