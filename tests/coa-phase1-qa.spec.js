@@ -32,7 +32,7 @@ test('CoA Phase 1: seed, taxonomy, archive round-trip (live rules)', async ({ pa
     expect(coaRows).toBeGreaterThanOrEqual(32);
     // SAK column + system badges render.
     await expect(page.locator('#coa-content')).toContainText('SAK Category');
-    expect(await page.locator('#coa-content [data-coa-toggle]').count()).toBeGreaterThanOrEqual(10);
+    expect(await page.locator('#coa-content [data-coa-kebab]').count()).toBeGreaterThanOrEqual(10);
     expect((await page.locator('#coa-content').innerText()).includes('System')).toBe(true);
 
     // --- business_categories seeded through the deployed rules (22 docs) and
@@ -62,9 +62,10 @@ test('CoA Phase 1: seed, taxonomy, archive round-trip (live rules)', async ({ pa
     expect(seeded.rentMapping).toBe('6420');
     expect(seeded.rentConfidence).toBe('system_default');
 
-    // --- Archive → reactivate round-trip on a non-system account (6450).
-    const row6450 = page.locator('#coa-content tbody tr', { hasText: 'Travel & Entertainment' });
-    await row6450.locator('[data-coa-toggle="6450"]').click();
+    // --- Archive → reactivate round-trip on a non-system account (6450), via the
+    // row's kebab (⋮) → Archive/Reactivate menu.
+    await page.locator('[data-coa-kebab="6450"]').click();
+    await page.locator('.acct-kebab-menu [data-menu-toggle]').click();
     await page.locator('#fluxy-dialog [data-dialog-action="confirm"]').click();
     await expect(page.locator('#coa-content tbody tr', { hasText: 'Travel & Entertainment' })).toContainText(/Archived|Diarsipkan/, { timeout: 30000 });
     // Archived account leaves the GL picker.
@@ -72,7 +73,8 @@ test('CoA Phase 1: seed, taxonomy, archive round-trip (live rules)', async ({ pa
     expect(await page.locator('#ledger-account-select option[value="6450"]').count()).toBe(0);
     // Reactivate to leave the workspace clean.
     await page.locator('[data-acct-tab="coa"]').click();
-    await page.locator('[data-coa-toggle="6450"]').click();
+    await page.locator('[data-coa-kebab="6450"]').click();
+    await page.locator('.acct-kebab-menu [data-menu-toggle]').click();
     await page.locator('#fluxy-dialog [data-dialog-action="confirm"]').click();
     await expect(page.locator('#coa-content tbody tr', { hasText: 'Travel & Entertainment' })).toContainText(/Active|Aktif/, { timeout: 30000 });
 

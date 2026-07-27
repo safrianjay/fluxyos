@@ -2348,6 +2348,7 @@ class DataService {
             source: 'dashboard'
         });
         this._acctMapCache = {}; // invalidate the posting-engine mapping cache
+        this._acctTaxMapCache = {}; // category→account changed → account-tax bridge may change
         return { id: safeKey, ...payload };
     }
 
@@ -2874,6 +2875,38 @@ class DataService {
         this._taxMapCacheTax[key] = map;
         return map;
     }
+
+    // category/type → tax_code derived from account-level default tax: an
+    // accounting_mapping (category/type → account) whose target account carries a
+    // tax_code contributes that PPN treatment. This lets a custom account's default
+    // tax flow into the documents that post to it, WITHOUT persisting any derived
+    // tax_mappings (kept out of the Tax Center mapping UI). Explicit tax_mappings
+    // still win, and the caller (_applyTaxAppendix) only applies this for PKP
+    // workspaces. Cached per scope; invalidated on account / accounting-mapping saves.
+    async _loadAccountTaxMappings(userId) {
+        this._acctTaxMapCache = this._acctTaxMapCache || {};
+        const key = this._scope(userId);
+        if (this._acctTaxMapCache[key]) return this._acctTaxMapCache[key];
+        const map = {};
+        try {
+            const [snap, coa] = await Promise.all([
+                getDocs(collection(this.db, `${key}/accounting_mappings`)),
+                this.getChartOfAccounts(userId)
+            ]);
+            const taxByCode = {};
+            (coa || []).forEach((a) => { if (a.tax_code && TAX_RATES[a.tax_code]) taxByCode[a.code] = a.tax_code; });
+            snap.forEach((d) => {
+                const m = d.data();
+                if (m.status === 'archived') return;
+                const tax = taxByCode[m.target_account_code];
+                if (!tax) return;
+                if (m.source_type === 'transaction_category') map[`category:${m.source_value}`] = tax;
+                else if (m.source_type === 'transaction_type') map[`type:${String(m.source_value).toLowerCase()}`] = tax;
+            });
+        } catch (_) { /* collections may not exist yet */ }
+        this._acctTaxMapCache[key] = map;
+        return map;
+    }
     // Graft PPN gross-up lines onto a freshly-built journal IN PLACE (tax-exclusive
     // model). Only fires when the document carries an explicit tax treatment
     // (tax_code or a saved tax_mapping) — so untaxed documents post byte-identical to
@@ -2883,13 +2916,19 @@ class DataService {
     async _applyTaxAppendix(userId, journal, sourceCollection, payload) {
         try {
             if (!journal || !Array.isArray(journal.lines)) return [];
-            const [profile, taxMappings] = await Promise.all([
+            const [profile, taxMappings, accountTaxMappings] = await Promise.all([
                 this._loadTaxProfile(userId),
-                this._loadTaxMappings(userId)
+                this._loadTaxMappings(userId),
+                this._loadAccountTaxMappings(userId)
             ]);
             if (!profile) return [];
+            // Explicit user tax_mappings always win. Account-level default tax fills
+            // gaps, but only for PKP workspaces — a Non-PKP business charges/credits
+            // no PPN, so an account's default tax must not conjure VAT for it.
+            const isPkp = String(profile.pkp_status || '').toLowerCase() === 'pkp';
+            const mappings = isPkp ? { ...accountTaxMappings, ...taxMappings } : taxMappings;
             const appendix = buildTaxAppendix({
-                baseJournal: journal, collection: sourceCollection, document: payload, profile, mappings: taxMappings
+                baseJournal: journal, collection: sourceCollection, document: payload, profile, mappings
             });
             if (!appendix || !appendix.lines.length) return [];
             journal.lines = journal.lines.concat(appendix.lines);
@@ -3487,6 +3526,7 @@ class DataService {
                 after: { name: payload.name, sak_category: payload.sak_category, parent_code: payload.parent_code, tax_code: payload.tax_code },
                 source: 'dashboard'
             });
+            this._acctTaxMapCache = {}; // tax_code may have changed → refresh the bridge
             return { id: code, ...current, ...payload };
         }
 
@@ -3529,6 +3569,7 @@ class DataService {
             after: { code, name: payload.name, type: payload.type, sak_category: payload.sak_category },
             source: 'dashboard'
         });
+        this._acctTaxMapCache = {}; // a new account may carry a tax_code → refresh the bridge
         return { id: code, ...payload };
     }
 

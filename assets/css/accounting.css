@@ -188,6 +188,30 @@
 .acct-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .acct-btn:disabled:active { transform: none; }
 
+/* Row action kebab (⋮) + its body-portaled dropdown (Chart of Accounts). */
+.acct-kebab-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 8px;
+    background: transparent; color: #6B7280; border: 1px solid transparent; cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.acct-kebab-btn:hover { background: #F3F4F6; color: #111827; }
+.acct-kebab-btn:focus-visible { outline: 2px solid #EA580C; outline-offset: 1px; }
+.acct-kebab-menu {
+    position: absolute; z-index: 1000; min-width: 168px;
+    background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12); padding: 4px;
+}
+.acct-kebab-item {
+    display: flex; width: 100%; align-items: center; gap: 8px;
+    padding: 8px 10px; font-size: 13px; font-weight: 500; color: #374151;
+    background: transparent; border: 0; border-radius: 8px; text-align: left; cursor: pointer;
+}
+.acct-kebab-item:hover { background: #F3F4F6; }
+.acct-kebab-item:focus-visible { outline: none; background: #F3F4F6; }
+.acct-kebab-item.danger { color: #B91C1C; }
+.acct-kebab-item.danger:hover { background: #FEF2F2; }
+
 /* Inline action link inside data-table cells (e.g. Journal Register actions). */
 .acct-link {
     color: #C2410C;

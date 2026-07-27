@@ -93,7 +93,8 @@ test('Edit drawer opens for a user-created account (code immutable) and renames 
     await expect(page.locator(`#coa-content a.acct-link[href="/accounting-account?code=${code}"]`)).toBeVisible({ timeout: 15000 });
 
     // Open Edit: title switches, code is immutable.
-    await page.locator(`[data-coa-edit="${code}"]`).click();
+    await page.locator(`[data-coa-kebab="${code}"]`).click();
+    await page.locator('.acct-kebab-menu [data-menu-edit]').click();
     await expect(page.locator('#ca-drawer-panel')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('#ca-drawer-title')).toHaveText('Edit Account');
     await expect(page.locator('#ca-code')).toBeDisabled();
@@ -139,7 +140,8 @@ test('Edit lock: an account with posted activity locks category + parent but sta
     await page.goto('/accounting.html');
     await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
     await page.locator('[data-acct-tab="coa"]').click();
-    await page.locator(`[data-coa-edit="${code}"]`).click();
+    await page.locator(`[data-coa-kebab="${code}"]`).click();
+    await page.locator('.acct-kebab-menu [data-menu-edit]').click();
     await expect(page.locator('#ca-drawer-panel')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('#ca-category')).toBeDisabled();
     await expect(page.locator('#ca-parent-toggle')).toBeDisabled();

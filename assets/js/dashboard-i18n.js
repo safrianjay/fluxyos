@@ -1715,6 +1715,7 @@
         "No tax": "Tanpa pajak",
         "Default PPN treatment recorded on this account. Choose \"No tax\" to leave it unset.": "Perlakuan PPN default yang tercatat pada akun ini. Pilih \"Tanpa pajak\" untuk mengosongkannya.",
         "Edit Account": "Ubah Akun",
+        "Account actions": "Aksi akun",
         "Update this account. Structural fields lock once it has posted activity.": "Perbarui akun ini. Kolom struktural terkunci setelah akun memiliki aktivitas terposting.",
         "The account code cannot be changed.": "Kode akun tidak dapat diubah.",
         "Locked — this account has posted activity, so its category and parent cannot change. You can still rename it.": "Terkunci — akun ini memiliki aktivitas terposting, jadi kategori dan induknya tidak dapat diubah. Anda tetap bisa mengganti namanya.",

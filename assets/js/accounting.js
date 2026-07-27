@@ -1158,13 +1158,9 @@ function renderChartOfAccounts() {
         const child = !!a.parent_code;
         const active = a.is_active !== false;
         const systemBadge = a.is_system ? ' <span class="fluxy-table-cell-meta" title="System accounts cannot be edited or archived.">🔒 System</span>' : '';
-        const editBtn = canManage && !a.is_system && active
-            ? `<button type="button" class="acct-btn acct-btn-ghost" data-coa-edit="${escapeHtml(a.code)}">Edit</button>`
+        const action = canManage && !a.is_system
+            ? `<button type="button" class="acct-kebab-btn" data-coa-kebab="${escapeHtml(a.code)}" data-coa-active="${active ? '1' : '0'}" aria-haspopup="menu" aria-expanded="false" aria-label="Account actions" title="Account actions">${KEBAB_SVG}</button>`
             : '';
-        const toggleBtn = canManage && !a.is_system
-            ? `<button type="button" class="acct-btn acct-btn-ghost" data-coa-toggle="${escapeHtml(a.code)}" data-coa-active="${active ? '1' : '0'}">${active ? 'Archive' : 'Reactivate'}</button>`
-            : '';
-        const action = `${editBtn}${toggleBtn}`;
         return `<tr class="fluxy-table-row">
         <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary"${child ? ' style="padding-left:16px;"' : ''}>${child ? '└ ' : ''}${escapeHtml(a.code)}</span></td>
         <td class="fluxy-table-cell"><a class="acct-link" href="${accountDetailLink(a.code)}" title="Open account ledger">${escapeHtml(a.name)}</a>${systemBadge}</td>
@@ -1176,15 +1172,69 @@ function renderChartOfAccounts() {
     </tr>`;
     }).join('');
     wrap.innerHTML = tableShell(
-        [{ label: 'Code' }, { label: 'Account' }, { label: 'SAK Category' }, { label: 'Type' }, { label: 'Normal' }, { label: 'Status' }, { label: '' }],
+        [{ label: 'Code' }, { label: 'Account' }, { label: 'SAK Category' }, { label: 'Type' }, { label: 'Normal' }, { label: 'Status' }, { label: 'Action' }],
         body
     );
-    wrap.querySelectorAll('[data-coa-toggle]').forEach(btn => {
-        btn.addEventListener('click', () => handleCoaToggle(btn.getAttribute('data-coa-toggle'), btn.getAttribute('data-coa-active') === '1'));
+    wrap.querySelectorAll('[data-coa-kebab]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleCoaMenu(btn, btn.getAttribute('data-coa-kebab'), btn.getAttribute('data-coa-active') === '1');
+        });
     });
-    wrap.querySelectorAll('[data-coa-edit]').forEach(btn => {
-        btn.addEventListener('click', () => handleCoaEdit(btn.getAttribute('data-coa-edit')));
-    });
+}
+
+// --- CoA row action menu (kebab) -------------------------------------------
+// The menu is portaled to <body> so the table's overflow (fluxy-table-scroll)
+// never clips it, and positioned under the kebab button.
+const KEBAB_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>';
+let coaMenuEl = null;
+let coaMenuBtn = null;
+
+function closeCoaMenu() {
+    if (coaMenuBtn) coaMenuBtn.setAttribute('aria-expanded', 'false');
+    if (coaMenuEl) { coaMenuEl.remove(); coaMenuEl = null; }
+    coaMenuBtn = null;
+    document.removeEventListener('click', onCoaMenuOutside, true);
+    document.removeEventListener('keydown', onCoaMenuKey, true);
+    window.removeEventListener('resize', closeCoaMenu);
+    window.removeEventListener('scroll', closeCoaMenu, true);
+}
+function onCoaMenuOutside(e) {
+    if (coaMenuEl && !coaMenuEl.contains(e.target) && !e.target.closest('[data-coa-kebab]')) closeCoaMenu();
+}
+function onCoaMenuKey(e) { if (e.key === 'Escape') { closeCoaMenu(); coaMenuBtn?.focus?.(); } }
+
+function toggleCoaMenu(btn, code, active) {
+    if (coaMenuBtn === btn) { closeCoaMenu(); return; }
+    closeCoaMenu();
+    const menu = document.createElement('div');
+    menu.className = 'acct-kebab-menu';
+    menu.setAttribute('role', 'menu');
+    menu.innerHTML = `
+        ${active ? '<button type="button" class="acct-kebab-item" role="menuitem" data-menu-edit>Edit</button>' : ''}
+        <button type="button" class="acct-kebab-item${active ? ' danger' : ''}" role="menuitem" data-menu-toggle>${active ? 'Archive' : 'Reactivate'}</button>`;
+    document.body.appendChild(menu);
+
+    const r = btn.getBoundingClientRect();
+    const menuW = menu.offsetWidth || 168;
+    let left = Math.max(8, r.right - menuW);
+    menu.style.top = `${Math.round(r.bottom + 4 + window.scrollY)}px`;
+    menu.style.left = `${Math.round(left + window.scrollX)}px`;
+
+    menu.querySelector('[data-menu-edit]')?.addEventListener('click', () => { closeCoaMenu(); handleCoaEdit(code); });
+    menu.querySelector('[data-menu-toggle]')?.addEventListener('click', () => { closeCoaMenu(); handleCoaToggle(code, active); });
+
+    coaMenuEl = menu;
+    coaMenuBtn = btn;
+    btn.setAttribute('aria-expanded', 'true');
+    if (typeof window.translateDashboardPage === 'function') window.translateDashboardPage();
+    setTimeout(() => {
+        document.addEventListener('click', onCoaMenuOutside, true);
+        document.addEventListener('keydown', onCoaMenuKey, true);
+        window.addEventListener('resize', closeCoaMenu);
+        window.addEventListener('scroll', closeCoaMenu, true);
+        menu.querySelector('.acct-kebab-item')?.focus?.();
+    }, 0);
 }
 
 // Open the edit drawer for a user-created account. Structural fields lock when the
