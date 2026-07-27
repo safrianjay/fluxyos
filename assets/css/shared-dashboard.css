@@ -2067,6 +2067,103 @@ main > header {
 .fluxy-select-option[aria-selected="true"] .fluxy-select-option-check { opacity: 1; }
 
 /* ────────────────────────────────────────────────────────────────────
+   Account picker (fluxy-account-picker.js) — searchable, grouped CoA
+   combobox. Trigger reuses .fluxy-select-trigger; the menu carries
+   .fluxy-select-menu (positioning) + .fluxy-acct-menu (layout overrides).
+   ──────────────────────────────────────────────────────────────────── */
+.fluxy-acct { position: relative; display: block; }
+.fluxy-acct-trigger { width: 100%; }
+.fluxy-acct-trigger[aria-expanded="true"] .fluxy-select-chevron { transform: rotate(180deg); }
+.fluxy-acct-triglabel {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.fluxy-acct-trigger.is-placeholder .fluxy-acct-triglabel { color: #9CA3AF; font-weight: var(--fluxy-fw-regular); }
+.fluxy-acct-code {
+    font-variant-numeric: tabular-nums;
+    color: #6B7280;
+    font-weight: var(--fluxy-fw-semibold);
+}
+.fluxy-acct-menu { padding: 0; max-height: 360px; display: none; }
+.fluxy-acct-menu.is-open { display: flex; flex-direction: column; }
+.fluxy-acct-searchwrap {
+    position: sticky;
+    top: 0;
+    padding: 8px;
+    background: #FFFFFF;
+    border-bottom: 1px solid #F1F3F5;
+    z-index: 1;
+}
+.fluxy-acct-search {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    font-size: var(--fluxy-text-md);
+    color: #0B0F19;
+    outline: none;
+}
+.fluxy-acct-search:focus { border-color: #EA580C; box-shadow: 0 0 0 3px rgba(234,88,12,0.12); }
+.fluxy-acct-list { overflow-y: auto; padding: 4px; }
+.fluxy-acct-group-label {
+    padding: 8px 10px 4px;
+    font-size: var(--fluxy-text-xs);
+    font-weight: var(--fluxy-fw-semibold);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #9CA3AF;
+}
+.fluxy-acct-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    text-align: left;
+    cursor: pointer;
+    color: #374151;
+}
+.fluxy-acct-optmain { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1; }
+.fluxy-acct-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fluxy-text-md); font-weight: var(--fluxy-fw-medium); }
+.fluxy-acct-option:hover { background: #F9FAFB; color: #0B0F19; }
+.fluxy-acct-option:focus-visible { outline: none; background: #F9FAFB; box-shadow: inset 0 0 0 2px rgba(234,88,12,0.25); }
+.fluxy-acct-option[aria-selected="true"] { color: #EA580C; background: #FFF7ED; }
+.fluxy-acct-option .fluxy-select-option-check { width: 16px; height: 16px; flex-shrink: 0; opacity: 0; }
+.fluxy-acct-option[aria-selected="true"] .fluxy-select-option-check { opacity: 1; }
+.fluxy-acct-badge {
+    flex-shrink: 0;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: var(--fluxy-text-xs);
+    font-weight: var(--fluxy-fw-semibold);
+    background: #F1F3F5;
+    color: #4B5563;
+    border: 1px solid #E5E7EB;
+}
+.fluxy-acct-badge[data-type="revenue"] { background: #ECFDF5; color: #047857; border-color: #A7F3D0; }
+.fluxy-acct-badge[data-type="expense"] { background: #FEF2F2; color: #B91C1C; border-color: #FECACA; }
+.fluxy-acct-badge[data-type="asset"] { background: #EFF6FF; color: #1D4ED8; border-color: #BFDBFE; }
+.fluxy-acct-badge[data-type="liability"] { background: #FFF7ED; color: #C2410C; border-color: #FED7AA; }
+.fluxy-acct-badge[data-type="equity"] { background: #F5F3FF; color: #6D28D9; border-color: #DDD6FE; }
+.fluxy-acct-empty { padding: 16px 12px; font-size: var(--fluxy-text-sm); color: #6B7280; text-align: center; }
+.fluxy-acct-create {
+    border: 0;
+    background: none;
+    color: #EA580C;
+    font-weight: var(--fluxy-fw-semibold);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+/* ────────────────────────────────────────────────────────────────────
    Ledger filter popover — single "Filters" entry point that opens a
    stacked panel of filter groups (Visibility / Status / Type / Cash).
    Selections are staged until "Apply filters" is clicked.

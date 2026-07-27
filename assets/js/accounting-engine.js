@@ -245,10 +245,26 @@ function line(accountCode, debit, credit, memo) {
     };
 }
 
+// An explicit account chosen in the entry drawer (document.account_code) wins over
+// automatic resolution when it names a real account. `requiredType` (optional)
+// rejects a code of the wrong account type — so an income posting can't be pinned
+// to an expense account, and vice versa — falling back to normal resolution.
+export function explicitAccount(document, requiredType) {
+    const code = String(document?.account_code || '').trim();
+    if (!code) return null;
+    const acct = ACCOUNT_INDEX[code];
+    if (!acct) return null;
+    if (requiredType && acct.type !== requiredType) return null;
+    return code;
+}
+
 // Resolve the income/expense account for a document, honoring (in priority):
-// a saved accounting_mapping for the category, then the type, then category
-// defaults, then type defaults, then the unmapped-expense fallback.
+// an explicit account_code, then a saved accounting_mapping for the category,
+// then the type, then category defaults, then type defaults, then the
+// unmapped-expense fallback.
 function resolveExpenseAccount(document, mappings) {
+    const explicit = explicitAccount(document, 'expense');
+    if (explicit) return explicit;
     const category = String(document?.category || '').trim();
     const type = String(document?.type || '').trim().toLowerCase();
     const map = mappings || {};
@@ -257,6 +273,25 @@ function resolveExpenseAccount(document, mappings) {
     if (category && CATEGORY_DEFAULTS[category]) return CATEGORY_DEFAULTS[category];
     if (TYPE_EXPENSE_DEFAULTS[type]) return TYPE_EXPENSE_DEFAULTS[type];
     return UNMAPPED_EXPENSE;
+}
+
+// The account the posting engine would use for the categorizing (non-cash) line
+// of a transaction, given only its type + category (no amount needed). Powers the
+// entry drawer's smart default so the pre-filled Account matches what will post.
+// Income posts to Revenue (4000) unless the category resolves to a revenue
+// account; everything else runs the standard expense resolution chain.
+export function suggestCategorizingAccount(document, mappings) {
+    const type = String(document?.type || '').trim().toLowerCase();
+    const incomeLike = type === 'income' || type === 'revenue' || type === 'refund' || type === 'pending_receivable';
+    if (incomeLike) {
+        const cat = String(document?.category || '').trim();
+        const mapped = cat && (mappings || {})[`category:${cat}`];
+        if (mapped && ACCOUNT_INDEX[mapped] && ACCOUNT_INDEX[mapped].type === 'revenue') return mapped;
+        const def = cat && CATEGORY_DEFAULTS[cat];
+        if (def && ACCOUNT_INDEX[def] && ACCOUNT_INDEX[def].type === 'revenue') return def;
+        return REVENUE;
+    }
+    return resolveExpenseAccount(document, mappings);
 }
 
 // --- rule selection -------------------------------------------------------
@@ -304,7 +339,8 @@ export function selectRule(collection, document) {
 const RULES = {
     'TXN-INC-CASH': (doc) => {
         const amt = requireAmount(doc.amount, 'income');
-        return [line(CASH, amt, 0, 'Cash received'), line(REVENUE, 0, amt, doc.category || 'Revenue')];
+        const acct = explicitAccount(doc, 'revenue') || REVENUE;
+        return [line(CASH, amt, 0, 'Cash received'), line(acct, 0, amt, doc.category || 'Revenue')];
     },
     'TXN-EXP-CASH': (doc, ctx) => {
         const amt = requireAmount(doc.amount, 'expense');
@@ -313,12 +349,14 @@ const RULES = {
     },
     'TXN-OPEX-CASH': (doc) => {
         const amt = requireAmount(doc.amount, 'opex');
-        const acct = TYPE_EXPENSE_DEFAULTS[String(doc.type || '').toLowerCase()] || UNMAPPED_EXPENSE;
+        const acct = explicitAccount(doc, 'expense')
+            || TYPE_EXPENSE_DEFAULTS[String(doc.type || '').toLowerCase()] || UNMAPPED_EXPENSE;
         return [line(acct, amt, 0, doc.type), line(CASH, 0, amt, 'Cash paid')];
     },
     'TXN-ACCRUE-AR': (doc) => {
         const amt = requireAmount(doc.amount, 'pending receivable');
-        return [line(AR, amt, 0, 'Accrued receivable'), line(REVENUE, 0, amt, doc.category || 'Revenue')];
+        const acct = explicitAccount(doc, 'revenue') || REVENUE;
+        return [line(AR, amt, 0, 'Accrued receivable'), line(acct, 0, amt, doc.category || 'Revenue')];
     },
     'TXN-ACCRUE-AP': (doc, ctx) => {
         const amt = requireAmount(doc.amount, 'pending payable');

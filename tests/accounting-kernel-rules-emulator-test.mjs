@@ -115,6 +115,13 @@ async function main() {
         setDoc(doc(collection(db, `workspaces/${WS}/transactions`)), txn({ journal_ref: 'J123', accounting_status: 'posted' })));
     await expectOutcome('tx create with bad accounting_status is denied', false, () =>
         setDoc(doc(collection(db, `workspaces/${WS}/transactions`)), txn({ accounting_status: 'nonsense' })));
+    // The entry drawer stamps the chosen CoA account onto the source document
+    // (account_code + account_name). The validators must allow these bounded
+    // optional keys; an over-long code must still be denied.
+    await expectOutcome('tx create with account_code + account_name is allowed', true, () =>
+        setDoc(doc(collection(db, `workspaces/${WS}/transactions`)), txn({ account_code: '7100', account_name: 'Interest Income' })));
+    await expectOutcome('tx create with over-long account_code is denied', false, () =>
+        setDoc(doc(collection(db, `workspaces/${WS}/transactions`)), txn({ account_code: '1234567890123' })));
 
     console.log('\n— journals: balance + immutability —');
     const okRef = doc(collection(db, `workspaces/${WS}/journals`));

@@ -708,6 +708,34 @@ window.showAddTransactionModal = function(options = {}) {
     const supportsBulkCsv = context === 'transaction';
     const todayKey = getLocalDateKey();
 
+    // --- CoA-driven classification (non-bill contexts) -----------------------
+    // The founder-facing "Direction" maps to the granular `type` the kernel needs.
+    // `type` stays the stored source of truth (no data migration); the cash-timing
+    // toggle upgrades income/expense → pending_receivable/pending_payable at submit.
+    const DIRECTION_TO_TYPE = { in: 'income', out: 'expense', transfer: 'transfer', adjustment: 'adjustment', refund: 'refund', fee: 'fee', tax: 'tax' };
+    const TYPE_TO_DIRECTION = { income: 'in', revenue: 'in', pending_receivable: 'in', refund: 'refund', expense: 'out', pending_payable: 'out', fee: 'fee', tax: 'tax', transfer: 'transfer', adjustment: 'adjustment' };
+    // Which account-picker filter each direction uses ('in' = revenue accounts,
+    // 'out' = expense accounts, null = account not required and field hidden).
+    const DIRECTION_TO_ACCT_FILTER = { in: 'in', refund: 'in', out: 'out', fee: 'out', tax: 'out', transfer: null, adjustment: null };
+    // Reverse of the built-in category defaults, so a picked account still writes a
+    // budget-compatible `category` (Marketing/SaaS/Infrastructure/Operations/Revenue)
+    // when it is one of the six built-ins; otherwise the account name is used.
+    const ACCOUNT_TO_CATEGORY = { '4000': 'Revenue', '6100': 'Marketing', '6200': 'SaaS', '6300': 'Infrastructure', '6400': 'Operations' };
+    const defaultDirection = TYPE_TO_DIRECTION[String(defaultType).toLowerCase()] || 'out';
+    // Recently-used accounts (client-only, no schema change) surface at the top of
+    // the picker. Kept small and per-browser; graduated to per-vendor in Phase 3.
+    const RECENT_ACCOUNTS_KEY = 'fluxy_recent_accounts';
+    function readRecentAccounts() {
+        try { const a = JSON.parse(localStorage.getItem(RECENT_ACCOUNTS_KEY) || '[]'); return Array.isArray(a) ? a.slice(0, 8) : []; } catch (_) { return []; }
+    }
+    function pushRecentAccount(code) {
+        if (!code) return;
+        try {
+            const next = [String(code), ...readRecentAccounts().filter((c) => String(c) !== String(code))].slice(0, 8);
+            localStorage.setItem(RECENT_ACCOUNTS_KEY, JSON.stringify(next));
+        } catch (_) { /* private mode / quota — non-fatal */ }
+    }
+
     // Always destroy and recreate so context options (title, labels) are fresh
     const existing = document.getElementById('global-tx-modal');
     if (existing) {
@@ -755,25 +783,37 @@ window.showAddTransactionModal = function(options = {}) {
                                 <input type="text" id="tx-amount" name="amount" required placeholder="0" class="fluxy-drawer-input fluxy-drawer-input--mono">
                             </div>
                             <div class="fluxy-drawer-field">
+                                ${context === 'bill' ? `
                                 <label for="tx-type" class="fluxy-drawer-label">Type</label>
                                 <select id="tx-type" name="type" class="fluxy-drawer-select">
-                                    ${context === 'bill' ? `
                                     <option value="expense" selected>Expense</option>
                                     <option value="pending_payable">Pending payable</option>
-                                    ` : `
-                                    <option value="income" ${defaultType === 'income' || defaultType === 'revenue' ? 'selected' : ''}>Income</option>
-                                    <option value="expense" ${defaultType === 'expense' ? 'selected' : ''}>Expense</option>
-                                    <option value="transfer" ${defaultType === 'transfer' ? 'selected' : ''}>Transfer</option>
-                                    <option value="refund" ${defaultType === 'refund' ? 'selected' : ''}>Refund</option>
-                                    <option value="adjustment" ${defaultType === 'adjustment' ? 'selected' : ''}>Adjustment</option>
-                                    <option value="fee" ${defaultType === 'fee' ? 'selected' : ''}>Fee</option>
-                                    <option value="tax" ${defaultType === 'tax' ? 'selected' : ''}>Tax</option>
-                                    <option value="pending_receivable" ${defaultType === 'pending_receivable' ? 'selected' : ''}>Pending receivable</option>
-                                    <option value="pending_payable" ${defaultType === 'pending_payable' ? 'selected' : ''}>Pending payable</option>
-                                    <option value="Others">Others</option>
-                                    `}
                                 </select>
-                                ${context === 'bill' ? '' : `<input id="tx-type-custom" type="text" maxlength="20" placeholder="Type custom (max 20 chars)" class="fluxy-drawer-input hidden" />`}
+                                ` : `
+                                <label for="tx-direction" class="fluxy-drawer-label">Direction</label>
+                                <select id="tx-direction" name="direction" class="fluxy-drawer-select">
+                                    <option value="in" ${defaultDirection === 'in' ? 'selected' : ''}>Money in</option>
+                                    <option value="out" ${defaultDirection === 'out' ? 'selected' : ''}>Money out</option>
+                                    <option value="transfer" ${defaultDirection === 'transfer' ? 'selected' : ''}>Transfer</option>
+                                    <option value="adjustment" ${defaultDirection === 'adjustment' ? 'selected' : ''}>Adjustment</option>
+                                    <option value="__sep" disabled>── Advanced ──</option>
+                                    <option value="refund" ${defaultDirection === 'refund' ? 'selected' : ''}>Refund</option>
+                                    <option value="fee" ${defaultDirection === 'fee' ? 'selected' : ''}>Fee</option>
+                                    <option value="tax" ${defaultDirection === 'tax' ? 'selected' : ''}>Tax</option>
+                                </select>
+                                <p class="fluxy-drawer-hint">Money in records revenue; money out records a cost. Advanced covers refunds, fees, and tax.</p>
+                                <select id="tx-type" class="hidden" data-no-fluxy-select aria-hidden="true" tabindex="-1">
+                                    <option value="income">Income</option>
+                                    <option value="expense">Expense</option>
+                                    <option value="transfer">Transfer</option>
+                                    <option value="adjustment">Adjustment</option>
+                                    <option value="refund">Refund</option>
+                                    <option value="fee">Fee</option>
+                                    <option value="tax">Tax</option>
+                                    <option value="pending_receivable">Pending receivable</option>
+                                    <option value="pending_payable">Pending payable</option>
+                                </select>
+                                `}
                             </div>
                             <div class="fluxy-drawer-field">
                                 <label class="fluxy-drawer-label">${context === 'bill' ? 'Due Date' : 'Transaction Date'}</label>
@@ -788,6 +828,7 @@ window.showAddTransactionModal = function(options = {}) {
                                 <label for="tx-vendor" class="fluxy-drawer-label">Vendor / Description</label>
                                 <input type="text" id="tx-vendor" name="vendor" required placeholder="e.g. AWS, Client Payment" class="fluxy-drawer-input">
                             </div>
+                            ${context === 'bill' ? `
                             <div class="fluxy-drawer-field">
                                 <label for="tx-category" class="fluxy-drawer-label">Category</label>
                                 <select id="tx-category" name="category" class="fluxy-drawer-select">
@@ -799,6 +840,12 @@ window.showAddTransactionModal = function(options = {}) {
                                     <option value="Others">Others</option>
                                 </select>
                                 <input id="tx-category-custom" type="text" maxlength="20" placeholder="Type category (max 20 chars)" class="fluxy-drawer-input hidden" />
+                            </div>
+                            ` : `<input type="hidden" id="tx-category" value="${defaultCategory}" />`}
+                            <div class="fluxy-drawer-field" id="tx-account-field">
+                                <label for="tx-account-mount" class="fluxy-drawer-label">Account</label>
+                                <div id="tx-account-mount"></div>
+                                <p class="fluxy-drawer-hint">Which account this affects — we pre-fill the best match; change it if needed.</p>
                             </div>
                         </section>
 
@@ -1051,6 +1098,8 @@ window.showAddTransactionModal = function(options = {}) {
     let cashController = null;        // FluxyCashImpact controller for the rich cash control
     let cashImpactUserTouched = false;
     let cashBankAccounts = [];        // loaded once per drawer open
+    let accountPicker = null;         // FluxyAccountPicker controller (CoA account)
+    let accountUserTouched = false;   // true once the user manually picks an account
     let csvImportState = {
         file: null,
         csvText: '',
@@ -1457,17 +1506,21 @@ window.showAddTransactionModal = function(options = {}) {
     vendorInput.oninput = updateSingleSubmitState;
     updateSingleSubmitState();
 
-    // "Others" category custom input
+    // "Others" category custom input — bill context keeps the Category <select>;
+    // non-bill contexts use a hidden <input> carrier driven by the Account picker.
     const categorySelect = document.getElementById('tx-category');
     const categoryCustomInput = document.getElementById('tx-category-custom');
-    categorySelect.addEventListener('change', () => {
-        const isOthers = categorySelect.value === 'Others';
-        categoryCustomInput.classList.toggle('hidden', !isOthers);
-        if (isOthers) categoryCustomInput.focus();
-        else categoryCustomInput.value = '';
-    });
+    if (categorySelect && categoryCustomInput && categorySelect.tagName === 'SELECT') {
+        categorySelect.addEventListener('change', () => {
+            const isOthers = categorySelect.value === 'Others';
+            categoryCustomInput.classList.toggle('hidden', !isOthers);
+            if (isOthers) categoryCustomInput.focus();
+            else categoryCustomInput.value = '';
+        });
+    }
 
-    // "Others" type custom input (transaction context only)
+    // "Others" type custom input (legacy; only present when a #tx-type-custom
+    // input exists, which the new Direction UI no longer renders).
     const typeSelectEl = document.getElementById('tx-type');
     const typeCustomInput = document.getElementById('tx-type-custom');
     if (typeSelectEl && typeCustomInput) {
@@ -1478,6 +1531,107 @@ window.showAddTransactionModal = function(options = {}) {
             else typeCustomInput.value = '';
         });
     }
+
+    // --- Direction control + CoA Account picker -----------------------------
+    // Non-bill contexts: the visible Direction select drives the hidden #tx-type
+    // carrier (so all existing type-driven wiring — cash impact, budget picker —
+    // keeps working) and the Account picker's type filter. The picker is the CoA
+    // account the journal posts against; it auto-fills to what the kernel would
+    // resolve and stays editable. Bill context keeps its Type select and adds the
+    // Account picker as an override.
+    const directionSelect = document.getElementById('tx-direction');
+    const accountMount = document.getElementById('tx-account-mount');
+    const accountField = document.getElementById('tx-account-field');
+
+    // Write a budget-compatible category from the chosen account (non-bill only).
+    function setDerivedCategory(account) {
+        if (context === 'bill') return; // bill keeps the user-chosen Category select
+        const el = document.getElementById('tx-category');
+        if (!el) return;
+        const derived = account ? (ACCOUNT_TO_CATEGORY[account.code] || account.name) : defaultCategory;
+        el.value = derived || '';
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    // Resolve the DataService, tolerating the brief window right after page load
+    // where Firebase auth hasn't restored the session yet (getTransactionDataService
+    // throws "Session expired" until currentUser is populated). Cached once resolved.
+    let _txSvc = null;
+    async function resolveTxServiceWhenReady(tries = 20, delay = 250) {
+        if (_txSvc) return _txSvc;
+        for (let i = 0; i < tries; i++) {
+            try { _txSvc = await getTransactionDataService(); return _txSvc; }
+            catch (e) {
+                if (!/session expired/i.test(String(e && e.message)) || i === tries - 1) throw e;
+                await new Promise((r) => setTimeout(r, delay));
+            }
+        }
+        return _txSvc;
+    }
+
+    // Pull the account the kernel would resolve for the current direction/category
+    // and pre-fill the picker (unless the user has taken over the field).
+    async function refreshSuggestedAccount(force) {
+        if (!accountPicker) return;
+        const dir = directionSelect ? directionSelect.value : defaultDirection;
+        const filter = context === 'bill' ? 'out' : (DIRECTION_TO_ACCT_FILTER[dir] ?? null);
+        if (filter === null) return; // transfer/adjustment need no account
+        if (!force && accountUserTouched) {
+            const cur = accountPicker.getAccount();
+            const okType = filter === 'in' ? cur && cur.type === 'revenue' : cur && cur.type === 'expense';
+            if (okType) return; // keep the user's still-valid pick
+        }
+        try {
+            const { ds, scopeId } = await resolveTxServiceWhenReady();
+            const baseType = context === 'bill' ? (typeSelectEl?.value || 'expense') : (DIRECTION_TO_TYPE[dir] || 'expense');
+            const catEl = document.getElementById('tx-category');
+            const sug = await ds.suggestAccountForEntry(scopeId, { type: baseType, category: catEl ? catEl.value : defaultCategory });
+            if (sug && sug.code) { accountPicker.setValue(sug.code); accountUserTouched = false; setDerivedCategory(accountPicker.getAccount()); }
+        } catch (_) { /* non-fatal — the field simply stays empty */ }
+    }
+
+    // Reflect the current direction into the account field visibility + filter and
+    // the hidden #tx-type carrier (dispatching change so cash-impact/budget react).
+    function applyDirection(initial) {
+        if (context === 'bill' || !directionSelect) return;
+        const dir = directionSelect.value;
+        const baseType = DIRECTION_TO_TYPE[dir] || 'expense';
+        if (typeSelectEl && typeSelectEl.value !== baseType) {
+            typeSelectEl.value = baseType;
+            typeSelectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        const filter = DIRECTION_TO_ACCT_FILTER[dir] ?? null;
+        if (accountField) accountField.classList.toggle('hidden', filter === null);
+        if (accountPicker) accountPicker.setDirection(filter);
+        if (filter === null) { setDerivedCategory(null); }
+        else if (!initial) { refreshSuggestedAccount(false); }
+    }
+
+    if (accountMount && window.FluxyAccountPicker) {
+        (async () => {
+            try {
+                const { ds, scopeId } = await resolveTxServiceWhenReady();
+                const [chart, recent] = [await ds.getChartForPicker(scopeId), readRecentAccounts()];
+                const initialDir = context === 'bill' ? 'out' : (directionSelect ? directionSelect.value : defaultDirection);
+                accountPicker = window.FluxyAccountPicker.mount(accountMount, {
+                    name: 'account_code',
+                    accounts: chart,
+                    direction: context === 'bill' ? 'out' : (DIRECTION_TO_ACCT_FILTER[initialDir] ?? null),
+                    recentCodes: recent,
+                    placeholder: 'Select an account',
+                    onChange: (code, account) => { accountUserTouched = true; pushRecentAccount(code); setDerivedCategory(account); },
+                    onCreateAccount: () => { window.open('/accounting', '_blank'); }
+                });
+                accountPicker.setDirection(context === 'bill' ? 'out' : (DIRECTION_TO_ACCT_FILTER[initialDir] ?? null));
+                await refreshSuggestedAccount(true);
+            } catch (e) { console.warn('Account picker init failed', e); }
+        })();
+    }
+    if (directionSelect) directionSelect.addEventListener('change', () => applyDirection(false));
+    // Set the hidden #tx-type carrier + Account-field visibility from the default
+    // direction SYNCHRONOUSLY (before the cash-impact section reads #tx-type, and
+    // independent of the async picker mount or whether the picker script loaded).
+    applyDirection(true);
 
     // Cash impact section — transaction context only
     if (context === 'transaction') {
@@ -2157,21 +2311,28 @@ window.showAddTransactionModal = function(options = {}) {
 
             const rawAmount = document.getElementById('tx-amount').value.replace(/\./g, "");
             const txTypeSel = document.getElementById('tx-type').value;
-            const txType = (() => {
-                if (txTypeSel === 'Others') {
-                    const custom = document.getElementById('tx-type-custom')?.value.trim();
-                    return custom && custom.length > 0 ? custom : 'Others';
+            let txType = txTypeSel === 'Others'
+                ? (document.getElementById('tx-type-custom')?.value.trim() || 'Others')
+                : txTypeSel;
+            // Cash-timing upgrade: an income/expense marked Pending in the cash-impact
+            // control is stored as a pending receivable/payable (Direction stays
+            // Money in/out). This replaces the old separate "Pending" type options.
+            if (context === 'transaction') {
+                const cs = cashController?.getState?.();
+                if (cs && cs.impact === 'pending') {
+                    if (txType === 'income') txType = 'pending_receivable';
+                    else if (txType === 'expense') txType = 'pending_payable';
                 }
-                return txTypeSel;
-            })();
+            }
             const data = {
                 amount: parseFloat(rawAmount),
                 vendor_name: document.getElementById('tx-vendor').value,
                 category: (() => {
-                    const sel = document.getElementById('tx-category').value;
+                    const el = document.getElementById('tx-category');
+                    const sel = el ? el.value : '';
                     if (sel === 'Others') {
-                        const custom = document.getElementById('tx-category-custom').value.trim();
-                        return custom.length > 0 ? custom : 'Others';
+                        const custom = document.getElementById('tx-category-custom')?.value.trim();
+                        return custom && custom.length > 0 ? custom : 'Others';
                     }
                     return sel;
                 })(),
@@ -2179,6 +2340,16 @@ window.showAddTransactionModal = function(options = {}) {
                 status: context === 'bill' ? 'Upcoming' : (document.getElementById('tx-status')?.value || 'Completed'),
                 icon: ['income', 'refund', 'pending_receivable'].includes(txType) ? '💰' : '💸'
             };
+            // Attach the chosen Chart-of-Accounts account so the posting engine uses
+            // it as the categorizing line. Skipped for transfer/adjustment (no post).
+            if (accountPicker) {
+                const acctCode = accountPicker.getValue();
+                const acct = accountPicker.getAccount();
+                if (acctCode && txType !== 'transfer' && txType !== 'adjustment') {
+                    data.account_code = acctCode;
+                    if (acct && acct.name) data.account_name = acct.name;
+                }
+            }
 
             // Initialize Firebase if not already done
             const { ds, user, scopeId, Timestamp } = await getTransactionDataService();

@@ -1,7 +1,7 @@
 import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
-import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, CHART_OF_ACCOUNTS_SEED, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, periodKey as acctPeriodKey } from "./accounting-engine.js";
+import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, CHART_OF_ACCOUNTS_SEED, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, suggestCategorizingAccount, periodKey as acctPeriodKey } from "./accounting-engine.js";
 import { buildTaxAppendix, TAX_RATES } from "./tax-engine.js";
 import { computeAging } from "./aging-engine.js";
 import { buildIncomeStatement, buildBalanceSheet } from "./statements-engine.js";
@@ -442,17 +442,42 @@ class DataService {
         return { id: transactionId, ...existing, ...update };
     }
 
+    // Create a finance document + its posted journal atomically in one batch.
+    // Backward-compat fallback: the optional `account_code`/`account_name` link is
+    // only accepted once firestore.rules is redeployed with the enlarged allowlist.
+    // If the deployed rules predate it, the batch is permission-denied — so retry
+    // once WITHOUT those two keys, and the entry still saves (the kernel resolves
+    // the account via the mapping chain, exactly as before this feature). Once the
+    // rules are deployed the first attempt always succeeds and the retry never runs.
+    async _commitSourceCreate(userId, collectionName, payloadBase, opts = {}) {
+        const runOnce = async (payload) => {
+            const scope = this._scope(userId);
+            const ref = doc(collection(this.db, `${scope}/${collectionName}`));
+            const batch = writeBatch(this.db);
+            // Posting never blocks the write — a build error marks the row `pending`.
+            await this._postSourceJournal(userId, batch, collectionName, ref, payload, opts);
+            batch.set(ref, payload);
+            await batch.commit();
+            return ref;
+        };
+        try {
+            return await runOnce({ ...payloadBase });
+        } catch (e) {
+            const denied = e && (e.code === 'permission-denied' || /insufficient permissions/i.test(String(e && e.message)));
+            if (denied && ('account_code' in payloadBase || 'account_name' in payloadBase)) {
+                console.warn('[accounting] account_code rejected by rules — saving without the explicit account. Deploy firestore.rules to enable explicit account selection.');
+                const { account_code, account_name, ...rest } = payloadBase;
+                void account_code; void account_name;
+                return await runOnce({ ...rest });
+            }
+            throw e;
+        }
+    }
+
     async addTransaction(userId, data) {
         const { timestamp, ...rest } = data;
-        const scope = this._scope(userId);
-        const ref = doc(collection(this.db, `${scope}/transactions`));
         const payload = { ...rest, timestamp: timestamp || serverTimestamp(), created_at: serverTimestamp() };
-        const batch = writeBatch(this.db);
-        // Post the double-entry journal atomically with the transaction. Posting
-        // never blocks the write — failures mark the row `pending` for a sweep.
-        await this._postSourceJournal(userId, batch, 'transactions', ref, payload, { date: timestamp });
-        batch.set(ref, payload);
-        await batch.commit();
+        const ref = await this._commitSourceCreate(userId, 'transactions', payload, { date: timestamp });
         await this._auditCreateBestEffort(userId, 'transaction.create', 'transactions', ref.id, {
             amount: data.amount, vendor_name: data.vendor_name, category: data.category,
             type: data.type, status: data.status
@@ -497,14 +522,9 @@ class DataService {
         // but only allow strings or omission — not literal `null`).
         ['budget_id', 'budget_allocation_id', 'budget_match_method', 'budget_match_status', 'budget_impact_status']
             .forEach((field) => { if (payload[field] == null) delete payload[field]; });
-        const scope = this._scope(userId);
-        const ref = doc(collection(this.db, `${scope}/bills`));
-        const batch = writeBatch(this.db);
         // A bill accrues the expense now (Dr expense / Cr Accounts Payable). The
         // later "mark paid" creates a linked expense transaction that settles A/P.
-        await this._postSourceJournal(userId, batch, 'bills', ref, payload, { date: data.due_date || timestamp });
-        batch.set(ref, payload);
-        await batch.commit();
+        const ref = await this._commitSourceCreate(userId, 'bills', payload, { date: data.due_date || timestamp });
         await this._auditCreateBestEffort(userId, 'bill.create', 'bills', ref.id, {
             amount: data.amount, vendor_name: data.vendor_name, category: data.category,
             due_date: data.due_date, payment_status: data.payment_status
@@ -617,13 +637,8 @@ class DataService {
     // --- SUBSCRIPTIONS ---
     async addSubscription(userId, data) {
         const { timestamp, ...rest } = data;
-        const scope = this._scope(userId);
-        const ref = doc(collection(this.db, `${scope}/subscriptions`));
         const payload = { ...rest, timestamp: timestamp || serverTimestamp() };
-        const batch = writeBatch(this.db);
-        await this._postSourceJournal(userId, batch, 'subscriptions', ref, payload, { date: data.renewal_date || timestamp });
-        batch.set(ref, payload);
-        await batch.commit();
+        const ref = await this._commitSourceCreate(userId, 'subscriptions', payload, { date: data.renewal_date || timestamp });
         await this._auditCreateBestEffort(userId, 'subscription.create', 'subscriptions', ref.id, {
             amount: data.amount, vendor_name: data.vendor_name, category: data.category,
             renewal_date: data.renewal_date
@@ -3570,6 +3585,7 @@ class DataService {
             source: 'dashboard'
         });
         this._acctTaxMapCache = {}; // a new account may carry a tax_code → refresh the bridge
+        this._chartPickerCache = {}; // new account must reach the entry-drawer picker
         return { id: code, ...payload };
     }
 
@@ -3604,6 +3620,7 @@ class DataService {
             after: { is_active: active },
             source: 'dashboard'
         });
+        this._chartPickerCache = {}; // archive/reactivate changes the picker list
         return { id: key, ...current, is_active: active };
     }
 
@@ -3612,6 +3629,37 @@ class DataService {
         return snap.docs
             .map((d) => ({ id: d.id, ...d.data() }))
             .sort((a, b) => String(a.code).localeCompare(String(b.code)));
+    }
+
+    // Live Chart of Accounts for the entry-drawer Account picker. Falls back to
+    // the canonical seed when the workspace chart hasn't been seeded yet (e.g. the
+    // user hasn't opened Accounting Center), so the picker always has accounts.
+    // Cached per scope for the session. Read-only — never seeds/writes.
+    async getChartForPicker(userId) {
+        this._chartPickerCache = this._chartPickerCache || {};
+        const key = this._scope(userId);
+        if (this._chartPickerCache[key]) return this._chartPickerCache[key];
+        let list = [];
+        try { list = await this.getChartOfAccounts(userId); } catch (_) { list = []; }
+        if (!list || !list.length) {
+            list = CHART_OF_ACCOUNTS_SEED.map((a) => ({
+                id: a.code, code: a.code, name: a.name, name_id: a.name_id || a.name,
+                type: a.type, sak_category: a.sak_category || null,
+                is_system: !!a.is_system, mappable: a.mappable !== false, is_active: true
+            }));
+        }
+        this._chartPickerCache[key] = list;
+        return list;
+    }
+
+    // Suggest the categorizing account the posting engine would resolve for a new
+    // entry, so the drawer's Account field pre-fills to exactly what would post.
+    // Delegates to the pure engine (single source of truth) with the workspace's
+    // saved mappings. Returns { code, name, type }.
+    async suggestAccountForEntry(userId, { type, category } = {}) {
+        const map = await this._loadAcctMappings(userId).catch(() => ({}));
+        const code = suggestCategorizingAccount({ type, category }, map);
+        return this._accountInfo(code);
     }
 
     // Recent journals (newest first). Posted journals come from the posted_at-ordered

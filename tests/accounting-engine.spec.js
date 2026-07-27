@@ -65,3 +65,42 @@ test('accounting engine posts a balanced journal for every business event', asyn
     expect(r.signedAsset).toBe(3000);
     expect(r.signedLiability).toBe(7000);
 });
+
+// An explicit account_code chosen in the entry drawer overrides automatic account
+// resolution — for expenses AND income — while invalid / wrong-type codes fall
+// back to today's behavior (regression safety for legacy rows without the field).
+test('accounting engine honors an explicit account_code, falling back safely', async ({ page }) => {
+    await page.goto('/pricing');
+    const r = await page.evaluate(async () => {
+        const e = await import('/assets/js/accounting-engine.js');
+        const d = new Date('2026-06-15T03:00:00Z');
+        const j = (collection, id, document, mappings) => e.buildJournal({ collection, id, document, mappings, date: d });
+        const debitCode = (jr) => (jr.lines.find((l) => l.debit > 0) || {}).account_code;
+        const creditCode = (jr) => (jr.lines.find((l) => l.credit > 0) || {}).account_code;
+        return {
+            // Expense pinned to a specific opex account instead of the category default (6100).
+            expExplicit: debitCode(j('transactions', 'a1', { type: 'expense', amount: 150000, category: 'Marketing', account_code: '6420' })),
+            // Income pinned to Interest Income (7100, revenue-type) instead of Revenue (4000).
+            incExplicit: creditCode(j('transactions', 'a2', { type: 'income', amount: 5000000, account_code: '7100' })),
+            // Pending receivable honors the explicit revenue account too.
+            arExplicit: creditCode(j('transactions', 'a3', { type: 'pending_receivable', amount: 300000, account_code: '7100' })),
+            // Fee/tax opex path honors an explicit expense account.
+            feeExplicit: debitCode(j('transactions', 'a4', { type: 'fee', amount: 2500, account_code: '6440' })),
+            // Unknown code → falls back to the resolution chain (Marketing → 6100).
+            expBadCode: debitCode(j('transactions', 'a5', { type: 'expense', amount: 150000, category: 'Marketing', account_code: '9999' })),
+            // Income pinned to an EXPENSE account is rejected (wrong type) → stays Revenue 4000.
+            incWrongType: creditCode(j('transactions', 'a6', { type: 'income', amount: 5000000, account_code: '6100' })),
+            // No account_code → unchanged legacy behavior (income credits 4000).
+            incNoCode: creditCode(j('transactions', 'a7', { type: 'income', amount: 5000000 })),
+            explicitHelper: e.explicitAccount({ account_code: '6420' }, 'expense')
+        };
+    });
+    expect(r.expExplicit).toBe('6420');
+    expect(r.incExplicit).toBe('7100');
+    expect(r.arExplicit).toBe('7100');
+    expect(r.feeExplicit).toBe('6440');
+    expect(r.expBadCode).toBe('6100');
+    expect(r.incWrongType).toBe('4000');
+    expect(r.incNoCode).toBe('4000');
+    expect(r.explicitHelper).toBe('6420');
+});
