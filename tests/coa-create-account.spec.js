@@ -79,3 +79,80 @@ test('New Account drawer rejects a duplicate code inline and does not create', a
 
     expect(bad, `console/page errors: ${bad.join(' | ')}`).toHaveLength(0);
 });
+
+test('Edit drawer opens for a user-created account (code immutable) and renames it', async ({ page }) => {
+    const bad = collectErrors(page);
+
+    // Create a fresh, unused account to edit.
+    await openCoaDrawer(page);
+    await page.locator('#ca-category').selectOption('operating_expense');
+    const code = await page.locator('#ca-code').inputValue();
+    await page.locator('#ca-name').fill(`QA Editable ${Date.now()}`);
+    await page.locator('#ca-save').click();
+    await expect(page.locator('#ca-drawer-panel')).toBeHidden({ timeout: 15000 });
+    await expect(page.locator(`#coa-content a.acct-link[href="/accounting-account?code=${code}"]`)).toBeVisible({ timeout: 15000 });
+
+    // Open Edit: title switches, code is immutable.
+    await page.locator(`[data-coa-edit="${code}"]`).click();
+    await expect(page.locator('#ca-drawer-panel')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#ca-drawer-title')).toHaveText('Edit Account');
+    await expect(page.locator('#ca-code')).toBeDisabled();
+
+    // Rename (unused account → no lock) and save.
+    const newName = `QA Renamed ${Date.now()}`;
+    await page.locator('#ca-name').fill(newName);
+    await page.locator('#ca-save').click();
+    await expect(page.locator('#ca-drawer-panel')).toBeHidden({ timeout: 15000 });
+
+    // The same code now renders under the new name.
+    await expect(page.locator(`#coa-content a.acct-link[href="/accounting-account?code=${code}"]`))
+        .toHaveText(newName, { timeout: 15000 });
+
+    expect(bad, `console/page errors: ${bad.join(' | ')}`).toHaveLength(0);
+});
+
+test('Edit lock: an account with posted activity locks category + parent but stays renamable', async ({ page }) => {
+    const bad = collectErrors(page);
+
+    // 1) Create a fresh expense account.
+    await openCoaDrawer(page);
+    await page.locator('#ca-category').selectOption('operating_expense');
+    const code = await page.locator('#ca-code').inputValue();
+    await page.locator('#ca-name').fill(`QA Locked ${Date.now()}`);
+    await page.locator('#ca-save').click();
+    await expect(page.locator('#ca-drawer-panel')).toBeHidden({ timeout: 15000 });
+
+    // 2) Post a balanced manual journal touching it → ledger_balances activity.
+    await page.goto('/accounting-journal-new.html');
+    await expect(page.locator('#mj-form')).toBeVisible({ timeout: 30000 });
+    await page.locator('#mj-description').fill('QA activity for edit-lock');
+    const rows = page.locator('#mj-lines tr');
+    await rows.nth(0).locator('.mj-acct').selectOption(code);
+    await rows.nth(0).locator('.mj-debit').fill('1000');
+    await rows.nth(1).locator('.mj-acct').selectOption('1000');
+    await rows.nth(1).locator('.mj-credit').fill('1000');
+    await expect(page.locator('#mj-post')).toBeEnabled({ timeout: 10000 });
+    await page.locator('#mj-post').click();
+    await page.waitForURL(/accounting-journal\.html\?id=/, { timeout: 30000 });
+
+    // 3) Open Edit on that account → structural fields are locked.
+    await page.goto('/accounting.html');
+    await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
+    await page.locator('[data-acct-tab="coa"]').click();
+    await page.locator(`[data-coa-edit="${code}"]`).click();
+    await expect(page.locator('#ca-drawer-panel')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#ca-category')).toBeDisabled();
+    await expect(page.locator('#ca-parent-toggle')).toBeDisabled();
+    await expect(page.locator('#ca-drawer-panel')).toContainText(/Locked/i);
+
+    // 4) Name stays editable — rename still saves.
+    await expect(page.locator('#ca-name')).toBeEnabled();
+    const newName = `QA Locked Renamed ${Date.now()}`;
+    await page.locator('#ca-name').fill(newName);
+    await page.locator('#ca-save').click();
+    await expect(page.locator('#ca-drawer-panel')).toBeHidden({ timeout: 15000 });
+    await expect(page.locator(`#coa-content a.acct-link[href="/accounting-account?code=${code}"]`))
+        .toHaveText(newName, { timeout: 15000 });
+
+    expect(bad, `console/page errors: ${bad.join(' | ')}`).toHaveLength(0);
+});

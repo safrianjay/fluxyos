@@ -3449,16 +3449,33 @@ class DataService {
                 sak_category: data.sak_category ?? current.sak_category,
                 parent_code: data.parent_code !== undefined ? data.parent_code : current.parent_code
             };
+            // Structural fields (category, parent) are frozen once the account has
+            // posted activity — changing them would rewrite historical reporting
+            // meaning. Name/tax/description stay editable. Mirrors the lock matrix
+            // in docs/CHART_OF_ACCOUNTS_ENHANCEMENT_RECOMMENDATIONS.md.
+            const categoryChanged = (draft.sak_category || null) !== (current.sak_category || null);
+            const parentChanged = (draft.parent_code || null) !== (current.parent_code || null);
+            if ((categoryChanged || parentChanged) && await this._accountInUse(userId, code)) {
+                throw new Error('This account has posted activity, so its category and parent are locked. You can still rename it.');
+            }
             const parent = draft.parent_code
                 ? await getDoc(doc(this.db, `${this._scope(userId)}/chart_of_accounts/${draft.parent_code}`))
                 : null;
             const check = validateAccountDraft(draft, { parent: parent?.exists() ? parent.data() : null });
             if (!check.ok) throw new Error(check.errors.join(' '));
+            const nextTaxCode = data.tax_code !== undefined
+                ? ((data.tax_code && TAX_RATES[data.tax_code]) ? data.tax_code : null)
+                : (current.tax_code ?? null);
+            const nextDescription = data.description !== undefined
+                ? (data.description ? String(data.description).trim().slice(0, 255) : null)
+                : (current.description ?? null);
             const payload = {
                 name: String(draft.name).trim(),
                 name_id: draft.name_id ? String(draft.name_id).trim() : null,
                 sak_category: draft.sak_category || null,
                 parent_code: draft.parent_code || null,
+                tax_code: nextTaxCode,
+                description: nextDescription,
                 updated_at: serverTimestamp()
             };
             await setDoc(ref, payload, { merge: true });
@@ -3466,8 +3483,8 @@ class DataService {
                 action: 'chart_of_accounts.updated',
                 target_collection: 'chart_of_accounts',
                 target_id: code,
-                before: { name: current.name, sak_category: current.sak_category || null, parent_code: current.parent_code || null },
-                after: { name: payload.name, sak_category: payload.sak_category, parent_code: payload.parent_code },
+                before: { name: current.name, sak_category: current.sak_category || null, parent_code: current.parent_code || null, tax_code: current.tax_code ?? null },
+                after: { name: payload.name, sak_category: payload.sak_category, parent_code: payload.parent_code, tax_code: payload.tax_code },
                 source: 'dashboard'
             });
             return { id: code, ...current, ...payload };

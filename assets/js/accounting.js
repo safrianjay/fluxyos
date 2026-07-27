@@ -65,8 +65,8 @@ const TAX_OPTIONS = [
     ['PPN_EXEMPT', 'PPN Dibebaskan']
 ];
 const TAX_OPTION_CODES = new Set(TAX_OPTIONS.map(([code]) => code).filter(Boolean));
-function taxOptionsHtml() {
-    return TAX_OPTIONS.map(([code, label]) => `<option value="${escapeHtml(code)}">${escapeHtml(label)}</option>`).join('');
+function taxOptionsHtml(selected = '') {
+    return TAX_OPTIONS.map(([code, label]) => `<option value="${escapeHtml(code)}"${code === (selected || '') ? ' selected' : ''}>${escapeHtml(label)}</option>`).join('');
 }
 
 const TONE_COLOR = { success: '#16A34A', warning: '#EA580C', danger: '#EF4444', neutral: '#94A3B8' };
@@ -1158,9 +1158,13 @@ function renderChartOfAccounts() {
         const child = !!a.parent_code;
         const active = a.is_active !== false;
         const systemBadge = a.is_system ? ' <span class="fluxy-table-cell-meta" title="System accounts cannot be edited or archived.">🔒 System</span>' : '';
-        const action = canManage && !a.is_system
+        const editBtn = canManage && !a.is_system && active
+            ? `<button type="button" class="acct-btn acct-btn-ghost" data-coa-edit="${escapeHtml(a.code)}">Edit</button>`
+            : '';
+        const toggleBtn = canManage && !a.is_system
             ? `<button type="button" class="acct-btn acct-btn-ghost" data-coa-toggle="${escapeHtml(a.code)}" data-coa-active="${active ? '1' : '0'}">${active ? 'Archive' : 'Reactivate'}</button>`
             : '';
+        const action = `${editBtn}${toggleBtn}`;
         return `<tr class="fluxy-table-row">
         <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary"${child ? ' style="padding-left:16px;"' : ''}>${child ? '└ ' : ''}${escapeHtml(a.code)}</span></td>
         <td class="fluxy-table-cell"><a class="acct-link" href="${accountDetailLink(a.code)}" title="Open account ledger">${escapeHtml(a.name)}</a>${systemBadge}</td>
@@ -1178,6 +1182,20 @@ function renderChartOfAccounts() {
     wrap.querySelectorAll('[data-coa-toggle]').forEach(btn => {
         btn.addEventListener('click', () => handleCoaToggle(btn.getAttribute('data-coa-toggle'), btn.getAttribute('data-coa-active') === '1'));
     });
+    wrap.querySelectorAll('[data-coa-edit]').forEach(btn => {
+        btn.addEventListener('click', () => handleCoaEdit(btn.getAttribute('data-coa-edit')));
+    });
+}
+
+// Open the edit drawer for a user-created account. Structural fields lock when the
+// account already has posted activity (checked live via _accountInUse).
+async function handleCoaEdit(code) {
+    const account = (state.kernel.coa || []).find(a => a.code === code);
+    if (!account) return;
+    if (account.is_system) { window.showToast?.('System accounts cannot be edited.', 'error'); return; }
+    let inUse = false;
+    try { inUse = await state.ds._accountInUse(state.user.uid, code); } catch (_) { inUse = false; }
+    openAccountDrawer(account, inUse);
 }
 
 function accountDetailLink(code) {
@@ -1192,19 +1210,23 @@ function accountDetailLink(code) {
 // re-validates with the shared validateAccountDraft before submit.
 // ===================================================================
 
-// SAK categories grouped into <optgroup>s by the type they map to.
-function categoryOptionsHtml() {
+// SAK categories grouped into <optgroup>s by the type they map to. In edit mode,
+// `restrictType` limits options to the account's own type (type is immutable), and
+// `selected` pre-selects the current category.
+function categoryOptionsHtml({ restrictType = null, selected = '' } = {}) {
     const groups = [
         ['Assets', 'asset'], ['Liabilities', 'liability'], ['Equity', 'equity'],
         ['Revenue', 'revenue'], ['Expenses', 'expense']
     ];
-    return groups.map(([label, type]) => {
-        const opts = SAK_CATEGORIES
-            .filter(c => SAK_CATEGORY_TYPE[c] === type)
-            .map(c => `<option value="${c}">${escapeHtml(SAK_LABELS[c] || c)}</option>`)
-            .join('');
-        return `<optgroup label="${escapeHtml(label)}">${opts}</optgroup>`;
-    }).join('');
+    return groups
+        .filter(([, type]) => !restrictType || type === restrictType)
+        .map(([label, type]) => {
+            const opts = SAK_CATEGORIES
+                .filter(c => SAK_CATEGORY_TYPE[c] === type)
+                .map(c => `<option value="${c}"${c === selected ? ' selected' : ''}>${escapeHtml(SAK_LABELS[c] || c)}</option>`)
+                .join('');
+            return `<optgroup label="${escapeHtml(label)}">${opts}</optgroup>`;
+        }).join('');
 }
 
 // Next free 4-digit code in the type's block. Custom accounts start at <prefix>900
@@ -1239,21 +1261,45 @@ function caType() { return SAK_CATEGORY_TYPE[caEl('ca-category')?.value] || 'exp
 function refreshCaDerived() {
     const type = caType();
     const codeInput = caEl('ca-code');
-    // Only re-suggest when the user hasn't hand-edited the code.
-    if (codeInput && codeInput.dataset.autofill !== '0') {
+    // Create mode only: auto-suggest a code (unless the user hand-edited it).
+    // In edit mode the code is immutable, so never touch it.
+    if (state.caMode !== 'edit' && codeInput && codeInput.dataset.autofill !== '0') {
         codeInput.value = suggestAccountCode(type);
     }
     const parentSel = caEl('ca-parent');
-    if (parentSel) parentSel.innerHTML = parentOptionsHtml(type, codeInput?.value || '');
+    if (parentSel) {
+        const keep = parentSel.value;
+        const selfCode = codeInput?.value || state.caAccount?.code || '';
+        parentSel.innerHTML = parentOptionsHtml(type, selfCode);
+        // Preserve a still-valid parent selection across a category change.
+        const want = keep || (state.caMode === 'edit' ? (state.caAccount?.parent_code || '') : '');
+        if (want && parentSel.querySelector(`option[value="${CSS.escape(want)}"]`)) parentSel.value = want;
+    }
 }
 
-function openCreateAccountDrawer() {
+function openCreateAccountDrawer() { openAccountDrawer(null, false); }
+
+// One drawer for create and edit. `account` null → create; otherwise edit mode
+// pre-fills the fields. `inUse` (posted activity) locks the structural fields
+// (category, parent) in edit mode — the DAL enforces the same rule.
+function openAccountDrawer(account = null, inUse = false) {
     if (window.FluxyWorkspace && typeof window.FluxyWorkspace.can === 'function'
         && !window.FluxyWorkspace.can('accounting.post')) {
-        window.showToast?.('You do not have permission to create accounts.', 'error');
+        window.showToast?.('You do not have permission to manage accounts.', 'error');
         return;
     }
     document.getElementById('ca-drawer-root')?.remove();
+
+    const isEdit = !!account;
+    const lockStructural = isEdit && inUse;
+    state.caMode = isEdit ? 'edit' : 'create';
+    state.caAccount = account;
+    state.caInUse = inUse;
+
+    const hasParent = isEdit && !!account.parent_code;
+    const structuralHint = lockStructural
+        ? 'Locked — this account has posted activity, so its category and parent cannot change. You can still rename it.'
+        : 'Determines the account type and where it appears in your reports.';
 
     const html = `
     <div id="ca-drawer-root" class="fluxy-drawer-root">
@@ -1262,8 +1308,10 @@ function openCreateAccountDrawer() {
             <div class="fluxy-drawer-header">
                 <div>
                     <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Chart of Accounts</p>
-                    <h2 id="ca-drawer-title" class="fluxy-drawer-title">New Account</h2>
-                    <p class="fluxy-drawer-desc">Add a custom account to your chart. It becomes available in manual journals, account mapping, and reports.</p>
+                    <h2 id="ca-drawer-title" class="fluxy-drawer-title">${isEdit ? 'Edit Account' : 'New Account'}</h2>
+                    <p class="fluxy-drawer-desc">${isEdit
+                        ? 'Update this account. Structural fields lock once it has posted activity.'
+                        : 'Add a custom account to your chart. It becomes available in manual journals, account mapping, and reports.'}</p>
                 </div>
                 <button type="button" id="ca-close" class="fluxy-drawer-close" aria-label="Close">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -1275,23 +1323,23 @@ function openCreateAccountDrawer() {
                         <h3 class="fluxy-drawer-section-title">Account information</h3>
                         <div class="fluxy-drawer-field">
                             <label for="ca-category" class="fluxy-drawer-label">Account category</label>
-                            <select id="ca-category" class="fluxy-drawer-select">${categoryOptionsHtml()}</select>
-                            <p class="fluxy-drawer-hint">Determines the account type and where it appears in your reports.</p>
+                            <select id="ca-category" class="fluxy-drawer-select"${lockStructural ? ' disabled' : ''}>${categoryOptionsHtml({ restrictType: isEdit ? account.type : null, selected: isEdit ? account.sak_category : '' })}</select>
+                            <p class="fluxy-drawer-hint">${structuralHint}</p>
                         </div>
                         <div class="fluxy-drawer-field-grid">
                             <div class="fluxy-drawer-field">
                                 <label for="ca-code" class="fluxy-drawer-label">Account code</label>
-                                <input type="text" id="ca-code" inputmode="numeric" maxlength="4" placeholder="e.g. 6900" class="fluxy-drawer-input tabular-nums">
-                                <p class="fluxy-drawer-hint">4 digits (1000–9999). The first digit must match the category type.</p>
+                                <input type="text" id="ca-code" inputmode="numeric" maxlength="4" placeholder="e.g. 6900" value="${isEdit ? escapeHtml(account.code) : ''}"${isEdit ? ' disabled' : ''} class="fluxy-drawer-input tabular-nums">
+                                <p class="fluxy-drawer-hint">${isEdit ? 'The account code cannot be changed.' : '4 digits (1000–9999). The first digit must match the category type.'}</p>
                             </div>
                             <div class="fluxy-drawer-field">
                                 <label for="ca-name" class="fluxy-drawer-label">Account name</label>
-                                <input type="text" id="ca-name" maxlength="120" required placeholder="e.g. Consulting Revenue" class="fluxy-drawer-input">
+                                <input type="text" id="ca-name" maxlength="120" required placeholder="e.g. Consulting Revenue" value="${isEdit ? escapeHtml(account.name || '') : ''}" class="fluxy-drawer-input">
                             </div>
                         </div>
                         <div class="fluxy-drawer-field">
                             <label for="ca-tax" class="fluxy-drawer-label">Tax <span class="text-gray-400 font-normal">(optional)</span></label>
-                            <select id="ca-tax" class="fluxy-drawer-select">${taxOptionsHtml()}</select>
+                            <select id="ca-tax" class="fluxy-drawer-select">${taxOptionsHtml(isEdit ? account.tax_code : '')}</select>
                             <p class="fluxy-drawer-hint">Default PPN treatment recorded on this account. Choose "No tax" to leave it unset.</p>
                         </div>
                     </section>
@@ -1299,17 +1347,17 @@ function openCreateAccountDrawer() {
                     <section class="fluxy-drawer-section">
                         <h3 class="fluxy-drawer-section-title">Hierarchy & notes</h3>
                         <label class="flex items-center gap-2 text-[14px] text-gray-700 cursor-pointer">
-                            <input type="checkbox" id="ca-parent-toggle" class="h-4 w-4 rounded border-gray-300">
+                            <input type="checkbox" id="ca-parent-toggle" class="h-4 w-4 rounded border-gray-300"${hasParent ? ' checked' : ''}${lockStructural ? ' disabled' : ''}>
                             <span>Set this account as part of another account</span>
                         </label>
-                        <div id="ca-parent-field" class="fluxy-drawer-field hidden" style="margin-top:12px;">
+                        <div id="ca-parent-field" class="fluxy-drawer-field${hasParent ? '' : ' hidden'}" style="margin-top:12px;">
                             <label for="ca-parent" class="fluxy-drawer-label">Parent account</label>
-                            <select id="ca-parent" class="fluxy-drawer-select"></select>
+                            <select id="ca-parent" class="fluxy-drawer-select"${lockStructural ? ' disabled' : ''}></select>
                             <p class="fluxy-drawer-hint">Must be an active account of the same type and code range.</p>
                         </div>
                         <div class="fluxy-drawer-field" style="margin-top:12px;">
                             <label for="ca-description" class="fluxy-drawer-label">Description <span class="text-gray-400 font-normal">(optional)</span></label>
-                            <textarea id="ca-description" maxlength="255" rows="2" placeholder="Example: Account for employee receivables" class="fluxy-drawer-input"></textarea>
+                            <textarea id="ca-description" maxlength="255" rows="2" placeholder="Example: Account for employee receivables" class="fluxy-drawer-input">${isEdit ? escapeHtml(account.description || '') : ''}</textarea>
                         </div>
                     </section>
 
@@ -1317,7 +1365,7 @@ function openCreateAccountDrawer() {
                 </div>
                 <div class="fluxy-drawer-footer">
                     <button type="button" id="ca-cancel" class="acct-btn acct-btn-secondary">Cancel</button>
-                    <button type="submit" id="ca-save" class="acct-btn acct-btn-primary">Save account</button>
+                    <button type="submit" id="ca-save" class="acct-btn acct-btn-primary">${isEdit ? 'Save changes' : 'Save account'}</button>
                 </div>
             </form>
         </div>
@@ -1345,7 +1393,7 @@ function openCreateAccountDrawer() {
         caEl('ca-parent-field')?.classList.toggle('hidden', !e.target.checked);
         if (e.target.checked) refreshCaDerived();
     });
-    caEl('ca-form')?.addEventListener('submit', (e) => { e.preventDefault(); submitCreateAccount(); });
+    caEl('ca-form')?.addEventListener('submit', (e) => { e.preventDefault(); submitAccount(); });
 
     refreshCaDerived();
 
@@ -1377,17 +1425,19 @@ function showCaError(msg) {
     box.textContent = msg;
 }
 
-async function submitCreateAccount() {
-    const type = caType();
-    const code = String(caEl('ca-code')?.value || '').trim();
+async function submitAccount() {
+    const isEdit = state.caMode === 'edit';
+    const type = isEdit ? state.caAccount.type : caType();
+    const code = isEdit ? String(state.caAccount.code) : String(caEl('ca-code')?.value || '').trim();
     const name = String(caEl('ca-name')?.value || '').trim();
     const taxCode = TAX_OPTION_CODES.has(caEl('ca-tax')?.value) ? caEl('ca-tax').value : '';
     const sakCategory = caEl('ca-category')?.value || '';
     const parentCode = caEl('ca-parent-toggle')?.checked ? String(caEl('ca-parent')?.value || '').trim() : '';
     const description = String(caEl('ca-description')?.value || '').trim();
 
-    // Client-side uniqueness — the DAL also guards with { create: true }.
-    if ((state.kernel?.coa || []).some(a => String(a.code) === code)) {
+    // Create only: reject a duplicate code before touching Firestore (the DAL also
+    // guards with { create: true }). In edit mode the code is immutable.
+    if (!isEdit && (state.kernel?.coa || []).some(a => String(a.code) === code)) {
         showCaError('Account code already exists.');
         return;
     }
@@ -1398,20 +1448,27 @@ async function submitCreateAccount() {
     showCaError('');
 
     const saveBtn = caEl('ca-save');
+    const savingLabel = saveBtn ? saveBtn.textContent : '';
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
     try {
-        await state.ds.saveAccount(state.user.uid, {
-            code, name, type,
+        const data = {
+            code, name,
             sak_category: sakCategory, parent_code: parentCode || null,
             description: description || null, tax_code: taxCode || null
-        }, { create: true });
-        window.showToast?.('Account created.', 'success');
+        };
+        if (isEdit) {
+            await state.ds.saveAccount(state.user.uid, data);
+            window.showToast?.('Account updated.', 'success');
+        } else {
+            await state.ds.saveAccount(state.user.uid, { ...data, type }, { create: true });
+            window.showToast?.('Account created.', 'success');
+        }
         closeCreateAccountDrawer();
         await loadKernel(true);
     } catch (err) {
-        console.error('Create account failed:', err);
-        showCaError(err?.message || 'Could not create the account. Try again.');
-        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save account'; }
+        console.error('Save account failed:', err);
+        showCaError(err?.message || 'Could not save the account. Try again.');
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = savingLabel || (isEdit ? 'Save changes' : 'Save account'); }
     }
 }
 
