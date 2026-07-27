@@ -55,6 +55,10 @@
                             <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7V5a2 2 0 0 1 2-2h2m10 0h2a2 2 0 0 1 2 2v2m0 10v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2m4-5h10"></path></svg>
                             Scan Bill
                         </button>
+                        <button id="pay-bills-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
+                            <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"></path></svg>
+                            Pay Bills
+                        </button>
                         <button onclick="window.showAddTransactionModal({ title: 'Add New Bill', submitLabel: 'Save Bill', defaultCategory: 'Operations', context: 'bill' })" data-tour-target="bill-add" class="px-4 py-2 bg-[#EA580C] text-white rounded-lg text-[14px] font-bold hover:bg-[#D94E0B] transition-colors flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                             Add New Bill
@@ -213,6 +217,49 @@
                 <div class="px-5 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
                     <button id="bill-pay-cancel" type="button" class="flex-1 fluxy-drawer-btn fluxy-drawer-btn--secondary">Cancel</button>
                     <button id="bill-pay-confirm" type="button" class="flex-1 fluxy-drawer-btn fluxy-drawer-btn--primary">Mark as Paid</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vendor Payment modal — pick a vendor, pay one or many of its unpaid bills -->
+    <div id="vendor-pay-modal" class="fixed inset-0 z-[60] hidden">
+        <div id="vendor-pay-backdrop" class="absolute inset-0 bg-[rgba(11,15,25,0.5)] backdrop-blur-[2px]"></div>
+        <div class="relative min-h-full flex items-center justify-center p-4">
+            <div class="w-full max-w-2xl bg-white rounded-xl border border-gray-200 shadow-2xl flex flex-col max-h-[90vh]">
+                <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-[18px] font-bold tracking-[-0.01em] text-[#0B0F19]">Pay Bills</h3>
+                        <p class="text-[12px] text-gray-500 mt-0.5">Select a vendor, choose which bills to pay, then confirm. Each payment posts to your Ledger.</p>
+                    </div>
+                    <button id="vendor-pay-close" type="button" aria-label="Close" class="w-8 h-8 rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-50 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="px-5 py-4 overflow-y-auto space-y-4">
+                    <div>
+                        <label for="vendor-pay-vendor" class="block text-[12px] font-semibold text-gray-500 mb-1.5">Vendor</label>
+                        <select id="vendor-pay-vendor" class="fluxy-drawer-select w-full"></select>
+                    </div>
+                    <div id="vendor-pay-bills" class="space-y-2"></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[12px] font-semibold text-gray-500 mb-1.5">Payment date</label>
+                            <div id="vendor-pay-date"></div>
+                        </div>
+                        <div>
+                            <label class="block text-[12px] font-semibold text-gray-500 mb-1.5">Cash impact</label>
+                            <div id="vendor-pay-cash"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-5 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[12px] text-gray-500"><span id="vendor-pay-count">0 bills</span> selected</p>
+                        <p class="text-[18px] font-bold text-gray-900 tabular-nums" id="vendor-pay-total">Rp0</p>
+                    </div>
+                    <button id="vendor-pay-cancel" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Cancel</button>
+                    <button id="vendor-pay-confirm" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--primary" disabled>Pay selected</button>
                 </div>
             </div>
         </div>
@@ -415,6 +462,17 @@
             return typeof record?.amount === 'number' ? record.amount : Number(record?.amount) || 0;
         }
 
+        // Remaining balance owed on a bill: 0 when fully paid, else the stored
+        // outstanding_amount, falling back to amount − amount_paid for legacy bills.
+        function billOutstanding(bill) {
+            if (!bill || bill.payment_status === 'paid') return 0;
+            const amt = Math.round(Math.abs(Number(bill.amount) || 0));
+            if (bill.outstanding_amount != null) return Math.max(0, Math.round(Math.abs(Number(bill.outstanding_amount) || 0)));
+            return Math.max(0, amt - Math.round(Math.abs(Number(bill.amount_paid) || 0)));
+        }
+        function isBillFullyPaid(bill) { return bill?.payment_status === 'paid'; }
+        function isBillPartiallyPaid(bill) { return bill?.payment_status === 'partial' || (billOutstanding(bill) > 0 && Math.round(Math.abs(Number(bill?.amount_paid) || 0)) > 0); }
+
         function getVendorDisplayName(record) {
             const vendor = String(record?.vendor_name ?? '').trim();
             return vendor || 'Unknown vendor';
@@ -460,6 +518,7 @@
 
         function getBillDisplayStatus(bill) {
             if (bill.payment_status === 'paid') return 'Paid';
+            if (isBillPartiallyPaid(bill)) return 'Partially Paid';
             const dueDate = getBillDueDate(bill);
             if (!dueDate) return 'Missing Due Date';
             const today = getToday();
@@ -481,7 +540,9 @@
 
             for (const bill of bills) {
                 if (bill.payment_status === 'paid') continue;
-                const amount = typeof bill.amount === 'number' ? bill.amount : 0;
+                // Use the remaining balance so a partially-paid bill only counts what
+                // is still owed toward due/overdue/scheduled totals.
+                const amount = billOutstanding(bill);
                 const dueDate = getBillDueDate(bill);
                 if (!dueDate) { missingDueDateCount++; continue; }
                 const due = new Date(dueDate);
@@ -531,6 +592,7 @@
                 'Scheduled':        'fluxy-status-info',
                 'Missing Due Date': 'fluxy-status-neutral',
                 'Paid':             'fluxy-status-success',
+                'Partially Paid':   'fluxy-status-warning',
                 'Upcoming':         'fluxy-status-info',
             };
             const cls = map[status] || 'fluxy-status-neutral';
@@ -792,6 +854,7 @@
                             <div>
                                 <p class="fluxy-drawer-label">Amount</p>
                                 <p class="text-xl font-bold text-gray-900 tabular-nums mt-1">${formatCurrencyIDR(bill.amount)}</p>
+                                ${isBillPartiallyPaid(bill) ? `<p class="text-[12px] text-gray-500 mt-0.5">${formatCurrencyIDR(Math.round(Math.abs(Number(bill.amount_paid) || 0)))} paid · <span class="font-semibold text-amber-600">${formatCurrencyIDR(billOutstanding(bill))} remaining</span></p>` : ''}
                             </div>
                             <div>
                                 <p class="fluxy-drawer-label">Due Date</p>
@@ -1014,8 +1077,8 @@
                     <span class="text-[13px] font-semibold text-gray-900 truncate">${escapeHtml(bill.vendor_name || 'Bill')}</span>
                 </div>
                 <div class="flex items-center justify-between gap-3">
-                    <span class="text-[12px] text-gray-500">Amount</span>
-                    <span class="text-[13px] font-bold text-gray-900 tabular-nums">${formatCurrencyIDR(bill.amount)}</span>
+                    <span class="text-[12px] text-gray-500">${isBillPartiallyPaid(bill) ? 'Remaining' : 'Amount'}</span>
+                    <span class="text-[13px] font-bold text-gray-900 tabular-nums">${formatCurrencyIDR(billOutstanding(bill))}</span>
                 </div>
                 <div class="flex items-center justify-between gap-3">
                     <span class="text-[12px] text-gray-500">Category</span>
@@ -1097,6 +1160,158 @@
         document.getElementById('bill-pay-close')?.addEventListener('click', closePayModal);
         document.getElementById('bill-pay-backdrop')?.addEventListener('click', closePayModal);
         document.getElementById('bill-pay-confirm')?.addEventListener('click', confirmPay);
+
+        // ── Vendor Payment (pay one or many of a vendor's unpaid bills) ─────────
+        const vendorPayState = { vendorKey: null, dateKey: null, cashController: null, inFlight: false };
+
+        function unpaidBillsByVendor() {
+            const map = new Map();
+            for (const bill of allBills) {
+                if (billOutstanding(bill) <= 0) continue; // skip fully-paid bills
+                const key = getVendorKey(bill);
+                if (!map.has(key)) map.set(key, { key, name: getVendorDisplayName(bill), bills: [] });
+                map.get(key).bills.push(bill);
+            }
+            return map;
+        }
+
+        function openVendorPayModal(presetVendorKey) {
+            if (window.FluxyAccessGuard && !window.FluxyAccessGuard.requireWriteAccess()) return;
+            const vendors = unpaidBillsByVendor();
+            if (!vendors.size) { window.showToast?.('No unpaid bills to pay right now.', 'info'); return; }
+            const entries = Array.from(vendors.values()).sort((a, b) => a.name.localeCompare(b.name));
+            const sel = document.getElementById('vendor-pay-vendor');
+            sel.innerHTML = entries.map(v => `<option value="${escapeHtml(v.key)}">${escapeHtml(v.name)} · ${v.bills.length} unpaid</option>`).join('');
+            const startKey = (presetVendorKey && vendors.has(presetVendorKey)) ? presetVendorKey : entries[0].key;
+            sel.value = startKey;
+            vendorPayState.vendorKey = startKey;
+            vendorPayState.dateKey = todayDayKey();
+            vendorPayState.inFlight = false;
+
+            renderVendorUnpaidBills(startKey);
+
+            (async () => {
+                let bankAccounts = [];
+                try { bankAccounts = (await ds.getBankAccounts(auth.currentUser.uid)) || []; } catch (_) {}
+                const cashHost = document.getElementById('vendor-pay-cash');
+                cashHost.innerHTML = window.FluxyCashImpact.buildHtml({ impact: 'actual', direction: 'out', bankAccounts });
+                vendorPayState.cashController = window.FluxyCashImpact.wire(cashHost, { impact: 'actual', direction: 'out' });
+            })();
+            document.getElementById('vendor-pay-date').innerHTML = '';
+            window.FluxyDateRangePicker?.mount('#vendor-pay-date', {
+                mode: 'single', start: vendorPayState.dateKey, end: vendorPayState.dateKey,
+                defaultStart: todayDayKey(), defaultEnd: todayDayKey(), maxDate: todayDayKey(),
+                onChange: ({ start }) => { vendorPayState.dateKey = start; }
+            });
+
+            resetVendorPayConfirm();
+            document.getElementById('vendor-pay-modal').classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function renderVendorUnpaidBills(vendorKey) {
+            vendorPayState.vendorKey = vendorKey;
+            const entry = unpaidBillsByVendor().get(vendorKey);
+            const host = document.getElementById('vendor-pay-bills');
+            if (!entry || !entry.bills.length) {
+                host.innerHTML = '<p class="text-[13px] text-gray-500 px-1 py-4">No unpaid bills for this vendor.</p>';
+                recomputeVendorPayTotal();
+                return;
+            }
+            host.innerHTML = entry.bills.slice()
+                .sort((a, b) => (getBillDueDate(a)?.getTime() || Infinity) - (getBillDueDate(b)?.getTime() || Infinity))
+                .map(bill => {
+                    const outstanding = billOutstanding(bill);
+                    return `
+                    <label class="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2.5 hover:bg-gray-50 cursor-pointer" data-vpay-row data-bill-id="${escapeHtml(bill.id)}" data-outstanding="${outstanding}">
+                        <input type="checkbox" checked data-vpay-check class="h-4 w-4 rounded border-gray-300 text-[#EA580C] focus:ring-[#EA580C]">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-[13px] font-semibold text-gray-900 truncate">${escapeHtml(bill.bill_number || bill.vendor_name || 'Bill')}</p>
+                            <p class="text-[12px] text-gray-500 flex items-center gap-1.5">${formatDueDateDisplay(bill)} · ${getStatusBadge(getBillDisplayStatus(bill))}</p>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <span class="block text-[11px] text-gray-400">Outstanding ${formatCurrencyIDR(outstanding)}</span>
+                            <span class="inline-flex items-center gap-1 justify-end">
+                                <span class="text-[12px] text-gray-500">Rp</span>
+                                <input type="text" inputmode="numeric" data-vpay-amount value="${outstanding.toLocaleString('id-ID')}" class="w-28 text-right text-[13px] font-mono tabular-nums border border-gray-200 rounded px-2 py-1 focus:border-[#EA580C] focus:outline-none">
+                            </span>
+                        </div>
+                    </label>`;
+                }).join('');
+            recomputeVendorPayTotal();
+        }
+
+        function parseVendorAmount(str) { return Math.round(Math.abs(Number(String(str || '').replace(/[^\d]/g, '')) || 0)); }
+
+        function recomputeVendorPayTotal() {
+            let total = 0, count = 0;
+            document.querySelectorAll('#vendor-pay-bills [data-vpay-row]').forEach(row => {
+                const outstanding = Math.round(Math.abs(Number(row.dataset.outstanding) || 0));
+                const amountEl = row.querySelector('[data-vpay-amount]');
+                let amt = parseVendorAmount(amountEl.value);
+                if (amt > outstanding) { amt = outstanding; amountEl.value = outstanding.toLocaleString('id-ID'); }
+                if (row.querySelector('[data-vpay-check]').checked && amt > 0) { total += amt; count += 1; }
+            });
+            document.getElementById('vendor-pay-total').textContent = formatCurrencyIDR(total);
+            document.getElementById('vendor-pay-count').textContent = `${count} bill${count === 1 ? '' : 's'}`;
+            const confirmBtn = document.getElementById('vendor-pay-confirm');
+            if (confirmBtn && !vendorPayState.inFlight) confirmBtn.disabled = !(count > 0 && total > 0);
+        }
+
+        function resetVendorPayConfirm() {
+            const btn = document.getElementById('vendor-pay-confirm');
+            if (btn) { btn.disabled = true; btn.textContent = 'Pay selected'; }
+            vendorPayState.inFlight = false;
+        }
+
+        function closeVendorPayModal() {
+            document.getElementById('vendor-pay-modal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            vendorPayState.cashController = null;
+            resetVendorPayConfirm();
+        }
+
+        async function confirmVendorPay() {
+            if (vendorPayState.inFlight) return;
+            const payments = [];
+            document.querySelectorAll('#vendor-pay-bills [data-vpay-row]').forEach(row => {
+                if (!row.querySelector('[data-vpay-check]').checked) return;
+                const outstanding = Math.round(Math.abs(Number(row.dataset.outstanding) || 0));
+                const amt = Math.min(parseVendorAmount(row.querySelector('[data-vpay-amount]').value), outstanding);
+                if (amt > 0) payments.push({ billId: row.dataset.billId, amount: amt });
+            });
+            if (!payments.length) { window.showToast?.('Select at least one bill to pay.', 'error'); return; }
+            const btn = document.getElementById('vendor-pay-confirm');
+            vendorPayState.inFlight = true; btn.disabled = true; btn.textContent = 'Paying…';
+            try {
+                const paymentDate = dayKeyToDate(vendorPayState.dateKey);
+                const cashState = vendorPayState.cashController?.getState?.() || { impact: 'actual', direction: 'out', accountId: '' };
+                const cashFields = window.FluxyCashImpact.derive(cashState, Timestamp.fromDate(paymentDate));
+                const { paidCount, totalPaid, results } = await ds.markBillsPaid(auth.currentUser.uid, payments, { paymentDate, cashFields });
+                const failed = results.filter(r => !r.ok);
+                if (paidCount > 0) {
+                    window.showToast?.(`Paid ${paidCount} bill${paidCount === 1 ? '' : 's'} · ${formatCurrencyIDR(totalPaid)}${failed.length ? ` (${failed.length} could not be paid)` : ''}`, failed.length ? 'info' : 'success');
+                } else {
+                    window.showToast?.(failed[0]?.error || 'Could not record the payments.', 'error');
+                }
+                closeVendorPayModal();
+                await window.loadBills();
+            } catch (err) {
+                console.error('Vendor pay failed:', err);
+                window.showToast?.(err?.message || 'Could not record the payments. Please try again.', 'error');
+                resetVendorPayConfirm();
+                recomputeVendorPayTotal();
+            }
+        }
+
+        document.getElementById('pay-bills-btn')?.addEventListener('click', () => openVendorPayModal());
+        document.getElementById('vendor-pay-vendor')?.addEventListener('change', (e) => renderVendorUnpaidBills(e.target.value));
+        document.getElementById('vendor-pay-bills')?.addEventListener('input', recomputeVendorPayTotal);
+        document.getElementById('vendor-pay-bills')?.addEventListener('change', recomputeVendorPayTotal);
+        document.getElementById('vendor-pay-cancel')?.addEventListener('click', closeVendorPayModal);
+        document.getElementById('vendor-pay-close')?.addEventListener('click', closeVendorPayModal);
+        document.getElementById('vendor-pay-backdrop')?.addEventListener('click', closeVendorPayModal);
+        document.getElementById('vendor-pay-confirm')?.addEventListener('click', confirmVendorPay);
 
         document.getElementById('bill-search-input').addEventListener('input', (e) => filterBills(e.target.value));
         document.getElementById('bill-clear-vendor-filter')?.addEventListener('click', clearBillVendorFilter);

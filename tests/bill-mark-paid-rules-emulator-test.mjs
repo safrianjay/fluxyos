@@ -115,6 +115,31 @@ async function main() {
         return batch.commit();
     });
 
+    console.log('\n— vendor payment: bill numbering + partial-payment fields —');
+    const billRef2 = doc(db, `users/${uid}/bills/bill_pay_test_2`);
+    await expectOutcome('create bill with bill_number + outstanding_amount + amount_paid', true, () =>
+        setDoc(billRef2, { ...billCreatePayload(), bill_number: 'BILL-202607-0001', outstanding_amount: 1250000, amount_paid: 0 }));
+    await expectOutcome('reject over-long bill_number', false, () =>
+        setDoc(doc(db, `users/${uid}/bills/bill_pay_test_3`), { ...billCreatePayload(), bill_number: 'X'.repeat(41) }));
+    await expectOutcome('reject negative outstanding_amount', false, () =>
+        setDoc(doc(db, `users/${uid}/bills/bill_pay_test_4`), { ...billCreatePayload(), outstanding_amount: -5 }));
+    // A PARTIAL payment: bill stays committable (no linked_transaction_id), status
+    // 'partial', outstanding_amount reduced, amount_paid increased — in one batch
+    // with the partial payment transaction.
+    const partialTxRef = doc(collection(db, `users/${uid}/transactions`));
+    await expectOutcome('partial payment batch: tx + bill partial update', true, () => {
+        const batch = writeBatch(db);
+        batch.set(partialTxRef, { ...paymentTxPayload(billRef2.id), amount: 500000 });
+        batch.update(billRef2, {
+            payment_status: 'partial',
+            outstanding_amount: 750000,
+            amount_paid: 500000,
+            updated_at: serverTimestamp(),
+            updated_by: uid
+        });
+        return batch.commit();
+    });
+
     console.log('\n— sanity: a plain expense WITHOUT linked_bill_id still works —');
     await expectOutcome('plain expense create (no link)', true, () => {
         const ref = doc(collection(db, `users/${uid}/transactions`));

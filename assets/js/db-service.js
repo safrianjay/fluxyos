@@ -464,11 +464,15 @@ class DataService {
             return await runOnce({ ...payloadBase });
         } catch (e) {
             const denied = e && (e.code === 'permission-denied' || /insufficient permissions/i.test(String(e && e.message)));
-            if (denied && ('account_code' in payloadBase || 'account_name' in payloadBase)) {
-                console.warn('[accounting] account_code rejected by rules — saving without the explicit account. Deploy firestore.rules to enable explicit account selection.');
-                const { account_code, account_name, ...rest } = payloadBase;
-                void account_code; void account_name;
-                return await runOnce({ ...rest });
+            // New optional keys (account link, bill numbering/outstanding tracking)
+            // are only accepted once firestore.rules is redeployed. If the deployed
+            // rules predate them, retry once without them so the entry still saves.
+            const newKeys = ['account_code', 'account_name', 'bill_number', 'outstanding_amount', 'amount_paid'];
+            if (denied && newKeys.some((k) => k in payloadBase)) {
+                console.warn('[accounting] a new optional field was rejected by rules — saving without it. Deploy firestore.rules to enable it.');
+                const rest = { ...payloadBase };
+                newKeys.forEach((k) => { delete rest[k]; });
+                return await runOnce(rest);
             }
             throw e;
         }
@@ -511,12 +515,52 @@ class DataService {
     }
 
     // --- BILLS ---
+    // User-friendly per-user bill number: BILL-YYYYMM-0001. Zero-padded so lexical
+    // order matches chronological order; derived from the latest existing number
+    // (no global counters). Mirrors generateInvoiceNumber.
+    async generateBillNumber(userId) {
+        const now = new Date();
+        const prefix = `BILL-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-`;
+        let sequence = 1;
+        try {
+            const q = query(collection(this.db, `${this._scope(userId)}/bills`), orderBy('bill_number', 'desc'), limit(1));
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+                const latest = String(snapshot.docs[0].data().bill_number || '');
+                if (latest.startsWith(prefix)) {
+                    const parsed = parseInt(latest.slice(prefix.length), 10);
+                    if (Number.isFinite(parsed)) sequence = parsed + 1;
+                }
+            }
+        } catch (e) {
+            return `${prefix}${String(Date.now()).slice(-6)}`;
+        }
+        return `${prefix}${String(sequence).padStart(4, '0')}`;
+    }
+
+    // Remaining amount owed on a bill: 0 when fully paid, else the stored
+    // outstanding_amount, falling back to amount − amount_paid for legacy bills
+    // (which predate the field).
+    _billOutstanding(bill) {
+        if (!bill || bill.payment_status === 'paid') return 0;
+        const amt = Math.round(Math.abs(Number(bill.amount) || 0));
+        if (bill.outstanding_amount != null) return Math.max(0, Math.round(Math.abs(Number(bill.outstanding_amount) || 0)));
+        return Math.max(0, amt - Math.round(Math.abs(Number(bill.amount_paid) || 0)));
+    }
+
     async addBill(userId, data) {
         const { timestamp, ...rest } = data;
+        const amountInt = Math.round(Math.abs(Number(rest.amount) || 0));
         const payload = {
             ...rest,
             timestamp: timestamp || serverTimestamp()
         };
+        // Human bill reference + outstanding-balance tracking (enables partial
+        // payments and the vendor-payment flow). Skipped by the create fallback if
+        // the deployed rules predate these keys (deploy firestore.rules to enable).
+        if (!payload.bill_number) payload.bill_number = await this.generateBillNumber(userId);
+        if (payload.outstanding_amount == null) payload.outstanding_amount = amountInt;
+        if (payload.amount_paid == null) payload.amount_paid = 0;
         // Strip any null budget fields so an unmatched bill stays on the
         // legacy schema (Firestore rules allow these fields to be absent,
         // but only allow strings or omission — not literal `null`).
@@ -556,13 +600,26 @@ class DataService {
     // half-written. The bill drops out of budget *committed* totals (getBudgetUsage
     // skips converted_to_actual / linked bills), so there is no double count.
     // Paid is terminal: no un-pay path exists.
-    async markBillPaid(userId, billId, { paymentDate = null, cashFields = null } = {}) {
-        if (!userId || !billId) throw new Error('userId and billId required');
-        const bill = await this.getBillById(userId, billId);
-        if (!bill) throw new Error('Bill not found.');
-        if (bill.payment_status === 'paid') throw new Error('This bill is already marked as paid.');
-        const amount = Math.round(Math.abs(Number(bill.amount) || 0));
-        if (!(amount > 0)) throw new Error('Bill amount must be greater than zero.');
+    // Record ONE payment (full or partial) against a bill, atomically in one
+    // batch: a linked BILL-PAY expense transaction for `payAmount` (Dr A/P / Cr
+    // Cash — settles the accrual, no double expense) + the bill's outstanding/paid
+    // update + an audit log. When the payment clears the balance the bill flips to
+    // paid + converted_to_actual + linked_transaction_id (matching the old
+    // full-payment behavior); a partial keeps it committable with a reduced
+    // outstanding_amount, so getBudgetUsage counts paid-so-far as actual and the
+    // remainder as committed (no double count). Multi-bill callers must commit one
+    // bill per batch — two BILL-PAY journals in one batch would write the shared
+    // Cash/A-P ledger_balances doc twice, which Firestore forbids.
+    async _payBillOnce(userId, bill, payAmount, { paymentDate = null, cashFields = null } = {}) {
+        const billId = bill.id;
+        const outstanding = this._billOutstanding(bill);
+        if (!(outstanding > 0)) throw new Error('This bill is already fully paid.');
+        const amount = Math.round(Math.abs(Number(payAmount) || 0));
+        if (!(amount > 0)) throw new Error('Payment amount must be greater than zero.');
+        if (amount > outstanding) throw new Error('Payment cannot exceed the outstanding balance.');
+        const newPaid = Math.round(Math.abs(Number(bill.amount_paid) || 0)) + amount;
+        const newOutstanding = Math.max(0, outstanding - amount);
+        const fullyPaid = newOutstanding <= 0;
 
         const txRef = doc(collection(this.db, `${this._scope(userId)}/transactions`));
         const transaction = {
@@ -573,7 +630,7 @@ class DataService {
             status: 'Completed',
             icon: '💸',
             timestamp: this._coerceTimestampOrNow(paymentDate),
-            notes: `Payment for bill ${bill.vendor_name || billId}`,
+            notes: `Payment for bill ${bill.bill_number || bill.vendor_name || billId}`,
             linked_bill_id: billId,
             created_at: serverTimestamp()
         };
@@ -605,33 +662,78 @@ class DataService {
         };
         Object.assign(transaction, cash);
 
-        const batch = writeBatch(this.db);
-        // The linked payment carries linked_bill_id, so the engine posts BILL-PAY
-        // (Dr Accounts Payable / Cr Cash) — settling the A/P the bill accrued at
-        // creation rather than recognizing the expense a second time.
-        await this._postSourceJournal(userId, batch, 'transactions', txRef, transaction, { date: transaction.timestamp });
-        batch.set(txRef, transaction);
-        batch.update(doc(this.db, `${this._scope(userId)}/bills/${billId}`), {
-            payment_status: 'paid',
-            budget_impact_status: 'converted_to_actual',
-            linked_transaction_id: txRef.id,
+        const billUpdate = {
+            amount_paid: newPaid,
+            outstanding_amount: newOutstanding,
+            payment_status: fullyPaid ? 'paid' : 'partial',
             updated_at: serverTimestamp(),
             updated_by: (this.actorUid || userId)
-        });
+        };
+        // Only a fully-cleared bill converts to actual + gets the deep-link stamp;
+        // a partial stays committable for its remaining outstanding_amount.
+        if (fullyPaid) {
+            billUpdate.budget_impact_status = 'converted_to_actual';
+            billUpdate.linked_transaction_id = txRef.id;
+        }
+
+        const batch = writeBatch(this.db);
+        await this._postSourceJournal(userId, batch, 'transactions', txRef, transaction, { date: transaction.timestamp });
+        batch.set(txRef, transaction);
+        batch.update(doc(this.db, `${this._scope(userId)}/bills/${billId}`), billUpdate);
         batch.set(doc(collection(this.db, `${this._scope(userId)}/audit_logs`)), {
             actor_uid: (this.actorUid || userId),
             actor_role: null,
-            action: 'bill.mark_paid',
+            action: fullyPaid ? 'bill.mark_paid' : 'bill.payment',
             target_collection: 'bills',
             target_id: billId,
-            before: { payment_status: bill.payment_status ?? 'unpaid', budget_impact_status: bill.budget_impact_status ?? null },
-            after: { payment_status: 'paid', budget_impact_status: 'converted_to_actual', transaction_id: txRef.id, amount },
+            before: { payment_status: bill.payment_status ?? 'unpaid', outstanding_amount: outstanding },
+            after: { payment_status: billUpdate.payment_status, transaction_id: txRef.id, amount, outstanding_amount: newOutstanding },
             reason: null,
             source: 'dashboard',
             created_at: serverTimestamp()
         });
         await batch.commit();
-        return { id: billId, transactionId: txRef.id };
+        return { id: billId, transactionId: txRef.id, amount, fullyPaid, outstanding_amount: newOutstanding };
+    }
+
+    // Pay a bill's full remaining balance (works for unpaid and partially-paid
+    // bills). Kept as the single-bill entry point used by the Bill Details drawer.
+    async markBillPaid(userId, billId, { paymentDate = null, cashFields = null } = {}) {
+        if (!userId || !billId) throw new Error('userId and billId required');
+        const bill = await this.getBillById(userId, billId);
+        if (!bill) throw new Error('Bill not found.');
+        const outstanding = this._billOutstanding(bill);
+        if (!(outstanding > 0)) throw new Error('This bill is already marked as paid.');
+        return this._payBillOnce(userId, bill, outstanding, { paymentDate, cashFields });
+    }
+
+    // Pay one or more bills in a single vendor-payment action. `payments` is
+    // [{ billId, amount? }] — amount defaults to the bill's full outstanding
+    // balance (partial when a smaller amount is passed). Each bill is committed in
+    // its own batch (see _payBillOnce), so a mid-list failure leaves already-paid
+    // bills paid; the per-bill outcome is returned so the caller can report it.
+    async markBillsPaid(userId, payments = [], { paymentDate = null, cashFields = null } = {}) {
+        if (!userId) throw new Error('userId required');
+        const list = Array.isArray(payments) ? payments.filter((p) => p && p.billId) : [];
+        if (!list.length) throw new Error('Select at least one bill to pay.');
+        const results = [];
+        let paidCount = 0;
+        let totalPaid = 0;
+        for (const p of list) {
+            try {
+                const bill = await this.getBillById(userId, p.billId);
+                if (!bill) throw new Error('Bill not found.');
+                const outstanding = this._billOutstanding(bill);
+                const amount = p.amount != null ? Math.round(Math.abs(Number(p.amount) || 0)) : outstanding;
+                const res = await this._payBillOnce(userId, bill, amount, { paymentDate, cashFields });
+                results.push({ billId: p.billId, ok: true, ...res });
+                paidCount += 1;
+                totalPaid += res.amount;
+            } catch (e) {
+                results.push({ billId: p.billId, ok: false, error: (e && e.message) || String(e) });
+            }
+        }
+        return { results, paidCount, totalPaid };
     }
 
     // --- SUBSCRIPTIONS ---
@@ -9889,7 +9991,12 @@ class DataService {
         });
 
         bills.forEach(bill => {
-            const amount = Math.abs(Number(bill.amount) || 0);
+            // Commit only the OUTSTANDING balance (full amount for unpaid/legacy
+            // bills; the remainder for partially-paid ones). The paid portion has
+            // already landed as an actual expense transaction above, so
+            // committed(outstanding) + actual(paid) == the bill total — no double
+            // count. Falls back to bill.amount when outstanding_amount is absent.
+            const amount = this._billOutstanding(bill);
             if (amount === 0) return;
             if (!isBillUnpaid(bill)) return;
             if (!isBillCommittable(bill)) return;

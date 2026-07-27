@@ -303,6 +303,18 @@
         "Due Date": "Jatuh Tempo",
         "Category": "Kategori",
         "Type": "Jenis",
+        // Vendor Payment (bill.html) — pay one or many of a vendor's unpaid bills
+        "Pay Bills": "Bayar Tagihan",
+        "Pay selected": "Bayar yang dipilih",
+        "Paying…": "Membayar…",
+        "Select a vendor, choose which bills to pay, then confirm. Each payment posts to your Ledger.":
+            "Pilih vendor, tentukan tagihan yang akan dibayar, lalu konfirmasi. Setiap pembayaran tercatat di Ledger Anda.",
+        "Partially Paid": "Dibayar Sebagian",
+        "Outstanding": "Sisa Tagihan",
+        "Remaining": "Sisa",
+        "No unpaid bills for this vendor.": "Tidak ada tagihan belum dibayar untuk vendor ini.",
+        "No unpaid bills to pay right now.": "Tidak ada tagihan yang perlu dibayar saat ini.",
+        "Select at least one bill to pay.": "Pilih minimal satu tagihan untuk dibayar.",
         // Direction + CoA Account picker (shared-dashboard.js + fluxy-account-picker.js)
         "Money in records revenue; money out records a cost. Advanced covers refunds, fees, and tax.":
             "Uang masuk mencatat pendapatan; uang keluar mencatat biaya. Lanjutan mencakup retur, biaya, dan pajak.",

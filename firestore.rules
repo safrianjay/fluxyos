@@ -1621,6 +1621,20 @@ service cloud.firestore {
         && data.amount_due <= 999999999999;
     }
 
+    // Lean tax validator for INVOICES only. isValidInvoiceBase's allowlist permits
+    // just the customer-withholding tax fields (customer_npwp + rate/type/code);
+    // tax_amount + tax_rate_percent are already validated inline. Running the full
+    // 16-field isValidTaxDocFields here (which also checks vendor/faktur/withholding
+    // fields that an invoice can never carry) needlessly inflated the finalize
+    // (draft->open) expression past the rules-evaluation budget on withholding
+    // invoices — surfacing as permission-denied. Keep this to the 4 real fields.
+    function isValidInvoiceTaxFields(data) {
+      return (!('customer_npwp' in data) || data.customer_npwp == null || (data.customer_npwp is string && data.customer_npwp.size() <= 32))
+        && (!('customer_withholding_rate' in data) || data.customer_withholding_rate == null || (data.customer_withholding_rate is number && data.customer_withholding_rate >= 0 && data.customer_withholding_rate <= 100))
+        && (!('customer_withholding_type' in data) || data.customer_withholding_type == null || (data.customer_withholding_type is string && data.customer_withholding_type.size() <= 40))
+        && (!('customer_withholding_code' in data) || data.customer_withholding_code == null || (data.customer_withholding_code is string && data.customer_withholding_code.size() <= 40));
+    }
+
     function isValidInvoiceBase(data) {
       return data.keys().hasOnly([
           'invoice_number',
@@ -1666,7 +1680,7 @@ service cloud.firestore {
           'fx_rate_date'
         ])
         && isValidAccountingLink(data)
-        && isValidTaxDocFields(data)
+        && isValidInvoiceTaxFields(data)
         && data.keys().hasAll([
           'invoice_number',
           'status',
@@ -2178,7 +2192,7 @@ service cloud.firestore {
           && (!('linked_bill_id' in request.resource.data) || request.resource.data.linked_bill_id == null || (request.resource.data.linked_bill_id is string && request.resource.data.linked_bill_id.size() <= 120))
           && isValidTransactionBudgetFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
-          && isValidAccountingLink(request.resource.data)
+          && isValidAccountLink(request.resource.data)
           && isValidCommerceLink(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow update: if isOwner(userId)
@@ -2253,7 +2267,7 @@ service cloud.firestore {
           && (!('linked_bill_id' in request.resource.data) || request.resource.data.linked_bill_id == null || (request.resource.data.linked_bill_id is string && request.resource.data.linked_bill_id.size() <= 120))
           && isValidTransactionBudgetFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
-          && isValidAccountingLink(request.resource.data)
+          && isValidAccountLink(request.resource.data)
           && isValidCommerceLink(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow delete: if false;
@@ -2297,15 +2311,19 @@ service cloud.firestore {
             'budget_assignment_updated_by',
             'budget_exclusion_reason',
             'account_code',
-            'account_name'
+            'account_name',
+            'bill_number',
+            'outstanding_amount',
+            'amount_paid'
           ])
           && isValidBaseRecord(request.resource.data)
           && (!('due_date' in request.resource.data) || request.resource.data.due_date is timestamp)
-          && (!('payment_status' in request.resource.data) || request.resource.data.payment_status in ['unpaid', 'paid', 'overdue', 'unknown'])
+          && (!('payment_status' in request.resource.data) || request.resource.data.payment_status in ['unpaid', 'paid', 'partial', 'overdue', 'unknown'])
           && (!('invoice_status' in request.resource.data) || request.resource.data.invoice_status in ['attached'])
           && isValidBillBudgetFields(request.resource.data)
+          && isValidBillPaymentFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
-          && isValidAccountingLink(request.resource.data)
+          && isValidAccountLink(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow update: if isOwner(userId)
           && request.resource.data.keys().hasOnly([
@@ -2347,17 +2365,21 @@ service cloud.firestore {
             'updated_at',
             'updated_by',
             'account_code',
-            'account_name'
+            'account_name',
+            'bill_number',
+            'outstanding_amount',
+            'amount_paid'
           ])
           && isValidBaseRecordUpdate(request.resource.data, resource.data)
           && preservesLegacyRecordDate(request.resource.data, resource.data)
           && (!('due_date' in request.resource.data) || request.resource.data.due_date is timestamp)
-          && (!('payment_status' in request.resource.data) || request.resource.data.payment_status in ['unpaid', 'paid', 'overdue', 'unknown'])
+          && (!('payment_status' in request.resource.data) || request.resource.data.payment_status in ['unpaid', 'paid', 'partial', 'overdue', 'unknown'])
           && (!('invoice_status' in request.resource.data) || request.resource.data.invoice_status in ['attached'])
           && (!('linked_transaction_id' in request.resource.data) || request.resource.data.linked_transaction_id == null || (request.resource.data.linked_transaction_id is string && request.resource.data.linked_transaction_id.size() <= 120))
           && isValidBillBudgetFields(request.resource.data)
+          && isValidBillPaymentFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
-          && isValidAccountingLink(request.resource.data)
+          && isValidAccountLink(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow delete: if false;
       }
@@ -2396,7 +2418,7 @@ service cloud.firestore {
           && isValidBaseRecord(request.resource.data)
           && (!('renewal_date' in request.resource.data) || request.resource.data.renewal_date is timestamp)
           && isValidAttachedDocuments(request.resource.data)
-          && isValidAccountingLink(request.resource.data)
+          && isValidAccountLink(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow update: if isOwner(userId)
           && request.resource.data.keys().hasOnly([
@@ -2430,7 +2452,7 @@ service cloud.firestore {
           && isValidBaseRecordUpdate(request.resource.data, resource.data)
           && (!('renewal_date' in request.resource.data) || request.resource.data.renewal_date is timestamp)
           && isValidAttachedDocuments(request.resource.data)
-          && isValidAccountingLink(request.resource.data)
+          && isValidAccountLink(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow delete: if false;
       }
@@ -3050,15 +3072,28 @@ service cloud.firestore {
     // Accounting kernel back-link: the posting engine stamps these onto the source
     // transaction/bill/subscription so the document can drill to its journal and
     // surface its posting status. Optional + bounded.
-    // Also validates the optional Chart-of-Accounts link a record carries when the
-    // user picks (or the engine resolves) a categorizing account in the entry
-    // drawer: account_code (CoA code) + account_name (display). Optional + bounded;
-    // absent on legacy rows and non-account writers.
     function isValidAccountingLink(data) {
       return (!('journal_ref' in data) || data.journal_ref == null || (data.journal_ref is string && data.journal_ref.size() <= 120))
-        && (!('accounting_status' in data) || data.accounting_status in ['posted', 'pending', 'excluded', 'reversed'])
-        && (!('account_code' in data) || data.account_code == null || (data.account_code is string && data.account_code.size() <= 12))
+        && (!('accounting_status' in data) || data.accounting_status in ['posted', 'pending', 'excluded', 'reversed']);
+    }
+
+    // The optional Chart-of-Accounts link a transaction/bill/subscription carries
+    // when the user picks (or the engine resolves) a categorizing account in the
+    // entry drawer: account_code (CoA code) + account_name (display). Optional +
+    // bounded. Kept SEPARATE from isValidAccountingLink so the budget-sensitive
+    // invoice validator (which never carries account_code) stays lean and does not
+    // trip the rules-evaluation budget on tax-carrying invoices.
+    function isValidAccountLink(data) {
+      return (!('account_code' in data) || data.account_code == null || (data.account_code is string && data.account_code.size() <= 12))
         && (!('account_name' in data) || data.account_name == null || (data.account_name is string && data.account_name.size() <= 80));
+    }
+
+    // Bill numbering + outstanding-balance tracking (partial payments). Optional +
+    // bounded; absent on legacy bills.
+    function isValidBillPaymentFields(data) {
+      return (!('bill_number' in data) || data.bill_number == null || (data.bill_number is string && data.bill_number.size() <= 40))
+        && (!('outstanding_amount' in data) || data.outstanding_amount == null || (data.outstanding_amount is number && data.outstanding_amount >= 0 && data.outstanding_amount <= 999999999999))
+        && (!('amount_paid' in data) || data.amount_paid == null || (data.amount_paid is number && data.amount_paid >= 0 && data.amount_paid <= 999999999999));
     }
     // Commerce Integration back-links: the server-side sync worker stamps these
     // onto ledger transactions it creates (source:'commerce') so the doc can
@@ -3114,6 +3149,7 @@ service cloud.firestore {
         && isValidTransactionBudgetFields(data)
         && isValidAttachedDocuments(data)
         && isValidAccountingLink(data)
+        && isValidAccountLink(data)
         && isValidCommerceLink(data)
         && isValidTaxDocFields(data)
         && isValidAICaptureMetadata(data);
@@ -3146,6 +3182,7 @@ service cloud.firestore {
         && isValidTransactionBudgetFields(data)
         && isValidAttachedDocuments(data)
         && isValidAccountingLink(data)
+        && isValidAccountLink(data)
         && isValidCommerceLink(data)
         && isValidTaxDocFields(data)
         && isValidAICaptureMetadata(data);
@@ -3160,16 +3197,19 @@ service cloud.firestore {
           'budget_match_method', 'budget_match_status', 'budget_impact_status', 'budget_assignment_reason',
           'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason',
           'journal_ref', 'accounting_status', 'account_code', 'account_name',
+          'bill_number', 'outstanding_amount', 'amount_paid',
           'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no'
         ])
         && isValidBaseRecord(data)
         && (!('due_date' in data) || data.due_date is timestamp)
-        && (!('payment_status' in data) || data.payment_status in ['unpaid', 'paid', 'overdue', 'unknown'])
+        && (!('payment_status' in data) || data.payment_status in ['unpaid', 'paid', 'partial', 'overdue', 'unknown'])
         && (!('invoice_status' in data) || data.invoice_status in ['attached'])
         && isValidBillBudgetFields(data)
+        && isValidBillPaymentFields(data)
         && isValidAttachedDocuments(data)
         && isValidAccountingLink(data)
+        && isValidAccountLink(data)
         && isValidTaxDocFields(data)
         && isValidAICaptureMetadata(data);
     }
@@ -3183,6 +3223,7 @@ service cloud.firestore {
           'budget_match_method', 'budget_match_status', 'budget_impact_status', 'budget_assignment_reason',
           'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason',
           'linked_transaction_id', 'updated_at', 'updated_by', 'journal_ref', 'accounting_status', 'account_code', 'account_name',
+          'bill_number', 'outstanding_amount', 'amount_paid',
           'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no'
         ])
@@ -3190,12 +3231,14 @@ service cloud.firestore {
         && isValidTaxDocFields(data)
         && preservesLegacyRecordDate(data, existingData)
         && (!('due_date' in data) || data.due_date is timestamp)
-        && (!('payment_status' in data) || data.payment_status in ['unpaid', 'paid', 'overdue', 'unknown'])
+        && (!('payment_status' in data) || data.payment_status in ['unpaid', 'paid', 'partial', 'overdue', 'unknown'])
         && (!('invoice_status' in data) || data.invoice_status in ['attached'])
         && (!('linked_transaction_id' in data) || data.linked_transaction_id == null || (data.linked_transaction_id is string && data.linked_transaction_id.size() <= 120))
         && isValidBillBudgetFields(data)
+        && isValidBillPaymentFields(data)
         && isValidAttachedDocuments(data)
         && isValidAccountingLink(data)
+        && isValidAccountLink(data)
         && isValidAICaptureMetadata(data);
     }
     function wsValidSubCreate(data) {
@@ -3210,6 +3253,7 @@ service cloud.firestore {
         && (!('renewal_date' in data) || data.renewal_date is timestamp)
         && isValidAttachedDocuments(data)
         && isValidAccountingLink(data)
+        && isValidAccountLink(data)
         && isValidAICaptureMetadata(data);
     }
     function wsValidSubUpdate(data, existingData) {
@@ -3224,6 +3268,7 @@ service cloud.firestore {
         && (!('renewal_date' in data) || data.renewal_date is timestamp)
         && isValidAttachedDocuments(data)
         && isValidAccountingLink(data)
+        && isValidAccountLink(data)
         && isValidAICaptureMetadata(data);
     }
     function wsValidReportExportCreate(data) {
