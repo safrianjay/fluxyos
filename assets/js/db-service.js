@@ -3815,6 +3815,79 @@ class DataService {
         } catch (_) { return null; }
     }
 
+    // --- Keyword→account rules (Phase 3b) ---------------------------------
+    // User-defined "when the vendor/description contains X, use account Y". Stored
+    // as accounting_mappings source_type 'keyword' (source_value = lowercased
+    // keyword). Suggestion layer only — like vendor memory it never feeds the raw
+    // posting engine, so bulk/CSV imports stay category-driven. Cached, longest
+    // keyword first so the most specific rule wins.
+    async _loadKeywordAccountRules(userId) {
+        this._keywordRuleCache = this._keywordRuleCache || {};
+        const key = this._scope(userId);
+        if (this._keywordRuleCache[key]) return this._keywordRuleCache[key];
+        let rules = [];
+        try {
+            const raw = await this.getAccountingMappings(userId);
+            rules = raw
+                .filter((m) => m.source_type === 'keyword' && m.target_account_code && m.source_value)
+                .map((m) => ({ keyword: String(m.source_value).toLowerCase(), code: m.target_account_code, name: m.target_account_name, type: m.target_account_type }))
+                .sort((a, b) => b.keyword.length - a.keyword.length);
+        } catch (_) { /* empty */ }
+        this._keywordRuleCache[key] = rules;
+        return rules;
+    }
+
+    // Active keyword rules for the management UI: [{ keyword, account:{code,name,type} }].
+    async listKeywordAccountRules(userId) {
+        const rules = await this._loadKeywordAccountRules(userId).catch(() => []);
+        return rules.map((r) => ({ keyword: r.keyword, account: { code: r.code, name: r.name, type: r.type } }));
+    }
+
+    // Upsert a keyword→account rule (deterministic id keyword__{slug}). Audit-logged.
+    async saveKeywordAccountRule(userId, { keyword, account_code } = {}) {
+        if (!userId) throw new Error('userId required');
+        const kw = this._nullableString(String(keyword || '').trim().toLowerCase(), 60);
+        if (!kw) throw new Error('Enter a keyword to match.');
+        const code = this._nullableString(account_code, 12);
+        const catalog = code ? ACCOUNTING_ACCOUNT_CATALOG[code] : null;
+        if (!catalog) throw new Error('Choose an account.');
+        const safeKey = `keyword__${kw}`.toLowerCase().replace(/[^a-z0-9_]+/g, '-').slice(0, 140);
+        const ref = doc(this.db, `${this._scope(userId)}/accounting_mappings/${safeKey}`);
+        const existing = await getDoc(ref);
+        const payload = {
+            source_type: 'keyword',
+            source_value: kw,
+            target_account_code: code,
+            target_account_name: catalog.name,
+            target_account_type: catalog.type,
+            confidence: 'user_confirmed',
+            status: 'active',
+            created_at: existing.exists() ? (existing.data().created_at || serverTimestamp()) : serverTimestamp(),
+            updated_at: serverTimestamp()
+        };
+        await setDoc(ref, payload);
+        await this.addAuditLog(userId, {
+            action: existing.exists() ? 'accounting_mapping.updated' : 'accounting_mapping.created',
+            target_collection: 'accounting_mappings', target_id: safeKey,
+            after: { source_type: 'keyword', source_value: kw, target_account_code: code }, source: 'dashboard'
+        });
+        this._keywordRuleCache = {};
+        return { id: safeKey, keyword: kw };
+    }
+
+    // Archive (soft-delete) a keyword rule — hard delete is blocked by rules.
+    async archiveKeywordAccountRule(userId, keyword) {
+        const kw = String(keyword || '').trim().toLowerCase();
+        if (!userId || !kw) throw new Error('keyword required');
+        const safeKey = `keyword__${kw}`.toLowerCase().replace(/[^a-z0-9_]+/g, '-').slice(0, 140);
+        const ref = doc(this.db, `${this._scope(userId)}/accounting_mappings/${safeKey}`);
+        const existing = await getDoc(ref);
+        if (!existing.exists()) return null;
+        await setDoc(ref, { ...existing.data(), status: 'archived', updated_at: serverTimestamp() });
+        this._keywordRuleCache = {};
+        return { id: safeKey };
+    }
+
     // Suggest the categorizing account for a new entry, so the drawer's Account
     // field pre-fills. Vendor memory wins when it exists AND is compatible with the
     // money direction (a revenue account for income-like, expense/COGS otherwise) —
@@ -3822,16 +3895,27 @@ class DataService {
     // pure engine (mappings → category/type defaults). Returns { code, name, type }.
     async suggestAccountForEntry(userId, { type, category, vendor_name } = {}) {
         const t = String(type || '').toLowerCase().trim();
+        const incomeLike = t === 'income' || t === 'revenue' || t === 'refund' || t === 'pending_receivable';
+        const compatible = (acctType) => (incomeLike ? acctType === 'revenue' : acctType === 'expense');
         const vkey = normalizeVendorKey(vendor_name);
+        // 1. Exact vendor memory (most specific) — highest priority.
         if (vkey) {
             const vmap = await this._loadVendorAccountMap(userId).catch(() => ({}));
             const hit = vmap[vkey];
-            if (hit && hit.code) {
-                const incomeLike = t === 'income' || t === 'revenue' || t === 'refund' || t === 'pending_receivable';
-                const compatible = incomeLike ? hit.type === 'revenue' : hit.type === 'expense';
-                if (compatible) return { code: hit.code, name: hit.name, type: hit.type };
+            if (hit && hit.code && compatible(hit.type)) return { code: hit.code, name: hit.name, type: hit.type };
+        }
+        // 2. Keyword rules — a rule whose keyword is contained in the vendor/
+        //    description text wins over the category default (longest keyword first).
+        const text = String(vendor_name || '').toLowerCase();
+        if (text) {
+            const rules = await this._loadKeywordAccountRules(userId).catch(() => []);
+            for (const r of rules) {
+                if (r.keyword && text.indexOf(r.keyword) !== -1 && compatible(r.type)) {
+                    return { code: r.code, name: r.name, type: r.type };
+                }
             }
         }
+        // 3. Engine chain — saved category/type mappings → defaults → fallback.
         const map = await this._loadAcctMappings(userId).catch(() => ({}));
         const code = suggestCategorizingAccount({ type, category }, map);
         return this._accountInfo(code);

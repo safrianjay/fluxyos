@@ -977,6 +977,20 @@
             }
         }
 
+        // Smart account (Phase 3b): resolve the categorizing account from vendor
+        // memory / keyword rules / category so an AI-captured bill or receipt posts
+        // to the right account instead of the generic category default. Non-fatal —
+        // on any failure the posting engine still resolves it from the category.
+        try {
+            if (type !== 'transfer' && type !== 'adjustment') {
+                const sug = await ctx.ds.suggestAccountForEntry(user.uid, { type, category, vendor_name });
+                if (sug && sug.code) {
+                    payload.account_code = sug.code;
+                    if (sug.name) payload.account_name = sug.name;
+                }
+            }
+        } catch (_) { /* fall back to the engine's category-driven resolution */ }
+
         const duplicate = await findPossibleDuplicate(ctx, user.uid, payload);
         if (duplicate && !state.duplicateConfirmed) {
             state.duplicateConfirmed = true;

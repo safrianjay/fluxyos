@@ -135,6 +135,8 @@ async function main() {
     });
     await expectOutcome('create a vendor→account mapping', true, () =>
         setDoc(doc(db, `workspaces/${WS}/accounting_mappings/vendor__aws`), mapping()));
+    await expectOutcome('create a keyword→account rule', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/accounting_mappings/keyword__gojek`), mapping({ source_type: 'keyword', source_value: 'gojek' })));
     await expectOutcome('reject a bad mapping source_type', false, () =>
         setDoc(doc(db, `workspaces/${WS}/accounting_mappings/bad__x`), mapping({ source_type: 'nonsense' })));
 

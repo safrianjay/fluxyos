@@ -324,6 +324,24 @@
                             </div>
                             <div id="mapping-preview-content" class="acct-table-scroll"></div>
                         </section>
+                        <section class="acct-card" style="margin-top:16px;">
+                            <div style="padding:16px 16px 12px;border-bottom:1px solid #F3F4F6;">
+                                <h2 class="fluxy-section-title">Keyword rules</h2>
+                                <p class="fluxy-meta">When a transaction or bill's vendor/description contains a keyword, pre-fill this account. Suggestions only — you always confirm before saving.</p>
+                            </div>
+                            <div style="padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+                                <div style="flex:1;min-width:160px;">
+                                    <label class="fluxy-meta" for="kw-rule-input">Keyword</label>
+                                    <input id="kw-rule-input" type="text" maxlength="60" placeholder="e.g. gojek" class="acct-btn acct-btn-secondary" style="width:100%;text-align:left;" />
+                                </div>
+                                <div style="min-width:200px;">
+                                    <label class="fluxy-meta" for="kw-rule-account">Account</label>
+                                    <select id="kw-rule-account" class="acct-btn acct-btn-secondary" style="width:100%;"></select>
+                                </div>
+                                <button type="button" id="kw-rule-add" class="acct-btn acct-btn-primary">Add rule</button>
+                            </div>
+                            <div id="keyword-rules-list" class="acct-table-scroll"></div>
+                        </section>
                     </div>
 
                     <!-- CLOSE TAB -->

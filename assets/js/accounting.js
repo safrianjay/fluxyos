@@ -506,6 +506,7 @@ function render(data) {
     if (readiness) {
         renderCleanup(readiness);
         renderMapping(readiness);
+        renderKeywordRules();
         renderCloseChecklist();
         el('tab-cleanup-count').textContent = `${readiness.cleanupItems.length}`;
     }
@@ -867,6 +868,77 @@ async function handleMappingSave(idx) {
         console.error('Save mapping failed:', err);
         window.showToast?.('Could not save the mapping. Try again.', 'error');
         if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+    }
+}
+
+// --- Keyword rules (Phase 3b): when a vendor/description contains a keyword,
+// pre-fill this account in the entry drawer (suggestion only). ---------------
+async function renderKeywordRules() {
+    const accSel = el('kw-rule-account');
+    if (accSel && !accSel.dataset.filled) {
+        accSel.innerHTML = mappingAccountOptions()
+            .map(o => `<option value="${o.code}">${escapeHtml(o.code)} · ${escapeHtml(o.name)}</option>`).join('');
+        accSel.dataset.filled = '1';
+    }
+    const addBtn = el('kw-rule-add');
+    if (addBtn && !addBtn.dataset.wired) { addBtn.addEventListener('click', handleAddKeywordRule); addBtn.dataset.wired = '1'; }
+    const listEl = el('keyword-rules-list');
+    if (!listEl) return;
+    let rules = [];
+    try { rules = await state.ds.listKeywordAccountRules(state.user.uid); } catch (_) { rules = []; }
+    if (!rules.length) {
+        listEl.innerHTML = emptyInline('No keyword rules yet', 'Add one above to auto-suggest an account when a keyword appears.');
+        return;
+    }
+    listEl.innerHTML = `<div style="min-width:520px;">` + rules.map(r => `
+        <div class="acct-row">
+            <div style="flex:1;min-width:140px;">
+                <div class="fluxy-body-strong" style="color:#111827;">"${escapeHtml(r.keyword)}"</div>
+                <div class="fluxy-meta">contains → ${escapeHtml(r.account.code)} · ${escapeHtml(r.account.name)}</div>
+            </div>
+            <button type="button" class="acct-btn acct-btn-ghost" data-kw-remove="${escapeHtml(r.keyword)}">Remove</button>
+        </div>`).join('') + `</div>`;
+    listEl.querySelectorAll('[data-kw-remove]').forEach(btn => {
+        btn.addEventListener('click', () => handleArchiveKeywordRule(btn.getAttribute('data-kw-remove')));
+    });
+}
+
+async function handleAddKeywordRule() {
+    const kwEl = el('kw-rule-input');
+    const accEl = el('kw-rule-account');
+    const keyword = (kwEl?.value || '').trim();
+    const account_code = accEl?.value || '';
+    if (!keyword) { window.showToast?.('Enter a keyword to match.', 'error'); return; }
+    if (!account_code) { window.showToast?.('Choose an account.', 'error'); return; }
+    const btn = el('kw-rule-add');
+    if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+    try {
+        await state.ds.saveKeywordAccountRule(state.user.uid, { keyword, account_code });
+        window.showToast?.('Keyword rule saved.', 'success');
+        if (kwEl) kwEl.value = '';
+        await renderKeywordRules();
+    } catch (err) {
+        console.error('Save keyword rule failed:', err);
+        window.showToast?.(err?.message || 'Could not save the rule. Try again.', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Add rule'; }
+    }
+}
+
+async function handleArchiveKeywordRule(keyword) {
+    const confirmed = await window.showConfirmDialog?.({
+        title: 'Remove keyword rule?',
+        body: `The rule for <strong>"${escapeHtml(keyword)}"</strong> will no longer pre-fill an account.`,
+        confirmLabel: 'Remove', cancelLabel: 'Cancel', tone: 'danger'
+    });
+    if (confirmed === false) return;
+    try {
+        await state.ds.archiveKeywordAccountRule(state.user.uid, keyword);
+        window.showToast?.('Keyword rule removed.', 'success');
+        await renderKeywordRules();
+    } catch (err) {
+        console.error('Archive keyword rule failed:', err);
+        window.showToast?.('Could not remove the rule. Try again.', 'error');
     }
 }
 

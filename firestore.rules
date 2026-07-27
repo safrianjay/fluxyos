@@ -224,7 +224,7 @@ service cloud.firestore {
           'created_at',
           'updated_at'
         ])
-        && data.source_type in ['transaction_category', 'transaction_type', 'vendor']
+        && data.source_type in ['transaction_category', 'transaction_type', 'vendor', 'keyword']
         && data.source_value is string
         && data.source_value.size() > 0
         && data.source_value.size() <= 60
