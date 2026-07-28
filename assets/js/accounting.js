@@ -991,6 +991,40 @@ async function handleMappingSave(idx) {
 
 // --- Keyword rules (Phase 3b): when a vendor/description contains a keyword,
 // pre-fill this account in the entry drawer (suggestion only). ---------------
+let keywordMatchTxns = null; // cached recent transactions for the "matches N" preview
+async function loadKeywordMatchTxns() {
+    if (keywordMatchTxns) return keywordMatchTxns;
+    try { keywordMatchTxns = await state.ds.getTransactions(state.user.uid, 50); } catch (_) { keywordMatchTxns = []; }
+    return keywordMatchTxns || [];
+}
+async function updateKeywordMatchPreview() {
+    const out = el('kw-rule-match');
+    if (!out) return;
+    const kw = (el('kw-rule-input')?.value || '').trim().toLowerCase();
+    if (!kw) { out.classList.add('hidden'); out.textContent = ''; return; }
+    const txns = await loadKeywordMatchTxns();
+    const n = txns.filter(t => String(t.vendor_name || '').toLowerCase().includes(kw)).length;
+    out.textContent = `Matches ${n} of your last ${txns.length} transactions.`;
+    out.classList.remove('hidden');
+}
+function resetKeywordForm() {
+    if (el('kw-rule-input')) el('kw-rule-input').value = '';
+    if (el('kw-rule-account')) el('kw-rule-account').value = el('kw-rule-account').options[0]?.value || '';
+    if (el('kw-rule-edit-original')) el('kw-rule-edit-original').value = '';
+    if (el('kw-rule-add')) el('kw-rule-add').textContent = 'Add rule';
+    el('kw-rule-cancel')?.classList.add('hidden');
+    updateKeywordMatchPreview();
+}
+function startEditKeywordRule(keyword, accountCode) {
+    if (el('kw-rule-input')) el('kw-rule-input').value = keyword;
+    if (el('kw-rule-account')) el('kw-rule-account').value = accountCode;
+    if (el('kw-rule-edit-original')) el('kw-rule-edit-original').value = keyword;
+    if (el('kw-rule-add')) el('kw-rule-add').textContent = 'Update rule';
+    el('kw-rule-cancel')?.classList.remove('hidden');
+    el('kw-rule-input')?.focus();
+    updateKeywordMatchPreview();
+}
+
 async function renderKeywordRules() {
     const accSel = el('kw-rule-account');
     if (accSel && !accSel.dataset.filled) {
@@ -999,7 +1033,12 @@ async function renderKeywordRules() {
         accSel.dataset.filled = '1';
     }
     const addBtn = el('kw-rule-add');
-    if (addBtn && !addBtn.dataset.wired) { addBtn.addEventListener('click', handleAddKeywordRule); addBtn.dataset.wired = '1'; }
+    if (addBtn && !addBtn.dataset.wired) {
+        addBtn.addEventListener('click', handleSaveKeywordRule);
+        el('kw-rule-cancel')?.addEventListener('click', resetKeywordForm);
+        el('kw-rule-input')?.addEventListener('input', updateKeywordMatchPreview);
+        addBtn.dataset.wired = '1';
+    }
     const listEl = el('keyword-rules-list');
     if (!listEl) return;
     let rules = [];
@@ -1008,38 +1047,45 @@ async function renderKeywordRules() {
         listEl.innerHTML = emptyInline('No keyword rules yet', 'Add one above to auto-suggest an account when a keyword appears.');
         return;
     }
-    listEl.innerHTML = `<div style="min-width:520px;">` + rules.map(r => `
+    listEl.innerHTML = `<div style="min-width:560px;">` + rules.map(r => `
         <div class="acct-row">
             <div style="flex:1;min-width:140px;">
                 <div class="fluxy-body-strong" style="color:#111827;">"${escapeHtml(r.keyword)}"</div>
                 <div class="fluxy-meta">contains → ${escapeHtml(r.account.code)} · ${escapeHtml(r.account.name)}</div>
             </div>
+            <button type="button" class="acct-btn acct-btn-secondary" data-kw-edit="${escapeHtml(r.keyword)}" data-kw-account="${escapeHtml(r.account.code)}">Edit</button>
             <button type="button" class="acct-btn acct-btn-ghost" data-kw-remove="${escapeHtml(r.keyword)}">Remove</button>
         </div>`).join('') + `</div>`;
+    listEl.querySelectorAll('[data-kw-edit]').forEach(btn => {
+        btn.addEventListener('click', () => startEditKeywordRule(btn.getAttribute('data-kw-edit'), btn.getAttribute('data-kw-account')));
+    });
     listEl.querySelectorAll('[data-kw-remove]').forEach(btn => {
         btn.addEventListener('click', () => handleArchiveKeywordRule(btn.getAttribute('data-kw-remove')));
     });
 }
 
-async function handleAddKeywordRule() {
-    const kwEl = el('kw-rule-input');
-    const accEl = el('kw-rule-account');
-    const keyword = (kwEl?.value || '').trim();
-    const account_code = accEl?.value || '';
+async function handleSaveKeywordRule() {
+    const keyword = (el('kw-rule-input')?.value || '').trim();
+    const account_code = el('kw-rule-account')?.value || '';
+    const original = (el('kw-rule-edit-original')?.value || '').trim();
     if (!keyword) { window.showToast?.('Enter a keyword to match.', 'error'); return; }
     if (!account_code) { window.showToast?.('Choose an account.', 'error'); return; }
     const btn = el('kw-rule-add');
-    if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+    if (btn) { btn.disabled = true; btn.textContent = original ? 'Updating…' : 'Adding…'; }
     try {
         await state.ds.saveKeywordAccountRule(state.user.uid, { keyword, account_code });
-        window.showToast?.('Keyword rule saved.', 'success');
-        if (kwEl) kwEl.value = '';
+        // Editing to a NEW keyword text creates a new doc — retire the old one.
+        if (original && original.toLowerCase() !== keyword.toLowerCase()) {
+            await state.ds.archiveKeywordAccountRule(state.user.uid, original);
+        }
+        window.showToast?.(original ? 'Keyword rule updated.' : 'Keyword rule saved.', 'success');
+        resetKeywordForm();
         await renderKeywordRules();
     } catch (err) {
         console.error('Save keyword rule failed:', err);
         window.showToast?.(err?.message || 'Could not save the rule. Try again.', 'error');
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = 'Add rule'; }
+        if (btn) { btn.disabled = false; btn.textContent = (el('kw-rule-edit-original')?.value ? 'Update rule' : 'Add rule'); }
     }
 }
 
