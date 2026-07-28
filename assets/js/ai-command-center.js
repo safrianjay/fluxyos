@@ -1801,6 +1801,10 @@
 
     async function getAuthToken() {
         const auth = state.context?.auth || window.__fluxyAICommandContext?.auth;
+        // Auth rehydrates from IndexedDB asynchronously; state.user only fills in
+        // once onAuthStateChanged fires. Waiting first stops an early send from
+        // telling a signed-in user to sign in again.
+        if (auth && typeof auth.authStateReady === 'function') await auth.authStateReady();
         const user = auth?.currentUser || state.user;
         if (!user) throw new Error('Please sign in again before using Fluxy AI.');
         return user.getIdToken();

@@ -913,6 +913,10 @@
 
     async function callExtractEndpoint(payload) {
         const ctx = getContext();
+        // Auth rehydrates from IndexedDB asynchronously — without this wait an
+        // early scan reports UNAUTHENTICATED ("Your session expired") to a user
+        // who is signed in. See getTransactionDataService in shared-dashboard.js.
+        if (typeof ctx?.auth?.authStateReady === 'function') await ctx.auth.authStateReady();
         const currentUser = ctx?.auth?.currentUser;
         if (!currentUser) throw new Error('UNAUTHENTICATED');
         const token = await currentUser.getIdToken();
@@ -1013,6 +1017,8 @@
         if (state.saving) return;
         const cfg = modeCfg();
         const ctx = getContext();
+        // Never reject a reviewed extraction because auth had not rehydrated yet.
+        if (typeof ctx?.auth?.authStateReady === 'function') await ctx.auth.authStateReady();
         const user = ctx?.auth?.currentUser;
         if (!user || !ctx?.ds || typeof ctx.ds[cfg.saveMethod] !== 'function') {
             window.showToast?.('You need to be signed in to save this.', 'error');

@@ -335,6 +335,10 @@
     async function getAuthToken() {
         const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
         const auth = getAuth();
+        // Auth rehydrates from IndexedDB asynchronously. Without this wait an
+        // early send tells a signed-in user to sign in again and drops their
+        // question. See getTransactionDataService in shared-dashboard.js.
+        if (typeof auth.authStateReady === 'function') await auth.authStateReady();
         const user = auth.currentUser;
         if (!user) throw new Error('Please sign in again before using Fluxy AI.');
         return user.getIdToken();
