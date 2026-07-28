@@ -1106,8 +1106,18 @@
             const refresh = window[cfg.refreshFn];
             if (typeof refresh === 'function') refresh();
         } catch (err) {
-            console.error('[document-capture] save failed:', err?.message || err);
-            window.showToast?.('Could not save. Please try again.', 'error');
+            const msg = err?.message || '';
+            console.error('[document-capture] save failed:', msg || err);
+            // Surface the kernel's actionable reason instead of a generic retry
+            // prompt: a closed accounting period, a permission failure, or an
+            // expired session can never be fixed by "try again". The scanned date
+            // is editable, so the closed-period message tells the user exactly what
+            // to change (move the date to an open period, or reopen the period).
+            let toast = 'Could not save. Please try again.';
+            if (/closed accounting period|closed or locked period/i.test(msg)) toast = msg;
+            else if (/permission-denied/i.test(msg) || err?.code === 'permission-denied') toast = 'Permission denied — check your access, then try again.';
+            else if (/session expired/i.test(msg)) toast = 'Session expired. Please log in again.';
+            window.showToast?.(toast, 'error');
             state.saving = false;
             if (saveBtn) {
                 saveBtn.disabled = false;
