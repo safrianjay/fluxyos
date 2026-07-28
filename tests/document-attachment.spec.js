@@ -16,10 +16,11 @@ const os = require('os');
  * enabling the new Storage API for this project), set
  * `STORAGE_RULES_DEPLOYED=1` in the env to opt those tests back in.
  *
- * The two "Add Transaction with PNG/PDF" @storage specs currently fail in this
- * harness for an unrelated reason (an onboarding overlay swallows the submit
- * click) — they fail identically on a clean checkout, so treat them as known-red
- * rather than a regression signal.
+ * The @storage upload specs used to fail here by racing Firebase's async auth
+ * restore: submitting within ~0.5s of page load hit `auth.currentUser === null`
+ * and reported "Session expired". Fixed by awaiting `auth.authStateReady()` in
+ * getTransactionDataService (shared-dashboard.js) — keep these specs fast so
+ * they stay a regression guard for that race.
  */
 
 const STORAGE_READY = !!process.env.STORAGE_RULES_DEPLOYED;

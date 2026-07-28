@@ -1215,6 +1215,11 @@ window.showAddTransactionModal = function(options = {}) {
         const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
         const { Timestamp } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
         const auth = getAuth(app);
+        // Auth is restored from IndexedDB asynchronously (~0.5s). Reading
+        // currentUser before that resolves reports a signed-in user as "session
+        // expired" — submit fast enough after page load and the entry is lost.
+        // Same guard the rest of this file already uses (see FluxyLive).
+        if (typeof auth.authStateReady === 'function') await auth.authStateReady();
         const user = auth.currentUser;
         if (!user) throw new Error("Session expired. Please log in again.");
 
