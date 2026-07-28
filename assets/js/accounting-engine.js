@@ -133,8 +133,16 @@ const TYPE_EXPENSE_DEFAULTS = {
 
 // --- small pure helpers ---------------------------------------------------
 
+// Live per-build overlay of the workspace's Chart of Accounts (code → {type,name,…})
+// so posting can honor USER-CREATED accounts, which are absent from the static seed
+// ACCOUNT_INDEX. Set by buildJournal for the duration of one build (see setLiveAccounts).
+let _liveAccounts = null;
+function acctInfo(code) {
+    return (_liveAccounts && _liveAccounts[code]) || ACCOUNT_INDEX[code] || null;
+}
+
 export function accountByCode(code) {
-    return ACCOUNT_INDEX[code] || null;
+    return acctInfo(code);
 }
 
 export function normalBalanceOf(type) {
@@ -252,7 +260,7 @@ function line(accountCode, debit, credit, memo) {
 export function explicitAccount(document, requiredType) {
     const code = String(document?.account_code || '').trim();
     if (!code) return null;
-    const acct = ACCOUNT_INDEX[code];
+    const acct = acctInfo(code);
     if (!acct) return null;
     if (requiredType && acct.type !== requiredType) return null;
     return code;
@@ -263,7 +271,9 @@ export function explicitAccount(document, requiredType) {
 // then the type, then category defaults, then type defaults, then the
 // unmapped-expense fallback.
 function resolveExpenseAccount(document, mappings) {
-    const explicit = explicitAccount(document, 'expense');
+    // Honor the account the user explicitly picked in the drawer — any real account
+    // in the live chart, not just expense-typed (the picker controls what's offered).
+    const explicit = explicitAccount(document);
     if (explicit) return explicit;
     const category = String(document?.category || '').trim();
     const type = String(document?.type || '').trim().toLowerCase();
@@ -339,7 +349,7 @@ export function selectRule(collection, document) {
 const RULES = {
     'TXN-INC-CASH': (doc) => {
         const amt = requireAmount(doc.amount, 'income');
-        const acct = explicitAccount(doc, 'revenue') || REVENUE;
+        const acct = explicitAccount(doc) || REVENUE;
         return [line(CASH, amt, 0, 'Cash received'), line(acct, 0, amt, doc.category || 'Revenue')];
     },
     'TXN-EXP-CASH': (doc, ctx) => {
@@ -349,13 +359,13 @@ const RULES = {
     },
     'TXN-OPEX-CASH': (doc) => {
         const amt = requireAmount(doc.amount, 'opex');
-        const acct = explicitAccount(doc, 'expense')
+        const acct = explicitAccount(doc)
             || TYPE_EXPENSE_DEFAULTS[String(doc.type || '').toLowerCase()] || UNMAPPED_EXPENSE;
         return [line(acct, amt, 0, doc.type), line(CASH, 0, amt, 'Cash paid')];
     },
     'TXN-ACCRUE-AR': (doc) => {
         const amt = requireAmount(doc.amount, 'pending receivable');
-        const acct = explicitAccount(doc, 'revenue') || REVENUE;
+        const acct = explicitAccount(doc) || REVENUE;
         return [line(AR, amt, 0, 'Accrued receivable'), line(acct, 0, amt, doc.category || 'Revenue')];
     },
     'TXN-ACCRUE-AP': (doc, ctx) => {
@@ -435,23 +445,30 @@ function finalize(lines, meta) {
 // Main entry: build a journal for a business document, or return null when the
 // document does not post. Output omits server-only fields (entity_id, posted_by,
 // posted_at) — db-service supplies those.
-export function buildJournal({ collection, id, document, mappings, date } = {}) {
+export function buildJournal({ collection, id, document, mappings, date, accounts } = {}) {
     const ruleId = selectRule(collection, document);
     if (!ruleId) return null;
     const builder = RULES[ruleId];
     if (!builder) return null;
-    const lines = builder(document || {}, { mappings: mappings || {} });
-    const when = date || document?.timestamp || document?.due_date || document?.date || new Date();
-    return finalize(lines, {
-        posting_rule_id: ruleId,
-        journal_type: 'system',
-        generated_by: 'posting_engine',
-        description: describeRule(ruleId),
-        source: { collection, id: id || null },
-        period_key: periodKey(when),
-        status: 'posted',
-        memo: document?.vendor_name || document?.customer_name || ''
-    });
+    // Overlay the live chart so a user-created categorizing account (absent from the
+    // static seed) resolves to its real type/name in the posted lines.
+    _liveAccounts = accounts || null;
+    try {
+        const lines = builder(document || {}, { mappings: mappings || {} });
+        const when = date || document?.timestamp || document?.due_date || document?.date || new Date();
+        return finalize(lines, {
+            posting_rule_id: ruleId,
+            journal_type: 'system',
+            generated_by: 'posting_engine',
+            description: describeRule(ruleId),
+            source: { collection, id: id || null },
+            period_key: periodKey(when),
+            status: 'posted',
+            memo: document?.vendor_name || document?.customer_name || ''
+        });
+    } finally {
+        _liveAccounts = null;
+    }
 }
 
 // Opening-balance journal at cutover. `entries` are [{ account_code, debit, credit }]

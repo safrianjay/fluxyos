@@ -722,19 +722,6 @@ window.showAddTransactionModal = function(options = {}) {
     // when it is one of the six built-ins; otherwise the account name is used.
     const ACCOUNT_TO_CATEGORY = { '4000': 'Revenue', '6100': 'Marketing', '6200': 'SaaS', '6300': 'Infrastructure', '6400': 'Operations' };
     const defaultDirection = TYPE_TO_DIRECTION[String(defaultType).toLowerCase()] || 'out';
-    // Recently-used accounts (client-only, no schema change) surface at the top of
-    // the picker. Kept small and per-browser; graduated to per-vendor in Phase 3.
-    const RECENT_ACCOUNTS_KEY = 'fluxy_recent_accounts';
-    function readRecentAccounts() {
-        try { const a = JSON.parse(localStorage.getItem(RECENT_ACCOUNTS_KEY) || '[]'); return Array.isArray(a) ? a.slice(0, 8) : []; } catch (_) { return []; }
-    }
-    function pushRecentAccount(code) {
-        if (!code) return;
-        try {
-            const next = [String(code), ...readRecentAccounts().filter((c) => String(c) !== String(code))].slice(0, 8);
-            localStorage.setItem(RECENT_ACCOUNTS_KEY, JSON.stringify(next));
-        } catch (_) { /* private mode / quota — non-fatal */ }
-    }
 
     // Always destroy and recreate so context options (title, labels) are fresh
     const existing = document.getElementById('global-tx-modal');
@@ -1685,15 +1672,14 @@ window.showAddTransactionModal = function(options = {}) {
         (async () => {
             try {
                 const { ds, scopeId } = await resolveTxServiceWhenReady();
-                const [chart, recent] = [await ds.getChartForPicker(scopeId), readRecentAccounts()];
+                const chart = await ds.getChartForPicker(scopeId);
                 const initialDir = context === 'bill' ? 'out' : (directionSelect ? directionSelect.value : defaultDirection);
                 accountPicker = window.FluxyAccountPicker.mount(accountMount, {
                     name: 'account_code',
                     accounts: chart,
                     direction: context === 'bill' ? 'out' : (DIRECTION_TO_ACCT_FILTER[initialDir] ?? null),
-                    recentCodes: recent,
                     placeholder: 'Select an account',
-                    onChange: (code, account) => { accountUserTouched = true; pushRecentAccount(code); setDerivedCategory(account); },
+                    onChange: (code, account) => { accountUserTouched = true; setDerivedCategory(account); },
                     onCreateAccount: () => { window.open('/accounting', '_blank'); }
                 });
                 accountPicker.setDirection(context === 'bill' ? 'out' : (DIRECTION_TO_ACCT_FILTER[initialDir] ?? null));

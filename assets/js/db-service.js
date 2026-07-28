@@ -3277,8 +3277,9 @@ class DataService {
             let fresh = null;
             if (afterPayload) {
                 const mappings = await this._loadAcctMappings(userId);
+                const accounts = await this._loadChartAccountsMap(userId);
                 fresh = buildJournal({
-                    collection: sourceCollection, id: sourceRef.id, document: afterPayload, mappings,
+                    collection: sourceCollection, id: sourceRef.id, document: afterPayload, mappings, accounts,
                     date: afterPayload.timestamp || afterPayload.due_date || afterPayload.renewal_date || null
                 });
                 if (fresh) {
@@ -3351,11 +3352,13 @@ class DataService {
         await this._assertOpenPostingPeriod(userId, opts.date || payload.timestamp || payload.due_date || payload.renewal_date || null);
         try {
             const mappings = await this._loadAcctMappings(userId);
+            const accounts = await this._loadChartAccountsMap(userId);
             const journal = buildJournal({
                 collection: sourceCollection,
                 id: sourceRef.id,
                 document: payload,
                 mappings,
+                accounts,
                 date: opts.date || payload.timestamp || payload.due_date || payload.renewal_date || null
             });
             if (!journal) { payload.accounting_status = 'excluded'; return null; }
@@ -3425,6 +3428,7 @@ class DataService {
         const scope = this._scope(userId);
         const entityId = this._resolvedScopeId(userId);
         const mappings = await this._loadAcctMappings(userId);
+        const accounts = await this._loadChartAccountsMap(userId);
 
         const items = [];
         for (const col of collections) {
@@ -3444,7 +3448,7 @@ class DataService {
         let skippedClosed = 0;
         for (const it of items) {
             const journal = buildJournal({
-                collection: it.collection, id: it.id, document: it.data, mappings,
+                collection: it.collection, id: it.id, document: it.data, mappings, accounts,
                 date: it.data.timestamp || it.data.due_date || it.data.renewal_date || null
             });
             if (!journal) { toExclude.push(it.ref); continue; }
@@ -3745,6 +3749,7 @@ class DataService {
         });
         this._acctTaxMapCache = {}; // a new account may carry a tax_code → refresh the bridge
         this._chartPickerCache = {}; // new account must reach the entry-drawer picker
+        this._chartAcctMapCache = {}; // posting engine must see the new account
         return { id: code, ...payload };
     }
 
@@ -3780,6 +3785,7 @@ class DataService {
             source: 'dashboard'
         });
         this._chartPickerCache = {}; // archive/reactivate changes the picker list
+        this._chartAcctMapCache = {};
         return { id: key, ...current, is_active: active };
     }
 
@@ -3809,6 +3815,21 @@ class DataService {
         }
         this._chartPickerCache[key] = list;
         return list;
+    }
+
+    // code → {type, name} from the live chart, so the pure posting engine can honor
+    // USER-CREATED categorizing accounts (absent from its static seed). Cached per
+    // scope; reuses the picker chart read.
+    async _loadChartAccountsMap(userId) {
+        this._chartAcctMapCache = this._chartAcctMapCache || {};
+        const key = this._scope(userId);
+        if (this._chartAcctMapCache[key]) return this._chartAcctMapCache[key];
+        const map = {};
+        try {
+            (await this.getChartForPicker(userId)).forEach((a) => { if (a.code) map[a.code] = { type: a.type, name: a.name }; });
+        } catch (_) { /* empty */ }
+        this._chartAcctMapCache[key] = map;
+        return map;
     }
 
     // Workspace vendor→account memory (Phase 3): normalized vendor name → the last

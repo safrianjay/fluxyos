@@ -67,8 +67,9 @@ test('accounting engine posts a balanced journal for every business event', asyn
 });
 
 // An explicit account_code chosen in the entry drawer overrides automatic account
-// resolution — for expenses AND income — while invalid / wrong-type codes fall
-// back to today's behavior (regression safety for legacy rows without the field).
+// resolution — for expenses AND income, and for ANY real account type (the picker,
+// not the engine, gates what's offered per direction). Codes absent from the live
+// chart fall back to the resolution chain (regression safety for legacy rows).
 test('accounting engine honors an explicit account_code, falling back safely', async ({ page }) => {
     await page.goto('/pricing');
     const r = await page.evaluate(async () => {
@@ -88,8 +89,9 @@ test('accounting engine honors an explicit account_code, falling back safely', a
             feeExplicit: debitCode(j('transactions', 'a4', { type: 'fee', amount: 2500, account_code: '6440' })),
             // Unknown code → falls back to the resolution chain (Marketing → 6100).
             expBadCode: debitCode(j('transactions', 'a5', { type: 'expense', amount: 150000, category: 'Marketing', account_code: '9999' })),
-            // Income pinned to an EXPENSE account is rejected (wrong type) → stays Revenue 4000.
-            incWrongType: creditCode(j('transactions', 'a6', { type: 'income', amount: 5000000, account_code: '6100' })),
+            // An explicit pick is honored regardless of type — the drawer picker gates
+            // what's offered per direction, so the engine trusts a real chosen code.
+            incAnyType: creditCode(j('transactions', 'a6', { type: 'income', amount: 5000000, account_code: '2100' })),
             // No account_code → unchanged legacy behavior (income credits 4000).
             incNoCode: creditCode(j('transactions', 'a7', { type: 'income', amount: 5000000 })),
             explicitHelper: e.explicitAccount({ account_code: '6420' }, 'expense')
@@ -100,7 +102,51 @@ test('accounting engine honors an explicit account_code, falling back safely', a
     expect(r.arExplicit).toBe('7100');
     expect(r.feeExplicit).toBe('6440');
     expect(r.expBadCode).toBe('6100');
-    expect(r.incWrongType).toBe('4000');
+    expect(r.incAnyType).toBe('2100');
     expect(r.incNoCode).toBe('4000');
     expect(r.explicitHelper).toBe('6420');
+});
+
+// A USER-CREATED account (absent from the static seed) is honored when the live
+// chart is passed to buildJournal via `accounts` — this is the exact bug a founder
+// hit creating a custom "Service Fee" account and picking it in Add Transaction.
+// Without the overlay the code isn't recognized and the entry falls back to a seed
+// default; with it, the posted line carries the account's real code, type, and name.
+test('accounting engine honors a user-created account from the live chart overlay', async ({ page }) => {
+    await page.goto('/pricing');
+    const r = await page.evaluate(async () => {
+        const e = await import('/assets/js/accounting-engine.js');
+        const d = new Date('2026-06-15T03:00:00Z');
+        // A custom account the user made — a code the seed doesn't contain.
+        const accounts = { '6810': { type: 'expense', name: 'Service Fee' } };
+        const debit = (jr) => jr.lines.find((l) => l.debit > 0) || {};
+        // Money Out expense pinned to the custom account, WITH the live chart.
+        const withOverlay = debit(e.buildJournal({
+            collection: 'transactions', id: 'u1',
+            document: { type: 'expense', amount: 90000, category: 'Marketing', account_code: '6810' },
+            accounts, date: d
+        }));
+        // WITHOUT the overlay the unknown code isn't a real account → chain fallback (6100).
+        const noOverlay = debit(e.buildJournal({
+            collection: 'transactions', id: 'u2',
+            document: { type: 'expense', amount: 90000, category: 'Marketing', account_code: '6810' },
+            date: d
+        }));
+        // The overlay is scoped to the single call — it doesn't leak into later journals.
+        const afterCode = debit(e.buildJournal({
+            collection: 'transactions', id: 'u3',
+            document: { type: 'expense', amount: 90000, category: 'Marketing', account_code: '6810' },
+            date: d
+        }));
+        return {
+            overlayCode: withOverlay.account_code, overlayName: withOverlay.account_name,
+            overlayType: withOverlay.account_type,
+            noOverlayCode: noOverlay.account_code, afterCode: afterCode.account_code
+        };
+    });
+    expect(r.overlayCode).toBe('6810');
+    expect(r.overlayName).toBe('Service Fee');
+    expect(r.overlayType).toBe('expense');
+    expect(r.noOverlayCode).toBe('6100'); // falls back without the live chart
+    expect(r.afterCode).toBe('6100');      // no state leak between builds
 });

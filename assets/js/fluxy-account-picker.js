@@ -3,8 +3,8 @@
 //
 // FluxySelect (fluxy-select.js) enhances a native <select> but has NO search and
 // ignores <optgroup>. The entry-drawer Account field needs both: a substring
-// search over dozens of accounts and grouping (Recently used, then by SAK
-// category) with a per-row account-type badge. This is that component.
+// search over dozens of accounts and grouping (by SAK category) with a per-row
+// account-type badge. This is that component.
 //
 // Contract mirrors the design system: white pill trigger + body-portaled menu
 // (so a transformed drawer ancestor can't clip it), viewport-aware positioning,
@@ -32,8 +32,12 @@
         cogs: 'Cost of Goods Sold', operating_expense: 'Operating Expenses', other_expense: 'Other Expenses'
     };
     const TYPE_LABEL = { asset: 'Asset', liability: 'Liability', equity: 'Equity', revenue: 'Revenue', expense: 'Expense' };
-    // Account types offered per money direction. `null` direction = all selectable.
-    const DIRECTION_TYPES = { in: ['revenue'], out: ['expense'] };
+    // Account types offered per money direction. Money out shows debit-side
+    // categorizing accounts (expense + asset/liability/equity — e.g. buying an
+    // asset, paying down a liability, an owner drawing); money in shows credit-side
+    // ones (revenue + liability/equity). Broad enough that any user-created account
+    // is findable, so a custom account is never hidden. `null` direction = all.
+    const DIRECTION_TYPES = { in: ['revenue', 'liability', 'equity'], out: ['expense', 'asset', 'liability', 'equity'] };
 
     let openInstance = null;
 
@@ -56,7 +60,6 @@
         const o = opts || {};
         let accounts = Array.isArray(o.accounts) ? o.accounts.slice() : [];
         let direction = o.direction || null;              // 'in' | 'out' | null
-        let recentCodes = Array.isArray(o.recentCodes) ? o.recentCodes.slice() : [];
         let value = o.value || '';
         const onChange = typeof o.onChange === 'function' ? o.onChange : null;
         const onCreate = typeof o.onCreateAccount === 'function' ? o.onCreateAccount : null;
@@ -127,16 +130,8 @@
                 || String(a.name).toLowerCase().indexOf(q) !== -1
                 || String(a.name_id || '').toLowerCase().indexOf(q) !== -1;
             const vis = visibleAccounts().filter(match);
-            const visCodes = new Set(vis.map((a) => String(a.code)));
             const groups = [];
-            // Recently used first (only codes that are still visible), de-duplicated.
-            const recent = [];
-            const seen = new Set();
-            recentCodes.forEach((c) => {
-                if (visCodes.has(String(c)) && !seen.has(String(c))) { seen.add(String(c)); recent.push(accountByCode(c)); }
-            });
-            if (recent.length) groups.push({ label: 'Recently used', accounts: recent });
-            // Then grouped by SAK category (or type when absent), stable code order.
+            // Grouped by SAK category (or type when absent), stable code order.
             const byCat = {};
             vis.forEach((a) => {
                 const key = a.sak_category || a.type || 'other';
