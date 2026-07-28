@@ -830,23 +830,6 @@
 
         let activeDrawerBillId = null;
         let activeDrawerBill = null;
-        let invoiceAttachInFlight = false;
-
-        function renderAttachedInvoicesList(bill) {
-            const list = Array.isArray(bill.attached_documents) ? bill.attached_documents : [];
-            const invoiceItems = list.filter(item => item && (item.role === 'invoice' || !item.role));
-            if (!invoiceItems.length) return '';
-            return `
-                <div class="rounded-lg border border-emerald-100 bg-emerald-50/40 p-3 space-y-1.5">
-                    <p class="text-[12px] font-bold text-emerald-700 uppercase tracking-wider">Invoice attached</p>
-                    ${invoiceItems.map(item => {
-                        const fileName = String(item.storage_path || '').split('/').pop() || 'invoice';
-                        return `<p class="text-[12px] text-gray-700 truncate" title="${escapeHtml(fileName)}">${escapeHtml(fileName)}</p>`;
-                    }).join('')}
-                </div>
-            `;
-        }
-
         function openBillDrawer(bill) {
             activeDrawerBillId = bill.id;
             activeDrawerBill = bill;
@@ -860,9 +843,6 @@
             const createdAt = bill.timestamp
                 ? bill.timestamp.toDate().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
                 : null;
-            const hasInvoice = Array.isArray(bill.attached_documents) && bill.attached_documents.some(item => item && (item.role === 'invoice' || !item.role));
-            const attachLabel = hasInvoice ? 'Replace Invoice' : 'Attach Invoice';
-
             document.getElementById('bill-drawer-content').innerHTML = `
                 <div class="fluxy-drawer-stack">
                     <div>${getStatusBadge(status)}</div>
@@ -905,21 +885,11 @@
                         </div>`}
                     </section>
 
-                    ${renderAttachedInvoicesList(bill)}
-
-                    <section class="fluxy-drawer-section">
-                        <h3 class="fluxy-drawer-section-title">Invoice</h3>
-                        <button id="bill-attach-invoice-btn" type="button" class="w-full flex items-center justify-between px-3 py-2.5 bg-white border border-gray-200 hover:border-[#EA580C] hover:bg-orange-50/40 text-gray-700 rounded-lg text-[12px] font-medium transition-colors">
-                            <span>${escapeHtml(attachLabel)}</span>
-                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-                        </button>
-                        <input type="file" id="bill-attach-invoice-file" accept="image/jpeg,image/png,image/webp,application/pdf" class="sr-only">
-                        <p class="fluxy-drawer-hint">JPG, PNG, WebP, or PDF · Max 5 MB. Attaching does not mark the bill as paid.</p>
-                    </section>
+                    <div id="bill-attachments"></div>
                 </div>
             `;
 
-            wireInvoiceAttachControls();
+            mountBillAttachments(bill);
             const markPaidBtn = document.getElementById('bill-mark-paid-btn');
             if (markPaidBtn) markPaidBtn.classList.toggle('hidden', isPaid);
             document.getElementById('bill-drawer-backdrop').classList.remove('hidden');
@@ -928,72 +898,42 @@
             });
         }
 
-        function wireInvoiceAttachControls() {
-            const attachBtn = document.getElementById('bill-attach-invoice-btn');
-            const fileInput = document.getElementById('bill-attach-invoice-file');
-            if (!attachBtn || !fileInput) return;
-            attachBtn.onclick = () => {
-                if (invoiceAttachInFlight) return;
-                fileInput.click();
-            };
-            fileInput.onchange = async () => {
-                const file = fileInput.files?.[0];
-                fileInput.value = '';
-                if (!file || !activeDrawerBillId || invoiceAttachInFlight) return;
-                const api = window.FluxyDocumentAttachment;
-                if (!api) {
-                    window.showToast?.('Attachment uploader is still loading. Please try again in a moment.', 'error');
-                    return;
-                }
-                const check = api.validateFile(file);
-                if (!check.ok) {
-                    window.showToast?.(check.message, 'error');
-                    return;
-                }
-                const ds = window.__fluxyBillsContext?.ds;
-                const user = window.__fluxyBillsContext?.auth?.currentUser;
-                if (!ds || !user) {
-                    window.showToast?.('You need to sign in again before uploading this document.', 'error');
-                    return;
-                }
-
-                invoiceAttachInFlight = true;
-                attachBtn.disabled = true;
-                attachBtn.classList.add('opacity-60', 'cursor-wait');
-                const originalLabel = attachBtn.querySelector('span')?.textContent || 'Attach Invoice';
-                attachBtn.querySelector('span').textContent = 'Uploading...';
-
-                try {
-                    const result = await api.attachToExistingRecord({
-                        ds,
-                        userId: user.uid,
-                        file,
-                        role: 'invoice',
-                        sourceContext: 'bill',
-                        targetCollection: 'bills',
-                        targetId: activeDrawerBillId,
-                        Timestamp
-                    });
-
-                    // Update local cache so the drawer re-render shows it without a full reload.
-                    const bill = allBills.find(b => b.id === activeDrawerBillId);
-                    if (bill) {
-                        if (!Array.isArray(bill.attached_documents)) bill.attached_documents = [];
-                        bill.attached_documents.push(result.attachment);
-                        bill.invoice_status = 'attached';
-                        openBillDrawer(bill);
+        // Source documents for this bill (supplier invoices, payment proof). The
+        // shared component owns upload/preview/download/replace/detach.
+        async function mountBillAttachments(bill) {
+            const host = document.getElementById('bill-attachments');
+            const ds = window.__fluxyBillsContext?.ds;
+            const user = window.__fluxyBillsContext?.auth?.currentUser;
+            if (!host || !ds || !user) return;
+            try {
+                const api = window.FluxyDocumentAttachment || await loadFluxyDocumentAttachment();
+                api.renderAttachmentsSection({
+                    hostEl: host,
+                    ds,
+                    userId: user.uid,
+                    record: bill,
+                    targetCollection: 'bills',
+                    targetId: bill.id,
+                    role: 'invoice',
+                    sourceContext: 'bill',
+                    variant: 'drawer-section',
+                    note: 'Attaching does not mark the bill as paid.',
+                    Timestamp,
+                    onChange: ({ attachments }) => {
+                        // Attaching an invoice never changes payment status.
+                        const cached = allBills.find(b => b.id === bill.id);
+                        const patch = {
+                            attached_documents: attachments,
+                            invoice_status: attachments.some(a => a && (a.role === 'invoice' || !a.role)) ? 'attached' : null
+                        };
+                        Object.assign(bill, patch);
+                        if (cached) Object.assign(cached, patch);
                     }
-                    window.showToast?.('Invoice attached to bill.', 'success');
-                } catch (err) {
-                    console.error('Attach invoice failed:', err);
-                    window.showToast?.(err?.message || 'We could not attach this document. Please try again.', 'error');
-                    attachBtn.querySelector('span').textContent = originalLabel;
-                } finally {
-                    invoiceAttachInFlight = false;
-                    attachBtn.disabled = false;
-                    attachBtn.classList.remove('opacity-60', 'cursor-wait');
-                }
-            };
+                });
+            } catch (err) {
+                console.error('Attachments section failed to load:', err);
+                host.innerHTML = '<p class="fluxy-drawer-hint">Attachments could not be loaded. Refresh the page and try again.</p>';
+            }
         }
 
         function closeBillDrawer() {

@@ -20,6 +20,9 @@
             defaultType: 'pending_payable',
             defaultStatus: 'Missing Receipt',
             source: 'bill_scan',
+            targetCollection: 'bills',
+            documentRole: 'invoice',
+            sourceContext: 'bill',
             createdVia: 'ai_bill_capture',
             toastSuccess: 'Bill scanned and added to your schedule.',
             saveLabel: 'Save Bill',
@@ -36,6 +39,9 @@
             defaultType: 'expense',
             defaultStatus: 'Completed',
             source: 'transaction_scan',
+            targetCollection: 'transactions',
+            documentRole: 'receipt',
+            sourceContext: 'transaction',
             createdVia: 'ai_transaction_capture',
             toastSuccess: 'Transaction scanned and added to your ledger.',
             saveLabel: 'Save Transaction',
@@ -52,6 +58,9 @@
             defaultType: 'expense',
             defaultStatus: 'Completed',
             source: 'subscription_scan',
+            targetCollection: 'subscriptions',
+            documentRole: 'receipt',
+            sourceContext: 'subscription',
             createdVia: 'ai_subscription_capture',
             toastSuccess: 'Subscription scanned and added to your recurring costs.',
             saveLabel: 'Save Subscription',
@@ -156,6 +165,22 @@
         } catch {
             return file;
         }
+    }
+
+    // The shared attachment helper is only eagerly loaded on bill.html. Reuse the
+    // same memo key as shared-dashboard.js so the script is fetched at most once
+    // per page regardless of who asks first.
+    function loadAttachmentApi() {
+        if (window.FluxyDocumentAttachment) return Promise.resolve(window.FluxyDocumentAttachment);
+        if (window.__fluxyDocumentAttachmentPromise) return window.__fluxyDocumentAttachmentPromise;
+        window.__fluxyDocumentAttachmentPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = '/assets/js/document-attachment.js';
+            script.onload = () => resolve(window.FluxyDocumentAttachment);
+            script.onerror = () => reject(new Error('Unable to load document attachment helper.'));
+            document.head.appendChild(script);
+        });
+        return window.__fluxyDocumentAttachmentPromise;
     }
 
     function destroyPickers() {
@@ -1090,14 +1115,73 @@
             saveBtn.textContent = 'Saving…';
         }
 
+        // Keep the scanned file as the record's source document. It is uploaded
+        // BEFORE the create so the attachment rides along in the same write (the
+        // pattern the Add Transaction drawer already uses) — a second write on a
+        // fresh record would otherwise trip the update validators. An attachment
+        // failure must never cost the user their reviewed extraction, so every
+        // problem here degrades to a warning and the record still saves.
+        let attachment = null;
+        let attachWarning = null;
+        if (file) {
+            if (saveBtn) saveBtn.textContent = 'Attaching document…';
+            try {
+                const api = await loadAttachmentApi();
+                const fitted = await api.fitFileForUpload(file);
+                if (!fitted.file) {
+                    attachWarning = fitted.reason === 'too_large'
+                        ? 'Saved. The source file is over 5 MB, so it was not attached.'
+                        : 'Saved, but the source file could not be attached.';
+                } else {
+                    const prepared = await api.prepareAttachmentForNewRecord({
+                        ds: ctx.ds,
+                        userId: user.uid,
+                        file: fitted.file,
+                        role: cfg.documentRole,
+                        sourceContext: cfg.sourceContext,
+                        Timestamp: ctx.ds.Timestamp
+                    });
+                    attachment = prepared;
+                    payload.attached_documents = [prepared.attachmentForArray];
+                    if (prepared.downloadURL && state.mode === 'transaction') {
+                        // Keeps the legacy ledger receipt thumbnail working.
+                        payload.receipt_url = prepared.downloadURL;
+                    }
+                    if (state.mode === 'bill') payload.invoice_status = 'attached';
+                }
+            } catch (err) {
+                console.error('[document-capture] attach failed:', err);
+                const code = String(err?.code || '');
+                attachWarning = code.includes('limit')
+                    ? (err.message || 'Saved, but your plan limit stopped the document from being attached.')
+                    : 'Saved, but the source file could not be attached.';
+                if (code.includes('storage_limit')) {
+                    window.FluxyAccessGuard?.showSubscriptionLimitModal?.({
+                        title: code === 'trial_storage_limit_reached' ? 'Trial storage limit reached' : 'Storage limit reached',
+                        body: err?.message || 'Choose a plan to keep your source documents.',
+                        confirmLabel: code === 'trial_storage_limit_reached' ? 'Activate subscription' : 'Upgrade plan'
+                    });
+                }
+            }
+            if (saveBtn) saveBtn.textContent = 'Saving…';
+        }
+
         try {
-            await ctx.ds[cfg.saveMethod](user.uid, payload);
+            const savedRef = await ctx.ds[cfg.saveMethod](user.uid, payload);
+            if (attachment?.documentId && savedRef?.id) {
+                // Back-link the document to the record it created.
+                try {
+                    await ctx.ds.linkDocumentTarget(user.uid, attachment.documentId, cfg.targetCollection, savedRef.id);
+                } catch (_) { /* the record already carries the attachment */ }
+            }
             const savedDayKey = (state.mode === 'transaction' && primaryDate)
                 ? primaryDate.toISOString().slice(0, 10)
                 : null;
             const range = (typeof ctx.getRange === 'function') ? ctx.getRange() : null;
             const outsideRange = !!(savedDayKey && range && (savedDayKey < range.start || savedDayKey > range.end));
-            if (outsideRange) {
+            if (attachWarning) {
+                window.showToast?.(attachWarning, 'info');
+            } else if (outsideRange) {
                 window.showToast?.(`Transaction saved on ${savedDayKey}. Switch the date range to view it.`, 'info');
             } else {
                 window.showToast?.(cfg.toastSuccess, 'success');

@@ -661,9 +661,41 @@ image receipt uploads on **transactions** also dual-write the existing
 `attached_documents`.
 
 `DataService` exposes `uploadDocument`, `addDocumentMetadata`,
-`linkDocumentTarget`, and `attachDocumentToRecord`. The shared UI
-component lives in `assets/js/document-attachment.js` and is exposed as
+`linkDocumentTarget`, `attachDocumentToRecord`, `getDocumentDownloadURL`,
+and `detachDocumentFromRecord`. The shared UI component lives in
+`assets/js/document-attachment.js` and is exposed as
 `window.FluxyDocumentAttachment`.
+
+**Reading a stored document.** Attachment entries carry only
+`storage_path`, and `uploadDocument` returns a download URL for images
+only. Any UI that shows or downloads an attachment must resolve the path
+through `ds.getDocumentDownloadURL(userId, storagePath)` (session-cached).
+
+**Detaching is a soft-detach.** Financial source documents are never
+hard-deleted — `allow delete: if false` is deliberate in both
+`storage.rules` and `firestore.rules`.
+`ds.detachDocumentFromRecord(userId, targetCollection, targetId, attachment)`
+removes the entry from `attached_documents` (via `arrayRemove`, so the
+caller MUST pass the entry exactly as read back from the record), flips the
+metadata to `upload_status: 'removed'`, clears a bill's `invoice_status`
+with `deleteField()` once the last invoice is gone, and writes a
+`document.detached` audit log. The Storage object survives.
+
+**Scanned documents are auto-attached.** `assets/js/document-capture.js`
+uploads the scanned file before the record create and folds
+`attached_documents` (plus `receipt_url` for images, `invoice_status` for
+bills) into the create payload, then back-links with `linkDocumentTarget`.
+An attachment failure never blocks the save — the record is written and the
+user gets a warning toast. Files over 5 MB are compressed when they are
+images and skipped otherwise.
+
+**Detail views.** `FluxyDocumentAttachment.renderAttachmentsSection({...})`
+renders the Attachments block (chronological list, preview, download,
+replace, detach) and is mounted by `ledger.html` (`#tx-detail-attachments`,
+`targetCollection: 'transactions'`) and `bill.html` (`#bill-attachments`,
+`targetCollection: 'bills'`). `ds.uploadReceipt` / `ds.updateTransactionReceipt`
+are the pre-`documents` path and now have **no callers** — do not reuse them:
+`uploadReceipt` hardcodes `users/{uid}/receipts/` and bypasses `_scope()`.
 
 ### 4i. Bank Statement Imports — `users/{userId}/bank_statement_imports/{importId}`
 

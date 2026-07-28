@@ -15,6 +15,11 @@ const os = require('os');
  * `firebase deploy --only storage` succeeds (blocked on Firebase console
  * enabling the new Storage API for this project), set
  * `STORAGE_RULES_DEPLOYED=1` in the env to opt those tests back in.
+ *
+ * The two "Add Transaction with PNG/PDF" @storage specs currently fail in this
+ * harness for an unrelated reason (an onboarding overlay swallows the submit
+ * click) — they fail identically on a clean checkout, so treat them as known-red
+ * rather than a regression signal.
  */
 
 const STORAGE_READY = !!process.env.STORAGE_RULES_DEPLOYED;
@@ -143,10 +148,10 @@ test.describe('Add Transaction drawer — shared attachment mount', () => {
     });
 });
 
-// ---------- 2. Bill Details drawer Attach Invoice -----------------------
+// ---------- 2. Bill Details drawer Attachments section ------------------
 
-test.describe('Bill Details drawer — Attach Invoice wiring', () => {
-    test('Attach Invoice button is enabled; payment controls match bill state', async ({ page }) => {
+test.describe('Bill Details drawer — Attachments section wiring', () => {
+    test('Attachments section mounts; payment controls match bill state', async ({ page }) => {
         const consoleErrors = [];
         page.on('console', (msg) => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
         page.on('pageerror', (err) => consoleErrors.push(`pageerror: ${err.message}`));
@@ -186,10 +191,13 @@ test.describe('Bill Details drawer — Attach Invoice wiring', () => {
         await page.locator('[data-action="review"]').first().click();
         await expect(page.locator('#bill-drawer')).not.toHaveClass(/translate-x-full/);
 
-        const attachBtn = page.locator('#bill-attach-invoice-btn');
-        await expect(attachBtn).toBeVisible();
-        await expect(attachBtn).toBeEnabled();
-        await expect(attachBtn).toContainText(/Attach Invoice|Replace Invoice/);
+        // The shared Attachments section replaced the bespoke Attach Invoice
+        // button: a file input plus preview/download/replace/remove per row.
+        const attachments = page.locator('#bill-attachments');
+        await expect(attachments).toBeVisible();
+        await expect(attachments.getByText('Attachments')).toBeVisible();
+        await expect(attachments.locator('input[type="file"]')).toHaveCount(1);
+        await expect(attachments).toContainText(/Attaching does not mark the bill as paid/i);
 
         // "Convert to Transaction" was removed when Mark as Paid shipped
         // (DataService.markBillPaid posts the expense instead).
@@ -229,21 +237,45 @@ test.describe('Storage-dependent end-to-end uploads @storage', () => {
         await expect(page.locator('#global-tx-modal')).toHaveCount(0, { timeout: 30_000 });
     });
 
-    test('Bill Attach Invoice succeeds and renders "Invoice attached" panel', async ({ page }) => {
+    test('Bill attachment upload succeeds and lists the file', async ({ page }) => {
         await page.goto('/bill.html');
         await dismissOnboardingIfPresent(page);
         await page.locator('[data-action="review"]').first().click();
-        const attachBtn = page.locator('#bill-attach-invoice-btn');
-        await expect(attachBtn).toBeEnabled();
+        const attachments = page.locator('#bill-attachments');
+        await expect(attachments.locator('input[type="file"]')).toHaveCount(1);
 
-        const [fileChooser] = await Promise.all([
-            page.waitForEvent('filechooser'),
-            attachBtn.click(),
-        ]);
-        await fileChooser.setFiles(tempPdf());
+        const pdf = tempPdf();
+        await attachments.locator('input[type="file"]').setInputFiles(pdf);
 
-        // Toast appears, drawer re-renders, attached panel shows up.
-        await expect(page.locator('text=Invoice attached to bill')).toBeVisible({ timeout: 30_000 });
-        await expect(page.locator('#bill-drawer-content')).toContainText(/Invoice attached/i);
+        // Toast appears and the row lands in the Attachments list.
+        await expect(page.locator('text=Document attached')).toBeVisible({ timeout: 30_000 });
+        await expect(attachments).toContainText(path.basename(pdf).replace(/[^\w.\-]+/g, '_'));
+        await expect(attachments.getByRole('button', { name: 'Remove attachment' }).first()).toBeVisible();
+    });
+
+    test('scanned transaction keeps its source file as an attachment', async ({ page }) => {
+        // The scan drawer POSTs to /api/v1/bills/extract, which the static QA
+        // server does not serve — run this one against `netlify dev` with
+        // SCAN_API_AVAILABLE=1.
+        test.skip(!process.env.SCAN_API_AVAILABLE, 'Needs the extraction API (run under netlify dev).');
+        await page.goto('/ledger.html');
+        await dismissOnboardingIfPresent(page);
+        await page.waitForFunction(() => typeof window.openScanTransactionDrawer === 'function');
+        await page.evaluate(() => window.openScanTransactionDrawer());
+
+        const png = tempPng();
+        await page.locator('#scan-drawer input[type="file"]').first().setInputFiles(png);
+        // Extraction runs (mock when OPENAI_API_KEY is unset), then review opens.
+        await expect(page.locator('#scan-review-form')).toBeVisible({ timeout: 60_000 });
+        await page.locator('#scan-review-form [name="vendor_name"]').fill('QA scan attach');
+        await page.locator('#scan-review-form [name="amount"]').fill('75000');
+        await page.locator('#scan-save-btn').click();
+        await expect(page.locator('#scan-drawer')).toBeHidden({ timeout: 60_000 });
+
+        // The saved record must carry the scanned file, not just its filename.
+        await page.waitForTimeout(2000);
+        await page.locator('td', { hasText: 'QA scan attach' }).first().click();
+        await expect(page.locator('#tx-detail-attachments')).toContainText(/Attachments/i, { timeout: 15_000 });
+        await expect(page.locator('#tx-detail-attachments')).not.toContainText(/No document attached/i);
     });
 });

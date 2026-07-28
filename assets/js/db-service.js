@@ -1,4 +1,4 @@
-import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
 import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, CHART_OF_ACCOUNTS_SEED, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, suggestCategorizingAccount, periodKey as acctPeriodKey } from "./accounting-engine.js";
@@ -136,6 +136,12 @@ class DataService {
         // so every entry point shares resolveDb (see assets/js/firestore-db.js).
         this.db = resolveDb(app);
         this._storage = null;
+        // storage_path -> download URL. Attachment lists resolve URLs lazily and
+        // repeatedly (open drawer, preview, download), so cache per session.
+        this._docUrlCache = new Map();
+        // Re-exported so non-module scripts (document-capture.js) can stamp real
+        // Firestore Timestamps without importing the SDK themselves.
+        this.Timestamp = Timestamp;
         // The acting user's uid for audit attribution. In the workspace model the
         // scope id (workspaceId) is distinct from the actor (the signed-in user),
         // so pages call setActor(user.uid) once after auth. Audit/attribution
@@ -960,7 +966,11 @@ class DataService {
         return payload;
     }
 
-    // --- RECEIPTS (legacy single-image flow; new code should use the DOCUMENTS methods below) ---
+    // --- RECEIPTS (legacy single-image flow; NO CALLERS REMAIN) ---
+    // Kept only so historical receipt_url values stay explicable. Do not reuse:
+    // the path below hardcodes users/{uid}/ and bypasses _scope(), so a teammate's
+    // upload would land outside the shared workspace tree. Use the DOCUMENTS
+    // methods instead.
     async uploadReceipt(userId, file) {
         await this.assertCanUseStorage(userId, file?.size || 0, { source: 'receipt' });
         const { getStorage, ref, uploadBytes, getDownloadURL } =
@@ -1022,6 +1032,21 @@ class DataService {
         };
     }
 
+    // Resolve a stored document back to a viewable/downloadable URL. uploadDocument
+    // only returns a URL for images (the legacy receipt_url dual-write), so this is
+    // the read path every attachment UI needs — PDFs included. Cached per session
+    // because the Attachments list resolves the same paths on preview + download.
+    async getDocumentDownloadURL(userId, storagePath) {
+        if (!storagePath) throw new Error('storagePath required');
+        if (this._docUrlCache.has(storagePath)) return this._docUrlCache.get(storagePath);
+        const { getStorage, ref, getDownloadURL } =
+            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
+        if (!this._storage) this._storage = getStorage(this.app);
+        const url = await getDownloadURL(ref(this._storage, storagePath));
+        this._docUrlCache.set(storagePath, url);
+        return url;
+    }
+
     async addDocumentMetadata(userId, documentId, payload) {
         const docRef = doc(this.db, `${this._scope(userId)}/documents/${documentId}`);
         await setDoc(docRef, {
@@ -1051,13 +1076,36 @@ class DataService {
         });
     }
 
-    async attachDocumentToRecord(userId, targetCollection, targetId, attachment) {
+    async attachDocumentToRecord(userId, targetCollection, targetId, attachment, options = {}) {
         if (!['transactions', 'bills', 'subscriptions'].includes(targetCollection)) {
             throw new Error(`Cannot attach a document to '${targetCollection}'.`);
         }
         const recordRef = doc(this.db, `${this._scope(userId)}/${targetCollection}/${targetId}`);
-        const update = { attached_documents: arrayUnion(attachment) };
+        // updated_at must be refreshed to request.time or the record update rule
+        // rejects anything that has already been edited (same reason as
+        // updateTransactionReceipt). Bills happened to pass without it; transactions
+        // do not.
+        const update = {
+            attached_documents: arrayUnion(attachment),
+            updated_at: serverTimestamp(),
+            updated_by: (this.actorUid || userId)
+        };
         if (targetCollection === 'bills') update.invoice_status = 'attached';
+        // Keep the legacy transaction thumbnail field in step with the other two
+        // write paths (Add Transaction drawer, scan capture). Images only —
+        // receipt_url is a public download URL and only transactions accept it.
+        if (targetCollection === 'transactions' && options.legacyReceiptUrl) {
+            update.receipt_url = options.legacyReceiptUrl;
+        }
+        // A receipt resolves the "Missing Receipt" issue — but only that status.
+        // Never silently complete a Pending record just because proof was attached.
+        let statusCompleted = false;
+        if (targetCollection === 'transactions'
+            && options.clearMissingReceiptStatus
+            && String(options.currentStatus || '').trim().toLowerCase() === 'missing receipt') {
+            update.status = 'Completed';
+            statusCompleted = true;
+        }
         await updateDoc(recordRef, update);
 
         // Link metadata back to the record it was attached to.
@@ -1067,6 +1115,65 @@ class DataService {
             target_id: targetId,
             updated_at: serverTimestamp()
         });
+        return { statusCompleted };
+    }
+
+    // Detach a document from a record WITHOUT destroying it. Financial source
+    // documents are never hard-deleted (storage.rules and firestore.rules both set
+    // `allow delete: if false` on purpose), so this unlinks the record and marks the
+    // metadata `removed`; the Storage object survives for audit.
+    async detachDocumentFromRecord(userId, targetCollection, targetId, attachment) {
+        if (!['transactions', 'bills', 'subscriptions'].includes(targetCollection)) {
+            throw new Error(`Cannot detach a document from '${targetCollection}'.`);
+        }
+        if (!attachment || !attachment.document_id) throw new Error('attachment required');
+        const scope = this._scope(userId);
+        const recordRef = doc(this.db, `${scope}/${targetCollection}/${targetId}`);
+
+        const update = {
+            // arrayRemove matches by deep equality, so the caller must pass the entry
+            // exactly as it was read back from the record — not a rebuilt copy.
+            attached_documents: arrayRemove(attachment),
+            updated_at: serverTimestamp(),
+            updated_by: (this.actorUid || userId)
+        };
+        // invoice_status is rule-validated as `in ['attached']`, so it can only be
+        // cleared by removing the key entirely once the last invoice is gone.
+        if (targetCollection === 'bills') {
+            const snap = await getDoc(recordRef);
+            const current = Array.isArray(snap.data()?.attached_documents) ? snap.data().attached_documents : [];
+            const invoicesLeft = current.filter(item => item
+                && item.document_id !== attachment.document_id
+                && (item.role === 'invoice' || !item.role));
+            if (!invoicesLeft.length) update.invoice_status = deleteField();
+        }
+        await updateDoc(recordRef, update);
+
+        try {
+            await updateDoc(doc(this.db, `${scope}/documents/${attachment.document_id}`), {
+                upload_status: 'removed',
+                updated_at: serverTimestamp()
+            });
+        } catch (_) {
+            // The record is already unlinked; a stale metadata flag must not surface
+            // as a failed detach to the user.
+        }
+
+        try {
+            await this.addAuditLog(userId, {
+                action: 'document.detached',
+                target_collection: 'documents',
+                target_id: attachment.document_id,
+                before: {
+                    role: attachment.role || null,
+                    target_collection: targetCollection,
+                    target_id: targetId
+                },
+                source: 'dashboard'
+            });
+        } catch (_) {
+            // Audit failure must not block the user-facing detach.
+        }
     }
 
     async updateTransactionType(userId, txId, newType, newIcon) {

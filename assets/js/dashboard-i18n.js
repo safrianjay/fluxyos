@@ -3750,6 +3750,35 @@
         "Attach Receipt": "Lampirkan Struk",
         "Attach receipt image": "Lampirkan gambar struk",
         "Attached documents": "Dokumen terlampir",
+        // Shared Attachments section (record detail views)
+        "Attachments": "Lampiran",
+        "Attach a document": "Lampirkan dokumen",
+        "No document attached to this record yet.": "Belum ada dokumen yang dilampirkan ke catatan ini.",
+        "JPG, PNG, WebP, or PDF · Max 5 MB · Attaching does not mark the bill as paid.": "JPG, PNG, WebP, atau PDF · Maks 5 MB · Melampirkan tidak menandai tagihan sebagai lunas.",
+        "Proof of income": "Bukti pemasukan",
+        "Payment proof": "Bukti pembayaran",
+        "Document": "Dokumen",
+        "Receipt · Uploaded before document tracking": "Struk · Diunggah sebelum pelacakan dokumen",
+        "This file could not be loaded.": "Berkas ini tidak dapat dimuat.",
+        "Replace": "Ganti",
+        "Uploading document…": "Mengunggah dokumen…",
+        "Removing…": "Menghapus…",
+        "Document attached.": "Dokumen dilampirkan.",
+        "Document replaced.": "Dokumen diganti.",
+        "Attachment removed.": "Lampiran dihapus.",
+        "New document attached, but the old one could not be removed.": "Dokumen baru dilampirkan, tetapi dokumen lama tidak dapat dihapus.",
+        "This file is larger than 5 MB. Please compress it and try again.": "Berkas ini lebih besar dari 5 MB. Kompres dulu, lalu coba lagi.",
+        "We could not attach this document. Please try again.": "Kami tidak dapat melampirkan dokumen ini. Silakan coba lagi.",
+        "We could not remove this attachment. Please try again.": "Kami tidak dapat menghapus lampiran ini. Silakan coba lagi.",
+        "Remove this attachment?": "Hapus lampiran ini?",
+        "It will be unlinked from this record. The file itself is kept for your audit trail.": "Lampiran akan dilepas dari catatan ini. Berkasnya tetap disimpan untuk jejak audit Anda.",
+        "Attachments could not be loaded. Refresh the page and try again.": "Lampiran tidak dapat dimuat. Muat ulang halaman, lalu coba lagi.",
+        // Scan drawer — the scanned file is kept as the record's source document
+        "Attaching document…": "Melampirkan dokumen…",
+        "Saved. The source file is over 5 MB, so it was not attached.": "Tersimpan. Berkas sumber lebih dari 5 MB, jadi tidak dilampirkan.",
+        "Saved, but the source file could not be attached.": "Tersimpan, tetapi berkas sumber tidak dapat dilampirkan.",
+        "Saved, but your plan limit stopped the document from being attached.": "Tersimpan, tetapi batas paket Anda menghentikan pelampiran dokumen.",
+        "Choose a plan to keep your source documents.": "Pilih paket untuk menyimpan dokumen sumber Anda.",
         "Cash movement": "Pergerakan kas",
         "Compressing...": "Mengompres...",
         "Downloaded": "Terunduh",
@@ -4109,6 +4138,11 @@
     //  Applied (in order) only to nodes that miss an exact dictionary key.
     // ─────────────────────────────────────────────────────────────────────────
     var PATTERNS = [
+        // Attachments section row meta: "<role> · Attached 28 Jul 2026". The role
+        // half is a fixed set, so translate it through the dictionary and leave the
+        // locale-formatted date alone.
+        { re: /^(Receipt|Invoice|Proof of income|Payment proof|Document) · Attached (.+)$/,
+          id: function (m) { return (ID[m[1]] || m[1]) + ' · Dilampirkan ' + m[2]; } },
         // Invoice auto-email delivery status pill + activity timeline (interpolated
         // with the customer email / attempt count / timestamp). Specific → general.
         { re: /^Sending email to (.+?)…$/i,

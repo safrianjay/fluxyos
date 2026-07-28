@@ -2573,42 +2573,6 @@
             if (!content || !actions) return;
 
             const sourceText = row.source || row.created_via || row.extraction_source || 'Manual / dashboard';
-            const attachments = Array.isArray(row.attached_documents) ? row.attached_documents : [];
-            const attachmentHtml = attachments.length
-                ? `<div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                    <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Attached documents</p>
-                    <div class="space-y-2">${attachments.map(doc => `
-                        <div class="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-[12px]">
-                            <span class="truncate font-semibold text-gray-700">${escapeHtml(doc.file_name || doc.document_id || 'Document')}</span>
-                            <span class="flex-shrink-0 text-gray-400">${escapeHtml(doc.role || doc.document_role || 'document')}</span>
-                        </div>
-                    `).join('')}</div>
-                </div>`
-                : '';
-            const receiptHtml = row.receipt_url
-                ? `<div>
-                    <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
-                    <a href="${escapeHtml(row.receipt_url)}" target="_blank" rel="noopener noreferrer">
-                        <img src="${escapeHtml(row.receipt_url)}" alt="Receipt" class="w-full rounded-xl border border-gray-200 object-contain max-h-72 hover:opacity-90 transition-opacity">
-                    </a>
-                </div>`
-                : '';
-            const attachHtml = !row.receipt_url && !isVoided
-                ? `<div>
-                    <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Receipt</p>
-                    <label id="tx-detail-receipt-label" for="tx-detail-receipt-file"
-                        class="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-gray-400 transition-colors">
-                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-                        <span id="tx-detail-receipt-filename" class="text-[14px] text-gray-500 truncate flex-1">Attach receipt image</span>
-                    </label>
-                    <input type="file" id="tx-detail-receipt-file" accept="image/*" class="sr-only">
-                    <div id="tx-detail-receipt-preview-wrapper" class="hidden mt-2">
-                        <img id="tx-detail-receipt-preview" src="" alt="Receipt preview" class="w-full rounded-xl border border-gray-200 object-contain max-h-48">
-                    </div>
-                    <p class="mt-1.5 text-[12px] text-gray-400">JPG, PNG or WebP · Max 1 MB · Compress the image first if it's too large</p>
-                </div>`
-                : '';
-
             content.innerHTML = `
                 <div class="flex items-start justify-between gap-4">
                     <div>
@@ -2629,9 +2593,7 @@
                     ${isVoided ? `<div class="col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-4"><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Void reason</p><p class="text-[14px] font-semibold text-gray-700">${escapeHtml(row.void_reason || '—')}</p></div>` : ''}
                 </div>
                 <div id="tx-detail-invoice-card"></div>
-                ${receiptHtml}
-                ${attachmentHtml}
-                ${attachHtml}
+                <div id="tx-detail-attachments"></div>
                 ${!isVoided ? (() => {
                     const cb = getLedgerCashBadge(row);
                     const bb = window.__resolveLedgerBudgetBadge?.(row);
@@ -2654,16 +2616,65 @@
                 : `<div class="grid grid-cols-2 gap-2">
                     <button id="tx-detail-edit-btn" type="button" class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">Edit transaction</button>
                     <button id="tx-detail-void-btn" type="button" class="rounded-xl border border-red-200 bg-white px-4 py-3 text-[14px] font-bold text-red-600 hover:bg-red-50 transition-colors">Void transaction</button>
-                </div>
-                ${!row.receipt_url ? `<button id="tx-detail-attach-btn" type="button" disabled class="mt-2 w-full py-3 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-                    <span id="tx-detail-attach-label">Attach Receipt</span>
-                </button>` : ''}`;
+                </div>`;
 
             document.getElementById('tx-detail-edit-btn')?.addEventListener('click', () => renderTxEditForm(row));
             document.getElementById('tx-detail-void-btn')?.addEventListener('click', () => voidActiveTransaction(row));
-            if (!row.receipt_url && !isVoided) _wireDetailAttachInput(row);
+            mountTxAttachments(row, isVoided);
             hydrateTxInvoiceCard(row);
+        }
+
+        // Source documents for this transaction. The shared component owns
+        // upload/preview/download/replace/detach so the drawer no longer keeps its
+        // own uploader (which was capped at 1 MB, images only, and wrote to the
+        // non-workspace-scoped users/{uid}/receipts/ path).
+        async function mountTxAttachments(row, isVoided) {
+            const host = document.getElementById('tx-detail-attachments');
+            const user = auth.currentUser;
+            if (!host || !user) return;
+            try {
+                const api = window.FluxyDocumentAttachment || await loadFluxyDocumentAttachment();
+                api.renderAttachmentsSection({
+                    hostEl: host,
+                    ds,
+                    userId: user.uid,
+                    record: row,
+                    targetCollection: 'transactions',
+                    targetId: row.id,
+                    // Only a pure pre-`documents` record surfaces receipt_url as its
+                    // own row. Once the record has attached_documents, receipt_url is
+                    // just the dual-write of one of them and would render twice.
+                    legacyReceiptUrl: (Array.isArray(row.attached_documents) && row.attached_documents.length)
+                        ? null
+                        : (row.receipt_url || null),
+                    readOnly: !!isVoided,
+                    role: 'receipt',
+                    sourceContext: 'transaction',
+                    onChange: ({ attachments, statusCompleted, receiptUrl }) => {
+                        // Keep every ledger cache in step so the table and a
+                        // re-opened drawer agree without a full reload.
+                        const patch = { attached_documents: attachments };
+                        if (statusCompleted) patch.status = 'Completed';
+                        if (receiptUrl && !row.receipt_url) patch.receipt_url = receiptUrl;
+                        Object.assign(row, patch);
+                        if (window.__ledgerRowMap?.[row.id]) Object.assign(window.__ledgerRowMap[row.id], patch);
+                        const inAll = allLedgerTransactions.find(t => t.id === row.id);
+                        if (inAll) Object.assign(inAll, patch);
+                        const inCurrent = currentLedgerTransactions.find(t => t.id === row.id);
+                        if (inCurrent) Object.assign(inCurrent, patch);
+                        // A cleared "Missing Receipt" changes the row's status badge
+                        // and the Needs-your-attention summary, so re-run the filter
+                        // and repaint the drawer's Status field.
+                        if (statusCompleted) {
+                            applyLedgerMonthFilter();
+                            renderTxDetailView(row);
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error('Attachments section failed to load:', err);
+                host.innerHTML = '<p class="text-[12px] text-gray-400">Attachments could not be loaded. Refresh the page and try again.</p>';
+            }
         }
 
         // Invoice payments are ledger rows created by "Mark payment completed" —
@@ -2931,70 +2942,6 @@
                 overlay.dataset.closing = '';
             }, 300);
         };
-
-        function _wireDetailAttachInput(row) {
-            const fileInput = document.getElementById('tx-detail-receipt-file');
-            const filename = document.getElementById('tx-detail-receipt-filename');
-            const previewWrapper = document.getElementById('tx-detail-receipt-preview-wrapper');
-            const previewImg = document.getElementById('tx-detail-receipt-preview');
-            const attachBtn = document.getElementById('tx-detail-attach-btn');
-            const attachLabel = document.getElementById('tx-detail-attach-label');
-            if (!fileInput) return;
-
-            // Clone to remove stale listeners
-            const freshInput = fileInput.cloneNode(true);
-            fileInput.replaceWith(freshInput);
-
-            freshInput.onchange = () => {
-                const file = freshInput.files?.[0];
-                if (!file) return;
-                if (!file.type.startsWith('image/')) {
-                    window.showToast('Receipt must be an image file.', 'error'); freshInput.value = ''; return;
-                }
-                if (file.size > 1 * 1024 * 1024) {
-                    window.showToast('Receipt image must be under 1 MB. Compress it first and re-upload.', 'error'); freshInput.value = ''; return;
-                }
-                filename.textContent = file.name;
-                const url = URL.createObjectURL(file);
-                previewImg.src = url;
-                previewWrapper.classList.remove('hidden');
-                attachBtn.disabled = false;
-            };
-
-            attachBtn.onclick = async () => {
-                const file = freshInput.files?.[0];
-                if (!file) return;
-                attachBtn.disabled = true;
-                try {
-                    attachLabel.textContent = 'Compressing...';
-                    let toUpload = file;
-                    try { toUpload = await window.__compressReceiptImage(file); } catch (_) {}
-                    attachLabel.textContent = 'Uploading...';
-                    const user = auth.currentUser;
-                    if (!user) throw new Error('Session expired.');
-                    const receiptUrl = await ds.uploadReceipt(user.uid, toUpload);
-                    await ds.updateTransactionReceipt(user.uid, row.id, receiptUrl);
-
-                    row.receipt_url = receiptUrl;
-                    row.status = 'Completed';
-                    if (window.__ledgerRowMap[row.id]) {
-                        window.__ledgerRowMap[row.id].receipt_url = receiptUrl;
-                        window.__ledgerRowMap[row.id].status = 'Completed';
-                    }
-                    const txInAll = allLedgerTransactions.find(t => t.id === row.id);
-                    if (txInAll) { txInAll.receipt_url = receiptUrl; txInAll.status = 'Completed'; }
-                    const txInCurrent = currentLedgerTransactions.find(t => t.id === row.id);
-                    if (txInCurrent) { txInCurrent.receipt_url = receiptUrl; txInCurrent.status = 'Completed'; }
-                    applyLedgerMonthFilter();
-                    renderTxDetailView(row);
-                    window.showToast('Receipt attached successfully.', 'success');
-                } catch (err) {
-                    window.showToast('Failed to upload receipt: ' + err.message, 'error');
-                    attachBtn.disabled = false;
-                    attachLabel.textContent = 'Attach Receipt';
-                }
-            };
-        }
 
     </script>
 </body>
