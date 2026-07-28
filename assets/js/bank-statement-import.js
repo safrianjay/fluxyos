@@ -70,6 +70,11 @@
     function reconcileCount(rows) {
         return (Array.isArray(rows) ? rows : []).filter(isReconcileRow).length;
     }
+    // Rows still linked to an existing transaction after the import — the undo set
+    // on the imported step (mistake recovery, allowed until certified).
+    function reconciledRows(rows) {
+        return (Array.isArray(rows) ? rows : []).filter(r => r && r.id && r.action === 'reconcile' && r.match);
+    }
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -289,6 +294,41 @@
             </div>`;
     }
 
+    // Statement line summary (date · description · amount) for the undo list.
+    function reconciledRowSummary(row) {
+        const amount = (Number(row.credit) || 0) > 0 ? row.credit : row.debit;
+        const dir = (Number(row.credit) || 0) > 0 ? 'in' : 'out';
+        return { date: formatDate(row.transaction_date), desc: row.description_raw || '—', amount, dir };
+    }
+
+    // Undo list on the imported step: each reconciled line links an existing
+    // ledger transaction; un-reconcile clears that link (mistake recovery). Only
+    // shown before certification — the DAL blocks un-reconcile once certified.
+    function unreconcileListMarkup(ctx) {
+        const draft = ctx.draft || {};
+        if (draft.reconciliation_status === 'certified') return '';
+        const rows = reconciledRows(ctx.rows);
+        if (!rows.length) return '';
+        const items = rows.map(row => {
+            const s = reconciledRowSummary(row);
+            const busy = ctx.unreconcileBusyId === row.id;
+            return `
+                <div class="flex items-center justify-between gap-3 border-b border-gray-100 py-2 last:border-b-0">
+                    <div class="min-w-0 text-left">
+                        <p class="truncate text-[12px] font-bold text-gray-900" title="${escapeHtml(s.desc)}">${escapeHtml(s.desc)}</p>
+                        <p class="mt-0.5 text-[11px] text-gray-500">${escapeHtml(s.date)} · <span class="tabular-nums ${s.dir === 'in' ? 'text-emerald-700' : 'text-gray-700'}">${escapeHtml(formatIDR(s.amount))}</span></p>
+                    </div>
+                    <button type="button" data-bsi-unreconcile="${escapeHtml(row.id)}" ${busy ? 'disabled' : ''} class="shrink-0 rounded-lg border border-gray-200 px-2.5 py-1 text-[11px] font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40">${busy ? 'Undoing…' : 'Un-reconcile'}</button>
+                </div>`;
+        }).join('');
+        return `
+            <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-left">
+                <p class="text-[13px] font-bold text-gray-900">Reconciled lines</p>
+                <p class="mt-1 text-[12px] text-gray-500">Each links an existing Ledger transaction. Un-reconcile to undo a wrong link before you certify.</p>
+                <div class="mt-2">${items}</div>
+            </div>`;
+    }
+
     function importedStepMarkup(ctx) {
         const count = ctx.importedCount || 0;
         const recon = ctx.reconciledCount || 0;
@@ -303,7 +343,7 @@
                 <p class="mt-4 text-[14px] font-bold text-gray-900">${count} transaction${count === 1 ? '' : 's'} imported</p>
                 <p class="mt-1 text-[12px] text-gray-500">They are now in your Ledger, tagged as imported from this statement.</p>
                 ${reconLine}
-                <div class="mt-6 w-full max-w-md space-y-3">${certifyCardMarkup(ctx)}</div>
+                <div class="mt-6 w-full max-w-md space-y-3">${unreconcileListMarkup(ctx)}${certifyCardMarkup(ctx)}</div>
             </div>`;
     }
 
@@ -627,6 +667,9 @@
         ctx.contentEl.querySelectorAll('[data-bsi-certify]').forEach(btn => {
             btn.onclick = () => runCertify(ctx);
         });
+        ctx.contentEl.querySelectorAll('[data-bsi-unreconcile]').forEach(btn => {
+            btn.onclick = () => runUnreconcile(ctx, btn.getAttribute('data-bsi-unreconcile'));
+        });
         ctx.contentEl.querySelectorAll('[data-bsi-action]').forEach(sel => {
             sel.onchange = () => {
                 const row = findRow(sel);
@@ -697,6 +740,44 @@
             window.showToast?.('Could not link the bank account. Try again.', 'error');
         } finally {
             ctx.accountBusy = false;
+            renderContent(ctx);
+        }
+    }
+
+    // Undo one row's reconciliation (clears the linked transaction's recon stamp
+    // and re-opens the row). Allowed until the statement is certified.
+    async function runUnreconcile(ctx, rowId) {
+        const user = resolveUser(ctx);
+        if (!user || !ctx.ds || !ctx.draft?.id || !rowId || ctx.unreconcileBusyId) return;
+        const row = (ctx.rows || []).find(r => r.id === rowId);
+        if (!row) return;
+        const s = reconciledRowSummary(row);
+        const ok = await (window.showConfirmDialog
+            ? window.showConfirmDialog({
+                title: 'Un-reconcile this line?',
+                body: `This unlinks the statement line <strong>${escapeHtml(s.desc)}</strong> (${escapeHtml(formatIDR(s.amount))}) from its Ledger transaction. The transaction stays in your Ledger; to relink you would import this statement again.`,
+                confirmLabel: 'Un-reconcile',
+                cancelLabel: 'Cancel',
+                tone: 'default'
+            })
+            : Promise.resolve(window.confirm('Un-reconcile this line?')));
+        if (!ok) return;
+        ctx.unreconcileBusyId = rowId;
+        renderContent(ctx);
+        try {
+            await ctx.ds.unreconcileStatementRow(user.uid, ctx.draft.id, rowId);
+            // Drop it from the reconciled set so the row and counter update.
+            row.match = null;
+            row.action = null;
+            row.review_status = 'pending';
+            ctx.reconciledCount = Math.max(0, (ctx.reconciledCount || 0) - 1);
+            window.showToast?.('Line un-reconciled. The transaction stays in your Ledger.', 'success');
+            window.dispatchEvent(new CustomEvent('fluxy:bank-statement-unreconciled', { detail: { importId: ctx.draft.id, rowId } }));
+        } catch (error) {
+            console.warn('Un-reconcile failed:', error?.message || error);
+            window.showToast?.(error?.message || 'Could not un-reconcile the line. Try again.', 'error');
+        } finally {
+            ctx.unreconcileBusyId = null;
             renderContent(ctx);
         }
     }

@@ -10,11 +10,14 @@ greedy one-to-one, evidence strings; windows/thresholds are exported constants
 table (three-way action: Reconcile / Create new / Ignore; suggestions are
 in-memory until the user confirms), `recon_*` fields on transactions (created
 rows born reconciled; matched rows stamped via update),
-`unreconcileStatementRow` (blocked once certified; **no UI surface yet** —
-DAL + rules + tests only), `created_count`/`matched_count` on the import, and
+`unreconcileStatementRow` (blocked once certified; **UI shipped 2026-07-28** —
+a "Reconciled lines" undo list with a per-row **Un-reconcile** button on the
+imported step, above the certify card, hidden once certified),
+`created_count`/`matched_count` on the import, and
 the opening+movement-vs-closing tie-out line on the certify card.
 Rules deployed; tests: `tests/recon-engine.spec.js`,
-`tests/bank-recon-phase-a-rules-emulator-test.mjs` (19 cases).
+`tests/bank-recon-unreconcile.spec.js` (reconcile→un-reconcile→certify-block
+DAL round-trip), `tests/bank-recon-phase-a-rules-emulator-test.mjs` (19 cases).
 Phase C (many-to-one settlements, learned rules) remains planned.
 Originally written 2026-07-26 in parallel with the accounting-expert discovery
 sessions. Decision points the expert must
