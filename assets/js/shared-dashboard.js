@@ -1098,6 +1098,7 @@ window.showAddTransactionModal = function(options = {}) {
     } catch (_) { window.__fluxyTxDrawerDispose = null; }
     let activeEntryMode = 'single';
     let selectedEntryDate = todayKey;
+    let entryDatePicker = null;  // FluxyDateRangePicker instance (for programmatic setRange)
     let updateSelectedCsvDateState = updateDateWarning;
     let bulkStatusOverride = null;
     let txAllocationContext = null; // { budget, allocations } | null — transaction allocation picker
@@ -1137,22 +1138,60 @@ window.showAddTransactionModal = function(options = {}) {
         }
         updateSingleSubmitState();
     };
+    let currencyUserTouched = false;
+    // Reflect a currency into the label + hint (no amount reset) — used both by the
+    // user's manual change and by applying a vendor's default currency.
+    function applyBillCurrency(cur) {
+        if (!currencySelect) return;
+        const c = ['IDR', 'USD', 'SGD'].includes(cur) ? cur : 'IDR';
+        currencySelect.value = c;
+        const label = document.getElementById('tx-amount-cur');
+        if (label) label.textContent = c === 'IDR' ? '(Rp)' : `(${c})`;
+        document.getElementById('tx-currency-hint')?.classList.toggle('hidden', c === 'IDR');
+    }
     if (currencySelect) {
         currencySelect.addEventListener('change', () => {
-            const cur = billCurrency();
-            const label = document.getElementById('tx-amount-cur');
-            if (label) label.textContent = cur === 'IDR' ? '(Rp)' : `(${cur})`;
-            document.getElementById('tx-currency-hint')?.classList.toggle('hidden', cur === 'IDR');
-            amountInput.value = '';
+            currencyUserTouched = true;
+            applyBillCurrency(billCurrency());
+            amountInput.value = ''; // amount convention changed — start fresh
             updateSingleSubmitState();
         });
+    }
+
+    // Vendor master → Add Bill: when a known vendor is entered, prefill the bill's
+    // currency from the vendor's default and derive the due date from its payment
+    // terms. Bill context only; currency is skipped once the user picks one.
+    const TERMS_DAYS = { due_on_receipt: 0, due_in_7_days: 7, due_in_14_days: 14, due_in_30_days: 30 };
+    async function applyVendorDefaults() {
+        if (context !== 'bill' || !vendorInput) return;
+        const name = vendorInput.value.trim();
+        if (!name) return;
+        try {
+            const { ds, scopeId } = await resolveTxServiceWhenReady();
+            const vendor = await ds.getVendorByKey(scopeId, name);
+            if (!vendor) return;
+            if (!currencyUserTouched && vendor.default_currency && vendor.default_currency !== billCurrency()) {
+                applyBillCurrency(vendor.default_currency);
+                amountInput.value = '';
+                updateSingleSubmitState();
+            }
+            const days = vendor.payment_terms ? TERMS_DAYS[vendor.payment_terms] : undefined;
+            if (days != null && entryDatePicker) {
+                const d = new Date();
+                d.setDate(d.getDate() + days);
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                selectedEntryDate = key;
+                entryDatePicker.setRange?.(key, key);
+                updateSingleSubmitState();
+            }
+        } catch (_) { /* non-fatal — vendor defaults are a convenience */ }
     }
 
     async function mountEntryDatePickers() {
         try {
             const picker = await loadFluxyDateRangePicker();
 
-            picker?.mount('#tx-date-picker', {
+            entryDatePicker = picker?.mount('#tx-date-picker', {
                 mode: 'single',
                 start: selectedEntryDate,
                 end: selectedEntryDate,
@@ -1672,8 +1711,8 @@ window.showAddTransactionModal = function(options = {}) {
     // suggested account (pre-fills the account last used for that vendor). Skipped
     // once the user has manually picked an account (refreshSuggestedAccount guards).
     if (vendorInput) {
-        vendorInput.addEventListener('change', () => refreshSuggestedAccount(false));
-        vendorInput.addEventListener('blur', () => refreshSuggestedAccount(false));
+        vendorInput.addEventListener('change', () => { refreshSuggestedAccount(false); applyVendorDefaults(); });
+        vendorInput.addEventListener('blur', () => { refreshSuggestedAccount(false); applyVendorDefaults(); });
     }
 
     // Cash impact section — transaction context only
