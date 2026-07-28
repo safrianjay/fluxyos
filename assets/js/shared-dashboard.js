@@ -767,9 +767,9 @@ window.showAddTransactionModal = function(options = {}) {
                             <h3 class="fluxy-drawer-section-title">${detailsTitle}</h3>
                             <div class="fluxy-drawer-field">
                                 <label for="tx-amount" class="fluxy-drawer-label">Amount <span id="tx-amount-cur">(Rp)</span></label>
-                                <div class="${context === 'bill' ? 'flex gap-2' : ''}">
-                                    <input type="text" id="tx-amount" name="amount" required placeholder="0" class="fluxy-drawer-input fluxy-drawer-input--mono ${context === 'bill' ? 'flex-1' : ''}">
-                                    ${context === 'bill' ? `<select id="tx-currency" name="currency" class="fluxy-drawer-select" style="max-width:112px;">
+                                <div class="${context === 'bill' ? 'fluxy-amount-row' : ''}">
+                                    <input type="text" id="tx-amount" name="amount" required placeholder="0" class="fluxy-drawer-input fluxy-drawer-input--mono">
+                                    ${context === 'bill' ? `<select id="tx-currency" name="currency" class="fluxy-drawer-select fluxy-currency-select">
                                         <option value="IDR" selected>IDR</option>
                                         <option value="USD">USD</option>
                                         <option value="SGD">SGD</option>

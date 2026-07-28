@@ -1951,6 +1951,16 @@ main > header {
 /* Enhanced native selects fill their form field; the hidden native element
    stays in the DOM as the value source (submits + fires change). */
 .fluxy-select--enhanced { display: block; width: 100%; }
+
+/* Add Bill "Amount (Rp)" row: the amount input plus a narrow currency dropdown.
+   fluxy-select.js wraps the currency <select> in a full-width .fluxy-select
+   (width:100%), so the native select's own width can't constrain it — it would
+   otherwise hog the flex row and collapse the amount input. Pin the wrapper (and
+   the raw pre-enhance select) to a fixed width and let the amount input flex. */
+.fluxy-amount-row { display: flex; gap: 8px; align-items: stretch; }
+.fluxy-amount-row > .fluxy-drawer-input { flex: 1 1 auto; min-width: 0; }
+.fluxy-amount-row > .fluxy-currency-select,
+.fluxy-amount-row > .fluxy-select.fluxy-select--enhanced { flex: 0 0 112px; width: 112px; min-width: 112px; }
 .fluxy-select-native {
     position: absolute !important;
     width: 1px; height: 1px;
