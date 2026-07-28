@@ -205,6 +205,14 @@
                 </div>
                 <div class="px-5 py-4 overflow-y-auto space-y-4">
                     <div id="bill-pay-summary" class="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-1.5"></div>
+                    <div id="bill-pay-fx" class="hidden rounded-lg border border-blue-100 bg-blue-50/60 p-3 space-y-2">
+                        <p id="bill-pay-fx-line" class="text-[12px] text-blue-800"></p>
+                        <div>
+                            <label for="bill-pay-idr" class="block text-[12px] font-semibold text-gray-600 mb-1">Rupiah amount paid</label>
+                            <input id="bill-pay-idr" type="text" inputmode="numeric" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-mono tabular-nums focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]" placeholder="0">
+                            <p class="mt-1 text-[11px] text-gray-400">Prefilled from today's rate — override with the actual Rupiah that left your account.</p>
+                        </div>
+                    </div>
                     <div>
                         <label class="block text-[12px] font-semibold text-gray-500 mb-1.5">Payment date</label>
                         <div id="bill-pay-date"></div>
@@ -289,6 +297,7 @@
     </div>
 
     <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/money-format.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
     <script src="assets/js/dashboard-i18n.js"></script>
     <script src="assets/js/fluxy-select.js"></script>
@@ -472,6 +481,17 @@
         }
         function isBillFullyPaid(bill) { return bill?.payment_status === 'paid'; }
         function isBillPartiallyPaid(bill) { return bill?.payment_status === 'partial' || (billOutstanding(bill) > 0 && Math.round(Math.abs(Number(bill?.amount_paid) || 0)) > 0); }
+        function isForeignBill(bill) { const c = bill?.currency; return !!c && c !== 'IDR'; }
+        // Format a bill amount in its own currency (USD/SGD via FluxyMoney minor
+        // units; IDR via the rupiah formatter). Foreign bills are outside the IDR
+        // aggregates — this is only for per-bill display.
+        function formatMoneyByCurrency(amount, currency) {
+            const cur = currency || 'IDR';
+            if (cur === 'IDR' || !(window.FluxyMoney && window.FluxyMoney.isSupported && window.FluxyMoney.isSupported(cur))) return formatCurrencyIDR(amount);
+            return window.FluxyMoney.formatMoney(Math.round(Math.abs(Number(amount) || 0)), cur);
+        }
+        function formatBillAmount(bill) { return formatMoneyByCurrency(bill?.amount, bill?.currency); }
+        function formatBillOutstanding(bill) { return formatMoneyByCurrency(billOutstanding(bill), bill?.currency); }
 
         function getVendorDisplayName(record) {
             const vendor = String(record?.vendor_name ?? '').trim();
@@ -540,6 +560,7 @@
 
             for (const bill of bills) {
                 if (bill.payment_status === 'paid') continue;
+                if (isForeignBill(bill)) continue; // foreign bills are outside IDR totals
                 // Use the remaining balance so a partially-paid bill only counts what
                 // is still owed toward due/overdue/scheduled totals.
                 const amount = billOutstanding(bill);
@@ -565,6 +586,7 @@
             const buckets = { overdue: [], today: [], thisWeek: [], later: [] };
             for (const bill of bills) {
                 if (bill.payment_status === 'paid') continue;
+                if (isForeignBill(bill)) continue; // IDR cash-flow timeline only
                 const dueDate = getBillDueDate(bill);
                 if (!dueDate) continue;
                 const due = new Date(dueDate);
@@ -657,7 +679,7 @@
                                 <p class="text-[12px] font-semibold text-gray-900 truncate" title="${escapeHtml(vendorName)}">${escapeHtml(vendorName)}</p>
                                 <p class="text-[12px] text-gray-400 mt-0.5">${getBillDueDate(bill)?.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) || '—'}</p>
                             </div>
-                            <p class="text-[12px] font-bold font-mono text-gray-700 flex-shrink-0 mt-0.5">${formatCurrencyIDR(bill.amount)}</p>
+                            <p class="text-[12px] font-bold font-mono text-gray-700 flex-shrink-0 mt-0.5">${formatBillAmount(bill)}</p>
                         </div>
                     `;}).join('');
 
@@ -738,7 +760,7 @@
                             ${budgetChip}
                         </td>
                         <td class="fluxy-table-cell">${formatDueDateDisplay(bill)}</td>
-                        <td class="fluxy-table-cell fluxy-table-money font-bold text-gray-900">${formatCurrencyIDR(bill.amount)}</td>
+                        <td class="fluxy-table-cell fluxy-table-money font-bold text-gray-900">${formatBillAmount(bill)}</td>
                         <td class="fluxy-table-cell">${getStatusBadge(status)}</td>
                         <td class="fluxy-table-cell fluxy-table-action">
                             <button class="fluxy-table-action">Review</button>
@@ -853,7 +875,7 @@
                             </div>
                             <div>
                                 <p class="fluxy-drawer-label">Amount</p>
-                                <p class="text-xl font-bold text-gray-900 tabular-nums mt-1">${formatCurrencyIDR(bill.amount)}</p>
+                                <p class="text-xl font-bold text-gray-900 tabular-nums mt-1">${formatBillAmount(bill)}</p>
                                 ${isBillPartiallyPaid(bill) ? `<p class="text-[12px] text-gray-500 mt-0.5">${formatCurrencyIDR(Math.round(Math.abs(Number(bill.amount_paid) || 0)))} paid · <span class="font-semibold text-amber-600">${formatCurrencyIDR(billOutstanding(bill))} remaining</span></p>` : ''}
                             </div>
                             <div>
@@ -1077,8 +1099,8 @@
                     <span class="text-[13px] font-semibold text-gray-900 truncate">${escapeHtml(bill.vendor_name || 'Bill')}</span>
                 </div>
                 <div class="flex items-center justify-between gap-3">
-                    <span class="text-[12px] text-gray-500">${isBillPartiallyPaid(bill) ? 'Remaining' : 'Amount'}</span>
-                    <span class="text-[13px] font-bold text-gray-900 tabular-nums">${formatCurrencyIDR(billOutstanding(bill))}</span>
+                    <span class="text-[12px] text-gray-500">${isBillPartiallyPaid(bill) ? 'Remaining' : 'Amount'}${isForeignBill(bill) ? ' (' + escapeHtml(bill.currency) + ')' : ''}</span>
+                    <span class="text-[13px] font-bold text-gray-900 tabular-nums">${formatBillOutstanding(bill)}</span>
                 </div>
                 <div class="flex items-center justify-between gap-3">
                     <span class="text-[12px] text-gray-500">Category</span>
@@ -1096,7 +1118,8 @@
             cashHost.innerHTML = window.FluxyCashImpact.buildHtml({ impact: 'actual', direction: 'out', bankAccounts });
             payCashController = window.FluxyCashImpact.wire(cashHost, { impact: 'actual', direction: 'out' });
 
-            // Single-date picker, default today, today-or-earlier.
+            // Single-date picker, default today, today-or-earlier. For a foreign bill
+            // the payment date drives the FX rate, so re-fetch on change.
             document.getElementById('bill-pay-date').innerHTML = '';
             window.FluxyDateRangePicker?.mount('#bill-pay-date', {
                 mode: 'single',
@@ -1105,11 +1128,48 @@
                 defaultStart: todayDayKey(),
                 defaultEnd: todayDayKey(),
                 maxDate: todayDayKey(),
-                onChange: ({ start }) => { payPickerSelectedKey = start; }
+                onChange: ({ start }) => { payPickerSelectedKey = start; if (isForeignBill(payModalBill)) refreshBillPayFx(); }
             });
+
+            // Foreign-currency bill: show the FX block + prefill the Rupiah amount.
+            const fxBlock = document.getElementById('bill-pay-fx');
+            if (isForeignBill(bill)) { fxBlock.classList.remove('hidden'); refreshBillPayFx(); }
+            else { fxBlock.classList.add('hidden'); }
 
             document.getElementById('bill-pay-modal').classList.remove('hidden');
             document.body.classList.add('overflow-hidden');
+        }
+
+        let payFxRate = null;
+        // Same-origin Frankfurter/ECB proxy → IDR-per-unit for USD/SGD on a date.
+        async function fetchBillFxRate(fromCurrency, dayKey) {
+            try {
+                const date = dayKey || todayDayKey();
+                const res = await fetch(`/.netlify/functions/fx-rate?from=${encodeURIComponent(fromCurrency)}&to=IDR&date=${encodeURIComponent(date)}`);
+                if (!res.ok) return null;
+                const data = await res.json();
+                return Number(data.rate) || null;
+            } catch (_) { return null; }
+        }
+        async function refreshBillPayFx() {
+            const bill = payModalBill;
+            if (!bill || !isForeignBill(bill) || !window.FluxyMoney) return;
+            const cur = bill.currency;
+            const outstanding = billOutstanding(bill); // minor units in the bill currency
+            const reqKey = `${cur}|${payPickerSelectedKey}`;
+            document.getElementById('bill-pay-fx').dataset.req = reqKey;
+            const rate = await fetchBillFxRate(cur, payPickerSelectedKey);
+            if (document.getElementById('bill-pay-fx').dataset.req !== reqKey) return; // stale
+            payFxRate = rate;
+            const line = document.getElementById('bill-pay-fx-line');
+            const idrInput = document.getElementById('bill-pay-idr');
+            if (rate) {
+                const idr = Math.round(window.FluxyMoney.fromMinor(outstanding, cur) * rate);
+                line.textContent = `1 ${cur} = ${formatCurrencyIDR(rate)} · ${window.FluxyMoney.formatMoney(outstanding, cur)} ≈ ${formatCurrencyIDR(idr)}`;
+                idrInput.value = idr.toLocaleString('id-ID');
+            } else {
+                line.textContent = `Live rate unavailable — enter the Rupiah amount you paid.`;
+            }
         }
 
         // Restore the confirm button to its idle state. The success path closes
@@ -1141,7 +1201,15 @@
                 const paymentDate = dayKeyToDate(payPickerSelectedKey);
                 const cashState = payCashController?.getState?.() || { impact: 'actual', direction: 'out', accountId: '' };
                 const cashFields = window.FluxyCashImpact.derive(cashState, Timestamp.fromDate(paymentDate));
-                await ds.markBillPaid(auth.currentUser.uid, payModalBill.id, { paymentDate, cashFields });
+                const opts = { paymentDate, cashFields };
+                if (isForeignBill(payModalBill)) {
+                    const idr = Math.round(Math.abs(Number(String(document.getElementById('bill-pay-idr')?.value || '').replace(/[^\d]/g, '')) || 0));
+                    if (!(idr > 0)) { window.showToast?.('Enter the Rupiah amount paid.', 'error'); resetPayConfirmButton(); return; }
+                    opts.amountPaidIdr = idr;
+                    opts.fxRate = payFxRate || null;
+                    opts.fxRateDate = payPickerSelectedKey || null;
+                }
+                await ds.markBillPaid(auth.currentUser.uid, payModalBill.id, opts);
                 window.showToast?.('Bill marked as paid and recorded in the Ledger.', 'success');
                 closePayModal();
                 closeBillDrawer();
@@ -1168,6 +1236,7 @@
             const map = new Map();
             for (const bill of allBills) {
                 if (billOutstanding(bill) <= 0) continue; // skip fully-paid bills
+                if (isForeignBill(bill)) continue; // foreign bills need per-bill FX — pay individually
                 const key = getVendorKey(bill);
                 if (!map.has(key)) map.set(key, { key, name: getVendorDisplayName(bill), bills: [] });
                 map.get(key).bills.push(bill);

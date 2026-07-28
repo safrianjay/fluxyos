@@ -140,6 +140,19 @@ async function main() {
         return batch.commit();
     });
 
+    console.log('\n— multi-currency (Stage B): foreign bill + FX payment fields —');
+    const fxBillRef = doc(db, `users/${uid}/bills/bill_fx_test`);
+    await expectOutcome('create a USD bill', true, () =>
+        setDoc(fxBillRef, { ...billCreatePayload(), currency: 'USD', outstanding_amount: 150000, amount_paid: 0 }));
+    await expectOutcome('reject a bill with a bad currency', false, () =>
+        setDoc(doc(db, `users/${uid}/bills/bill_fx_bad`), { ...billCreatePayload(), currency: 'EUR' }));
+    await expectOutcome('foreign bill paid: stamps amount_paid_idr + fx_rate + fx_rate_date', true, () =>
+        updateDoc(fxBillRef, {
+            payment_status: 'paid', outstanding_amount: 0, amount_paid: 150000,
+            amount_paid_idr: 23000000, fx_rate: 15333.33, fx_rate_date: '2026-07-28',
+            linked_transaction_id: 'tx_fx', updated_at: serverTimestamp(), updated_by: uid
+        }));
+
     console.log('\n— sanity: a plain expense WITHOUT linked_bill_id still works —');
     await expectOutcome('plain expense create (no link)', true, () => {
         const ref = doc(collection(db, `users/${uid}/transactions`));

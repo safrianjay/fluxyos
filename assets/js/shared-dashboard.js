@@ -779,8 +779,16 @@ window.showAddTransactionModal = function(options = {}) {
                         <section class="fluxy-drawer-section">
                             <h3 class="fluxy-drawer-section-title">${detailsTitle}</h3>
                             <div class="fluxy-drawer-field">
-                                <label for="tx-amount" class="fluxy-drawer-label">Amount (Rp)</label>
-                                <input type="text" id="tx-amount" name="amount" required placeholder="0" class="fluxy-drawer-input fluxy-drawer-input--mono">
+                                <label for="tx-amount" class="fluxy-drawer-label">Amount <span id="tx-amount-cur">(Rp)</span></label>
+                                <div class="${context === 'bill' ? 'flex gap-2' : ''}">
+                                    <input type="text" id="tx-amount" name="amount" required placeholder="0" class="fluxy-drawer-input fluxy-drawer-input--mono ${context === 'bill' ? 'flex-1' : ''}">
+                                    ${context === 'bill' ? `<select id="tx-currency" name="currency" class="fluxy-drawer-select" style="max-width:112px;">
+                                        <option value="IDR" selected>IDR</option>
+                                        <option value="USD">USD</option>
+                                        <option value="SGD">SGD</option>
+                                    </select>` : ''}
+                                </div>
+                                ${context === 'bill' ? `<p id="tx-currency-hint" class="fluxy-drawer-hint hidden">Foreign-currency bill — it stays outside your Rupiah ledger until you pay it (you'll enter the exchange rate then).</p>` : ''}
                             </div>
                             <div class="fluxy-drawer-field">
                                 ${context === 'bill' ? `
@@ -1112,11 +1120,33 @@ window.showAddTransactionModal = function(options = {}) {
     const amountInput = document.getElementById('tx-amount');
     const vendorInput = document.getElementById('tx-vendor');
     mountEntryDatePickers();
+    // Bill currency (Stage B): IDR uses dot-thousands digit formatting; USD/SGD
+    // allow a decimal amount (major units, converted to cents on save).
+    const currencySelect = document.getElementById('tx-currency');
+    const billCurrency = () => (currencySelect ? currencySelect.value : 'IDR');
     amountInput.oninput = (e) => {
-        let value = e.target.value.replace(/\D/g, "");
-        e.target.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        if (billCurrency() === 'IDR') {
+            const value = e.target.value.replace(/\D/g, "");
+            e.target.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        } else {
+            // digits + a single decimal point, max 2 decimals
+            let v = e.target.value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
+            const dot = v.indexOf('.');
+            if (dot !== -1) v = v.slice(0, dot + 1) + v.slice(dot + 1, dot + 3);
+            e.target.value = v;
+        }
         updateSingleSubmitState();
     };
+    if (currencySelect) {
+        currencySelect.addEventListener('change', () => {
+            const cur = billCurrency();
+            const label = document.getElementById('tx-amount-cur');
+            if (label) label.textContent = cur === 'IDR' ? '(Rp)' : `(${cur})`;
+            document.getElementById('tx-currency-hint')?.classList.toggle('hidden', cur === 'IDR');
+            amountInput.value = '';
+            updateSingleSubmitState();
+        });
+    }
 
     async function mountEntryDatePickers() {
         try {
@@ -2322,7 +2352,13 @@ window.showAddTransactionModal = function(options = {}) {
                 return;
             }
 
-            const rawAmount = document.getElementById('tx-amount').value.replace(/\./g, "");
+            // Amount parse is currency-aware for bills: IDR strips dot-thousands to a
+            // rupiah integer; USD/SGD read a decimal major amount → integer cents.
+            const billCurrency = context === 'bill' ? (document.getElementById('tx-currency')?.value || 'IDR') : 'IDR';
+            const amountFieldRaw = document.getElementById('tx-amount').value;
+            const parsedAmount = billCurrency === 'IDR'
+                ? parseFloat(amountFieldRaw.replace(/\./g, "") || '0')
+                : Math.round((parseFloat(amountFieldRaw.replace(/[^\d.]/g, '')) || 0) * 100);
             const txTypeSel = document.getElementById('tx-type').value;
             let txType = txTypeSel === 'Others'
                 ? (document.getElementById('tx-type-custom')?.value.trim() || 'Others')
@@ -2338,7 +2374,7 @@ window.showAddTransactionModal = function(options = {}) {
                 }
             }
             const data = {
-                amount: parseFloat(rawAmount),
+                amount: parsedAmount,
                 vendor_name: document.getElementById('tx-vendor').value,
                 category: (() => {
                     const el = document.getElementById('tx-category');
@@ -2368,6 +2404,7 @@ window.showAddTransactionModal = function(options = {}) {
             const { ds, user, scopeId, Timestamp } = await getTransactionDataService();
             if (context === 'bill') {
                 data.due_date = buildBillDueDateTimestamp(selectedEntryDate, Timestamp);
+                data.currency = billCurrency;
                 // Optional per-bill PPN (tax-inclusive): store the rate + extracted
                 // amounts for display; the posting engine recomputes the same split.
                 const rawRate = document.getElementById('tx-bill-tax-rate')?.value;

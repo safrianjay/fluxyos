@@ -361,6 +361,15 @@
         "Could not archive the vendor. Try again.": "Tidak dapat mengarsipkan vendor. Coba lagi.",
         "Archive vendor?": "Arsipkan vendor?",
         "Updating…": "Memperbarui…",
+        // Multi-currency payables (bill.html + shared-dashboard.js) — Stage B
+        "Rupiah amount paid": "Jumlah Rupiah dibayar",
+        "Prefilled from today's rate — override with the actual Rupiah that left your account.":
+            "Terisi dari kurs hari ini — ganti dengan Rupiah yang benar-benar keluar dari rekening Anda.",
+        "Live rate unavailable — enter the Rupiah amount you paid.":
+            "Kurs langsung tidak tersedia — masukkan jumlah Rupiah yang Anda bayar.",
+        "Enter the Rupiah amount paid.": "Masukkan jumlah Rupiah yang dibayar.",
+        "Foreign-currency bill — it stays outside your Rupiah ledger until you pay it (you'll enter the exchange rate then).":
+            "Tagihan mata uang asing — tetap di luar ledger Rupiah Anda sampai dibayar (Anda memasukkan kurs saat itu).",
         "No unpaid bills for this vendor.": "Tidak ada tagihan belum dibayar untuk vendor ini.",
         "No unpaid bills to pay right now.": "Tidak ada tagihan yang perlu dibayar saat ini.",
         "Select at least one bill to pay.": "Pilih minimal satu tagihan untuk dibayar.",

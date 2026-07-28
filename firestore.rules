@@ -2341,7 +2341,11 @@ service cloud.firestore {
             'account_name',
             'bill_number',
             'outstanding_amount',
-            'amount_paid'
+            'amount_paid',
+            'currency',
+            'amount_paid_idr',
+            'fx_rate',
+            'fx_rate_date'
           ])
           && isValidBaseRecord(request.resource.data)
           && (!('due_date' in request.resource.data) || request.resource.data.due_date is timestamp)
@@ -2395,7 +2399,11 @@ service cloud.firestore {
             'account_name',
             'bill_number',
             'outstanding_amount',
-            'amount_paid'
+            'amount_paid',
+            'currency',
+            'amount_paid_idr',
+            'fx_rate',
+            'fx_rate_date'
           ])
           && isValidBaseRecordUpdate(request.resource.data, resource.data)
           && preservesLegacyRecordDate(request.resource.data, resource.data)
@@ -3127,7 +3135,13 @@ service cloud.firestore {
     function isValidBillPaymentFields(data) {
       return (!('bill_number' in data) || data.bill_number == null || (data.bill_number is string && data.bill_number.size() <= 40))
         && (!('outstanding_amount' in data) || data.outstanding_amount == null || (data.outstanding_amount is number && data.outstanding_amount >= 0 && data.outstanding_amount <= 999999999999))
-        && (!('amount_paid' in data) || data.amount_paid == null || (data.amount_paid is number && data.amount_paid >= 0 && data.amount_paid <= 999999999999));
+        && (!('amount_paid' in data) || data.amount_paid == null || (data.amount_paid is number && data.amount_paid >= 0 && data.amount_paid <= 999999999999))
+        // Multi-currency (Stage B): currency label + FX provenance stamped only on
+        // payment of a foreign bill (the IDR amount posted to the ledger + rate).
+        && (!('currency' in data) || data.currency in ['IDR', 'USD', 'SGD'])
+        && (!('amount_paid_idr' in data) || data.amount_paid_idr == null || (data.amount_paid_idr is int && data.amount_paid_idr >= 0))
+        && (!('fx_rate' in data) || data.fx_rate == null || data.fx_rate is number)
+        && (!('fx_rate_date' in data) || data.fx_rate_date == null || (data.fx_rate_date is string && data.fx_rate_date.size() <= 20));
     }
     // Commerce Integration back-links: the server-side sync worker stamps these
     // onto ledger transactions it creates (source:'commerce') so the doc can
@@ -3231,7 +3245,7 @@ service cloud.firestore {
           'budget_match_method', 'budget_match_status', 'budget_impact_status', 'budget_assignment_reason',
           'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason',
           'journal_ref', 'accounting_status', 'account_code', 'account_name',
-          'bill_number', 'outstanding_amount', 'amount_paid',
+          'bill_number', 'outstanding_amount', 'amount_paid', 'currency', 'amount_paid_idr', 'fx_rate', 'fx_rate_date',
           'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no'
         ])
@@ -3257,7 +3271,7 @@ service cloud.firestore {
           'budget_match_method', 'budget_match_status', 'budget_impact_status', 'budget_assignment_reason',
           'budget_assignment_updated_at', 'budget_assignment_updated_by', 'budget_exclusion_reason',
           'linked_transaction_id', 'updated_at', 'updated_by', 'journal_ref', 'accounting_status', 'account_code', 'account_name',
-          'bill_number', 'outstanding_amount', 'amount_paid',
+          'bill_number', 'outstanding_amount', 'amount_paid', 'currency', 'amount_paid_idr', 'fx_rate', 'fx_rate_date',
           'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no'
         ])

@@ -557,8 +557,13 @@ class DataService {
     async addBill(userId, data) {
         const { timestamp, ...rest } = data;
         const amountInt = Math.round(Math.abs(Number(rest.amount) || 0));
+        // Multi-currency (Stage B): the bill's face currency. USD/SGD amounts are
+        // stored as minor units (cents), same convention as invoices; they stay
+        // OUTSIDE the IDR kernel + budget until payment converts them to Rupiah.
+        const currency = ['IDR', 'USD', 'SGD'].includes(rest.currency) ? rest.currency : 'IDR';
         const payload = {
             ...rest,
+            currency,
             timestamp: timestamp || serverTimestamp()
         };
         // Human bill reference + outstanding-balance tracking (enables partial
@@ -616,20 +621,38 @@ class DataService {
     // remainder as committed (no double count). Multi-bill callers must commit one
     // bill per batch — two BILL-PAY journals in one batch would write the shared
     // Cash/A-P ledger_balances doc twice, which Firestore forbids.
-    async _payBillOnce(userId, bill, payAmount, { paymentDate = null, cashFields = null } = {}) {
+    async _payBillOnce(userId, bill, payAmount, { paymentDate = null, cashFields = null, amountPaidIdr = null, fxRate = null, fxRateDate = null } = {}) {
         const billId = bill.id;
+        const currency = bill.currency || 'IDR';
+        const isForeign = currency !== 'IDR';
         const outstanding = this._billOutstanding(bill);
         if (!(outstanding > 0)) throw new Error('This bill is already fully paid.');
-        const amount = Math.round(Math.abs(Number(payAmount) || 0));
-        if (!(amount > 0)) throw new Error('Payment amount must be greater than zero.');
-        if (amount > outstanding) throw new Error('Payment cannot exceed the outstanding balance.');
-        const newPaid = Math.round(Math.abs(Number(bill.amount_paid) || 0)) + amount;
-        const newOutstanding = Math.max(0, outstanding - amount);
-        const fullyPaid = newOutstanding <= 0;
+
+        // Foreign-currency bills: full payment only (partial FX is ambiguous), and
+        // the caller supplies the Rupiah amount actually paid — that IDR amount is
+        // what lands on the ledger, kept OUT of the IDR kernel like foreign invoices.
+        let amount, ledgerAmount, newPaid, newOutstanding, fullyPaid;
+        if (isForeign) {
+            const idr = Math.round(Math.abs(Number(amountPaidIdr) || 0));
+            if (!(idr > 0)) throw new Error('Enter the Rupiah amount paid for this foreign-currency bill.');
+            amount = outstanding;          // clears the full foreign balance
+            ledgerAmount = idr;            // Rupiah posted to the ledger
+            newPaid = Math.round(Math.abs(Number(bill.amount_paid) || 0)) + outstanding;
+            newOutstanding = 0;
+            fullyPaid = true;
+        } else {
+            amount = Math.round(Math.abs(Number(payAmount) || 0));
+            if (!(amount > 0)) throw new Error('Payment amount must be greater than zero.');
+            if (amount > outstanding) throw new Error('Payment cannot exceed the outstanding balance.');
+            ledgerAmount = amount;
+            newPaid = Math.round(Math.abs(Number(bill.amount_paid) || 0)) + amount;
+            newOutstanding = Math.max(0, outstanding - amount);
+            fullyPaid = newOutstanding <= 0;
+        }
 
         const txRef = doc(collection(this.db, `${this._scope(userId)}/transactions`));
         const transaction = {
-            amount,
+            amount: ledgerAmount,
             vendor_name: bill.vendor_name || 'Bill',
             category: bill.category || 'Operations',
             type: 'expense',
@@ -641,10 +664,10 @@ class DataService {
             created_at: serverTimestamp()
         };
         // Carry over the bill's explicit budget assignment so the actual spend lands
-        // on the same allocation it was committed to. Category-only commitments need
-        // no copy — resolveRecordAssignment re-matches the expense by category.
-        if (bill.budget_match_status === 'excluded') {
-            transaction.budget_id = bill.budget_id ?? null;
+        // on the same allocation it was committed to. Foreign bills are outside the
+        // IDR budget (excluded above), so their payment is not budget-tracked either.
+        if (isForeign || bill.budget_match_status === 'excluded') {
+            transaction.budget_id = (!isForeign && bill.budget_id) ? bill.budget_id : null;
             transaction.budget_allocation_id = null;
             transaction.budget_match_method = 'excluded';
             transaction.budget_match_status = 'excluded';
@@ -681,9 +704,19 @@ class DataService {
             billUpdate.budget_impact_status = 'converted_to_actual';
             billUpdate.linked_transaction_id = txRef.id;
         }
+        // Foreign bill: stamp the FX provenance (Rupiah paid + rate) and keep the
+        // payment transaction out of the IDR journals (accounting_status excluded).
+        if (isForeign) {
+            transaction.accounting_status = 'excluded';
+            billUpdate.amount_paid_idr = ledgerAmount;
+            billUpdate.fx_rate = fxRate != null ? Number(fxRate) : null;
+            billUpdate.fx_rate_date = fxRateDate ? String(fxRateDate).slice(0, 20) : null;
+        }
 
         const batch = writeBatch(this.db);
-        await this._postSourceJournal(userId, batch, 'transactions', txRef, transaction, { date: transaction.timestamp });
+        if (!isForeign) {
+            await this._postSourceJournal(userId, batch, 'transactions', txRef, transaction, { date: transaction.timestamp });
+        }
         batch.set(txRef, transaction);
         batch.update(doc(this.db, `${this._scope(userId)}/bills/${billId}`), billUpdate);
         batch.set(doc(collection(this.db, `${this._scope(userId)}/audit_logs`)), {
@@ -704,13 +737,13 @@ class DataService {
 
     // Pay a bill's full remaining balance (works for unpaid and partially-paid
     // bills). Kept as the single-bill entry point used by the Bill Details drawer.
-    async markBillPaid(userId, billId, { paymentDate = null, cashFields = null } = {}) {
+    async markBillPaid(userId, billId, { paymentDate = null, cashFields = null, amountPaidIdr = null, fxRate = null, fxRateDate = null } = {}) {
         if (!userId || !billId) throw new Error('userId and billId required');
         const bill = await this.getBillById(userId, billId);
         if (!bill) throw new Error('Bill not found.');
         const outstanding = this._billOutstanding(bill);
         if (!(outstanding > 0)) throw new Error('This bill is already marked as paid.');
-        return this._payBillOnce(userId, bill, outstanding, { paymentDate, cashFields });
+        return this._payBillOnce(userId, bill, outstanding, { paymentDate, cashFields, amountPaidIdr, fxRate, fxRateDate });
     }
 
     // Pay one or more bills in a single vendor-payment action. `payments` is
@@ -729,6 +762,9 @@ class DataService {
             try {
                 const bill = await this.getBillById(userId, p.billId);
                 if (!bill) throw new Error('Bill not found.');
+                // Foreign-currency bills need per-bill FX conversion — pay them one at
+                // a time from the bill's own Record-payment modal, not the multi-pay.
+                if (bill.currency && bill.currency !== 'IDR') throw new Error('Pay foreign-currency bills individually (they need an exchange rate).');
                 const outstanding = this._billOutstanding(bill);
                 const amount = p.amount != null ? Math.round(Math.abs(Number(p.amount) || 0)) : outstanding;
                 const res = await this._payBillOnce(userId, bill, amount, { paymentDate, cashFields });
@@ -3297,6 +3333,10 @@ class DataService {
     }
 
     async _postSourceJournal(userId, batch, sourceCollection, sourceRef, payload, opts = {}) {
+        // Foreign-currency source docs (e.g. USD/SGD bills) stay OUTSIDE the IDR
+        // kernel until payment converts them to Rupiah — posting their minor units
+        // as rupiah would corrupt the ledger. Mark excluded and skip posting.
+        if (payload && payload.currency && payload.currency !== 'IDR') { payload.accounting_status = 'excluded'; return null; }
         await this._assertOpenPostingPeriod(userId, opts.date || payload.timestamp || payload.due_date || payload.renewal_date || null);
         try {
             const mappings = await this._loadAcctMappings(userId);
@@ -4153,6 +4193,7 @@ class DataService {
         const receivables = [];
         const payables = [];
         let fxInvoiceCount = 0;
+        let fxBillCount = 0;
 
         invoiceSnap.docs.forEach((d) => {
             const inv = d.data();
@@ -4172,12 +4213,15 @@ class DataService {
         billSnap.docs.forEach((d) => {
             const bill = d.data();
             if (bill.payment_status === 'paid' || bill.linked_transaction_id) return;
+            // Foreign-currency bills are outside the IDR aging (amounts are in another
+            // currency's minor units) — same as foreign invoices above.
+            if (bill.currency && bill.currency !== 'IDR') { fxBillCount += 1; return; }
             payables.push({
                 id: d.id,
                 kind: 'bill',
                 label: bill.vendor_name || 'Bill',
                 ref: null,
-                amount: bill.amount,
+                amount: this._billOutstanding(bill),
                 due_date: bill.due_date || null,
                 fallback_date: bill.timestamp || bill.created_at || null
             });
@@ -4204,6 +4248,7 @@ class DataService {
         return {
             asOf,
             fxInvoiceCount,
+            fxBillCount,
             receivables: computeAging(receivables, { asOf }),
             payables: computeAging(payables, { asOf })
         };
@@ -10257,6 +10302,10 @@ class DataService {
         });
 
         bills.forEach(bill => {
+            // Foreign-currency bills are outside the IDR budget (their amounts are in
+            // another currency's minor units); the Rupiah they cost is only known at
+            // payment and lands as its own actual expense. Skip them here.
+            if (bill.currency && bill.currency !== 'IDR') return;
             // Commit only the OUTSTANDING balance (full amount for unpaid/legacy
             // bills; the remainder for partially-paid ones). The paid portion has
             // already landed as an actual expense transaction above, so
