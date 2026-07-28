@@ -140,6 +140,21 @@ async function main() {
     await expectOutcome('reject a bad mapping source_type', false, () =>
         setDoc(doc(db, `workspaces/${WS}/accounting_mappings/bad__x`), mapping({ source_type: 'nonsense' })));
 
+    // Vendor master (Part A): a workspace-scoped vendor entity with a default
+    // account, currency, and payment terms. Reject a bad currency.
+    console.log('\n— vendors: entity validation —');
+    const vendor = (extra = {}) => ({
+        name: 'AWS', name_key: 'aws', default_account_code: '6300', default_account_name: 'Infrastructure Expense',
+        default_currency: 'USD', payment_terms: 'due_in_30_days', npwp: null, notes: null, status: 'active',
+        created_at: serverTimestamp(), updated_at: serverTimestamp(), ...extra
+    });
+    await expectOutcome('create a vendor entity', true, () =>
+        setDoc(doc(collection(db, `workspaces/${WS}/vendors`)), vendor()));
+    await expectOutcome('reject a vendor with bad currency', false, () =>
+        setDoc(doc(collection(db, `workspaces/${WS}/vendors`)), vendor({ default_currency: 'EUR' })));
+    await expectOutcome('reject a vendor with bad payment_terms', false, () =>
+        setDoc(doc(collection(db, `workspaces/${WS}/vendors`)), vendor({ payment_terms: 'net_99' })));
+
     console.log('\n— journals: balance + immutability —');
     const okRef = doc(collection(db, `workspaces/${WS}/journals`));
     await expectOutcome('post a balanced journal (open period)', true, () => setDoc(okRef, journal('2026-06')));

@@ -1421,6 +1421,33 @@ service cloud.firestore {
         && data.updated_at == request.time;
     }
 
+    // Vendor master (workspace-scoped): named vendors with a default categorizing
+    // account, currency, payment terms, and NPWP. No amounts/balances — those live
+    // on bills. Soft-archive only (status), never deleted.
+    function isValidVendor(data) {
+      return data.keys().hasAll(['name', 'name_key', 'default_currency', 'status', 'created_at', 'updated_at'])
+        && data.keys().hasOnly([
+          'name', 'name_key', 'default_account_code', 'default_account_name',
+          'default_currency', 'payment_terms', 'npwp', 'notes', 'status', 'created_at', 'updated_at'
+        ])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 160
+        && data.name_key is string && data.name_key.size() > 0 && data.name_key.size() <= 160
+        && (!('default_account_code' in data) || data.default_account_code == null || (data.default_account_code is string && data.default_account_code.size() <= 12))
+        && (!('default_account_name' in data) || data.default_account_name == null || (data.default_account_name is string && data.default_account_name.size() <= 80))
+        && data.default_currency in ['IDR', 'USD', 'SGD']
+        && (!('payment_terms' in data) || data.payment_terms == null || data.payment_terms in ['due_on_receipt', 'due_in_7_days', 'due_in_14_days', 'due_in_30_days'])
+        && (!('npwp' in data) || data.npwp == null || (data.npwp is string && data.npwp.size() <= 32))
+        && (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 500))
+        && data.status in ['active', 'archived'];
+    }
+    function isValidVendorCreate(data) {
+      return isValidVendor(data) && data.created_at == request.time && data.updated_at == request.time;
+    }
+    function isValidVendorUpdate(data, existingData) {
+      return isValidVendor(data) && data.created_at == existingData.created_at && data.updated_at == request.time
+        && data.name_key == existingData.name_key;
+    }
+
     function isValidBankBalanceSnapshot(data) {
       return data.keys().hasAll([
           'bank_account_id',
@@ -2581,6 +2608,13 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      match /vendors/{vendorId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidVendorCreate(request.resource.data);
+        allow update: if isOwner(userId) && isValidVendorUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+
       match /bank_balance_snapshots/{snapshotId} {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId)
@@ -3445,6 +3479,12 @@ service cloud.firestore {
         allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
         allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && isValidBankAccountCreate(request.resource.data);
         allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && isValidBankAccountUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+      match /vendors/{vendorId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && isValidVendorCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && isValidVendorUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
       match /bank_balance_snapshots/{snapshotId} {

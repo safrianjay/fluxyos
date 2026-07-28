@@ -3888,6 +3888,103 @@ class DataService {
         return { id: safeKey };
     }
 
+    // --- Vendor master (Part A): named vendor entities with a default account,
+    // currency, and payment terms. Workspace-scoped; soft-archive only. -----------
+    async getVendors(userId, { includeArchived = false } = {}) {
+        try {
+            const snap = await getDocs(collection(this.db, `${this._scope(userId)}/vendors`));
+            return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+                .filter((v) => includeArchived || v.status !== 'archived')
+                .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+        } catch (_) { return []; }
+    }
+
+    // Cached name_key → vendor entity for fast default lookups during entry.
+    async _loadVendorEntities(userId) {
+        this._vendorEntityCache = this._vendorEntityCache || {};
+        const key = this._scope(userId);
+        if (this._vendorEntityCache[key]) return this._vendorEntityCache[key];
+        const map = {};
+        try {
+            const list = await this.getVendors(userId);
+            list.forEach((v) => { if (v.name_key) map[v.name_key] = v; });
+        } catch (_) { /* empty */ }
+        this._vendorEntityCache[key] = map;
+        return map;
+    }
+
+    async getVendorByKey(userId, name) {
+        const key = normalizeVendorKey(name);
+        if (!key) return null;
+        const map = await this._loadVendorEntities(userId).catch(() => ({}));
+        return map[key] || null;
+    }
+
+    _vendorPayload(data, prev) {
+        const code = this._nullableString(data.default_account_code, 12);
+        const catalog = code ? ACCOUNTING_ACCOUNT_CATALOG[code] : null;
+        const terms = ['due_on_receipt', 'due_in_7_days', 'due_in_14_days', 'due_in_30_days'];
+        return {
+            default_account_code: code || null,
+            default_account_name: code ? (this._nullableString(data.default_account_name, 80) || (catalog ? catalog.name : null)) : null,
+            default_currency: ['IDR', 'USD', 'SGD'].includes(data.default_currency) ? data.default_currency : (prev ? (prev.default_currency || 'IDR') : 'IDR'),
+            payment_terms: terms.includes(data.payment_terms) ? data.payment_terms : null,
+            npwp: this._nullableString(data.npwp, 32),
+            notes: this._nullableString(data.notes, 500)
+        };
+    }
+
+    async addVendor(userId, data = {}) {
+        if (!userId) throw new Error('userId required');
+        const name = this._stringOrDefault(data.name, '', 160);
+        if (!name) throw new Error('Vendor name is required.');
+        const nameKey = normalizeVendorKey(name);
+        const payload = {
+            name, name_key: nameKey, ...this._vendorPayload(data, null),
+            status: 'active', created_at: serverTimestamp(), updated_at: serverTimestamp()
+        };
+        const ref = await addDoc(collection(this.db, `${this._scope(userId)}/vendors`), payload);
+        await this.addAuditLog(userId, {
+            action: 'vendor.created', target_collection: 'vendors', target_id: ref.id,
+            after: { name, default_account_code: payload.default_account_code, default_currency: payload.default_currency }, source: 'dashboard'
+        });
+        this._vendorEntityCache = {};
+        return { id: ref.id, ...payload };
+    }
+
+    async updateVendor(userId, vendorId, data = {}) {
+        if (!userId || !vendorId) throw new Error('userId and vendorId required');
+        const ref = doc(this.db, `${this._scope(userId)}/vendors/${vendorId}`);
+        const existing = await getDoc(ref);
+        if (!existing.exists()) throw new Error('Vendor not found.');
+        const prev = existing.data();
+        const payload = {
+            name: this._stringOrDefault(data.name ?? prev.name, prev.name, 160),
+            name_key: prev.name_key, // immutable (rules enforce)
+            ...this._vendorPayload(data, prev),
+            status: data.status === 'archived' ? 'archived' : 'active',
+            created_at: prev.created_at || serverTimestamp(),
+            updated_at: serverTimestamp()
+        };
+        await setDoc(ref, payload);
+        await this.addAuditLog(userId, {
+            action: 'vendor.updated', target_collection: 'vendors', target_id: vendorId,
+            after: { name: payload.name, default_account_code: payload.default_account_code }, source: 'dashboard'
+        });
+        this._vendorEntityCache = {};
+        return { id: vendorId, ...payload };
+    }
+
+    async archiveVendor(userId, vendorId) {
+        if (!userId || !vendorId) throw new Error('userId and vendorId required');
+        const ref = doc(this.db, `${this._scope(userId)}/vendors/${vendorId}`);
+        const existing = await getDoc(ref);
+        if (!existing.exists()) return null;
+        await setDoc(ref, { ...existing.data(), status: 'archived', updated_at: serverTimestamp() });
+        this._vendorEntityCache = {};
+        return { id: vendorId };
+    }
+
     // Suggest the categorizing account for a new entry, so the drawer's Account
     // field pre-fills. Vendor memory wins when it exists AND is compatible with the
     // money direction (a revenue account for income-like, expense/COGS otherwise) —
@@ -3898,7 +3995,17 @@ class DataService {
         const incomeLike = t === 'income' || t === 'revenue' || t === 'refund' || t === 'pending_receivable';
         const compatible = (acctType) => (incomeLike ? acctType === 'revenue' : acctType === 'expense');
         const vkey = normalizeVendorKey(vendor_name);
-        // 1. Exact vendor memory (most specific) — highest priority.
+        // 0. Explicit vendor-master default (user-set on the vendor entity) — highest.
+        if (vkey) {
+            const entities = await this._loadVendorEntities(userId).catch(() => ({}));
+            const ent = entities[vkey];
+            const code = ent && ent.default_account_code;
+            if (code) {
+                const cat = ACCOUNTING_ACCOUNT_CATALOG[code];
+                if (cat && compatible(cat.type)) return { code, name: ent.default_account_name || cat.name, type: cat.type, source: 'vendor_default' };
+            }
+        }
+        // 1. Auto-learned vendor memory (most specific) — from prior confirmed saves.
         if (vkey) {
             const vmap = await this._loadVendorAccountMap(userId).catch(() => ({}));
             const hit = vmap[vkey];

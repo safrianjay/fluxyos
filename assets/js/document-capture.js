@@ -521,6 +521,7 @@
         const el = $('scan-account-source');
         if (!el) return;
         const map = {
+            vendor_default: { text: 'From vendor', cls: 'text-emerald-600' },
             vendor: { text: 'From vendor', cls: 'text-emerald-600' },
             keyword: { text: 'From keyword rule', cls: 'text-emerald-600' },
             chain: { text: 'From category', cls: 'text-gray-400' },

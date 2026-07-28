@@ -249,6 +249,124 @@ function setTab(tab) {
     if (tab === 'aging') loadAging();
     // Statements are period-scoped (like the ledger tabs) and load lazily.
     if (tab === 'statements') loadStatements();
+    // Vendor master loads lazily on first open.
+    if (tab === 'vendors') renderVendors();
+}
+
+// --- Vendors tab (Part A): named vendors with a default account / currency /
+// terms. New bills & transactions for a vendor pre-fill its default account. ---
+const VENDOR_TERMS_LABEL = { due_on_receipt: 'Due on receipt', due_in_7_days: 'Net 7', due_in_14_days: 'Net 14', due_in_30_days: 'Net 30' };
+
+async function renderVendors() {
+    const accSel = el('vendor-account-select');
+    if (accSel && !accSel.dataset.filled) {
+        accSel.innerHTML = `<option value="">No default</option>` + mappingAccountOptions()
+            .map(o => `<option value="${o.code}">${escapeHtml(o.code)} · ${escapeHtml(o.name)}</option>`).join('');
+        accSel.dataset.filled = '1';
+    }
+    const saveBtn = el('vendor-save-btn');
+    if (saveBtn && !saveBtn.dataset.wired) {
+        saveBtn.addEventListener('click', handleSaveVendor);
+        el('vendor-cancel-btn')?.addEventListener('click', resetVendorForm);
+        saveBtn.dataset.wired = '1';
+    }
+    const listEl = el('vendors-list');
+    if (!listEl) return;
+    let vendors = [];
+    try { vendors = await state.ds.getVendors(state.user.uid); } catch (_) { vendors = []; }
+    if (!vendors.length) {
+        listEl.innerHTML = emptyInline('No vendors yet', 'Add one above to save its default account, currency, and terms.');
+        return;
+    }
+    listEl.innerHTML = `<div style="min-width:620px;">` + vendors.map(v => {
+        const acct = v.default_account_code ? `${escapeHtml(v.default_account_code)} · ${escapeHtml(v.default_account_name || '')}` : 'No default account';
+        const terms = VENDOR_TERMS_LABEL[v.payment_terms] || '—';
+        return `
+        <div class="acct-row">
+            <div style="flex:1;min-width:160px;">
+                <div class="fluxy-body-strong" style="color:#111827;">${escapeHtml(v.name)}</div>
+                <div class="fluxy-meta">${acct} · ${escapeHtml(v.default_currency || 'IDR')} · ${escapeHtml(terms)}${v.npwp ? ' · NPWP ' + escapeHtml(v.npwp) : ''}</div>
+            </div>
+            <button type="button" class="acct-btn acct-btn-secondary" data-vendor-edit="${escapeHtml(v.id)}">Edit</button>
+            <button type="button" class="acct-btn acct-btn-ghost" data-vendor-archive="${escapeHtml(v.id)}">Archive</button>
+        </div>`;
+    }).join('') + `</div>`;
+    listEl.querySelectorAll('[data-vendor-edit]').forEach(btn => {
+        btn.addEventListener('click', () => startEditVendor(btn.getAttribute('data-vendor-edit'), vendors));
+    });
+    listEl.querySelectorAll('[data-vendor-archive]').forEach(btn => {
+        btn.addEventListener('click', () => handleArchiveVendor(btn.getAttribute('data-vendor-archive'), vendors));
+    });
+}
+
+function resetVendorForm() {
+    el('vendor-edit-id').value = '';
+    el('vendor-name-input').value = '';
+    if (el('vendor-account-select')) el('vendor-account-select').value = '';
+    if (el('vendor-currency-select')) el('vendor-currency-select').value = 'IDR';
+    if (el('vendor-terms-select')) el('vendor-terms-select').value = '';
+    el('vendor-npwp-input').value = '';
+    el('vendor-save-btn').textContent = 'Save vendor';
+    el('vendor-cancel-btn')?.classList.add('hidden');
+}
+
+function startEditVendor(id, vendors) {
+    const v = (vendors || []).find(x => x.id === id);
+    if (!v) return;
+    el('vendor-edit-id').value = v.id;
+    el('vendor-name-input').value = v.name || '';
+    if (el('vendor-account-select')) el('vendor-account-select').value = v.default_account_code || '';
+    if (el('vendor-currency-select')) el('vendor-currency-select').value = v.default_currency || 'IDR';
+    if (el('vendor-terms-select')) el('vendor-terms-select').value = v.payment_terms || '';
+    el('vendor-npwp-input').value = v.npwp || '';
+    el('vendor-save-btn').textContent = 'Update vendor';
+    el('vendor-cancel-btn')?.classList.remove('hidden');
+    el('vendor-name-input').focus();
+}
+
+async function handleSaveVendor() {
+    const id = el('vendor-edit-id').value;
+    const name = (el('vendor-name-input')?.value || '').trim();
+    if (!name) { window.showToast?.('Vendor name is required.', 'error'); return; }
+    const data = {
+        name,
+        default_account_code: el('vendor-account-select')?.value || null,
+        default_currency: el('vendor-currency-select')?.value || 'IDR',
+        payment_terms: el('vendor-terms-select')?.value || null,
+        npwp: (el('vendor-npwp-input')?.value || '').trim() || null
+    };
+    const btn = el('vendor-save-btn');
+    if (btn) { btn.disabled = true; btn.textContent = id ? 'Updating…' : 'Saving…'; }
+    try {
+        if (id) await state.ds.updateVendor(state.user.uid, id, data);
+        else await state.ds.addVendor(state.user.uid, data);
+        window.showToast?.(id ? 'Vendor updated.' : 'Vendor saved.', 'success');
+        resetVendorForm();
+        await renderVendors();
+    } catch (err) {
+        console.error('Save vendor failed:', err);
+        window.showToast?.(err?.message || 'Could not save the vendor. Try again.', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = el('vendor-edit-id').value ? 'Update vendor' : 'Save vendor'; }
+    }
+}
+
+async function handleArchiveVendor(id, vendors) {
+    const v = (vendors || []).find(x => x.id === id);
+    const confirmed = await window.showConfirmDialog?.({
+        title: 'Archive vendor?',
+        body: `<strong>${escapeHtml(v?.name || 'This vendor')}</strong> will be hidden and stop pre-filling its default account.`,
+        confirmLabel: 'Archive', cancelLabel: 'Cancel', tone: 'danger'
+    });
+    if (confirmed === false) return;
+    try {
+        await state.ds.archiveVendor(state.user.uid, id);
+        window.showToast?.('Vendor archived.', 'success');
+        await renderVendors();
+    } catch (err) {
+        console.error('Archive vendor failed:', err);
+        window.showToast?.('Could not archive the vendor. Try again.', 'error');
+    }
 }
 
 // --- Statements tab: ledger-derived Income Statement + Balance Sheet --------
