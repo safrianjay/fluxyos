@@ -1244,13 +1244,28 @@
             return map;
         }
 
-        function openVendorPayModal(presetVendorKey) {
+        // Vendor-master entities, keyed by normalized name, so the vendor-payment
+        // picker can show canonical names (and mark saved vendors) instead of raw
+        // bill strings. Cached for the session.
+        let vendorEntityMap = null;
+        async function loadVendorEntityMap() {
+            if (vendorEntityMap) return vendorEntityMap;
+            const m = new Map();
+            try { (await ds.getVendors(auth.currentUser.uid)).forEach(v => { if (v.name_key) m.set(v.name_key, v); }); } catch (_) {}
+            vendorEntityMap = m;
+            return m;
+        }
+
+        async function openVendorPayModal(presetVendorKey) {
             if (window.FluxyAccessGuard && !window.FluxyAccessGuard.requireWriteAccess()) return;
             const vendors = unpaidBillsByVendor();
             if (!vendors.size) { window.showToast?.('No unpaid bills to pay right now.', 'info'); return; }
-            const entries = Array.from(vendors.values()).sort((a, b) => a.name.localeCompare(b.name));
+            const entMap = await loadVendorEntityMap();
+            const entries = Array.from(vendors.values())
+                .map(v => { const ent = entMap.get(v.key); return { ...v, displayName: ent ? ent.name : v.name, isEntity: !!ent }; })
+                .sort((a, b) => a.displayName.localeCompare(b.displayName));
             const sel = document.getElementById('vendor-pay-vendor');
-            sel.innerHTML = entries.map(v => `<option value="${escapeHtml(v.key)}">${escapeHtml(v.name)} · ${v.bills.length} unpaid</option>`).join('');
+            sel.innerHTML = entries.map(v => `<option value="${escapeHtml(v.key)}">${v.isEntity ? '★ ' : ''}${escapeHtml(v.displayName)} · ${v.bills.length} unpaid</option>`).join('');
             const startKey = (presetVendorKey && vendors.has(presetVendorKey)) ? presetVendorKey : entries[0].key;
             sel.value = startKey;
             vendorPayState.vendorKey = startKey;
