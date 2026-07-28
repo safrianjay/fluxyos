@@ -635,11 +635,16 @@ class DataService {
         if (isForeign) {
             const idr = Math.round(Math.abs(Number(amountPaidIdr) || 0));
             if (!(idr > 0)) throw new Error('Enter the Rupiah amount paid for this foreign-currency bill.');
-            amount = outstanding;          // clears the full foreign balance
-            ledgerAmount = idr;            // Rupiah posted to the ledger
-            newPaid = Math.round(Math.abs(Number(bill.amount_paid) || 0)) + outstanding;
-            newOutstanding = 0;
-            fullyPaid = true;
+            // payAmount (when given) is the FOREIGN amount settled this time — allows
+            // partial foreign payments; defaults to the full remaining foreign balance.
+            const foreignPay = payAmount != null ? Math.round(Math.abs(Number(payAmount) || 0)) : outstanding;
+            if (!(foreignPay > 0)) throw new Error('Payment amount must be greater than zero.');
+            if (foreignPay > outstanding) throw new Error('Payment cannot exceed the outstanding balance.');
+            amount = foreignPay;           // foreign units settled
+            ledgerAmount = idr;            // Rupiah posted to the ledger for this payment
+            newPaid = Math.round(Math.abs(Number(bill.amount_paid) || 0)) + foreignPay;
+            newOutstanding = Math.max(0, outstanding - foreignPay);
+            fullyPaid = newOutstanding <= 0;
         } else {
             amount = Math.round(Math.abs(Number(payAmount) || 0));
             if (!(amount > 0)) throw new Error('Payment amount must be greater than zero.');
@@ -708,7 +713,9 @@ class DataService {
         // payment transaction out of the IDR journals (accounting_status excluded).
         if (isForeign) {
             transaction.accounting_status = 'excluded';
-            billUpdate.amount_paid_idr = ledgerAmount;
+            // Rupiah paid accumulates across partial payments (each at its own rate);
+            // fx_rate / fx_rate_date reflect the most recent payment.
+            billUpdate.amount_paid_idr = Math.round(Math.abs(Number(bill.amount_paid_idr) || 0)) + ledgerAmount;
             billUpdate.fx_rate = fxRate != null ? Number(fxRate) : null;
             billUpdate.fx_rate_date = fxRateDate ? String(fxRateDate).slice(0, 20) : null;
         }
@@ -737,13 +744,17 @@ class DataService {
 
     // Pay a bill's full remaining balance (works for unpaid and partially-paid
     // bills). Kept as the single-bill entry point used by the Bill Details drawer.
-    async markBillPaid(userId, billId, { paymentDate = null, cashFields = null, amountPaidIdr = null, fxRate = null, fxRateDate = null } = {}) {
+    async markBillPaid(userId, billId, { paymentDate = null, cashFields = null, amountPaidIdr = null, fxRate = null, fxRateDate = null, foreignAmount = null } = {}) {
         if (!userId || !billId) throw new Error('userId and billId required');
         const bill = await this.getBillById(userId, billId);
         if (!bill) throw new Error('Bill not found.');
         const outstanding = this._billOutstanding(bill);
         if (!(outstanding > 0)) throw new Error('This bill is already marked as paid.');
-        return this._payBillOnce(userId, bill, outstanding, { paymentDate, cashFields, amountPaidIdr, fxRate, fxRateDate });
+        // Foreign bills may be paid partially — the caller passes the FOREIGN amount
+        // settled this time; IDR bills always pay the full remaining balance here.
+        const isForeign = bill.currency && bill.currency !== 'IDR';
+        const payAmount = (isForeign && foreignAmount != null) ? foreignAmount : outstanding;
+        return this._payBillOnce(userId, bill, payAmount, { paymentDate, cashFields, amountPaidIdr, fxRate, fxRateDate });
     }
 
     // Pay one or more bills in a single vendor-payment action. `payments` is

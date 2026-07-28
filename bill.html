@@ -206,11 +206,16 @@
                 <div class="px-5 py-4 overflow-y-auto space-y-4">
                     <div id="bill-pay-summary" class="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-1.5"></div>
                     <div id="bill-pay-fx" class="hidden rounded-lg border border-blue-100 bg-blue-50/60 p-3 space-y-2">
+                        <div>
+                            <label for="bill-pay-foreign" class="block text-[12px] font-semibold text-gray-600 mb-1">Amount to pay (<span id="bill-pay-fx-cur">USD</span>)</label>
+                            <input id="bill-pay-foreign" type="text" inputmode="decimal" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-mono tabular-nums focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]" placeholder="0.00">
+                            <p class="mt-1 text-[11px] text-gray-400">Defaults to the full balance. Enter less for a partial payment.</p>
+                        </div>
                         <p id="bill-pay-fx-line" class="text-[12px] text-blue-800"></p>
                         <div>
                             <label for="bill-pay-idr" class="block text-[12px] font-semibold text-gray-600 mb-1">Rupiah amount paid</label>
                             <input id="bill-pay-idr" type="text" inputmode="numeric" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-mono tabular-nums focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]" placeholder="0">
-                            <p class="mt-1 text-[11px] text-gray-400">Prefilled from today's rate — override with the actual Rupiah that left your account.</p>
+                            <p class="mt-1 text-[11px] text-gray-400">Prefilled from the rate — override with the actual Rupiah that left your account.</p>
                         </div>
                     </div>
                     <div>
@@ -1133,7 +1138,7 @@
 
             // Foreign-currency bill: show the FX block + prefill the Rupiah amount.
             const fxBlock = document.getElementById('bill-pay-fx');
-            if (isForeignBill(bill)) { fxBlock.classList.remove('hidden'); refreshBillPayFx(); }
+            if (isForeignBill(bill)) { fxBlock.classList.remove('hidden'); document.getElementById('bill-pay-foreign').value = ''; refreshBillPayFx(); }
             else { fxBlock.classList.add('hidden'); }
 
             document.getElementById('bill-pay-modal').classList.remove('hidden');
@@ -1151,25 +1156,50 @@
                 return Number(data.rate) || null;
             } catch (_) { return null; }
         }
+        // Parse the foreign-amount input to minor units, clamped to the outstanding.
+        function billPayForeignMinor() {
+            const bill = payModalBill;
+            if (!bill || !isForeignBill(bill) || !window.FluxyMoney) return 0;
+            const raw = document.getElementById('bill-pay-foreign')?.value || '';
+            const minor = window.FluxyMoney.toMinor(raw, bill.currency) || 0;
+            return Math.min(Math.max(0, minor), billOutstanding(bill));
+        }
+        // Recompute the "1 CUR = Rp…" line + the prefilled IDR from the current
+        // foreign amount + rate. Called on rate fetch and on foreign-amount change.
+        function recomputeBillPayFx() {
+            const bill = payModalBill;
+            if (!bill || !isForeignBill(bill) || !window.FluxyMoney) return;
+            const cur = bill.currency;
+            const foreignMinor = billPayForeignMinor();
+            const line = document.getElementById('bill-pay-fx-line');
+            const idrInput = document.getElementById('bill-pay-idr');
+            if (payFxRate) {
+                const idr = Math.round(window.FluxyMoney.fromMinor(foreignMinor, cur) * payFxRate);
+                line.textContent = `1 ${cur} = ${formatCurrencyIDR(payFxRate)} · ${window.FluxyMoney.formatMoney(foreignMinor, cur)} ≈ ${formatCurrencyIDR(idr)}`;
+                idrInput.value = idr.toLocaleString('id-ID');
+            } else {
+                line.textContent = `Live rate unavailable — enter the Rupiah amount you paid.`;
+            }
+        }
         async function refreshBillPayFx() {
             const bill = payModalBill;
             if (!bill || !isForeignBill(bill) || !window.FluxyMoney) return;
             const cur = bill.currency;
             const outstanding = billOutstanding(bill); // minor units in the bill currency
+            const curEl = document.getElementById('bill-pay-fx-cur');
+            if (curEl) curEl.textContent = cur;
+            const foreignInput = document.getElementById('bill-pay-foreign');
+            // Default the amount to the full balance (only when empty, to preserve a
+            // user-entered partial across a payment-date change).
+            if (foreignInput && !foreignInput.value.trim()) {
+                foreignInput.value = window.FluxyMoney.fromMinor(outstanding, cur).toFixed(window.FluxyMoney.decimals(cur));
+            }
             const reqKey = `${cur}|${payPickerSelectedKey}`;
             document.getElementById('bill-pay-fx').dataset.req = reqKey;
             const rate = await fetchBillFxRate(cur, payPickerSelectedKey);
             if (document.getElementById('bill-pay-fx').dataset.req !== reqKey) return; // stale
             payFxRate = rate;
-            const line = document.getElementById('bill-pay-fx-line');
-            const idrInput = document.getElementById('bill-pay-idr');
-            if (rate) {
-                const idr = Math.round(window.FluxyMoney.fromMinor(outstanding, cur) * rate);
-                line.textContent = `1 ${cur} = ${formatCurrencyIDR(rate)} · ${window.FluxyMoney.formatMoney(outstanding, cur)} ≈ ${formatCurrencyIDR(idr)}`;
-                idrInput.value = idr.toLocaleString('id-ID');
-            } else {
-                line.textContent = `Live rate unavailable — enter the Rupiah amount you paid.`;
-            }
+            recomputeBillPayFx();
         }
 
         // Restore the confirm button to its idle state. The success path closes
@@ -1203,8 +1233,11 @@
                 const cashFields = window.FluxyCashImpact.derive(cashState, Timestamp.fromDate(paymentDate));
                 const opts = { paymentDate, cashFields };
                 if (isForeignBill(payModalBill)) {
+                    const foreignMinor = billPayForeignMinor();
+                    if (!(foreignMinor > 0)) { window.showToast?.('Enter an amount to pay.', 'error'); resetPayConfirmButton(); return; }
                     const idr = Math.round(Math.abs(Number(String(document.getElementById('bill-pay-idr')?.value || '').replace(/[^\d]/g, '')) || 0));
                     if (!(idr > 0)) { window.showToast?.('Enter the Rupiah amount paid.', 'error'); resetPayConfirmButton(); return; }
+                    opts.foreignAmount = foreignMinor;
                     opts.amountPaidIdr = idr;
                     opts.fxRate = payFxRate || null;
                     opts.fxRateDate = payPickerSelectedKey || null;
@@ -1228,6 +1261,7 @@
         document.getElementById('bill-pay-close')?.addEventListener('click', closePayModal);
         document.getElementById('bill-pay-backdrop')?.addEventListener('click', closePayModal);
         document.getElementById('bill-pay-confirm')?.addEventListener('click', confirmPay);
+        document.getElementById('bill-pay-foreign')?.addEventListener('input', recomputeBillPayFx);
 
         // ── Vendor Payment (pay one or many of a vendor's unpaid bills) ─────────
         const vendorPayState = { vendorKey: null, dateKey: null, cashController: null, inFlight: false };

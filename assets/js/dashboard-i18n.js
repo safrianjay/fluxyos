@@ -367,6 +367,12 @@
         "Rupiah amount paid": "Jumlah Rupiah dibayar",
         "Prefilled from today's rate — override with the actual Rupiah that left your account.":
             "Terisi dari kurs hari ini — ganti dengan Rupiah yang benar-benar keluar dari rekening Anda.",
+        "Prefilled from the rate — override with the actual Rupiah that left your account.":
+            "Terisi dari kurs — ganti dengan Rupiah yang benar-benar keluar dari rekening Anda.",
+        "Defaults to the full balance. Enter less for a partial payment.":
+            "Default ke saldo penuh. Masukkan lebih kecil untuk pembayaran sebagian.",
+        "Enter an amount to pay.": "Masukkan jumlah yang akan dibayar.",
+        "Amount to pay (": "Jumlah yang dibayar (",
         "Live rate unavailable — enter the Rupiah amount you paid.":
             "Kurs langsung tidak tersedia — masukkan jumlah Rupiah yang Anda bayar.",
         "Enter the Rupiah amount paid.": "Masukkan jumlah Rupiah yang dibayar.",

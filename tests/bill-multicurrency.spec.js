@@ -71,3 +71,47 @@ test('Bill multi-currency: a USD bill is excluded from the kernel and converts t
     expect(r.payTxAccounting).toBe('excluded');  // kept out of the IDR journals
     expect(r.hadPayJournal).toBe(false);
 });
+
+test('Bill multi-currency: a USD bill can be paid in partial foreign amounts', async ({ page }) => {
+    await page.goto('/bill.html');
+    await page.waitForFunction(() => !!(window.__fluxyBillsContext && window.__fluxyBillsContext.auth && window.__fluxyBillsContext.auth.currentUser), null, { timeout: 30000 });
+
+    const r = await page.evaluate(async () => {
+        const ds = window.__fluxyBillsContext.ds;
+        const uid = window.__fluxyBillsContext.auth.currentUser.uid;
+        const wsId = (window.FluxyWorkspace && window.FluxyWorkspace.id) || uid;
+        ds.setActor(uid);
+        // $1,500.00 (150000 cents).
+        const ref = await ds.addBill(wsId, {
+            amount: 150000, currency: 'USD', vendor_name: `QA FX partial ${Date.now()}`,
+            category: 'Infrastructure', type: 'expense', status: 'Upcoming', icon: '💸',
+            payment_status: 'unpaid', due_date: new Date(Date.now() + 7 * 86400000)
+        });
+        const billId = ref.id;
+        // Partial 1: pay $500 (50000 cents) for Rp7.000.000.
+        await ds.markBillPaid(wsId, billId, { foreignAmount: 50000, amountPaidIdr: 7000000, fxRate: 14000, fxRateDate: '2026-07-28' });
+        const afterFirst = await ds.getBillById(wsId, billId);
+        // Partial 2: pay the remaining $1,000 (100000 cents) for Rp15.000.000.
+        await ds.markBillPaid(wsId, billId, { foreignAmount: 100000, amountPaidIdr: 15000000, fxRate: 15000, fxRateDate: '2026-07-28' });
+        const afterSecond = await ds.getBillById(wsId, billId);
+        return {
+            firstStatus: afterFirst.payment_status,
+            firstOutstanding: afterFirst.outstanding_amount,
+            firstPaidIdr: afterFirst.amount_paid_idr,
+            secondStatus: afterSecond.payment_status,
+            secondOutstanding: afterSecond.outstanding_amount,
+            secondPaid: afterSecond.amount_paid,
+            secondPaidIdr: afterSecond.amount_paid_idr
+        };
+    });
+
+    // First partial: still owed, foreign outstanding reduced, IDR accrued.
+    expect(r.firstStatus).toBe('partial');
+    expect(r.firstOutstanding).toBe(100000);
+    expect(r.firstPaidIdr).toBe(7000000);
+    // Second partial clears it; Rupiah paid accumulates across the two rates.
+    expect(r.secondStatus).toBe('paid');
+    expect(r.secondOutstanding).toBe(0);
+    expect(r.secondPaid).toBe(150000);
+    expect(r.secondPaidIdr).toBe(22000000); // 7.000.000 + 15.000.000
+});
