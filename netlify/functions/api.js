@@ -2995,8 +2995,12 @@ async function detectDocument(event, headers) {
     return jsonResponse(headers, 200, result);
 }
 
-function normalizeInputAmount(value) {
-    if (typeof value === 'number' && Number.isFinite(value)) return Math.round(Math.abs(value));
+function normalizeInputAmount(value, currency) {
+    // USD/SGD carry cents; rounding them here would silently lose money.
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        const abs = Math.abs(value);
+        return (currency === 'USD' || currency === 'SGD') ? Math.round(abs * 100) / 100 : Math.round(abs);
+    }
     const cleaned = String(value || '').replace(/[^\d,.-]/g, '');
     if (!cleaned) return null;
     const lastComma = cleaned.lastIndexOf(',');
@@ -3126,7 +3130,8 @@ function mapInputFields(detectedType, extracted) {
     if (['bill', 'invoice'].includes(detectedType)) {
         return {
             vendor_name: extracted.vendor_name || '',
-            amount: normalizeInputAmount(extracted.amount),
+            amount: normalizeInputAmount(extracted.amount, extracted.currency),
+            currency: extracted.currency || 'IDR',
             category: ALLOWED_CATEGORIES.includes(extracted.category) ? extracted.category : 'Operations',
             invoice_number: extracted.invoice_number || '',
             due_date: isDateKey(extracted.due_date) ? extracted.due_date : '',
@@ -3139,7 +3144,8 @@ function mapInputFields(detectedType, extracted) {
     if (['receipt', 'payment_screenshot', 'bank_transfer', 'bank_statement'].includes(detectedType)) {
         return {
             vendor_name: extracted.vendor_name || extracted.recipient_or_vendor || '',
-            amount: normalizeInputAmount(extracted.amount),
+            amount: normalizeInputAmount(extracted.amount, extracted.currency),
+            currency: extracted.currency || 'IDR',
             category: ALLOWED_CATEGORIES.includes(extracted.category) ? extracted.category : 'Operations',
             transaction_date: isDateKey(extracted.transaction_date)
                 ? extracted.transaction_date
@@ -3155,7 +3161,8 @@ function mapInputFields(detectedType, extracted) {
     if (detectedType === 'subscription_invoice') {
         return {
             vendor_name: extracted.vendor_name || '',
-            amount: normalizeInputAmount(extracted.amount),
+            amount: normalizeInputAmount(extracted.amount, extracted.currency),
+            currency: extracted.currency || 'IDR',
             category: 'SaaS',
             renewal_date: isDateKey(extracted.renewal_date) ? extracted.renewal_date : '',
             billing_cycle: extracted.billing_cycle || 'monthly',
@@ -3451,9 +3458,14 @@ const EXTRACTION_SYSTEM_PROMPT = `You are a financial document extraction engine
 Extract structured bill data from the document. Return only fields you can confidently read from the document; use null when uncertain. Never invent values.
 
 Rules:
-- amount must be a raw integer (no currency symbol, no separators). Prefer the total amount due / grand total / amount payable. Never confuse subtotal, tax, or unit price with the total.
-- Normalize Indonesian Rupiah formats: "Rp 1.250.000" -> 1250000, "IDR 1,250,000" -> 1250000, "1.250.000,00" -> 1250000.
-- Default currency to "IDR" only when the document uses Rp / IDR / Indonesian language.
+- amount is the document's own total, in that document's OWN currency and its MAJOR unit. Never convert between currencies and never apply an exchange rate. Prefer the total amount due / grand total / amount payable. Never confuse subtotal, tax, or unit price with the total.
+- Rupiah has no decimal places: "Rp 1.250.000" -> 1250000, "IDR 1,250,000" -> 1250000, "1.250.000,00" -> 1250000.
+- USD and SGD keep up to two decimals: "$20.00" -> 20, "US$1,234.56" -> 1234.56, "S$99.90" -> 99.9. Do NOT return cents (2000 for $20.00 is wrong).
+- currency must be one of "IDR", "USD", or "SGD" (ISO code, uppercase).
+  - "Rp", "IDR", or Indonesian-language wording -> IDR.
+  - "US$", "USD", or a bare "$" on an otherwise English/US document -> USD.
+  - "S$" or "SGD" -> SGD.
+  - If the document shows a currency FluxyOS does not support, return the amount as printed, set currency to null, and add a warning naming the currency you saw.
 - due_date must be explicit on the document (Due Date, Pay Before, Jatuh Tempo, Batas Pembayaran, Payment Due). Do not infer from invoice_date.
 - Dates must be YYYY-MM-DD strings or null.
 - category must be one of Revenue, Marketing, Infrastructure, Operations, SaaS. If uncertain, use Operations and set category confidence below 0.7.
@@ -3537,15 +3549,41 @@ function extractResponseText(payload) {
     return null;
 }
 
+// Currencies FluxyOS can price a record in. Anything else is surfaced as a
+// warning rather than silently coerced — a mis-assumed currency is worse than
+// an explicit "we could not read this one".
+const EXTRACTION_CURRENCIES = ['IDR', 'USD', 'SGD'];
+
+function normalizeExtractedCurrency(raw) {
+    const code = String(raw == null ? '' : raw).trim().toUpperCase();
+    return EXTRACTION_CURRENCIES.includes(code) ? code : null;
+}
+
+// Rupiah is a 0-decimal currency, so rounding is correct. USD/SGD carry cents:
+// rounding $20.50 to 21 would silently lose money, so keep 2 decimals.
+function normalizeExtractedAmount(raw, currency) {
+    if (typeof raw !== 'number' || !Number.isFinite(raw)) return null;
+    if (currency === 'USD' || currency === 'SGD') return Math.round(raw * 100) / 100;
+    return Math.round(raw);
+}
+
 function sanitizeExtraction(data) {
     if (!data || typeof data !== 'object') return buildMockExtraction(null);
     const category = ALLOWED_CATEGORIES.includes(data.category) ? data.category : 'Operations';
     const confidence = data.confidence && typeof data.confidence === 'object' ? data.confidence : {};
+    const currency = normalizeExtractedCurrency(data.currency);
+    const rawWarnings = Array.isArray(data.warnings) ? data.warnings.filter(s => typeof s === 'string') : [];
+    // An unreadable/unsupported currency must reach the user — the review step
+    // defaults to Rupiah, and silently doing that to a USD bill is the exact bug
+    // this guards against.
+    if (data.currency && !currency) {
+        rawWarnings.unshift(`Currency "${String(data.currency).slice(0, 12)}" is not supported — check the amount and currency before saving.`);
+    }
     return {
         document_type: typeof data.document_type === 'string' ? data.document_type : 'unknown',
         vendor_name: typeof data.vendor_name === 'string' ? data.vendor_name : null,
-        amount: typeof data.amount === 'number' ? Math.round(data.amount) : null,
-        currency: typeof data.currency === 'string' ? data.currency : 'IDR',
+        amount: normalizeExtractedAmount(data.amount, currency),
+        currency: currency || 'IDR',
         due_date: typeof data.due_date === 'string' ? data.due_date : null,
         invoice_date: typeof data.invoice_date === 'string' ? data.invoice_date : null,
         invoice_number: typeof data.invoice_number === 'string' ? data.invoice_number : null,
@@ -3557,7 +3595,7 @@ function sanitizeExtraction(data) {
             due_date: numOrZero(confidence.due_date),
             category: numOrZero(confidence.category),
         },
-        warnings: Array.isArray(data.warnings) ? data.warnings.filter(s => typeof s === 'string').slice(0, 6) : [],
+        warnings: rawWarnings.slice(0, 6),
         raw_text_preview: typeof data.raw_text_preview === 'string' ? data.raw_text_preview.slice(0, 500) : null,
     };
 }

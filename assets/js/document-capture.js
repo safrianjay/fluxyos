@@ -82,7 +82,50 @@
         dates: { primary: null, invoice: null },
         errorMessage: null,
         allocationContext: null, // { budget, allocations } | null — transaction allocation picker
+        // Multi-currency (matches the invoice/bill convention): the document's own
+        // currency, plus the IDR conversion used when the record must land in the
+        // Rupiah ledger. `userTouched` pins a manually entered rate.
+        currency: 'IDR',
+        fx: { rate: null, rateDate: null, loading: false, error: null, userTouched: false },
+        cashController: null,
+        cashUserTouched: false,
+        bankAccounts: [],
     };
+
+    const SUPPORTED_CURRENCIES = ['IDR', 'USD', 'SGD'];
+    // FluxyMoney owns every currency rule (symbols, decimals, minor units,
+    // as-you-type grouping). Never re-implement them here.
+    function money() { return window.FluxyMoney || null; }
+    function normalizeCurrency(cur) {
+        const c = String(cur || '').toUpperCase();
+        return SUPPORTED_CURRENCIES.includes(c) ? c : 'IDR';
+    }
+    function isForeign() { return state.currency !== 'IDR'; }
+    function currencyLabel(cur) {
+        return cur === 'IDR' ? '(Rp)' : `(${cur})`;
+    }
+    function formatAmountInput(value, cur) {
+        const m = money();
+        if (m) return m.formatMoneyInput(value, cur);
+        return String(value == null ? '' : value).replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+    // Parse the review input into integer MINOR units of `cur` (rupiah for IDR,
+    // cents for USD/SGD) — the same storage convention invoices and bills use.
+    function amountToMinor(value, cur) {
+        const m = money();
+        if (m) return m.toMinor(value, cur);
+        return normalizeRupiahAmount(value);
+    }
+    function formatMoneyDisplay(minor, cur) {
+        const m = money();
+        if (m) return m.formatMoney(minor, cur);
+        return `Rp${Number(minor || 0).toLocaleString('id-ID')}`;
+    }
+    function minorToMajor(minor, cur) {
+        const m = money();
+        if (m) return m.fromMinor(minor, cur);
+        return Number(minor) || 0;
+    }
 
     function $(id) { return document.getElementById(id); }
     function modeCfg() { return MODES[state.mode] || MODES.bill; }
@@ -167,6 +210,81 @@
         }
     }
 
+    // ── Multi-currency conversion ────────────────────────────────────────────
+    // Same source and contract as the Invoices module's mark-paid flow: the
+    // same-origin /.netlify/functions/fx-rate proxy (Frankfurter/ECB), asked for
+    // the IDR-per-1-unit rate on the document's own date.
+
+    async function fetchFxRate(fromCurrency, dayKey) {
+        try {
+            const date = dayKey || new Date().toISOString().slice(0, 10);
+            const res = await fetch(`/.netlify/functions/fx-rate?from=${encodeURIComponent(fromCurrency)}&to=IDR&date=${encodeURIComponent(date)}`);
+            if (!res.ok) return null;
+            const data = await res.json();
+            const rate = Number(data.rate) || null;
+            return rate ? { rate, rateDate: data.date || date } : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    // The IDR equivalent of what is currently in the Amount field, or null when
+    // there is nothing to convert (IDR, no amount, or no rate yet).
+    function convertedIdr() {
+        if (!isForeign()) return null;
+        const rate = Number(state.fx.rate);
+        if (!(rate > 0)) return null;
+        const minor = amountToMinor($('scan-review-form')?.querySelector('input[name="amount"]')?.value, state.currency);
+        if (!(minor > 0)) return null;
+        return Math.round(minorToMajor(minor, state.currency) * rate);
+    }
+
+    function renderFxBlock() {
+        const host = $('scan-fx-block');
+        if (!host) return;
+        host.classList.toggle('hidden', !isForeign());
+        if (!isForeign()) return;
+        const rateInput = $('scan-fx-rate');
+        if (rateInput && !state.fx.userTouched) {
+            rateInput.value = state.fx.rate ? formatAmountInput(String(Math.round(state.fx.rate)), 'IDR') : '';
+        }
+        const note = $('scan-fx-note');
+        if (!note) return;
+        if (state.fx.loading) { note.textContent = 'Fetching the exchange rate…'; return; }
+        const idr = convertedIdr();
+        if (idr != null) {
+            const minor = amountToMinor($('scan-review-form')?.querySelector('input[name="amount"]')?.value, state.currency);
+            const dated = state.fx.rateDate ? ` · rate of ${state.fx.rateDate}` : '';
+            note.textContent = `${formatMoneyDisplay(minor, state.currency)} ≈ ${formatMoneyDisplay(idr, 'IDR')}${state.fx.userTouched ? ' · your rate' : dated}`;
+        } else if (state.fx.error) {
+            note.textContent = 'Could not fetch the rate — enter it manually to continue.';
+        } else {
+            note.textContent = 'Enter an exchange rate to see the Rupiah equivalent.';
+        }
+    }
+
+    async function refreshFxRate() {
+        if (!isForeign() || state.fx.userTouched) { renderFxBlock(); return; }
+        state.fx.loading = true;
+        state.fx.error = null;
+        renderFxBlock();
+        const cur = state.currency;
+        const dayKey = state.dates.invoice || state.dates.primary || null;
+        const result = await fetchFxRate(cur, dayKey);
+        // Ignore a stale response if the user switched currency meanwhile.
+        if (state.currency !== cur) return;
+        state.fx.loading = false;
+        if (result) {
+            state.fx.rate = result.rate;
+            state.fx.rateDate = result.rateDate;
+        } else {
+            state.fx.rate = null;
+            state.fx.error = 'rate_unavailable';
+        }
+        renderFxBlock();
+        updateSaveEnabled();
+    }
+
     // The shared attachment helper is only eagerly loaded on bill.html. Reuse the
     // same memo key as shared-dashboard.js so the script is fetched at most once
     // per page regardless of who asks first.
@@ -206,6 +324,12 @@
         state.extraction = null;
         state.extractionSource = null;
         state.duplicateConfirmed = false;
+        // Per-document state — a second scan must not inherit the first one's
+        // currency, exchange rate, or cash-impact choice.
+        state.currency = 'IDR';
+        state.fx = { rate: null, rateDate: null, loading: false, error: null, userTouched: false };
+        state.cashController = null;
+        state.cashUserTouched = false;
     }
 
     function setHeader() {
@@ -222,6 +346,7 @@
         const isOnline = navigator.onLine !== false;
         state.dates = { primary: null, invoice: null };
         state.duplicateConfirmed = false;
+        clearFile();
         setStep(isOnline ? 'upload' : 'offline');
         $('scan-drawer-backdrop')?.classList.remove('hidden');
         requestAnimationFrame(() => {
@@ -403,6 +528,17 @@
         const warnings = Array.isArray(data.warnings) ? data.warnings : [];
         const isMock = state.extractionSource === 'mock';
 
+        // Adopt the detected currency, then render the amount in that currency's
+        // own convention (Rupiah has no decimals; USD/SGD keep cents).
+        state.currency = normalizeCurrency(data.currency);
+        // Seed in the currency's canonical form — "20.5" for a $20.50 receipt
+        // reads as $20.05 at a glance.
+        const amountValue = data.amount != null && data.amount !== ''
+            ? formatAmountInput(
+                (Number(data.amount) || 0).toFixed(money() ? money().decimals(state.currency) : 0),
+                state.currency)
+            : '';
+
         const categoryOptions = ALLOWED_CATEGORIES.map(c => {
             const selected = (data.category === c) ? ' selected' : '';
             return `<option value="${c}"${selected}>${c}</option>`;
@@ -474,9 +610,27 @@
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Amount (Rp) ${confidenceMark(conf.amount)}</label>
-                    <input type="text" name="amount" required inputmode="numeric" value="${data.amount != null ? Number(data.amount).toLocaleString('id-ID') : ''}" placeholder="1.250.000"
-                           class="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] font-mono focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                    <div class="flex items-end gap-2">
+                        <div class="flex-1 min-w-0">
+                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Amount <span id="scan-amount-cur">${escapeHtml(currencyLabel(state.currency))}</span> ${confidenceMark(conf.amount)}</label>
+                            <input type="text" name="amount" required inputmode="decimal" value="${escapeHtml(amountValue)}" placeholder="${state.currency === 'IDR' ? '1.250.000' : '1,250.00'}"
+                                   class="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] tabular-nums focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                        </div>
+                        <div class="w-[104px] flex-shrink-0">
+                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Currency</label>
+                            <select name="currency" class="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                                ${SUPPORTED_CURRENCIES.map(c => `<option value="${c}" ${c === state.currency ? 'selected' : ''}>${c}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div id="scan-fx-block" class="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 ${isForeign() ? '' : 'hidden'}">
+                        <div class="flex items-center gap-2">
+                            <label for="scan-fx-rate" class="text-[11px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Rate (Rp)</label>
+                            <input type="text" id="scan-fx-rate" inputmode="numeric" placeholder="16.250"
+                                   class="flex-1 min-w-0 px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] tabular-nums focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
+                        </div>
+                        <p id="scan-fx-note" class="mt-1.5 text-[11px] text-gray-500"></p>
+                    </div>
                 </div>
 
                 <div>
@@ -514,6 +668,10 @@
                            class="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
                 </div>
 
+                <div id="scan-cash-impact"></div>
+
+                <div id="scan-source-doc"></div>
+
                 <div class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-[11px] text-gray-500 leading-relaxed">
                     <p><span class="font-semibold text-gray-700">AI suggests. You confirm. FluxyOS saves.</span></p>
                     <p class="mt-0.5">${footerNote}</p>
@@ -529,6 +687,114 @@
         updateSaveEnabled();
         mountReviewAllocationPicker();
         mountReviewAccountPicker();
+        renderSourceDocument();
+        mountCashImpact();
+        renderFxBlock();
+        if (isForeign()) refreshFxRate();
+    }
+
+    // ── Source document ──────────────────────────────────────────────────────
+    // The scanned file is already in hand and will be attached on save, so the
+    // review step shows it as an attachment — never a second upload prompt.
+    function renderSourceDocument() {
+        const host = $('scan-source-doc');
+        if (!host) return;
+        const file = state.file;
+        if (!file) { host.innerHTML = ''; return; }
+        const isImage = (file.type || '').startsWith('image/');
+        const thumb = isImage && state.previewUrl
+            ? `<img src="${escapeHtml(state.previewUrl)}" alt="" class="h-full w-full object-cover">`
+            : `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>`;
+        host.innerHTML = `
+            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Source document</label>
+            <div class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+                <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-100 text-gray-400">${thumb}</span>
+                <div class="min-w-0 flex-1">
+                    <p class="truncate text-[13px] font-semibold text-gray-800">${escapeHtml(file.name || 'Document')}</p>
+                    <p class="truncate text-[11px] text-gray-400"><span class="tabular-nums">${escapeHtml(formatBytes(file.size))}</span> · <span>Attached automatically when you save</span></p>
+                </div>
+                <button type="button" id="scan-source-replace" class="flex-shrink-0 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">Replace</button>
+            </div>`;
+        $('scan-source-replace')?.addEventListener('click', () => {
+            state.extraction = null;
+            state.extractionSource = null;
+            state.duplicateConfirmed = false;
+            setStep('upload');
+        });
+    }
+
+    // ── Cash impact ──────────────────────────────────────────────────────────
+    // Shown as soon as the extraction lands so the user can see (and correct)
+    // whether this moves cash, before saving. Bills are informational: a bill
+    // accrues now and only moves cash when it is marked paid.
+    async function mountCashImpact() {
+        const host = $('scan-cash-impact');
+        if (!host) return;
+        const cfg = modeCfg();
+        state.cashController = null;
+
+        if (state.mode !== 'transaction') {
+            host.innerHTML = `
+                <div>
+                    <p class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Cash impact</p>
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+                        <span class="inline-flex items-center rounded border border-gray-200 bg-white px-2 py-1 text-[11px] font-bold uppercase text-gray-600">No immediate cash impact</span>
+                        <p class="mt-1.5 text-[11px] text-gray-500">${state.mode === 'bill'
+                            ? 'Saving records what you owe. Cash moves when you mark this bill paid.'
+                            : 'Recurring costs move cash on each renewal, not when you save this.'}</p>
+                    </div>
+                </div>`;
+            return;
+        }
+
+        const FCI = window.FluxyCashImpact;
+        if (!FCI) { host.innerHTML = ''; return; }
+
+        const typeVal = $('scan-review-form')?.querySelector('select[name="type"]')?.value || cfg.defaultType;
+        const initial = cashDefaultsForType(typeVal);
+        host.innerHTML = `<div class="space-y-3" id="scan-cash-control"></div>`;
+        const control = $('scan-cash-control');
+        const render = () => {
+            control.innerHTML = FCI.buildHtml({ ...initial, bankAccounts: state.bankAccounts });
+            // Opt the account select into search — a workspace can have many
+            // accounts and scrolling a plain list is the wrong interaction.
+            const sel = control.querySelector('[data-fci="account"]');
+            if (sel && state.bankAccounts.length > 5) sel.setAttribute('data-fluxy-search', '');
+            state.cashController = FCI.wire(control, {
+                impact: initial.impact,
+                direction: initial.direction,
+                onChange: () => { state.cashUserTouched = true; }
+            });
+        };
+        render();
+
+        // Bank accounts load lazily; re-render once they arrive so the picker is
+        // populated without blocking the review step.
+        if (!state.bankAccounts.length) {
+            try {
+                const ctx = getContext();
+                const uid = ctx?.auth?.currentUser?.uid;
+                if (ctx?.ds && uid) {
+                    const accounts = await ctx.ds.getBankAccounts(uid);
+                    if (Array.isArray(accounts) && accounts.length && $('scan-cash-control')) {
+                        state.bankAccounts = accounts;
+                        const prev = state.cashController?.getState?.();
+                        if (prev) { initial.impact = prev.impact; initial.direction = prev.direction; }
+                        render();
+                    }
+                }
+            } catch (_) { /* the control still works without linked accounts */ }
+        }
+    }
+
+    function cashDefaultsForType(typeVal) {
+        const inbound = ['income', 'revenue', 'refund', 'pending_receivable'].includes(typeVal);
+        const pending = ['pending_payable', 'pending_receivable', 'adjustment'].includes(typeVal);
+        return {
+            impact: pending ? 'pending' : 'actual',
+            direction: inbound ? 'in' : 'out',
+            accountId: ''
+        };
     }
 
     // Account picker for the scan review (Phase 3b): the searchable CoA picker,
@@ -655,6 +921,10 @@
                     state.dates.primary = start;
                     updateSaveEnabled();
                     mountReviewAllocationPicker();
+                    // The rate is the document's date rate (same rule as the
+                    // Invoices mark-paid flow), so a new date means a new rate —
+                    // unless the user has typed their own.
+                    if (isForeign()) refreshFxRate();
                 },
             });
         }
@@ -666,6 +936,7 @@
                 maxDate: today || undefined,
                 onChange: ({ start }) => {
                     state.dates.invoice = start;
+                    if (isForeign()) refreshFxRate();
                 },
             });
         }
@@ -772,6 +1043,59 @@
         form?.querySelector('input[name="vendor_name"]')?.addEventListener('blur', () => refreshReviewAccount(false));
         form?.querySelector('select[name="category"]')?.addEventListener('change', () => refreshReviewAccount(false));
         form?.querySelector('select[name="type"]')?.addEventListener('change', () => refreshReviewAccount(false));
+
+        // Amount: group thousands as the user types, in the selected currency's
+        // own convention. Caret is kept at the end — the field is short and the
+        // grouping shifts every character before it.
+        const amountInput = form?.querySelector('input[name="amount"]');
+        amountInput?.addEventListener('input', () => {
+            const atEnd = amountInput.selectionStart === amountInput.value.length;
+            amountInput.value = formatAmountInput(amountInput.value, state.currency);
+            if (atEnd) amountInput.setSelectionRange(amountInput.value.length, amountInput.value.length);
+            renderFxBlock();
+        });
+
+        // Currency: relabel, re-format the existing amount under the new
+        // convention, and re-fetch the rate.
+        form?.querySelector('select[name="currency"]')?.addEventListener('change', (e) => {
+            const next = normalizeCurrency(e.target.value);
+            if (next === state.currency) return;
+            state.currency = next;
+            state.fx = { rate: null, rateDate: null, loading: false, error: null, userTouched: false };
+            const label = $('scan-amount-cur');
+            if (label) label.textContent = currencyLabel(next);
+            if (amountInput) {
+                // Re-interpret the digits already typed under the new convention
+                // rather than wiping the user's input.
+                const digits = String(amountInput.value || '').replace(/[^\d.]/g, '');
+                amountInput.value = formatAmountInput(digits, next);
+                amountInput.placeholder = next === 'IDR' ? '1.250.000' : '1,250.00';
+            }
+            renderFxBlock();
+            if (isForeign()) refreshFxRate();
+            updateSaveEnabled();
+        });
+
+        // Manual rate override — pins the rate so a later refresh cannot clobber it.
+        const rateInput = $('scan-fx-rate');
+        rateInput?.addEventListener('input', () => {
+            rateInput.value = formatAmountInput(rateInput.value, 'IDR');
+            const parsed = amountToMinor(rateInput.value, 'IDR');
+            state.fx.userTouched = true;
+            state.fx.rate = parsed > 0 ? parsed : null;
+            state.fx.rateDate = null;
+            state.fx.error = null;
+            renderFxBlock();
+            updateSaveEnabled();
+        });
+
+        // Cash impact follows the transaction type unless the user has set it.
+        form?.querySelector('select[name="type"]')?.addEventListener('change', (e) => {
+            if (state.mode !== 'transaction' || state.cashUserTouched || !state.cashController) return;
+            const d = cashDefaultsForType(e.target.value);
+            state.cashController.setImpact(d.impact);
+            state.cashController.setDirection(d.direction);
+        });
         $('scan-save-btn')?.addEventListener('click', saveScannedDocument);
         $('scan-rescan-btn')?.addEventListener('click', () => {
             state.extraction = null;
@@ -801,8 +1125,13 @@
         if (!form || !saveBtn) return;
         const fd = new FormData(form);
         const vendor = String(fd.get('vendor_name') || '').trim();
-        const amount = normalizeRupiahAmount(fd.get('amount'));
-        saveBtn.disabled = !(vendor && amount > 0) || state.saving;
+        const amountMinor = amountToMinor(fd.get('amount'), state.currency);
+        // A foreign-currency record that must land in the Rupiah ledger cannot be
+        // saved without a rate. Bills keep their own currency until payment, so
+        // they stay saveable.
+        const needsRate = isForeign() && state.mode !== 'bill';
+        const rateOk = !needsRate || Number(state.fx.rate) > 0;
+        saveBtn.disabled = !(vendor && amountMinor > 0 && rateOk) || state.saving;
     }
 
     function openManualEntry() {
@@ -940,9 +1269,13 @@
     function normalizeExtraction(data) {
         if (!data || typeof data !== 'object') return {};
         const category = ALLOWED_CATEGORIES.includes(data.category) ? data.category : 'Operations';
+        const currency = normalizeCurrency(data.currency);
         return {
             vendor_name: typeof data.vendor_name === 'string' ? data.vendor_name : '',
-            amount: typeof data.amount === 'number' ? Math.round(data.amount) : normalizeRupiahAmount(data.amount),
+            // Keep the document's own units: a USD total stays 20.00, not 20 or
+            // 2000. The review step converts on save.
+            amount: typeof data.amount === 'number' ? data.amount : normalizeRupiahAmount(data.amount),
+            currency,
             category,
             due_date: typeof data.due_date === 'string' ? data.due_date : '',
             renewal_date: typeof data.renewal_date === 'string' ? data.renewal_date : '',
@@ -1029,12 +1362,27 @@
         const fd = new FormData(form);
 
         const vendor_name = String(fd.get('vendor_name') || '').trim();
-        const amount = normalizeRupiahAmount(fd.get('amount'));
+        const currency = state.currency;
+        // Minor units of the document's OWN currency (rupiah / cents).
+        const amountMinor = amountToMinor(fd.get('amount'), currency);
         const category = ALLOWED_CATEGORIES.includes(fd.get('category')) ? fd.get('category') : 'Operations';
-        if (!vendor_name || amount <= 0) {
+        if (!vendor_name || amountMinor <= 0) {
             window.showToast?.('Please enter vendor and amount before saving.', 'error');
             return;
         }
+
+        // Bills carry their own currency and stay outside the Rupiah kernel until
+        // they are paid (same rule as the Add Bill drawer). Everything else posts
+        // straight to the IDR ledger, so it must be converted now.
+        const fxRate = Number(state.fx.rate) || null;
+        const needsConversion = currency !== 'IDR' && state.mode !== 'bill';
+        if (needsConversion && !(fxRate > 0)) {
+            window.showToast?.('Enter an exchange rate so this can be saved in Rupiah.', 'error');
+            return;
+        }
+        const amount = needsConversion
+            ? Math.round(minorToMajor(amountMinor, currency) * fxRate)
+            : amountMinor;
 
         const formType = fd.get('type');
         const type = (cfg.showTypeStatus && TRANSACTION_TYPES.includes(formType)) ? formType : cfg.defaultType;
@@ -1068,10 +1416,19 @@
             source_file_size_bytes: file?.size || null,
         };
 
+        // A converted record stores Rupiah, so the original figure would otherwise
+        // be lost. `notes` is the only field transactions/subscriptions accept for
+        // it, and it keeps the document auditable next to its attachment.
+        if (needsConversion) {
+            payload.notes = `Original ${formatMoneyDisplay(amountMinor, currency)} converted at 1 ${currency} = ${formatMoneyDisplay(fxRate, 'IDR')}${state.fx.rateDate ? ` (${state.fx.rateDate})` : ''}.`;
+        }
+
         if (state.mode === 'bill') {
             if (primaryDate) payload.due_date = primaryDate;
             if (invoiceDate) payload.invoice_date = invoiceDate;
             payload.payment_status = 'unpaid';
+            // Face currency of the bill; USD/SGD amounts are already minor units.
+            payload.currency = currency;
         } else if (state.mode === 'subscription') {
             if (primaryDate) payload.renewal_date = primaryDate;
             if (invoiceDate) payload.invoice_date = invoiceDate;
@@ -1079,6 +1436,13 @@
         } else {
             if (primaryDate) payload.timestamp = primaryDate;
             if (invoiceDate) payload.invoice_date = invoiceDate;
+            // Cash impact confirmed in the review step.
+            if (state.cashController && window.FluxyCashImpact) {
+                Object.assign(payload, window.FluxyCashImpact.derive(
+                    state.cashController.getState(),
+                    primaryDate ? ctx.ds.Timestamp.fromDate(primaryDate) : null
+                ));
+            }
             // Pin to the user-selected budget allocation (expense-like types only).
             if (window.FluxyBudgetPicker && window.FluxyBudgetPicker.isExpenseLike(type)
                 && state.allocationContext?.budget) {

@@ -81,15 +81,51 @@
 
         const instance = { wrap, trigger, menu, select, close, syncFromSelect, positionMenu };
 
-        function buildMenu() {
-            const opts = Array.from(select.options);
-            menu.innerHTML = opts.map((o, i) =>
-                `<button type="button" role="option" class="fluxy-select-option" data-index="${i}"${o.disabled ? ' disabled' : ''}>` +
+        // Opt-in substring search (`data-fluxy-search`), for selects long enough
+        // that scanning the list is the wrong interaction — e.g. a workspace with
+        // many bank accounts. Off by default so every existing select is unchanged.
+        const searchable = select.hasAttribute('data-fluxy-search');
+
+        function optionRow(o, i) {
+            return `<button type="button" role="option" class="fluxy-select-option" data-index="${i}"${o.disabled ? ' disabled' : ''}>` +
                 `<span>${esc(o.textContent)}</span>` +
                 '<svg class="fluxy-select-option-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">' +
                 '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m5 13 4 4 10-12"/></svg>' +
-                '</button>'
-            ).join('');
+                '</button>';
+        }
+
+        function renderOptions(term) {
+            const q = String(term || '').trim().toLowerCase();
+            const rows = Array.from(select.options)
+                .map((o, i) => ({ o, i }))
+                .filter(({ o }) => !q || o.textContent.toLowerCase().includes(q));
+            const list = menu.querySelector('[data-fluxy-select-list]') || menu;
+            list.innerHTML = rows.length
+                ? rows.map(({ o, i }) => optionRow(o, i)).join('')
+                : '<p class="fluxy-select-empty">No matches</p>';
+            syncSelectedMarks();
+        }
+
+        function buildMenu() {
+            if (searchable) {
+                menu.innerHTML =
+                    '<div class="fluxy-select-search">' +
+                    '<input type="text" class="fluxy-select-search-input" placeholder="Search…" aria-label="Search">' +
+                    '</div><div data-fluxy-select-list></div>';
+                const input = menu.querySelector('.fluxy-select-search-input');
+                input.addEventListener('input', () => renderOptions(input.value));
+                // Keep the field usable inside a focus-trapped drawer.
+                input.addEventListener('keydown', (e) => { if (e.key !== 'Escape') e.stopPropagation(); });
+                renderOptions('');
+            } else {
+                menu.innerHTML = Array.from(select.options).map(optionRow).join('');
+            }
+        }
+
+        function syncSelectedMarks() {
+            menu.querySelectorAll('.fluxy-select-option').forEach((el) => {
+                el.setAttribute('aria-selected', Number(el.dataset.index) === select.selectedIndex ? 'true' : 'false');
+            });
         }
 
         function syncFromSelect() {
@@ -97,9 +133,7 @@
             labelEl.textContent = sel ? sel.textContent : '';
             wrap.dataset.disabled = select.disabled ? 'true' : 'false';
             trigger.disabled = !!select.disabled;
-            menu.querySelectorAll('.fluxy-select-option').forEach((el) => {
-                el.setAttribute('aria-selected', Number(el.dataset.index) === select.selectedIndex ? 'true' : 'false');
-            });
+            syncSelectedMarks();
         }
 
         function choose(index) {
@@ -152,6 +186,10 @@
             openInstance = instance;
             positionMenu();
             requestAnimationFrame(positionMenu);
+            // A searchable list opens ready to type; a plain one focuses the
+            // current choice so keyboard navigation starts where the user is.
+            const searchInput = searchable ? menu.querySelector('.fluxy-select-search-input') : null;
+            if (searchInput) { searchInput.value = ''; renderOptions(''); searchInput.focus(); return; }
             const sel = menu.querySelector('[aria-selected="true"]') || menu.querySelector('.fluxy-select-option:not([disabled])');
             sel && sel.focus();
         }

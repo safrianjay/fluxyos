@@ -2040,6 +2040,37 @@ main > header {
 .fluxy-select[data-open="true"] .fluxy-select-menu,
 .fluxy-select-menu.is-open { display: block; }
 
+/* Opt-in search field (data-fluxy-search) — sticks to the top of a long list. */
+.fluxy-select-search {
+    position: sticky;
+    top: -4px;
+    z-index: 1;
+    margin: -4px -4px 4px;
+    padding: 8px;
+    background: #FFFFFF;
+    border-bottom: 1px solid #F3F4F6;
+}
+.fluxy-select-search-input {
+    width: 100%;
+    padding: 7px 10px;
+    background: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    font-size: var(--fluxy-text-md);
+    color: #111827;
+    outline: none;
+}
+.fluxy-select-search-input:focus {
+    border-color: #EA580C;
+    box-shadow: 0 0 0 1px #EA580C;
+}
+.fluxy-select-empty {
+    padding: 10px;
+    font-size: var(--fluxy-text-md);
+    color: #9CA3AF;
+    text-align: center;
+}
+
 .fluxy-select-option {
     display: flex;
     align-items: center;

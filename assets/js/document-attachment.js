@@ -377,6 +377,18 @@
         return /\.(jpe?g|png|webp|gif)$/i.test(String(name || ''));
     }
 
+    // File-type presentation. A PDF and a photo are different things to a user,
+    // so the badge says which — and carries the extension rather than a generic
+    // sheet-of-paper glyph that reads as "empty".
+    function fileKind(name) {
+        const ext = String(name || '').split('.').pop().toLowerCase();
+        if (isImageName(name)) {
+            return { label: ext === 'jpeg' ? 'JPG' : ext.toUpperCase(), badge: 'bg-indigo-50 text-indigo-600' };
+        }
+        if (ext === 'pdf') return { label: 'PDF', badge: 'bg-red-50 text-red-600' };
+        return { label: (ext || 'FILE').slice(0, 4).toUpperCase(), badge: 'bg-gray-100 text-gray-500' };
+    }
+
     function attachedAtMs(entry) {
         const value = entry?.attached_at;
         if (!value) return 0;
@@ -451,11 +463,10 @@
             const when = formatAttachedAt(entry);
             const chip = ROLE_CHIPS[entry.role] || ROLE_CHIPS.unknown_finance_document;
             const meta = [chip, when ? `Attached ${when}` : ''].filter(Boolean).join(' · ');
+            const kind = fileKind(name);
             return `
-                <div class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5" data-doc-index="${index}">
-                    <span data-doc-thumb class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-100 text-gray-400">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">${isImage ? ICONS.image : ICONS.file}</svg>
-                    </span>
+                <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 transition-colors hover:border-gray-300" data-doc-index="${index}">
+                    <span data-doc-thumb class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg text-[9px] font-bold tracking-wide ${kind.badge}">${escapeHtml(kind.label)}</span>
                     <div class="min-w-0 flex-1">
                         <a data-doc-act="open" target="_blank" rel="noopener noreferrer"
                             class="pointer-events-none block truncate text-[13px] font-semibold text-gray-400 hover:text-[#EA580C] hover:underline">${escapeHtml(name)}</a>
@@ -494,14 +505,32 @@
             const rows = (legacyReceiptUrl ? legacyRowHtml() : '')
                 + list.map(rowHtml).join('');
             const empty = `<p class="text-[13px] text-gray-400">No document attached to this record yet.</p>`;
-            const adder = readOnly ? '' : `
+            const hasAny = !!(list.length || legacyReceiptUrl);
+            // Once something is attached, the prominent dropzone would read as
+            // "upload this again". It collapses to a quiet secondary action, and
+            // per-row Replace covers swapping the file. The file input itself
+            // always stays in the DOM — Replace triggers it.
+            const dropzone = `
                 <label for="${inputId}"
-                    class="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 transition-colors hover:border-gray-400">
+                    class="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 transition-colors hover:border-gray-400 hover:bg-gray-100/60">
                     <svg class="w-4 h-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">${ICONS.paperclip}</svg>
                     <span data-doc-add-label class="flex-1 truncate text-[13px] text-gray-500">Attach a document</span>
                 </label>
+                <p class="text-[11px] text-gray-400">JPG, PNG, WebP, or PDF · Max 5 MB</p>`;
+            const compactAdd = `
+                <label for="${inputId}"
+                    class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 -ml-2 text-[12px] font-semibold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
+                    <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    <span data-doc-add-label>Add another document</span>
+                </label>`;
+            // The format/size hint is instructional and belongs with the dropzone.
+            // `note` says what attaching *does* (e.g. it does not mark a bill
+            // paid) — that stays true with a file already attached, so it shows
+            // in both states.
+            const adder = readOnly ? '' : `
+                ${hasAny ? compactAdd : dropzone}
                 <input type="file" id="${inputId}" accept="image/jpeg,image/png,image/webp,application/pdf" class="sr-only">
-                <p class="text-[11px] text-gray-400">JPG, PNG, WebP, or PDF · Max 5 MB${note ? ` · ${escapeHtml(note)}` : ''}</p>
+                ${note ? `<p class="text-[11px] text-gray-400">${escapeHtml(note)}</p>` : ''}
                 <p data-doc-error class="hidden text-[11px] font-medium text-red-600"></p>`;
 
             const body = `
@@ -550,9 +579,22 @@
                     });
                     const openLink = row.querySelector('[data-doc-act="open"]');
                     if (openLink) openLink.dataset.docUrl = url;
-                    if (isImageName(attachmentFileName(entry))) {
+                    const name = attachmentFileName(entry);
+                    if (isImageName(name)) {
                         const thumb = row.querySelector('[data-doc-thumb]');
-                        if (thumb) thumb.innerHTML = `<img src="${escapeHtml(url)}" alt="" class="h-full w-full object-cover">`;
+                        if (thumb) {
+                            // Swap the type badge for a real preview, but keep the
+                            // badge as the fallback — a broken image would
+                            // otherwise leave an empty grey square.
+                            const badge = thumb.innerHTML;
+                            const img = document.createElement('img');
+                            img.className = 'h-full w-full object-cover';
+                            img.alt = '';
+                            img.addEventListener('error', () => { thumb.innerHTML = badge; });
+                            img.src = url;
+                            thumb.innerHTML = '';
+                            thumb.appendChild(img);
+                        }
                     }
                 }).catch(() => {
                     const meta = row.querySelector('[data-doc-meta]');
@@ -587,7 +629,10 @@
         function setBusy(next, label) {
             busy = next;
             const addLabel = hostEl.querySelector('[data-doc-add-label]');
-            if (addLabel) addLabel.textContent = next ? label : 'Attach a document';
+            // The idle text differs between the empty dropzone and the compact
+            // "add another" affordance — restore whichever this render is showing.
+            const idleLabel = (items.length || legacyReceiptUrl) ? 'Add another document' : 'Attach a document';
+            if (addLabel) addLabel.textContent = next ? label : idleLabel;
             hostEl.querySelectorAll('button[data-doc-act], input[type="file"]').forEach((el) => {
                 el.disabled = next;
             });
