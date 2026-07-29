@@ -531,7 +531,136 @@ window.FluxyCashImpact = (function () {
         return { cash_effective: false, cash_status: 'none', cash_direction: 'none', cash_account_id: null, cash_source: 'manual', cash_match_status: 'unmatched', cash_effective_at: null };
     }
 
-    return { buildHtml, wire, derive, stateFromRecord };
+    // ── Cash impact is a function of the transaction type ────────────────────
+    // The type already states whether money moved: `pending_payable` /
+    // `pending_receivable` say it has not, `transfer` / `adjustment` are neutral,
+    // the rest move cash. Asking the user again in a second vocabulary let the
+    // two disagree — type `pending_payable` with impact "Actual" was reachable,
+    // producing a record that claimed both "unpaid" and "cash moved" while
+    // feeding the Cash Movement card and bank reconciliation. So it is derived,
+    // never asked. The cash ACCOUNT stays a user choice: which bank account the
+    // money moved through is not derivable and is what bank rec matches on.
+    const INBOUND_TYPES = ['income', 'revenue', 'refund', 'pending_receivable'];
+    const PENDING_TYPES = ['pending_payable', 'pending_receivable'];
+    const NEUTRAL_TYPES = ['transfer', 'adjustment'];
+
+    function impactForType(type) {
+        const t = String(type || '').trim().toLowerCase();
+        if (NEUTRAL_TYPES.includes(t)) return 'no_impact';
+        if (PENDING_TYPES.includes(t)) return 'pending';
+        return 'actual';
+    }
+    function directionForType(type) {
+        return INBOUND_TYPES.includes(String(type || '').trim().toLowerCase()) ? 'in' : 'out';
+    }
+
+    // The cash_* fields a transaction of this type carries. `accountId` is the
+    // user's linked bank account; `timestamp` feeds cash_effective_at.
+    // cash_source 'auto' marks this as derived, so a human classification and a
+    // bank/integration-sourced one stay distinguishable in the audit trail.
+    function deriveFromType(type, { accountId = '', timestamp = null } = {}) {
+        const impact = impactForType(type);
+        if (impact === 'actual') {
+            return {
+                cash_effective: true, cash_status: 'actual', cash_direction: directionForType(type),
+                cash_account_id: accountId || null, cash_source: 'auto', cash_match_status: 'unmatched',
+                cash_effective_at: timestamp || null
+            };
+        }
+        if (impact === 'pending') {
+            return {
+                cash_effective: false, cash_status: 'pending', cash_direction: 'none',
+                cash_account_id: accountId || null, cash_source: 'auto', cash_match_status: 'unmatched',
+                cash_effective_at: null
+            };
+        }
+        return {
+            cash_effective: false, cash_status: 'none', cash_direction: 'none',
+            cash_account_id: null, cash_source: 'auto', cash_match_status: 'unmatched',
+            cash_effective_at: null
+        };
+    }
+
+    // Cash facts established by a bank statement or a commerce integration are
+    // observed, not inferred — never overwrite them from the type.
+    const DERIVED_SAFE_SOURCES = ['auto', 'manual', '', null, undefined];
+    function isDerivable(row) {
+        if (!row) return true;
+        if (row.recon_status && row.recon_status !== 'unreconciled') return false;
+        return DERIVED_SAFE_SOURCES.includes(row.cash_source ?? '');
+    }
+
+    // Read-only presentation of the derived state, using the same wording as the
+    // ledger's cash badge so the two never describe the same record differently.
+    function badgeForType(type) {
+        const impact = impactForType(type);
+        if (impact === 'actual') {
+            return directionForType(type) === 'in'
+                ? { label: 'Cash in', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' }
+                : { label: 'Cash out', cls: 'border-blue-200 bg-blue-50 text-blue-700' };
+        }
+        if (impact === 'pending') return { label: 'Pending cash', cls: 'border-amber-200 bg-amber-50 text-amber-700' };
+        return { label: 'No cash impact', cls: 'border-gray-200 bg-gray-50 text-gray-500' };
+    }
+
+    function explainForType(type) {
+        const t = String(type || '').trim().toLowerCase();
+        if (t === 'pending_payable') return 'Money has not left yet — it moves when you record the payment.';
+        if (t === 'pending_receivable') return 'Money has not arrived yet — it moves when you record the receipt.';
+        if (NEUTRAL_TYPES.includes(t)) return 'This does not change your cash balance.';
+        return INBOUND_TYPES.includes(t) ? 'Money is coming in on this date.' : 'Money is going out on this date.';
+    }
+
+    // Badge + optional cash-account select. No impact/direction tabs: those are
+    // derived from the type shown right above this in every drawer.
+    function buildDerivedHtml({ type, accountId = '', bankAccounts = [], showAccount = true } = {}) {
+        const b = badgeForType(type);
+        const accounts = (bankAccounts || []).filter(a => a.status === 'active');
+        const options = accounts
+            .map(a => `<option value="${esc(a.id)}" ${a.id === accountId ? 'selected' : ''}>${esc(a.account_name || a.bank_name || a.id)}</option>`)
+            .join('');
+        const needsAccount = impactForType(type) !== 'no_impact';
+        return `
+            <div>
+                <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Cash impact</p>
+                <div class="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
+                    <span data-fci-badge class="inline-flex items-center rounded border px-2 py-1 text-[11px] font-bold uppercase ${b.cls}">${esc(b.label)}</span>
+                    <p data-fci-explain class="mt-1.5 text-[11px] text-gray-500">${esc(explainForType(type))}</p>
+                </div>
+            </div>
+            ${showAccount && needsAccount ? `
+            <div data-fci-account-field>
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Link cash account <span class="normal-case font-normal">(optional)</span></label>
+                ${accounts.length
+                    ? `<select data-fci="account" ${accounts.length > 5 ? 'data-fluxy-search' : ''} class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#EA580C] text-[13px]"><option value="">No account linked</option>${options}</select>`
+                    : `<p class="text-[13px] text-gray-500 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl">No bank accounts added yet. Add one in Settings → Cash &amp; Bank Accounts.</p>`}
+            </div>` : ''}`;
+    }
+
+    // Repaint the badge in place when the type changes, without losing the
+    // account the user already picked.
+    function refreshDerived(root, type) {
+        if (!root) return;
+        const b = badgeForType(type);
+        const badge = root.querySelector('[data-fci-badge]');
+        if (badge) {
+            badge.className = `inline-flex items-center rounded border px-2 py-1 text-[11px] font-bold uppercase ${b.cls}`;
+            badge.textContent = b.label;
+        }
+        const explain = root.querySelector('[data-fci-explain]');
+        if (explain) explain.textContent = explainForType(type);
+        root.querySelector('[data-fci-account-field]')?.classList.toggle('hidden', impactForType(type) === 'no_impact');
+    }
+
+    function accountIdFrom(root) {
+        return root?.querySelector('[data-fci="account"]')?.value || '';
+    }
+
+    return {
+        buildHtml, wire, derive, stateFromRecord,
+        impactForType, directionForType, deriveFromType, isDerivable,
+        badgeForType, explainForType, buildDerivedHtml, refreshDerived, accountIdFrom
+    };
 })();
 
 /* ── FluxyDrawer — universal right-side Entry Drawer shell ──────────────
@@ -712,11 +841,15 @@ window.showAddTransactionModal = function(options = {}) {
     // The founder-facing "Direction" maps to the granular `type` the kernel needs.
     // `type` stays the stored source of truth (no data migration); the cash-timing
     // toggle upgrades income/expense → pending_receivable/pending_payable at submit.
-    const DIRECTION_TO_TYPE = { in: 'income', out: 'expense', transfer: 'transfer', adjustment: 'adjustment', refund: 'refund', fee: 'fee', tax: 'tax' };
-    const TYPE_TO_DIRECTION = { income: 'in', revenue: 'in', pending_receivable: 'in', refund: 'refund', expense: 'out', pending_payable: 'out', fee: 'fee', tax: 'tax', transfer: 'transfer', adjustment: 'adjustment' };
+    // Pending is a DIRECTION, not a cash-impact toggle. It used to be reachable
+    // only by setting the cash-impact control to "Pending", which meant the type
+    // and the cash fields were two vocabularies for one fact and could disagree.
+    // Type is now the single source of truth and cash impact is derived from it.
+    const DIRECTION_TO_TYPE = { in: 'income', out: 'expense', pending_in: 'pending_receivable', pending_out: 'pending_payable', transfer: 'transfer', adjustment: 'adjustment', refund: 'refund', fee: 'fee', tax: 'tax' };
+    const TYPE_TO_DIRECTION = { income: 'in', revenue: 'in', pending_receivable: 'pending_in', refund: 'refund', expense: 'out', pending_payable: 'pending_out', fee: 'fee', tax: 'tax', transfer: 'transfer', adjustment: 'adjustment' };
     // Which account-picker filter each direction uses ('in' = revenue accounts,
     // 'out' = expense accounts, null = account not required and field hidden).
-    const DIRECTION_TO_ACCT_FILTER = { in: 'in', refund: 'in', out: 'out', fee: 'out', tax: 'out', transfer: null, adjustment: null };
+    const DIRECTION_TO_ACCT_FILTER = { in: 'in', pending_in: 'in', refund: 'in', out: 'out', pending_out: 'out', fee: 'out', tax: 'out', transfer: null, adjustment: null };
     // Reverse of the built-in category defaults, so a picked account still writes a
     // budget-compatible `category` (Marketing/SaaS/Infrastructure/Operations/Revenue)
     // when it is one of the six built-ins; otherwise the account name is used.
@@ -788,7 +921,9 @@ window.showAddTransactionModal = function(options = {}) {
                                 <label for="tx-direction" class="fluxy-drawer-label">Direction</label>
                                 <select id="tx-direction" name="direction" class="fluxy-drawer-select">
                                     <option value="in" ${defaultDirection === 'in' ? 'selected' : ''}>Money in</option>
+                                    <option value="pending_in" ${defaultDirection === 'pending_in' ? 'selected' : ''}>Money in · not received yet</option>
                                     <option value="out" ${defaultDirection === 'out' ? 'selected' : ''}>Money out</option>
+                                    <option value="pending_out" ${defaultDirection === 'pending_out' ? 'selected' : ''}>Money out · not paid yet</option>
                                     <option value="transfer" ${defaultDirection === 'transfer' ? 'selected' : ''}>Transfer</option>
                                     <option value="adjustment" ${defaultDirection === 'adjustment' ? 'selected' : ''}>Adjustment</option>
                                     <option value="__sep" disabled>── Advanced ──</option>
@@ -796,7 +931,7 @@ window.showAddTransactionModal = function(options = {}) {
                                     <option value="fee" ${defaultDirection === 'fee' ? 'selected' : ''}>Fee</option>
                                     <option value="tax" ${defaultDirection === 'tax' ? 'selected' : ''}>Tax</option>
                                 </select>
-                                <p class="fluxy-drawer-hint">Money in records revenue; money out records a cost. Advanced covers refunds, fees, and tax.</p>
+                                <p class="fluxy-drawer-hint">Money in records revenue; money out records a cost. Use "not received/paid yet" when the money has not actually moved. Advanced covers refunds, fees, and tax.</p>
                                 <select id="tx-type" class="hidden" data-no-fluxy-select aria-hidden="true" tabindex="-1">
                                     <option value="income">Income</option>
                                     <option value="expense">Expense</option>
@@ -1091,8 +1226,6 @@ window.showAddTransactionModal = function(options = {}) {
     let txAllocationContext = null; // { budget, allocations } | null — transaction allocation picker
     let txAllocationReload = null;  // () => Promise, re-fetches allocations on date change
     let bulkAllocationContext = null; // { budget, allocations } | null — CSV apply-to-all
-    let cashController = null;        // FluxyCashImpact controller for the rich cash control
-    let cashImpactUserTouched = false;
     let cashBankAccounts = [];        // loaded once per drawer open
     let accountPicker = null;         // FluxyAccountPicker controller (CoA account)
     let accountUserTouched = false;   // true once the user manually picks an account
@@ -1706,57 +1839,41 @@ window.showAddTransactionModal = function(options = {}) {
         vendorInput.addEventListener('blur', () => { refreshSuggestedAccount(false); applyVendorDefaults(); });
     }
 
-    // Cash impact section — transaction context only
+    // Cash impact section — transaction context only.
+    // Read-only: the impact and direction are a function of the transaction Type
+    // selected right above (see FluxyCashImpact.deriveFromType). Only the cash
+    // ACCOUNT is a user choice — it is not derivable and is what bank rec matches.
     if (context === 'transaction') {
         const cashSection = document.getElementById('tx-cash-impact-section');
         const cashHelper = document.getElementById('tx-cash-impact-helper');
         const cashControl = document.getElementById('tx-cash-impact-control');
         const FCI = window.FluxyCashImpact;
-        const inboundType = (t) => ['income', 'revenue', 'refund', 'pending_receivable'].includes(t);
 
         const renderCashControl = () => {
             if (!FCI || !cashControl) return;
-            const prev = cashController?.getState?.();
             const typeVal = typeSelectEl?.value || defaultType;
-            const state = prev || {
-                impact: typeVal === 'adjustment' ? 'pending' : 'actual',
-                direction: inboundType(typeVal) ? 'in' : 'out',
-                accountId: ''
-            };
-            cashControl.innerHTML = FCI.buildHtml({ ...state, bankAccounts: cashBankAccounts });
-            cashController = FCI.wire(cashControl, { impact: state.impact, direction: state.direction, onChange: () => { cashImpactUserTouched = true; } });
+            const keepAccount = FCI.accountIdFrom(cashControl);
+            cashControl.innerHTML = FCI.buildDerivedHtml({
+                type: typeVal, accountId: keepAccount, bankAccounts: cashBankAccounts
+            });
         };
 
         const updateCashImpactSection = () => {
-            if (!cashSection || !cashHelper) return;
+            if (!cashSection || !cashHelper || !FCI) return;
             const typeVal = typeSelectEl?.value || defaultType;
-            cashSection.classList.add('hidden');
-            cashHelper.classList.add('hidden');
-
-            if (['pending_receivable', 'pending_payable'].includes(typeVal)) {
-                cashHelper.className = 'rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[12px] text-blue-800';
-                cashHelper.textContent = 'This will be tracked as pending and will not affect real cash balance yet.';
-                cashHelper.classList.remove('hidden');
-                return;
-            }
+            cashSection.classList.remove('hidden');
+            // The badge now states the pending/neutral cases itself, so the old
+            // duplicate helper banner only stays for the transfer caveat.
+            cashHelper.classList.toggle('hidden', typeVal !== 'transfer');
             if (typeVal === 'transfer') {
                 cashHelper.className = 'rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600';
                 cashHelper.textContent = 'Transfer tracking is saved as a neutral ledger record in this phase. Account-to-account transfer matching will be handled later.';
-                cashHelper.classList.remove('hidden');
-                return;
             }
-            cashSection.classList.remove('hidden');
-            if (!cashImpactUserTouched && cashController) {
-                cashController.setImpact(typeVal === 'adjustment' ? 'pending' : 'actual');
-                cashController.setDirection(inboundType(typeVal) ? 'in' : 'out');
-            }
+            FCI.refreshDerived(cashControl, typeVal);
         };
 
         renderCashControl();
-        typeSelectEl?.addEventListener('change', () => {
-            cashImpactUserTouched = false;
-            updateCashImpactSection();
-        });
+        typeSelectEl?.addEventListener('change', updateCashImpactSection);
         updateCashImpactSection();
 
         // Load bank accounts, then re-render the control (state preserved) so the
@@ -2278,36 +2395,12 @@ window.showAddTransactionModal = function(options = {}) {
         }
     }
 
-    // Derives the 7 optional cash-impact fields for a transaction.
-    // Only called for context === 'transaction'. Does NOT touch bank_accounts
-    // or bank_balance_snapshots — Phase 1 only annotates the transaction record.
-    function buildCashImpactFields(txType, cashState, txTimestamp) {
-        if (['pending_receivable', 'pending_payable'].includes(txType)) {
-            return {
-                cash_effective: false,
-                cash_status: 'pending',
-                cash_direction: 'none',
-                cash_account_id: null,
-                cash_source: 'manual',
-                cash_match_status: 'unmatched',
-                cash_effective_at: null
-            };
-        }
-        if (txType === 'transfer') {
-            return {
-                cash_effective: false,
-                cash_status: 'none',
-                cash_direction: 'none',
-                cash_account_id: null,
-                cash_source: 'manual',
-                cash_match_status: null,
-                cash_effective_at: null
-            };
-        }
-        // Normal types: derive from the shared cash-impact control's state.
-        const inbound = ['income', 'revenue', 'refund'].includes(txType);
-        const state = cashState || { impact: 'actual', direction: inbound ? 'in' : 'out', accountId: '' };
-        return window.FluxyCashImpact.derive(state, txTimestamp);
+    // The 7 optional cash-impact fields for a transaction, derived from its type.
+    // The user never picks impact/direction — the type already states them, and
+    // letting both be set independently allowed a `pending_payable` record to
+    // claim cash had moved. `accountId` is the one user-supplied part.
+    function buildCashImpactFields(txType, accountId, txTimestamp) {
+        return window.FluxyCashImpact.deriveFromType(txType, { accountId, timestamp: txTimestamp });
     }
 
     // Form Submission
@@ -2393,16 +2486,6 @@ window.showAddTransactionModal = function(options = {}) {
             let txType = txTypeSel === 'Others'
                 ? (document.getElementById('tx-type-custom')?.value.trim() || 'Others')
                 : txTypeSel;
-            // Cash-timing upgrade: an income/expense marked Pending in the cash-impact
-            // control is stored as a pending receivable/payable (Direction stays
-            // Money in/out). This replaces the old separate "Pending" type options.
-            if (context === 'transaction') {
-                const cs = cashController?.getState?.();
-                if (cs && cs.impact === 'pending') {
-                    if (txType === 'income') txType = 'pending_receivable';
-                    else if (txType === 'expense') txType = 'pending_payable';
-                }
-            }
             const data = {
                 amount: parsedAmount,
                 vendor_name: document.getElementById('tx-vendor').value,
@@ -2465,7 +2548,7 @@ window.showAddTransactionModal = function(options = {}) {
             // Append optional cash-impact fields for transaction context.
             // Does not write to bank_accounts or bank_balance_snapshots.
             if (context === 'transaction') {
-                Object.assign(data, buildCashImpactFields(txType, cashController?.getState?.() || null, data.timestamp));
+                Object.assign(data, buildCashImpactFields(txType, window.FluxyCashImpact.accountIdFrom(document.getElementById('tx-cash-impact-control')), data.timestamp));
             }
 
             // Shared document attachment (Phase 1):

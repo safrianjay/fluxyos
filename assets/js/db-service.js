@@ -437,6 +437,10 @@ class DataService {
         if (Object.prototype.hasOwnProperty.call(payload, 'cash_direction'))  update.cash_direction  = String(payload.cash_direction || 'none');
         if (Object.prototype.hasOwnProperty.call(payload, 'cash_account_id')) update.cash_account_id = payload.cash_account_id || null;
         if (Object.prototype.hasOwnProperty.call(payload, 'cash_match_status')) update.cash_match_status = payload.cash_match_status || null;
+        // Provenance: 'auto' when derived from the transaction type, 'manual' when
+        // a human classified it. Nothing branches on it, but without it a derived
+        // classification is indistinguishable from a deliberate one in the audit.
+        if (Object.prototype.hasOwnProperty.call(payload, 'cash_source')) update.cash_source = String(payload.cash_source || 'manual');
         if (Object.prototype.hasOwnProperty.call(payload, 'cash_effective_at')) update.cash_effective_at = payload.cash_effective_at || null;
         update.cash_assignment_reason    = this._stringOrDefault(reason, '', 500) || null;
         update.cash_assignment_updated_at = serverTimestamp();

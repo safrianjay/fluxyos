@@ -2880,12 +2880,29 @@
                 } catch (_) { /* the form still saves without an explicit account */ }
             }
 
-            // Cash-impact control (shared with the Add Transaction drawer)
+            // Cash impact is derived from Type (shared with the Add Transaction
+            // drawer and the scan review) — only the linked cash account is a
+            // user choice here. A record whose cash facts came from a bank
+            // statement or an integration keeps them: those were observed, not
+            // inferred, so re-deriving would overwrite reconciliation truth.
             const cashControlEl = document.getElementById('tx-edit-cash-control');
-            let cashCtl = null;
+            const cashDerivable = FCI ? FCI.isDerivable(row) : false;
             if (FCI && cashControlEl) {
-                cashControlEl.innerHTML = FCI.buildHtml({ impact: cashInit.impact, direction: cashInit.direction, accountId: cashInit.accountId, bankAccounts });
-                cashCtl = FCI.wire(cashControlEl, { impact: cashInit.impact, direction: cashInit.direction });
+                if (cashDerivable) {
+                    cashControlEl.innerHTML = FCI.buildDerivedHtml({
+                        type: normalizedType, accountId: cashInit.accountId, bankAccounts
+                    });
+                } else {
+                    const b = FCI.badgeForType(normalizedType);
+                    cashControlEl.innerHTML = `
+                        <div>
+                            <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Cash impact</p>
+                            <div class="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
+                                <span class="inline-flex items-center rounded border px-2 py-1 text-[11px] font-bold uppercase ${b.cls}">${escapeHtml(getLedgerCashBadge(row).label)}</span>
+                                <p class="mt-1.5 text-[11px] text-gray-500">Set from your bank import and kept as recorded.</p>
+                            </div>
+                        </div>`;
+                }
             }
 
             // Budget allocation: visible for expense-like types with a budget; reload on type/date change
@@ -2908,6 +2925,9 @@
             // Keep the account in step with what the posting engine would resolve,
             // until the user overrides it.
             typeSelect?.addEventListener('change', () => refreshEditAccount(false));
+            typeSelect?.addEventListener('change', () => {
+                if (FCI && cashDerivable) FCI.refreshDerived(cashControlEl, typeSelect.value || normalizedType);
+            });
             document.getElementById('tx-edit-category')?.addEventListener('change', () => refreshEditAccount(false));
             document.getElementById('tx-edit-vendor')?.addEventListener('blur', () => refreshEditAccount(false));
 
@@ -2946,14 +2966,18 @@
                     }
                     await ds.updateTransaction(u.uid, row.id, patch, reason);
 
-                    // 2) Cash impact — only when the user changed it.
-                    if (cashCtl && FCI) {
-                        const cs = cashCtl.getState();
-                        const cashChanged = cs.impact !== cashInit.impact
-                            || (cs.impact === 'actual' && cs.direction !== (row.cash_direction || 'in'))
-                            || (cs.accountId || '') !== (row.cash_account_id || '');
-                        if (cashChanged && cs.impact !== 'not_classified') {
-                            await ds.updateTransactionCashImpact(u.uid, row.id, FCI.derive(cs, row.timestamp || null), reason);
+                    // 2) Cash impact — re-derived from the (possibly changed) type,
+                    // carrying whichever account the user linked. Skipped for
+                    // bank/integration-sourced records so reconciliation stands.
+                    if (FCI && cashDerivable) {
+                        const accountId = FCI.accountIdFrom(cashControlEl);
+                        const derived = FCI.deriveFromType(finalType, { accountId, timestamp: row.timestamp || null });
+                        const changed = derived.cash_status !== (row.cash_status || null)
+                            || derived.cash_direction !== (row.cash_direction || null)
+                            || (derived.cash_account_id || '') !== (row.cash_account_id || '')
+                            || row.cash_status === undefined;
+                        if (changed) {
+                            await ds.updateTransactionCashImpact(u.uid, row.id, derived, reason);
                         }
                     }
 

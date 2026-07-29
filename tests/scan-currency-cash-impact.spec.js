@@ -148,18 +148,25 @@ test('switching currency reformats the amount and reveals FX', async ({ page }) 
     await expect(page.locator('#scan-fx-rate')).toHaveValue('16.000', { timeout: 15_000 });
 });
 
-test('cash impact shows on a scanned transaction and follows the type', async ({ page }) => {
+test('cash impact is derived from the type, not asked', async ({ page }) => {
     await stubExtract(page, { currency: 'IDR', amount: 500000 });
     await openScan(page, '/ledger.html', 'openScanTransactionDrawer');
 
     const cash = page.locator('#scan-cash-impact');
     await expect(cash).toContainText('Cash impact');
-    await expect(cash.locator('[data-cash-impact="actual"]')).toBeVisible();
-    await expect(cash.locator('[data-cash-dir="out"]')).toBeVisible();
+    // Read-only badge — no impact/direction tabs to contradict the Type field.
+    await expect(cash.locator('[data-cash-impact]')).toHaveCount(0);
+    await expect(cash.locator('[data-cash-dir]')).toHaveCount(0);
+    await expect(cash.locator('[data-fci-badge]')).toHaveText('Cash out');
 
-    // Expense defaults to cash out; income flips it to cash in.
+    // The badge follows the type in both directions.
     await page.locator('#scan-review-form select[name="type"]').selectOption('income');
-    await expect(cash.locator('[data-cash-dir="in"]')).toHaveClass(/bg-white/);
+    await expect(cash.locator('[data-fci-badge]')).toHaveText('Cash in');
+    await page.locator('#scan-review-form select[name="type"]').selectOption('pending_payable');
+    await expect(cash.locator('[data-fci-badge]')).toHaveText('Pending cash');
+    await expect(cash).toContainText('Money has not left yet');
+    await page.locator('#scan-review-form select[name="type"]').selectOption('transfer');
+    await expect(cash.locator('[data-fci-badge]')).toHaveText('No cash impact');
 });
 
 test('scanned bill shows "no immediate cash impact" instead of a cash control', async ({ page }) => {
@@ -197,7 +204,7 @@ test('USD transaction saves the converted Rupiah amount and records the original
         const ctx = window.__fluxyTxContext;
         const rows = await ctx.ds.getTransactions(ctx.auth.currentUser.uid, 50);
         const r = rows.find((x) => x.vendor_name === v);
-        return r ? { amount: r.amount, notes: r.notes || '', cash_status: r.cash_status, cash_direction: r.cash_direction, currency: r.currency } : null;
+        return r ? { amount: r.amount, notes: r.notes || '', cash_status: r.cash_status, cash_direction: r.cash_direction, cash_source: r.cash_source, currency: r.currency } : null;
     }, vendor);
 
     expect(tx, 'transaction created').toBeTruthy();
@@ -205,9 +212,10 @@ test('USD transaction saves the converted Rupiah amount and records the original
     expect(tx.notes).toContain('$20.00');
     expect(tx.notes).toContain('16.000');
     expect(tx.currency, 'transactions have no currency field in rules').toBeUndefined();
-    // Cash impact from the review step rode along.
+    // Cash impact derived from the type, stamped as auto-classified.
     expect(tx.cash_status).toBe('actual');
     expect(tx.cash_direction).toBe('out');
+    expect(tx.cash_source, 'derived, not hand-classified').toBe('auto');
 });
 
 test('USD bill keeps its own currency in cents, no conversion', async ({ page }) => {

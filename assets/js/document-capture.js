@@ -87,8 +87,6 @@
         // Rupiah ledger. `userTouched` pins a manually entered rate.
         currency: 'IDR',
         fx: { rate: null, rateDate: null, loading: false, error: null, userTouched: false },
-        cashController: null,
-        cashUserTouched: false,
         bankAccounts: [],
     };
 
@@ -328,8 +326,6 @@
         // currency, exchange rate, or cash-impact choice.
         state.currency = 'IDR';
         state.fx = { rate: null, rateDate: null, loading: false, error: null, userTouched: false };
-        state.cashController = null;
-        state.cashUserTouched = false;
     }
 
     function setHeader() {
@@ -730,8 +726,8 @@
     async function mountCashImpact() {
         const host = $('scan-cash-impact');
         if (!host) return;
-        const cfg = modeCfg();
-        state.cashController = null;
+        const FCI = window.FluxyCashImpact;
+        if (!FCI) { host.innerHTML = ''; return; }
 
         if (state.mode !== 'transaction') {
             host.innerHTML = `
@@ -747,29 +743,21 @@
             return;
         }
 
-        const FCI = window.FluxyCashImpact;
-        if (!FCI) { host.innerHTML = ''; return; }
-
-        const typeVal = $('scan-review-form')?.querySelector('select[name="type"]')?.value || cfg.defaultType;
-        const initial = cashDefaultsForType(typeVal);
+        // Derived from the Type field above — never asked. Only the cash account
+        // is a user choice. See FluxyCashImpact.deriveFromType.
+        const typeOf = () => $('scan-review-form')?.querySelector('select[name="type"]')?.value || modeCfg().defaultType;
         host.innerHTML = `<div class="space-y-3" id="scan-cash-control"></div>`;
-        const control = $('scan-cash-control');
         const render = () => {
-            control.innerHTML = FCI.buildHtml({ ...initial, bankAccounts: state.bankAccounts });
-            // Opt the account select into search — a workspace can have many
-            // accounts and scrolling a plain list is the wrong interaction.
-            const sel = control.querySelector('[data-fci="account"]');
-            if (sel && state.bankAccounts.length > 5) sel.setAttribute('data-fluxy-search', '');
-            state.cashController = FCI.wire(control, {
-                impact: initial.impact,
-                direction: initial.direction,
-                onChange: () => { state.cashUserTouched = true; }
+            const control = $('scan-cash-control');
+            if (!control) return;
+            control.innerHTML = FCI.buildDerivedHtml({
+                type: typeOf(), accountId: FCI.accountIdFrom(control), bankAccounts: state.bankAccounts
             });
         };
         render();
+        $('scan-review-form')?.querySelector('select[name="type"]')
+            ?.addEventListener('change', () => FCI.refreshDerived($('scan-cash-control'), typeOf()));
 
-        // Bank accounts load lazily; re-render once they arrive so the picker is
-        // populated without blocking the review step.
         if (!state.bankAccounts.length) {
             try {
                 const ctx = getContext();
@@ -778,23 +766,11 @@
                     const accounts = await ctx.ds.getBankAccounts(uid);
                     if (Array.isArray(accounts) && accounts.length && $('scan-cash-control')) {
                         state.bankAccounts = accounts;
-                        const prev = state.cashController?.getState?.();
-                        if (prev) { initial.impact = prev.impact; initial.direction = prev.direction; }
                         render();
                     }
                 }
-            } catch (_) { /* the control still works without linked accounts */ }
+            } catch (_) { /* the badge still shows without a linked account */ }
         }
-    }
-
-    function cashDefaultsForType(typeVal) {
-        const inbound = ['income', 'revenue', 'refund', 'pending_receivable'].includes(typeVal);
-        const pending = ['pending_payable', 'pending_receivable', 'adjustment'].includes(typeVal);
-        return {
-            impact: pending ? 'pending' : 'actual',
-            direction: inbound ? 'in' : 'out',
-            accountId: ''
-        };
     }
 
     // Account picker for the scan review (Phase 3b): the searchable CoA picker,
@@ -1089,13 +1065,6 @@
             updateSaveEnabled();
         });
 
-        // Cash impact follows the transaction type unless the user has set it.
-        form?.querySelector('select[name="type"]')?.addEventListener('change', (e) => {
-            if (state.mode !== 'transaction' || state.cashUserTouched || !state.cashController) return;
-            const d = cashDefaultsForType(e.target.value);
-            state.cashController.setImpact(d.impact);
-            state.cashController.setDirection(d.direction);
-        });
         $('scan-save-btn')?.addEventListener('click', saveScannedDocument);
         $('scan-rescan-btn')?.addEventListener('click', () => {
             state.extraction = null;
@@ -1436,12 +1405,13 @@
         } else {
             if (primaryDate) payload.timestamp = primaryDate;
             if (invoiceDate) payload.invoice_date = invoiceDate;
-            // Cash impact confirmed in the review step.
-            if (state.cashController && window.FluxyCashImpact) {
-                Object.assign(payload, window.FluxyCashImpact.derive(
-                    state.cashController.getState(),
-                    primaryDate ? ctx.ds.Timestamp.fromDate(primaryDate) : null
-                ));
+            // Cash impact is a function of the type; the account is the only part
+            // the user picks in the review step.
+            if (window.FluxyCashImpact) {
+                Object.assign(payload, window.FluxyCashImpact.deriveFromType(type, {
+                    accountId: window.FluxyCashImpact.accountIdFrom($('scan-cash-control')),
+                    timestamp: primaryDate ? ctx.ds.Timestamp.fromDate(primaryDate) : null
+                }));
             }
             // Pin to the user-selected budget allocation (expense-like types only).
             if (window.FluxyBudgetPicker && window.FluxyBudgetPicker.isExpenseLike(type)

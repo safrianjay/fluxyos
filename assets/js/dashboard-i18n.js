@@ -3787,6 +3787,16 @@
         "Attachments could not be loaded. Refresh the page and try again.": "Lampiran tidak dapat dimuat. Muat ulang halaman, lalu coba lagi.",
         // Scan drawer — multi-currency review, cash impact, source document
         "Rate (Rp)": "Kurs (Rp)",
+        // Cash impact derived from the transaction type (no manual tabs)
+        "Money in · not received yet": "Uang masuk · belum diterima",
+        "Money out · not paid yet": "Uang keluar · belum dibayar",
+        "Money in records revenue; money out records a cost. Use \"not received/paid yet\" when the money has not actually moved. Advanced covers refunds, fees, and tax.": "Uang masuk mencatat pendapatan; uang keluar mencatat biaya. Gunakan \"belum diterima/dibayar\" saat uangnya belum benar-benar berpindah. Lanjutan mencakup refund, biaya, dan pajak.",
+        "Money has not left yet — it moves when you record the payment.": "Uang belum keluar — akan berpindah saat Anda mencatat pembayaran.",
+        "Money has not arrived yet — it moves when you record the receipt.": "Uang belum masuk — akan berpindah saat Anda mencatat penerimaan.",
+        "This does not change your cash balance.": "Ini tidak mengubah saldo kas Anda.",
+        "Money is coming in on this date.": "Uang masuk pada tanggal ini.",
+        "Money is going out on this date.": "Uang keluar pada tanggal ini.",
+        "Set from your bank import and kept as recorded.": "Ditetapkan dari impor bank Anda dan disimpan apa adanya.",
         // Edit transaction — Chart-of-Accounts field
         "The Chart-of-Accounts account this posts to. Changing the category re-suggests it until you pick one yourself.": "Akun Bagan Akun tempat ini diposting. Mengubah kategori akan menyarankan ulang sampai Anda memilih sendiri.",
         "from this vendor": "dari vendor ini",
