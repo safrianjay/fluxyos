@@ -1607,7 +1607,151 @@ export function initInvoicesPage({ ds, user }) {
         if (!el('invoice-void-modal').classList.contains('hidden')) closeVoidModal();
         if (!el('invoice-paid-modal').classList.contains('hidden')) closePaidModal();
         if (!el('invoice-pdf-modal').classList.contains('hidden')) closePdfModal();
+        if (!el('receive-pay-modal').classList.contains('hidden')) closeReceivePayModal();
     });
+
+    // ---------- Receive Payment (cash application across a customer's invoices) ----------
+    const receiveState = { customer: null, dateKey: null, datePicker: null, inFlight: false };
+
+    // Customers with a positive outstanding balance on IDR, non-withholding invoices
+    // — the set receiveCustomerPayment can settle. Keyed by customer_name.
+    function customersWithOutstanding() {
+        const map = new Map();
+        invoices.forEach((inv) => {
+            if (!['open', 'partial'].includes(inv.status)) return;
+            if ((inv.currency || 'IDR') !== 'IDR') return;
+            if ((Number(inv.customer_withholding_rate) || 0) > 0 && inv.journal_ref) return;
+            if (invoiceOutstanding(inv) <= 0) return;
+            const name = inv.customer_name || 'Unknown customer';
+            if (!map.has(name)) map.set(name, { name, invoices: [] });
+            map.get(name).invoices.push(inv);
+        });
+        return map;
+    }
+
+    function openReceivePayModal() {
+        const customers = customersWithOutstanding();
+        if (!customers.size) { window.showToast?.('No open invoices to receive payment for.', 'info'); return; }
+        const names = Array.from(customers.keys()).sort((a, b) => a.localeCompare(b));
+        const sel = el('receive-pay-customer');
+        sel.innerHTML = names.map((n) => {
+            const count = customers.get(n).invoices.length;
+            return `<option value="${esc(n)}">${esc(n)} · ${count} invoice${count === 1 ? '' : 's'}</option>`;
+        }).join('');
+        receiveState.customer = names[0];
+        sel.value = names[0];
+        receiveState.dateKey = window.FluxyDateRangePicker.getDayKey();
+        receiveState.inFlight = false;
+        renderCustomerInvoices(names[0]);
+        el('receive-pay-date').innerHTML = '';
+        receiveState.datePicker = window.FluxyDateRangePicker.mount(el('receive-pay-date'), {
+            mode: 'single', start: receiveState.dateKey, maxDate: window.FluxyDateRangePicker.getDayKey(),
+            onChange: ({ start }) => { receiveState.dateKey = start; }
+        });
+        resetReceiveConfirm();
+        el('receive-pay-modal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function renderCustomerInvoices(name) {
+        receiveState.customer = name;
+        const entry = customersWithOutstanding().get(name);
+        const host = el('receive-pay-invoices');
+        if (!entry || !entry.invoices.length) {
+            host.innerHTML = '<p class="text-[13px] text-gray-500 px-1 py-4">No open invoices for this customer.</p>';
+            recomputeReceiveTotal();
+            return;
+        }
+        host.innerHTML = entry.invoices.slice()
+            .sort((a, b) => (toDateObj(a.due_date)?.getTime() || Infinity) - (toDateObj(b.due_date)?.getTime() || Infinity))
+            .map((inv) => {
+                const outstanding = invoiceOutstanding(inv);
+                return `
+                <label class="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2.5 hover:bg-gray-50 cursor-pointer" data-rpay-row data-invoice-id="${esc(inv.id)}" data-outstanding="${outstanding}">
+                    <input type="checkbox" checked data-rpay-check class="h-4 w-4 rounded border-gray-300 text-[#EA580C] focus:ring-[#EA580C]">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[13px] font-semibold text-gray-900 truncate">${esc(inv.invoice_number || 'Invoice')}</p>
+                        <p class="text-[12px] text-gray-500">${statusBadgeHTML(displayStatus(inv))} · Due ${esc(formatDate(inv.due_date))}</p>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                        <span class="block text-[11px] text-gray-400">Outstanding ${money(outstanding, 'IDR')}</span>
+                        <span class="inline-flex items-center gap-1 justify-end">
+                            <span class="text-[12px] text-gray-500">Rp</span>
+                            <input type="text" inputmode="numeric" data-rpay-amount value="${window.FluxyMoney.formatMoneyInput(String(outstanding), 'IDR')}" class="w-28 text-right text-[13px] font-mono tabular-nums border border-gray-200 rounded px-2 py-1 focus:border-[#EA580C] focus:outline-none">
+                        </span>
+                    </div>
+                </label>`;
+            }).join('');
+        recomputeReceiveTotal();
+    }
+
+    function recomputeReceiveTotal() {
+        let total = 0, count = 0;
+        el('receive-pay-invoices').querySelectorAll('[data-rpay-row]').forEach((row) => {
+            const outstanding = Math.round(Math.abs(Number(row.dataset.outstanding) || 0));
+            const amountEl = row.querySelector('[data-rpay-amount]');
+            let amt = window.FluxyMoney.toMinor(amountEl.value, 'IDR');
+            if (amt > outstanding) { amt = outstanding; amountEl.value = window.FluxyMoney.formatMoneyInput(String(outstanding), 'IDR'); }
+            if (row.querySelector('[data-rpay-check]').checked && amt > 0) { total += amt; count += 1; }
+        });
+        el('receive-pay-total').textContent = money(total, 'IDR');
+        el('receive-pay-count').textContent = `${count} invoice${count === 1 ? '' : 's'}`;
+        const btn = el('receive-pay-confirm');
+        if (btn && !receiveState.inFlight) btn.disabled = !(count > 0 && total > 0);
+    }
+
+    function resetReceiveConfirm() {
+        const btn = el('receive-pay-confirm');
+        if (btn) { btn.disabled = true; btn.textContent = 'Receive payment'; }
+        receiveState.inFlight = false;
+    }
+
+    function closeReceivePayModal() {
+        el('receive-pay-modal').classList.add('hidden');
+        document.body.style.overflow = '';
+        resetReceiveConfirm();
+    }
+
+    async function confirmReceivePay() {
+        if (receiveState.inFlight) return;
+        const payments = [];
+        el('receive-pay-invoices').querySelectorAll('[data-rpay-row]').forEach((row) => {
+            if (!row.querySelector('[data-rpay-check]').checked) return;
+            const outstanding = Math.round(Math.abs(Number(row.dataset.outstanding) || 0));
+            const amt = Math.min(window.FluxyMoney.toMinor(row.querySelector('[data-rpay-amount]').value, 'IDR'), outstanding);
+            if (amt > 0) payments.push({ invoiceId: row.dataset.invoiceId, amount: amt });
+        });
+        if (!payments.length) { window.showToast?.('Select at least one invoice.', 'error'); return; }
+        const btn = el('receive-pay-confirm');
+        receiveState.inFlight = true; btn.disabled = true; btn.textContent = 'Receiving…';
+        try {
+            const paymentDate = receiveState.dateKey ? window.FluxyDateRangePicker.parseDayKey(receiveState.dateKey) : new Date();
+            const { paidCount, totalApplied, results } = await ds.receiveCustomerPayment(uid, payments, { paymentDate });
+            const failed = results.filter((r) => !r.ok);
+            if (paidCount > 0) {
+                window.showToast?.(`Received ${money(totalApplied, 'IDR')} across ${paidCount} invoice${paidCount === 1 ? '' : 's'}${failed.length ? ` (${failed.length} could not be applied)` : ''}.`, failed.length ? 'info' : 'success');
+            } else {
+                window.showToast?.(failed[0]?.error || 'Could not record the payments.', 'error');
+            }
+            closeReceivePayModal();
+            invoicesLoaded = false;
+            await loadInvoices();
+        } catch (err) {
+            console.error('[invoices] receive payment failed', err);
+            window.showToast?.(err?.message || 'Could not record the payments. Please try again.', 'error');
+            resetReceiveConfirm();
+            recomputeReceiveTotal();
+        }
+    }
+
+    el('receive-payment-btn')?.addEventListener('click', openReceivePayModal);
+    el('receive-pay-customer')?.addEventListener('change', (e) => renderCustomerInvoices(e.target.value));
+    el('receive-pay-invoices')?.addEventListener('input', recomputeReceiveTotal);
+    el('receive-pay-invoices')?.addEventListener('change', recomputeReceiveTotal);
+    el('receive-pay-cancel')?.addEventListener('click', closeReceivePayModal);
+    el('receive-pay-close')?.addEventListener('click', closeReceivePayModal);
+    el('receive-pay-backdrop')?.addEventListener('click', closeReceivePayModal);
+    el('receive-pay-confirm')?.addEventListener('click', confirmReceivePay);
 
     // ---------- boot ----------
     ds.getUserSettings(uid)

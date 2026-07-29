@@ -803,6 +803,15 @@
         "Partial": "Sebagian",
         "Amount received (Rp)": "Jumlah diterima (Rp)",
         "Enter the amount received.": "Masukkan jumlah yang diterima.",
+        "Receive Payment": "Terima Pembayaran",
+        "Receive payment": "Terima pembayaran",
+        "Receiving…": "Menerima…",
+        "Pick a customer, choose which invoices they paid, then confirm. Each payment posts to your Ledger as Revenue.": "Pilih pelanggan, tentukan invoice mana yang mereka bayar, lalu konfirmasi. Setiap pembayaran tercatat sebagai Pendapatan di Ledger Anda.",
+        "No open invoices to receive payment for.": "Tidak ada invoice terbuka untuk menerima pembayaran.",
+        "No open invoices for this customer.": "Tidak ada invoice terbuka untuk pelanggan ini.",
+        "Select at least one invoice.": "Pilih setidaknya satu invoice.",
+        "Could not record the payments.": "Tidak dapat mencatat pembayaran.",
+        "Could not record the payments. Please try again.": "Tidak dapat mencatat pembayaran. Silakan coba lagi.",
         "Mark Reconciled": "Tandai Terekonsiliasi",
         "Paid this month": "Lunas bulan ini",
         "Not paid yet": "Belum dibayar",
@@ -4169,6 +4178,16 @@
           id: function (m) { return 'Jumlah tidak boleh melebihi sisa tagihan (' + m[1] + ').'; } },
         { re: /^Partial payment recorded — (.+?) received\. Balance still owing\.$/i,
           id: function (m) { return 'Pembayaran sebagian dicatat — ' + m[1] + ' diterima. Masih ada sisa tagihan.'; } },
+        // Receive-Payment modal rows/options + success toast (interpolated with the
+        // outstanding amount, invoice count, due date, and totals).
+        { re: /^Outstanding (Rp[\d.,]+)$/,
+          id: function (m) { return 'Sisa tagihan ' + m[1]; } },
+        { re: /^(.+) · (\d+) invoices?$/,
+          id: function (m) { return m[1] + ' · ' + m[2] + ' invoice'; } },
+        { re: /^(.+?) · Due (.+)$/,
+          id: function (m) { return m[1] + ' · Jatuh tempo ' + m[2]; } },
+        { re: /^Received (.+?) across (\d+) invoices?(?: \((\d+) could not be applied\))?\.$/i,
+          id: function (m) { return 'Diterima ' + m[1] + ' untuk ' + m[2] + ' invoice' + (m[3] ? ' (' + m[3] + ' tidak dapat diterapkan)' : '') + '.'; } },
         // Invoice auto-email delivery status pill + activity timeline (interpolated
         // with the customer email / attempt count / timestamp). Specific → general.
         { re: /^Sending email to (.+?)…$/i,
