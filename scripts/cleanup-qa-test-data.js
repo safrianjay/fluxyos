@@ -12,10 +12,11 @@
 //   • Only touches docs whose test markers match the strict patterns this suite
 //     uses ("QA …" vendors/bills; vendor__qa-* / keyword__scan* / keyword__kw*
 //     mappings). Nothing else is matched.
-//   • Bills touch the ledger, so they are ONLY cleaned when you also pass --bills:
-//     for each test bill it deletes the bill + its linked payment transaction(s) +
-//     the journals sourced from either, then reminds you to rebuild ledger_balances
-//     with reconcile-ledger-balances.js.
+//   • Bills and invoices touch the ledger, so they are ONLY cleaned when you also
+//     pass --bills / --invoices: for each test record it deletes the source doc +
+//     its linked payment transaction(s) + the journals sourced from either (invoices
+//     also drop their items subcollection), then reminds you to rebuild
+//     ledger_balances with reconcile-ledger-balances.js.
 //
 // Usage:
 //   # 1) Dry-run (recommended first) — vendors + mappings:
@@ -26,14 +27,15 @@
 //   GOOGLE_APPLICATION_CREDENTIALS=./sa.json \
 //     node scripts/cleanup-qa-test-data.js --workspace <wsId> --commit
 //
-//   # 3) Also prune test bills + their payment txns/journals (then reconcile):
+//   # 3) Also prune test bills + invoices + their payment txns/journals (then reconcile):
 //   GOOGLE_APPLICATION_CREDENTIALS=./sa.json \
-//     node scripts/cleanup-qa-test-data.js --workspace <wsId> --commit --bills
+//     node scripts/cleanup-qa-test-data.js --workspace <wsId> --commit --bills --invoices
 //
 // Flags:
 //   --workspace <id>   REQUIRED — the QA workspace id (owner uid for owner-run QA).
 //   --scope <s>        'workspaces' (default) or 'users' (pre-migration/user-scoped QA).
 //   --bills            also delete test bills + linked payment txns + journals.
+//   --invoices         also delete test invoices + INV-PAY txns + journals + items.
 //   --commit           actually delete (default is dry-run — nothing is written).
 // =============================================================================
 
@@ -45,6 +47,7 @@ const WS = argVal('--workspace', null);
 const SCOPE = argVal('--scope', 'workspaces');
 const COMMIT = args.includes('--commit');
 const WITH_BILLS = args.includes('--bills');
+const WITH_INVOICES = args.includes('--invoices');
 
 if (!WS) { console.error('Required: --workspace <workspaceId or owner uid>'); process.exit(1); }
 if (SCOPE !== 'workspaces' && SCOPE !== 'users') { console.error("--scope must be 'workspaces' or 'users'"); process.exit(1); }
@@ -56,6 +59,9 @@ const base = `${SCOPE}/${WS}`;
 // Strict test markers this suite generates (see tests/*.spec.js).
 const isTestVendor = (v) => typeof v.name === 'string' && /^QA /.test(v.name);
 const isTestBillVendor = (n) => typeof n === 'string' && /^QA (Bill|Vendor PPN|VPay|FX|Memo|VMaster|WHT|account)/i.test(n);
+// Invoice e2es all use a "QA …" customer_name (QA Inv Partial, QA Combine, QA USD,
+// QA Receive, QA Invoice Pay/Void, QA PPN/WHT Customer, QA Customer).
+const isTestInvoiceCustomer = (n) => typeof n === 'string' && /^QA /.test(n);
 const isTestMapping = (m) =>
     (m.source_type === 'vendor' && /^qa /i.test(String(m.source_value || '')))
     || (m.source_type === 'keyword' && /^(scan|kw)\d/i.test(String(m.source_value || '')));
@@ -100,7 +106,37 @@ async function main() {
         if (bDel.length && COMMIT) console.log(`\n  ⚠ Rebuild balances now:  node scripts/reconcile-ledger-balances.js --commit  (see that script's --help)`);
     }
 
-    console.log(`\n${COMMIT ? 'Done.' : 'Dry-run only — re-run with --commit to delete (add --bills to include bills).'}\n`);
+    // 4) Invoices (+ INV-PAY txns + journals + items) — ledger-touching, opt-in only.
+    if (WITH_INVOICES) {
+        const iDel = (await db.collection(`${base}/invoices`).get()).docs.filter((d) => isTestInvoiceCustomer(d.data().customer_name));
+        let txCount = 0, jCount = 0, itemCount = 0;
+        for (const inv of iDel) {
+            const data = inv.data();
+            const txIds = new Set();
+            if (data.linked_transaction_id) txIds.add(data.linked_transaction_id);
+            if (data.last_payment_transaction_id) txIds.add(data.last_payment_transaction_id);
+            (await db.collection(`${base}/transactions`).where('linked_invoice_id', '==', inv.id).get()).forEach((t) => txIds.add(t.id));
+            const uniq = [...txIds];
+            txCount += uniq.length;
+            // INV-ISSUE is sourced from the invoice; INV-PAY from each payment txn.
+            for (const sid of [inv.id, ...uniq]) {
+                const js = await db.collection(`${base}/journals`).where('source.id', '==', sid).get();
+                jCount += js.size;
+                if (COMMIT) for (const j of js.docs) await j.ref.delete();
+            }
+            const items = await db.collection(`${base}/invoices/${inv.id}/items`).get();
+            itemCount += items.size;
+            if (COMMIT) {
+                for (const it of items.docs) await it.ref.delete();
+                for (const tid of uniq) await db.doc(`${base}/transactions/${tid}`).delete();
+                await inv.ref.delete();
+            }
+        }
+        console.log(`Invoices: ${iDel.length} test docs (+ ${txCount} payment txns, ${jCount} journals, ${itemCount} items)`);
+        if (iDel.length && COMMIT) console.log(`\n  ⚠ Rebuild balances now:  node scripts/reconcile-ledger-balances.js --commit  (see that script's --help)`);
+    }
+
+    console.log(`\n${COMMIT ? 'Done.' : 'Dry-run only — re-run with --commit to delete (add --bills / --invoices to include them).'}\n`);
     process.exit(0);
 }
 
