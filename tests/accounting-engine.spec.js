@@ -150,3 +150,37 @@ test('accounting engine honors a user-created account from the live chart overla
     expect(r.noOverlayCode).toBe('6100'); // falls back without the live chart
     expect(r.afterCode).toBe('6100');      // no state leak between builds
 });
+
+// Cash application (Phase 2): the INV-PAY rule posts doc.amount, so a partial
+// payment settles only part of the receivable. Two partials against one INV-ISSUE
+// must draw Accounts Receivable (1100) back to exactly zero — the arithmetic the
+// partial-payment DAL relies on.
+test('accounting engine: partial invoice payments settle the receivable to zero', async ({ page }) => {
+    await page.goto('/pricing');
+    const r = await page.evaluate(async () => {
+        const e = await import('/assets/js/accounting-engine.js');
+        const d = new Date('2026-06-15T03:00:00Z');
+        // Issue a 1,000,000 invoice: Dr A/R (1100) / Cr Revenue (4000).
+        const issue = e.buildJournal({ collection: 'invoices', id: 'inv1', document: { status: 'open', total_amount: 1000000, customer_name: 'Acme' }, date: d });
+        // Two partial payments linked to it: Dr Cash (1000) / Cr A/R (1100).
+        const pay1 = e.buildJournal({ collection: 'transactions', id: 'p1', document: { type: 'income', amount: 400000, linked_invoice_id: 'inv1' }, date: d });
+        const pay2 = e.buildJournal({ collection: 'transactions', id: 'p2', document: { type: 'income', amount: 600000, linked_invoice_id: 'inv1' }, date: d });
+        const arNet = [issue, pay1, pay2].reduce((sum, j) =>
+            sum + j.lines.filter((l) => l.account_code === '1100').reduce((s, l) => s + (l.debit || 0) - (l.credit || 0), 0), 0);
+        const line = (j, code, side) => (j.lines.find((l) => l.account_code === code && l[side] > 0) || {})[side];
+        return {
+            issueAr: line(issue, '1100', 'debit'),
+            pay1Rule: pay1.posting_rule_id,
+            pay1Cash: line(pay1, '1000', 'debit'),
+            pay1ArCredit: line(pay1, '1100', 'credit'),
+            pay2ArCredit: line(pay2, '1100', 'credit'),
+            arNet
+        };
+    });
+    expect(r.issueAr).toBe(1000000);
+    expect(r.pay1Rule).toBe('INV-PAY');
+    expect(r.pay1Cash).toBe(400000);
+    expect(r.pay1ArCredit).toBe(400000);
+    expect(r.pay2ArCredit).toBe(600000);
+    expect(r.arNet).toBe(0); // receivable fully drawn down
+});

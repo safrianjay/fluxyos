@@ -680,6 +680,15 @@
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Customer</dt><dd id="paid-customer" class="max-w-[60%] truncate font-medium text-gray-900">—</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Invoice total</dt><dd id="paid-amount" class="font-mono font-semibold text-gray-900">Rp0</dd></div>
                 </dl>
+                <!-- Amount received (IDR non-withholding invoices; supports partial payments). -->
+                <div id="paid-amount-field" class="mt-4 hidden">
+                    <label for="paid-amount-input" class="block text-[12px] font-medium text-gray-700">Amount received (Rp)</label>
+                    <div class="mt-1 flex items-center gap-2">
+                        <span class="text-[14px] font-medium text-gray-500">Rp</span>
+                        <input id="paid-amount-input" type="text" inputmode="numeric" class="h-9 flex-1 rounded-lg border border-gray-200 bg-white px-3 font-mono text-[14px] text-gray-900 outline-none focus:ring-2 focus:ring-[#EA580C]" placeholder="0">
+                    </div>
+                    <p id="paid-outstanding-hint" class="mt-1.5 text-[11px] text-gray-400"></p>
+                </div>
                 <!-- Foreign-currency conversion (shown only for non-IDR invoices). -->
                 <div id="paid-fx" class="mt-4 hidden rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
                     <p class="text-[12px] font-medium text-gray-700">Recorded in your ledger (Rupiah)</p>

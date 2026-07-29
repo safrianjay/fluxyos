@@ -189,6 +189,42 @@ async function main() {
         updated_by: uid
     }));
 
+    console.log('\n— cash application (Phase 2): open -> partial -> paid —');
+    const partRef = doc(db, `users/${uid}/invoices/inv_partial_test`);
+    await expectOutcome('create partial-test draft', true, () => setDoc(partRef, {
+        ...invoiceCreatePayload(uid), invoice_number: 'INV-202606-0003'
+    }));
+    await expectOutcome('finalize partial-test -> open', true, () => updateDoc(partRef, {
+        status: 'open', finalized_at: serverTimestamp(), updated_at: serverTimestamp(), updated_by: uid
+    }));
+    await expectOutcome('open -> partial (record a payment)', true, () => updateDoc(partRef, {
+        status: 'partial', amount_paid: 400000, outstanding_amount: 600000,
+        last_payment_transaction_id: 'tx_p1', linked_transaction_id: 'tx_p1',
+        updated_at: serverTimestamp(), updated_by: uid
+    }));
+    await expectOutcome('partial -> partial (another payment)', true, () => updateDoc(partRef, {
+        status: 'partial', amount_paid: 700000, outstanding_amount: 300000,
+        last_payment_transaction_id: 'tx_p2', linked_transaction_id: 'tx_p2',
+        updated_at: serverTimestamp(), updated_by: uid
+    }));
+    // Forgery: a payment update must not smuggle a change to the invoice amount.
+    await expectOutcome('partial transition tampering total_amount', false, () => updateDoc(partRef, {
+        status: 'partial', amount_paid: 800000, outstanding_amount: 200000, total_amount: 5,
+        last_payment_transaction_id: 'tx_p3', linked_transaction_id: 'tx_p3',
+        updated_at: serverTimestamp(), updated_by: uid
+    }));
+    // Forgery: outstanding must be a non-negative int.
+    await expectOutcome('partial with negative outstanding', false, () => updateDoc(partRef, {
+        status: 'partial', amount_paid: 800000, outstanding_amount: -5,
+        last_payment_transaction_id: 'tx_p4', linked_transaction_id: 'tx_p4',
+        updated_at: serverTimestamp(), updated_by: uid
+    }));
+    await expectOutcome('partial -> paid (clears the balance)', true, () => updateDoc(partRef, {
+        status: 'paid', amount_paid: 1000000, outstanding_amount: 0, paid_at: serverTimestamp(),
+        last_payment_transaction_id: 'tx_p5', linked_transaction_id: 'tx_p5',
+        updated_at: serverTimestamp(), updated_by: uid
+    }));
+
     console.log('\n— mark paid: open -> paid batch (invoice + income transaction) —');
     const txRef = doc(collection(db, `users/${uid}/transactions`));
     await expectOutcome('mark paid batch: tx create + invoice update', true, () => {

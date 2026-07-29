@@ -2392,20 +2392,37 @@ class DataService {
         return { id: invoiceId };
     }
 
-    // Mark paid: open -> paid, ONLY on explicit user confirmation. Creates the
-    // linked income ledger transaction (full invoice total, category Revenue),
-    // stamps paid_at + linked_transaction_id, and writes the audit log — all in
-    // one batch so a rules rejection leaves nothing half-written. Paid is
-    // terminal: no edit, void, or un-pay path exists after this.
+    // Remaining amount receivable on an invoice: 0 when fully paid or voided,
+    // else the stored outstanding_amount, falling back to total − amount_paid for
+    // legacy invoices that predate the field. Mirrors _billOutstanding.
+    _invoiceOutstanding(invoice) {
+        if (!invoice || invoice.status === 'paid' || invoice.status === 'void') return 0;
+        const total = Math.round(Math.abs(Number(invoice.total_amount) || 0));
+        if (invoice.outstanding_amount != null) return Math.max(0, Math.round(Math.abs(Number(invoice.outstanding_amount) || 0)));
+        return Math.max(0, total - Math.round(Math.abs(Number(invoice.amount_paid) || 0)));
+    }
+
+    // Mark paid: settle an invoice's full remaining balance (open→paid, or
+    // partial→paid), ONLY on explicit user confirmation. IDR non-withholding
+    // invoices route through the shared per-payment engine (_payInvoiceOnce) so
+    // full and partial payments post identically; foreign-currency and
+    // customer-withholding invoices stay on the single-shot full-payment path
+    // below (partial payments are not offered for them — see recordInvoicePayment).
     async markInvoicePaid(userId, invoiceId, { paymentDate = null, amountPaidIdr = null, fxRate = null, fxRateDate = null } = {}) {
         const invoice = await this.getInvoice(userId, invoiceId);
         if (!invoice) throw new Error('Invoice not found.');
-        if (invoice.status !== 'open') throw new Error('Only open invoices can be marked as paid.');
+        if (!['open', 'partial'].includes(invoice.status)) throw new Error('Only open invoices can be marked as paid.');
         const currency = invoice.currency || 'IDR';
         // The ledger is IDR: an IDR invoice posts its total verbatim; a foreign
         // invoice posts the caller-supplied Rupiah amount (live rate at the
         // payment date, user-confirmable). fx_* provenance is stored on the invoice.
         const isForeign = currency !== 'IDR';
+        const hasWithholding = (Number(invoice.customer_withholding_rate) || 0) > 0 && !!invoice.journal_ref && !isForeign;
+        // IDR, non-withholding: pay the full remaining balance through the engine
+        // that also handles partials (open→paid or partial→paid, one INV-PAY).
+        if (!isForeign && !hasWithholding) {
+            return this._payInvoiceOnce(userId, invoice, this._invoiceOutstanding(invoice), { paymentDate });
+        }
         const amount = isForeign
             ? Math.round(Number(amountPaidIdr) || 0)
             : Math.round(Number(invoice.total_amount) || 0);
@@ -2491,6 +2508,120 @@ class DataService {
         );
         await batch.commit();
         return { id: invoiceId, transactionId: txRef.id };
+    }
+
+    // Record ONE payment (full or partial) against an IDR, non-withholding invoice,
+    // atomically in one batch: a linked income transaction for `payAmount` that
+    // posts INV-PAY (Dr Cash / Cr A/R — settles the receivable, no double revenue)
+    // when the invoice was issued under the kernel, or a plain income posting for a
+    // legacy invoice with no INV-ISSUE journal; plus the invoice outstanding/paid
+    // update + an audit log. A cleared balance flips the invoice to paid + stamps
+    // paid_at + linked_transaction_id (matching the old full-payment behavior); a
+    // partial leaves it 'partial' with a reduced outstanding_amount. Multi-invoice
+    // callers must commit one invoice per batch — two INV-PAY journals in one batch
+    // would write the shared Cash/A-R ledger_balances doc twice (Firestore forbids).
+    async _payInvoiceOnce(userId, invoice, payAmount, { paymentDate = null } = {}) {
+        const invoiceId = invoice.id;
+        if ((invoice.currency || 'IDR') !== 'IDR') throw new Error('Pay foreign-currency invoices in full (they need an exchange rate).');
+        const outstanding = this._invoiceOutstanding(invoice);
+        if (!(outstanding > 0)) throw new Error('This invoice is already fully paid.');
+        const amount = Math.round(Math.abs(Number(payAmount) || 0));
+        if (!(amount > 0)) throw new Error('Payment amount must be greater than zero.');
+        if (amount > outstanding) throw new Error('Payment cannot exceed the outstanding balance.');
+        const newPaid = Math.round(Math.abs(Number(invoice.amount_paid) || 0)) + amount;
+        const newOutstanding = Math.max(0, outstanding - amount);
+        const fullyPaid = newOutstanding <= 0;
+
+        const txRef = doc(collection(this.db, `${this._scope(userId)}/transactions`));
+        const transaction = {
+            amount,
+            vendor_name: invoice.customer_name,
+            category: 'Revenue',
+            type: 'income',
+            status: 'Completed',
+            icon: '💰',
+            timestamp: this._coerceTimestampOrNow(paymentDate),
+            invoice_number: invoice.invoice_number ?? null,
+            notes: `Payment for invoice ${invoice.invoice_number || invoiceId}`,
+            created_at: serverTimestamp()
+        };
+        if (invoice.issue_date) transaction.invoice_date = invoice.issue_date;
+        // Link only when the invoice posted an INV-ISSUE accrual, so the payment
+        // posts INV-PAY (settles A/R). Legacy invoices with no journal fall back to
+        // a plain income posting (Dr Cash / Cr Revenue) and OMIT the link — matching
+        // markInvoicePaid's rule so their journal is not flipped to INV-PAY.
+        if (invoice.journal_ref) transaction.linked_invoice_id = invoiceId;
+
+        const batch = writeBatch(this.db);
+        await this._postSourceJournal(userId, batch, 'transactions', txRef, transaction, { date: transaction.timestamp });
+        batch.set(txRef, transaction);
+        const invoicePatch = {
+            status: fullyPaid ? 'paid' : 'partial',
+            amount_paid: newPaid,
+            outstanding_amount: newOutstanding,
+            last_payment_transaction_id: txRef.id,
+            linked_transaction_id: txRef.id,
+            updated_at: serverTimestamp(),
+            updated_by: (this.actorUid || userId)
+        };
+        if (fullyPaid) invoicePatch.paid_at = serverTimestamp();
+        batch.update(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`), invoicePatch);
+        batch.set(
+            this._invoiceAuditRef(userId),
+            this._invoiceAuditPayload(userId, fullyPaid ? 'invoice.mark_paid' : 'invoice.payment', invoiceId, {
+                before: { status: invoice.status ?? 'open', outstanding_amount: outstanding },
+                after: { status: invoicePatch.status, amount, outstanding_amount: newOutstanding, transaction_id: txRef.id }
+            })
+        );
+        await batch.commit();
+        return { id: invoiceId, transactionId: txRef.id, amount, fullyPaid, outstanding_amount: newOutstanding };
+    }
+
+    // Record a single partial payment against an IDR, non-withholding invoice.
+    // Foreign / withholding invoices are full-payment only (markInvoicePaid).
+    async recordInvoicePayment(userId, invoiceId, { amount, paymentDate = null } = {}) {
+        if (!userId || !invoiceId) throw new Error('userId and invoiceId required');
+        const invoice = await this.getInvoice(userId, invoiceId);
+        if (!invoice) throw new Error('Invoice not found.');
+        if (!['open', 'partial'].includes(invoice.status)) throw new Error('Only open invoices can take a payment.');
+        if ((invoice.currency || 'IDR') !== 'IDR') throw new Error('Pay foreign-currency invoices in full (they need an exchange rate).');
+        if ((Number(invoice.customer_withholding_rate) || 0) > 0 && invoice.journal_ref) {
+            throw new Error('This invoice has customer withholding — mark it paid in full.');
+        }
+        return this._payInvoiceOnce(userId, invoice, amount, { paymentDate });
+    }
+
+    // Cash application: apply one customer's payment across several invoices in a
+    // single action. `payments` is [{ invoiceId, amount? }] — amount defaults to the
+    // invoice's full outstanding balance (partial when a smaller amount is passed).
+    // Each invoice is committed in its own batch (see _payInvoiceOnce), so a mid-list
+    // failure leaves already-settled invoices settled; the per-invoice outcome is
+    // returned so the caller can report it. Foreign / withholding invoices are
+    // skipped-and-reported (they need the single Mark-Paid path).
+    async receiveCustomerPayment(userId, payments = [], { paymentDate = null } = {}) {
+        if (!userId) throw new Error('userId required');
+        const list = Array.isArray(payments) ? payments.filter((p) => p && p.invoiceId) : [];
+        if (!list.length) throw new Error('Select at least one invoice to receive payment for.');
+        const results = [];
+        let paidCount = 0;
+        let totalApplied = 0;
+        for (const p of list) {
+            try {
+                const invoice = await this.getInvoice(userId, p.invoiceId);
+                if (!invoice) throw new Error('Invoice not found.');
+                if ((invoice.currency || 'IDR') !== 'IDR') throw new Error('Receive foreign-currency invoices individually (they need an exchange rate).');
+                if ((Number(invoice.customer_withholding_rate) || 0) > 0 && invoice.journal_ref) throw new Error('This invoice has customer withholding — mark it paid in full.');
+                const outstanding = this._invoiceOutstanding(invoice);
+                const amount = p.amount != null ? Math.round(Math.abs(Number(p.amount) || 0)) : outstanding;
+                const res = await this._payInvoiceOnce(userId, invoice, amount, { paymentDate });
+                results.push({ invoiceId: p.invoiceId, ok: true, ...res });
+                paidCount += 1;
+                totalApplied += res.amount;
+            } catch (e) {
+                results.push({ invoiceId: p.invoiceId, ok: false, error: (e && e.message) || String(e) });
+            }
+        }
+        return { results, paidCount, totalApplied };
     }
 
     // Void instead of delete. Requires a reason; paid invoices cannot be

@@ -24,10 +24,21 @@ const DUE_TERM_LABELS = {
 const STATUS_BADGES = {
     draft: { label: 'Draft', cls: 'fluxy-status-neutral' },
     open: { label: 'Open', cls: 'fluxy-status-info' },
+    partial: { label: 'Partial', cls: 'fluxy-status-warning' },
     overdue: { label: 'Overdue', cls: 'fluxy-status-danger' },
     paid: { label: 'Paid', cls: 'fluxy-status-success' },
     void: { label: 'Void', cls: 'fluxy-status-neutral' }
 };
+
+// Remaining receivable on an invoice (rupiah/minor units): 0 when paid/void,
+// else stored outstanding_amount, falling back to total − amount_paid for legacy
+// invoices. Mirrors DataService._invoiceOutstanding for the client UI.
+function invoiceOutstanding(invoice) {
+    if (!invoice || invoice.status === 'paid' || invoice.status === 'void') return 0;
+    const total = Math.round(Math.abs(Number(invoice.total_amount) || 0));
+    if (invoice.outstanding_amount != null) return Math.max(0, Math.round(Math.abs(Number(invoice.outstanding_amount) || 0)));
+    return Math.max(0, total - Math.round(Math.abs(Number(invoice.amount_paid) || 0)));
+}
 
 function esc(value) {
     return String(value ?? '')
@@ -89,9 +100,9 @@ function parseQtyInput(raw) {
 // Display status: stored status stays 'open'; the UI renders Overdue when an
 // open invoice is past due with an amount still owed.
 function displayStatus(invoice) {
-    if (invoice.status === 'open') {
+    if (invoice.status === 'open' || invoice.status === 'partial') {
         const due = toDateObj(invoice.due_date);
-        if (due && Number(invoice.amount_due) > 0) {
+        if (due && invoiceOutstanding(invoice) > 0) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             if (due < today) return 'overdue';
@@ -257,7 +268,8 @@ export function initInvoicesPage({ ds, user }) {
     }
 
     function renderSummary() {
-        const open = invoices.filter(i => i.status === 'open');
+        // Outstanding = open OR partially-paid (both still owe a balance).
+        const open = invoices.filter(i => i.status === 'open' || i.status === 'partial');
         const overdue = open.filter(i => displayStatus(i) === 'overdue');
         const drafts = invoices.filter(i => i.status === 'draft');
         const now = new Date();
@@ -269,9 +281,10 @@ export function initInvoicesPage({ ds, user }) {
         // Summary money totals are in the IDR base currency only — mixed-currency
         // amounts can't be summed into one figure without a rate. Foreign-currency
         // invoices still appear in the list and counts; their money is excluded here.
+        // Amounts use the outstanding balance so a partial payment reduces the total.
         const isIdr = (i) => (i.currency || 'IDR') === 'IDR';
-        const openAmount = open.filter(isIdr).reduce((sum, i) => sum + (Number(i.amount_due) || 0), 0);
-        const overdueAmount = overdue.filter(isIdr).reduce((sum, i) => sum + (Number(i.amount_due) || 0), 0);
+        const openAmount = open.filter(isIdr).reduce((sum, i) => sum + invoiceOutstanding(i), 0);
+        const overdueAmount = overdue.filter(isIdr).reduce((sum, i) => sum + invoiceOutstanding(i), 0);
         const paidAmount = paidThisMonth.filter(isIdr).reduce((sum, i) => sum + (Number(i.total_amount) || 0), 0);
 
         el('invoice-summary-open-count').textContent = String(open.length);
@@ -1114,8 +1127,9 @@ export function initInvoicesPage({ ds, user }) {
         const canVoid = ['draft', 'open'].includes(invoice.status);
         el('detail-void-btn').classList.toggle('hidden', !canVoid);
         el('detail-void-btn').classList.toggle('inline-flex', canVoid);
-        // Payment can be recorded on any open invoice (incl. displayed-overdue).
-        const canMarkPaid = invoice.status === 'open';
+        // Payment can be recorded on any open or partially-paid invoice (incl.
+        // displayed-overdue). Partial invoices keep taking payments until cleared.
+        const canMarkPaid = invoice.status === 'open' || invoice.status === 'partial';
         el('detail-paid-btn').classList.toggle('hidden', !canMarkPaid);
         el('detail-paid-btn').classList.toggle('inline-flex', canMarkPaid);
 
@@ -1131,7 +1145,9 @@ export function initInvoicesPage({ ds, user }) {
         el('detail-subtotal').textContent = money(invoice.subtotal_amount, cur);
         el('detail-tax-row').classList.toggle('hidden', !(Number(invoice.tax_amount) > 0));
         el('detail-tax').textContent = money(invoice.tax_amount, cur);
-        el('detail-amount-due-2').textContent = money(['void', 'paid'].includes(invoice.status) ? 0 : invoice.amount_due, cur);
+        // Outstanding balance: full total for open, the remaining balance for a
+        // partially-paid invoice, 0 once paid or voided.
+        el('detail-amount-due-2').textContent = money(invoiceOutstanding(invoice), cur);
 
         el('detail-issue-date').textContent = formatDate(invoice.issue_date);
         el('detail-due-date').textContent = formatDate(invoice.due_date);
@@ -1441,6 +1457,9 @@ export function initInvoicesPage({ ds, user }) {
     let paidDatePicker = null;
     let paidDateKey = null;
     let paidFxRate = null;
+    // True when the open invoice supports partial payments (IDR, non-withholding):
+    // the modal shows an editable "Amount received" and routes to recordInvoicePayment.
+    let paidPartialCapable = false;
 
     // Live IDR-per-unit rate for the selected payment date (backend proxy → no
     // CSP change, no key). Returns null on failure so the user can enter the
@@ -1483,6 +1502,19 @@ export function initInvoicesPage({ ds, user }) {
         el('paid-customer').textContent = detailInvoice.customer_name || '—';
         el('paid-amount').textContent = money(detailInvoice.total_amount, detailInvoice.currency);
         el('paid-error').classList.add('hidden');
+        // Partial-capable = IDR + no customer withholding. Show an editable amount
+        // (default = outstanding balance); foreign / withholding invoices pay in full.
+        const cur0 = detailInvoice.currency || 'IDR';
+        const hasWithholding = (Number(detailInvoice.customer_withholding_rate) || 0) > 0 && !!detailInvoice.journal_ref;
+        paidPartialCapable = cur0 === 'IDR' && !hasWithholding;
+        const outstanding = invoiceOutstanding(detailInvoice);
+        const amountField = el('paid-amount-field');
+        amountField.classList.toggle('hidden', !paidPartialCapable);
+        if (paidPartialCapable) {
+            el('paid-amount-input').value = window.FluxyMoney.formatMoneyInput(String(outstanding), 'IDR');
+            el('paid-outstanding-hint').textContent = `Outstanding: ${money(outstanding, 'IDR')}. Enter less to record a partial payment.`;
+        }
+        el('paid-confirm').textContent = paidPartialCapable ? 'Record payment' : 'Mark as paid';
         if (!paidDatePicker) {
             paidDatePicker = picker.mount(el('paid-date-picker'), {
                 mode: 'single',
@@ -1513,41 +1545,54 @@ export function initInvoicesPage({ ds, user }) {
     el('paid-fx-idr').addEventListener('input', (event) => {
         event.target.value = window.FluxyMoney.formatMoneyInput(event.target.value, 'IDR');
     });
+    el('paid-amount-input').addEventListener('input', (event) => {
+        event.target.value = window.FluxyMoney.formatMoneyInput(event.target.value, 'IDR');
+    });
 
     el('paid-confirm').addEventListener('click', async (event) => {
         if (!detailInvoice) return;
         // Capture before any await — event.currentTarget is null post-dispatch.
         const btn = event.currentTarget;
         const cur = detailInvoice.currency || 'IDR';
-        // Foreign-currency invoices post the (rate-converted, user-confirmable)
-        // Rupiah amount to the IDR ledger; IDR invoices post their total as-is.
-        const opts = {
-            paymentDate: paidDateKey ? window.FluxyDateRangePicker.parseDayKey(paidDateKey) : new Date()
-        };
+        const paymentDate = paidDateKey ? window.FluxyDateRangePicker.parseDayKey(paidDateKey) : new Date();
+        const showErr = (msg) => { const n = el('paid-error'); n.textContent = msg; n.classList.remove('hidden'); };
         let recorded = money(detailInvoice.total_amount, 'IDR');
-        if (cur !== 'IDR') {
-            const idr = window.FluxyMoney.toMinor(el('paid-fx-idr').value, 'IDR');
-            if (!(idr > 0)) {
-                const errorNode = el('paid-error');
-                errorNode.textContent = 'Enter the Rupiah amount received before recording the payment.';
-                errorNode.classList.remove('hidden');
-                return;
-            }
-            opts.amountPaidIdr = idr;
-            opts.fxRate = paidFxRate || null;
-            opts.fxRateDate = paidDateKey || null;
-            recorded = money(idr, 'IDR');
-        }
         btn.disabled = true;
         try {
-            const result = await ds.markInvoicePaid(uid, detailInvoice.id, opts);
+            let result;
+            if (paidPartialCapable) {
+                // IDR, non-withholding: record a payment for the entered amount
+                // (partial when below the outstanding balance; clears it when equal).
+                const amt = window.FluxyMoney.toMinor(el('paid-amount-input').value, 'IDR');
+                const outstanding = invoiceOutstanding(detailInvoice);
+                if (!(amt > 0)) { showErr('Enter the amount received.'); btn.disabled = false; return; }
+                if (amt > outstanding) { showErr(`Amount cannot exceed the outstanding balance (${money(outstanding, 'IDR')}).`); btn.disabled = false; return; }
+                recorded = money(amt, 'IDR');
+                result = await ds.recordInvoicePayment(uid, detailInvoice.id, { amount: amt, paymentDate });
+            } else {
+                // Foreign-currency invoices post the (rate-converted, user-confirmable)
+                // Rupiah amount; withholding invoices post their total (net of PPh).
+                const opts = { paymentDate };
+                if (cur !== 'IDR') {
+                    const idr = window.FluxyMoney.toMinor(el('paid-fx-idr').value, 'IDR');
+                    if (!(idr > 0)) { showErr('Enter the Rupiah amount received before recording the payment.'); btn.disabled = false; return; }
+                    opts.amountPaidIdr = idr;
+                    opts.fxRate = paidFxRate || null;
+                    opts.fxRateDate = paidDateKey || null;
+                    recorded = money(idr, 'IDR');
+                }
+                result = await ds.markInvoicePaid(uid, detailInvoice.id, opts);
+            }
             closePaidModal();
-            window.showToast?.(`Payment recorded — ${recorded} added to your ledger as Revenue.`, 'success');
+            const clearedFully = result.fullyPaid !== false && (result.outstanding_amount == null || result.outstanding_amount === 0);
+            window.showToast?.(clearedFully
+                ? `Payment recorded — ${recorded} added to your ledger as Revenue.`
+                : `Partial payment recorded — ${recorded} received. Balance still owing.`, 'success');
             invoicesLoaded = false;
             await loadInvoices();
             openDetail(result.id, false);
         } catch (error) {
-            console.error('[invoices] mark paid failed', error);
+            console.error('[invoices] record payment failed', error);
             const errorNode = el('paid-error');
             errorNode.textContent = error?.message || 'Could not record the payment. Try again.';
             errorNode.classList.remove('hidden');

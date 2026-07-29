@@ -1814,8 +1814,32 @@ service cloud.firestore {
              ['status', 'paid_at', 'linked_transaction_id', 'updated_at', 'updated_by', 'amount_paid_idr', 'fx_rate', 'fx_rate_date']);
     }
 
+    // Cash application (Phase 2): record a payment against an IDR, non-withholding
+    // invoice. Allows open->partial, partial->partial, and open/partial->paid. Like
+    // isValidInvoicePaidTransition, it deliberately SKIPS isValidInvoiceBase and
+    // restricts the diff to these exact payment keys, so the rest of the already
+    // validated doc cannot change AND the evaluation stays inside the rules budget
+    // (a full-base re-eval on a 35+-key invoice tips it over -> permission-denied).
+    function isValidInvoicePartialTransition(data, existingData) {
+      return existingData.status in ['open', 'partial']
+        && data.status in ['partial', 'paid']
+        && data.amount_paid is int && data.amount_paid >= 0
+        && data.outstanding_amount is int && data.outstanding_amount >= 0
+        && data.last_payment_transaction_id is string && data.last_payment_transaction_id.size() > 0
+        && data.linked_transaction_id is string && data.linked_transaction_id.size() > 0
+        && (data.status == 'paid'
+              ? data.paid_at == request.time
+              : (!('paid_at' in data) || data.paid_at == existingData.paid_at))
+        && data.updated_at == request.time
+        && data.updated_by == request.auth.uid
+        && data.diff(existingData).affectedKeys().hasOnly(
+             ['status', 'amount_paid', 'outstanding_amount', 'last_payment_transaction_id',
+              'linked_transaction_id', 'paid_at', 'updated_at', 'updated_by']);
+    }
+
     function isValidInvoiceUpdate(data, existingData) {
-      return isValidInvoicePaidTransition(data, existingData)
+      return isValidInvoicePartialTransition(data, existingData)
+        || isValidInvoicePaidTransition(data, existingData)
         || (isValidInvoiceBase(data)
         && data.created_at == existingData.created_at
         && data.created_by == existingData.created_by

@@ -800,6 +800,9 @@
         "Track upcoming payments, vendor invoices, and payable obligations.": "Pantau pembayaran mendatang, invoice vendor, dan kewajiban utang.",
         "Mark as paid": "Tandai lunas",
         "Mark as Paid": "Tandai Lunas",
+        "Partial": "Sebagian",
+        "Amount received (Rp)": "Jumlah diterima (Rp)",
+        "Enter the amount received.": "Masukkan jumlah yang diterima.",
         "Mark Reconciled": "Tandai Terekonsiliasi",
         "Paid this month": "Lunas bulan ini",
         "Not paid yet": "Belum dibayar",
@@ -4157,6 +4160,15 @@
         // locale-formatted date alone.
         { re: /^(Receipt|Invoice|Proof of income|Payment proof|Document) · Attached (.+)$/,
           id: function (m) { return (ID[m[1]] || m[1]) + ' · Dilampirkan ' + m[2]; } },
+        // Invoice cash application (Phase 2): the outstanding-balance hint, the
+        // over-limit error, and the partial-payment toast — each interpolated with a
+        // formatted Rupiah amount that stays as-is.
+        { re: /^Outstanding: (.+?)\. Enter less to record a partial payment\.$/i,
+          id: function (m) { return 'Sisa tagihan: ' + m[1] + '. Masukkan lebih kecil untuk mencatat pembayaran sebagian.'; } },
+        { re: /^Amount cannot exceed the outstanding balance \((.+?)\)\.$/i,
+          id: function (m) { return 'Jumlah tidak boleh melebihi sisa tagihan (' + m[1] + ').'; } },
+        { re: /^Partial payment recorded — (.+?) received\. Balance still owing\.$/i,
+          id: function (m) { return 'Pembayaran sebagian dicatat — ' + m[1] + ' diterima. Masih ada sisa tagihan.'; } },
         // Invoice auto-email delivery status pill + activity timeline (interpolated
         // with the customer email / attempt count / timestamp). Specific → general.
         { re: /^Sending email to (.+?)…$/i,
