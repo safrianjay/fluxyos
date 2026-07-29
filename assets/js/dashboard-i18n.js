@@ -3787,6 +3787,12 @@
         "Attachments could not be loaded. Refresh the page and try again.": "Lampiran tidak dapat dimuat. Muat ulang halaman, lalu coba lagi.",
         // Scan drawer — multi-currency review, cash impact, source document
         "Rate (Rp)": "Kurs (Rp)",
+        // Edit transaction — Chart-of-Accounts field
+        "The Chart-of-Accounts account this posts to. Changing the category re-suggests it until you pick one yourself.": "Akun Bagan Akun tempat ini diposting. Mengubah kategori akan menyarankan ulang sampai Anda memilih sendiri.",
+        "from this vendor": "dari vendor ini",
+        "from a keyword rule": "dari aturan kata kunci",
+        "from your mapping": "dari pemetaan Anda",
+        "from the category": "dari kategori",
         "Source document": "Dokumen sumber",
         "Attached automatically when you save": "Dilampirkan otomatis saat Anda menyimpan",
         "Add another document": "Tambah dokumen lain",

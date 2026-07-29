@@ -252,6 +252,17 @@ class DataService {
         } else if (payload.type) {
             payload.icon = ['income', 'revenue', 'refund', 'pending_receivable'].includes(payload.type) ? '💰' : '💸';
         }
+        // Chart-of-Accounts link. This decides which line of the P&L the reposted
+        // journal lands on: buildJournal honours an explicit account_code over the
+        // category mapping (explicitAccount() in accounting-engine.js), so without
+        // it here a recategorised transaction would keep posting to the account it
+        // was created with. Rule caps: code 12 chars, name 80.
+        if (Object.prototype.hasOwnProperty.call(patch, 'account_code')) {
+            payload.account_code = this._stringOrDefault(patch.account_code, '', 12);
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, 'account_name')) {
+            payload.account_name = this._stringOrDefault(patch.account_name, '', 80);
+        }
 
         payload.updated_at = serverTimestamp();
         return this._cleanDefined(payload);

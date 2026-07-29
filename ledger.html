@@ -2784,6 +2784,11 @@
                             <label for="tx-edit-category" class="fluxy-drawer-label">Category</label>
                             <input type="text" id="tx-edit-category" required maxlength="40" value="${escapeHtml(row.category || '')}" class="fluxy-drawer-input">
                         </div>
+                        <div class="fluxy-drawer-field">
+                            <label class="fluxy-drawer-label">Account <span id="tx-edit-account-source"></span></label>
+                            <div data-tx-edit-account-mount></div>
+                            <p class="fluxy-drawer-hint">The Chart-of-Accounts account this posts to. Changing the category re-suggests it until you pick one yourself.</p>
+                        </div>
                     </section>
                     <section class="fluxy-drawer-section">
                         <h3 class="fluxy-drawer-section-title">Additional Information</h3>
@@ -2815,6 +2820,66 @@
                 amountInput.value = digits ? Number(digits).toLocaleString('id-ID') : '';
             });
 
+            // Account picker (shared with the Add Transaction drawer and the scan
+            // review). Without it a pinned account_code survives a recategorize —
+            // the row would read "Infrastructure" while the journal kept posting to
+            // the original account, with no way to correct it. See
+            // explicitAccount() in accounting-engine.js for that precedence.
+            const accountMountEl = content.querySelector('[data-tx-edit-account-mount]');
+            const accountSourceEl = document.getElementById('tx-edit-account-source');
+            let accountPicker = null;
+            let accountUserTouched = false;
+            const inboundAccountType = (t) => ['income', 'revenue', 'refund', 'pending_receivable'].includes(String(t).toLowerCase());
+            const editAccountDirection = () => inboundAccountType(document.getElementById('tx-edit-type')?.value || normalizedType) ? 'in' : 'out';
+            const setAccountSource = (source) => {
+                if (!accountSourceEl) return;
+                const LABELS = { vendor: 'from this vendor', rule: 'from a keyword rule', mapping: 'from your mapping', category: 'from the category' };
+                const label = LABELS[source];
+                accountSourceEl.innerHTML = label
+                    ? `<span class="ml-1 text-[10px] font-semibold normal-case text-gray-400">${escapeHtml(label)}</span>`
+                    : '';
+            };
+            const refreshEditAccount = async (force) => {
+                if (!accountPicker || (!force && accountUserTouched)) return;
+                try {
+                    accountPicker.setDirection(editAccountDirection());
+                    const sug = await ds.suggestAccountForEntry(editUser.uid, {
+                        type: document.getElementById('tx-edit-type')?.value || normalizedType,
+                        category: document.getElementById('tx-edit-category')?.value || '',
+                        vendor_name: document.getElementById('tx-edit-vendor')?.value || ''
+                    });
+                    if (sug && sug.code) {
+                        accountPicker.setValue(sug.code);
+                        accountUserTouched = false;
+                        setAccountSource(sug.source);
+                    }
+                } catch (_) { /* non-fatal — the field keeps its current value */ }
+            };
+            if (accountMountEl && window.FluxyAccountPicker && editUser) {
+                try {
+                    const chart = await ds.getChartForPicker(editUser.uid);
+                    accountPicker = window.FluxyAccountPicker.mount(accountMountEl, {
+                        name: 'account_code',
+                        accounts: chart,
+                        direction: editAccountDirection(),
+                        placeholder: 'Select an account',
+                        onChange: () => { accountUserTouched = true; setAccountSource(null); },
+                        onCreateAccount: () => window.open('/accounting', '_blank')
+                    });
+                    // Start from what the record actually posts to today, and leave
+                    // it "untouched" — the point of this field is that changing the
+                    // category moves the account with it. Only a pick made in THIS
+                    // form counts as an override. Nothing re-suggests unless the
+                    // user edits category/type/vendor, so an untouched form never
+                    // moves a deliberate historical choice.
+                    if (row.account_code) {
+                        accountPicker.setValue(row.account_code);
+                    } else {
+                        await refreshEditAccount(true);
+                    }
+                } catch (_) { /* the form still saves without an explicit account */ }
+            }
+
             // Cash-impact control (shared with the Add Transaction drawer)
             const cashControlEl = document.getElementById('tx-edit-cash-control');
             let cashCtl = null;
@@ -2840,6 +2905,12 @@
             typeSelect?.addEventListener('change', refreshAllocSection);
             dateInput?.addEventListener('change', refreshAllocSection);
 
+            // Keep the account in step with what the posting engine would resolve,
+            // until the user overrides it.
+            typeSelect?.addEventListener('change', () => refreshEditAccount(false));
+            document.getElementById('tx-edit-category')?.addEventListener('change', () => refreshEditAccount(false));
+            document.getElementById('tx-edit-vendor')?.addEventListener('blur', () => refreshEditAccount(false));
+
             document.getElementById('tx-edit-cancel-btn')?.addEventListener('click', () => renderTxDetailView(row));
 
             document.getElementById('tx-edit-form')?.addEventListener('submit', async (event) => {
@@ -2856,14 +2927,24 @@
 
                     // 1) Basic fields — always saved from the edit form.
                     const finalType = typeSelect?.value || normalizedType;
-                    await ds.updateTransaction(u.uid, row.id, {
+                    const patch = {
                         amount: amountInput?.value || '',
                         vendor_name: document.getElementById('tx-edit-vendor')?.value || '',
                         category: document.getElementById('tx-edit-category')?.value || '',
                         type: finalType,
                         status: document.getElementById('tx-edit-status')?.value || '',
                         date: parseDateInputValue(dateInput?.value || '')
-                    }, reason);
+                    };
+                    // The account drives which line of the P&L this lands on, so it
+                    // rides in the same patch — updateTransaction reverses the old
+                    // journal and reposts from the merged state.
+                    const chosenAccount = accountPicker?.getValue?.() || '';
+                    if (chosenAccount) {
+                        patch.account_code = chosenAccount;
+                        const acct = accountPicker.getAccount?.();
+                        if (acct?.name) patch.account_name = acct.name;
+                    }
+                    await ds.updateTransaction(u.uid, row.id, patch, reason);
 
                     // 2) Cash impact — only when the user changed it.
                     if (cashCtl && FCI) {
