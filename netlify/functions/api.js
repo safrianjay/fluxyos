@@ -16,6 +16,11 @@ const REVENUE_TYPES = ['income', 'revenue', 'refund'];
 const EXPECTED_REVENUE_TYPES = [...REVENUE_TYPES, 'pending_receivable'];
 const OPEX_TYPES = ['expense', 'fee', 'tax'];
 const OBLIGATION_OPEX_TYPES = [...OPEX_TYPES, 'pending_payable'];
+// Deliberately neutral for revenue/OpEx (the ledger treats them the same way).
+const NEUTRAL_TYPES = ['transfer', 'adjustment'];
+// Every built-in transaction type. Anything outside this set is a user-typed
+// "Others" label from the Add Transaction modal (PROJECT_BACKGROUND.md §4a).
+const KNOWN_TRANSACTION_TYPES = [...new Set([...EXPECTED_REVENUE_TYPES, ...OBLIGATION_OPEX_TYPES, ...NEUTRAL_TYPES])];
 const PAID_STATUSES = ['completed', 'paid', 'reconciled', 'cancelled'];
 const AI_PROVIDER_TIMEOUT_MS = 5500;
 const CATEGORY_NAMES = ['Marketing', 'Infrastructure', 'Operations', 'SaaS'];
@@ -428,19 +433,122 @@ function normalizeFinanceSnapshot(snapshot) {
     return normalized;
 }
 
-async function fetchUserCollection(uid, token, collectionName, pageSize = 1000) {
+function firestoreDocumentsRoot() {
+    return `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents`;
+}
+
+function encodeScopePath(scopePath) {
+    return String(scopePath).split('/').map(encodeURIComponent).join('/');
+}
+
+// Read one collection under an arbitrary parent document path
+// (`users/{uid}` or `workspaces/{workspaceId}`).
+//
+// `orderByField` switches to :runQuery so the capped page is the NEWEST records.
+// A plain list read returns documents in document-ID order, so on a ledger with
+// more records than `pageSize` the current and previous weeks can be missing
+// from the page entirely — the answer then reports 0 for a week that has data.
+// Firestore skips documents that lack the ordered field; every transaction
+// calculation already requires a parseable `timestamp` (see isWithinPeriod), so
+// ordering by it never hides a record that would have counted.
+async function fetchScopedCollection(scopePath, token, collectionName, pageSize = 1000, orderByField = null) {
     if (!FIRESTORE_PROJECT_ID) throw new Error('FIREBASE_PROJECT_ID is not configured');
-    const encodedUid = encodeURIComponent(uid);
-    const encodedCollection = encodeURIComponent(collectionName);
-    const url = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/users/${encodedUid}/${encodedCollection}?pageSize=${pageSize}`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const parent = encodeScopePath(scopePath);
+    if (!orderByField) {
+        const url = `${firestoreDocumentsRoot()}/${parent}/${encodeURIComponent(collectionName)}?pageSize=${pageSize}`;
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.status === 404) return [];
+        if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            throw new Error(`Firestore ${scopePath}/${collectionName} read failed: ${res.status} ${text.slice(0, 120)}`);
+        }
+        const data = await res.json();
+        return (data.documents || []).map(decodeFirestoreDocument);
+    }
+    const res = await fetch(`${firestoreDocumentsRoot()}/${parent}:runQuery`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            structuredQuery: {
+                from: [{ collectionId: collectionName }],
+                orderBy: [{ field: { fieldPath: orderByField }, direction: 'DESCENDING' }],
+                limit: pageSize,
+            },
+        }),
+    });
     if (res.status === 404) return [];
     if (!res.ok) {
         const text = await res.text().catch(() => '');
-        throw new Error(`Firestore ${collectionName} read failed: ${res.status} ${text.slice(0, 120)}`);
+        throw new Error(`Firestore ${scopePath}/${collectionName} query failed: ${res.status} ${text.slice(0, 120)}`);
     }
-    const data = await res.json();
-    return (data.documents || []).map(decodeFirestoreDocument);
+    const rows = await res.json();
+    return (Array.isArray(rows) ? rows : [])
+        .filter(row => row && row.document)
+        .map(row => decodeFirestoreDocument(row.document));
+}
+
+function isValidScopeId(value) {
+    return typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
+}
+
+// Reverse-lookup pointer written on workspace bootstrap and invite acceptance:
+// user_workspaces/{uid} = { workspaceIds: [...], default: <workspaceId> }.
+async function fetchWorkspacePointer(uid, token) {
+    if (!FIRESTORE_PROJECT_ID) return null;
+    const url = `${firestoreDocumentsRoot()}/user_workspaces/${encodeURIComponent(uid)}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return null;
+    const doc = decodeFirestoreDocument(await res.json());
+    return {
+        preferred: isValidScopeId(doc.default) ? doc.default : null,
+        ids: Array.isArray(doc.workspaceIds) ? doc.workspaceIds.filter(isValidScopeId) : [],
+    };
+}
+
+// WORKSPACE SCOPING (see docs/PROJECT_BACKGROUND.md §4). Finance collections were
+// migrated users/{uid}/* -> workspaces/{workspaceId}/* on 2026-06-22 and the app
+// has written ONLY to the workspace scope since. The users/{uid}/* copy was left
+// in place as the rollback net, so reading it does NOT fail — it silently returns
+// a ledger frozen at the migration date, which is why recent periods (last week,
+// this week) came back as 0 while older months still looked plausible.
+//
+// Returns the parent paths to try in order: resolved workspace(s) first, the
+// legacy user path last (pre-migration accounts and rollback safety). Every read
+// carries the caller's own ID token, so firestore.rules — not this list — decides
+// what the caller may actually see; a workspace they are not a member of is
+// rejected server-side.
+async function resolveFinanceScopes(uid, token, requestedWorkspaceId = null) {
+    const candidates = [];
+    const pointer = await fetchWorkspacePointer(uid, token).catch(() => null);
+    if (pointer?.preferred) candidates.push(pointer.preferred);
+    (pointer?.ids || []).forEach(id => candidates.push(id));
+    if (isValidScopeId(requestedWorkspaceId)) candidates.push(requestedWorkspaceId);
+    // Seeding rule: for a single-user account workspaceId == the owner's uid.
+    candidates.push(uid);
+    const scopes = [...new Set(candidates)].map(id => `workspaces/${id}`);
+    scopes.push(`users/${uid}`);
+    return scopes;
+}
+
+// Walk the resolved scopes and return the first one that actually holds records.
+// Never throws: a read failure is reported so the caller can fall back to the
+// authenticated page snapshot.
+async function fetchFinanceCollectionSafe(scopes, token, collectionName, pageSize, orderByField = null) {
+    let lastError = null;
+    for (const scope of scopes) {
+        try {
+            const records = await fetchScopedCollection(scope, token, collectionName, pageSize, orderByField);
+            if (records.length) return { records, scope, error: null };
+        } catch (err) {
+            lastError = err;
+            console.error(`[brain/chat] ${scope}/${collectionName} read failed:`, err?.message || err);
+        }
+    }
+    return {
+        records: [],
+        scope: null,
+        error: lastError ? `Could not read ${collectionName}; this answer may be incomplete.` : null,
+    };
 }
 
 async function fetchUserDocument(uid, token, collectionName, documentId) {
@@ -591,16 +699,33 @@ async function consumeAIQuotaIfNeeded(uid, token, workspaceId) {
     }
 }
 
-async function fetchUserCollectionSafe(uid, token, collectionName, pageSize = 1000) {
-    try {
-        return { records: await fetchUserCollection(uid, token, collectionName, pageSize), error: null };
-    } catch (err) {
-        console.error(`[brain/chat] ${collectionName} read failed:`, err?.message || err);
-        return {
-            records: [],
-            error: `Could not read ${collectionName}; this answer may be incomplete.`,
-        };
-    }
+// A voided ledger entry is reversed, not deleted: the ledger, dashboard, and
+// every other surface exclude it (DataService._activeTransactions), so the
+// analyst must too or its amount inflates revenue/OpEx for the period.
+function isVoidedTransaction(record = {}) {
+    return record?.is_voided === true || normalizeText(record?.status) === 'voided';
+}
+
+function activeTransactions(records = []) {
+    return records.filter(record => !isVoidedTransaction(record));
+}
+
+// Which record set to trust for one collection. The browser snapshot is read by
+// the page itself through the resolved workspace scope, so it is authoritative
+// when the backend read failed OR came back empty: an empty backend read while
+// the page holds records means a scope/permission gap, never an empty ledger.
+function pickFinanceRecords(result, snapshotRecords, snapshotOk) {
+    const backendRecords = result.records || [];
+    const preferSnapshot = snapshotOk
+        && (Boolean(result.error) || (backendRecords.length === 0 && snapshotRecords.length > 0));
+    if (preferSnapshot) return { records: snapshotRecords, usedSnapshot: true, unavailable: false };
+    return {
+        records: backendRecords,
+        usedSnapshot: false,
+        // Nothing to answer from: the backend read failed and the page could not
+        // supply a snapshot either.
+        unavailable: Boolean(result.error) && !snapshotOk,
+    };
 }
 
 function parseRecordDate(value) {
@@ -686,6 +811,13 @@ function summarizeTransactions(transactions, period, revenueTypes, opexTypes) {
     const inPeriod = transactions.filter(tx => isWithinPeriod(tx, period));
     const revenueRecords = inPeriod.filter(tx => revenueTypes.includes(normalizeText(tx.type)));
     const opexRecords = inPeriod.filter(tx => opexTypes.includes(normalizeText(tx.type)));
+    // The Add Transaction modal lets the user store a free-text "Others" type.
+    // Those records belong to neither revenue nor OpEx on any basis — but they DO
+    // exist, so name them instead of silently reporting Rp0 for a period that
+    // visibly has records. Built-in types (incl. pending_*, transfer, adjustment)
+    // are excluded here: they are already explained by the confirmed vs
+    // dashboard-overview basis, not by a missing mapping.
+    const unclassifiedRecords = inPeriod.filter(tx => !KNOWN_TRANSACTION_TYPES.includes(normalizeText(tx.type)));
     const revenue = revenueRecords.reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
     const opex = opexRecords.reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
     const grossMargin = revenue > 0 ? ((revenue - opex) / revenue) * 100 : 0;
@@ -700,12 +832,19 @@ function summarizeTransactions(transactions, period, revenueTypes, opexTypes) {
         period,
         revenue_record_count: revenueRecords.length,
         opex_record_count: opexRecords.length,
+        unclassified_record_count: unclassifiedRecords.length,
+        unclassified_types: [...new Set(unclassifiedRecords.map(tx => String(tx.type || 'unknown')))].slice(0, 5),
     };
 }
 
 function getFinanceSummary(transactions, period) {
     const confirmed = summarizeTransactions(transactions, period, REVENUE_TYPES, OPEX_TYPES);
     const dashboardOverview = summarizeTransactions(transactions, period, EXPECTED_REVENUE_TYPES, OBLIGATION_OPEX_TYPES);
+    const limitations = [];
+    if (confirmed.revenue === 0) limitations.push('Gross margin is limited because no confirmed revenue records were found in this period.');
+    if (confirmed.unclassified_record_count > 0) {
+        limitations.push(`${confirmed.unclassified_record_count} record(s) in this period use a custom transaction type (${confirmed.unclassified_types.join(', ')}), so they count toward the record total but not toward revenue or OpEx.`);
+    }
     return {
         ...confirmed,
         metric_basis: 'confirmed',
@@ -715,7 +854,7 @@ function getFinanceSummary(transactions, period) {
             metric_basis: 'dashboard_overview',
             limitations: ['Live Revenue includes pending receivables; OpEx includes pending payables.'],
         },
-        limitations: confirmed.revenue === 0 ? ['Gross margin is limited because no confirmed revenue records were found in this period.'] : [],
+        limitations,
     };
 }
 
@@ -2385,31 +2524,36 @@ async function buildBrainChatResponse({ request, uid, token }) {
         return { status: 200, body: { success: true, chat_id: chatId, intent, scope: FINANCE_SCOPE, answer, related_records: [], error: null } };
     }
 
+    // Finance data is WORKSPACE-scoped (docs/PROJECT_BACKGROUND.md §4). Resolve the
+    // owning scope before the first read — reading users/{uid} directly returns the
+    // frozen pre-migration copy, which reports 0 for every recent period.
+    const financeScopes = await resolveFinanceScopes(uid, token, request.workspace_id);
     const [transactionResult, billResult, subscriptionResult] = await Promise.all([
-        fetchUserCollectionSafe(uid, token, 'transactions', 1000),
-        fetchUserCollectionSafe(uid, token, 'bills', 500),
-        fetchUserCollectionSafe(uid, token, 'subscriptions', 500),
+        fetchFinanceCollectionSafe(financeScopes, token, 'transactions', 1000, 'timestamp'),
+        fetchFinanceCollectionSafe(financeScopes, token, 'bills', 500),
+        fetchFinanceCollectionSafe(financeScopes, token, 'subscriptions', 500),
     ]);
     const snapshot = normalizeFinanceSnapshot(request.finance_snapshot);
-    const usedSnapshot = [];
-    const transactionsSnapshotOk = snapshot.meta.reads.transactions.success;
-    const billsSnapshotOk = snapshot.meta.reads.bills.success;
-    const subscriptionsSnapshotOk = snapshot.meta.reads.subscriptions.success;
-    const transactions = transactionResult.error && transactionsSnapshotOk ? snapshot.transactions : transactionResult.records;
-    const bills = billResult.error && billsSnapshotOk ? snapshot.bills : billResult.records;
-    const subscriptions = subscriptionResult.error && subscriptionsSnapshotOk ? snapshot.subscriptions : subscriptionResult.records;
-    if (transactionResult.error && transactionsSnapshotOk) usedSnapshot.push(`transactions (${snapshot.transactions.length})`);
-    if (billResult.error && billsSnapshotOk) usedSnapshot.push(`bills (${snapshot.bills.length})`);
-    if (subscriptionResult.error && subscriptionsSnapshotOk) usedSnapshot.push(`subscriptions (${snapshot.subscriptions.length})`);
+    const transactionPick = pickFinanceRecords(transactionResult, snapshot.transactions, snapshot.meta.reads.transactions.success);
+    const billPick = pickFinanceRecords(billResult, snapshot.bills, snapshot.meta.reads.bills.success);
+    const subscriptionPick = pickFinanceRecords(subscriptionResult, snapshot.subscriptions, snapshot.meta.reads.subscriptions.success);
+    const transactions = activeTransactions(transactionPick.records);
+    const bills = billPick.records;
+    const subscriptions = subscriptionPick.records;
+    const usedSnapshot = [
+        transactionPick.usedSnapshot ? `transactions (${snapshot.transactions.length})` : null,
+        billPick.usedSnapshot ? `bills (${snapshot.bills.length})` : null,
+        subscriptionPick.usedSnapshot ? `subscriptions (${snapshot.subscriptions.length})` : null,
+    ].filter(Boolean);
     const readLimitations = [
-        transactionResult.error && !transactionsSnapshotOk ? transactionResult.error : null,
-        billResult.error && !billsSnapshotOk ? billResult.error : null,
-        subscriptionResult.error && !subscriptionsSnapshotOk ? subscriptionResult.error : null,
+        transactionPick.unavailable ? transactionResult.error : null,
+        billPick.unavailable ? billResult.error : null,
+        subscriptionPick.unavailable ? subscriptionResult.error : null,
     ].filter(Boolean);
     const unavailableCollections = [
-        transactionResult.error && !transactionsSnapshotOk ? 'transactions' : null,
-        billResult.error && !billsSnapshotOk ? 'bills' : null,
-        subscriptionResult.error && !subscriptionsSnapshotOk ? 'subscriptions' : null,
+        transactionPick.unavailable ? 'transactions' : null,
+        billPick.unavailable ? 'bills' : null,
+        subscriptionPick.unavailable ? 'subscriptions' : null,
     ].filter(Boolean);
     const missingRequiredCollections = (plan.collections_needed || [])
         .filter(collectionName => unavailableCollections.includes(collectionName));
@@ -2461,7 +2605,7 @@ async function buildBrainChatResponse({ request, uid, token }) {
     if (usedSnapshot.length) {
         answer.limitations = [
             ...(answer.limitations || []),
-            `Used the authenticated page data snapshot for ${usedSnapshot.join(', ')} because direct backend Firestore read was unavailable.`,
+            `Used the authenticated page data snapshot for ${usedSnapshot.join(', ')} because the direct backend Firestore read was unavailable or returned no records.`,
         ];
     }
 
@@ -3626,6 +3770,11 @@ exports.digest = {
 };
 
 exports.__test__ = {
+    buildBrainChatResponse,
+    resolveFinanceScopes,
+    fetchFinanceCollectionSafe,
+    pickFinanceRecords,
+    activeTransactions,
     consumeAIQuotaIfNeeded,
     PLAN_AI_PERIOD_LIMITS,
     TRIAL_AI_LIMIT,

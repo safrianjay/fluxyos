@@ -199,7 +199,17 @@ FluxyOS design language.
 >    resolves the workspace first. Shared finance components that load their own
 >    `DataService` (e.g. in `shared-dashboard.js`) must also call
 >    `resolveWorkspace(app, user)` after `authStateReady()` before reading.
-> 5. **Watch out for inline page queries.** Some pages build Firestore queries
+> 5. **Server-side reads count too.** Netlify functions have their own seam:
+>    `netlify/functions/lib/workspace-scope.js` (`resolveFinanceScopes` +
+>    `readFinanceCollection`) for Admin-SDK readers, and `resolveFinanceScopes` /
+>    `fetchFinanceCollectionSafe` inside `netlify/functions/api.js` for the
+>    REST-with-caller-token readers. A function that reads `users/{uid}/…` does
+>    **not** get a permission error — it gets the frozen pre-migration copy, so
+>    every recent period silently computes as 0 while old months still look
+>    plausible. That is exactly how the Fluxy AI answers and the Weekly Digest
+>    came to report Rp0 for weeks that had records (fixed 2026-07-30; regression
+>    tests: `npm run check:ai-scope`, `npm run smoke:digest`).
+> 6. **Watch out for inline page queries.** Some pages build Firestore queries
 >    directly in the HTML (`collection(ds.db, …)`) instead of calling a
 >    DataService method — these bypass the seam and are the easiest place to
 >    reintroduce the bug. Grep guard:

@@ -18,6 +18,7 @@ const { buildWeeklyDigest } = require('../../../functions/lib/digest-template');
 const { resolveUserLocale } = require('../../../functions/lib/locale');
 const { firstName } = require('../../../functions/lib/format');
 const { resolveUserEmail } = require('./notify-core');
+const { resolveFinanceScopes, readFinanceCollection, isVoidedTransaction } = require('./workspace-scope');
 
 const APP_BASE_URL = process.env.APP_BASE_URL || 'https://fluxyos.com';
 const OPEX_TYPES = ['expense', 'fee', 'tax'];
@@ -27,9 +28,27 @@ const DEFAULT_METRICS = {
     revenue: true, expenses: true, subscriptions: true, vendors: true,
 };
 
-async function fetchCollection(db, uid, name, limit) {
-    const snap = await db.collection(`users/${uid}/${name}`).limit(limit).get();
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+// Finance collections are WORKSPACE-scoped — never read `users/{uid}/<finance>`
+// here. See lib/workspace-scope.js for why that path still returns (stale) docs.
+async function fetchFinanceCollection(db, scopes, name, limit, options = {}) {
+    const { records } = await readFinanceCollection(db, scopes, name, limit, options);
+    return records;
+}
+
+// The user's own calendar day, so the week boundary matches the week they see in
+// the app. `now` is a UTC instant on the server: taking its date parts directly
+// shifts the whole recap window by a day (and therefore by a week) for every
+// delivery slot that falls before 07:00 Jakarta.
+function localCalendarDate(now, timeZone) {
+    try {
+        const parts = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+        const part = (type) => Number((parts.find((p) => p.type === type) || {}).value);
+        const year = part('year'); const month = part('month'); const day = part('day');
+        if (!year || !month || !day) return new Date(now);
+        return new Date(year, month - 1, day);
+    } catch (_e) {
+        return new Date(now);
+    }
 }
 
 function tsToMs(v) {
@@ -99,12 +118,16 @@ async function writeAudit(db, uid, action, after) {
  * `prefs` = { metrics, email, name, ... }. Returns a result descriptor.
  */
 async function generateWeeklyDigest(db, uid, prefs = {}, { now = new Date(), logger = console, to: toOverride, dryRun = false } = {}) {
-    const [transactions, bills, subscriptions, budgets] = await Promise.all([
-        fetchCollection(db, uid, 'transactions', 1000),
-        fetchCollection(db, uid, 'bills', 500),
-        fetchCollection(db, uid, 'subscriptions', 500),
-        fetchCollection(db, uid, 'budgets', 50).catch(() => []),
+    const scopes = await resolveFinanceScopes(db, uid);
+    const [allTransactions, bills, subscriptions, budgets] = await Promise.all([
+        fetchFinanceCollection(db, scopes, 'transactions', 1000, { orderByField: 'timestamp', logger }),
+        fetchFinanceCollection(db, scopes, 'bills', 500, { logger }),
+        fetchFinanceCollection(db, scopes, 'subscriptions', 500, { logger }),
+        fetchFinanceCollection(db, scopes, 'budgets', 50, { logger }).catch(() => []),
     ]);
+    // Voided entries are reversed, not deleted — exclude them so the digest
+    // matches the ledger the user sees.
+    const transactions = allTransactions.filter((tx) => !isVoidedTransaction(tx));
 
     // Skip accounts with zero finance records ever.
     if (transactions.length + bills.length + subscriptions.length === 0) {
@@ -113,8 +136,8 @@ async function generateWeeklyDigest(db, uid, prefs = {}, { now = new Date(), log
 
     // Recap the last COMPLETED week — the 7 days before the current week starts
     // (e.g. on Mon Jun 15 → Jun 8–14), NOT the in-progress/future current week.
-    // Comparison = the week before that.
-    const thisWeekStart = finance.startOfWeek(now);
+    // Comparison = the week before that. Weeks are the user's local weeks.
+    const thisWeekStart = finance.startOfWeek(localCalendarDate(now, prefs.timezone || 'Asia/Jakarta'));
     const period = finance.buildPeriod('rolling', 'last week', finance.addDays(thisWeekStart, -7), finance.addDays(thisWeekStart, -1));
     const comparisonPeriod = finance.previousEquivalentPeriod(period);
     const plan = finance.buildQuestionPlan({
@@ -237,4 +260,4 @@ async function runWeeklyDigestSweep(db, { now = new Date(), logger = console, li
     return { scanned: snap.size, due, sent, wouldSend, skippedNoRecords };
 }
 
-module.exports = { generateWeeklyDigest, getEffectivePrefs, shouldDeliverNow, runWeeklyDigestSweep, isoWeekKey, DEFAULT_METRICS };
+module.exports = { generateWeeklyDigest, getEffectivePrefs, shouldDeliverNow, runWeeklyDigestSweep, isoWeekKey, localCalendarDate, DEFAULT_METRICS };
