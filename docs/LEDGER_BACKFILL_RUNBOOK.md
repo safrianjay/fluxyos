@@ -71,7 +71,36 @@ business decision, not an engineering one):
 | `vCbKe11c9fU6HxBizO4iwkg9YQf1` | Dika Finance | 46.2% | 7 | Rp2.131.850 |
 
 This answers the Phase 2 gate question: **production has the gap, and worse than QA.**
-Beila's is concentrated in 2026-05 (692 of 752).
+
+**Dry-run 2026-07-29 — only two of the three are fixable by the backfill:**
+
+| workspace | postable now | blocked by closed period | verdict |
+|---|---:|---:|---|
+| Get-Pipeline | 27 | 0 | **safe to backfill** |
+| Dika Finance | 8 | 0 | **safe to backfill** |
+| Beila | 28 | **747** | **needs a decision — see below** |
+
+**Beila closed its books on incomplete data.** `2026-05` and `2026-06` are both
+`closed`, and they contain **724 unposted transactions worth Rp4.40bn**
+(2026-05: 692 / Rp4.117bn; 2026-06: 32 / Rp285m). The backfill skips closed periods,
+so it can only post 28 — Beila would go from 5.4% to roughly 8.9% coverage and the
+statements would still be missing Rp4.4bn.
+
+Closing that gap requires **reopening two closed periods**, which reverses their
+closing journals and restates retained earnings for two months the customer may
+already have reported on. That is a finance decision, not an engineering one.
+
+### Root cause — a close-gate defect (not just bad data)
+
+The Close checklist's "All entries posted to the ledger" gate reads
+`countPendingPostings` (`db-service.js:3664`), which counts only documents with
+`accounting_status == 'pending'`. **Transactions that were never queued carry no such
+flag and are invisible to it**, so the gate reads "Up to date" while any number of
+sources sit unposted. That is how Beila closed two periods on incomplete books.
+
+Until that gate also counts *unposted* sources (no journal and no posted flag — the
+check `scripts/ledger-coverage-report.js` performs), closing a period does not
+guarantee the ledger is complete, and this situation can recur.
 
 ---
 
