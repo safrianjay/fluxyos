@@ -90,6 +90,16 @@
 
     const els = {};
 
+    // The prompt cards and composer are interactive as soon as init() runs, but
+    // ai.html only hands us the signed-in user AFTER applyToPage() resolves
+    // (workspace resolution + gate checks) — about a second later on a warm load,
+    // longer on a slow connection. Anything submitted in that window used to be
+    // rejected outright ("AI chat history is not ready yet") and the user had to
+    // retype the prompt. Resolve this promise instead, so an early submit simply
+    // waits for the user it is about to get.
+    let markUserReady;
+    const userReady = new Promise((resolve) => { markUserReady = resolve; });
+
     function init() {
         cacheElements();
         if (!els.form) return;
@@ -100,11 +110,30 @@
             setUser(user) {
                 state.user = user || null;
                 renderUserName();
-                if (state.user) bootRoute();
+                if (state.user) { markUserReady(state.user); bootRoute(); }
             },
         };
         if (window.__fluxyAICommandContext?.auth?.currentUser) {
             window.FluxyAICommandCenter.setUser(window.__fluxyAICommandContext.auth.currentUser);
+        }
+    }
+
+    // Wait (briefly) for the user handoff described above. Falls back to the
+    // auth context directly in case ai.html's one-shot setUser call raced past
+    // this module being defined.
+    async function awaitUser(timeoutMs = 15000) {
+        if (state.user) return state.user;
+        const current = window.__fluxyAICommandContext?.auth?.currentUser;
+        if (current) {
+            window.FluxyAICommandCenter?.setUser(current);
+            if (state.user) return state.user;
+        }
+        let timer;
+        const timeout = new Promise((resolve) => { timer = setTimeout(() => resolve(null), timeoutMs); });
+        try {
+            return await Promise.race([userReady, timeout]);
+        } finally {
+            clearTimeout(timer);
         }
     }
 
@@ -826,21 +855,22 @@
     async function ensureActiveChat(prompt) {
         if (state.currentChatId && state.mode === 'session') return state.currentChatId;
         const ds = getDataService();
-        if (!state.user || !ds?.createAIChat) throw new Error('AI chat history is not ready yet.');
+        const user = state.user || await awaitUser();
+        if (!user || !ds?.createAIChat) throw new Error('AI chat history is not ready yet.');
         const title = deriveTitle(prompt);
-        const ref = await ds.createAIChat(state.user.uid, {
+        const ref = await ds.createAIChat(user.uid, {
             title,
             summary: '',
             last_message_preview: prompt,
             intent: inferIntent(prompt),
             message_count: 0,
         });
-        const chat = await ds.getAIChat(state.user.uid, ref.id);
+        const chat = await ds.getAIChat(user.uid, ref.id);
         state.currentChatId = ref.id;
         state.currentChat = chat || { id: ref.id, title };
         state.messageCount = 0;
         history.pushState({}, '', `${getAIHomePath()}?chat=${encodeURIComponent(ref.id)}`);
-        state.bootedFor = `${state.user.uid}:${ref.id}`;
+        state.bootedFor = `${user.uid}:${ref.id}`;
         setSessionShell({ title, chatId: ref.id });
         ensureChatThread({ reset: true });
         return ref.id;
