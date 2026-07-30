@@ -294,7 +294,7 @@ const KERNEL_TABS = new Set(['journals', 'ledger', 'trial', 'coa', 'close']);
 // Panel ids are unchanged — only the nav layer knows about grouping.
 // Full rationale: docs/ACCOUNTING_CENTER_IA.md
 const TAB_GROUPS = [
-    { id: 'reports', tabs: ['income', 'balance', 'aging'] },
+    { id: 'reports', tabs: ['income', 'balance', 'cashflow', 'aging'] },
     { id: 'ledger', tabs: ['journals', 'ledger', 'trial'] },
     { id: 'setup', tabs: ['coa', 'mapping', 'vendors'] },
     { id: 'close', tabs: ['close', 'cleanup'] }
@@ -511,18 +511,59 @@ function periodColumnLabel(startPk, endPk) {
 function renderStatements(report) {
     const incWrap = el('income-statement-content');
     const balWrap = el('balance-sheet-content');
-    const label = el('income-statement-period');
-    if (label) label.textContent = periodColumnLabel(report.period.start, report.period.end);
+    const label = periodColumnLabel(report.period.start, report.period.end);
+    if (el('income-statement-period')) el('income-statement-period').textContent = label;
+    if (el('cash-flow-period')) el('cash-flow-period').textContent = label;
     renderStmtIncome(incWrap, report);
     renderStmtBalance(balWrap, report.balanceSheet);
+    renderStmtCashFlow(el('cash-flow-content'), report.cashFlow);
+}
+
+// Cash Flow, indirect method. Amounts are already signed as cash effect by the
+// engine, so an outflow arrives negative and renders in parentheses.
+function renderStmtCashFlow(wrap, cf) {
+    if (!wrap) return;
+    if (!cf || !cf.hasData) {
+        wrap.innerHTML = emptyState('No cash movement for this period', 'The cash flow statement appears once journals have posted.');
+        if (el('cash-flow-tieout')) el('cash-flow-tieout').innerHTML = '';
+        return;
+    }
+    const parts = [];
+    parts.push(stmtGroupHeader('Operating activities'));
+    parts.push(bsSubtotalRow('Net income', cf.netIncome));
+    cf.workingCapital.forEach(l => parts.push(bsLineRow(l)));
+    parts.push(bsSubtotalRow('Net cash from operating activities', cf.totalOperating, { strong: true }));
+
+    if (cf.investing.length) {
+        parts.push(stmtGroupHeader('Investing activities'));
+        cf.investing.forEach(l => parts.push(bsLineRow(l)));
+        parts.push(bsSubtotalRow('Net cash from investing activities', cf.totalInvesting, { strong: true }));
+    }
+    if (cf.financing.length) {
+        parts.push(stmtGroupHeader('Financing activities'));
+        cf.financing.forEach(l => parts.push(bsLineRow(l)));
+        parts.push(bsSubtotalRow('Net cash from financing activities', cf.totalFinancing, { strong: true }));
+    }
+    parts.push(bsSubtotalRow('Net change in cash', cf.netChangeInCash, { strong: true }));
+    wrap.innerHTML = tableShell([{ label: 'Line item' }, { label: 'Amount', money: true }], parts.join(''));
+    bindStatementDrilldown(wrap);
+
+    // Same integrity signal as the Balance Sheet: the sections partition every
+    // non-cash account, so this can only drift if ledger_balances did.
+    const tie = el('cash-flow-tieout');
+    if (tie) {
+        tie.innerHTML = cf.balanced
+            ? `<span class="fluxy-table-status fluxy-status-success">Ties to cash ✓</span>`
+            : `<span class="fluxy-table-status fluxy-status-danger">Out by ${escapeHtml(signedRupiah(cf.tieOutDelta))}</span>`;
+    }
 }
 
 function statementsError() {
     const fail = emptyState('Could not load statements', 'Reload the page or try again in a moment.');
-    const incWrap = el('income-statement-content');
-    const balWrap = el('balance-sheet-content');
-    if (incWrap) incWrap.innerHTML = fail;
-    if (balWrap) balWrap.innerHTML = fail;
+    ['income-statement-content', 'balance-sheet-content', 'cash-flow-content'].forEach((id) => {
+        const w = el(id);
+        if (w) w.innerHTML = fail;
+    });
 }
 
 // Joins current and comparison lines by account code. Accounts with activity only

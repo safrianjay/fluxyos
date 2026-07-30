@@ -10,6 +10,7 @@
 const GROUP_OF_TAB = {
     income: 'reports',
     balance: 'reports',
+    cashflow: 'reports',
     aging: 'reports',
     journals: 'ledger',
     ledger: 'ledger',

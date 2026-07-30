@@ -1260,7 +1260,7 @@ group row (`.acct-tabs`, `data-acct-group`) over a child view row (`.acct-subtab
 
 | Group | Views (`data-acct-tab`) |
 |-------|-------------------------|
-| **Reports** | `income` · `balance` · `aging` |
+| **Reports** | `income` · `balance` · `cashflow` · `aging` |
 | **Ledger** | `journals` · `ledger` · `trial` |
 | **Setup** | `coa` · `mapping` · `vendors` |
 | **Close** | `close` · `cleanup` |

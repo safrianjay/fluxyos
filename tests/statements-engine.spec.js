@@ -94,3 +94,85 @@ test('statements engine builds a P&L and a balancing Balance Sheet', async ({ pa
     // Empty ledger is trivially balanced (0 = 0).
     expect(r.emptyBalanced).toBe(true);
 });
+
+// --- Cash Flow (indirect method) -------------------------------------------
+// The statement is derived from the double-entry identity: across every account
+// Σ(debit − credit) == 0, so Δcash == Σ(credit − debit) over all non-cash
+// accounts. The sections partition those accounts, so the statement ties to the
+// real movement in cash accounts by construction — for open AND closed periods.
+
+test('cash flow ties to actual cash movement, open and closed periods', async ({ page }) => {
+    await page.goto('/pricing');
+    const r = await page.evaluate(async () => {
+        const e = await import('/assets/js/statements-engine.js');
+        const row = (code, type, sak, debit, credit) => ({
+            account_code: code, account_type: type, account_name: code,
+            sak_category: sak, debit_total: debit, credit_total: credit
+        });
+
+        // Rp1,000 cash sale + Rp200 credit sale, Rp300 cash expense,
+        // Rp100 owner capital in. Cash moves +1,000 − 300 + 100 = +800.
+        const open = [
+            row('1000', 'asset', 'cash_bank', 1100, 300),
+            row('4000', 'revenue', 'revenue', 0, 1200),
+            row('1100', 'asset', 'accounts_receivable', 200, 0),
+            row('6300', 'expense', 'operating_expense', 300, 0),
+            row('3100', 'equity', 'equity', 0, 100)
+        ];
+
+        // Same period after close: the closing journal debits revenue to zero,
+        // credits the aggregate expense-clearing line, and credits Retained
+        // Earnings with net income. Net income must still read 900.
+        const closed = open.map(x => ({ ...x }));
+        closed.find(x => x.account_code === '4000').debit_total = 1200;
+        closed.push(row('6999', 'expense', 'operating_expense', 0, 300));
+        closed.push(row('3000', 'equity', 'equity', 0, 900));
+
+        // Equipment bought for cash is investing, not operating.
+        const investing = [
+            row('1000', 'asset', 'cash_bank', 0, 500),
+            row('1500', 'asset', 'fixed_asset', 500, 0)
+        ];
+        // A long-term loan drawn in cash is financing.
+        const financing = [
+            row('1000', 'asset', 'cash_bank', 2000, 0),
+            row('2600', 'liability', 'long_term_liability', 0, 2000)
+        ];
+
+        const o = e.buildCashFlow(open);
+        const c = e.buildCashFlow(closed);
+        const i = e.buildCashFlow(investing);
+        const f = e.buildCashFlow(financing);
+        return {
+            o: { ni: o.netIncome, op: o.totalOperating, fin: o.totalFinancing, net: o.netChangeInCash, cash: o.cashMovement, ok: o.balanced },
+            c: { ni: c.netIncome, net: c.netChangeInCash, cash: c.cashMovement, ok: c.balanced },
+            i: { inv: i.totalInvesting, net: i.netChangeInCash, cash: i.cashMovement, ok: i.balanced },
+            f: { fin: f.totalFinancing, net: f.netChangeInCash, cash: f.cashMovement, ok: f.balanced },
+            emptyHasData: e.buildCashFlow([]).hasData,
+            emptyBalanced: e.buildCashFlow([]).balanced
+        };
+    });
+
+    // Open period
+    expect(r.o.ni).toBe(900);          // 1,200 revenue − 300 expense
+    expect(r.o.op).toBe(700);          // 900 earnings − 200 tied up in A/R
+    expect(r.o.fin).toBe(100);         // owner capital
+    expect(r.o.net).toBe(800);
+    expect(r.o.cash).toBe(800);
+    expect(r.o.ok).toBe(true);
+
+    // Closed period: the closing journal must not double-count net income.
+    expect(r.c.ni, 'net income reads the same after close').toBe(900);
+    expect(r.c.net).toBe(800);
+    expect(r.c.cash).toBe(800);
+    expect(r.c.ok).toBe(true);
+
+    // Classification
+    expect(r.i.inv).toBe(-500);
+    expect(r.i.ok).toBe(true);
+    expect(r.f.fin).toBe(2000);
+    expect(r.f.ok).toBe(true);
+
+    expect(r.emptyHasData).toBe(false);
+    expect(r.emptyBalanced).toBe(true);
+});

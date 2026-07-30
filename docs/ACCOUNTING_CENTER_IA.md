@@ -500,7 +500,34 @@ risk; they are marked dead in `PROJECT_BACKGROUND.md` §4m instead.
 - Remove the sanctioned `max-w-7xl` exception for `balance-sheet.html`
   (`docs/DESIGN_SYSTEM.md:590-593,626`).
 
-### Phase 4 — Cash Flow Statement *(closes the real gap)*
+### Phase 4 — Cash Flow Statement ✅ SHIPPED 2026-07-31
+
+The statement set is now complete. `buildCashFlow()` in `statements-engine.js`,
+surfaced as **Reports → Cash Flow**, sharing the one `getFinancialStatements` fetch.
+
+**Derived from the double-entry identity, not from hand-picked adjustments.** Across
+every account Σ(debit − credit) == 0, so Δcash == Σ(credit − debit) over all non-cash
+accounts. The three sections partition those accounts, so the statement ties to the
+real movement in cash accounts **by construction** — the same property that makes the
+Balance Sheet tie out, and a non-zero `tieOutDelta` is likewise a genuine
+`ledger_balances` drift signal rather than a presentation bug.
+
+**It survives a closed period.** The closing journal moves the P&L into Retained
+Earnings, which would double-count net income; grouping RE with the P&L accounts in
+Operating makes the closing entry net to zero, so "Net income" reads identically
+whether the period is open or closed. Unit-tested both ways in
+`tests/statements-engine.spec.js`.
+
+Classification: `cash_bank` is cash; `accounts_receivable`/`other_current_asset` and
+`accounts_payable`/`other_current_liability` are Operating; other assets are
+Investing; equity and other liabilities are Financing. Unknown or user-created
+categories fall back on account **type**, so a custom account can never silently drop
+out and break the tie-out.
+
+Verified on the QA ledger: "Ties to cash ✓", net income matching the Income
+Statement, A/R increase shown as cash tied up and A/P increase as cash preserved.
+
+### Phase 4 — original plan *(retained for reference)*
 
 Add `buildCashFlow()` to `statements-engine.js` using the indirect method: net income
 from `buildIncomeStatement`, adjusted by period movement in balance-sheet accounts —

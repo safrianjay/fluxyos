@@ -124,6 +124,7 @@
                     <nav class="acct-subtabs" role="tablist" aria-label="Accounting Center views">
                         <button type="button" class="acct-subtab is-active" data-acct-tab="income" data-acct-parent="reports" role="tab" aria-selected="true">Income Statement</button>
                         <button type="button" class="acct-subtab" data-acct-tab="balance" data-acct-parent="reports" role="tab" aria-selected="false">Balance Sheet</button>
+                        <button type="button" class="acct-subtab" data-acct-tab="cashflow" data-acct-parent="reports" role="tab" aria-selected="false">Cash Flow</button>
                         <button type="button" class="acct-subtab" data-acct-tab="aging" data-acct-parent="reports" role="tab" aria-selected="false">Aging</button>
 
                         <button type="button" class="acct-subtab" data-acct-tab="journals" data-acct-parent="ledger" role="tab" aria-selected="false" hidden>Journals</button>
@@ -278,6 +279,20 @@
                                 </div>
                             </div>
                             <div id="balance-sheet-content" class="fluxy-table-scroll"></div>
+                        </section>
+                    </div>
+
+                    <!-- CASH FLOW TAB (ledger-derived, indirect method) -->
+                    <div data-acct-panel="cashflow" class="hidden">
+                        <section class="acct-card fluxy-table-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">Cash Flow</h2>
+                                    <p class="fluxy-table-subtitle">Indirect method for <span id="cash-flow-period">this period</span>, built from the general ledger. Net change must equal the movement in your cash accounts.</p>
+                                </div>
+                                <div class="fluxy-table-actions" id="cash-flow-tieout"></div>
+                            </div>
+                            <div id="cash-flow-content" class="fluxy-table-scroll"></div>
                         </section>
                     </div>
 

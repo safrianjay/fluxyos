@@ -86,6 +86,110 @@ export function buildIncomeStatement(rows = []) {
     };
 }
 
+// --- Cash Flow (period movement, indirect method) --------------------------
+// Built on the double-entry identity rather than on hand-picked adjustments:
+// across every account Σ(debit − credit) == 0, so
+//     Δcash == Σ(credit − debit) over all NON-cash accounts.
+// Each non-cash account therefore contributes exactly its cash effect, and the
+// three sections are a partition of those accounts — the statement ties to the
+// actual movement in cash accounts by construction, exactly like the Balance
+// Sheet. A non-zero tieOutDelta means the ledger_balances snapshot drifted.
+//
+// This also survives a CLOSED period. The closing journal moves the P&L into
+// Retained Earnings, which would otherwise double-count net income; because RE
+// is grouped with the P&L accounts in Operating, the closing entry nets to zero
+// and "Net income" reads the same whether the period is open or closed.
+const CASH_CATEGORY = 'cash_bank';
+const CURRENT_ASSET_CATEGORIES = ['accounts_receivable', 'other_current_asset'];
+const CURRENT_LIABILITY_CATEGORIES = ['accounts_payable', 'other_current_liability'];
+const RETAINED_EARNINGS_CODE = '3000';
+
+// Cash effect of a non-cash account's period movement (see identity above).
+function cashEffectOf(row) {
+    return toInt(row.credit_total) - toInt(row.debit_total);
+}
+
+function cashLineOf(row) {
+    return {
+        code: row.account_code,
+        name: row.account_name || row.account_code,
+        name_id: row.account_name_id || null,
+        amount: cashEffectOf(row)
+    };
+}
+
+function isCashAccount(row) {
+    return row.sak_category === CASH_CATEGORY;
+}
+
+// Partition every non-cash account with movement into one of the three sections.
+// Unknown/custom categories fall back on account type so a user-created account
+// can never silently drop out of the statement and break the tie-out.
+function cashSectionOf(row) {
+    const cat = row.sak_category || null;
+    const type = row.account_type;
+    if (type === 'revenue' || type === 'expense') return 'operating';
+    if (row.account_code === RETAINED_EARNINGS_CODE) return 'operating';
+    if (type === 'asset') return CURRENT_ASSET_CATEGORIES.includes(cat) ? 'operating' : 'investing';
+    if (type === 'liability') return CURRENT_LIABILITY_CATEGORIES.includes(cat) ? 'operating' : 'financing';
+    if (type === 'equity') return 'financing';
+    return 'operating';
+}
+
+export function buildCashFlow(rows = []) {
+    const moved = (rows || []).filter(
+        (r) => toInt(r.debit_total) !== 0 || toInt(r.credit_total) !== 0
+    );
+    const cashRows = moved.filter(isCashAccount);
+    const nonCash = moved.filter((r) => !isCashAccount(r));
+
+    const bySection = { operating: [], investing: [], financing: [] };
+    nonCash
+        .slice()
+        .sort((a, b) => String(a.account_code).localeCompare(String(b.account_code)))
+        .forEach((r) => { bySection[cashSectionOf(r)].push(cashLineOf(r)); });
+
+    // Net income = P&L movement plus the closing entry's move into Retained
+    // Earnings, so it reads identically for an open and a closed period.
+    const netIncome = nonCash
+        .filter((r) => r.account_type === 'revenue' || r.account_type === 'expense'
+            || r.account_code === RETAINED_EARNINGS_CODE)
+        .reduce((s, r) => s + cashEffectOf(r), 0);
+
+    // Operating lines minus the earnings block = the working-capital adjustments.
+    const workingCapital = bySection.operating.filter(
+        (l) => !nonCash.some((r) => r.account_code === l.code
+            && (r.account_type === 'revenue' || r.account_type === 'expense'
+                || r.account_code === RETAINED_EARNINGS_CODE))
+    );
+
+    const totalOperating = sumLines(bySection.operating);
+    const totalInvesting = sumLines(bySection.investing);
+    const totalFinancing = sumLines(bySection.financing);
+    const netChangeInCash = totalOperating + totalInvesting + totalFinancing;
+
+    // What the cash accounts actually moved, independent of the sections above.
+    const cashMovement = cashRows.reduce(
+        (s, r) => s + (toInt(r.debit_total) - toInt(r.credit_total)), 0
+    );
+
+    return {
+        operating: bySection.operating,
+        workingCapital,
+        investing: bySection.investing,
+        financing: bySection.financing,
+        netIncome,
+        totalOperating,
+        totalInvesting,
+        totalFinancing,
+        netChangeInCash,
+        cashMovement,
+        tieOutDelta: netChangeInCash - cashMovement,
+        balanced: netChangeInCash - cashMovement === 0,
+        hasData: moved.length > 0
+    };
+}
+
 // --- Balance Sheet (cumulative, as-of) -------------------------------------
 // `rows` are cumulative aggregates through the as-of period (every posting up
 // to and including it). Current-period earnings (cumulative Revenue − Expense

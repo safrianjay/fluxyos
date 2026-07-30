@@ -4,7 +4,7 @@ import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePa
 import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, CHART_OF_ACCOUNTS_SEED, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, suggestCategorizingAccount, periodKey as acctPeriodKey } from "./accounting-engine.js";
 import { buildTaxAppendix, TAX_RATES } from "./tax-engine.js";
 import { computeAging } from "./aging-engine.js";
-import { buildIncomeStatement, buildBalanceSheet } from "./statements-engine.js";
+import { buildIncomeStatement, buildBalanceSheet, buildCashFlow } from "./statements-engine.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
 // See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
@@ -4560,7 +4560,10 @@ class DataService {
             comparisonPeriod: { start: cmpStart, end: cmpEnd },
             incomeStatement: buildIncomeStatement(movementRows),
             comparisonIncomeStatement: buildIncomeStatement(comparisonRows),
-            balanceSheet: buildBalanceSheet(cumulativeRows)
+            balanceSheet: buildBalanceSheet(cumulativeRows),
+            // Period movement, same rows as the P&L — the indirect method needs
+            // the movement in every account, not just the P&L ones.
+            cashFlow: buildCashFlow(movementRows)
         };
     }
 

@@ -41,7 +41,7 @@ test('child row shows only the active group, and groups remember their last view
     await page.goto('/accounting.html');
     await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
 
-    const EXPECTED_VIEWS = { reports: 3, ledger: 3, setup: 3, close: 2 };
+    const EXPECTED_VIEWS = { reports: 4, ledger: 3, setup: 3, close: 2 };
     for (const group of GROUPS) {
         await page.locator(`[data-acct-group="${group}"]`).click();
         const visible = page.locator('[data-acct-tab]:visible');
