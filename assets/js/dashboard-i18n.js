@@ -3937,6 +3937,9 @@
         "Reports": "Laporan",
         "Setup": "Konfigurasi",
         "Close checklist": "Daftar Periksa Tutup Buku",
+        // Close gate — unposted-source detection
+        "Post every entry for this period before closing it.": "Posting semua entri periode ini sebelum menutupnya.",
+        "Invoice payments awaiting issuance posting": "Pembayaran faktur menunggu posting penerbitan",
         // Balance Sheet CSV export (ported from the retired /balance-sheet page)
         "This logs an export action and downloads the ledger-derived Balance Sheet with raw IDR amounts.": "Tindakan ini mencatat aktivitas ekspor dan mengunduh Neraca dari buku besar dengan nilai IDR mentah.",
         "Could not export the Balance Sheet. Try again.": "Tidak dapat mengekspor Neraca. Coba lagi.",
@@ -4190,6 +4193,14 @@
     //  Applied (in order) only to nodes that miss an exact dictionary key.
     // ─────────────────────────────────────────────────────────────────────────
     var PATTERNS = [
+        // Close gate: "14 entries are not posted to the ledger" / "1 entry is …".
+        { re: /^(\d+) entr(?:y is|ies are) not posted to the ledger$/,
+          id: function (m) { return m[1] + ' entri belum diposting ke buku besar'; } },
+        // Close checklist hints: "14 not posted", "14 not posted (3 queued)".
+        { re: /^(\d+) not posted(?: \((\d+) queued\))?$/,
+          id: function (m) { return m[1] + ' belum diposting' + (m[2] ? ' (' + m[2] + ' antre)' : ''); } },
+        { re: /^(\d+) deferred — does not block close$/,
+          id: function (m) { return m[1] + ' ditangguhkan — tidak menghalangi tutup buku'; } },
         // Attachments section row meta: "<role> · Attached 28 Jul 2026". The role
         // half is a fixed set, so translate it through the dictionary and leave the
         // locale-formatted date alone.
