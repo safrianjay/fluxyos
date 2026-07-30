@@ -134,6 +134,21 @@
   to = "/budget-allocation.html"
   status = 200
 
+# Retired: the standalone Balance Sheet was records-derived and disagreed with the
+# ledger-derived statement in the Accounting Center. docs/ACCOUNTING_CENTER_IA.md
+# (_redirects.app carries the same rules for the app site, which evaluates first.)
+[[redirects]]
+  from = "/balance-sheet"
+  to = "/accounting?tab=balance"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/balance-sheet-records"
+  to = "/accounting?tab=balance"
+  status = 301
+  force = true
+
 [[redirects]]
   from = "/"
   to = "/fluxyos.html"

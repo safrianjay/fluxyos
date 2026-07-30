@@ -20,6 +20,13 @@ https://fluxyos-dashboard.netlify.app/*   https://dashboard.fluxyos.com/:splat  
 /budget-period/:periodId          /budget-period.html       200
 /budget-allocation/:allocationId  /budget-allocation.html   200
 
+# --- Retired pages ---
+# The standalone Balance Sheet was records-derived (no chart of accounts, no
+# equity) and disagreed with the ledger-derived statement in the Accounting
+# Center, which is now the only Balance Sheet. docs/ACCOUNTING_CENTER_IA.md
+/balance-sheet          /accounting?tab=balance   301!
+/balance-sheet-records  /accounting?tab=balance   301!
+
 # --- Marketing split: marketing paths go back to the apex ---
 /use-cases/*                https://fluxyos.com/use-cases/:splat                     301!
 /id/*                       https://fluxyos.com/id/:splat                            301!
