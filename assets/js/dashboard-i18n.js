@@ -3940,6 +3940,9 @@
         // Close gate — unposted-source detection
         "Post every entry for this period before closing it.": "Posting semua entri periode ini sebelum menutupnya.",
         "Invoice payments awaiting issuance posting": "Pembayaran faktur menunggu posting penerbitan",
+        "Post unposted entries": "Posting entri yang belum diposting",
+        "This posts double-entry journals for entries in this period that never reached the ledger. Closed periods and invoice payments awaiting issuance are skipped.": "Tindakan ini memposting jurnal berpasangan untuk entri periode ini yang belum masuk buku besar. Periode tertutup dan pembayaran faktur yang menunggu penerbitan dilewati.",
+        "Could not post these entries": "Tidak dapat memposting entri ini",
         // Balance Sheet CSV export (ported from the retired /balance-sheet page)
         "This logs an export action and downloads the ledger-derived Balance Sheet with raw IDR amounts.": "Tindakan ini mencatat aktivitas ekspor dan mengunduh Neraca dari buku besar dengan nilai IDR mentah.",
         "Could not export the Balance Sheet. Try again.": "Tidak dapat mengekspor Neraca. Coba lagi.",
@@ -4199,6 +4202,12 @@
         // Close checklist hints: "14 not posted", "14 not posted (3 queued)".
         { re: /^(\d+) not posted(?: \((\d+) queued\))?$/,
           id: function (m) { return m[1] + ' belum diposting' + (m[2] ? ' (' + m[2] + ' antre)' : ''); } },
+        // Close-gate remedy: button label and its confirm title.
+        { re: /^Post (\d+) unposted entr(?:y|ies)$/,
+          id: function (m) { return 'Posting ' + m[1] + ' entri yang belum diposting'; } },
+        { re: /^Post (\d+) entr(?:y|ies)\?$/,
+          id: function (m) { return 'Posting ' + m[1] + ' entri?'; } },
+        { re: /^(\d+) not postable$/, id: function (m) { return m[1] + ' tidak dapat diposting'; } },
         { re: /^(\d+) deferred — does not block close$/,
           id: function (m) { return m[1] + ' ditangguhkan — tidak menghalangi tutup buku'; } },
         // Attachments section row meta: "<role> · Attached 28 Jul 2026". The role

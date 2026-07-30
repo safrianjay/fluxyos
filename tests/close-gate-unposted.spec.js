@@ -73,6 +73,53 @@ test('a never-queued source is invisible to countPendingPostings but caught here
     expect(out.blocking, 'a never-queued transaction must block the close').toBe(1);
 });
 
+test('the unposted population is actionable, not a dead end', async ({ page }) => {
+    await page.goto('/accounting.html');
+    await page.waitForSelector('#accounting-content:not(.hidden)', { timeout: 60000 });
+
+    // The gate blocks on sources with no 'pending' flag, which postPendingJournals
+    // cannot reach — so a dedicated remedy must exist and be wired to the same
+    // enumeration the gate uses.
+    const wired = await page.evaluate(async () => {
+        const { getApps } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+        const DataService = (await import('/assets/js/db-service.js?v=' + Date.now())).default;
+        const ds = new DataService(getApps()[0]);
+        return {
+            hasRemedy: typeof ds.postUnpostedSources === 'function',
+            sharesEnumeration: typeof ds._collectUnpostedSources === 'function',
+            button: !!document.getElementById('post-unposted-btn')
+        };
+    });
+    expect(wired.hasRemedy, 'DataService.postUnpostedSources must exist').toBe(true);
+    expect(wired.sharesEnumeration, 'gate and remedy must share _collectUnpostedSources').toBe(true);
+    expect(wired.button, 'Close panel must expose a post action').toBe(true);
+});
+
+test('the remedy posts nothing when there is nothing unposted (idempotent)', async ({ page }) => {
+    await page.goto('/accounting.html');
+    await page.waitForSelector('#accounting-content:not(.hidden)', { timeout: 60000 });
+
+    const out = await page.evaluate(async () => {
+        const { getApps } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+        const DataService = (await import('/assets/js/db-service.js?v=' + Date.now())).default;
+        const ds = new DataService(getApps()[0]);
+        // No unposted sources -> must be a no-op and must not touch Firestore.
+        ds.getTransactionsForPeriod = async () => [
+            { id: 'a', type: 'income', accounting_status: 'posted' },
+            { id: 'b', type: 'transfer' },
+            { id: 'c', type: 'income', accounting_status: 'excluded' }
+        ];
+        ds.getBillsForPeriod = async () => [];
+        ds.getSubscriptionsForPeriod = async () => [];
+        let posted = false;
+        ds._postCollectedSources = async () => { posted = true; return { posted: 99 }; };
+        const res = await ds.postUnpostedSources('uid', '2026-07-01', '2026-07-31');
+        return { res, touchedFirestore: posted };
+    });
+    expect(out.res.posted).toBe(0);
+    expect(out.touchedFirestore, 'must short-circuit before any write path').toBe(false);
+});
+
 test('Close button is disabled while entries are unposted', async ({ page }) => {
     await page.goto('/accounting.html');
     await page.waitForSelector('#accounting-content:not(.hidden)', { timeout: 60000 });

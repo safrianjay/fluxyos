@@ -1273,6 +1273,18 @@ the owning group, so cross-page drill-downs (`drillToLedger`) activate both leve
 Default landing is Reports → Income Statement. The cleanup count shows on its own
 view and rolls up to the Close group badge.
 
+**Close gate (2026-07-31).** "All entries posted to the ledger" is backed by
+`DataService.countUnpostedSources`, not `countPendingPostings` — the latter matches
+`accounting_status:'pending'` only, so a **never-queued** source (no flag at all) was
+invisible and periods could be closed over an incomplete ledger. Terminal states are
+`'posted'` **and** `'excluded'`; invoice-linked sources are reported as `deferred`
+(surfaced, never blocking, since `INV-PAY` cannot post while `INV-ISSUE` is unwired).
+`closePeriod()` enforces the same rule server-side — the UI gate mirrors it. The
+remedy is `postUnpostedSources()`, exposed as "Post N unposted entries" on the Close
+panel and folded into the Journals banner; it shares `_collectUnpostedSources()` with
+the gate so the two cannot drift. Historical/multi-workspace gaps still go through
+`docs/LEDGER_BACKFILL_RUNBOOK.md`.
+
 **Statements are ledger-derived and load eagerly** with the page, because the KPI
 strip reads the same `getFinancialStatements` result — strip, statement, and Trial
 Balance therefore cannot disagree. The Income Statement carries a comparison column

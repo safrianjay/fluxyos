@@ -3677,7 +3677,9 @@ class DataService {
     //              or the period could never be closed at all.
     // 'posted' and 'excluded' are both terminal (excluded = deliberately outside
     // the IDR kernel, e.g. foreign-currency bills) and never count as unposted.
-    async countUnpostedSources(userId, startKey, endKey) {
+    // Single enumeration behind BOTH the Close gate and the "post them" remedy, so
+    // the two can never disagree about what counts as unposted.
+    async _collectUnpostedSources(userId, startKey, endKey) {
         const POSTABLE_TX_TYPES = new Set([
             'income', 'revenue', 'refund', 'expense', 'fee', 'tax',
             'pending_receivable', 'pending_payable'
@@ -3689,18 +3691,44 @@ class DataService {
             this.getSubscriptionsForPeriod(userId, startKey, endKey).catch(() => [])
         ]);
 
-        let blocking = 0;
-        let deferred = 0;
+        const blocking = [];
+        const deferred = [];
         const unposted = (d) => !TERMINAL.has(String(d.accounting_status || '')) && !d.journal_ref;
 
         txs.forEach((t) => {
             if (!POSTABLE_TX_TYPES.has(String(t.type || '').toLowerCase())) return;
             if (!unposted(t)) return;
-            if (t.linked_invoice_id) deferred++; else blocking++;
+            const item = { collection: 'transactions', id: t.id, data: t };
+            // INV-PAY settles a receivable that INV-ISSUE has not raised yet;
+            // posting it alone would drive A/R negative. Surfaced, never posted.
+            if (t.linked_invoice_id) deferred.push(item); else blocking.push(item);
         });
-        [...bills, ...subs].forEach((d) => { if (unposted(d)) blocking++; });
+        bills.forEach((b) => { if (unposted(b)) blocking.push({ collection: 'bills', id: b.id, data: b }); });
+        subs.forEach((s) => { if (unposted(s)) blocking.push({ collection: 'subscriptions', id: s.id, data: s }); });
 
-        return { blocking, deferred, total: blocking + deferred };
+        return { blocking, deferred };
+    }
+
+    async countUnpostedSources(userId, startKey, endKey) {
+        const { blocking, deferred } = await this._collectUnpostedSources(userId, startKey, endKey);
+        return { blocking: blocking.length, deferred: deferred.length, total: blocking.length + deferred.length };
+    }
+
+    // The in-product remedy for the Close gate. postPendingJournals only sweeps
+    // accounting_status:'pending'; a source that was NEVER queued has no such flag,
+    // so before this the gate could block a close with no way to act on it short of
+    // running scripts/backfill-journals.js with admin credentials.
+    async postUnpostedSources(userId, startKey, endKey) {
+        const { blocking } = await this._collectUnpostedSources(userId, startKey, endKey);
+        if (!blocking.length) return { posted: 0, skippedClosed: 0, skippedNoRule: 0 };
+        const scope = this._scope(userId);
+        const items = blocking.map((it) => ({
+            collection: it.collection,
+            id: it.id,
+            data: it.data,
+            ref: doc(this.db, `${scope}/${it.collection}/${it.id}`)
+        }));
+        return await this._postCollectedSources(userId, items);
     }
 
     async countPendingPostings(userId, collections = ['transactions', 'bills', 'subscriptions']) {
@@ -3721,10 +3749,6 @@ class DataService {
     // pending and are reported). Returns { posted, excluded, skippedClosed }.
     async postPendingJournals(userId, { collections = ['transactions', 'bills', 'subscriptions'], max = 1000 } = {}) {
         const scope = this._scope(userId);
-        const entityId = this._resolvedScopeId(userId);
-        const mappings = await this._loadAcctMappings(userId);
-        const accounts = await this._loadChartAccountsMap(userId);
-
         const items = [];
         for (const col of collections) {
             try {
@@ -3733,6 +3757,21 @@ class DataService {
             } catch (_) { /* collection may not exist */ }
         }
         if (!items.length) return { posted: 0, excluded: 0, skippedClosed: 0 };
+        return await this._postCollectedSources(userId, items, { markExcluded: true });
+    }
+
+    // Shared posting path for both sweeps (queued 'pending' and never-queued).
+    // Idempotency lives in the callers' enumeration; this half is deterministic
+    // given `items` and never posts into a closed period.
+    //
+    // markExcluded: only the 'pending' sweep stamps non-postable sources
+    // 'excluded'. The never-queued sweep enumerates by period, so doing so there
+    // would rewrite every transfer/adjustment in the month for no benefit.
+    async _postCollectedSources(userId, items, { markExcluded = false } = {}) {
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+        const mappings = await this._loadAcctMappings(userId);
+        const accounts = await this._loadChartAccountsMap(userId);
 
         const periodsSnap = await getDocs(collection(this.db, `${scope}/periods`));
         const closed = new Set();
@@ -3741,16 +3780,18 @@ class DataService {
         const toPost = [];
         const toExclude = [];
         let skippedClosed = 0;
+        let skippedNoRule = 0;
         for (const it of items) {
             const journal = buildJournal({
                 collection: it.collection, id: it.id, document: it.data, mappings, accounts,
                 date: it.data.timestamp || it.data.due_date || it.data.renewal_date || null
             });
-            if (!journal) { toExclude.push(it.ref); continue; }
+            if (!journal) { toExclude.push(it.ref); skippedNoRule++; continue; }
             if (closed.has(journal.period_key)) { skippedClosed++; continue; }
             journal.source_number = this._sourceNumberOf(it.collection, it.data);
             toPost.push({ ref: it.ref, journal });
         }
+        if (!markExcluded) toExclude.length = 0;
 
         if (toPost.length) {
             const counts = {};
@@ -3783,7 +3824,7 @@ class DataService {
         if (posted || excluded) {
             await this._auditCreateBestEffort(userId, 'journal.sweep', 'journals', '', { posted, excluded, skipped_closed: skippedClosed });
         }
-        return { posted, excluded, skippedClosed };
+        return { posted, excluded, skippedClosed, skippedNoRule };
     }
 
     // Idempotent Chart of Accounts seed. Writes only the accounts that don't yet

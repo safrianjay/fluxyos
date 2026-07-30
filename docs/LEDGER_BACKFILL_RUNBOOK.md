@@ -106,6 +106,24 @@ guarantee the ledger is complete, and this situation can recur.
 
 ---
 
+## 0b. Try the in-product remedy first
+
+Since 2026-07-31 the Accounting Center can post never-queued sources itself, for the
+**selected period**, without admin credentials:
+
+**Close tab → "Post N unposted entries"** (appears only when the Close gate is
+blocking), or the Journals tab banner, which now counts queued *and* never-queued
+sources. Both call `DataService.postUnpostedSources`, which shares one enumeration
+(`_collectUnpostedSources`) with the Close gate, so the button can never disagree
+with the check that blocked you. It skips closed periods and invoice-linked
+settlements exactly like the script.
+
+Use the scripts below when the gap spans **many periods or many workspaces** (the
+in-product action is one period at a time), or when periods are closed and the
+in-product path cannot reach them.
+
+---
+
 ## 1. Prerequisites
 
 - A **fresh service-account key** (`GOOGLE_APPLICATION_CREDENTIALS=./sa.json`).

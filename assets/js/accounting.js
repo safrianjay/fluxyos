@@ -204,6 +204,7 @@ function wireStaticControls() {
     el('journals-post-pending')?.addEventListener('click', () => onPostPending());
     el('coa-new-account')?.addEventListener('click', () => openCreateAccountDrawer());
     el('balance-sheet-export')?.addEventListener('click', () => exportBalanceSheet());
+    el('post-unposted-btn')?.addEventListener('click', () => onPostUnposted());
 }
 
 // Imported entries (CSV / bank statements) post their journals via a sweep rather
@@ -211,9 +212,45 @@ function wireStaticControls() {
 function renderPendingBanner() {
     const banner = el('journals-pending');
     if (!banner) return;
-    const n = Number(state.kernel.pending) || 0;
+    // Two populations reach the ledger via a sweep: queued imports
+    // (accounting_status:'pending') and sources that were never queued at all.
+    // The banner must surface both, or the Close gate blocks on entries the user
+    // has no visible way to post.
+    const queued = Number(state.kernel.pending) || 0;
+    const never = Number(state.kernel.unposted?.blocking) || 0;
+    const n = queued + never;
     banner.classList.toggle('hidden', n <= 0);
     if (n > 0 && el('journals-pending-count')) el('journals-pending-count').textContent = String(n);
+}
+
+// Remedy for the Close gate: post sources that never entered the sweep queue.
+async function onPostUnposted() {
+    const btn = el('post-unposted-btn');
+    const blocking = Number(state.kernel.unposted?.blocking) || 0;
+    if (!blocking) return;
+    const ok = await window.showConfirmDialog?.({
+        title: `Post ${blocking} entr${blocking === 1 ? 'y' : 'ies'}?`,
+        body: 'This posts double-entry journals for entries in this period that never reached the ledger. Closed periods and invoice payments awaiting issuance are skipped.',
+        confirmLabel: 'Post entries', cancelLabel: 'Cancel', tone: 'default'
+    });
+    if (ok === false) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Posting…'; }
+    try {
+        const res = await state.ds.postUnpostedSources(state.user.uid, state.startKey, state.endKey);
+        const parts = [`Posted ${res.posted}`];
+        if (res.skippedClosed) parts.push(`${res.skippedClosed} in closed periods`);
+        if (res.skippedNoRule) parts.push(`${res.skippedNoRule} not postable`);
+        window.showToast?.(parts.join(' · '), 'success');
+        await loadKernel(true);
+        load(); // statements + KPI strip must reflect the new journals
+    } catch (err) {
+        console.error('Post unposted failed:', err);
+        await window.showAlertDialog?.({
+            title: 'Could not post these entries',
+            body: escapeHtml(err.message || 'Please try again.'), tone: 'danger'
+        });
+        if (btn) { btn.disabled = false; btn.textContent = 'Post unposted entries'; }
+    }
 }
 
 async function onPostPending() {
@@ -221,6 +258,14 @@ async function onPostPending() {
     if (btn) { btn.disabled = true; btn.textContent = 'Posting…'; }
     try {
         const res = await state.ds.postPendingJournals(state.user.uid);
+        // Also sweep never-queued sources for the active period — the banner counts
+        // them, so the button must clear them too.
+        let extra = { posted: 0, skippedClosed: 0 };
+        if (Number(state.kernel.unposted?.blocking) > 0) {
+            extra = await state.ds.postUnpostedSources(state.user.uid, state.startKey, state.endKey);
+        }
+        res.posted += extra.posted || 0;
+        res.skippedClosed = (res.skippedClosed || 0) + (extra.skippedClosed || 0);
         const parts = [`Posted ${res.posted}`];
         if (res.excluded) parts.push(`${res.excluded} skipped (non-posting)`);
         if (res.skippedClosed) parts.push(`${res.skippedClosed} in closed periods`);
@@ -2071,13 +2116,22 @@ function renderClosePanel() {
     // nothing about sources that never posted — closing over those locks in
     // incomplete books.
     const blocking = Number(state.kernel.unposted?.blocking) || 0;
+    const postBtn = el('post-unposted-btn');
     if (blocking > 0) {
         status.innerHTML = `<span class="fluxy-table-status fluxy-status-danger">${blocking} entr${blocking === 1 ? 'y is' : 'ies are'} not posted to the ledger</span>`;
         btn.disabled = true;
         btn.textContent = 'Close period';
         btn.title = 'Post every entry for this period before closing it.';
+        // The gate is only fair if it is actionable — these sources carry no
+        // 'pending' flag, so the Journals sweep button cannot reach them.
+        if (postBtn && canManualJournal()) {
+            postBtn.classList.remove('hidden');
+            postBtn.disabled = false;
+            postBtn.textContent = `Post ${blocking} unposted entr${blocking === 1 ? 'y' : 'ies'}`;
+        }
         return;
     }
+    if (postBtn) postBtn.classList.add('hidden');
     btn.removeAttribute('title');
     status.innerHTML = '<span class="fluxy-table-status fluxy-status-success">Trial balance is in balance</span>';
     btn.disabled = false;
