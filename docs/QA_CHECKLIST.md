@@ -279,7 +279,7 @@ Page Shell Standard CSS in `assets/css/shared-dashboard.css` changes. See
 | 6 | Balance Sheet's date/period placement and report-tuned shell are intentionally preserved as the documented exception |
 | 7 | Mobile 375px has no page-level horizontal overflow; controls wrap cleanly and the title + primary action stay visible |
 | 8 | Existing per-page behavior still works: ledger filters, CSV export, scan/import drawer, date filter, table render, pagination, empty states, and Add Transaction/Bill/Subscription drawers |
-| 9 | **Dashboard Content Width Standard.** Every data-heavy page (KPIs/tables/reports/analytics/accounting/budgets/invoices/financial statements) uses `.fluxy-page-shell` → `.fluxy-page-canvas` (1540px). For every new or redesigned dashboard page, compare against Transactions, Revenue Sync, and Bills and verify: content width parity, KPI alignment, filter/action-bar alignment, table width + column behavior, and that no narrow container (`max-w-7xl`/custom) was introduced. Budgets (`budget.html`, `budget-period.html`, `budget-allocation.html`) and Invoices (`invoices.html`) must match the baseline. Reject page-specific widths without an approved exception (`balance-sheet.html` is the documented exception). Automated guard: `tests/dashboard-layout-consistency.spec.js`. |
+| 9 | **Dashboard Content Width Standard.** Every data-heavy page (KPIs/tables/reports/analytics/accounting/budgets/invoices/financial statements) uses `.fluxy-page-shell` → `.fluxy-page-canvas` (1540px). For every new or redesigned dashboard page, compare against Transactions, Revenue Sync, and Bills and verify: content width parity, KPI alignment, filter/action-bar alignment, table width + column behavior, and that no narrow container (`max-w-7xl`/custom) was introduced. Budgets (`budget.html`, `budget-period.html`, `budget-allocation.html`) and Invoices (`invoices.html`) must match the baseline. Reject page-specific widths without an approved exception (there are currently none). Automated guard: `tests/dashboard-layout-consistency.spec.js`. |
 
 ### D7. Custom Select / Dropdown Regression
 
@@ -564,34 +564,6 @@ Run the **Cross-Page Regression** section below — changes to shared files affe
 | 40 | When categories tagged + matching income exists: ARR shows the rupiah value with the "(partial)" suffix and the caveat: "ARR excludes untagged revenue and may exclude valid recurring revenue if categories are not configured." |
 | 41 | ARR formula: recurring monthly revenue × 12; for YTD periods the monthly baseline is `total recurring income ÷ elapsed months` |
 
-### J2. Balance Sheet (balance-sheet.html, balance-sheet.js, db-service.js, sidebar-loader.js)
-
-| # | Check |
-|---|-------|
-| 1 | Open `/balance-sheet` logged out → redirects to `/login` within 2s |
-| 2 | After login, sidebar renders, "Balance Sheet" appears under Reporting, and it is the active item |
-| 3 | Marketing footer does NOT appear |
-| 4 | Page title, subtitle, breadcrumb, controls, CSV action, and Print / Save PDF action render in a compact report-first layout |
-| 5 | As-of picker uses the shared `FluxyDateRangePicker`; cadence and comparison controls refresh the report |
-| 6 | Empty account with no cash, receivables, unpaid bills, or pending payables shows an honest empty state and no fake numbers |
-| 7 | No active bank account shows Cash & Bank as `Rp 0` plus the quiet "No active cash or bank balance has been set." warning |
-| 8 | Cash & Bank includes active `bank_accounts`; comparison uses the latest `bank_balance_snapshots` row on or before the comparison date when available |
-| 9 | Accounts Receivable includes only `pending_receivable` transactions on or before the as-of date |
-| 10 | Accounts Payable includes unpaid bills (`payment_status != paid` or missing) using date priority `due_date`, `date`, `timestamp`, `created_at` |
-| 11 | Pending Payables includes only `pending_payable` transactions on or before the as-of date |
-| 12 | Net Position equals Total Assets minus Total Liabilities; UI labels it **Net Position**, not Equity |
-| 13 | Comparison and change columns never render `NaN`, `Infinity`, `-Infinity`, `undefined`, or `null`; unavailable comparison shows `—` |
-| 14 | Negative values display with parentheses; zero displays `Rp 0`; all money cells are right-aligned mono |
-| 15 | Expand/collapse works for sections and Cash & Bank children; Expand all / Collapse all updates the table without layout shift |
-| 16 | Clicking Cash & Bank, Accounts Receivable, Accounts Payable, or Pending Payables opens a right-side read-only drawer with only related records |
-| 17 | Drawer closes via X, overlay click, and Escape; page scroll locks while open |
-| 18 | CSV export is disabled when no source data exists and explains why |
-| 19 | Confirmed CSV export writes `users/{uid}/report_exports` with `report_type = "balance_sheet"` and an `export.create` audit log targeting `report_exports` |
-| 20 | CSV output contains raw integer amounts only (no `Rp ` prefix, no dot separators) |
-| 21 | Audit log and `report_exports` metadata never contain row-level CSV content or related-record details |
-| 22 | Print / Save PDF opens browser print; the app never claims a PDF was downloaded successfully |
-| 23 | Mobile width 375px → no page-level horizontal overflow; the report table scrolls inside its container and the drawer is full width |
-| 24 | Browser console clean (no CSP/CORS/404/Firebase/permission errors) |
 
 ### K. Budget Pages (`budget.html`, `budget-period.html`, `budget-allocation.html`, budget JS, db-service.js budget methods, firestore.rules budget_allocations + bills)
 
@@ -1018,7 +990,7 @@ billing methods in `db-service.js`, or canonical billing Firestore rules.
 
 **Banner**
 - [ ] Trial banner shows on dashboard, ledger, bill, subscription, budget, reports,
-  balance-sheet, integration, and settings*; CTA opens `/checkout?plan=growth&billing=annually`.
+  integration, and settings*; CTA opens `/checkout?plan=growth&billing=annually`.
 - [ ] Pending banner CTA opens `/payment-pending`; active user sees no banner.
 - [ ] No horizontal overflow at 375px; banner CTA is the only primary action.
 
@@ -1088,7 +1060,7 @@ billing methods in `db-service.js`, or canonical billing Firestore rules.
 
 **Hard paywall (trial ended / payment failed)**
 - [ ] `status = expired` → every app page (dashboard, ledger, bill, subscription, budget, reports,
-  balance-sheet, integration, settings*) shows a full-screen blurred, non-interactive paywall with "Your trial has
+  integration, settings*) shows a full-screen blurred, non-interactive paywall with "Your trial has
   ended" + "Choose a plan" → `/pricing`; the page behind cannot be scrolled or clicked.
 - [ ] `status = payment_failed` with the trial window over → paywall shows "Payment couldn't be verified"
   + "Retry payment" → `/checkout?...`.
