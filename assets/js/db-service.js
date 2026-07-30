@@ -3661,6 +3661,48 @@ class DataService {
 
     // Count source documents awaiting a journal. Bulk imports (CSV, bank
     // statements) mark rows accounting_status:'pending' instead of posting inline.
+    // Sources in a period that never reached the ledger.
+    //
+    // countPendingPostings (below) answers "what can the sweep post?" — it matches
+    // accounting_status == 'pending' only. A source that was never queued has NO
+    // accounting_status at all, so it is invisible there. The Close checklist used
+    // to gate on that count and therefore reported "All entries posted" while
+    // hundreds of transactions had never posted; a workspace closed two periods on
+    // incomplete books that way (docs/LEDGER_BACKFILL_RUNBOOK.md).
+    //
+    // Returns { blocking, deferred, total }:
+    //   blocking — the system could post these; they must not be closed over.
+    //   deferred — linked to an invoice, so they post via INV-PAY, which stays
+    //              unposted while INV-ISSUE is unwired. Surfaced, never blocking,
+    //              or the period could never be closed at all.
+    // 'posted' and 'excluded' are both terminal (excluded = deliberately outside
+    // the IDR kernel, e.g. foreign-currency bills) and never count as unposted.
+    async countUnpostedSources(userId, startKey, endKey) {
+        const POSTABLE_TX_TYPES = new Set([
+            'income', 'revenue', 'refund', 'expense', 'fee', 'tax',
+            'pending_receivable', 'pending_payable'
+        ]);
+        const TERMINAL = new Set(['posted', 'excluded']);
+        const [txs, bills, subs] = await Promise.all([
+            this.getTransactionsForPeriod(userId, startKey, endKey).catch(() => []),
+            this.getBillsForPeriod(userId, startKey, endKey).catch(() => []),
+            this.getSubscriptionsForPeriod(userId, startKey, endKey).catch(() => [])
+        ]);
+
+        let blocking = 0;
+        let deferred = 0;
+        const unposted = (d) => !TERMINAL.has(String(d.accounting_status || '')) && !d.journal_ref;
+
+        txs.forEach((t) => {
+            if (!POSTABLE_TX_TYPES.has(String(t.type || '').toLowerCase())) return;
+            if (!unposted(t)) return;
+            if (t.linked_invoice_id) deferred++; else blocking++;
+        });
+        [...bills, ...subs].forEach((d) => { if (unposted(d)) blocking++; });
+
+        return { blocking, deferred, total: blocking + deferred };
+    }
+
     async countPendingPostings(userId, collections = ['transactions', 'bills', 'subscriptions']) {
         const scope = this._scope(userId);
         const counts = await Promise.all(collections.map(async (col) => {
@@ -4842,6 +4884,18 @@ class DataService {
         }
         const tb = await this.getTrialBalance(userId, { periodKey: pk });
         if (!tb.balanced) throw new Error('Trial balance is out of balance — cannot close this period');
+        // A balanced trial balance only proves the journals that EXIST foot — it
+        // cannot see a source that never posted. Without this guard a period can be
+        // closed over an incomplete ledger and the statements are wrong forever
+        // (short of reopening). The UI gate mirrors this; this is the real one.
+        const [y, m] = String(pk).split('-').map(Number);
+        const dayKey = (d) => [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+        const unposted = await this.countUnpostedSources(
+            userId, dayKey(new Date(y, m - 1, 1)), dayKey(new Date(y, m, 0))
+        ).catch(() => ({ blocking: 0 }));
+        if (unposted.blocking > 0) {
+            throw new Error(`${unposted.blocking} entr${unposted.blocking === 1 ? 'y is' : 'ies are'} not posted to the ledger — post them before closing ${pk}`);
+        }
         let revenue = 0;
         let expense = 0;
         tb.rows.forEach((r) => {

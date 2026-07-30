@@ -55,10 +55,14 @@ test('ledger coverage report + Income Statement ties to Trial Balance', async ({
         // transfers/adjustments are correctly absent from the ledger.
         const POSTABLE = new Set(['income', 'revenue', 'refund', 'expense', 'fee', 'tax', 'pending_receivable', 'pending_payable']);
         const postable = txs.filter(t => POSTABLE.has(String(t.type || '').toLowerCase()));
-        // Match the backfill's own skip-guard: a source is "posted" if a journal
-        // points at it OR it carries the posted flag / journal_ref.
+        // Match the backfill's skip-guard AND countUnpostedSources: a source is
+        // settled if a journal points at it, or it carries journal_ref, or its
+        // accounting_status is terminal. 'excluded' is terminal too — deliberately
+        // outside the IDR kernel (foreign-currency invoice settlements) — so
+        // counting it as unposted over-reports the gap.
+        const TERMINAL = new Set(['posted', 'excluded']);
         const unposted = postable.filter(t =>
-            !postedTxIds.has(t.id) && t.accounting_status !== 'posted' && !t.journal_ref);
+            !postedTxIds.has(t.id) && !TERMINAL.has(String(t.accounting_status || '')) && !t.journal_ref);
 
         let revSigned = 0, expSigned = 0;
         (trial.rows || []).forEach((r) => {

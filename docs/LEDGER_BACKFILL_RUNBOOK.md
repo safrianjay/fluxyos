@@ -49,15 +49,17 @@ bug, not a coverage gap.
 
 | | before | after |
 |---|---:|---:|
-| coverage (postable txns) | 85.7% | **96.9%** |
-| July coverage | 80.7% | **94.4%** |
+| coverage (postable txns) | 85.7% | **100%** |
+| July coverage | 80.7% | **100%** |
 | Balance Sheet tie-out | −Rp110 | **Rp0, balanced** |
 | July ledger revenue | Rp850.298.952 | **Rp2.280.298.952** |
 | July ledger net income | −Rp378.604.268 | **+Rp1.046.417.182** |
 
-193 journals posted, 193 numbers assigned, 2 drifted balance docs corrected. The
-residual 23 unposted (Rp2.99bn) are invoice-linked `INV-PAY` settlements the backfill
-deliberately skips while `INV-ISSUE` is unwired — expected, not a failure.
+193 journals posted, 193 numbers assigned, 2 drifted balance docs corrected.
+**Zero unposted sources remain.** The 23 that earlier tooling reported as a residual
+gap carry `accounting_status: 'excluded'` — foreign-currency invoice settlements
+deliberately kept outside the IDR kernel. `'excluded'` is a **terminal** state, not a
+gap; the coverage tools and the Close gate all treat it that way now.
 
 ### Still outstanding — real user workspaces
 

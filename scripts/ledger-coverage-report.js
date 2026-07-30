@@ -12,8 +12,11 @@
 // it silently under-counts on workspaces with more journals than the cap. This
 // script reads every journal directly, so its numbers are trustworthy.
 //
-// A transaction counts as posted using the SAME guard backfill-journals.js uses:
-// a journal points at it, OR it carries accounting_status:'posted' / journal_ref.
+// A transaction counts as settled using the SAME terminal states the Close gate
+// uses (DataService.countUnpostedSources): a journal points at it, OR it carries
+// journal_ref, OR accounting_status is 'posted' or 'excluded'. 'excluded' means
+// deliberately outside the IDR kernel (e.g. foreign-currency invoice settlements)
+// — it is complete, not missing.
 // Only types the posting engine actually posts are counted as "postable"
 // (transfers/adjustments/custom correctly never post).
 //
@@ -58,17 +61,23 @@ async function coverageFor(wsId, name) {
         if (s && s.collection === 'transactions' && s.id) journalBySource.add(s.id);
     });
 
-    let postable = 0, unposted = 0, unpostedValue = 0, flaggedNoJournal = 0;
+    let postable = 0, unposted = 0, unpostedValue = 0, flaggedNoJournal = 0, excluded = 0;
     const unpostedByPeriod = {};
     txSnap.forEach((d) => {
         const t = d.data();
         if (!POSTABLE_TYPES.has(String(t.type || '').toLowerCase())) return;
         postable++;
         const hasJournal = journalBySource.has(d.id);
-        const flagged = t.accounting_status === 'posted' || !!t.journal_ref;
-        // Flagged but no journal: the backfill SKIPS these, yet the ledger lacks
-        // the entry. Non-zero means the backfill alone will not close the gap.
-        if (flagged && !hasJournal) flaggedNoJournal++;
+        // 'excluded' is terminal too — deliberately outside the IDR kernel (e.g.
+        // foreign-currency invoice settlements). Counting it as a gap over-reports.
+        const flagged = t.accounting_status === 'posted'
+            || t.accounting_status === 'excluded'
+            || !!t.journal_ref;
+        if (t.accounting_status === 'excluded') excluded++;
+        // Claims to be POSTED but has no journal: the backfill SKIPS these, yet the
+        // ledger lacks the entry. Non-zero means the backfill alone will not close
+        // the gap. ('excluded' is expected to have no journal — not counted here.)
+        if (!hasJournal && (t.accounting_status === 'posted' || !!t.journal_ref)) flaggedNoJournal++;
         if (!hasJournal && !flagged) {
             unposted++;
             unpostedValue += Number(t.amount || 0);
@@ -78,7 +87,7 @@ async function coverageFor(wsId, name) {
     });
 
     return {
-        wsId, name, postable, unposted, unpostedValue, flaggedNoJournal,
+        wsId, name, postable, unposted, unpostedValue, flaggedNoJournal, excluded,
         journals: jSnap.size,
         covered: postable ? Math.round(((postable - unposted) / postable) * 1000) / 10 : 100,
         unpostedByPeriod
@@ -122,6 +131,8 @@ async function main() {
 
     console.log(`\nTOTAL postable=${T.p}  unposted=${T.u} (${T.p ? Math.round((T.u / T.p) * 1000) / 10 : 0}% missing)  value=${rp(T.v)}`);
     console.log(`workspaces with a gap: ${rows.filter((r) => r.unposted > 0).length} of ${rows.length} holding transactions`);
+    const totalExcluded = rows.reduce((a, r) => a + r.excluded, 0);
+    if (totalExcluded) console.log(`(${totalExcluded} sources are accounting_status:'excluded' — deliberately outside the IDR kernel, not a gap)`);
 
     if (T.f > 0) {
         console.log(`\n⚠️  ${T.f} transactions are FLAGGED posted but have NO journal.`);

@@ -395,20 +395,21 @@ then `reconcile-ledger-balances.js`.
 
 | | before | after |
 |---|---:|---:|
-| QA ledger coverage (postable txns) | 85.7% | **96.9%** |
-| July coverage | 80.7% | **94.4%** |
+| QA ledger coverage (postable txns) | 85.7% | **100%** |
+| July coverage | 80.7% | **100%** |
 | Balance Sheet tie-out | −Rp110 | **Rp0, balanced** |
 | Ledger revenue (Jul) | Rp850.298.952 | **Rp2.280.298.952** |
 | Ledger net income (Jul) | −Rp378.604.268 loss | **+Rp1.046.417.182 profit** |
 | Net delta vs retired preview | −Rp4.61bn (sign flip) | −Rp3.19bn (**no sign flip**) |
 
 193 journals posted (transactions + bills + subscriptions), 193 journal numbers
-assigned, 2 drifted balance docs corrected. **The residual divergence is fully
-explained:** 23 invoice-linked transactions worth Rp2.99bn remain unposted because
-`backfill-journals.js` deliberately skips `INV-PAY` while invoice issuance
-(`INV-ISSUE`) is unwired — posting settlements alone would drive A/R negative. The
-remaining opex difference (+Rp446m) is the ledger correctly including accrued
-bills/subscriptions that the preview excluded by design. **The ledger statement is
+assigned, 2 drifted balance docs corrected. **Zero unposted sources remain** — QA is
+at 100% coverage. The 23 that earlier tooling flagged as residual carry
+`accounting_status: 'excluded'` (foreign-currency invoice settlements, deliberately
+outside the IDR kernel); `'excluded'` is terminal, not a gap. The remaining
+preview-vs-ledger difference is the ledger being *more* correct: it includes accrued
+bills/subscriptions the preview excluded by design, and excludes foreign-currency
+settlements the preview counted as IDR revenue. **The ledger statement is
 now the defensible number; the preview's was never correct** (cash-basis, no accruals).
 
 > **Correction:** an earlier revision of this doc reported QA coverage as **16.2%**

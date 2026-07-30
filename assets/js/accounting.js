@@ -809,14 +809,18 @@ async function loadKernel(force = false) {
     state.kernel.loadedPeriod = pk; // claim early to avoid duplicate fetches
     try {
         await state.seedPromise; // ensure the chart exists before the first read
-        const [coa, journals, trial, period, pending] = await Promise.all([
+        const [coa, journals, trial, period, pending, unposted] = await Promise.all([
             state.ds.getChartOfAccounts(state.user.uid),
             state.ds.listJournals(state.user.uid, { periodKey: pk, includeDrafts: true }),
             state.ds.getTrialBalance(state.user.uid, { periodKey: pk }),
             state.ds.getPeriod(state.user.uid, pk),
-            state.ds.countPendingPostings(state.user.uid).catch(() => 0)
+            state.ds.countPendingPostings(state.user.uid).catch(() => 0),
+            // Never-queued sources are invisible to countPendingPostings — this is
+            // what actually proves the ledger is complete for the period.
+            state.ds.countUnpostedSources(state.user.uid, state.startKey, state.endKey)
+                .catch(() => ({ blocking: 0, deferred: 0, total: 0 }))
         ]);
-        state.kernel = { loadedPeriod: pk, coa, journals, trial, period, pending };
+        state.kernel = { loadedPeriod: pk, coa, journals, trial, period, pending, unposted };
         renderJournals();
         renderPendingBanner();
         renderTrialBalance();
@@ -1212,8 +1216,20 @@ function renderCloseChecklist() {
     // Kernel gates first — these directly determine whether close can proceed.
     if (kernel.loadedPeriod === currentPeriodKey()) {
         const pending = Number(kernel.pending) || 0;
-        rows.push(checkRow('All entries posted to the ledger', pending === 0,
-            pending > 0 ? `${pending} pending` : 'Up to date'));
+        // "Posted" must mean the ledger is complete, not merely that the sweep
+        // queue is empty — a never-queued source has no 'pending' status and used
+        // to pass this gate silently. See countUnpostedSources.
+        const un = kernel.unposted || { blocking: 0, deferred: 0 };
+        const blocking = Number(un.blocking) || 0;
+        const deferred = Number(un.deferred) || 0;
+        const hint = blocking > 0
+            ? `${blocking} not posted${pending > 0 ? ` (${pending} queued)` : ''}`
+            : (pending > 0 ? `${pending} pending` : 'Up to date');
+        rows.push(checkRow('All entries posted to the ledger', pending === 0 && blocking === 0, hint));
+        if (deferred > 0) {
+            rows.push(checkRow('Invoice payments awaiting issuance posting', false,
+                `${deferred} deferred — does not block close`));
+        }
         const tb = kernel.trial;
         if (tb) {
             rows.push(checkRow('Trial balance is in balance', !!tb.balanced,
@@ -2051,6 +2067,18 @@ function renderClosePanel() {
         btn.textContent = 'Close period';
         return;
     }
+    // A balanced trial balance only proves the journals that EXIST foot. It says
+    // nothing about sources that never posted — closing over those locks in
+    // incomplete books.
+    const blocking = Number(state.kernel.unposted?.blocking) || 0;
+    if (blocking > 0) {
+        status.innerHTML = `<span class="fluxy-table-status fluxy-status-danger">${blocking} entr${blocking === 1 ? 'y is' : 'ies are'} not posted to the ledger</span>`;
+        btn.disabled = true;
+        btn.textContent = 'Close period';
+        btn.title = 'Post every entry for this period before closing it.';
+        return;
+    }
+    btn.removeAttribute('title');
     status.innerHTML = '<span class="fluxy-table-status fluxy-status-success">Trial balance is in balance</span>';
     btn.disabled = false;
     btn.textContent = 'Close period';
