@@ -14,9 +14,11 @@ const state = {
     endKey: null,
     picker: null,
     activeTab: 'income',
+    activeGroup: 'reports',
+    lastTabByGroup: {},
     loading: false,
     data: null,
-    rowsById: {}
+    statements: null
 };
 
 // Display catalog for the mapping <select>, derived from the canonical seed so
@@ -142,6 +144,8 @@ export function initAccountingPage({ ds, user }) {
     state.startKey = getMonthStartKey();
     state.endKey = getMonthEndKey();
     state.kernel = { loadedPeriod: null, coa: [], journals: [], trial: null, period: null };
+    state.activeTab = initialTab();
+    state.activeGroup = GROUP_OF_TAB[state.activeTab];
 
     // Idempotent: seed the Chart of Accounts (then the founder-category
     // taxonomy, which maps onto it) so the ledger views and posting engine have
@@ -173,11 +177,9 @@ function mountPicker() {
             state.endKey = end;
             // Period-scoped lazy tabs must refresh for the new range. Aging is
             // as-of-today, so it is deliberately left cached.
-            state.statementsKey = null;
             if (state.kernel) state.kernel.loadedPeriod = null;
-            load();
+            load(); // re-fetches readiness + statements for the new range
             if (KERNEL_TABS.has(state.activeTab)) loadKernel(true);
-            if (state.activeTab === 'statements') loadStatements(true);
         }
     });
 }
@@ -186,9 +188,14 @@ function wireStaticControls() {
     el('acct-ask-ai')?.addEventListener('click', () => openFluxyAI());
     el('acct-retry')?.addEventListener('click', () => load());
 
+    document.querySelectorAll('[data-acct-group]').forEach(btn => {
+        btn.addEventListener('click', () => setGroup(btn.getAttribute('data-acct-group')));
+    });
     document.querySelectorAll('[data-acct-tab]').forEach(btn => {
         btn.addEventListener('click', () => setTab(btn.getAttribute('data-acct-tab')));
     });
+    wireTabKeys('[data-acct-group]', setGroup, 'data-acct-group');
+    wireTabKeys('[data-acct-tab]', setTab, 'data-acct-tab');
 
     el('ledger-account-select')?.addEventListener('change', (e) => renderGeneralLedger(e.target.value));
     el('close-period-btn')?.addEventListener('click', () => onClosePeriod());
@@ -196,6 +203,7 @@ function wireStaticControls() {
     el('journals-new-manual')?.addEventListener('click', () => { window.location.href = 'accounting-journal-new.html'; });
     el('journals-post-pending')?.addEventListener('click', () => onPostPending());
     el('coa-new-account')?.addEventListener('click', () => openCreateAccountDrawer());
+    el('balance-sheet-export')?.addEventListener('click', () => exportBalanceSheet());
 }
 
 // Imported entries (CSV / bank statements) post their journals via a sweep rather
@@ -232,25 +240,97 @@ function openFluxyAI() {
 }
 
 const KERNEL_TABS = new Set(['journals', 'ledger', 'trial', 'coa', 'close']);
+// Both ledger-statement views come from one getFinancialStatements() fetch.
+// Statements load eagerly with the page (the KPI strip reads the same figures),
+// so no tab needs a lazy statement fetch.
 
-function setTab(tab) {
-    if (!tab) return;
+// Two-level navigation. Groups follow the accounting funnel (report → working
+// paper → configuration → close) rather than the order features shipped in.
+// Panel ids are unchanged — only the nav layer knows about grouping.
+// Full rationale: docs/ACCOUNTING_CENTER_IA.md
+const TAB_GROUPS = [
+    { id: 'reports', tabs: ['income', 'balance', 'aging'] },
+    { id: 'ledger', tabs: ['journals', 'ledger', 'trial'] },
+    { id: 'setup', tabs: ['coa', 'mapping', 'vendors'] },
+    { id: 'close', tabs: ['close', 'cleanup'] }
+];
+const GROUP_OF_TAB = TAB_GROUPS.reduce((map, g) => {
+    g.tabs.forEach(t => { map[t] = g.id; });
+    return map;
+}, {});
+
+// Views are linkable (?tab=…) so cross-page drill-downs can land on one directly.
+function syncTabUrl(tab) {
+    try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        window.history.replaceState({}, '', url);
+    } catch { /* history is non-critical */ }
+}
+function initialTab() {
+    try {
+        const t = new URL(window.location.href).searchParams.get('tab');
+        if (t && GROUP_OF_TAB[t]) return t;
+    } catch { /* fall through to default */ }
+    return 'income';
+}
+
+// Selecting a group returns to the view last used inside it, defaulting to first.
+function setGroup(group) {
+    const g = TAB_GROUPS.find(x => x.id === group);
+    if (!g) return;
+    setTab(state.lastTabByGroup[group] || g.tabs[0]);
+}
+
+function setTab(tab, { updateUrl = true } = {}) {
+    const group = GROUP_OF_TAB[tab];
+    if (!group) return;
     state.activeTab = tab;
+    state.activeGroup = group;
+    state.lastTabByGroup[group] = tab;
+
+    document.querySelectorAll('[data-acct-group]').forEach(btn => {
+        const on = btn.getAttribute('data-acct-group') === group;
+        btn.classList.toggle('is-active', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    // The child row shows only the active group's views.
     document.querySelectorAll('[data-acct-tab]').forEach(btn => {
-        btn.classList.toggle('is-active', btn.getAttribute('data-acct-tab') === tab);
+        const inGroup = btn.getAttribute('data-acct-parent') === group;
+        btn.toggleAttribute('hidden', !inGroup);
+        const on = inGroup && btn.getAttribute('data-acct-tab') === tab;
+        btn.classList.toggle('is-active', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
     });
     document.querySelectorAll('[data-acct-panel]').forEach(panel => {
         panel.classList.toggle('hidden', panel.getAttribute('data-acct-panel') !== tab);
     });
+
     // Ledger views read the new accounting collections lazily — only when their
     // tab is first opened for the active period, so the page load stays light.
     if (KERNEL_TABS.has(tab)) loadKernel();
     // Aging is as-of-today (not period-scoped) and loads lazily on first open.
     if (tab === 'aging') loadAging();
-    // Statements are period-scoped (like the ledger tabs) and load lazily.
-    if (tab === 'statements') loadStatements();
     // Vendor master loads lazily on first open.
     if (tab === 'vendors') renderVendors();
+
+    if (updateUrl) syncTabUrl(tab);
+}
+
+// Arrow-key traversal within a nav row, skipping hidden (out-of-group) buttons.
+function wireTabKeys(selector, onPick, attr) {
+    document.querySelectorAll(selector).forEach(btn => {
+        btn.addEventListener('keydown', (e) => {
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            e.preventDefault();
+            const row = Array.from(document.querySelectorAll(selector)).filter(b => !b.hasAttribute('hidden'));
+            const i = row.indexOf(btn);
+            if (i < 0) return;
+            const next = row[(i + (e.key === 'ArrowRight' ? 1 : -1) + row.length) % row.length];
+            next.focus();
+            onPick(next.getAttribute(attr));
+        });
+    });
 }
 
 // --- Vendors tab (Part A): named vendors with a default account / currency /
@@ -369,41 +449,91 @@ async function handleArchiveVendor(id, vendors) {
     }
 }
 
-// --- Statements tab: ledger-derived Income Statement + Balance Sheet --------
+// --- Financial statements: ledger-derived Income Statement + Balance Sheet ---
+// Both read ledger_balances (the Trial Balance's source), so they can never
+// disagree with it. Loaded eagerly with the page because the KPI strip reads the
+// same figures. See docs/ACCOUNTING_CENTER_IA.md.
 
-async function loadStatements(force = false) {
-    const start = String(state.startKey || '').slice(0, 7);
-    const end = String(state.endKey || '').slice(0, 7);
-    const key = `${start}..${end}`;
-    if (state.statementsKey === key && !force) return;
-    state.statementsKey = key;
-    const label = el('statements-period');
-    if (label) label.textContent = start === end ? start : `${start} – ${end}`;
-    const incWrap = el('statements-income-content');
-    const balWrap = el('statements-balance-content');
-    if (incWrap) incWrap.innerHTML = '<div class="fluxy-table-loading-cell">Loading…</div>';
-    if (balWrap) balWrap.innerHTML = '<div class="fluxy-table-loading-cell">Loading…</div>';
-    if (el('statements-tieout')) el('statements-tieout').innerHTML = '';
-    try {
-        const report = await state.ds.getFinancialStatements(state.user.uid, { startPeriod: start, endPeriod: end });
-        renderStmtIncome(incWrap, report.incomeStatement);
-        renderStmtBalance(balWrap, report.balanceSheet);
-    } catch (err) {
-        console.error('Statements load failed:', err);
-        state.statementsKey = null; // allow retry
-        const fail = emptyState('Could not load statements', 'Reload the page or try again in a moment.');
-        if (incWrap) incWrap.innerHTML = fail;
-        if (balWrap) balWrap.innerHTML = fail;
-    }
+// Column header for a period-key window: "Jul 2026", or "Feb 2026–Apr 2026".
+function periodColumnLabel(startPk, endPk) {
+    const loc = window.FluxyI18n?.locale?.() || 'en-US';
+    const asDate = (pk) => new Date(Number(String(pk).slice(0, 4)), Number(String(pk).slice(5, 7)) - 1, 1);
+    const fmt = (pk) => asDate(pk).toLocaleDateString(loc, { month: 'short', year: 'numeric' });
+    if (!startPk || !endPk) return 'Period';
+    return startPk === endPk ? fmt(startPk) : `${fmt(startPk)}–${fmt(endPk)}`;
 }
 
-function stmtLineRow(line, { indent = true } = {}) {
-    return `<tr class="fluxy-table-row">
-        <td class="fluxy-table-cell"${indent ? ' style="padding-left:24px;"' : ''}><span class="fluxy-table-cell-meta">${escapeHtml(line.code)}</span> ${escapeHtml(line.name)}</td>
+function renderStatements(report) {
+    const incWrap = el('income-statement-content');
+    const balWrap = el('balance-sheet-content');
+    const label = el('income-statement-period');
+    if (label) label.textContent = periodColumnLabel(report.period.start, report.period.end);
+    renderStmtIncome(incWrap, report);
+    renderStmtBalance(balWrap, report.balanceSheet);
+}
+
+function statementsError() {
+    const fail = emptyState('Could not load statements', 'Reload the page or try again in a moment.');
+    const incWrap = el('income-statement-content');
+    const balWrap = el('balance-sheet-content');
+    if (incWrap) incWrap.innerHTML = fail;
+    if (balWrap) balWrap.innerHTML = fail;
+}
+
+// Joins current and comparison lines by account code. Accounts with activity only
+// in the comparison window still appear (at Rp0) so a line that went to zero is
+// visible rather than silently dropped.
+function mergeStatementLines(current = [], prior = []) {
+    const priorBy = {};
+    prior.forEach((l) => { priorBy[l.code] = l.amount; });
+    const seen = new Set();
+    const out = current.map((l) => {
+        seen.add(l.code);
+        return { ...l, prior: priorBy[l.code] || 0 };
+    });
+    prior.forEach((l) => {
+        if (!seen.has(l.code)) out.push({ ...l, amount: 0, prior: l.amount });
+    });
+    return out.sort((a, b) => String(a.code).localeCompare(String(b.code)));
+}
+
+function changeCells(current, prior, kind) {
+    const change_amount = (Number(current) || 0) - (Number(prior) || 0);
+    const change_pct = prior !== 0 ? (change_amount / Math.abs(prior)) * 100 : null;
+    const d = changeDisplay({ change_amount, change_pct, kind });
+    return `<td class="fluxy-table-cell fluxy-table-money acct-tone-${d.tone}">${escapeHtml(d.text)}</td>
+        <td class="fluxy-table-cell fluxy-table-money acct-tone-${d.pctTone}">${escapeHtml(d.pctText)}</td>`;
+}
+
+// An account line traces to its ledger activity; subtotals do not (they have no
+// single source-record list — see the dashboard table standard).
+function stmtLineRow(line, kind) {
+    return `<tr class="fluxy-table-row acct-row-link" data-stmt-account="${escapeHtml(line.code)}" tabindex="0" role="link">
+        <td class="fluxy-table-cell" style="padding-left:24px;"><span class="fluxy-table-cell-meta">${escapeHtml(line.code)}</span> ${escapeHtml(line.name)}</td>
+        <td class="fluxy-table-cell fluxy-table-money">${escapeHtml(signedRupiah(line.amount))}</td>
+        <td class="fluxy-table-cell fluxy-table-money">${escapeHtml(signedRupiah(line.prior))}</td>
+        ${changeCells(line.amount, line.prior, kind)}
+    </tr>`;
+}
+// Income Statement subtotal: compared like a line, but never clickable.
+function isSubtotalRow(label, amount, prior, kind, { strong = false } = {}) {
+    const wrapText = (t) => (strong ? `<strong>${t}</strong>` : t);
+    return `<tr class="fluxy-table-row" style="border-top:1px solid #e5e7eb;">
+        <td class="fluxy-table-cell">${wrapText(escapeHtml(label))}</td>
+        <td class="fluxy-table-cell fluxy-table-money">${wrapText(escapeHtml(signedRupiah(amount)))}</td>
+        <td class="fluxy-table-cell fluxy-table-money">${wrapText(escapeHtml(signedRupiah(prior)))}</td>
+        ${changeCells(amount, prior, kind)}
+    </tr>`;
+}
+// Balance Sheet rows stay two-column: the statement is cumulative, so a
+// period-over-period movement column would misrepresent it.
+function bsLineRow(line) {
+    return `<tr class="fluxy-table-row acct-row-link" data-stmt-account="${escapeHtml(line.code)}" tabindex="0" role="link">
+        <td class="fluxy-table-cell" style="padding-left:24px;"><span class="fluxy-table-cell-meta">${escapeHtml(line.code)}</span> ${escapeHtml(line.name)}</td>
         <td class="fluxy-table-cell fluxy-table-money">${escapeHtml(signedRupiah(line.amount))}</td>
     </tr>`;
 }
-function stmtSubtotalRow(label, amount, { strong = false } = {}) {
+function bsSubtotalRow(label, amount, { strong = false } = {}) {
     const val = strong ? `<strong>${escapeHtml(signedRupiah(amount))}</strong>` : escapeHtml(signedRupiah(amount));
     const lbl = strong ? `<strong>${escapeHtml(label)}</strong>` : escapeHtml(label);
     return `<tr class="fluxy-table-row" style="border-top:1px solid #e5e7eb;">
@@ -411,36 +541,52 @@ function stmtSubtotalRow(label, amount, { strong = false } = {}) {
         <td class="fluxy-table-cell fluxy-table-money">${val}</td>
     </tr>`;
 }
-function stmtGroupHeader(label) {
-    return `<tr class="fluxy-table-row"><td class="fluxy-table-cell" colspan="2"><span class="fluxy-table-cell-primary" style="text-transform:uppercase;letter-spacing:0.06em;font-size:12px;color:#6b7280;">${escapeHtml(label)}</span></td></tr>`;
+function stmtGroupHeader(label, colspan = 2) {
+    return `<tr class="fluxy-table-row"><td class="fluxy-table-cell" colspan="${colspan}"><span class="fluxy-table-cell-primary" style="text-transform:uppercase;letter-spacing:0.06em;font-size:12px;color:#6b7280;">${escapeHtml(label)}</span></td></tr>`;
 }
 
-function renderStmtIncome(wrap, is) {
+function renderStmtIncome(wrap, report) {
     if (!wrap) return;
+    const is = report?.incomeStatement;
     if (!is || !is.hasData) {
         wrap.innerHTML = emptyState('No ledger activity for this period', 'Post transactions, bills, or invoices — they appear here once journals exist for the selected period.');
         return;
     }
+    const prev = report.comparisonIncomeStatement || {};
+    const section = (curLines, priorLines, kind) =>
+        mergeStatementLines(curLines, priorLines).map(l => stmtLineRow(l, kind)).join('');
+
     const parts = [];
-    parts.push(stmtGroupHeader('Revenue'));
-    is.revenue.forEach(l => parts.push(stmtLineRow(l)));
-    parts.push(stmtSubtotalRow('Total revenue', is.totalRevenue));
-    if (is.cogs.length) {
-        parts.push(stmtGroupHeader('Cost of goods sold'));
-        is.cogs.forEach(l => parts.push(stmtLineRow(l)));
-        parts.push(stmtSubtotalRow('Gross profit', is.grossProfit, { strong: true }));
+    parts.push(stmtGroupHeader('Revenue', 5));
+    parts.push(section(is.revenue, prev.revenue, 'revenue'));
+    parts.push(isSubtotalRow('Total revenue', is.totalRevenue, prev.totalRevenue || 0, 'revenue'));
+    if (is.cogs.length || (prev.cogs || []).length) {
+        parts.push(stmtGroupHeader('Cost of goods sold', 5));
+        parts.push(section(is.cogs, prev.cogs, 'cost'));
+        parts.push(isSubtotalRow('Gross profit', is.grossProfit, prev.grossProfit || 0, 'revenue', { strong: true }));
     }
-    parts.push(stmtGroupHeader('Operating expenses'));
-    is.operatingExpenses.forEach(l => parts.push(stmtLineRow(l)));
-    parts.push(stmtSubtotalRow('Total operating expenses', is.totalOpEx));
-    parts.push(stmtSubtotalRow('Operating income', is.operatingIncome, { strong: true }));
-    if (is.otherIncome.length || is.otherExpense.length) {
-        parts.push(stmtGroupHeader('Other income & expenses'));
-        is.otherIncome.forEach(l => parts.push(stmtLineRow(l)));
-        is.otherExpense.forEach(l => parts.push(stmtLineRow({ ...l, amount: -l.amount })));
+    parts.push(stmtGroupHeader('Operating expenses', 5));
+    parts.push(section(is.operatingExpenses, prev.operatingExpenses, 'cost'));
+    parts.push(isSubtotalRow('Total operating expenses', is.totalOpEx, prev.totalOpEx || 0, 'cost'));
+    parts.push(isSubtotalRow('Operating income', is.operatingIncome, prev.operatingIncome || 0, 'revenue', { strong: true }));
+    if (is.otherIncome.length || is.otherExpense.length || (prev.otherIncome || []).length || (prev.otherExpense || []).length) {
+        parts.push(stmtGroupHeader('Other income & expenses', 5));
+        parts.push(section(is.otherIncome, prev.otherIncome, 'revenue'));
+        // Other expenses display negative, so their comparison must flip too.
+        const flip = (rows) => (rows || []).map(l => ({ ...l, amount: -l.amount }));
+        parts.push(section(flip(is.otherExpense), flip(prev.otherExpense), 'cost'));
     }
-    parts.push(stmtSubtotalRow('Net income', is.netIncome, { strong: true }));
-    wrap.innerHTML = tableShell([{ label: 'Account' }, { label: 'Amount', money: true }], parts.join(''));
+    parts.push(isSubtotalRow('Net income', is.netIncome, prev.netIncome || 0, 'revenue', { strong: true }));
+
+    const cols = [
+        { label: 'Line item' },
+        { label: periodColumnLabel(report.period.start, report.period.end), money: true },
+        { label: periodColumnLabel(report.comparisonPeriod?.start, report.comparisonPeriod?.end), money: true },
+        { label: 'Change', money: true },
+        { label: 'Change %', money: true }
+    ];
+    wrap.innerHTML = tableShell(cols, parts.join(''));
+    bindStatementDrilldown(wrap);
 }
 
 function renderStmtBalance(wrap, bs) {
@@ -451,23 +597,125 @@ function renderStmtBalance(wrap, bs) {
     }
     const parts = [];
     parts.push(stmtGroupHeader('Assets'));
-    bs.assets.forEach(l => parts.push(stmtLineRow(l)));
-    parts.push(stmtSubtotalRow('Total assets', bs.totalAssets, { strong: true }));
+    bs.assets.forEach(l => parts.push(bsLineRow(l)));
+    parts.push(bsSubtotalRow('Total assets', bs.totalAssets, { strong: true }));
     parts.push(stmtGroupHeader('Liabilities'));
-    if (bs.liabilities.length) bs.liabilities.forEach(l => parts.push(stmtLineRow(l)));
-    parts.push(stmtSubtotalRow('Total liabilities', bs.totalLiabilities));
+    if (bs.liabilities.length) bs.liabilities.forEach(l => parts.push(bsLineRow(l)));
+    parts.push(bsSubtotalRow('Total liabilities', bs.totalLiabilities));
     parts.push(stmtGroupHeader('Equity'));
-    bs.equity.forEach(l => parts.push(stmtLineRow(l)));
-    parts.push(stmtSubtotalRow('Total equity', bs.totalEquity));
-    parts.push(stmtSubtotalRow('Total liabilities & equity', bs.liabilitiesPlusEquity, { strong: true }));
+    bs.equity.forEach(l => parts.push(bsLineRow(l)));
+    parts.push(bsSubtotalRow('Total equity', bs.totalEquity));
+    parts.push(bsSubtotalRow('Total liabilities & equity', bs.liabilitiesPlusEquity, { strong: true }));
     wrap.innerHTML = tableShell([{ label: 'Account' }, { label: 'Amount', money: true }], parts.join(''));
+    bindStatementDrilldown(wrap);
 
-    const tie = el('statements-tieout');
+    const tie = el('balance-sheet-tieout');
     if (tie) {
         tie.innerHTML = bs.balanced
             ? `<span class="fluxy-table-status fluxy-status-success">Balanced ✓</span>`
             : `<span class="fluxy-table-status fluxy-status-danger">Out of balance by ${escapeHtml(signedRupiah(bs.tieOutDelta))}</span>`;
     }
+}
+
+// --- Balance Sheet CSV export ------------------------------------------------
+// Ported from the retired /balance-sheet page so the capability is not lost, but
+// sourced from the ledger statement. Like every export in the product it is
+// confirmed, metered through report_exports, and audit-logged.
+
+function csvEscape(value) {
+    const s = String(value ?? '');
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function downloadFile(filename, content) {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+function balanceSheetCsv(bs, period) {
+    const rows = [['Section', 'Account code', 'Account', 'Amount (IDR)']];
+    const push = (section, lines) => (lines || []).forEach(l => rows.push([section, l.code, l.name, l.amount]));
+    push('Assets', bs.assets);
+    rows.push(['Assets', '', 'Total assets', bs.totalAssets]);
+    push('Liabilities', bs.liabilities);
+    rows.push(['Liabilities', '', 'Total liabilities', bs.totalLiabilities]);
+    push('Equity', bs.equity);
+    rows.push(['Equity', '', 'Total equity', bs.totalEquity]);
+    rows.push(['', '', 'Total liabilities & equity', bs.liabilitiesPlusEquity]);
+    rows.push(['', '', 'Tie-out delta', bs.tieOutDelta]);
+    rows.push(['', '', 'As of period', period.end]);
+    return rows.map(r => r.map(csvEscape).join(',')).join('\n');
+}
+
+async function exportBalanceSheet() {
+    const report = state.statements;
+    const bs = report?.balanceSheet;
+    if (!bs || !bs.hasData) {
+        window.showToast?.('No balance sheet to export for this period.', 'info');
+        return;
+    }
+    const btn = el('balance-sheet-export');
+    if (state.exportInProgress) return;
+
+    const confirmed = await window.showConfirmDialog?.({
+        title: 'Export Balance Sheet CSV?',
+        body: 'This logs an export action and downloads the ledger-derived Balance Sheet with raw IDR amounts.',
+        confirmLabel: 'Export CSV', cancelLabel: 'Cancel', tone: 'default'
+    });
+    if (confirmed === false) return;
+
+    state.exportInProgress = true;
+    if (btn) { btn.disabled = true; btn.textContent = 'Exporting…'; }
+    try {
+        const meta = {
+            report_type: 'balance_sheet',
+            period_start: report.period.start,
+            period_end: report.period.end,
+            formats: ['csv'],
+            status: 'generated',
+            included_sections: ['assets', 'liabilities', 'equity'],
+            warning_counts: { tie_out_delta: bs.tieOutDelta || 0 },
+            limitations: bs.balanced
+                ? ['Ledger-derived double-entry statement; ties to the trial balance.']
+                : ['Ledger-derived statement is OUT OF BALANCE — ledger_balances drift; repair with scripts/reconcile-ledger-balances.js.'],
+            report_scope: { mode: 'balance_sheet', source: 'ledger_balances', current_period: { ...report.period } }
+        };
+        const ref = await state.ds.addReportExport(state.user.uid, meta);
+        await state.ds.createExportAuditLog(state.user.uid, {
+            target_id: ref.id,
+            after: { report_type: 'balance_sheet', period: report.period, formats: ['csv'], balanced: bs.balanced },
+            reason: 'Balance Sheet CSV export confirmed',
+            source: 'dashboard'
+        });
+        downloadFile(`balance_sheet_${report.period.end}.csv`, balanceSheetCsv(bs, report.period));
+        window.showToast?.('Balance Sheet CSV exported and logged.', 'success');
+    } catch (err) {
+        console.error('Balance Sheet export failed:', err);
+        window.showToast?.('Could not export the Balance Sheet. Try again.', 'error');
+    } finally {
+        state.exportInProgress = false;
+        if (btn) { btn.disabled = false; btn.textContent = 'Export CSV'; }
+    }
+}
+
+// Statement line → that account's General Ledger activity → Journal Detail →
+// source record. Replaces the preview's /accounting-records deep link: the ledger
+// path traces to posted journals rather than to raw transactions.
+function bindStatementDrilldown(wrap) {
+    wrap.querySelectorAll('[data-stmt-account]').forEach((row) => {
+        const go = () => drillToLedger(row.getAttribute('data-stmt-account'));
+        row.addEventListener('click', go);
+        row.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+        });
+    });
 }
 
 // --- A/R + A/P Aging tab (as-of today; sources tie to the Balance Sheet) ---
@@ -591,22 +839,29 @@ async function load() {
     hide('accounting-content');
 
     try {
-        const data = await state.ds.getIncomeStatementPreview(state.user.uid, {
-            start: state.startKey,
-            end: state.endKey
-        });
+        // The preview is now the readiness/confidence source only — the KPI strip
+        // and every statement read the ledger, so they cannot disagree with the
+        // Trial Balance. See docs/ACCOUNTING_CENTER_IA.md Phase 2.
+        const [data, statements] = await Promise.all([
+            state.ds.getIncomeStatementPreview(state.user.uid, { start: state.startKey, end: state.endKey }),
+            state.ds.getFinancialStatements(state.user.uid, {
+                startPeriod: String(state.startKey || '').slice(0, 7),
+                endPeriod: String(state.endKey || '').slice(0, 7)
+            })
+        ]);
         state.data = data;
+        state.statements = statements;
         hide('accounting-loading');
 
         // Always render the full layout — KPI strip, tabs, and tables. When the
         // period has no records, the KPIs read Rp0 and each table/section shows
-        // its own inline empty state (see renderIncomeStatement / renderCleanup /
+        // its own inline empty state (see renderStmtIncome / renderCleanup /
         // renderMapping). This keeps the page explorable instead of collapsing to
         // a single centered "no data" card.
         render(data);
         show('accounting-content');
     } catch (err) {
-        console.error('Income statement preview failed:', err);
+        console.error('Accounting Center load failed:', err);
         hide('accounting-loading');
         show('accounting-error');
     } finally {
@@ -617,8 +872,8 @@ async function load() {
 // --- render ---
 function render(data) {
     renderKpis(data);
-    indexRows(data);
-    renderIncomeStatement(data);
+    if (state.statements) renderStatements(state.statements);
+    else statementsError();
 
     const readiness = data.readiness;
     if (readiness) {
@@ -626,19 +881,34 @@ function render(data) {
         renderMapping(readiness);
         renderKeywordRules();
         renderCloseChecklist();
-        el('tab-cleanup-count').textContent = `${readiness.cleanupItems.length}`;
+        // Cleanup is pre-close work: the count shows on its own view and rolls up
+        // to the Close group so the backlog is visible from any section.
+        const outstanding = readiness.cleanupItems.length;
+        el('tab-cleanup-count').textContent = `${outstanding}`;
+        const groupBadge = el('tab-close-count');
+        if (groupBadge) {
+            groupBadge.textContent = `${outstanding}`;
+            groupBadge.classList.toggle('hidden', outstanding === 0);
+        }
     }
     setTab(state.activeTab);
 }
 
 function renderKpis(data) {
-    const s = data.summary;
-    el('kpi-revenue-value').textContent = formatRupiah(s.revenue) || 'Rp0';
-    el('kpi-gross-value').textContent = signedRupiah(s.gross_profit);
-    el('kpi-gross-sub').textContent = `${s.gross_margin_pct}% gross margin`;
-    el('kpi-opex-value').textContent = formatRupiah(s.operating_expenses) || 'Rp0';
-    el('kpi-net-value').textContent = signedRupiah(s.net_income);
-    el('kpi-net-sub').textContent = `${s.net_margin_pct}% net margin`;
+    // Figures come from the ledger-derived Income Statement, so the strip always
+    // matches the statement below it and the Trial Balance.
+    const is = state.statements?.incomeStatement;
+    // statements-engine returns margins as FRACTIONS (0.42), and null when there
+    // is no revenue to divide by — hence the ×100 and the N/A branch.
+    const marginText = (v, label) => (v === null || v === undefined || !Number.isFinite(Number(v)))
+        ? `N/A ${label}`
+        : `${Math.round(Number(v) * 1000) / 10}% ${label}`;
+    el('kpi-revenue-value').textContent = formatRupiah(is?.totalRevenue || 0) || 'Rp0';
+    el('kpi-gross-value').textContent = signedRupiah(is?.grossProfit || 0);
+    el('kpi-gross-sub').textContent = marginText(is?.grossMarginPct, 'gross margin');
+    el('kpi-opex-value').textContent = formatRupiah(is?.totalOpEx || 0) || 'Rp0';
+    el('kpi-net-value').textContent = signedRupiah(is?.netIncome || 0);
+    el('kpi-net-sub').textContent = marginText(is?.netMarginPct, 'net margin');
 
     const c = data.confidence;
     el('kpi-readiness-value').textContent = (c.score === null || c.score === undefined) ? '—' : `${c.score}`;
@@ -652,27 +922,6 @@ function renderKpis(data) {
     band.className = `acct-pill ${TONE_PILL[c.tone] || TONE_PILL.neutral}`;
 }
 
-
-// --- income statement table ---
-function indexRows(data) {
-    const map = {};
-    (data.rows || []).forEach(row => {
-        map[row.id] = { ...row };
-        (row.children || []).forEach(child => { map[child.id] = { ...child, parent_id: row.id }; });
-    });
-    state.rowsById = map;
-}
-
-function amountCell(value, kind) {
-    const v = Number(value) || 0;
-    if (kind === 'cost') {
-        if (v === 0) return { text: 'Rp0', cls: 'is-zero' };
-        return { text: `(${formatRupiah(v)})`, cls: 'is-neg' };
-    }
-    if (v < 0) return { text: `(${formatRupiah(v)})`, cls: 'is-neg' };
-    if (v === 0) return { text: 'Rp0', cls: 'is-zero' };
-    return { text: formatRupiah(v), cls: 'is-pos' };
-}
 
 function changeDisplay(row) {
     const c = Number(row.change_amount) || 0;
@@ -693,173 +942,6 @@ function changeDisplay(row) {
         pctText = `${p > 0 ? '+' : ''}${p.toFixed(1)}%`;
     }
     return { tone, text, pctText, pctTone: (row.change_pct === null || row.change_pct === undefined) ? 'neutral' : tone };
-}
-
-function statusCellHtml(row, isChild) {
-    const tone = row.status_tone || 'neutral';
-    if (row.level === 'subtotal' || row.level === 'total') {
-        return `<span class="acct-is-status-text fluxy-table-cell-meta" style="font-weight:600;">${escapeHtml(row.status)}</span>`;
-    }
-    if (isChild) {
-        return `<span class="acct-is-status-text fluxy-table-cell-meta acct-tone-${tone}">${escapeHtml(row.status)}</span>`;
-    }
-    return `<span class="acct-pill fluxy-table-status ${TONE_STATUS[tone] || TONE_STATUS.neutral} ${TONE_PILL[tone] || TONE_PILL.neutral}">${escapeHtml(row.status)}</span>`;
-}
-
-function isActionableIncomeRow(row) {
-    return row && row.level !== 'subtotal' && row.level !== 'total';
-}
-
-function slugParam(value) {
-    return String(value || '')
-        .trim()
-        .toLowerCase()
-        .replace(/_/g, '-')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '') || 'revenue';
-}
-
-function isFullMonthRange(startKey, endKey) {
-    if (!startKey || !endKey) return false;
-    return startKey === getMonthStartKey(new Date(`${startKey}T00:00:00`))
-        && endKey === getMonthEndKey(new Date(`${startKey}T00:00:00`));
-}
-
-function periodQueryValue() {
-    if (isFullMonthRange(state.startKey, state.endKey)) return String(state.startKey).slice(0, 7);
-    return `${state.startKey}..${state.endKey}`;
-}
-
-function comparisonQueryValue() {
-    return isFullMonthRange(state.startKey, state.endKey) ? 'previous_month' : 'previous_period';
-}
-
-function navigateToRelatedRecords(rowId) {
-    const row = state.rowsById[rowId];
-    if (!isActionableIncomeRow(row)) return;
-    const params = new URLSearchParams();
-    params.set('period', periodQueryValue());
-    params.set('compare', comparisonQueryValue());
-    if (row.parent_id) {
-        params.set('section', slugParam(row.label));
-        params.set('parent', slugParam(row.parent_id));
-        params.set('category', row.label || '');
-    } else {
-        params.set('section', slugParam(row.id));
-    }
-    window.location.href = `/accounting-records?${params.toString()}`;
-}
-
-function rowTr(row, isChild, parentId) {
-    const cur = amountCell(row.current_amount, row.kind);
-    const prev = amountCell(row.previous_amount, row.kind);
-    const ch = changeDisplay(row);
-    const hasChildren = !isChild && row.children && row.children.length;
-    const levelClass = isChild
-        ? 'acct-is-child'
-        : row.level === 'total' ? 'acct-is-total'
-        : row.level === 'subtotal' ? 'acct-is-subtotal'
-        : 'acct-is-group';
-    const chevron = hasChildren
-        ? `<button type="button" class="acct-is-chevron" data-toggle="${escapeHtml(row.id)}" aria-label="Toggle ${escapeHtml(row.label)} rows"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg></button>`
-        : '<span class="acct-is-chevron-spacer"></span>';
-    const parentAttr = isChild ? ` data-parent="${escapeHtml(parentId)}"` : '';
-    const actionable = isActionableIncomeRow(row);
-    const rowAttrs = actionable
-        ? ` data-row-id="${escapeHtml(row.id)}" tabindex="0" role="button" aria-label="Open ${escapeHtml(row.label)} records"`
-        : ' aria-disabled="true"';
-    const fluxyLevelClass = row.level === 'total'
-        ? 'fluxy-table-row-final'
-        : row.level === 'subtotal'
-            ? 'fluxy-table-row-total'
-            : '';
-    return `
-        <tr class="fluxy-table-row ${fluxyLevelClass} acct-is-row ${levelClass} ${actionable ? 'fluxy-table-row-clickable acct-is-actionable' : 'acct-is-static'}"${rowAttrs}${parentAttr}>
-            <td class="fluxy-table-cell fluxy-table-cell-primary acct-is-line">${chevron}<span>${escapeHtml(row.label)}</span></td>
-            <td class="fluxy-table-cell fluxy-table-money acct-is-num ${cur.cls}">${cur.text}</td>
-            <td class="fluxy-table-cell fluxy-table-money acct-is-num ${prev.cls}">${prev.text}</td>
-            <td class="fluxy-table-cell fluxy-table-money acct-is-num acct-tone-${ch.tone}">${ch.text}</td>
-            <td class="fluxy-table-cell fluxy-table-money acct-is-num acct-tone-${ch.pctTone}">${ch.pctText}</td>
-            <td class="fluxy-table-cell acct-is-status">${statusCellHtml(row, isChild)}</td>
-        </tr>`;
-}
-
-function rowGroupHtml(row) {
-    if (row.level === 'group') {
-        const children = (row.children || []).map(c => rowTr(c, true, row.id)).join('');
-        return rowTr(row, false) + children;
-    }
-    return rowTr(row, false);
-}
-
-function incomeEmptyRow() {
-    return `
-        <tr>
-            <td colspan="6" class="fluxy-table-loading-cell" style="text-align:center;">
-                <div class="fluxy-table-empty-title">No income statement data for this period</div>
-                <p class="fluxy-table-empty-description" style="margin:6px auto 16px;max-width:440px;">Add transactions, bills, or revenue records and FluxyOS will build the statement here. Switch periods to explore other months.</p>
-                <button type="button" class="acct-btn acct-btn-primary" data-add-tx style="margin:0 auto;">Add transaction</button>
-            </td>
-        </tr>`;
-}
-
-function renderIncomeStatement(data) {
-    const wrap = el('income-statement-table');
-    if (!wrap) return;
-
-    const curLabel = data.period.label;
-    const prevLabel = data.comparison_period.label;
-    const body = data.hasIncomeData
-        ? (data.rows || []).map(rowGroupHtml).join('')
-        : incomeEmptyRow();
-    wrap.innerHTML = `
-        <table class="fluxy-table acct-is-table">
-            <thead>
-                <tr class="fluxy-table-header">
-                    <th class="acct-is-th-line">Line item</th>
-                    <th class="fluxy-table-money acct-is-th-num">${escapeHtml(curLabel)}</th>
-                    <th class="fluxy-table-money acct-is-th-num">${escapeHtml(prevLabel)}</th>
-                    <th class="fluxy-table-money acct-is-th-num">Change</th>
-                    <th class="fluxy-table-money acct-is-th-num">Change %</th>
-                    <th class="acct-is-th-status">Status</th>
-                </tr>
-            </thead>
-            <tbody>${body}</tbody>
-        </table>`;
-
-    if (!data.hasIncomeData) {
-        wrap.querySelector('[data-add-tx]')?.addEventListener('click', () => {
-            if (typeof window.showAddTransactionModal === 'function') {
-                window.showAddTransactionModal({ title: 'Add Transaction', submitLabel: 'Add Transaction', context: 'transaction' });
-            } else {
-                window.location.href = '/ledger';
-            }
-        });
-        return;
-    }
-
-    wireIncomeStatement(wrap);
-}
-
-function wireIncomeStatement(wrap) {
-    wrap.querySelectorAll('[data-toggle]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const id = btn.getAttribute('data-toggle');
-            const collapsed = btn.classList.toggle('is-collapsed');
-            wrap.querySelectorAll(`tr[data-parent="${CSS.escape(id)}"]`).forEach(tr => {
-                tr.classList.toggle('hidden', collapsed);
-            });
-        });
-    });
-
-    wrap.querySelectorAll('tr[data-row-id]').forEach(tr => {
-        const open = () => navigateToRelatedRecords(tr.getAttribute('data-row-id'));
-        tr.addEventListener('click', open);
-        tr.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
-        });
-    });
 }
 
 // --- cleanup / mapping / close (readiness-backed) ---

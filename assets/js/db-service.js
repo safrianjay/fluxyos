@@ -4409,9 +4409,25 @@ class DataService {
     //     including it) — a point-in-time position with a real equity section.
     // Period keys are 'YYYY-MM' and compare lexically. Bucketing/grouping is pure
     // (assets/js/statements-engine.js).
+    // Month arithmetic on accounting period keys ('YYYY-MM'). The day-key helpers
+    // (_previousPeriodRange etc.) do not apply here — periods are whole months.
+    _shiftPeriodKey(periodKey, months) {
+        const [y, m] = String(periodKey).split('-').map(Number);
+        const d = new Date(y, (m - 1) + months, 1);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+    _periodSpan(start, end) {
+        const [ys, ms] = String(start).split('-').map(Number);
+        const [ye, me] = String(end).split('-').map(Number);
+        return Math.max(1, (ye - ys) * 12 + (me - ms) + 1);
+    }
+
     async getFinancialStatements(userId, { startPeriod = null, endPeriod = null } = {}) {
         const end = endPeriod || acctPeriodKey(new Date());
         const start = startPeriod || end;
+        // Comparison = the equal-length window immediately before the selected one.
+        const cmpEnd = this._shiftPeriodKey(start, -1);
+        const cmpStart = this._shiftPeriodKey(cmpEnd, -(this._periodSpan(start, end) - 1));
         const [snap, coa] = await Promise.all([
             getDocs(collection(this.db, `${this._scope(userId)}/ledger_balances`)),
             this.getChartOfAccounts(userId)
@@ -4430,7 +4446,8 @@ class DataService {
                     account_name: m.name || code,
                     account_name_id: m.name_id || null,
                     sak_category: m.sak_category || null,
-                    move_debit: 0, move_credit: 0, cum_debit: 0, cum_credit: 0
+                    move_debit: 0, move_credit: 0, cum_debit: 0, cum_credit: 0,
+                    cmp_debit: 0, cmp_credit: 0
                 };
             }
             return agg[code];
@@ -4445,15 +4462,21 @@ class DataService {
             row.cum_debit += debit;
             row.cum_credit += credit;
             if (pk >= start) { row.move_debit += debit; row.move_credit += credit; }
+            // The comparison window always precedes `start`, so it is already
+            // inside the pk <= end scan above — no second read needed.
+            if (pk >= cmpStart && pk <= cmpEnd) { row.cmp_debit += debit; row.cmp_credit += credit; }
         });
 
         const rows = Object.values(agg);
         const movementRows = rows.map((r) => ({ ...r, debit_total: r.move_debit, credit_total: r.move_credit }));
         const cumulativeRows = rows.map((r) => ({ ...r, debit_total: r.cum_debit, credit_total: r.cum_credit }));
+        const comparisonRows = rows.map((r) => ({ ...r, debit_total: r.cmp_debit, credit_total: r.cmp_credit }));
 
         return {
             period: { start, end },
+            comparisonPeriod: { start: cmpStart, end: cmpEnd },
             incomeStatement: buildIncomeStatement(movementRows),
+            comparisonIncomeStatement: buildIncomeStatement(comparisonRows),
             balanceSheet: buildBalanceSheet(cumulativeRows)
         };
     }

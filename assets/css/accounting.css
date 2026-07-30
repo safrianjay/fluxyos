@@ -27,14 +27,15 @@
     letter-spacing: -0.005em;
 }
 
-/* --- Tabs --- */
+/* --- Section nav (primary: groups) --- */
 .acct-tabs {
     display: flex;
     gap: 4px;
     border-bottom: 1px solid #E5E7EB;
-    margin-bottom: 24px;
+    margin-bottom: 0;
     overflow-x: auto;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
 }
 .acct-tabs::-webkit-scrollbar { display: none; }
 .acct-tab {
@@ -75,6 +76,49 @@
     justify-content: center;
 }
 .acct-tab.is-active .acct-tab-count { background: #FFEDD5; color: #C2410C; }
+
+/* --- View nav (secondary: children of the active group) --- */
+.acct-subtabs {
+    display: flex;
+    gap: 6px;
+    padding-top: 12px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.acct-subtabs::-webkit-scrollbar { display: none; }
+.acct-subtab {
+    appearance: none;
+    background: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4B5563;
+    letter-spacing: -0.005em;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+/* Out-of-group views are removed from the row, not just dimmed. The explicit
+   rule is required because `display` above would otherwise beat [hidden]. */
+.acct-subtab[hidden] { display: none; }
+.acct-subtab:hover { background: #F3F4F6; color: #111827; }
+/* Active state is an orange accent on a white surface — orange backgrounds are
+   prohibited project-wide (see docs/DESIGN_SYSTEM.md). */
+.acct-subtab.is-active {
+    background: #FFFFFF;
+    border-color: #EA580C;
+    color: #C2410C;
+    font-weight: 600;
+}
+.acct-subtab .acct-tab-count { background: #F3F4F6; color: #6B7280; }
+.acct-subtab.is-active .acct-tab-count { background: #FFEDD5; color: #C2410C; }
 
 /* --- KPI strip --- */
 .acct-kpi-grid {
@@ -343,6 +387,12 @@
 }
 .acct-is-th-line { text-align: left !important; position: sticky; left: 0; background: #F9FAFB; z-index: 2; }
 .acct-is-th-status { text-align: left !important; }
+
+/* Statement account lines trace to their General Ledger activity. Subtotals are
+   deliberately not given this class — they have no single source-record list. */
+.acct-row-link { cursor: pointer; transition: background 0.12s ease; }
+.acct-row-link:hover { background: #F9FAFB; }
+.acct-row-link:focus-visible { outline: 2px solid #EA580C; outline-offset: -2px; }
 
 .acct-is-row { transition: background 0.12s ease; }
 .acct-is-actionable { cursor: pointer; }

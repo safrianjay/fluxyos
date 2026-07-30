@@ -112,32 +112,42 @@
                         </article>
                     </section>
 
-                    <!-- TABS -->
-                    <nav class="acct-tabs" role="tablist" aria-label="Accounting Center views">
-                        <button type="button" class="acct-tab is-active" data-acct-tab="income" role="tab">Income Statement</button>
-                        <button type="button" class="acct-tab" data-acct-tab="journals" role="tab">Journals</button>
-                        <button type="button" class="acct-tab" data-acct-tab="ledger" role="tab">General Ledger</button>
-                        <button type="button" class="acct-tab" data-acct-tab="trial" role="tab">Trial Balance</button>
-                        <button type="button" class="acct-tab" data-acct-tab="statements" role="tab">Statements</button>
-                        <button type="button" class="acct-tab" data-acct-tab="coa" role="tab">Chart of Accounts</button>
-                        <button type="button" class="acct-tab" data-acct-tab="aging" role="tab">Aging</button>
-                        <button type="button" class="acct-tab" data-acct-tab="cleanup" role="tab">Cleanup <span class="acct-tab-count" id="tab-cleanup-count">0</span></button>
-                        <button type="button" class="acct-tab" data-acct-tab="mapping" role="tab">Account Mapping</button>
-                        <button type="button" class="acct-tab" data-acct-tab="vendors" role="tab">Vendors</button>
-                        <button type="button" class="acct-tab" data-acct-tab="close" role="tab">Close</button>
+                    <!-- SECTION NAV (primary: groups) -->
+                    <nav class="acct-tabs" role="tablist" aria-label="Accounting Center sections">
+                        <button type="button" class="acct-tab is-active" data-acct-group="reports" role="tab" aria-selected="true">Reports</button>
+                        <button type="button" class="acct-tab" data-acct-group="ledger" role="tab" aria-selected="false">Ledger</button>
+                        <button type="button" class="acct-tab" data-acct-group="setup" role="tab" aria-selected="false">Setup</button>
+                        <button type="button" class="acct-tab" data-acct-group="close" role="tab" aria-selected="false">Close <span class="acct-tab-count" id="tab-close-count">0</span></button>
                     </nav>
 
-                    <!-- INCOME STATEMENT TAB -->
-                    <div data-acct-panel="income" class="flex flex-col gap-6">
-                        <!-- Report card -->
+                    <!-- VIEW NAV (secondary: children of the active group) -->
+                    <nav class="acct-subtabs" role="tablist" aria-label="Accounting Center views">
+                        <button type="button" class="acct-subtab is-active" data-acct-tab="income" data-acct-parent="reports" role="tab" aria-selected="true">Income Statement</button>
+                        <button type="button" class="acct-subtab" data-acct-tab="balance" data-acct-parent="reports" role="tab" aria-selected="false">Balance Sheet</button>
+                        <button type="button" class="acct-subtab" data-acct-tab="aging" data-acct-parent="reports" role="tab" aria-selected="false">Aging</button>
+
+                        <button type="button" class="acct-subtab" data-acct-tab="journals" data-acct-parent="ledger" role="tab" aria-selected="false" hidden>Journals</button>
+                        <button type="button" class="acct-subtab" data-acct-tab="ledger" data-acct-parent="ledger" role="tab" aria-selected="false" hidden>General Ledger</button>
+                        <button type="button" class="acct-subtab" data-acct-tab="trial" data-acct-parent="ledger" role="tab" aria-selected="false" hidden>Trial Balance</button>
+
+                        <button type="button" class="acct-subtab" data-acct-tab="coa" data-acct-parent="setup" role="tab" aria-selected="false" hidden>Chart of Accounts</button>
+                        <button type="button" class="acct-subtab" data-acct-tab="mapping" data-acct-parent="setup" role="tab" aria-selected="false" hidden>Account Mapping</button>
+                        <button type="button" class="acct-subtab" data-acct-tab="vendors" data-acct-parent="setup" role="tab" aria-selected="false" hidden>Vendors</button>
+
+                        <button type="button" class="acct-subtab" data-acct-tab="close" data-acct-parent="close" role="tab" aria-selected="false" hidden>Close checklist</button>
+                        <button type="button" class="acct-subtab" data-acct-tab="cleanup" data-acct-parent="close" role="tab" aria-selected="false" hidden>Cleanup <span class="acct-tab-count" id="tab-cleanup-count">0</span></button>
+                    </nav>
+
+                    <!-- INCOME STATEMENT TAB (ledger-derived) -->
+                    <div data-acct-panel="income">
                         <section class="acct-card fluxy-table-card">
                             <div class="fluxy-table-card-header">
                                 <div>
                                     <h2 class="fluxy-table-title">Income Statement</h2>
-                                    <p class="fluxy-table-subtitle">Click a row to inspect related records.</p>
+                                    <p class="fluxy-table-subtitle">Built from the general ledger for <span id="income-statement-period">this period</span> — ties to your trial balance. Click an account to trace it.</p>
                                 </div>
                             </div>
-                            <div id="income-statement-table" class="acct-is-scroll fluxy-table-scroll"></div>
+                            <div id="income-statement-content" class="acct-is-scroll fluxy-table-scroll"></div>
                         </section>
                     </div>
 
@@ -254,29 +264,21 @@
                         </section>
                     </div>
 
-                    <!-- STATEMENTS TAB (ledger-derived P&L + Balance Sheet) -->
-                    <div data-acct-panel="statements" class="hidden">
-                        <div class="flex flex-col gap-6">
-                        <section class="acct-card fluxy-table-card">
-                            <div class="fluxy-table-card-header">
-                                <div>
-                                    <h2 class="fluxy-table-title">Income Statement</h2>
-                                    <p class="fluxy-table-subtitle">Built from the general ledger for <span id="statements-period">this period</span> — ties to your trial balance.</p>
-                                </div>
-                            </div>
-                            <div id="statements-income-content" class="fluxy-table-scroll"></div>
-                        </section>
+                    <!-- BALANCE SHEET TAB (ledger-derived) -->
+                    <div data-acct-panel="balance" class="hidden">
                         <section class="acct-card fluxy-table-card">
                             <div class="fluxy-table-card-header">
                                 <div>
                                     <h2 class="fluxy-table-title">Balance Sheet</h2>
                                     <p class="fluxy-table-subtitle">Position as of the end of the period, with a full equity section. Assets must equal Liabilities plus Equity.</p>
                                 </div>
-                                <div class="fluxy-table-actions" id="statements-tieout"></div>
+                                <div class="fluxy-table-actions" style="display:flex;align-items:center;gap:12px;">
+                                    <span id="balance-sheet-tieout"></span>
+                                    <button type="button" id="balance-sheet-export" class="acct-btn acct-btn-secondary">Export CSV</button>
+                                </div>
                             </div>
-                            <div id="statements-balance-content" class="fluxy-table-scroll"></div>
+                            <div id="balance-sheet-content" class="fluxy-table-scroll"></div>
                         </section>
-                        </div>
                     </div>
 
                     <!-- AGING TAB (A/R + A/P) -->

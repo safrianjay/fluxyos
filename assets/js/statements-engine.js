@@ -78,6 +78,8 @@ export function buildIncomeStatement(rows = []) {
         revenue, cogs, operatingExpenses, otherIncome, otherExpense,
         totalRevenue, totalCogs, grossProfit, totalOpEx, operatingIncome,
         totalOtherIncome, totalOtherExpense, netIncome,
+        // NOTE: these are FRACTIONS (0.42 = 42%), not percentages, and null when
+        // there is no revenue to divide by. Callers must ×100 and handle null.
         grossMarginPct: totalRevenue > 0 ? grossProfit / totalRevenue : null,
         netMarginPct: totalRevenue > 0 ? netIncome / totalRevenue : null,
         hasData: revenue.length + cogs.length + operatingExpenses.length + otherIncome.length + otherExpense.length > 0
