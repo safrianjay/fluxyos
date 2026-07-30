@@ -37,6 +37,14 @@ const THIS_WEEK_START = finance.startOfWeek(localCalendarDate(NOW, 'Asia/Jakarta
 const IN_PERIOD = THIS_WEEK_START.getTime() - 3 * D;
 const ts = (ms) => ({ seconds: Math.floor(ms / 1000) });
 
+// Firestore rejects undefined anywhere in a write payload; the double must too.
+function assertNoUndefined(value, path) {
+    if (value === undefined) throw new Error(`Value for argument "data" is not a valid Firestore document. Cannot use "undefined" as a Firestore value (found in field "${path}").`);
+    if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date) && !value._methodName && typeof value.toDate !== 'function') {
+        Object.entries(value).forEach(([k, v]) => assertNoUndefined(v, path ? `${path}.${k}` : k));
+    }
+}
+
 // In-memory Firestore double.
 function makeDb(seed) {
     const colls = new Map(); // path -> [{id, ...fields}]
@@ -64,7 +72,20 @@ function makeDb(seed) {
         orderBy: (field, dir = 'asc') => query(p, { field, dir }),
         limit: () => ({ async get() { return listing(p, sort); } }),
         async get() { return listing(p, sort); },
-        async add(data) { const a = colls.get(p) || []; a.push({ id: 'a' + a.length, ...data }); colls.set(p, a); },
+        // NOT async on purpose: Firestore validates the payload SYNCHRONOUSLY and
+        // rejects undefined field values, so a bad write throws before any promise
+        // exists and a trailing `.catch()` never attaches. An async double turns
+        // that into a catchable rejection and a write that always fails in
+        // production looks green here — which is exactly what happened to every
+        // weekly digest send.
+        add(data) {
+            assertNoUndefined(data, '');
+            const a = colls.get(p) || [];
+            const id = 'a' + a.length;
+            a.push({ id, ...data });
+            colls.set(p, a);
+            return Promise.resolve({ id });
+        },
     });
     return {
         _colls: colls, _docs: docs,
