@@ -24,7 +24,6 @@ const PAGES = /** @type {const} */ ([
     ['accounting.html',             'FluxyOS | Pusat Akuntansi',              true],
     ['accounting-records.html',     'FluxyOS | Catatan Akuntansi',            true],
     ['accounting-journal-new.html', 'FluxyOS | Jurnal Manual Baru',           true],
-    ['balance-sheet.html',          'FluxyOS | Neraca',                       true],
     ['reports.html',                'FluxyOS | Laporan & Ekspor',             true],
     ['tax-center.html',             'FluxyOS | Pusat Pajak',                  true],
     ['integration.html',            'FluxyOS | Integrasi',                    true],

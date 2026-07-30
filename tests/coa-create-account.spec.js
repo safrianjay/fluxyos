@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { openAccountingTab } = require('./helpers/accounting-nav');
 
 // Authenticated browser check for the "New Account" create drawer on the
 // Accounting Center → Chart of Accounts tab. Runs as the QA account against real
@@ -21,7 +22,7 @@ const collectErrors = (page) => {
 async function openCoaDrawer(page) {
     await page.goto('/accounting.html');
     await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
-    await page.locator('[data-acct-tab="coa"]').click();
+    await openAccountingTab(page, 'coa');
     const newBtn = page.locator('#coa-new-account');
     await expect(newBtn).toBeVisible({ timeout: 15000 });
     await newBtn.click();
@@ -163,7 +164,7 @@ test('Edit lock: an account with posted activity locks category + parent but sta
     // 3) Open Edit on that account → structural fields are locked.
     await page.goto('/accounting.html');
     await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
-    await page.locator('[data-acct-tab="coa"]').click();
+    await openAccountingTab(page, 'coa');
     await page.locator(`[data-coa-kebab="${code}"]`).click();
     await page.locator('.acct-kebab-menu [data-menu-edit]').click();
     await expect(page.locator('#ca-drawer-panel')).toBeVisible({ timeout: 10000 });

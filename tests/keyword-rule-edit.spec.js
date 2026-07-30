@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { openAccountingTab } = require('./helpers/accounting-nav');
 
 // Keyword-rule editing (Accounting Center → Account Mapping tab): add a rule, edit
 // it in place to a different account, and confirm the change persists (the drawer
@@ -12,7 +13,7 @@ test('Keyword rule can be edited in place and the change persists', async ({ pag
 
     await page.goto('/accounting.html');
     // The mapping tab + keyword form render on load once data resolves.
-    await page.locator('[data-acct-tab="mapping"]').click();
+    await openAccountingTab(page, 'mapping');
     await expect.poll(async () => page.$$eval('#kw-rule-account option', (os) => os.length), { timeout: 30000 }).toBeGreaterThan(1);
 
     // Add a rule: keyword → 6440. The match preview appears while typing.

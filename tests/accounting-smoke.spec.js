@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { openAccountingTab } = require('./helpers/accounting-nav');
 
 // Authenticated browser smoke for the Accounting Center kernel surfaces. Runs as
 // the QA Firebase account against real Firestore (new rules must be deployed).
@@ -24,7 +25,7 @@ test('Accounting Center kernel surfaces load and seed without errors', async ({ 
     await expect(page.locator('[data-acct-panel="income"]')).toBeVisible({ timeout: 30000 });
 
     // Chart of Accounts: seed write + read through the new rules.
-    await page.locator('[data-acct-tab="coa"]').click();
+    await openAccountingTab(page, 'coa');
     await expect(page.locator('[data-acct-panel="coa"]')).toBeVisible();
     // The starter chart has 13 accounts; wait for at least the core ones to render.
     await expect(page.locator('#coa-content')).toContainText('Cash & Bank', { timeout: 30000 });
@@ -33,18 +34,18 @@ test('Accounting Center kernel surfaces load and seed without errors', async ({ 
     expect(coaRows).toBeGreaterThanOrEqual(13);
 
     // Trial Balance: balance flag must render (in/out of balance).
-    await page.locator('[data-acct-tab="trial"]').click();
+    await openAccountingTab(page, 'trial');
     await expect(page.locator('[data-acct-panel="trial"]')).toBeVisible();
     await expect(page.locator('#trial-balance-flag')).not.toHaveText('—', { timeout: 30000 });
 
     // Journals + General Ledger panels render (table or empty-state, never an error).
-    await page.locator('[data-acct-tab="journals"]').click();
+    await openAccountingTab(page, 'journals');
     await expect(page.locator('#journals-content')).not.toBeEmpty();
-    await page.locator('[data-acct-tab="ledger"]').click();
+    await openAccountingTab(page, 'ledger');
     await expect(page.locator('#ledger-content')).not.toBeEmpty();
 
     // Close panel reflects period state (button present, status text set).
-    await page.locator('[data-acct-tab="close"]').click();
+    await openAccountingTab(page, 'close');
     await expect(page.locator('#close-period-btn')).toBeVisible();
 
     expect(bad, `console/page errors:\n${bad.join('\n')}`).toEqual([]);

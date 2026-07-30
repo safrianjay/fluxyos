@@ -22,8 +22,7 @@ const PAGES = [
     '/invoices.html',
     '/budget.html',
     '/accounting.html',
-    '/accounting-records.html',
-    '/balance-sheet-records.html'
+    '/accounting-records.html'
 ];
 
 test.beforeEach(async ({ page }) => {
