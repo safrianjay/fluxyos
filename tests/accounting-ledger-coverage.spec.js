@@ -37,7 +37,10 @@ test('ledger coverage report + Income Statement ties to Trial Balance', async ({
 
         const [txs, journals, statements, trial] = await Promise.all([
             ds.getTransactionsForPeriod(uid, startKey, endKey).catch(() => []),
-            ds.listJournals(uid, { periodKey: pk }).catch(() => []),
+            // listJournals defaults to max:200 and filters periodKey CLIENT-SIDE, so a
+            // small max silently under-counts coverage. 5000 clears any single period
+            // at current volumes; the assertion below catches it if the fetch fails.
+            ds.listJournals(uid, { periodKey: pk, max: 5000 }).catch(() => []),
             ds.getFinancialStatements(uid, { startPeriod: pk, endPeriod: pk }),
             ds.getTrialBalance(uid, { periodKey: pk })
         ]);
@@ -52,7 +55,10 @@ test('ledger coverage report + Income Statement ties to Trial Balance', async ({
         // transfers/adjustments are correctly absent from the ledger.
         const POSTABLE = new Set(['income', 'revenue', 'refund', 'expense', 'fee', 'tax', 'pending_receivable', 'pending_payable']);
         const postable = txs.filter(t => POSTABLE.has(String(t.type || '').toLowerCase()));
-        const unposted = postable.filter(t => !postedTxIds.has(t.id));
+        // Match the backfill's own skip-guard: a source is "posted" if a journal
+        // points at it OR it carries the posted flag / journal_ref.
+        const unposted = postable.filter(t =>
+            !postedTxIds.has(t.id) && t.accounting_status !== 'posted' && !t.journal_ref);
 
         let revSigned = 0, expSigned = 0;
         (trial.rows || []).forEach((r) => {
@@ -87,6 +93,17 @@ test('ledger coverage report + Income Statement ties to Trial Balance', async ({
     console.log(`trial balance balanced=${out.tbBalanced}`);
     console.log(`balance sheet balanced=${out.bsBalanced} tieOut=${rp(out.bsTieOut)}`);
     console.log('===== END =====\n');
+
+    // Instrument check first: an empty journal fetch alongside real transactions
+    // means listJournals failed or was capped, and every coverage number above is
+    // meaningless. This exact failure once reported 16.2% coverage where the true
+    // figure was 80.7%. For an authoritative census use
+    // `scripts/ledger-coverage-report.js` (admin-side, reads every journal).
+    if (out.txTotal > 0) {
+        expect(out.journalCount,
+            'journal fetch came back empty while transactions exist — coverage numbers are not trustworthy')
+            .toBeGreaterThan(0);
+    }
 
     // The one hard invariant: both sides read ledger_balances, so they must agree
     // regardless of how much of the transaction population reached the ledger.

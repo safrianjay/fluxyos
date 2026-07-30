@@ -20,24 +20,58 @@ All three scripts are **dry-run by default**, **idempotent**, and safe to re-run
 
 ## 0. Baseline — measure before you change anything
 
+**Use the admin census — it is the authoritative measurement:**
+
+```bash
+GOOGLE_APPLICATION_CREDENTIALS=./sa.json node scripts/ledger-coverage-report.js
+```
+
+It reads *every* journal, per workspace, and warns if any transaction is flagged
+posted but has no journal (the backfill skips those, so it could not close their gap).
+
+Do **not** measure this through `DataService.listJournals` — it defaults to
+`max: 200` and filters `periodKey` **client-side**, so on a busy workspace it sees a
+fraction of the journals and reports a false gap. That mistake once reported 16.2%
+coverage where the truth was 80.7%.
+
+The in-app spec is a convenience check, not the census:
+
 ```bash
 npx playwright test tests/accounting-ledger-coverage.spec.js
 ```
 
-Prints a `LEDGER COVERAGE` block. Record it. QA workspace baseline on 2026-07-29:
+It requests `max: 5000`, asserts the journal fetch is non-empty, and asserts the one
+invariant that must hold no matter what: Income Statement net income == Trial Balance
+implied net income. If that invariant fails, stop — it is an engine/data-integrity
+bug, not a coverage gap.
 
-```
-period=2026-07  transactions=414  postable=414  journals=170
-posted to ledger: 67/414  (16.2%)
-UNPOSTED: 347 txns worth Rp5.754.083.495
-journals missing journal_number: 0
-trial balance balanced=true
-balance sheet balanced=false tieOut=Rp-110
-```
+### Recorded run — QA workspace `CPGVkWil8bV6HAWMHkgqwKLKY663`, 2026-07-29
 
-The spec also **asserts** the one invariant that must hold no matter what: Income
-Statement net income == Trial Balance implied net income. If that fails, stop — it
-is an engine/data-integrity bug, not a coverage gap.
+| | before | after |
+|---|---:|---:|
+| coverage (postable txns) | 85.7% | **96.9%** |
+| July coverage | 80.7% | **94.4%** |
+| Balance Sheet tie-out | −Rp110 | **Rp0, balanced** |
+| July ledger revenue | Rp850.298.952 | **Rp2.280.298.952** |
+| July ledger net income | −Rp378.604.268 | **+Rp1.046.417.182** |
+
+193 journals posted, 193 numbers assigned, 2 drifted balance docs corrected. The
+residual 23 unposted (Rp2.99bn) are invoice-linked `INV-PAY` settlements the backfill
+deliberately skips while `INV-ISSUE` is unwired — expected, not a failure.
+
+### Still outstanding — real user workspaces
+
+Measured 2026-07-29, **not backfilled** (restating a real customer's books is a
+business decision, not an engineering one):
+
+| workspace | name | coverage | unposted | value |
+|---|---|---:|---:|---:|
+| `4Zk00FWh7ZRP2TneRljbggZbUQi2` | Beila | **5.4%** | 752 | Rp4.430.747.967 |
+| `dMlPHFcUWWNxTJgqBVF33UyZo5x1` | Get-Pipeline | **0%** | 27 | Rp796.860.000 |
+| `vCbKe11c9fU6HxBizO4iwkg9YQf1` | Dika Finance | 46.2% | 7 | Rp2.131.850 |
+
+This answers the Phase 2 gate question: **production has the gap, and worse than QA.**
+Beila's is concentrated in 2026-05 (692 of 752).
 
 ---
 

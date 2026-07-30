@@ -198,7 +198,17 @@ FluxyOS design language.
 >    resolves the workspace first. Shared finance components that load their own
 >    `DataService` (e.g. in `shared-dashboard.js`) must also call
 >    `resolveWorkspace(app, user)` after `authStateReady()` before reading.
-> 5. **Watch out for inline page queries.** Some pages build Firestore queries
+> 5. **Server-side reads count too.** Netlify functions have their own seam:
+>    `netlify/functions/lib/workspace-scope.js` (`resolveFinanceScopes` +
+>    `readFinanceCollection`) for Admin-SDK readers, and `resolveFinanceScopes` /
+>    `fetchFinanceCollectionSafe` inside `netlify/functions/api.js` for the
+>    REST-with-caller-token readers. A function that reads `users/{uid}/…` does
+>    **not** get a permission error — it gets the frozen pre-migration copy, so
+>    every recent period silently computes as 0 while old months still look
+>    plausible. That is exactly how the Fluxy AI answers and the Weekly Digest
+>    came to report Rp0 for weeks that had records (fixed 2026-07-30; regression
+>    tests: `npm run check:ai-scope`, `npm run smoke:digest`).
+> 6. **Watch out for inline page queries.** Some pages build Firestore queries
 >    directly in the HTML (`collection(ds.db, …)`) instead of calling a
 >    DataService method — these bypass the seam and are the easiest place to
 >    reintroduce the bug. Grep guard:
@@ -1274,13 +1284,17 @@ remains the readiness/confidence source only.
 > the ledger reports a Rp379m loss where the retired preview reported a Rp4.2bn
 > profit, because **160 of 182 income transactions have no journal** (`pendingPostings
 > = 0` — absent, not queued). Integrity checks pass (IS net income == Trial Balance,
-> delta Rp0), so this is a data gap, not an engine bug. Across all postable types
-> only **16.2%** of transactions reached the ledger.
+> delta Rp0), so this is a data gap, not an engine bug. **The QA backfill has since
+> RUN** (2026-07-29): coverage 85.7% → 96.9%, tie-out Rp0, and July net income moved
+> from a Rp379m loss to a Rp1.05bn profit. The residual gap is the known unwired
+> `INV-ISSUE` rule (23 invoice-linked txns).
 >
 > **Fix procedure: `docs/LEDGER_BACKFILL_RUNBOOK.md`** (`backfill-journals.js` →
 > `backfill-journal-numbers.js` → `reconcile-ledger-balances.js`; all dry-run by
-> default). Measure with `tests/accounting-ledger-coverage.spec.js`. Backfill must
-> run **before** cutover. Full measurement: `docs/ACCOUNTING_CENTER_IA.md` Phase 2.
+> default). Measure with **`scripts/ledger-coverage-report.js`** (authoritative) —
+> not `listJournals`, which caps at `max:200` and filters period client-side.
+> **Real user workspaces are still unbackfilled** (Beila 5.4%, Get-Pipeline 0%) and
+> must be resolved before cutover. `docs/ACCOUNTING_CENTER_IA.md` Phase 2.
 >
 > A third P&L still exists at `/reports` and a second Balance Sheet at
 > `/reports`. Read the IA doc before adding any statement.

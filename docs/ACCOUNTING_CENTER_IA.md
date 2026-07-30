@@ -391,11 +391,34 @@ rules. The unposted records match its exact target (`source: null`,
 **no** `JE-YYYY-NNNNNN`; a batched migration cannot reserve numbers transactionally),
 then `reconcile-ledger-balances.js`.
 
-Measured coverage across *all* postable types (not just income) is worse than the
-income-only slice above — **16.2%**, i.e. 347 of 414 postable transactions unposted,
-worth Rp5.75bn. Baseline and re-measurement:
-`tests/accounting-ledger-coverage.spec.js`, which also asserts the hard invariant
-(Income Statement net income == Trial Balance implied net income).
+**Backfill RUN on the QA workspace 2026-07-29.** Results:
+
+| | before | after |
+|---|---:|---:|
+| QA ledger coverage (postable txns) | 85.7% | **96.9%** |
+| July coverage | 80.7% | **94.4%** |
+| Balance Sheet tie-out | −Rp110 | **Rp0, balanced** |
+| Ledger revenue (Jul) | Rp850.298.952 | **Rp2.280.298.952** |
+| Ledger net income (Jul) | −Rp378.604.268 loss | **+Rp1.046.417.182 profit** |
+| Net delta vs retired preview | −Rp4.61bn (sign flip) | −Rp3.19bn (**no sign flip**) |
+
+193 journals posted (transactions + bills + subscriptions), 193 journal numbers
+assigned, 2 drifted balance docs corrected. **The residual divergence is fully
+explained:** 23 invoice-linked transactions worth Rp2.99bn remain unposted because
+`backfill-journals.js` deliberately skips `INV-PAY` while invoice issuance
+(`INV-ISSUE`) is unwired — posting settlements alone would drive A/R negative. The
+remaining opex difference (+Rp446m) is the ledger correctly including accrued
+bills/subscriptions that the preview excluded by design. **The ledger statement is
+now the defensible number; the preview's was never correct** (cash-basis, no accruals).
+
+> **Correction:** an earlier revision of this doc reported QA coverage as **16.2%**
+> (347 unposted). That was wrong — an artifact of measuring through
+> `DataService.listJournals`, which defaults to `max: 200` and filters `periodKey`
+> **client-side**, so it saw 170 of July's actual 1014 journals. True pre-backfill
+> coverage was 80.7% for July / 85.7% overall. Use
+> **`scripts/ledger-coverage-report.js`** (admin-side, reads every journal) as the
+> authoritative census; the in-app spec now requests `max: 5000` and asserts the
+> journal fetch is non-empty so it cannot silently under-count again.
 
 **Blocking question before cutover:** does production have the same unposted
 population as QA? If it does, revenue collapses for those users the day this ships.
