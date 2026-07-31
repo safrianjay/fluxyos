@@ -343,8 +343,9 @@ like *This/Last Month*). Compute the plot width from the real container width.
 
 ### 4b. KPI drill-down detail pages
 
-The Overview Revenue / Cash position / OpEx cards drill into dedicated detail
-pages (`/revenue-overview`, `/cash-position`, `/opex-budget`). These follow the
+The Overview Revenue / Cash position / OpEx / Net profit cards drill into dedicated
+detail pages (`/revenue-overview`, `/cash-position`, `/opex-budget`,
+`/net-profit`). These follow the
 `budget-allocation.html` structural template — sticky topbar (back link +
 period strip + Fluxy AI) → `.fluxy-page-shell` → `.fluxy-page-canvas` → header →
 KPI strip → trend + breakdown → records table — and reuse shared classes so they
@@ -368,10 +369,23 @@ read as one system with the rest of the app. Do not invent a new look for them.
   buckets (anchor to real activity — matches §4a) and the axis thins to ~10 labels
   (markers hidden past 16 buckets) so All Time never overlaps into an unreadable smear.
 - **Not every KPI needs a bespoke page.** Route each card to the most relevant surface:
-  a dedicated drill-down only when the KPI has its *own* records to explore; otherwise
-  link to the existing page that owns that data (Payables → Bills) or to its primary
-  driver (Gross margin → Revenue). Cloning the full drill-down for a derived ratio or a
-  metric another page already covers is the banned "repetitive cloned pages" pattern.
+  a dedicated drill-down only when the KPI has its *own* records to explore *and* its own
+  analysis to offer; otherwise link to its primary driver (Gross margin → Revenue).
+  Cloning the full drill-down for a derived ratio or a metric another page already covers
+  is the banned "repetitive cloned pages" pattern. Net Profit earns a page because
+  the drill-down answers *why* the number moved — a bridge from the previous period, a
+  Month/Quarter/Year comparison, and a contributors breakdown — none of which the Revenue
+  or OpEx pages provide.
+- **A detail page must add analysis, not just re-present the KPI.** Beyond the shared
+  scaffold, a drill-down should answer the question the card raises. Net Profit is the
+  reference: composition (revenue vs expenses) → bridge (what moved it) → period
+  comparison → AI insights → source records.
+- **AI panels on detail pages are click-to-generate.** Every `/api/v1/brain/chat` call
+  spends the user's AI credit, so an AI insights panel renders an idle state with an
+  explicit "Generate AI analysis" action and never auto-runs on load. Handle the 402
+  quota response with a locked state + upgrade link (mirroring the Overview AI Finance
+  Summary card), and pass the page's own computed KPI snapshot so the narration cannot
+  disagree with the numbers on screen.
 
 ### 5. Dialog (Confirmation & Alert Popups)
 

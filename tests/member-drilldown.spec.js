@@ -39,7 +39,7 @@ function readCreds(fileName) {
 
 const memberCreds = readCreds('firebase-test-member-account.md');
 const ownerCreds = readCreds('firebase-test-account.md');
-const ROUTES = ['/revenue-overview', '/cash-position', '/cash-pressure', '/opex-budget'];
+const ROUTES = ['/revenue-overview', '/cash-position', '/cash-pressure', '/opex-budget', '/net-profit'];
 
 let cachedOwnerWsId = null;
 

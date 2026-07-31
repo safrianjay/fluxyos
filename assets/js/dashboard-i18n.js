@@ -49,7 +49,14 @@
             'This month': 'Bulan ini', 'Last month': 'Bulan lalu',
             'Year to date': 'Tahun berjalan', 'All time': 'Sepanjang waktu'
         };
-        return map[label] || label;
+        if (map[label]) return map[label];
+        // Some call sites lowercase the label before interpolating it mid-sentence
+        // ("…up to this month"). Match case-insensitively and hand back a
+        // lowercased translation so the sentence still reads naturally.
+        var key = Object.keys(map).filter(function (k) {
+            return k.toLowerCase() === String(label).toLowerCase();
+        })[0];
+        return key ? map[key].toLowerCase() : label;
     }
 
     var ID = {
@@ -155,6 +162,83 @@
         "Money expected to come in within the horizon — open invoices and pending receivables.": "Uang yang diperkirakan masuk dalam horizon — invoice terbuka dan piutang tertunda.",
         "Money expected to go out within the horizon — unpaid bills, renewals, and pending payables (overdue included).": "Uang yang diperkirakan keluar dalam horizon — tagihan belum dibayar, perpanjangan, dan utang tertunda (termasuk yang telah lewat jatuh tempo).",
         "Bank cash plus receivables due minus payables due. Negative means a projected cash shortfall.": "Kas bank ditambah piutang jatuh tempo dikurangi utang jatuh tempo. Negatif berarti proyeksi kekurangan kas.",
+
+        // ── Net Profit page ─────────────────────────────────────────────────
+        "Net Profit": "Laba Bersih",
+        "Net profit": "Laba bersih",
+        "Net profit (period)": "Laba bersih (periode)",
+        "FluxyOS | Net Profit": "FluxyOS | Laba Bersih",
+        "What you kept after every expense, what moved it since last period, and which records drove the result.": "Yang tersisa setelah semua pengeluaran, apa yang menggerakkannya sejak periode lalu, dan catatan mana yang jadi penyebabnya.",
+        "Loading net profit…": "Memuat laba bersih…",
+        "Net profit period": "Periode laba bersih",
+        "Profit trend": "Tren laba",
+        "Net profit per period": "Laba bersih per periode",
+        "Contributors": "Penyumbang",
+        "Expenses": "Pengeluaran",
+        "Profit margin": "Margin laba",
+        "Total expenses": "Total pengeluaran",
+        "Net effect on profit by category — revenue minus expenses.": "Efek bersih terhadap laba per kategori — pendapatan dikurangi pengeluaran.",
+        "What the money went to, largest first.": "Ke mana uang pergi, dari yang terbesar.",
+        "Where the money came from, largest first.": "Dari mana uang berasal, dari yang terbesar.",
+        "Revenue vs expenses": "Pendapatan vs pengeluaran",
+        "How much of the money that came in stayed in.": "Seberapa banyak uang yang masuk dan tetap tinggal.",
+        "Why net profit changed": "Mengapa laba bersih berubah",
+        "From the previous period of equal length to this one.": "Dari periode sebelumnya dengan panjang yang sama ke periode ini.",
+        "Previous net profit": "Laba bersih sebelumnya",
+        "Revenue movement": "Pergerakan pendapatan",
+        "Expense movement": "Pergerakan pengeluaran",
+        "Net profit this period": "Laba bersih periode ini",
+        "Biggest movers by category": "Perubahan terbesar per kategori",
+        "No revenue to measure against": "Tidak ada pendapatan sebagai pembanding",
+        "Comparison by period": "Perbandingan antar periode",
+        "Net profit across recent periods, so a single month is never read in isolation.": "Laba bersih pada beberapa periode terakhir, agar satu bulan tidak dibaca sendirian.",
+        "No comparable periods yet": "Belum ada periode pembanding",
+        "AI insights and recommendations": "Wawasan dan rekomendasi AI",
+        "Fluxy AI reads the numbers on this page and tells you what to do about them.": "Fluxy AI membaca angka di halaman ini dan memberi tahu apa yang perlu Anda lakukan.",
+        "Generate AI analysis": "Buat analisis AI",
+        "Regenerate AI analysis": "Buat ulang analisis AI",
+        "Fluxy AI is analyzing this period…": "Fluxy AI sedang menganalisis periode ini…",
+        "Insights": "Wawasan",
+        "Recommended actions": "Tindakan yang disarankan",
+        "No specific risk stood out for this period.": "Tidak ada risiko khusus yang menonjol pada periode ini.",
+        "You've reached your Fluxy AI limit.": "Anda telah mencapai batas Fluxy AI.",
+        "Your current plan includes a limited number of AI generations. Upgrade to keep using AI analysis.": "Paket Anda saat ini punya jumlah generasi AI yang terbatas. Tingkatkan paket untuk terus memakai analisis AI.",
+        "AI analysis is unavailable right now. The numbers above are unaffected — try again in a moment.": "Analisis AI sedang tidak tersedia. Angka di atas tidak terpengaruh — coba lagi sebentar.",
+        "Profit and loss records": "Catatan laba rugi",
+        "Every record behind this net profit. Click a row to open it in the Ledger.": "Setiap catatan di balik laba bersih ini. Klik baris untuk membukanya di Ledger.",
+        "Search records…": "Cari catatan…",
+        "Search profit and loss records": "Cari catatan laba rugi",
+        "Profit impact": "Dampak ke laba",
+        "No profit or loss records": "Belum ada catatan laba rugi",
+        "No revenue or expenses were recorded in this period.": "Tidak ada pendapatan atau pengeluaran yang tercatat pada periode ini.",
+        "No revenue or expenses recorded in this period yet.": "Belum ada pendapatan atau pengeluaran tercatat pada periode ini.",
+        "No profit or loss records to break down for this period.": "Belum ada catatan laba rugi untuk dirinci pada periode ini.",
+        "No expenses to break down for this period.": "Belum ada pengeluaran untuk dirinci pada periode ini.",
+        "Pick a specific period to compare it against the one before it.": "Pilih periode tertentu untuk membandingkannya dengan periode sebelumnya.",
+        "No records in the previous period of equal length, so there is nothing to compare against yet.": "Tidak ada catatan pada periode sebelumnya dengan panjang yang sama, jadi belum ada pembanding.",
+        "No change vs previous period": "Tidak berubah dibanding periode sebelumnya",
+        "Operating at a loss": "Sedang merugi",
+        "Thin margin": "Margin tipis",
+        "Workable margin": "Margin memadai",
+        "Healthy margin": "Margin sehat",
+        "Net profit could not be opened.": "Laba bersih tidak dapat dibuka.",
+        "Net profit: revenue minus all expenses in the selected period.": "Laba bersih: pendapatan dikurangi seluruh pengeluaran pada periode yang dipilih.",
+        "Revenue minus every expense recorded in the selected period — operating expenses, fees, taxes, and pending payables.": "Pendapatan dikurangi setiap pengeluaran yang tercatat pada periode yang dipilih — beban operasional, biaya, pajak, dan utang tertunda.",
+        "Net profit as a percentage of revenue. Unavailable when no revenue was recorded in the period.": "Laba bersih sebagai persentase dari pendapatan. Tidak tersedia bila tidak ada pendapatan tercatat pada periode itu.",
+        "All income, refunds, and receivables recorded in the selected period, summed as absolute amounts.": "Seluruh pemasukan, refund, dan piutang yang tercatat pada periode yang dipilih, dijumlahkan sebagai nilai absolut.",
+        "All expenses, fees, taxes, and pending payables recorded in the selected period.": "Seluruh pengeluaran, biaya, pajak, dan utang tertunda yang tercatat pada periode yang dipilih.",
+        "No revenue or expenses recorded yet.": "Belum ada pendapatan atau pengeluaran tercatat.",
+
+        // ── Data quality: future-dated records ──────────────────────────────
+        "These sit outside every period total until the dates are corrected.": "Catatan ini berada di luar total periode mana pun sampai tanggalnya diperbaiki.",
+        "Review in Ledger": "Tinjau di Ledger",
+        "Cleanup: dated in the future": "Pembersihan: bertanggal di masa depan",
+        "No future-dated records.": "Tidak ada catatan bertanggal masa depan.",
+        "Nothing in this workspace is dated after today, so every record counts toward its period.": "Tidak ada catatan di ruang kerja ini yang bertanggal setelah hari ini, jadi semua catatan terhitung pada periodenya.",
+        "Back to all transactions": "Kembali ke semua transaksi",
+        "Future-dated": "Bertanggal masa depan",
+        "Dated after today, so it is excluded from every period total.": "Bertanggal setelah hari ini, jadi tidak masuk ke total periode mana pun.",
+        "Fix date": "Perbaiki tanggal",
 
         // ── Sidebar: section labels ──────────────────────────────────────────
         "Command": "Pusat Kendali",
@@ -4285,6 +4369,53 @@
           id: function (m) { return m[1] + m[2] + ' bersih periode ini · ' + m[3] + ' masuk · ' + m[4] + ' keluar'; } },
         { re: /^(\d[\d.,]*)\s+expense records$/i,
           id: function (m) { return m[1] + ' catatan pengeluaran'; } },
+        // Data quality: future-dated records (Overview attention queue).
+        { re: /^(\d[\d.,]*)\s+records?\s+dated in the future$/i,
+          id: function (m) { return m[1] + ' catatan bertanggal di masa depan'; } },
+        { re: /^(Rp[\d.]+)\s+sits outside every period total until the dates are corrected\.$/i,
+          id: function (m) { return m[1] + ' berada di luar total periode mana pun sampai tanggalnya diperbaiki.'; } },
+        // Net Profit page.
+        { re: /^(\d[\d.,]*)\s+profit and loss records?$/i,
+          id: function (m) { return m[1] + ' catatan laba rugi'; } },
+        { re: /^(\d[\d.,]*)\s+(record|revenue record|expense record)s?(\s+in\s+.+?)?\s+for\s+(.+?)\.\s+Click a row to open it in the Ledger\.$/i,
+          id: function (m) {
+              var noun = { 'record': 'catatan', 'revenue record': 'catatan pendapatan', 'expense record': 'catatan pengeluaran' }[m[2].toLowerCase()] || 'catatan';
+              var scope = m[3] ? ' di' + m[3].replace(/^\s+in/i, '') : '';
+              return m[1] + ' ' + noun + scope + ' untuk ' + kpiPeriodID(m[4]) + '. Klik baris untuk membukanya di Ledger.';
+          } },
+        { re: /^([▲▼])\s*([+−-]?Rp[\d.]+)(\s*\([\d.,]+%\))?\s+vs previous period$/i,
+          id: function (m) { return m[1] + ' ' + m[2] + (m[3] || '') + ' dibanding periode sebelumnya'; } },
+        { re: /^([+−-]?Rp[\d.]+)\s+vs previous period$/i,
+          id: function (m) { return m[1] + ' dibanding periode sebelumnya'; } },
+        { re: /^([\d.,]+%)\s+vs previous period$/i,
+          id: function (m) { return m[1] + ' dibanding periode sebelumnya'; } },
+        { re: /^Net profit across the last\s+(months|quarters|years)\s+up to\s+(.+?),\s+so a single period is never read in isolation\.$/i,
+          id: function (m) {
+              var grain = { months: 'bulan', quarters: 'kuartal', years: 'tahun' }[m[1].toLowerCase()] || m[1];
+              return 'Laba bersih pada ' + grain + ' terakhir hingga ' + kpiPeriodID(m[2]).toLowerCase() + ', agar satu periode tidak dibaca sendirian.';
+          } },
+        { re: /^Record revenue or expenses to compare\s+(months|quarters|years)\s+side by side\.$/i,
+          id: function (m) {
+              var grain = { months: 'bulan', quarters: 'kuartal', years: 'tahun' }[m[1].toLowerCase()] || m[1];
+              return 'Catat pendapatan atau pengeluaran untuk membandingkan ' + grain + ' berdampingan.';
+          } },
+        { re: /^Fluxy AI reads the revenue, expenses, net profit, and margin shown above for\s+(.+?)\s+and returns what changed, the main risk, and what to do next\.$/i,
+          id: function (m) { return 'Fluxy AI membaca pendapatan, pengeluaran, laba bersih, dan margin di atas untuk ' + kpiPeriodID(m[1]).toLowerCase() + ' dan menyampaikan apa yang berubah, risiko utamanya, serta langkah berikutnya.'; } },
+        { re: /^Expenses exceed revenue by\s+(Rp[\d.]+)$/i,
+          id: function (m) { return 'Pengeluaran melebihi pendapatan sebesar ' + m[1]; } },
+        { re: /^Expenses exceed revenue by\s+(Rp[\d.]+)\.$/i,
+          id: function (m) { return 'Pengeluaran melebihi pendapatan sebesar ' + m[1] + '.'; } },
+        { re: /^You kept\s+([\d.,]+%)\s+of every rupiah earned$/i,
+          id: function (m) { return 'Anda menyimpan ' + m[1] + ' dari setiap rupiah yang dihasilkan'; } },
+        { re: /^(Revenue|Expenses) (up|down)\s+(Rp[\d.]+)\s+drove most of the change\.$/i,
+          id: function (m) {
+              var what = m[1].toLowerCase() === 'revenue' ? 'Pendapatan' : 'Pengeluaran';
+              return what + ' ' + (m[2].toLowerCase() === 'up' ? 'naik' : 'turun') + ' ' + m[3] + ' jadi penyebab utama perubahan.';
+          } },
+        { re: /^(Rp[\d.]+)\s+revenue against\s+(Rp[\d.]+)\s+expenses\.$/i,
+          id: function (m) { return m[1] + ' pendapatan berbanding ' + m[2] + ' pengeluaran.'; } },
+        { re: /^(Rp[\d.]+)\s+in expenses with no revenue recorded\.$/i,
+          id: function (m) { return m[1] + ' pengeluaran tanpa pendapatan tercatat.'; } },
         // Cash Pressure page.
         { re: /^Next\s+(\d+)\s+days$/i,
           id: function (m) { return m[1] + ' hari ke depan'; } },

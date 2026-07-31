@@ -458,6 +458,7 @@
             'cash-position': 'nav-overview',
             'cash-pressure': 'nav-overview',
             'opex-budget': 'nav-overview',
+            'net-profit': 'nav-overview',
             'ai': 'nav-fluxy-ai',
             'ledger': 'nav-ledger',
             'revenue-sync': 'nav-revenue-sync',

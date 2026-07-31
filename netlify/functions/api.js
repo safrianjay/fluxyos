@@ -382,6 +382,7 @@ function normalizeOverviewKpis(kpis) {
         revenue: num(kpis.revenue),
         revenue_records: num(kpis.revenue_records),
         opex: num(kpis.opex),
+        net_profit: num(kpis.net_profit),
         gross_margin: num(kpis.gross_margin),
         cash_position: num(kpis.cash_position),
         bank_cash: num(kpis.bank_cash),
@@ -2026,6 +2027,7 @@ function buildOverviewSummaryAnswer({ kpis, period, language }) {
     const parts = [];
     if (kpis.revenue !== null) parts.push(id ? `pendapatan ${formatIDR(kpis.revenue)}` : `revenue is ${formatIDR(kpis.revenue)}`);
     if (kpis.opex !== null) parts.push(id ? `OpEx ${formatIDR(kpis.opex)}` : `OpEx is ${formatIDR(kpis.opex)}`);
+    if (kpis.net_profit !== null) parts.push(id ? `laba bersih ${formatSignedIDR(kpis.net_profit)}` : `net profit is ${formatSignedIDR(kpis.net_profit)}`);
     if (margin !== null) parts.push(id ? `margin kotor ${formatPercent(margin)}` : `gross margin is ${formatPercent(margin)}`);
     let direct = id
         ? `Berikut yang saya lihat untuk ${periodLabel}: ${parts.join(', ')}.`
@@ -2044,6 +2046,7 @@ function buildOverviewSummaryAnswer({ kpis, period, language }) {
     answer.key_numbers = [
         kpis.revenue !== null ? keyNumber(id ? 'Pendapatan' : 'Revenue', kpis.revenue, kpis.revenue > 0 ? 'good' : 'warning') : null,
         kpis.opex !== null ? keyNumber('OpEx', kpis.opex, 'neutral') : null,
+        kpis.net_profit !== null ? keyNumber(id ? 'Laba bersih' : 'Net profit', kpis.net_profit, kpis.net_profit < 0 ? 'critical' : 'good', formatSignedIDR) : null,
         margin !== null ? keyNumber(id ? 'Margin kotor' : 'Gross margin', margin, margin < 0 ? 'critical' : margin < 20 ? 'warning' : 'good', formatPercent) : null,
         kpis.cash_position !== null ? keyNumber(id ? 'Posisi kas' : 'Cash position', kpis.cash_position, kpis.cash_position < 0 ? 'critical' : 'neutral', formatSignedIDR) : null,
         kpis.payables ? keyNumber(id ? 'Utang' : 'Payables', kpis.payables, kpis.overdue_count ? 'warning' : 'neutral') : null,

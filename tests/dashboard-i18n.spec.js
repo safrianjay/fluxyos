@@ -21,6 +21,7 @@ const PAGES = /** @type {const} */ ([
     ['invoices.html',               'FluxyOS | Invoice',                      true],
     ['budget.html',                 'FluxyOS | Anggaran',                     true],
     ['revenue-sync.html',           'FluxyOS | Revenue Sync',                 true],
+    ['net-profit.html',             'FluxyOS | Laba Bersih',                  true],
     ['accounting.html',             'FluxyOS | Pusat Akuntansi',              true],
     ['accounting-records.html',     'FluxyOS | Catatan Akuntansi',            true],
     ['accounting-journal-new.html', 'FluxyOS | Jurnal Manual Baru',           true],

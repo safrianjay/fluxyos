@@ -439,6 +439,12 @@
         let ledgerRangeStart = getMonthStartKey();
         let ledgerRangeEnd = getMonthEndKey();
         const linkedLedgerRecordId = new URLSearchParams(window.location.search).get('record');
+        // Data-quality cleanup deep-link from the Overview attention queue
+        // (`/ledger?flag=future_dated`). Future-dated records sit outside every
+        // normal date range, so this mode replaces the range-scoped fetch with a
+        // dedicated one instead of asking the user to hunt for a period that
+        // contains them. Clearing the chip returns the Ledger to normal.
+        let ledgerFutureDatedMode = new URLSearchParams(window.location.search).get('flag') === 'future_dated';
         let linkedLedgerRecordHandled = false;
         let linkedLedgerRecordRow = null;
         let linkedLedgerSearchHandled = false;
@@ -960,7 +966,19 @@
 
         async function getLedgerTransactionsForRange(userId) {
             void LEDGER_LOAD_LIMIT;
+            // Cleanup mode ignores the date range by design — see ledgerFutureDatedMode.
+            if (ledgerFutureDatedMode) return ds.getFutureDatedTransactions(userId);
             return ds.getTransactionsForPeriod(userId, ledgerRangeStart, ledgerRangeEnd, { includeVoided: true });
+        }
+
+        function exitLedgerFutureDatedMode() {
+            if (!ledgerFutureDatedMode) return;
+            ledgerFutureDatedMode = false;
+            const params = new URLSearchParams(window.location.search);
+            params.delete('flag');
+            const qs = params.toString();
+            window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''));
+            window.loadLedger();
         }
 
         // Universal transaction deep-linking: when another page links to a Ledger
@@ -1216,7 +1234,12 @@
                 tableContainer.classList.add('hidden');
                 pagination?.classList.add('hidden');
                 emptyContainer.classList.remove('hidden');
-                window.renderEmptyState('ledger-empty-state', {
+                window.renderEmptyState('ledger-empty-state', ledgerFutureDatedMode ? {
+                    title: "No future-dated records.",
+                    description: "Nothing in this workspace is dated after today, so every record counts toward its period.",
+                    buttonText: "Back to all transactions",
+                    onAction: () => exitLedgerFutureDatedMode()
+                } : {
                     title: ledgerRangeStart === ledgerRangeEnd ? "No transactions for this day." : "No transactions for this period.",
                     description: "Switch dates or log a new expense, income, or finance event for the selected period.",
                     buttonText: "Log First Transaction",
@@ -1403,6 +1426,14 @@
             if (!row) return;
 
             const chips = [];
+            // Cleanup mode leads, because it overrides the date range — the user
+            // must be able to see why the Ledger is not showing their period.
+            if (ledgerFutureDatedMode) {
+                chips.push(renderFilterChip({
+                    kind: 'future_dated',
+                    label: 'Cleanup: dated in the future'
+                }));
+            }
             if (activeLedgerVendorFilter) {
                 chips.push(renderFilterChip({
                     kind: 'vendor',
@@ -1568,6 +1599,18 @@
         }
 
         const LEDGER_ISSUE_DEFS = {
+            // A transaction dated after today. The entry drawer only accepts today
+            // or earlier, so this always came from an import or an external write.
+            // Ranked first because the record is excluded from every period — it is
+            // absent from every report until the date is fixed, which is worse than
+            // a record that reports with a gap.
+            implausibleDate: {
+                label: 'Future-dated',
+                reason: 'Dated after today, so it is excluded from every period total.',
+                badgeClass: 'bg-red-100 text-red-700',
+                dotClass: 'bg-red-500',
+                priority: 0
+            },
             missingReceipt: {
                 label: 'Missing receipt',
                 reason: 'Receipt proof is missing for this record.',
@@ -1597,7 +1640,7 @@
                 priority: 4
             }
         };
-        const LEDGER_ISSUE_ORDER = ['missingReceipt', 'uncategorized', 'pendingApproval', 'unreconciled'];
+        const LEDGER_ISSUE_ORDER = ['implausibleDate', 'missingReceipt', 'uncategorized', 'pendingApproval', 'unreconciled'];
 
         function normalizeLedgerValue(value) {
             return String(value ?? '')
@@ -1674,6 +1717,9 @@
 
         function getLedgerRecordIssues(record) {
             return LEDGER_ISSUE_ORDER.filter(type => {
+                // Delegated to DataService so the Ledger's issue count and the
+                // Overview attention queue can never disagree on what counts.
+                if (type === 'implausibleDate') return ds.isFutureDatedTransaction(record);
                 if (type === 'missingReceipt') return isMissingReceiptIssue(record);
                 if (type === 'uncategorized') return isUncategorizedIssue(record);
                 if (type === 'pendingApproval') return isPendingApprovalIssue(record);
@@ -1691,6 +1737,7 @@
                 totalRiskAmount: 0,
                 hasApprovalSupport: false,
                 hasReconciliationSupport: false,
+                implausibleDate: { count: 0, amount: 0 },
                 missingReceipt: { count: 0, amount: 0 },
                 uncategorized: { count: 0, amount: 0 },
                 pendingApproval: { count: 0, amount: 0 },
@@ -1826,9 +1873,14 @@
 
         function formatAttentionDate(record) {
             const date = record?.timestamp?.toDate?.();
-            return date
-                ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                : 'No date';
+            if (!date) return 'No date';
+            // Show the year whenever it isn't the current one. Without it a
+            // future-dated row rendered as a bare "Jun 15" — hiding the year 9702
+            // that is the entire reason the record is flagged.
+            const sameYear = date.getFullYear() === new Date().getFullYear();
+            return date.toLocaleDateString('en-US', sameYear
+                ? { month: 'short', day: 'numeric' }
+                : { month: 'short', day: 'numeric', year: 'numeric' });
         }
 
         function renderLedgerAttentionEmpty() {
@@ -1883,7 +1935,8 @@
             const def = LEDGER_ISSUE_DEFS[displayType];
             const vendorName = getVendorDisplayName(record);
             const category = String(record?.category ?? '').trim();
-            const actionLabel = displayType === 'missingReceipt' ? 'Attach receipt' : 'Review';
+            const actionLabel = displayType === 'missingReceipt' ? 'Attach receipt'
+                : (displayType === 'implausibleDate' ? 'Fix date' : 'Review');
             const extraIssueCount = item.issues.filter(type => type !== displayType).length;
             const extraIssueCopy = extraIssueCount > 0
                 ? `<span class="text-[10px] font-bold uppercase text-gray-400">+${extraIssueCount} more</span>`
@@ -2281,6 +2334,12 @@
             const kind = btn.dataset.filterClear;
             if (kind === 'vendor') {
                 clearLedgerVendorFilter();
+                return;
+            }
+            if (kind === 'future_dated') {
+                // Refetches on the normal date range, so it reloads rather than
+                // just re-filtering the rows already in memory.
+                exitLedgerFutureDatedMode();
                 return;
             }
             if (kind === 'status') {

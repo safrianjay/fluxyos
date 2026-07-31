@@ -407,10 +407,22 @@ scaffold (`assets/js/kpi-detail-shared.js`). To add another drill-down:
    via `?period&start&end`).
 4. Add a `pageIdMap` entry in `sidebar-loader.js` (before any colliding substring) so
    the route highlights its sidebar owner, and register the page in
-   `scripts/i18n-audit.js` `APP_PAGES`; add Bahasa dictionary/PATTERNS entries.
+   `scripts/i18n-audit.js` `APP_PAGES` **and `scripts/prepare-deploy.js` `APP_PAGES`**
+   (both site builds fail on an unclassified root page); add Bahasa
+   dictionary/PATTERNS entries and re-run `node scripts/i18n-audit.js`.
 5. Deep-link table rows to `/ledger?record=<id>` (existing drawer contract).
-6. Document in `PROJECT_BACKGROUND.md` §3a, `ROADMAP.md`, `CHANGELOG.md`, and add QA
+6. Add the route to the shared drill-down specs: `ROUTES`/`PAGES` in
+   `tests/kpi-drilldown.spec.js`, `ROUTES` in `tests/member-drilldown.spec.js`
+   (workspace-scope safety), and `MIGRATED` in
+   `tests/dashboard-layout-consistency.spec.js` (1540px canvas).
+7. Document in `PROJECT_BACKGROUND.md` §3a, `ROADMAP.md`, `CHANGELOG.md`, and add QA
    coverage.
+
+A drill-down must add *analysis*, not just re-present the card. `net-profit.html` is the
+reference for the richer shape: composition → change bridge → period comparison
+(Month/Quarter/Year) → AI insights → source records. If a KPI has no such analysis to
+offer, route the card at its primary driver instead of cloning the scaffold
+(`DESIGN_SYSTEM.md` §4b).
 
 ### Add a Firestore collection
 

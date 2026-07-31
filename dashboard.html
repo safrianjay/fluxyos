@@ -160,16 +160,18 @@
                                 <div class="metric-pressure-scale"><span>Low</span><span>High</span></div>
                             </article>
 
-                            <article class="metric-cell metric-cell-clickable" data-kpi-nav="payables" role="link" tabindex="0" aria-label="Open Bills to review payables">
+                            <article class="metric-cell metric-cell-clickable" data-tour-target="dashboard-net-profit-kpi" data-kpi-nav="profit" role="link" tabindex="0" aria-label="Open Net profit detail page">
                                 <svg class="metric-drill-chevron h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                                 <div class="metric-label">
-                                    <span>Payables</span>
-                                    <button type="button" class="metric-info" aria-label="Payables: money expected to go out." data-tooltip="Money expected to go out from pending payable records and open obligations in the selected period.">?</button>
+                                    <span>Net profit</span>
+                                    <button type="button" class="metric-info" aria-label="Net profit: revenue minus all expenses in the selected period." data-tooltip="Revenue minus every expense recorded in the selected period — operating expenses, fees, taxes, and pending payables.">?</button>
                                 </div>
                                 <div class="metric-value-row">
-                                    <span id="kpi-payables" class="metric-value tabular-nums">Rp0</span>
+                                    <span id="kpi-net-profit" class="metric-value tabular-nums">Rp0</span>
+                                    <span class="metric-arrow" id="kpi-net-profit-arrow" aria-hidden="true"></span>
                                 </div>
-                                <p id="kpi-payables-sub" class="metric-sub">Loading...</p>
+                                <p id="kpi-net-profit-sub" class="metric-sub">Loading...</p>
+                                <p id="kpi-net-profit-insight" class="metric-sub metric-sub-insight"></p>
                             </article>
                         </section>
 

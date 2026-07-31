@@ -415,6 +415,15 @@ Good features here:
 - AI business summary
 - Financial health score
 
+Rule for this page:
+**One period definition per board.** Every KPI on Overview must answer for the same
+window the period selector names. A card computed from its own unscoped query — even
+when that query is "correct" in isolation — puts two versions of the same figure in
+front of the user and breaks the arithmetic between cards. This is the dashboard
+counterpart of the Reports Page rule below: a number that disagrees with the engine
+its neighbours use is a defect, not a variant. Derived metrics (margin, net profit)
+must be computed from the same dataset as the components displayed beside them.
+
 Avoid here:
 
 - Too much transaction-level detail

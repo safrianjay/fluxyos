@@ -19,7 +19,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 - Bills & payment scheduling
 - SaaS subscription tracking
 - AI-powered financial analyst chat
-- Dashboard KPIs: Revenue, OpEx, Gross Margin, Action Items
+- Dashboard KPIs: Revenue, Cash Position, OpEx vs Budget, Gross Margin, Cash Pressure, Net Profit
 
 ---
 
@@ -55,6 +55,7 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Cash Position (KPI drill-down) | `cash-position.html` | App | ✅ | **No** | ✅ (Overview) |
 | Cash Pressure (KPI drill-down) | `cash-pressure.html` | App | ✅ | **No** | ✅ (Overview) |
 | OpEx & Budget (KPI drill-down) | `opex-budget.html` | App | ✅ | **No** | ✅ (Overview) |
+| Net Profit (KPI drill-down) | `net-profit.html` | App | ✅ | **No** | ✅ (Overview) |
 | Ledger | `ledger.html` | App | ✅ | **No** | ✅ |
 | Revenue Sync | `revenue-sync.html` | App | ✅ | **No** | ✅ |
 | Bills | `bill.html` | App | ✅ | **No** | ✅ |
@@ -99,17 +100,17 @@ FluxyOS design language.
 
 - **Routes (flat, Netlify `pretty_urls` — no redirect needed):** `/revenue-overview`
   (`revenue-overview.html`), `/cash-position` (`cash-position.html`), `/cash-pressure`
-  (`cash-pressure.html`), `/opex-budget` (`opex-budget.html`). Each boots like every
+  (`cash-pressure.html`), `/opex-budget` (`opex-budget.html`), `/net-profit`
+  (`net-profit.html`). Each boots like every
   app page (Firebase + `applyToPage(user, { pageKey: 'overview' })`) and calls its page
-  module init. Two cards reuse existing pages instead of a bespoke drill-down:
+  module init. One card reuses an existing page instead of a bespoke drill-down:
   **Gross margin → `/revenue-overview`** (margin is revenue-driven; a margin page would
-  just re-present Revenue + OpEx) and **Payables → `/bill`** (Bills already lists
-  payables — avoids a duplicate surface).
+  just re-present Revenue + OpEx).
 - **Clickable KPIs:** all six Overview `<article>`s carry `.metric-cell-clickable`
   + `data-kpi-nav` + `role="link"` + `tabindex="0"`. `dashboard.js` `mountKpiDrillNav()`
   navigates on click/Enter/Space. `routes` (period-consuming) append the current
   dashboard range as `?period=<mode>&start=<key>&end=<key>`; `staticRoutes`
-  (`pressure` → `/cash-pressure`, `payables` → `/bill`) navigate plain. Clicks inside a
+  (`pressure` → `/cash-pressure`) navigate plain. Clicks inside a
   `button`/`a` (the "?" info tooltip and bank/budget CTAs) are ignored so those keep
   their own action.
 - **Range persistence (both directions):** dashboard period state is in-memory only, so
@@ -142,7 +143,54 @@ FluxyOS design language.
   transactions, over a **30/60/90-day horizon toggle** (not the historical period
   strip). Projected balance = bank cash + receivables due − payables due; the trend is
   a cumulative runway (`bucketSeries` → `toCumulative(bankCash)`) with overdue items
-  clamped to today.
+  clamped to today. Net Profit — `getTransactionsForDashboardOverview(uid, true)` (one
+  cached all-time read; the period strip, the previous-period bridge, and the
+  month/quarter/year comparison all slice it client-side), split into the same
+  revenue/spend type sets `_calculateOverviewPerformance` uses.
+- **Net Profit specifics (`/net-profit`, `net-profit.js`).** Net profit =
+  `revenue − opex` over the identical type buckets as the Overview
+  (`income`/`revenue`/`refund`/`pending_receivable` minus
+  `expense`/`fee`/`tax`/`pending_payable`), so it is the absolute amount behind the
+  Gross margin KPI and the two can never disagree. Beyond the shared scaffold the page
+  adds: a **revenue-vs-expenses composition**, a **bridge** (previous net profit →
+  revenue movement → expense movement → current, plus the top three category movers), a
+  **comparison-by-period table** with a Month/Quarter/Year grain toggle, and an
+  **AI insights panel**. The AI panel is *click-to-generate* (every `/api/v1/brain/chat`
+  call spends an AI credit) and posts `page_context: 'overview_summary'` with the page's
+  own KPI snapshot — that backend seam narrates the supplied numbers verbatim instead of
+  recomputing, which is what keeps the AI paragraph and the cards above it consistent.
+  Negative money on this page and on the Overview card renders `-Rp…` (red), not
+  parentheses and never a leading `+` — a level, not a delta.
+- **One period definition per board (invariant).** Every Overview KPI must answer for
+  the same window, so `Revenue − OpEx` reconciles with `Net profit` in *every* period
+  mode. This was violated at **All Time**: `getRevenuePeriodRange('all_time')` returned
+  `null`, which `calculateRevenueForRange` reads as "no date filter at all", so
+  future-dated records counted toward the Revenue card while OpEx, Gross margin, Net
+  profit, and every drill-down page (which resolve All Time to `earliest → today`)
+  excluded them — the board showed two different revenue numbers. All Time is
+  **inception-to-date**: open start, end clamped at today
+  (`{ start: new Date(0), end }`). The revenue sparkline anchors its start to the first
+  real record so it doesn't bucket from 1970, and clamps its end at today (it used
+  `max(today, latest record)`, which one future-dated record stretched centuries out).
+  Regression guard: "Overview Net profit reconciles with Revenue − OpEx in every period
+  mode" in `tests/kpi-drilldown.spec.js`. Fixed 2026-07-31.
+- **Future-dated records (data quality).** Correcting the reconciliation above means
+  future-dated transactions are now excluded from every KPI — which would make them
+  *invisible* rather than merely wrong. They are therefore surfaced, not silently
+  filtered. `DataService.isFutureDatedTransaction(tx)` is the single detector (a
+  non-voided transaction whose `_getTransactionDate` is after end-of-today; the Add
+  Transaction drawer only accepts today or earlier, so a future date always came from
+  an import or an external write). It drives three surfaces that therefore cannot
+  drift: (a) `getDashboardOverview` → `actionItems.futureDatedRecords` +
+  `overview.dataQuality.futureDated {count, amount, furthest}`, rendered as an Overview
+  attention-queue row — deliberately **not** period-scoped, since these sit outside
+  every period; (b) `/ledger?flag=future_dated`, a cleanup mode that replaces the
+  range-scoped fetch with `DataService.getFutureDatedTransactions` (a normal date range
+  can never contain them) and shows a removable "Cleanup" chip; (c) the Ledger's
+  `implausibleDate` issue type, so the Trust Score, clean count, at-risk amount, and
+  the "Needs your attention" panel all account for them — before this, a ledger of
+  records dated in the year 9702 read "100% · 41/41 clean". Regression guard:
+  `tests/data-quality-future-dated.spec.js`. Added 2026-08-01.
 - **Trend chart robustness (`renderTrendChart`/`bucketSeries`):** month/quarter ranges
   trim empty leading/trailing buckets (so All Time isn't padded with a flat zero tail —
   the fix for the line diving to Rp0 at the right edge), and the x-axis thins to ~10

@@ -90,7 +90,7 @@ test('Overview selector rescopes the dashboard and preserves Revenue context', a
 
     const revenueCardText = await page.locator('[data-tour-target="dashboard-revenue-kpi"]').textContent();
     expect(revenueCardText).not.toMatch(/NaN|Infinity|undefined/i);
-    await expect(page.locator('#kpi-opex, #kpi-margin, #kpi-bank-cash, #kpi-cash-pressure, #kpi-payables')).toHaveCount(5);
+    await expect(page.locator('#kpi-opex, #kpi-margin, #kpi-bank-cash, #kpi-cash-pressure, #kpi-net-profit')).toHaveCount(5);
     expect(consoleErrors).toEqual([]);
 });
 

@@ -4,7 +4,7 @@ const { installTrialPaywallBypass } = require('./qa-helpers');
 
 /**
  * QA: Dashboard KPI drill-down pages (Revenue Overview / Cash Position /
- * OpEx & Budget) + the clickable Overview KPI cards.
+ * OpEx & Budget / Net Profit) + the clickable Overview KPI cards.
  *
  * Read-only — reuses the page's authenticated Firebase session; never writes.
  * Verifies: each page boots to its content (no fatal error), renders a KPI
@@ -14,10 +14,14 @@ const { installTrialPaywallBypass } = require('./qa-helpers');
  */
 
 const PAGES = [
-    { key: 'revenue', route: '/revenue-overview', kpis: '#revenue-kpis', trend: '#revenue-trend', body: '#revenue-table-body', dims: ['category', 'source', 'business'] },
-    { key: 'cash', route: '/cash-position', kpis: '#cash-kpis', trend: '#cash-trend', body: '#cash-table-body', dims: ['accounts', 'flow', 'upcoming'] },
-    { key: 'opex', route: '/opex-budget', kpis: '#opex-kpis', trend: '#opex-trend', body: '#opex-table-body', dims: ['categories', 'allocations', 'over'] },
+    { key: 'revenue', route: '/revenue-overview', picker: '#revenue-date-range-picker', kpis: '#revenue-kpis', trend: '#revenue-trend', body: '#revenue-table-body', dims: ['category', 'source', 'business'] },
+    { key: 'cash', route: '/cash-position', picker: '#cash-date-range-picker', kpis: '#cash-kpis', trend: '#cash-trend', body: '#cash-table-body', dims: ['accounts', 'flow', 'upcoming'] },
+    { key: 'opex', route: '/opex-budget', picker: '#opex-date-range-picker', kpis: '#opex-kpis', trend: '#opex-trend', body: '#opex-table-body', dims: ['categories', 'allocations', 'over'] },
+    { key: 'profit', route: '/net-profit', picker: '#profit-date-range-picker', kpis: '#profit-kpis', trend: '#profit-trend', body: '#profit-table-body', dims: ['contributors', 'expenses', 'revenue'] },
 ];
+
+// Every drill-down route, for the cross-cutting scope + responsive checks.
+const ROUTES = PAGES.map((p) => p.route).concat('/cash-pressure');
 
 test.beforeEach(async ({ page }) => {
     await installTrialPaywallBypass(page);
@@ -59,7 +63,7 @@ for (const p of PAGES) {
         expect(infoCount, 'a "?" info button on every KPI cell').toBe(cellCount);
 
         // Custom period reveals the date-range picker.
-        const pickerHost = page.locator(`#${p.key === 'cash' ? 'cash' : p.key === 'opex' ? 'opex' : 'revenue'}-date-range-picker`);
+        const pickerHost = page.locator(p.picker);
         await page.locator('[data-kpi-period="custom"]').click();
         await expect(page.locator('[data-kpi-period="custom"]')).toHaveClass(/is-active/);
         await expect(pickerHost).toBeVisible();
@@ -114,7 +118,7 @@ test('All Time trend thins x-axis labels (no overlap smear)', async ({ page }) =
     expect(shownLabels).toBeLessThanOrEqual(11);
 });
 
-test('Overview margin/pressure/payables cards route correctly', async ({ page }) => {
+test('Overview margin/pressure/profit cards route correctly', async ({ page }) => {
     await page.goto('/dashboard');
     await page.waitForSelector('[data-kpi-nav="margin"]', { timeout: 25_000 });
     await page.locator('[data-kpi-nav="margin"] .metric-value').click();
@@ -125,10 +129,148 @@ test('Overview margin/pressure/payables cards route correctly', async ({ page })
     await page.locator('[data-kpi-nav="pressure"]').click();
     await page.waitForURL(/\/cash-pressure/, { timeout: 15_000 });
 
+    // Net profit replaced Payables on the Overview and owns its own detail page.
     await page.goto('/dashboard');
-    await page.waitForSelector('[data-kpi-nav="payables"]', { timeout: 25_000 });
-    await page.locator('[data-kpi-nav="payables"]').click();
-    await page.waitForURL(/\/bill/, { timeout: 15_000 });
+    await page.waitForSelector('[data-kpi-nav="profit"]', { timeout: 25_000 });
+    await expect(page.locator('[data-kpi-nav="payables"]')).toHaveCount(0);
+    await page.locator('[data-kpi-nav="profit"] .metric-value').click();
+    await page.waitForURL(/\/net-profit/, { timeout: 15_000 });
+    expect(new URL(page.url()).searchParams.get('period')).toBeTruthy();
+});
+
+// One period definition per board: every Overview KPI must answer for the same
+// window, so Revenue − OpEx must reconcile with Net profit in EVERY period mode.
+// This is the regression guard for the All Time bug where the Revenue card ran
+// unfiltered (`getRevenuePeriodRange('all_time')` returned null = no date filter)
+// and counted future-dated records that OpEx / Gross margin / Net profit and the
+// drill-down pages all excluded — the board showed two different revenue numbers.
+test('Overview Net profit reconciles with Revenue − OpEx in every period mode', async ({ page }) => {
+    const parseRp = (text) => {
+        const negative = /^-/.test((text || '').trim());
+        const digits = (text || '').replace(/[^\d]/g, '');
+        return (negative ? -1 : 1) * Number(digits || 0);
+    };
+    const rows = [];
+    for (const mode of ['this_month', 'last_month', 'year_to_date', 'all_time']) {
+        await page.goto('/dashboard?period=' + mode);
+        await page.waitForSelector('[data-kpi-nav="profit"]', { timeout: 25_000 });
+        // Wait for the KPIs to resolve past their Rp0 loading state.
+        await expect.poll(
+            async () => (await page.locator('#kpi-net-profit-sub').textContent() || '').trim(),
+            { timeout: 25_000 }
+        ).not.toBe('Loading...');
+
+        const revenue = parseRp(await page.locator('#kpi-revenue').textContent());
+        const opex = parseRp(await page.locator('#kpi-opex').textContent());
+        const netProfit = parseRp(await page.locator('#kpi-net-profit').textContent());
+        rows.push(`${mode}: ${revenue} - ${opex} = ${revenue - opex} (card ${netProfit})`);
+        expect(netProfit, `${mode}: net profit = revenue − OpEx`).toBe(revenue - opex);
+
+        // The detail page must land on the same figure it was clicked from.
+        await page.goto(`/net-profit?period=${mode}`);
+        await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });
+        await page.waitForTimeout(800);
+        const headline = parseRp(await page.locator('#profit-headline').textContent());
+        expect(headline, `${mode}: detail page agrees with the Overview card`).toBe(netProfit);
+
+        // Never leak a NaN/undefined through the formatters.
+        const cardText = await page.locator('#kpi-content').textContent();
+        expect(cardText, `${mode}: no formatter leak`).not.toMatch(/NaN|Infinity|undefined/i);
+    }
+    console.log('RECONCILIATION\n' + rows.join('\n'));
+});
+
+test('Overview Net profit card states why it moved', async ({ page }) => {
+    await page.goto('/dashboard');
+    await page.waitForSelector('[data-kpi-nav="profit"]', { timeout: 25_000 });
+    await expect.poll(
+        async () => (await page.locator('#kpi-net-profit-sub').textContent() || '').trim(),
+        { timeout: 25_000 }
+    ).not.toBe('Loading...');
+    const cardText = await page.locator('[data-kpi-nav="profit"]').textContent();
+    expect(cardText).not.toMatch(/NaN|Infinity|undefined/i);
+    expect((await page.locator('#kpi-net-profit-insight').textContent() || '').trim().length).toBeGreaterThan(0);
+});
+
+test('net profit: comparison grain + record scope toggles work', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/net-profit?period=this_month');
+    await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });
+
+    // Revenue-vs-expenses composition and the bridge both render something.
+    expect((await page.locator('#profit-composition').innerHTML()).trim().length).toBeGreaterThan(0);
+    expect((await page.locator('#profit-bridge').innerHTML()).trim().length).toBeGreaterThan(0);
+
+    for (const grain of ['quarter', 'year', 'month']) {
+        await page.locator(`[data-comparison-grain="${grain}"]`).click();
+        await expect(page.locator(`[data-comparison-grain="${grain}"]`)).toHaveClass(/is-active/);
+        await expect(page.locator('#profit-comparison-body tr').first()).toBeVisible();
+    }
+
+    for (const scope of ['revenue', 'expense', 'all']) {
+        await page.locator(`[data-record-scope="${scope}"]`).click();
+        await expect(page.locator(`[data-record-scope="${scope}"]`)).toHaveClass(/is-active/);
+        await expect(page.locator('#profit-table-body tr').first()).toBeVisible();
+    }
+
+    // The AI panel is click-to-generate (each call spends a credit) — it must
+    // never auto-run on load.
+    await expect(page.locator('#profit-ai-generate')).toBeVisible();
+    expect(errors, 'no uncaught errors on /net-profit').toEqual([]);
+});
+
+// The AI answer + quota paths are stubbed: the QA static server does not proxy
+// /api/v1, and a live call would spend a real AI credit. Stubbing keeps both
+// branches deterministic and free.
+test('net profit: AI panel renders an answer, and the quota-locked state', async ({ page }) => {
+    const errors = trackErrors(page);
+
+    await page.route('**/api/v1/brain/chat', (route) => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+            success: true,
+            answer: {
+                direct_answer: 'Net profit for this month is Rp4.000.000.',
+                insights: [{ title: 'Expenses climbing', description: 'Infrastructure spend doubled.', severity: 'warning' }],
+                recommended_actions: [{ title: 'Review Infrastructure', description: 'Open the biggest three vendors.', priority: 'high' }],
+                limitations: ['This mirrors your Net Profit page for the selected period.'],
+            },
+            usage: { scope: 'plan', used: 3, limit: 20, remaining: 17 },
+        }),
+    }));
+
+    await page.goto('/net-profit?period=this_month');
+    await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });
+    await page.locator('#profit-ai-generate').click();
+    await expect(page.locator('#profit-ai-body')).toContainText('Net profit for this month is Rp4.000.000.');
+    await expect(page.locator('#profit-ai-body')).toContainText('Expenses climbing');
+    await expect(page.locator('#profit-ai-body')).toContainText('Review Infrastructure');
+    await expect(page.locator('#profit-ai-body')).toContainText('17');
+    await expect(page.locator('#profit-ai-generate')).toContainText('Regenerate AI analysis');
+
+    // Changing the period resets the panel to idle — a stale narration must never
+    // sit above a different period's numbers.
+    await page.locator('[data-kpi-period="last_month"]').click();
+    await expect(page.locator('#profit-ai-body')).not.toContainText('Net profit for this month is Rp4.000.000.');
+    await expect(page.locator('#profit-ai-generate')).toContainText('Generate AI analysis');
+
+    // Quota exhausted → locked state + upgrade link, and the button is hidden.
+    await page.unroute('**/api/v1/brain/chat');
+    await page.route('**/api/v1/brain/chat', (route) => route.fulfill({
+        status: 402,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: false, error: { code: 'ai_limit_reached', message: 'limit' } }),
+    }));
+    await page.locator('#profit-ai-generate').click();
+    await expect(page.locator('#profit-ai-body')).toContainText("You've reached your Fluxy AI limit.");
+    await expect(page.locator('#profit-ai-body a[href="/settings-billing"]')).toBeVisible();
+    await expect(page.locator('#profit-ai-generate')).toBeHidden();
+
+    // The stubbed 402 makes the browser log its own "Payment Required" resource
+    // error — that response is the scenario under test, not a defect.
+    const unexpected = errors.filter((e) => !/402 \(Payment Required\)/.test(e));
+    expect(unexpected, 'no uncaught errors from the AI panel').toEqual([]);
 });
 
 test('dashboard Upcoming rows deep-link to the record', async ({ page }) => {
@@ -208,7 +350,7 @@ test('detail pages resolve the workspace before finance reads (member-safety)', 
     // the workspace is resolved (_scope falls back to workspaces/{memberUid}).
     // Every drill-down must have workspace mode on + a resolved workspace id by
     // the time it renders content.
-    for (const route of ['/revenue-overview', '/cash-position', '/cash-pressure', '/opex-budget']) {
+    for (const route of ROUTES) {
         await page.goto(route);
         await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });
         const scope = await page.evaluate(() => ({
@@ -222,7 +364,7 @@ test('detail pages resolve the workspace before finance reads (member-safety)', 
 
 test('detail pages have no page-level horizontal overflow at 375px', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 800 });
-    for (const route of ['/revenue-overview', '/cash-position', '/cash-pressure', '/opex-budget']) {
+    for (const route of ROUTES) {
         await page.goto(route);
         await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

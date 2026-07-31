@@ -52,6 +52,7 @@ window.FluxyAIContext?.register?.(() => {
         { label: 'Period', value: periodLabel },
         { label: 'Revenue', value: text('kpi-revenue') || '—' },
         { label: 'OpEx', value: text('kpi-opex') || '—' },
+        { label: 'Net profit', value: text('kpi-net-profit') || '—' },
         { label: 'Gross margin', value: text('kpi-margin') || '—' },
         { label: 'Cash pressure', value: text('kpi-cash-pressure') || '—' },
     ];
@@ -203,10 +204,10 @@ function mountDashboardPeriodControls() {
 // period. Clicks on the inner "?" info button or a CTA (bank/budget setup) keep
 // their own behavior and must not navigate.
 function mountKpiDrillNav() {
-    // margin → Revenue (gross margin is revenue-driven); payables → Bills (that
-    // page already lists payables); pressure → its own forward-looking page.
-    const routes = { revenue: '/revenue-overview', cash: '/cash-position', opex: '/opex-budget', margin: '/revenue-overview' };
-    const staticRoutes = { pressure: '/cash-pressure', payables: '/bill' };
+    // margin → Revenue (gross margin is revenue-driven); profit → its own
+    // detail page; pressure → its own forward-looking page.
+    const routes = { revenue: '/revenue-overview', cash: '/cash-position', opex: '/opex-budget', margin: '/revenue-overview', profit: '/net-profit' };
+    const staticRoutes = { pressure: '/cash-pressure' };
     const buildUrl = (key) => {
         if (staticRoutes[key]) return staticRoutes[key]; // period range doesn't apply to these
         const base = routes[key];
@@ -292,7 +293,7 @@ function renderOverviewLoadingState() {
     updateKPI('kpi-bank-cash', 'Rp0');
     updateKPI('kpi-ledger-cash', 'Rp0');
     updateKPI('kpi-ledger-cash-sub', 'Loading...');
-    updateKPI('kpi-payables', 'Rp0');
+    updateKPI('kpi-net-profit', 'Rp0');
     updateKPI('kpi-revenue-change', 'Loading...');
     updateKPI('revenue-scope-label', getRevenuePeriodLabel(dashboardPeriodMode));
     updateKPI('revenue-record-count', 'Loading...');
@@ -306,7 +307,8 @@ function renderOverviewLoadingState() {
     updateKPI('kpi-bank-cash-coverage', 'Not available');
     updateKPI('kpi-opex-budget-used', '0%');
     updateKPI('kpi-opex-budget-total', 'Rp0');
-    updateKPI('kpi-payables-sub', 'Loading...');
+    updateKPI('kpi-net-profit-sub', 'Loading...');
+    updateKPI('kpi-net-profit-insight', '');
     setBudgetBar(0);
     setPressureMeter(0, 'low');
     setHtml('needs-attention-content', '<div class="overview-card-loading">Loading action items...</div>');
@@ -335,7 +337,7 @@ function renderOverviewErrorState() {
     updateKPI('kpi-bank-cash', 'Rp0');
     updateKPI('kpi-ledger-cash', 'Rp0');
     updateKPI('kpi-ledger-cash-sub', 'No cash transactions yet');
-    updateKPI('kpi-payables', 'Rp0');
+    updateKPI('kpi-net-profit', 'Rp0');
     updateKPI('kpi-revenue-change', 'No data');
     updateKPI('revenue-record-count', 'Revenue records unavailable');
     updateKPI('revenue-secondary-value', 'Unavailable');
@@ -347,7 +349,9 @@ function renderOverviewErrorState() {
     updateKPI('kpi-bank-cash-coverage', 'Not available');
     updateKPI('kpi-opex-budget-used', '0%');
     updateKPI('kpi-opex-budget-total', 'Rp0');
-    updateKPI('kpi-payables-sub', 'No records found');
+    updateKPI('kpi-net-profit-sub', 'No records found');
+    updateKPI('kpi-net-profit-insight', '');
+    renderMetricArrow('kpi-net-profit-arrow', null, 'revenue');
     setBudgetBar(0);
     setPressureMeter(0, 'low');
     toggleKpiCta('bank-cash-cta', true);
@@ -373,7 +377,6 @@ function renderSummaryBoard(overview, ledgerCash = {}) {
     const margin = safeNumber(p.grossMargin);
 
     updateKPI('kpi-margin', `${formatNumber(margin, 1)}%`);
-    updateKPI('kpi-payables', formatIDR(rp.payablesTotal));
 
     dashboardKpis.grossMargin = margin;
     dashboardKpis.payables = safeNumber(rp.payablesTotal);
@@ -384,7 +387,7 @@ function renderSummaryBoard(overview, ledgerCash = {}) {
     renderMarginStatus(margin, p.marginChangePct);
     renderMetricArrow('kpi-margin-arrow', p.marginChangePct, 'revenue');
 
-    renderPayablesSub(rp, actions);
+    renderNetProfitCell(p);
 
     const bar = document.getElementById('kpi-margin-bar');
     if (bar) bar.style.width = `${Math.max(0, Math.min(100, margin))}%`;
@@ -612,21 +615,71 @@ function setPressureMeter(pct, risk) {
     meter.className = `metric-pressure-fill ${tone}`;
 }
 
-function renderPayablesSub(rp, actions) {
-    const sub = document.getElementById('kpi-payables-sub');
-    if (!sub) return;
-    const overdue = Number(actions.overdueBills || 0);
-    const count = Number(rp.payableCount || 0);
-    if (overdue > 0) {
-        sub.textContent = `${overdue} overdue bill${overdue === 1 ? '' : 's'}`;
-        sub.className = 'metric-sub is-bad';
-    } else if (count === 0) {
-        sub.textContent = 'No records expected out.';
-        sub.className = 'metric-sub';
-    } else {
-        sub.textContent = `${count} record${count === 1 ? '' : 's'} expected out.`;
-        sub.className = 'metric-sub';
+// Net profit KPI: the amount, the period-over-period change with a trend arrow,
+// and one short sentence naming what actually moved it. Revenue and OpEx come
+// from the same performance object, so the card can never disagree with the
+// Revenue / OpEx / Gross margin cards beside it.
+function renderNetProfitCell(performance) {
+    const netProfit = safeNumber(performance.netProfit);
+    const changePct = performance.netProfitChangePct;
+    const hasComparison = changePct !== null && changePct !== undefined && Number.isFinite(Number(changePct));
+
+    // A level, not a delta — so no leading "+". A loss renders "-Rp…" (and red),
+    // the same convention the Net Profit detail page uses.
+    updateKPI('kpi-net-profit', netProfit < 0 ? `-${formatIDR(netProfit)}` : formatIDR(netProfit));
+    dashboardKpis.netProfit = netProfit;
+
+    const value = document.getElementById('kpi-net-profit');
+    if (value) value.className = `metric-value tabular-nums ${netProfit < 0 ? 'is-bad' : ''}`.trim();
+
+    // A loss growing larger is "down" even though the percentage is positive, so
+    // the arrow follows the money, not the sign of the ratio.
+    const previous = safeNumber(performance.previousNetProfit);
+    const direction = hasComparison ? netProfit - previous : null;
+    renderMetricArrow('kpi-net-profit-arrow', direction, 'revenue');
+
+    const sub = document.getElementById('kpi-net-profit-sub');
+    if (sub) {
+        if (!hasComparison) {
+            sub.textContent = 'No previous period data';
+            sub.className = 'metric-sub';
+        } else if (Math.abs(Number(changePct)) < 0.1) {
+            sub.textContent = 'Flat vs previous period';
+            sub.className = 'metric-sub is-neutral';
+        } else {
+            sub.textContent = `${Math.abs(Number(changePct)).toFixed(1)}% vs previous period`;
+            sub.className = `metric-sub ${direction >= 0 ? 'is-good' : 'is-bad'}`;
+        }
     }
+
+    updateKPI('kpi-net-profit-insight', buildNetProfitInsight(performance, netProfit, hasComparison));
+}
+
+// One-sentence "why": attribute the swing to the revenue side or the expense
+// side when there is a previous period, otherwise state the margin position.
+function buildNetProfitInsight(performance, netProfit, hasComparison) {
+    const revenue = safeNumber(performance.revenue);
+    const opex = safeNumber(performance.opex);
+    if (revenue === 0 && opex === 0) return 'No revenue or expenses recorded yet.';
+
+    if (hasComparison) {
+        const revenueDelta = revenue - safeNumber(performance.previousRevenue);
+        const opexDelta = opex - safeNumber(performance.previousOpex);
+        if (Math.abs(revenueDelta) >= Math.abs(opexDelta) && Math.abs(revenueDelta) > 0) {
+            return revenueDelta > 0
+                ? `Revenue up ${formatIDR(revenueDelta)} drove most of the change.`
+                : `Revenue down ${formatIDR(Math.abs(revenueDelta))} drove most of the change.`;
+        }
+        if (Math.abs(opexDelta) > 0) {
+            return opexDelta > 0
+                ? `Expenses up ${formatIDR(opexDelta)} drove most of the change.`
+                : `Expenses down ${formatIDR(Math.abs(opexDelta))} drove most of the change.`;
+        }
+    }
+
+    if (netProfit < 0) return `Expenses exceed revenue by ${formatIDR(Math.abs(netProfit))}.`;
+    if (revenue > 0) return `${formatIDR(revenue)} revenue against ${formatIDR(opex)} expenses.`;
+    return `${formatIDR(opex)} in expenses with no revenue recorded.`;
 }
 
 function updateBudgetCaption() {
@@ -828,7 +881,7 @@ function renderCashFlowChart() {
 
 function buildAttentionCache(overview) {
     const items = buildAttentionItems(overview);
-    const needsReview = items.filter(item => ['overdue', 'missing_receipt'].includes(item.kind));
+    const needsReview = items.filter(item => ['overdue', 'missing_receipt', 'future_dated'].includes(item.kind));
     attentionItemsCache = {
         all: items,
         needs_review: needsReview,
@@ -843,7 +896,8 @@ const ATTENTION_ICONS = {
     missing_receipt: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 2.5h7.5L15.5 5.5V17a.5.5 0 0 1-.78.42l-1.47-.97-1.5 1-1.5-1-1.5 1-1.5-1-1.47.97A.5.5 0 0 1 5 17V2.5Z"/><path d="M8 8h4"/><path d="M8 11h2.5"/></svg>',
     opex_spike: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 13.5 7 9l3 3 5-5.5"/><path d="M11.5 6.5h4v4"/></svg>',
     bill_due_soon: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.75" y="4" width="14.5" height="13" rx="2"/><path d="M2.75 8h14.5"/><path d="M6.5 2.5v3"/><path d="M13.5 2.5v3"/><path d="M10 11v2l1.5 1"/></svg>',
-    renewal: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10a6.5 6.5 0 0 1 11.1-4.6l1.9 1.9"/><path d="M16.5 3.5v4h-4"/><path d="M16.5 10a6.5 6.5 0 0 1-11.1 4.6L3.5 12.7"/><path d="M3.5 16.5v-4h4"/></svg>'
+    renewal: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10a6.5 6.5 0 0 1 11.1-4.6l1.9 1.9"/><path d="M16.5 3.5v4h-4"/><path d="M16.5 10a6.5 6.5 0 0 1-11.1 4.6L3.5 12.7"/><path d="M3.5 16.5v-4h4"/></svg>',
+    future_dated: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.75" y="4" width="14.5" height="13" rx="2"/><path d="M2.75 8h14.5"/><path d="M6.5 2.5v3"/><path d="M13.5 2.5v3"/><path d="M10 10.5v2.25"/><path d="M10 15.25h.01"/></svg>'
 };
 
 function buildAttentionItems(overview) {
@@ -868,6 +922,24 @@ function buildAttentionItems(overview) {
             description: 'Missing receipts reduce confidence in reports and tax-ready records.',
             action: 'Open Ledger',
             href: '/ledger?search=Missing%20Receipt'
+        });
+    }
+    // Data-quality: records dated after today. They fall outside every period, so
+    // they are silently absent from every KPI — this queue row is the only place
+    // the user learns they exist.
+    if (actions.futureDatedRecords) {
+        const n = Number(actions.futureDatedRecords);
+        const dq = overview.dataQuality?.futureDated || {};
+        const amount = Number(dq.amount) || 0;
+        items.push({
+            kind: 'future_dated',
+            iconKind: 'warning',
+            title: `${n} record${n === 1 ? '' : 's'} dated in the future`,
+            description: amount > 0
+                ? `${formatIDR(amount)} sits outside every period total until the dates are corrected.`
+                : 'These sit outside every period total until the dates are corrected.',
+            action: 'Review in Ledger',
+            href: '/ledger?flag=future_dated'
         });
     }
     if (actions.highOpexIncrease) {
@@ -1083,6 +1155,7 @@ function buildAiBusinessSummarySnapshot(overview = {}) {
             revenue: numberOrNull(dashboardKpis.revenue),
             revenue_records: numberOrNull(dashboardKpis.revenueRecords),
             opex: numberOrNull(dashboardKpis.opex),
+            net_profit: numberOrNull(dashboardKpis.netProfit),
             gross_margin: numberOrNull(dashboardKpis.grossMargin),
             cash_position: numberOrNull(dashboardKpis.cashPosition),
             bank_cash: numberOrNull(dashboardKpis.bankCash),
@@ -1337,7 +1410,14 @@ function getRevenuePeriodRange(periodKey, now = new Date()) {
             end
         };
     }
-    if (periodKey === 'all_time') return null;
+    // "All time" is inception-to-DATE: the start is open, but the end is always
+    // today. This used to return null, which `calculateRevenueForRange` reads as
+    // "no date filter at all" — so future-dated records counted toward the
+    // Revenue card while every other KPI (OpEx, Gross margin, Net profit, and the
+    // drill-down pages, all of which resolve All Time to `earliest → today`)
+    // excluded them. The board then showed two different revenue numbers and
+    // Revenue − OpEx no longer reconciled with Net profit.
+    if (periodKey === 'all_time') return { start: new Date(0), end };
     if (periodKey === 'custom') {
         const start = parseDayKey(dashboardRangeStart);
         const rangeEnd = parseDayKey(dashboardRangeEnd);
@@ -1443,7 +1523,11 @@ function formatRevenueRecordCount(count) {
 
 function renderRevenueSparkline(records = [], periodKey = 'this_month') {
     let range = getRevenuePeriodRange(periodKey);
-    if (!range) {
+    // All Time now spans from the epoch, so anchor the sparkline to the first
+    // real record rather than bucketing from 1970. The end stays clamped at
+    // today — it previously used max(today, latest record), which a single
+    // future-dated record stretched centuries into the future.
+    if (periodKey === 'all_time' || !range) {
         const datedRecords = records
             .map(tx => getTxDate(tx))
             .filter(date => date instanceof Date && !Number.isNaN(date.getTime()));
@@ -1452,9 +1536,7 @@ function renderRevenueSparkline(records = [], periodKey = 'this_month') {
             start: datedRecords.length
                 ? new Date(Math.min(...datedRecords.map(date => date.getTime())))
                 : new Date(today.getFullYear(), today.getMonth(), 1),
-            end: datedRecords.length
-                ? new Date(Math.max(today.getTime(), ...datedRecords.map(date => date.getTime())))
-                : today
+            end: today
         };
     }
     const buckets = buildCashflowBuckets(records, getDayKey(range.start), getDayKey(range.end), { monthly: 0 });

@@ -136,7 +136,10 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 6 | User display name and avatar appear in sidebar bottom section |
 | 7 | Sign Out button logs out and redirects to `/login` |
 | 8 | Fluxy AI sidebar/header button opens/closes the chat drawer |
-| 9 | Dashboard KPI cards load: Revenue, OpEx, Margin (with progress bar), Needs Action |
+| 9 | Dashboard KPI cards load: Revenue, Cash position, OpEx vs budget, Gross margin (with progress bar), Cash pressure, Net profit |
+| 9b2 | **One period definition per board.** Every Overview KPI answers for the same window. Step through **This Month / Last Month / YTD / All Time** and confirm by arithmetic that `Revenue − OpEx = Net profit` on the cards, and that Gross margin equals `Net profit ÷ Revenue`, in *every* mode — **All Time included**. A card that ignores the period selector while its neighbours honour it is a defect, not a variant. All Time means inception-to-**date**: future-dated records must not count anywhere. Automated guard: "Overview Net profit reconciles with Revenue − OpEx in every period mode" (`tests/kpi-drilldown.spec.js`) |
+| 9b3 | **Future-dated record cleanup.** If the workspace has transactions dated after today, the Overview attention queue shows one "N records dated in the future" row whose count matches the workspace (not the selected period — these sit outside every period). Clicking it opens `/ledger?flag=future_dated`, which loads exactly those N records regardless of the date picker, shows a removable "Cleanup: dated in the future" chip, and lists them in "Needs your attention" under a **Future-dated** tab with a **Fix date** action. The Trust Score must NOT read 100%/all-clean while they exist, and the attention rows must show the year (`Jun 15, 9702`, not `Jun 15`). Clearing the chip returns the Ledger to the normal date range. With a clean workspace, no queue row and no chip appear. Automated guard: `tests/data-quality-future-dated.spec.js` |
+| 9c | **Net profit KPI** — the card reads `Rp…` (or `-Rp…` in red for a loss), never `+Rp…`. Confirm by arithmetic that `Net profit = Revenue − OpEx` from the cards beside it in every period mode. The comparison line shows `N% vs previous period` with a matching up/down arrow (or `No previous period data` when the preceding equal-length window is empty), and the second line names what moved it ("Revenue up Rp… drove most of the change."). No `NaN`, `Infinity`, or `undefined` on any period. Clicking the card opens `/net-profit` carrying `?period&start&end`; the "?" info button does **not** navigate. There is no Payables KPI card on the Overview (Payables by category stays in the right rail) |
 | 9a | Overview selector defaults to `This Month`; `Last Month`, `YTD`, `All Time`, and `Custom` rescope the full Overview view without a page reload. Revenue shows all-time revenue as secondary context except in All Time mode, where it shows this-month revenue. Scope text and revenue record count stay visible; no `NaN`, `Infinity`, `undefined`, or blank KPI values |
 | 9b | Overview Bank Cash Balance card keeps the order: current balance, update source/timestamp, 30-day outlook and coverage, then a bottom sparkline rendered from user-scoped `bank_balance_snapshots`. The sparkline uses the same green area-line treatment as Revenue; one real snapshot renders as a flat baseline, not a lone dot or invented movement. Add two different balance updates on the same day and confirm both real snapshot points remain visible in the trend |
 | 10 | Ledger table renders rows OR shows empty state (never blank/broken) |
@@ -312,6 +315,26 @@ CSS changes. See [DESIGN_SYSTEM.md → Numeric & currency format (strict)](../do
 | 3 | Currency has **no space after `Rp`** everywhere: `Rp1.000`, `Rp0`, `(Rp1.000.000)` — KPIs, tables, cards, drawers, CSV-adjacent labels, empty/zero states |
 | 4 | No regression in amount parsing (input still formats with dots; stored value is raw integer) |
 | 5 | Marketing/landing prices are out of scope for this app rule unless explicitly swept; note any intentionally-skipped pages |
+
+### D9. KPI Drill-Down Detail Pages (revenue-overview / cash-position / cash-pressure / opex-budget / net-profit, kpi-detail-shared.js)
+
+Run whenever a drill-down page, `kpi-detail-shared.js`, or an Overview KPI card
+changes. Automated coverage: `npx playwright test tests/kpi-drilldown.spec.js`
+(capture the real exit code — never trust a piped `tail`).
+
+| # | Check |
+|---|-------|
+| 1 | Each route boots to `#kpi-content` (loading + error slots hidden), renders its KPI strip with a `?` tooltip on every cell, a trend chart (or the documented empty state), and a records table with rows or an empty state — never a raw placeholder |
+| 2 | The period strip rescopes every section without a page reload; `Custom` reveals the shared `FluxyDateRangePicker`; the URL keeps `?period&start&end` so a reload restores the range |
+| 3 | "Back to Overview" (topbar link and breadcrumb) returns to `/dashboard` **on the same period**, not This Month |
+| 4 | Breakdown dimension toggles switch cleanly; clicking a breakdown row filters the records table and shows a removable chip; clearing the chip restores the full table |
+| 5 | Table rows deep-link to `/ledger?record=<id>` (or the owning page) and open that record's detail view; CSV export is access-gated and flashes `Exported ✓` |
+| 6 | No page-level horizontal scroll at 375px (`document.documentElement.scrollWidth === clientWidth`); All Time thins x-axis labels rather than smearing them |
+| 7 | Workspace-scope safety — sign in as an **invited member** and confirm each route shows the same figures as the owner, not zeros (`window.FLUXY_WORKSPACE_MODE === true` and a resolved `FluxyWorkspace.id` before the first finance read) |
+| 8 | Console clean on every route (no CSP, CORS, 404, or Firebase errors) |
+| 9 | **Net Profit** — headline and KPI strip agree with the Overview card; revenue-vs-expenses composition and the change bridge (previous net profit → revenue movement → expense movement → this period) render, and the bridge shows its documented empty state on All Time or when the previous window is empty. Month/Quarter/Year grain toggles all render comparison rows. Record scope (All / Revenue / Expenses) narrows the table and the subtitle count matches the rows |
+| 10 | **Net Profit AI panel** — nothing is generated on load (each call spends an AI credit); "Generate AI analysis" produces a narration whose figures match the cards above it, the button becomes "Regenerate AI analysis", and changing the period resets the panel to idle. On a quota-exhausted account the panel shows the locked state + Upgrade link instead of an answer, and the button is hidden |
+| 11 | Bahasa check — switch Settings → Language to Indonesian and re-open each route: page title, section headers, KPI labels, breakdown hints, table subtitles, and the comparison subtitle are translated (no English leaks). `node scripts/i18n-audit.js` reports **0 English gaps** for the page and its JS module |
 
 ### E. Add Transaction / Bill / Subscription (shared-dashboard.js, db-service.js)
 

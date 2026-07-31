@@ -1503,6 +1503,21 @@ class DataService {
         return this._getRecordsForPeriod(userId, 'transactions', startKey, endKey, options);
     }
 
+    // Every transaction dated after today — the cleanup view behind
+    // /ledger?flag=future_dated, reached from the Overview attention queue.
+    // Shares `isFutureDatedTransaction` with the Overview count so the queue
+    // badge and the rows the Ledger renders can never disagree. Voided records
+    // are excluded on both sides (`_activeTransactions` + the detector).
+    async getFutureDatedTransactions(userId) {
+        const today = new Date();
+        const rows = await this.getTransactionsForPeriod(
+            userId,
+            this._getDayKey(this._addDays(today, 1)),
+            '9999-12-31'
+        ).catch(() => []);
+        return rows.filter(tx => this.isFutureDatedTransaction(tx, today));
+    }
+
     async getBillsForPeriod(userId, startKey, endKey) {
         return this._getRecordsForPeriod(userId, 'bills', startKey, endKey);
     }
@@ -8754,6 +8769,13 @@ class DataService {
         performance.marginChangePct = hasPreviousPeriodData && previousPerformance.revenue > 0
             ? performance.grossMargin - previousPerformance.grossMargin
             : null;
+        // Net profit comparison. The previous absolutes travel too so the Overview
+        // card can say *why* profit moved (revenue side vs expense side) without a
+        // second period query.
+        performance.netProfitChangePct = hasPreviousPeriodData ? this._safePercentChange(performance.netProfit, previousPerformance.netProfit) : null;
+        performance.previousRevenue = hasPreviousPeriodData ? previousPerformance.revenue : null;
+        performance.previousOpex = hasPreviousPeriodData ? previousPerformance.opex : null;
+        performance.previousNetProfit = hasPreviousPeriodData ? previousPerformance.netProfit : null;
 
         const now = new Date();
         now.setHours(0, 0, 0, 0);
@@ -8769,6 +8791,14 @@ class DataService {
         const missingReceipts = periodTransactions.filter(tx => tx.status === 'Missing Receipt');
         const pendingReceivables = periodTransactions.filter(tx => String(tx.type || '').toLowerCase() === 'pending_receivable');
         const pendingPayables = periodTransactions.filter(tx => String(tx.type || '').toLowerCase() === 'pending_payable');
+        // Data quality — transactions dated after today. The Add Transaction drawer
+        // only accepts today or earlier, so a future transaction date always came
+        // from an import or an external write and is a defect. These sit outside
+        // EVERY period, so they are excluded from every KPI and the user would
+        // never discover them without this: deliberately NOT period-scoped.
+        // (`transactions` is ordered timestamp DESC, so future-dated records sort
+        // first and are always inside the fetched window.)
+        const futureDatedTransactions = this._findFutureDatedTransactions(transactions);
 
         const upcomingBills = [...overdueBills, ...billsDueSoon]
             .filter((bill, index, arr) => arr.findIndex(item => item.id === bill.id) === index)
@@ -8794,9 +8824,12 @@ class DataService {
             overdueBills: overdueBills.length,
             billsDueSoon: billsDueSoon.length,
             renewalsSoon: renewalsSoon.length,
+            futureDatedRecords: futureDatedTransactions.length,
             highOpexIncrease: performance.opexChangePct !== null && performance.opexChangePct >= 25
         };
         if (actionItems.highOpexIncrease) actionItems.total += 1;
+        // Counted as one queue item (a group), like the OpEx spike — not one per record.
+        if (actionItems.futureDatedRecords) actionItems.total += 1;
 
         const overview = {
             period: {
@@ -8867,6 +8900,15 @@ class DataService {
         overview.reportReadiness = this._buildReportReadiness(
             missingReceipts, overdueBills
         );
+        overview.dataQuality = {
+            futureDated: {
+                count: futureDatedTransactions.length,
+                amount: this._sumAmounts(futureDatedTransactions),
+                furthest: futureDatedTransactions.length
+                    ? this._getDayKey(new Date(Math.max(...futureDatedTransactions.map(tx => this._getTransactionDate(tx).getTime()))))
+                    : null
+            }
+        };
 
         const [bankCashRaw, monthlyBudget] = await Promise.all([
             this._getBankCashSnapshot(userId),
@@ -11280,6 +11322,25 @@ class DataService {
         };
     }
 
+    // Data-quality detector shared by the Overview attention queue and the Ledger
+    // cleanup filter, so the count in the queue always matches the rows the
+    // Ledger shows. A transaction dated after today is a defect: the entry drawer
+    // only accepts today or earlier, and the record is excluded from every period
+    // (and therefore from every KPI) until its date is corrected.
+    // Voided records are ignored — they are already out of every total.
+    isFutureDatedTransaction(tx, now = new Date()) {
+        if (!tx || tx.is_voided) return false;
+        const endOfToday = new Date(now);
+        endOfToday.setHours(23, 59, 59, 999);
+        const date = this._getTransactionDate(tx);
+        return !!date && date > endOfToday;
+    }
+
+    _findFutureDatedTransactions(transactions = []) {
+        const now = new Date();
+        return transactions.filter(tx => this.isFutureDatedTransaction(tx, now));
+    }
+
     _isTransactionInPeriod(tx, startKey, endKey) {
         const date = this._getTransactionDate(tx);
         if (!date) return false;
@@ -11426,14 +11487,24 @@ class DataService {
             if (['revenue', 'income', 'refund', 'pending_receivable'].includes(type)) revenue += amount;
             else if (['expense', 'fee', 'tax', 'pending_payable'].includes(type)) opex += amount;
         });
-        const grossMargin = revenue > 0 ? ((revenue - opex) / revenue) * 100 : 0;
+        // Net profit is the absolute money the margin percentage is derived from:
+        // revenue minus every spend-side type (expense, fee, tax, pending payable).
+        // Keep the two in lockstep — grossMargin is netProfit expressed as a share
+        // of revenue, so they can never disagree on the Overview.
+        const netProfit = revenue - opex;
+        const grossMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
         return {
             revenue,
             opex,
+            netProfit,
             grossMargin: Number.isFinite(grossMargin) ? grossMargin : 0,
             revenueChangePct: null,
             opexChangePct: null,
-            marginChangePct: null
+            marginChangePct: null,
+            netProfitChangePct: null,
+            previousRevenue: null,
+            previousOpex: null,
+            previousNetProfit: null
         };
     }
 

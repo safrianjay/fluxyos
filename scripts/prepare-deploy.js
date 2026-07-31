@@ -83,6 +83,7 @@ const APP_PAGES = [
     'invoices.html',
     'ledger.html',
     'login.html',
+    'net-profit.html',
     'onboarding.html',
     'opex-budget.html',
     'payment-pending.html',

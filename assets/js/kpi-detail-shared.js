@@ -376,6 +376,10 @@ export function renderTrendChart(containerId, opts = {}) {
     const n = points.length;
     const measured = Math.max(320, Math.round(host.clientWidth || 680));
     const width = measured;
+    // The viewBox width is floored at 320 so the geometry stays sane, but the
+    // x-axis labels are real HTML laid out in the *actual* pixels available —
+    // budget them against that, minus the fixed 64px y-axis column + 8px gap.
+    const labelTrackPx = Math.max(0, Math.round(host.clientWidth || measured) - 72);
 
     const values = points.map(p => Number(p.value) || 0);
     let yMax = Math.max(...values, 0);
@@ -441,15 +445,37 @@ export function renderTrendChart(containerId, opts = {}) {
         </div>
         <div class="mt-1.5 flex gap-2">
             <div class="w-16 flex-shrink-0"></div>
-            <div class="flex-1 flex">
+            <div class="relative flex-1 h-4">
                 ${(() => {
                     // Thin x-axis labels so a long range (many weeks/months/quarters)
                     // doesn't overlap into an unreadable smear. Show ~10 evenly, plus
-                    // always the last. Empty slots keep the spacing aligned to points.
-                    const stride = Math.max(1, Math.ceil(n / 10));
+                    // always the last.
+                    //
+                    // Each shown label is positioned absolutely at its point's x
+                    // fraction rather than sharing a flex row with one slot per
+                    // bucket. A per-bucket flex slot is only `plotWidth / n` wide, so
+                    // past ~30 buckets every label collapsed to a single truncated
+                    // character ("Q1 2026" → "C"). Absolute placement lets a label
+                    // take its natural width while staying anchored to its point.
+                    // How many labels actually fit is a function of the plot's real
+                    // width, not just the bucket count — a narrow panel has room for
+                    // ~3, a desktop one for ~9. Deriving the stride from both is what
+                    // keeps a long range from overlapping into a smear.
+                    const maxLabels = Math.max(2, Math.min(10, Math.floor(labelTrackPx / 68)));
+                    const stride = Math.max(1, Math.ceil(n / maxLabels));
+                    // Room reserved for the edge-pinned first/last labels. A thinned
+                    // label landing inside it would collide with them (the pinned
+                    // label sits at the edge, not at its own x).
+                    const edgeGuardPx = Math.min(60, width / 6);
                     return pts.map((p, i) => {
-                        const show = (i % stride === 0) || i === n - 1;
-                        return `<span class="flex-1 text-center text-[10px] text-gray-400 truncate">${show ? escapeHtml(p.label) : ''}</span>`;
+                        if ((i % stride !== 0) && i !== n - 1) return '';
+                        if (i !== 0 && i !== n - 1 && (p.x < edgeGuardPx || width - p.x < edgeGuardPx)) return '';
+                        // The first/last labels anchor to the plot edges so they can
+                        // never overflow the container; the rest centre on their point.
+                        const place = i === 0
+                            ? 'left:0;'
+                            : (i === n - 1 ? 'right:0;' : `left:${((p.x / width) * 100).toFixed(2)}%; transform: translateX(-50%);`);
+                        return `<span class="absolute top-0 text-[10px] text-gray-400 truncate" style="${place}">${escapeHtml(p.label)}</span>`;
                     }).join('');
                 })()}
             </div>

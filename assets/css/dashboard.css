@@ -1126,6 +1126,10 @@
     white-space: nowrap;
 }
 
+/* A KPI whose value can legitimately be negative (Net profit) turns red rather
+   than relying on the minus sign alone. */
+.metric-value.is-bad { color: #DC2626; }
+
 .metric-arrow {
     position: absolute;
     top: 46px;
@@ -1165,6 +1169,15 @@
 .metric-sub.is-good { color: #047857; }
 .metric-sub.is-bad { color: #DC2626; }
 .metric-sub.is-neutral { color: #6B7280; }
+
+/* Second sub-line under a KPI: the short "why" sentence that follows the
+   period-over-period comparison (Net profit). Deliberately quieter than the
+   comparison line so the hierarchy stays value → change → context. */
+.metric-sub-insight {
+    margin-top: 4px;
+    color: #9CA3AF;
+    font-weight: 500;
+}
 
 .metric-comparison-row {
     display: flex;

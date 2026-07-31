@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Net Profit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="/assets/css/platform-learning.css">
+    <style>
+        body { font-family: Inter, sans-serif; }
+        .kpi-breadcrumb a:hover { color: #EA580C; }
+        /* Revenue vs expenses composition bars — proportional to the larger side
+           so the gap between the two reads as the profit (or the loss). */
+        .np-bar-track { height: 10px; border-radius: 999px; background: #F1F5F9; overflow: hidden; }
+        .np-bar-fill { height: 100%; border-radius: 999px; }
+        /* Bridge rows: previous profit → revenue move → expense move → current. */
+        .np-bridge-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #F1F5F9; }
+        .np-bridge-row:last-child { border-bottom: 0; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="min-h-16 bg-white border-b border-gray-200 flex flex-wrap items-center justify-between px-6 py-3 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-4">
+            <div class="flex items-center gap-4 min-w-0">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <a data-dashboard-back href="/dashboard" class="inline-flex items-center gap-2 text-[14px] font-semibold text-gray-500 hover:text-gray-900 transition-colors min-w-0">
+                    <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    <span class="truncate">Back to Overview</span>
+                </a>
+            </div>
+            <div class="flex items-center gap-3 flex-wrap">
+                <div class="kpi-period-controls" data-kpi-period-strip aria-label="Net profit period">
+                    <button type="button" data-kpi-period="this_month" class="kpi-period-btn is-active">This Month</button>
+                    <button type="button" data-kpi-period="last_month" class="kpi-period-btn">Last Month</button>
+                    <button type="button" data-kpi-period="year_to_date" class="kpi-period-btn">YTD</button>
+                    <button type="button" data-kpi-period="all_time" class="kpi-period-btn">All Time</button>
+                    <button type="button" data-kpi-period="custom" class="kpi-period-btn">Custom</button>
+                </div>
+                <div id="profit-date-range-picker" style="display:none"></div>
+                <button onclick="window.toggleFluxyAI()" data-tour-target="fluxy-ai-entry" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-[#EA580C] border border-orange-100 rounded-lg text-[14px] font-bold hover:bg-orange-100 transition-all shadow-sm group">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Fluxy AI
+                </button>
+            </div>
+        </header>
+
+        <div class="fluxy-page-shell">
+            <div class="fluxy-page-canvas">
+
+                <div id="kpi-loading" class="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center text-[14px] text-gray-400">
+                    Loading net profit…
+                </div>
+
+                <div id="kpi-error" class="hidden"></div>
+
+                <div id="kpi-content" class="hidden space-y-6">
+                    <!-- Header -->
+                    <section>
+                        <nav class="kpi-breadcrumb flex items-center gap-1.5 text-[12px] text-gray-400">
+                            <a data-dashboard-back href="/dashboard" class="hover:text-gray-700">Overview</a>
+                            <span>/</span>
+                            <span class="text-gray-600 font-semibold">Net Profit</span>
+                        </nav>
+                        <div class="mt-2 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                            <div class="min-w-0">
+                                <h1 class="text-2xl leading-tight font-bold tracking-tight text-gray-900">Net Profit</h1>
+                                <p class="mt-1 text-[13px] text-gray-500">What you kept after every expense, what moved it since last period, and which records drove the result.</p>
+                            </div>
+                            <div class="text-left lg:text-right flex-shrink-0">
+                                <p class="text-[11px] uppercase tracking-wide text-gray-400" id="profit-period-label">This month</p>
+                                <p class="text-2xl font-bold tracking-tight text-gray-900 tabular-nums" id="profit-headline">Rp0</p>
+                                <p class="mt-0.5 text-[12px] font-semibold" id="profit-compare">—</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- KPI strip -->
+                    <section id="profit-kpis" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"></section>
+
+                    <!-- Trend + breakdown -->
+                    <section class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.9fr)]">
+                            <div class="p-5 sm:p-6 xl:border-r border-gray-100 min-w-0">
+                                <div class="flex items-center justify-between gap-3">
+                                    <h2 class="text-[12px] font-semibold uppercase tracking-wide text-gray-600">Profit trend</h2>
+                                    <p class="text-[12px] text-gray-400">Net profit per period</p>
+                                </div>
+                                <div id="profit-trend" class="mt-5 min-w-0"></div>
+                            </div>
+                            <div class="p-5 sm:p-6 min-w-0">
+                                <div class="flex items-center justify-between gap-3">
+                                    <h2 class="text-[12px] font-semibold uppercase tracking-wide text-gray-600">Breakdown</h2>
+                                    <div class="inline-flex items-center gap-1 rounded-lg bg-gray-50 border border-gray-200 p-0.5">
+                                        <button type="button" data-breakdown-dim="contributors" class="kpi-dim-btn is-active px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Contributors</button>
+                                        <button type="button" data-breakdown-dim="expenses" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Expenses</button>
+                                        <button type="button" data-breakdown-dim="revenue" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Revenue</button>
+                                    </div>
+                                </div>
+                                <p id="profit-breakdown-hint" class="mt-2 text-[12px] text-gray-400">Net effect on profit by category — revenue minus expenses.</p>
+                                <div id="profit-breakdown" class="mt-2 -mx-5 sm:-mx-6 max-h-[280px] overflow-y-auto"></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Revenue vs expenses + why it changed -->
+                    <section class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div class="grid grid-cols-1 xl:grid-cols-2">
+                            <div class="p-5 sm:p-6 xl:border-r border-gray-100 min-w-0">
+                                <h2 class="text-[12px] font-semibold uppercase tracking-wide text-gray-600">Revenue vs expenses</h2>
+                                <p class="mt-1 text-[12px] text-gray-400">How much of the money that came in stayed in.</p>
+                                <div id="profit-composition" class="mt-5"></div>
+                            </div>
+                            <div class="p-5 sm:p-6 min-w-0">
+                                <h2 class="text-[12px] font-semibold uppercase tracking-wide text-gray-600">Why net profit changed</h2>
+                                <p class="mt-1 text-[12px] text-gray-400">From the previous period of equal length to this one.</p>
+                                <div id="profit-bridge" class="mt-4"></div>
+                                <div id="profit-movers" class="mt-4"></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Period comparison -->
+                    <section class="fluxy-table-card">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">Comparison by period</h2>
+                                <p class="fluxy-table-subtitle" id="profit-comparison-subtitle">Net profit across recent periods, so a single month is never read in isolation.</p>
+                            </div>
+                            <div class="fluxy-table-actions">
+                                <div class="inline-flex items-center gap-1 rounded-lg bg-gray-50 border border-gray-200 p-0.5">
+                                    <button type="button" data-comparison-grain="month" class="kpi-dim-btn is-active px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Month</button>
+                                    <button type="button" data-comparison-grain="quarter" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Quarter</button>
+                                    <button type="button" data-comparison-grain="year" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Year</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="fluxy-table-scroll">
+                            <table class="fluxy-table min-w-[760px]">
+                                <thead>
+                                    <tr class="fluxy-table-header">
+                                        <th>Period</th>
+                                        <th class="fluxy-table-money">Revenue</th>
+                                        <th class="fluxy-table-money">Expenses</th>
+                                        <th class="fluxy-table-money">Net profit</th>
+                                        <th class="fluxy-table-money">Margin</th>
+                                        <th class="fluxy-table-money">Change</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="profit-comparison-body"></tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- AI insights -->
+                    <section class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div class="flex flex-col gap-3 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                            <div class="min-w-0">
+                                <h2 class="text-[12px] font-semibold uppercase tracking-wide text-gray-600">AI insights and recommendations</h2>
+                                <p class="mt-1 text-[12px] text-gray-400">Fluxy AI reads the numbers on this page and tells you what to do about them.</p>
+                            </div>
+                            <button id="profit-ai-generate" type="button" class="flex-shrink-0 inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-2 text-[13px] font-bold text-white hover:bg-slate-800 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                <span data-ai-btn-label>Generate AI analysis</span>
+                            </button>
+                        </div>
+                        <div id="profit-ai-body" class="p-5 sm:p-6"></div>
+                    </section>
+
+                    <!-- Supporting table -->
+                    <section class="fluxy-table-card">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">Profit and loss records</h2>
+                                <p class="fluxy-table-subtitle" id="profit-table-subtitle">Every record behind this net profit. Click a row to open it in the Ledger.</p>
+                                <button id="profit-filter-clear" type="button" class="hidden mt-2 items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-[11px] font-bold text-gray-600 hover:bg-gray-100 transition-colors">
+                                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-[#EA580C]"></span>
+                                    <span id="profit-filter-clear-label">Filtered</span>
+                                    <span class="text-gray-400" aria-hidden="true">✕</span>
+                                </button>
+                            </div>
+                            <div class="fluxy-table-actions">
+                                <div class="inline-flex items-center gap-1 rounded-lg bg-gray-50 border border-gray-200 p-0.5">
+                                    <button type="button" data-record-scope="all" class="kpi-dim-btn is-active px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">All</button>
+                                    <button type="button" data-record-scope="revenue" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Revenue</button>
+                                    <button type="button" data-record-scope="expense" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Expenses</button>
+                                </div>
+                                <input id="profit-search" type="search" placeholder="Search records…" class="px-3 py-2 border border-gray-200 rounded-lg text-[13px] w-full sm:w-56" aria-label="Search profit and loss records">
+                                <button id="profit-export" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95">Export CSV</button>
+                            </div>
+                        </div>
+                        <div class="fluxy-table-scroll">
+                            <table class="fluxy-table min-w-[880px]">
+                                <thead>
+                                    <tr class="fluxy-table-header">
+                                        <th><button type="button" data-kpi-sort="date" class="inline-flex items-center gap-1">Date <span data-sort-icon></span></button></th>
+                                        <th>Description</th>
+                                        <th><button type="button" data-kpi-sort="category" class="inline-flex items-center gap-1">Category <span data-sort-icon></span></button></th>
+                                        <th>Type</th>
+                                        <th class="fluxy-table-money"><button type="button" data-kpi-sort="impact" class="inline-flex items-center gap-1">Profit impact <span data-sort-icon></span></button></th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="profit-table-body"></tbody>
+                            </table>
+                        </div>
+                        <div id="profit-pagination" class="fluxy-table-pagination hidden flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 sm:px-6 py-3 border-t border-gray-100">
+                            <p id="profit-page-summary" class="text-[12px] font-medium text-gray-500">Showing 0 records</p>
+                            <div class="flex items-center gap-2">
+                                <button id="profit-prev-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+                                <span id="profit-page-indicator" class="min-w-16 text-center text-[12px] font-bold text-gray-600">1 / 1</span>
+                                <button id="profit-next-page" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script src="/assets/js/sidebar-loader.js"></script>
+    <script src="/assets/js/shared-dashboard.js"></script>
+    <script src="/assets/js/dashboard-i18n.js"></script>
+    <script src="/assets/js/fluxy-select.js"></script>
+    <script src="/assets/js/date-range-picker.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from '/assets/js/db-service.js';
+        import { applyToPage } from '/assets/js/onboarding-gate.js';
+        import { initNetProfitPage } from '/assets/js/net-profit.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.replace('/login');
+                return;
+            }
+            const gated = await applyToPage(user, { pageKey: 'overview' });
+            if (gated) return;
+            initNetProfitPage({ ds, user, auth });
+        });
+    </script>
+</body>
+</html>
