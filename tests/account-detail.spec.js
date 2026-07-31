@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { openAccountingTab } = require('./helpers/accounting-nav');
 
 // Authenticated browser check for the Account Detail page
 // (accounting-account.html + accounting-account.js), reached from the
@@ -23,7 +24,7 @@ test('CoA account name links to Account Detail; page renders summary + history w
     // Open Accounting Center and switch to the Chart of Accounts tab.
     await page.goto('/accounting.html');
     await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
-    await page.locator('[data-acct-tab="coa"]').click();
+    await openAccountingTab(page, 'coa');
 
     // Account names are links into the detail page.
     const firstLink = page.locator('#coa-content a.acct-link').first();

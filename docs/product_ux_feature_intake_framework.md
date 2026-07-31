@@ -458,6 +458,40 @@ Avoid here:
 - Profit/loss dashboard
 - Business performance duplication from Overview
 
+### Accounting Center
+
+Purpose:
+The books themselves — double-entry records, financial statements, and month-end close.
+
+Main questions:
+
+- Are my books correct and do they tie out?
+- What did the ledger actually post, and from which source record?
+- Can I close this period?
+- What must I fix before I can close?
+
+Good features here:
+
+- Financial statements (Income Statement, Balance Sheet, Cash Flow)
+- Aging (A/R and A/P)
+- Journals, General Ledger, Trial Balance
+- Chart of accounts and posting/mapping configuration
+- Close checklist, period lock and reopen
+- Cleanup queue
+
+Avoid here:
+
+- A second version of a statement that already exists elsewhere
+- Transaction-basis figures presented as accounting output
+- Business-performance dashboards duplicating Overview
+- Report packaging and distribution (that is the Reports Page)
+
+Boundary rule:
+Accounting Center is where you **view and work on** the books. Reports Page is where
+you **package and send** them. Every number in the Accounting Center must derive from
+`ledger_balances` so it ties to the Trial Balance by construction. Full IA and
+rationale: `docs/ACCOUNTING_CENTER_IA.md`.
+
 ### Reports Page
 
 Purpose:
@@ -477,6 +511,12 @@ Good features here:
 - Tax-ready export
 - PDF/CSV export
 - Period comparison
+
+Avoid here:
+
+- Authoring a new statement computation — source statements from the accounting
+  engines rather than recomputing them (three separate P&L implementations already
+  exist because this rule was not written down; see `docs/ACCOUNTING_CENTER_IA.md` §3.2)
 
 ### Settings Page
 

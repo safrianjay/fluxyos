@@ -64,7 +64,6 @@ FluxyOS is a **financial operations platform** for Indonesian businesses. It con
 | Accounting Center | `accounting.html` | App | ✅ | **No** | ✅ |
 | Accounting Records | `accounting-records.html` | App | ✅ | **No** | ✅ |
 | Reports & Exports | `reports.html` | App | ✅ | **No** | ✅ |
-| Balance Sheet | `balance-sheet.html` | App | ✅ | **No** | ✅ |
 | Report Preview (viewer) | `report-preview.html` | App | ✅ | **No** | No |
 | Integrations | `integration.html` | App | ✅ | **No** | ✅ |
 | Settings (index) | `settings.html` | App | ✅ | **No** | ✅ |
@@ -88,7 +87,7 @@ invoices, financial statements) wraps its scroll content in the shared container
 and Bills are the baseline; Budgets (`budget.html`, `budget-period.html`,
 `budget-allocation.html`) and Invoices (`invoices.html`) follow it. Do not
 introduce a page-specific content width (`max-w-7xl`/custom) on a data-heavy page
-without a documented exception (`balance-sheet.html` is the one exception). Full
+without a documented exception (there are currently none). Full
 rule in [DESIGN_SYSTEM.md → Dashboard Content Width Standard](DESIGN_SYSTEM.md).
 
 ### 3a. Dashboard KPI drill-down pages
@@ -1258,11 +1257,63 @@ updates the same doc instead of duplicating.
 immutable on update; field-validated by `isValidAccountingMapping`. Saving writes an
 audit log (`accounting_mapping.created`/`.updated`, target `accounting_mappings`).
 
-**Accounting Center.** `accounting.html` + `assets/js/accounting.js`. The
-**primary tab is the Income Statement Preview** (a deterministic P&L); readiness
-is a supporting **report confidence** banner + KPI. Tabs are **Income Statement /
-Journals / General Ledger / Trial Balance / Statements / Chart of Accounts /
-Aging / Cleanup / Account Mapping / Close**.
+**Accounting Center.** `accounting.html` + `assets/js/accounting.js`. Navigation is
+**two-level** (shipped 2026-07-29, `docs/ACCOUNTING_CENTER_IA.md` Phase 1): a primary
+group row (`.acct-tabs`, `data-acct-group`) over a child view row (`.acct-subtabs`,
+`data-acct-tab` + `data-acct-parent`). Panel ids are unchanged.
+
+| Group | Views (`data-acct-tab`) |
+|-------|-------------------------|
+| **Reports** | `income` · `balance` · `cashflow` · `aging` |
+| **Ledger** | `journals` · `ledger` · `trial` |
+| **Setup** | `coa` · `mapping` · `vendors` |
+| **Close** | `close` · `cleanup` |
+
+Groups follow the accounting funnel rather than ship order. Child buttons for
+inactive groups carry the `hidden` attribute — **Playwright specs must route through
+`tests/helpers/accounting-nav.js` `openAccountingTab()`**, never click
+`[data-acct-tab=…]` directly. Views are linkable via `?tab=<id>`; `setTab()` resolves
+the owning group, so cross-page drill-downs (`drillToLedger`) activate both levels.
+Default landing is Reports → Income Statement. The cleanup count shows on its own
+view and rolls up to the Close group badge.
+
+**Close gate (2026-07-31).** "All entries posted to the ledger" is backed by
+`DataService.countUnpostedSources`, not `countPendingPostings` — the latter matches
+`accounting_status:'pending'` only, so a **never-queued** source (no flag at all) was
+invisible and periods could be closed over an incomplete ledger. Terminal states are
+`'posted'` **and** `'excluded'`; invoice-linked sources are reported as `deferred`
+(surfaced, never blocking, since `INV-PAY` cannot post while `INV-ISSUE` is unwired).
+`closePeriod()` enforces the same rule server-side — the UI gate mirrors it. The
+remedy is `postUnpostedSources()`, exposed as "Post N unposted entries" on the Close
+panel and folded into the Journals banner; it shares `_collectUnpostedSources()` with
+the gate so the two cannot drift. Historical/multi-workspace gaps still go through
+`docs/LEDGER_BACKFILL_RUNBOOK.md`.
+
+**Statements are ledger-derived and load eagerly** with the page, because the KPI
+strip reads the same `getFinancialStatements` result — strip, statement, and Trial
+Balance therefore cannot disagree. The Income Statement carries a comparison column
+(equal-length preceding window) and drills account line → General Ledger → Journal
+Detail → source. `getIncomeStatementPreview` is **no longer a statement source**; it
+remains the readiness/confidence source only.
+
+> ⚠️ **Phase 2 is code-complete but NOT cleared for cutover.** On the QA workspace
+> the ledger reports a Rp379m loss where the retired preview reported a Rp4.2bn
+> profit, because **160 of 182 income transactions have no journal** (`pendingPostings
+> = 0` — absent, not queued). Integrity checks pass (IS net income == Trial Balance,
+> delta Rp0), so this is a data gap, not an engine bug. **The QA backfill has since
+> RUN** (2026-07-29): coverage 85.7% → 96.9%, tie-out Rp0, and July net income moved
+> from a Rp379m loss to a Rp1.05bn profit. The residual gap is the known unwired
+> `INV-ISSUE` rule (23 invoice-linked txns).
+>
+> **Fix procedure: `docs/LEDGER_BACKFILL_RUNBOOK.md`** (`backfill-journals.js` →
+> `backfill-journal-numbers.js` → `reconcile-ledger-balances.js`; all dry-run by
+> default). Measure with **`scripts/ledger-coverage-report.js`** (authoritative) —
+> not `listJournals`, which caps at `max:200` and filters period client-side.
+> **Real user workspaces are still unbackfilled** (Beila 5.4%, Get-Pipeline 0%) and
+> must be resolved before cutover. `docs/ACCOUNTING_CENTER_IA.md` Phase 2.
+>
+> A third P&L still exists at `/reports` and a second Balance Sheet at
+> `/reports`. Read the IA doc before adding any statement.
 
 The **Statements** tab is the ledger-derived Income Statement + Balance Sheet
 (`DataService.getFinancialStatements`, pure `assets/js/statements-engine.js`).
@@ -1360,40 +1411,21 @@ categories are treated as unmapped until a mapping is saved.
 **Sidebar route:** `Accounting Center` → `/accounting`, under the Reporting group in
 `sidebar-loader.js` (active id `nav-accounting`).
 
-**Balance Sheet (Phase 1 Management View).** `balance-sheet.html` + `assets/js/balance-sheet.js`
-render a standalone authenticated report under Reporting. It is a point-in-time
-management view based on existing FluxyOS records, not a formal accounting-grade
-balance sheet. The UI uses **Net Position** instead of Equity because FluxyOS does
-not yet have opening balances, retained earnings, owner capital, journal entries,
-or a full chart of accounts.
+**Balance Sheet — RETIRED (2026-07-29).** The standalone `balance-sheet.html` /
+`balance-sheet-records.html` pages and `assets/js/balance-sheet*.js` are **deleted**.
+Both paths 301 to `/accounting?tab=balance` (`deploy/_redirects.app` +
+`netlify.toml`). They were a records-derived management view using **Net Position**
+instead of Equity, with no chart of accounts, journals, retained earnings, or
+opening balances — and they disagreed with the ledger statement.
 
-`DataService.getBalanceSheetReport(uid, options)` reads only user-scoped data:
-`bank_accounts`, `bank_balance_snapshots`, `transactions`, and `bills`. Options are
-`{ asOfDate, compareAsOfDate, cadence, filters }`; returned amounts are raw integer
-IDR values. Sections are Assets, Liabilities, and calculated Net Position.
-
-Calculation rules:
-- **Cash & Bank** = active `bank_accounts.latest_balance`; for point-in-time
-  comparison, the latest `bank_balance_snapshots` row on or before the as-of date
-  is used when available, falling back to `latest_balance`.
-- **Accounts Receivable** = `transactions.type == "pending_receivable"` on or
-  before the as-of date.
-- **Accounts Payable** = unpaid `bills` (`payment_status != "paid"` or missing)
-  whose first available bill date (`due_date`, `date`, `timestamp`, `created_at`)
-  is on or before the as-of date.
-- **Pending Payables** = `transactions.type == "pending_payable"` on or before
-  the as-of date.
-- **Net Position** = total assets minus total liabilities.
-
-The page supports comparison dates, section/source filters, expandable report
-rows, and a read-only related-records drawer. CSV export contains raw integer
-amounts only. Confirmed exports create `users/{uid}/report_exports` metadata with
-`report_type: "balance_sheet"` and write an `export.create` audit log through
-`createExportAuditLog`, targeting `report_exports`; no CSV content or row-level
-financial records are stored in Firestore.
-
-**Sidebar route:** `Balance Sheet` → `/balance-sheet`, under the Reporting group
-in `sidebar-loader.js` (active id `nav-balance-sheet`).
+`DataService.getBalanceSheetReport` / `_buildBalanceSheetSnapshot` remain in
+`db-service.js` but have **no caller**; treat them as dead code pending removal, and
+do not build on them. The ledger-derived Balance Sheet in the Accounting Center
+(`getFinancialStatements` → `statements-engine.js:buildBalanceSheet`) is the only
+Balance Sheet, and it carries the CSV export ported from the retired page
+(`exportBalanceSheet` in `accounting.js`) — still confirmed, metered through
+`report_exports`, and audit-logged via `createExportAuditLog` exactly as before.
+See `docs/ACCOUNTING_CENTER_IA.md` Phase 3.
 
 ### 4m.3. Accounting Kernel — double-entry ledger (workspace-scoped)
 
@@ -2001,23 +2033,32 @@ Auto-runs on landing pages. Fetches `includes/footer.html`, appends to `<body>`,
 
 Sidebar is injected into every app page at `#sidebar`. Active item is detected by `window.location.pathname`.
 
-| Group | Item | Type | Route / Action | Status |
-|-------|------|------|----------------|--------|
-| Command | Overview | Link | `/dashboard` | ✅ Shipped |
-| Command | Fluxy AI | Button | `window.toggleFluxyAI()` | ✅ Shipped |
-| Money Movement | Transactions | Link | `/ledger` | ✅ Shipped |
-| Money Movement | Revenue Sync | Link | `/revenue-sync` | ✅ Shipped |
-| Money Movement | Bills | Link | `/bill` | ✅ Shipped |
-| Money Movement | Subscriptions | Link | `/subscription` | ✅ Shipped |
-| Operations | Vendor Spend | Disabled button | `Soon` | 📋 Planned |
-| Operations | Receipt Capture | Disabled button | `Soon` | 📋 Planned |
-| Operations | Budgets | Link | `/budget` | ✅ Shipped Phase 1 |
-| Operations | Invoices | Link | `/invoices` | ✅ Shipped MVP |
-| Operations | Approvals | Disabled button | `Soon` | 📋 Planned |
-| Reporting | Reports & Exports | Link | `/reports` | ✅ Shipped MVP |
-| Reporting | Audit Log | Disabled button | `Soon` | 📋 Planned |
-| Workspace | Integrations | Link | `/integration` | ✅ Shipped |
-| Workspace | Settings | Link | `/settings` | ✅ Shipped MVP |
+| Group | Item | Element id | Type | Route / Action | Status |
+|-------|------|-----------|------|----------------|--------|
+| Command | Overview | `nav-overview` | Link | `/dashboard` | ✅ Shipped |
+| Command | Fluxy AI | `nav-fluxy-ai` | Link | `/ai` | ✅ Shipped |
+| Money Movement | Transactions | `nav-ledger` | Link | `/ledger` | ✅ Shipped |
+| Money Movement | Revenue Sync | `nav-revenue-sync` | Link | `/revenue-sync` | ✅ Shipped |
+| Money Movement | Bills | `nav-bills` | Link | `/bill` | ✅ Shipped |
+| Money Movement | Subscriptions | `nav-subscriptions` | Link | `/subscription` | ✅ Shipped |
+| Operations | Budgets | `nav-budgets` | Link | `/budget` | ✅ Shipped Phase 1 |
+| Operations | Invoices | `nav-invoices` | Link | `/invoices` | ✅ Shipped MVP |
+| Operations | Approvals | `nav-approvals` | Disabled button | `Soon` | 📋 Planned |
+| Reporting | Accounting Center | `nav-accounting` | Link | `/accounting` | ✅ Shipped |
+| Reporting | Reports & Exports | `nav-reports` | Link | `/reports` | ✅ Shipped MVP |
+| Reporting | Activity Log | `nav-activity-log` | Link (`hidden`) | `/activity-log` | 🚧 Built, hidden |
+| Tax & Compliance | Tax Center | `nav-tax-center` | Link | `/tax-center` | ✅ Shipped Phase 1 |
+| Workspace | Integrations | `nav-integrations` | Link | `/integration` | ✅ Shipped |
+| Workspace | Settings | `nav-settings` | Link | `/settings` | ✅ Shipped MVP |
+
+**Balance Sheet page retired (2026-07-29).** The standalone `/balance-sheet` and
+`/balance-sheet-records` pages are **deleted**; both 301 to `/accounting?tab=balance`
+(rules in `deploy/_redirects.app` and `netlify.toml`). They were records-derived with
+no chart of accounts, journals, retained earnings, or equity logic, and reported
+**Net Position** where the ledger statement reports **Equity**. The Accounting
+Center's ledger-derived Balance Sheet is now the only one, and it carries the CSV
+export ported from the retired page (`exportBalanceSheet` in `accounting.js`,
+audit-logged through `report_exports`). See `docs/ACCOUNTING_CENTER_IA.md` Phase 3.
 
 Future sidebar entries stay visible only as disabled `Soon` buttons until a real
 authenticated app page exists. Dashboard sidebar entries must never link to

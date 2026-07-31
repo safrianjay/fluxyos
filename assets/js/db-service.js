@@ -4,7 +4,7 @@ import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePa
 import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, CHART_OF_ACCOUNTS_SEED, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, suggestCategorizingAccount, periodKey as acctPeriodKey } from "./accounting-engine.js";
 import { buildTaxAppendix, TAX_RATES } from "./tax-engine.js";
 import { computeAging } from "./aging-engine.js";
-import { buildIncomeStatement, buildBalanceSheet } from "./statements-engine.js";
+import { buildIncomeStatement, buildBalanceSheet, buildCashFlow } from "./statements-engine.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
 // See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
@@ -3661,6 +3661,76 @@ class DataService {
 
     // Count source documents awaiting a journal. Bulk imports (CSV, bank
     // statements) mark rows accounting_status:'pending' instead of posting inline.
+    // Sources in a period that never reached the ledger.
+    //
+    // countPendingPostings (below) answers "what can the sweep post?" — it matches
+    // accounting_status == 'pending' only. A source that was never queued has NO
+    // accounting_status at all, so it is invisible there. The Close checklist used
+    // to gate on that count and therefore reported "All entries posted" while
+    // hundreds of transactions had never posted; a workspace closed two periods on
+    // incomplete books that way (docs/LEDGER_BACKFILL_RUNBOOK.md).
+    //
+    // Returns { blocking, deferred, total }:
+    //   blocking — the system could post these; they must not be closed over.
+    //   deferred — linked to an invoice, so they post via INV-PAY, which stays
+    //              unposted while INV-ISSUE is unwired. Surfaced, never blocking,
+    //              or the period could never be closed at all.
+    // 'posted' and 'excluded' are both terminal (excluded = deliberately outside
+    // the IDR kernel, e.g. foreign-currency bills) and never count as unposted.
+    // Single enumeration behind BOTH the Close gate and the "post them" remedy, so
+    // the two can never disagree about what counts as unposted.
+    async _collectUnpostedSources(userId, startKey, endKey) {
+        const POSTABLE_TX_TYPES = new Set([
+            'income', 'revenue', 'refund', 'expense', 'fee', 'tax',
+            'pending_receivable', 'pending_payable'
+        ]);
+        const TERMINAL = new Set(['posted', 'excluded']);
+        const [txs, bills, subs] = await Promise.all([
+            this.getTransactionsForPeriod(userId, startKey, endKey).catch(() => []),
+            this.getBillsForPeriod(userId, startKey, endKey).catch(() => []),
+            this.getSubscriptionsForPeriod(userId, startKey, endKey).catch(() => [])
+        ]);
+
+        const blocking = [];
+        const deferred = [];
+        const unposted = (d) => !TERMINAL.has(String(d.accounting_status || '')) && !d.journal_ref;
+
+        txs.forEach((t) => {
+            if (!POSTABLE_TX_TYPES.has(String(t.type || '').toLowerCase())) return;
+            if (!unposted(t)) return;
+            const item = { collection: 'transactions', id: t.id, data: t };
+            // INV-PAY settles a receivable that INV-ISSUE has not raised yet;
+            // posting it alone would drive A/R negative. Surfaced, never posted.
+            if (t.linked_invoice_id) deferred.push(item); else blocking.push(item);
+        });
+        bills.forEach((b) => { if (unposted(b)) blocking.push({ collection: 'bills', id: b.id, data: b }); });
+        subs.forEach((s) => { if (unposted(s)) blocking.push({ collection: 'subscriptions', id: s.id, data: s }); });
+
+        return { blocking, deferred };
+    }
+
+    async countUnpostedSources(userId, startKey, endKey) {
+        const { blocking, deferred } = await this._collectUnpostedSources(userId, startKey, endKey);
+        return { blocking: blocking.length, deferred: deferred.length, total: blocking.length + deferred.length };
+    }
+
+    // The in-product remedy for the Close gate. postPendingJournals only sweeps
+    // accounting_status:'pending'; a source that was NEVER queued has no such flag,
+    // so before this the gate could block a close with no way to act on it short of
+    // running scripts/backfill-journals.js with admin credentials.
+    async postUnpostedSources(userId, startKey, endKey) {
+        const { blocking } = await this._collectUnpostedSources(userId, startKey, endKey);
+        if (!blocking.length) return { posted: 0, skippedClosed: 0, skippedNoRule: 0 };
+        const scope = this._scope(userId);
+        const items = blocking.map((it) => ({
+            collection: it.collection,
+            id: it.id,
+            data: it.data,
+            ref: doc(this.db, `${scope}/${it.collection}/${it.id}`)
+        }));
+        return await this._postCollectedSources(userId, items);
+    }
+
     async countPendingPostings(userId, collections = ['transactions', 'bills', 'subscriptions']) {
         const scope = this._scope(userId);
         const counts = await Promise.all(collections.map(async (col) => {
@@ -3679,10 +3749,6 @@ class DataService {
     // pending and are reported). Returns { posted, excluded, skippedClosed }.
     async postPendingJournals(userId, { collections = ['transactions', 'bills', 'subscriptions'], max = 1000 } = {}) {
         const scope = this._scope(userId);
-        const entityId = this._resolvedScopeId(userId);
-        const mappings = await this._loadAcctMappings(userId);
-        const accounts = await this._loadChartAccountsMap(userId);
-
         const items = [];
         for (const col of collections) {
             try {
@@ -3691,6 +3757,21 @@ class DataService {
             } catch (_) { /* collection may not exist */ }
         }
         if (!items.length) return { posted: 0, excluded: 0, skippedClosed: 0 };
+        return await this._postCollectedSources(userId, items, { markExcluded: true });
+    }
+
+    // Shared posting path for both sweeps (queued 'pending' and never-queued).
+    // Idempotency lives in the callers' enumeration; this half is deterministic
+    // given `items` and never posts into a closed period.
+    //
+    // markExcluded: only the 'pending' sweep stamps non-postable sources
+    // 'excluded'. The never-queued sweep enumerates by period, so doing so there
+    // would rewrite every transfer/adjustment in the month for no benefit.
+    async _postCollectedSources(userId, items, { markExcluded = false } = {}) {
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+        const mappings = await this._loadAcctMappings(userId);
+        const accounts = await this._loadChartAccountsMap(userId);
 
         const periodsSnap = await getDocs(collection(this.db, `${scope}/periods`));
         const closed = new Set();
@@ -3699,16 +3780,18 @@ class DataService {
         const toPost = [];
         const toExclude = [];
         let skippedClosed = 0;
+        let skippedNoRule = 0;
         for (const it of items) {
             const journal = buildJournal({
                 collection: it.collection, id: it.id, document: it.data, mappings, accounts,
                 date: it.data.timestamp || it.data.due_date || it.data.renewal_date || null
             });
-            if (!journal) { toExclude.push(it.ref); continue; }
+            if (!journal) { toExclude.push(it.ref); skippedNoRule++; continue; }
             if (closed.has(journal.period_key)) { skippedClosed++; continue; }
             journal.source_number = this._sourceNumberOf(it.collection, it.data);
             toPost.push({ ref: it.ref, journal });
         }
+        if (!markExcluded) toExclude.length = 0;
 
         if (toPost.length) {
             const counts = {};
@@ -3741,7 +3824,7 @@ class DataService {
         if (posted || excluded) {
             await this._auditCreateBestEffort(userId, 'journal.sweep', 'journals', '', { posted, excluded, skipped_closed: skippedClosed });
         }
-        return { posted, excluded, skippedClosed };
+        return { posted, excluded, skippedClosed, skippedNoRule };
     }
 
     // Idempotent Chart of Accounts seed. Writes only the accounts that don't yet
@@ -4409,9 +4492,25 @@ class DataService {
     //     including it) — a point-in-time position with a real equity section.
     // Period keys are 'YYYY-MM' and compare lexically. Bucketing/grouping is pure
     // (assets/js/statements-engine.js).
+    // Month arithmetic on accounting period keys ('YYYY-MM'). The day-key helpers
+    // (_previousPeriodRange etc.) do not apply here — periods are whole months.
+    _shiftPeriodKey(periodKey, months) {
+        const [y, m] = String(periodKey).split('-').map(Number);
+        const d = new Date(y, (m - 1) + months, 1);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+    _periodSpan(start, end) {
+        const [ys, ms] = String(start).split('-').map(Number);
+        const [ye, me] = String(end).split('-').map(Number);
+        return Math.max(1, (ye - ys) * 12 + (me - ms) + 1);
+    }
+
     async getFinancialStatements(userId, { startPeriod = null, endPeriod = null } = {}) {
         const end = endPeriod || acctPeriodKey(new Date());
         const start = startPeriod || end;
+        // Comparison = the equal-length window immediately before the selected one.
+        const cmpEnd = this._shiftPeriodKey(start, -1);
+        const cmpStart = this._shiftPeriodKey(cmpEnd, -(this._periodSpan(start, end) - 1));
         const [snap, coa] = await Promise.all([
             getDocs(collection(this.db, `${this._scope(userId)}/ledger_balances`)),
             this.getChartOfAccounts(userId)
@@ -4430,7 +4529,8 @@ class DataService {
                     account_name: m.name || code,
                     account_name_id: m.name_id || null,
                     sak_category: m.sak_category || null,
-                    move_debit: 0, move_credit: 0, cum_debit: 0, cum_credit: 0
+                    move_debit: 0, move_credit: 0, cum_debit: 0, cum_credit: 0,
+                    cmp_debit: 0, cmp_credit: 0
                 };
             }
             return agg[code];
@@ -4445,16 +4545,25 @@ class DataService {
             row.cum_debit += debit;
             row.cum_credit += credit;
             if (pk >= start) { row.move_debit += debit; row.move_credit += credit; }
+            // The comparison window always precedes `start`, so it is already
+            // inside the pk <= end scan above — no second read needed.
+            if (pk >= cmpStart && pk <= cmpEnd) { row.cmp_debit += debit; row.cmp_credit += credit; }
         });
 
         const rows = Object.values(agg);
         const movementRows = rows.map((r) => ({ ...r, debit_total: r.move_debit, credit_total: r.move_credit }));
         const cumulativeRows = rows.map((r) => ({ ...r, debit_total: r.cum_debit, credit_total: r.cum_credit }));
+        const comparisonRows = rows.map((r) => ({ ...r, debit_total: r.cmp_debit, credit_total: r.cmp_credit }));
 
         return {
             period: { start, end },
+            comparisonPeriod: { start: cmpStart, end: cmpEnd },
             incomeStatement: buildIncomeStatement(movementRows),
-            balanceSheet: buildBalanceSheet(cumulativeRows)
+            comparisonIncomeStatement: buildIncomeStatement(comparisonRows),
+            balanceSheet: buildBalanceSheet(cumulativeRows),
+            // Period movement, same rows as the P&L — the indirect method needs
+            // the movement in every account, not just the P&L ones.
+            cashFlow: buildCashFlow(movementRows)
         };
     }
 
@@ -4819,6 +4928,18 @@ class DataService {
         }
         const tb = await this.getTrialBalance(userId, { periodKey: pk });
         if (!tb.balanced) throw new Error('Trial balance is out of balance — cannot close this period');
+        // A balanced trial balance only proves the journals that EXIST foot — it
+        // cannot see a source that never posted. Without this guard a period can be
+        // closed over an incomplete ledger and the statements are wrong forever
+        // (short of reopening). The UI gate mirrors this; this is the real one.
+        const [y, m] = String(pk).split('-').map(Number);
+        const dayKey = (d) => [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+        const unposted = await this.countUnpostedSources(
+            userId, dayKey(new Date(y, m - 1, 1)), dayKey(new Date(y, m, 0))
+        ).catch(() => ({ blocking: 0 }));
+        if (unposted.blocking > 0) {
+            throw new Error(`${unposted.blocking} entr${unposted.blocking === 1 ? 'y is' : 'ies are'} not posted to the ledger — post them before closing ${pk}`);
+        }
         let revenue = 0;
         let expense = 0;
         tb.rows.forEach((r) => {

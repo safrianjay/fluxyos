@@ -501,7 +501,7 @@ transaction editor so the two stay identical.
     500`, color `#6B7280`, letter-spacing `-0.005em`, line-height `1.35`, `3px` top
     margin. May carry `hidden sm:block` to drop on mobile.
   - **Canonical implementation:** `accounting.html` + `assets/css/accounting.css`.
-    Pages that don't load `dashboard.css` (e.g. `balance-sheet.html`) **must define
+    Pages that don't load `dashboard.css` **must define
     these three classes page-scoped**, copying the Accounting Center block verbatim —
     otherwise the title/subtitle render as unstyled default text.
   - **Single source of the title (anti-redundancy):** the topbar is the only place
@@ -511,8 +511,7 @@ transaction editor so the two stay identical.
     Anti-AI-Slop). A small breadcrumb crumb is allowed.
   - **Print/PDF exception:** report pages that print (the topbar is hidden on print)
     may keep an in-page document header — `<h1>` (24px page-title step) + one-line
-    description + generated date — scoped to print only via `bs-print-only`. See
-    `balance-sheet.html`.
+    description + generated date — scoped to print only. See `report-preview.html`.
 - **Back navigation lives in the topbar (top-left).** Any "Back to X" navigation
   on an authenticated app page is a **text link in the sticky 64px topbar**,
   pinned top-left immediately after the mobile menu button: a left-chevron
@@ -587,20 +586,15 @@ page-level padding/max-width.
    action (not the primary page action) and stays at the far-right of the page
    action group when present. Creation actions (Add Transaction/Bill/Subscription)
    remain the primary action; export/scan/import stay secondary.
-9. **Balance Sheet exception.** `balance-sheet.html` may keep its own
-   date/period placement and report-tuned shell when the accounting workflow
-   requires it; do not force it into the standard date placement if that breaks
-   the balance-sheet model.
-10. **New pages reuse the shell.** Build new dashboard/app pages on the shared
+9. **New pages reuse the shell.** Build new dashboard/app pages on the shared
     shell classes above rather than copying one-off Tailwind padding/max-width
     into the page.
-11. **Breadcrumb placement (hard rule).** When a detail/records page shows a
+10. **Breadcrumb placement (hard rule).** When a detail/records page shows a
     breadcrumb (`.acct-breadcrumb`), it renders at the **top of the page content —
     above any filter/search/toolbar section and above the primary card.** The
     reading order is always: breadcrumb → (title/summary) → filters → data. Never
     place a filter card above the breadcrumb, and never bury the breadcrumb inside
-    a JS-rendered body that follows the filters. `accounting-records.html` and
-    `balance-sheet-records.html` are the reference (breadcrumb in the
+    a JS-rendered body that follows the filters. `accounting-records.html` is the reference (breadcrumb in the
     `.acct-records-hero` before the filter card); `accounting-account.html` renders
     its breadcrumb into `#account-breadcrumb` above the filter section for the
     same reason.
@@ -623,13 +617,56 @@ proportion across the platform.
   narrow `max-w-7xl` (1280px) container — that is **banned** for data-heavy pages.
 - **Do not introduce a page-specific content width** (`max-w-7xl`, `max-w-6xl`,
   one-off `max-w-[…]`, or custom padding wrappers) without a documented product
-  requirement logged as an exception. Documented exception: `balance-sheet.html`
-  may keep its report-tuned shell.
+  requirement logged as an exception. There are currently **no** documented
+  exceptions — the former `balance-sheet.html` exception was retired with the page
+  (docs/ACCOUNTING_CENTER_IA.md Phase 3).
 - Data-heavy pages prioritize information density, scanability, and operational
   efficiency over decorative spacing. Marketing/landing pages keep their own
   wider editorial containers and are **not** governed by this rule.
 - Users should feel they operate inside one cohesive financial system, not move
   between different page layouts.
+
+#### In-Page Section Navigation (tabs) — standard
+
+Applies to any app page that splits content into sibling views on one route
+(Accounting Center, Tax Center, Settings). Reference implementation: `.acct-tabs` /
+`.acct-tab` (primary group row) over `.acct-subtabs` / `.acct-subtab` (child view
+row) in `assets/css/accounting.css`, driven by `data-acct-group` / `data-acct-tab` /
+`data-acct-parent` / `data-acct-panel` with `setTab()` and `setGroup()` in
+`assets/js/accounting.js`.
+
+1. **Single-level nav caps at 7 items.** Past that, scanning collapses and the row
+   stops communicating structure. A page needing more views must go two-level.
+2. **Tabs are peers or they are not tabs.** Every item in one row must be the same
+   *class of object* — all reports, or all settings sections. Mixing reports,
+   records, configuration, and workflow in one row is an IA failure, not a styling
+   one. This is the flat-hierarchy case of the anti-slop rule below ("no clear
+   prioritization").
+3. **Two-level nav**: a primary group row (`role="tablist"`) plus a secondary child
+   row that swaps per group. The primary row carries semantic groups, never a single
+   report. Selecting a group activates its first child.
+4. **Name the destination, not the container.** Child items carry real report/section
+   names. Abstract bin labels ("Statements", "Other", "More") are prohibited as leaf
+   navigation — a user must know what they will get before clicking.
+5. **One active path is always visible** at both levels; never leave a group
+   highlighted with no active child.
+6. **State lives in the URL** (`?tab=` / `?section=`) so views are linkable and
+   deep-links from other pages survive. Cross-page drill-downs must activate both
+   the group and the child.
+7. **Lazy-load per view, cache per period.** Fetch a view's data on first activation,
+   not on page load; invalidate on period change. See `KERNEL_TABS` in
+   `accounting.js`.
+8. **Counts belong on the tab that owns the work** (e.g. a cleanup badge on the
+   section where the work is done). One numeric badge per row maximum.
+9. **375px behaviour is part of the spec.** The nav scrolls horizontally inside its
+   own container — the page body never scrolls horizontally, and the active item
+   scrolls into view on load.
+10. **Accessibility**: `role="tablist"` / `role="tab"` with `aria-selected`, arrow-key
+    traversal, and a visible focus ring. Panels toggle via a hidden class, not by
+    unmounting, so scroll position and form state survive switching.
+
+**Full worked example of a two-level restructure**, including why grouping follows a
+domain's real workflow: `docs/ACCOUNTING_CENTER_IA.md`.
 
 ---
 

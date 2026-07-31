@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { openAccountingTab } = require('./helpers/accounting-nav');
 
 // Authenticated browser smoke for the Journal Number / Manual Journal / Journal
 // Detail surfaces. Runs as the QA Firebase account against real Firestore (new
@@ -55,7 +56,7 @@ test('journal register shows the redesigned columns and journal numbers', async 
 
     await page.goto('/accounting.html');
     await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
-    await page.locator('[data-acct-tab="journals"]').click();
+    await openAccountingTab(page, 'journals');
     await expect(page.locator('#journals-content')).not.toBeEmpty({ timeout: 30000 });
 
     // Redesigned header columns are present; the old Dr/Cr column is gone.
@@ -81,7 +82,7 @@ test('general ledger "All accounts" renders one section per account', async ({ p
 
     await page.goto('/accounting.html');
     await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
-    await page.locator('[data-acct-tab="ledger"]').click();
+    await openAccountingTab(page, 'ledger');
     await expect(page.locator('#ledger-content')).not.toBeEmpty({ timeout: 30000 });
 
     // The selector offers an "All accounts" option.

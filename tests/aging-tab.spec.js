@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { openAccountingTab } = require('./helpers/accounting-nav');
 
 // Authenticated browser check for the Accounting Center Aging tab (A/R + A/P
 // aging). Runs as the QA account against real Firestore. Each section renders
@@ -17,7 +18,7 @@ test('Aging tab renders receivable and payable aging without errors', async ({ p
     await page.goto('/accounting.html');
     await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
 
-    await page.locator('[data-acct-tab="aging"]').click();
+    await openAccountingTab(page, 'aging');
     await expect(page.locator('[data-acct-panel="aging"]')).toBeVisible();
 
     for (const id of ['#aging-receivables-content', '#aging-payables-content']) {

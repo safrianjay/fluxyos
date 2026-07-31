@@ -70,8 +70,6 @@ const APP_PAGES = [
     'accounting-records.html',
     'activity-log.html',
     'ai.html',
-    'balance-sheet.html',
-    'balance-sheet-records.html',
     'bill.html',
     'budget.html',
     'budget-allocation.html',

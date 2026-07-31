@@ -331,7 +331,7 @@ Must not:
 - Store formatted currency strings in Firestore
 - Introduce a page-specific content width (`max-w-7xl`, custom `max-w-[…]`, or
   one-off padding wrappers) on a data-heavy page without a documented exception
-  (`balance-sheet.html` is the one documented exception)
+  (no documented exceptions)
 
 ### Dashboard sidebar entry lifecycle
 

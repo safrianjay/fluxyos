@@ -1787,6 +1787,7 @@
         "Statements": "Laporan Keuangan",
         "Built from the general ledger for": "Dibuat dari buku besar untuk",
         "— ties to your trial balance.": "— sesuai dengan neraca saldo Anda.",
+        "— ties to your trial balance. Click an account to trace it.": "— sesuai dengan neraca saldo Anda. Klik akun untuk menelusurinya.",
         "Position as of the end of the period, with a full equity section. Assets must equal Liabilities plus Equity.": "Posisi per akhir periode, dengan bagian ekuitas lengkap. Aset harus sama dengan Liabilitas plus Ekuitas.",
         "Cost of goods sold": "Harga pokok penjualan",
         "Other income & expenses": "Pendapatan & beban lain",
@@ -3484,7 +3485,7 @@
         "User-created": "Dibuat pengguna",
         "entries": "entri",
 
-        // ── JS-rendered copy: balance-sheet-records.js / db-service.js ───────
+        // ── JS-rendered copy: db-service.js (+ retired balance-sheet pages) ──
         "Drill down to the source record": "Telusuri ke catatan sumber",
         "How to use this": "Cara menggunakannya",
         "Line total": "Total baris",
@@ -3931,6 +3932,35 @@
         "— system-generated and manual. Open a journal to trace it to its source, ledger entries, and audit trail.": "— dibuat sistem maupun manual. Buka jurnal untuk menelusurinya ke sumber, entri buku besar, dan jejak audit.",
         "Clear": "Bersihkan",
         "General Ledger": "Buku Besar Umum",
+        // Accounting Center two-level section nav (docs/ACCOUNTING_CENTER_IA.md).
+        // "Ledger" → "Buku Besar" and "Close" → "Tutup" already exist above.
+        "Reports": "Laporan",
+        "Setup": "Konfigurasi",
+        "Close checklist": "Daftar Periksa Tutup Buku",
+        // Close gate — unposted-source detection
+        "Post every entry for this period before closing it.": "Posting semua entri periode ini sebelum menutupnya.",
+        "Invoice payments awaiting issuance posting": "Pembayaran faktur menunggu posting penerbitan",
+        "Post unposted entries": "Posting entri yang belum diposting",
+        // Cash Flow statement (indirect method)
+        "Cash Flow": "Arus Kas",
+        "Indirect method for": "Metode tidak langsung untuk",
+        ", built from the general ledger. Net change must equal the movement in your cash accounts.": ", dibuat dari buku besar. Perubahan bersih harus sama dengan pergerakan pada akun kas Anda.",
+        "Operating activities": "Aktivitas Operasi",
+        "Investing activities": "Aktivitas Investasi",
+        "Financing activities": "Aktivitas Pendanaan",
+        "Net cash from operating activities": "Kas bersih dari aktivitas operasi",
+        "Net cash from investing activities": "Kas bersih dari aktivitas investasi",
+        "Net cash from financing activities": "Kas bersih dari aktivitas pendanaan",
+        "Net change in cash": "Perubahan kas bersih",
+        "No cash movement for this period": "Tidak ada pergerakan kas untuk periode ini",
+        "The cash flow statement appears once journals have posted.": "Laporan arus kas muncul setelah jurnal diposting.",
+        "Ties to cash ✓": "Sesuai dengan kas ✓",
+        "This posts double-entry journals for entries in this period that never reached the ledger. Closed periods and invoice payments awaiting issuance are skipped.": "Tindakan ini memposting jurnal berpasangan untuk entri periode ini yang belum masuk buku besar. Periode tertutup dan pembayaran faktur yang menunggu penerbitan dilewati.",
+        "Could not post these entries": "Tidak dapat memposting entri ini",
+        // Balance Sheet CSV export (ported from the retired /balance-sheet page)
+        "This logs an export action and downloads the ledger-derived Balance Sheet with raw IDR amounts.": "Tindakan ini mencatat aktivitas ekspor dan mengunduh Neraca dari buku besar dengan nilai IDR mentah.",
+        "Could not export the Balance Sheet. Try again.": "Tidak dapat mengekspor Neraca. Coba lagi.",
+        "No balance sheet to export for this period.": "Tidak ada neraca untuk diekspor pada periode ini.",
         "Journal Register": "Register Jurnal",
         "Number, description, source…": "Nomor, deskripsi, sumber…",
         "Posted": "Diposting",
@@ -3963,7 +3993,7 @@
         "Totals": "Total",
         "e.g. ADJ-2026-04": "cth. ADJ-2026-04",
 
-        // ── Page backfill: balance-sheet-records.html ────────────────────────
+        // ── Page backfill: retired balance-sheet pages (strings kept: shared) ─
         "Click any record to open it on its source page, located and highlighted.": "Klik catatan mana pun untuk membukanya di halaman sumbernya, langsung ditemukan dan disorot.",
         "Could not load these records": "Tidak dapat memuat catatan ini",
         "Inspect the source records behind a Balance Sheet line.": "Periksa catatan sumber di balik baris Neraca.",
@@ -4180,6 +4210,20 @@
     //  Applied (in order) only to nodes that miss an exact dictionary key.
     // ─────────────────────────────────────────────────────────────────────────
     var PATTERNS = [
+        // Close gate: "14 entries are not posted to the ledger" / "1 entry is …".
+        { re: /^(\d+) entr(?:y is|ies are) not posted to the ledger$/,
+          id: function (m) { return m[1] + ' entri belum diposting ke buku besar'; } },
+        // Close checklist hints: "14 not posted", "14 not posted (3 queued)".
+        { re: /^(\d+) not posted(?: \((\d+) queued\))?$/,
+          id: function (m) { return m[1] + ' belum diposting' + (m[2] ? ' (' + m[2] + ' antre)' : ''); } },
+        // Close-gate remedy: button label and its confirm title.
+        { re: /^Post (\d+) unposted entr(?:y|ies)$/,
+          id: function (m) { return 'Posting ' + m[1] + ' entri yang belum diposting'; } },
+        { re: /^Post (\d+) entr(?:y|ies)\?$/,
+          id: function (m) { return 'Posting ' + m[1] + ' entri?'; } },
+        { re: /^(\d+) not postable$/, id: function (m) { return m[1] + ' tidak dapat diposting'; } },
+        { re: /^(\d+) deferred — does not block close$/,
+          id: function (m) { return m[1] + ' ditangguhkan — tidak menghalangi tutup buku'; } },
         // Attachments section row meta: "<role> · Attached 28 Jul 2026". The role
         // half is a fixed set, so translate it through the dictionary and leave the
         // locale-formatted date alone.
@@ -4388,7 +4432,7 @@
         { re: /^Records behind this Income Statement line for (.+)\.$/,
           id: function (m) { return 'Catatan di balik baris Laporan Laba Rugi ini untuk ' + m[1] + '.'; } },
 
-        // ── balance-sheet.js / balance-sheet-records.js ──────────────────────
+        // ── Retired balance-sheet pages (strings kept: some are shared) ──────
         { re: /^As of (.+)$/,
           id: function (m) { return 'Per ' + m[1]; } },
         { re: /^Generated (.+)$/,

@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { openAccountingTab } = require('./helpers/accounting-nav');
 
 // Authenticated browser regression for CoA Phase 1 against real Firestore
 // (deployed rules; superset of accounting-smoke). Verifies: the 32-account
@@ -22,7 +23,7 @@ test('CoA Phase 1: seed, taxonomy, archive round-trip (live rules)', async ({ pa
     await expect(page.locator('[data-acct-panel="income"]')).toBeVisible({ timeout: 30000 });
 
     // --- Chart of Accounts tab: full expanded seed present.
-    await page.locator('[data-acct-tab="coa"]').click();
+    await openAccountingTab(page, 'coa');
     await expect(page.locator('#coa-content')).toContainText('Cash & Bank', { timeout: 30000 });
     await expect(page.locator('#coa-content')).toContainText('Owner Drawings (Prive)');
     await expect(page.locator('#coa-content')).toContainText('Cost of Goods Sold');
@@ -69,17 +70,17 @@ test('CoA Phase 1: seed, taxonomy, archive round-trip (live rules)', async ({ pa
     await page.locator('#fluxy-dialog [data-dialog-action="confirm"]').click();
     await expect(page.locator('#coa-content tbody tr', { hasText: 'Travel & Entertainment' })).toContainText(/Archived|Diarsipkan/, { timeout: 30000 });
     // Archived account leaves the GL picker.
-    await page.locator('[data-acct-tab="ledger"]').click();
+    await openAccountingTab(page, 'ledger');
     expect(await page.locator('#ledger-account-select option[value="6450"]').count()).toBe(0);
     // Reactivate to leave the workspace clean.
-    await page.locator('[data-acct-tab="coa"]').click();
+    await openAccountingTab(page, 'coa');
     await page.locator('[data-coa-kebab="6450"]').click();
     await page.locator('.acct-kebab-menu [data-menu-toggle]').click();
     await page.locator('#fluxy-dialog [data-dialog-action="confirm"]').click();
     await expect(page.locator('#coa-content tbody tr', { hasText: 'Travel & Entertainment' })).toContainText(/Active|Aktif/, { timeout: 30000 });
 
     // --- Mapping tab select offers the expanded chart.
-    await page.locator('[data-acct-tab="mapping"]').click();
+    await openAccountingTab(page, 'mapping');
     await expect(page.locator('[data-acct-panel="mapping"]')).toBeVisible();
     const mappingHtml = await page.locator('#mapping-preview-content').innerHTML().catch(() => '');
     if (mappingHtml.includes('select')) {

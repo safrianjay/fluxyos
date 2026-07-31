@@ -1,12 +1,20 @@
 # Accounting Control Center — Plan & Working Notes
 
-> Living record for the Accounting Center (`/accounting`). Read alongside
-> `PROJECT_BACKGROUND.md` §4m, `ROADMAP.md` (Accounting Center), and
-> `QA_CHECKLIST.md` §N. Phase 1 is **read-only** except for saved account
-> mappings: no journal posting, no period close, no `accounting_periods`
-> collection, no AI writes, no global Firestore collections.
+> ⚠️ **HISTORICAL — do not use as a current description of the page.**
+> This document records the original Phase 1 build (a 4-tab, read-only Accounting
+> Center). Nearly everything it lists as out-of-scope has since shipped: journal
+> posting, manual journals, period close/reopen, chart of accounts management,
+> Trial Balance, General Ledger, ledger-derived statements, aging, and bank
+> reconciliation. The page now has **11 tabs**, not 4.
+>
+> **For the current page:** `PROJECT_BACKGROUND.md` §4m and §4m.3.
+> **For the target navigation and the statement-consolidation plan:**
+> `docs/ACCOUNTING_CENTER_IA.md` — which supersedes the IA sections of this file.
+>
+> Still useful here: the Income Statement Preview row ladder, classification, and
+> sign rules (§"Income statement rows" below), and the original file map.
 
-## Current surface (Phase 1)
+## Original surface (Phase 1 — superseded)
 
 The Accounting Center leads with an **Income Statement Preview**, not readiness.
 

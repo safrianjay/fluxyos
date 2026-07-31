@@ -51,7 +51,7 @@ const APP_PAGES = [
     'budget.html', 'budget-period.html', 'budget-allocation.html',
     'revenue-overview.html', 'cash-position.html', 'cash-pressure.html', 'opex-budget.html',
     'accounting.html', 'accounting-account.html', 'accounting-journal.html', 'accounting-journal-new.html', 'accounting-records.html',
-    'balance-sheet.html', 'balance-sheet-records.html', 'reports.html', 'report-preview.html',
+    'reports.html', 'report-preview.html',
     'tax-center.html', 'revenue-sync.html', 'integration.html', 'ai.html', 'activity-log.html',
     'settings.html', 'settings-personal.html', 'settings-business.html', 'settings-finance.html',
     'settings-language.html', 'settings-notifications.html', 'settings-security.html', 'settings-team.html',

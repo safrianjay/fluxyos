@@ -145,7 +145,7 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | ZIP CSV bundle | 📋 Planned | MVP downloads files individually |
 | Recurring revenue classification (for ARR — category-level) | ✅ Shipped MVP | `users/{uid}/settings/reports.recurring_revenue_category_ids` drives ARR; Settings → Finance preferences has the picker. Future: per-transaction `is_recurring` flag for higher precision. |
 | Bank balance / cash runway | 📋 Planned | Cash pressure stays proxy-only until real balance source exists |
-| Balance Sheet Management View (`/balance-sheet`) | ✅ Shipped Phase 1 | Standalone Reporting page; point-in-time Assets, Liabilities, and Net Position from `bank_accounts`, `bank_balance_snapshots`, `transactions`, and `bills`; CSV export logs to `report_exports` |
+| Balance Sheet Management View (`/balance-sheet`) | ⛔ Retired 2026-07-29 | Records-derived (Net Position, no CoA/equity) and disagreed with the ledger statement. Pages deleted; 301 → `/accounting?tab=balance`. CSV export ported into the Accounting Center. `docs/ACCOUNTING_CENTER_IA.md` Phase 3 |
 
 ### Accounting Center
 | Feature | Status | Notes |
@@ -157,22 +157,25 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Report confidence banner + KPI strip | ✅ Shipped Phase 1 | Readiness reused as supporting "report confidence" metadata (score/band/cleanup count), no longer the main experience |
 | Cleanup queue (receipts, due dates, invoices, renewals, unmapped, bank review) | ✅ Shipped Phase 1 | Built from real user-scoped records |
 | Account mapping preview + save flow | ✅ Shipped Phase 1 | Saved mappings win over suggestions; writes `users/{uid}/accounting_mappings` + audit log |
-| Tabs: Income Statement / Cleanup / Account Mapping / Close | ✅ Shipped Phase 1 | Income Statement replaced the readiness-first Overview tab |
-| Close readiness checklist | ✅ Shipped Phase 1 | Read-only; "Close period" is a disabled Planned control |
+| Tabs (11): Income Statement / Journals / General Ledger / Trial Balance / Statements / Chart of Accounts / Aging / Cleanup / Account Mapping / Vendors / Close | ✅ Shipped | Nav markup `accounting.html:116-128`. **Restructure to 5 grouped sections planned — see `docs/ACCOUNTING_CENTER_IA.md`** |
+| Close readiness checklist | ✅ Shipped | Kernel-aware; leads with pending-postings and trial-balance gates |
 | AI assistant panel (suggested prompts) | ✅ Shipped Phase 1 | Opens existing Fluxy AI drawer; no autonomous writes |
 | `accounting_mappings` collection + firestore.rules | ✅ Shipped Phase 1 | Enums/strings only; must be **deployed** before save works |
 | Cost of Revenue (COGS) classification mapping | 📋 Planned | Preview defaults COGS to 0; needs a `cost_of_revenue` account type / `statement_section` before categories move out of OpEx |
-| Posted journal-entry income statement (P&L) | 📋 Planned | The shipped Income Statement is a preview; posted statements wait on journal posting + close |
-| Period close + lock + `accounting_periods` | 📋 Planned | Needs confirmation, locking, and audit flow |
-| Chart of accounts management (`accounting_accounts`) | 📋 Planned | Phase 2 |
+| Posted journal-entry income statement (P&L) | ✅ Shipped | Ledger-derived, on the **Statements** tab via `statements-engine.js` + `getFinancialStatements`; reads `ledger_balances` so it ties to the Trial Balance. The transactions-only preview on tab 1 still exists in parallel — **consolidation planned**, `docs/ACCOUNTING_CENTER_IA.md` Phase 2 |
+| Period close + lock + `periods` | ✅ Shipped | `closePeriod` posts a closing journal (net income → `3000 Retained Earnings`); `reopenPeriod` reverses it. `period.lock` = owner/admin |
+| Chart of accounts management | ✅ Shipped Phase 1 | 32-account SAK seed + `business_categories`; create/edit/archive/reactivate; `docs/data-model/chart-of-accounts.md` |
 | Double-entry posting kernel (auto-post from business events) | ✅ Shipped | `accounting-engine.js` + db-service; journals / ledger_balances / periods |
 | Journal numbers (`JE-YYYY-NNNNNN`) + per-year counters | ✅ Shipped | Reserved atomically at post; `scripts/backfill-journal-numbers.js` for history |
 | Journal Register redesign + Journal Detail drill-down + filters | ✅ Shipped | `accounting-journal.html`; GL / Trial Balance now drill into Journal Detail |
 | Manual journals (Draft → Posted) + reverse | ✅ Shipped | `accounting-journal-new.html`; `journals.manual` capability; `accountant` role |
 | AI on journals (explain / find source / draft correction) | 📋 Planned | Architecture seam shipped (Journal Detail AI panel); no AI calls yet |
-| Formal accounting statements (posted Balance Sheet, Cash Flow, Trial Balance) | 📋 Planned | Phase 6; waits on chart of accounts, journal entries, opening balances, retained earnings, and period close |
-| Bank reconciliation matching | 📋 Planned | Phase 7 |
-| Accounting export package | 📋 Planned | Topbar "Export package" disabled until shipped |
+| Posted Balance Sheet | ✅ Shipped | Statements tab; cumulative through period end, real equity section (owner capital, retained earnings, prive, opening equity + computed current-period earnings) and a tie-out badge |
+| Trial Balance | ✅ Shipped | Own tab; from `ledger_balances`, drills TB → General Ledger → Journal Detail → source |
+| **Cash Flow Statement** | ✅ Shipped 2026-07-31 | Reports → Cash Flow. Indirect method from the same `ledger_balances` movement rows, derived from the double-entry identity so it ties to actual cash movement by construction (tie-out badge). Handles closed periods without double-counting net income. `docs/ACCOUNTING_CENTER_IA.md` Phase 4 |
+| Bank reconciliation matching | ✅ Shipped Phases A+B | `recon-engine.js` tiers R1–R4, certify workflow, un-reconcile UI; `docs/BANK_RECONCILIATION_PLAN.md` |
+| Accounting export package | 📋 Planned | Topbar "Export package" still `disabled`. No statement in the Accounting Center is currently exportable; `docs/ACCOUNTING_CENTER_IA.md` Phase 5 |
+| Accounting Center IA restructure (11 flat tabs → 5 grouped sections) | 📋 Planned | Full analysis, competitor teardown, and phased plan in `docs/ACCOUNTING_CENTER_IA.md` |
 
 ### Tax Center (Indonesia)
 Full spec: `docs/INDONESIA_TAX_CENTER_ARCHITECTURE.md`. Derived from the Accounting
