@@ -93,7 +93,18 @@ essentially empty ledger. That is the close-gate defect's fingerprint.
 **Both periods are left OPEN.** Re-closing is the owner's call; the Close gate will
 now allow it (0 unposted), which it would not have done before.
 
-### Still outstanding — real user workspaces
+### Status 2026-07-31 — all workspaces clean
+
+`ledger-coverage-report.js` across production: **1640 postable, 0 unposted, every
+workspace at 100%**, zero drift. Get-Pipeline (0%→100%) and Dika Finance
+(46.2%→100%) were fixed via the in-product **"Post N unposted entries"** action
+rather than these scripts — their journals carry `journal_number`s, which the admin
+backfill does not assign, so the in-product path is confirmed working end to end.
+
+Keep the scripts for gaps spanning many periods or workspaces, and for anything a
+closed period blocks.
+
+### Historical — the workspaces that needed this
 
 Measured 2026-07-29, **not backfilled** (restating a real customer's books is a
 business decision, not an engineering one):
