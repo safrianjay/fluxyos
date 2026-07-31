@@ -421,7 +421,12 @@ now the defensible number; the preview's was never correct** (cash-basis, no acc
 > authoritative census; the in-app spec now requests `max: 5000` and asserts the
 > journal fetch is non-empty so it cannot silently under-count again.
 
-**Blocking question before cutover:** does production have the same unposted
+**GATE STATUS 2026-07-31:** QA 100%, **Beila 100%** (owner reopened 2026-05/06, 746
+journals posted, all statements tie, zero drift). Remaining: Get-Pipeline (27) and
+Dika Finance (7) — no closed periods, fixable in-product. The blocker that required
+a business decision is resolved.
+
+**Original blocking question:** does production have the same unposted
 population as QA? If it does, revenue collapses for those users the day this ships.
 Backfill must run **before** cutover, not after. Two decisions are not
 engineering's to make: whether a restatement of this size needs customer

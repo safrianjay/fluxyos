@@ -61,6 +61,38 @@ gap carry `accounting_status: 'excluded'` — foreign-currency invoice settlemen
 deliberately kept outside the IDR kernel. `'excluded'` is a **terminal** state, not a
 gap; the coverage tools and the Close gate all treat it that way now.
 
+### Recorded run — Beila `4Zk00FWh7ZRP2TneRljbggZbUQi2`, 2026-07-31
+
+The owner **reopened `2026-05` and `2026-06`** first (both `CLOSE` journals carried
+matching reversals; Retained Earnings netted to Rp0, so the closings unwound
+cleanly). That took `closed-period` skips from 747 to **0** and made the whole gap
+reachable.
+
+| | before | after |
+|---|---:|---:|
+| coverage | 5.4% | **100%** (796 postable, 0 unposted) |
+| journals posted | — | **746** (714 in 2026-05, 32 in 2026-06) |
+| ledger drift after backfill | — | **0** — reconcile found nothing to fix |
+
+Statements verified against the pure engines:
+
+| | 2026-05 | 2026-06 |
+|---|---:|---:|
+| Trial balance | foots | foots |
+| Revenue | Rp3.614.060.830 | Rp114.701.876 |
+| Net income | Rp3.130.381.085 | −Rp52.483.084 |
+| Cash flow tie-out | ties | ties |
+
+Balance Sheet as of 2026-06: assets Rp3.083.298.681 == liabilities + equity,
+**tie-out Rp0**.
+
+Note `2026-05` had **no** `CLOSE` journal before the reopen — `buildClosingJournal`
+returns null when there is nothing to roll, i.e. the month was closed over an
+essentially empty ledger. That is the close-gate defect's fingerprint.
+
+**Both periods are left OPEN.** Re-closing is the owner's call; the Close gate will
+now allow it (0 unposted), which it would not have done before.
+
 ### Still outstanding — real user workspaces
 
 Measured 2026-07-29, **not backfilled** (restating a real customer's books is a
@@ -68,11 +100,12 @@ business decision, not an engineering one):
 
 | workspace | name | coverage | unposted | value |
 |---|---|---:|---:|---:|
-| `4Zk00FWh7ZRP2TneRljbggZbUQi2` | Beila | **5.4%** | 752 | Rp4.430.747.967 |
 | `dMlPHFcUWWNxTJgqBVF33UyZo5x1` | Get-Pipeline | **0%** | 27 | Rp796.860.000 |
 | `vCbKe11c9fU6HxBizO4iwkg9YQf1` | Dika Finance | 46.2% | 7 | Rp2.131.850 |
 
-This answers the Phase 2 gate question: **production has the gap, and worse than QA.**
+Neither has a closed period, so both are fixable either by the in-product
+"Post N unposted entries" action (§0b) or by the script. Beila — the one that needed
+a reopen decision — is done (above).
 
 **Dry-run 2026-07-29 — only two of the three are fixable by the backfill:**
 
