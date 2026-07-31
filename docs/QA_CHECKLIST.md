@@ -746,18 +746,23 @@ banner/KPI, not the main card.
 | 4 | Page defaults to the current month; period control is the shared `FluxyDateRangePicker` |
 | 5 | Loading skeleton shows first, then the real/empty state (no flash of fake numbers) |
 | 6 | Account with no finance records → "No income statement data for this period" empty state, **no** fake report rows |
-| 7 | First tab is **Income Statement** (not Overview/Readiness); tab list is Income Statement / Cleanup / Account Mapping / Close |
+| 7 | Nav is **two-level**: groups **Reports / Ledger / Setup / Close**, with a child row showing only the active group's views. Reports = Income Statement · Balance Sheet · Cash Flow · Aging; Ledger = Journals · General Ledger · Trial Balance; Setup = Chart of Accounts · Account Mapping · Vendors; Close = Close checklist · Cleanup. Default landing is Reports → Income Statement |
+| 7a | Selecting a group returns to the view last used in it; `?tab=<id>` deep-links a view and the URL updates as you navigate; an unknown `?tab=` falls back to Income Statement |
+| 7b | Arrow keys traverse each nav row; the active item has a visible focus ring; out-of-group child buttons are absent from the row (not merely dimmed) |
 | 8 | Income Statement table renders real data; column headers show the selected period + comparison labels (e.g. "May 2026" / "Apr 2026") |
-| 9 | Revenue total matches income/revenue/refund/pending_receivable transactions; OpEx total matches expense/fee/tax/pending_payable; COGS defaults to 0 (Infrastructure stays under OpEx) |
+| 9 | **All statements are ledger-derived** (`ledger_balances`, the Trial Balance's source) — the transactions-only preview is retired. KPI strip, Income Statement, and Trial Balance must agree; margins render as percentages (a ~100% margin never shows as "1%") |
+| 9a | **Balance Sheet** has a full equity section and a tie-out badge ("Balanced ✓" / "Out of balance by …"); **Export CSV** downloads `balance_sheet_YYYY-MM.csv` with raw integer amounts (no `Rp`), logs `report_exports` + an `export.create` audit entry |
+| 9b | **Cash Flow** (indirect method) shows Operating / Investing / Financing, and its "Ties to cash ✓" badge must be green — a non-zero delta is real `ledger_balances` drift, not a UI bug |
 | 10 | Gross Profit = Revenue − COGS; Operating Income = Gross Profit − OpEx; Net Income math is correct; margins show in subtotal status |
 | 11 | Change column shows previous-period delta; Change % shows **N/A** when previous is 0 and never `NaN`/`Infinity`; cost increases read red/parentheses, decreases read green |
-| 12 | Clicking Revenue, Cost of Revenue, Operating Expenses, Other Income, Other Expense, or a child source line navigates to `/accounting-records` with the selected `section`, `period`, and comparison params |
+| 12 | Clicking an **account line** on the Income Statement or Balance Sheet drills to that account in the General Ledger (→ Journal Detail → source record). Subtotals are not clickable |
 | 13 | Gross Profit, Operating Income, and Net Income are non-clickable: no pointer cursor, no row `tabindex`, no `role="button"`, no chevron/record navigation, and keyboard Enter/Space does nothing |
 | 14 | Report confidence banner shows Ready/Almost ready/Needs cleanup + message; "View blockers" jumps to the Cleanup tab; readiness ring/band KPI matches |
 | 15 | `Missing Receipt` transactions, bills without a due date, subscriptions without a renewal date appear in the Cleanup tab |
 | 16 | Custom / "Others" categories appear as **Unmapped** in Account Mapping; built-ins show **Suggested**; saving writes `users/{uid}/accounting_mappings` only + audit log; row flips to **Saved** after reload |
 | 17 | Changing the period updates KPI strip, Income Statement table, confidence banner, cleanup queue, and mapping preview |
-| 18 | Close tab "Close period" is a disabled **Planned** control; Topbar "Export package" is disabled (**Planned**); no period write occurs |
+| 18 | **Close gate:** "All entries posted to the ledger" reflects sources that never reached the ledger, not just the `pending` queue. With unposted entries the status reads "N entries are not posted to the ledger", **Close is disabled**, and a **"Post N unposted entries"** action appears; `closePeriod()` also refuses server-side. Invoice-linked entries show as *deferred* and never block. Topbar "Export package" is still disabled (**Planned**) |
+| 18a | The Journals banner counts queued **and** never-queued sources, and its button clears both |
 | 19 | AI prompt buttons + "Ask Fluxy AI" only open the Fluxy AI drawer — they never save or mutate data |
 | 20 | Firestore shows no global accounting collections; all writes stay under `users/{uid}/…`; no amounts/formatted currency in `accounting_mappings` |
 | 21 | Responsive at 375 / 768 / 1280 — KPI strip stacks, the Income Statement table scrolls within its container, **no page horizontal scroll** (`document.documentElement.scrollWidth === clientWidth`) |
@@ -774,9 +779,21 @@ banner/KPI, not the main card.
 | 32 | Source actions link by route/search only (`/ledger?search=...`, `/bill?search=...`, `/subscription?search=...`); raw document IDs are not shown in UI or action hrefs |
 | 33 | Mobile 375px: summary cards stack, controls wrap, table scrolls inside its container, pagination remains usable, and there is no page-level horizontal overflow |
 
-**Regression (shared files touched):** `sidebar-loader.js` and `db-service.js` were
-modified — run §3 Cross-Page Regression and confirm Dashboard, Ledger, Bills,
-Subscriptions, Budget, and Reports still render and their sidebar active states work.
+| 34 | Sidebar has **no** "Balance Sheet" item; `/balance-sheet` and `/balance-sheet-records` 301 to `/accounting?tab=balance` |
+
+**Regression (shared files touched):** `sidebar-loader.js`, `db-service.js`, and
+`onboarding-gate.js` were modified — run §3 Cross-Page Regression and confirm
+Dashboard, Ledger, Bills, Subscriptions, Budget, and Reports still render and their
+sidebar active states work.
+
+**Automated guards:** `tests/accounting-nav.spec.js` (IA + deep links + 375px),
+`tests/close-gate-unposted.spec.js` (close gate + remedy),
+`tests/balance-sheet-export.spec.js` (CSV export end to end),
+`tests/accounting-ledger-coverage.spec.js` (ledger completeness + the
+IS==Trial-Balance invariant), `tests/statements-engine.spec.js` (pure engine,
+incl. cash flow open **and** closed period). Specs must use
+`tests/helpers/accounting-nav.js` `openAccountingTab()` — inactive-group tab
+buttons are `hidden`, so direct clicks fail actionability.
 
 ### N2. Journal Architecture (accounting.html Journals tab, accounting-journal.html, accounting-journal-new.html, accounting-engine.js, db-service.js, firestore.rules journals/counters, perms-service.js)
 
