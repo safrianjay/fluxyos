@@ -435,7 +435,12 @@ function renderProfitLoss(pack) {
 
 function renderYtdProfitLoss(pack) {
     const summary = pack.ytd_summary || pack.profit_loss;
-    const marginText = summary.revenue === 0 ? 'Not available' : formatPercent(summary.grossMargin);
+    // profit_loss.grossMargin is null on the cash-basis fallback (no COGS), and
+    // this line falls back to profit_loss when there is no YTD summary.
+    const marginText = (summary.revenue === 0 || summary.grossMargin === null
+        || summary.grossMargin === undefined)
+        ? 'Not available'
+        : formatPercent(summary.grossMargin);
     const partialNote = pack.ytd_summary?.isPartialCurrentMonth
         ? '<div class="formula-note" style="margin-top:16px;">Includes partial current month — full-month figure will increase as more data is recorded.</div>'
         : '';

@@ -515,8 +515,11 @@ Good features here:
 Avoid here:
 
 - Authoring a new statement computation — source statements from the accounting
-  engines rather than recomputing them (three separate P&L implementations already
-  exist because this rule was not written down; see `docs/ACCOUNTING_CENTER_IA.md` §3.2)
+  engines rather than recomputing them. Three separate P&L implementations existed
+  because this rule was not written down; the last one was re-pointed at the ledger
+  on 2026-07-31 (`calculateProfitLoss(transactions, ledgerIncomeStatement)`). An
+  exported statement that disagrees with the Accounting Center is a defect, not a
+  variant. See `docs/ACCOUNTING_CENTER_IA.md` §3.2 and §10.
 
 ### Settings Page
 

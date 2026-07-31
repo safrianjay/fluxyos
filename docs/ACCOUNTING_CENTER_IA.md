@@ -581,10 +581,27 @@ accountant signs off on a month without exporting to Excel."*
 
 1. Does `accounting-records.html` survive Phase 2 repointed at ledger sources, or
    retire in favour of the Journal Detail path?
-2. Should the third P&L (`report-builder.js:316`, powering `/reports` and
-   `/report-preview` with YTD and YoY variants the Accounting Center lacks) be
-   re-pointed at the ledger engine too, or does export tooling legitimately keep a
-   transactions-basis view? **This is the last remaining duplicate after Phase 3 and
-   needs its own decision.**
+2. ~~The third P&L at `/reports`.~~ **RESOLVED 2026-07-31.** Reading the code
+   changed the question: `/reports`' "Profit & Loss" was never a rival statement —
+   it is a four-metric summary with no COGS, no gross-profit line and no per-account
+   detail. So the fix was not to pick a winner but to stop Reports computing books at
+   all: `calculateProfitLoss(transactions, ledgerIncomeStatement)` now prefers the
+   ledger statement, and `reports.js` fetches it alongside the period data. The
+   exported P&L, the preview drawer, and the full report therefore agree with the
+   Accounting Center and the Trial Balance by construction. The CSV states its basis
+   explicitly.
+
+   Two defects surfaced and were fixed with it: the "Gross Margin" row computed
+   `(Revenue − OpEx) / Revenue` — **net** margin under a gross-margin label — and now
+   uses COGS with net margin reported separately; and because COGS is unknowable on
+   the cash-basis fallback, gross profit/margin are reported as **unavailable** there
+   rather than computed from a zero COGS, which would have fabricated a flat 100%
+   gross margin. Guard: `tests/report-profit-loss-basis.spec.js`.
+
+   **Still transactions-basis, deliberately:** `calculateYtdSummary` /
+   `calculateMonthlyTrend` (best/worst month, average monthly revenue). These are
+   management analytics, not a statement, and re-basing them needs per-month ledger
+   aggregates. Not a correctness gap today, but they should follow if the YTD pack
+   ever starts being read as a statement.
 3. Does Overview need real estate of its own, or is the existing global KPI strip
    plus a cleanup summary enough to justify the section?

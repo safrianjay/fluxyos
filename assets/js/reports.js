@@ -228,7 +228,8 @@ async function loadReportData() {
     const current = scope.current_period;
     const comparison = scope.comparison_period;
     try {
-        const [transactions, bills, subscriptions, prevTx, prevBills, prevSubs, recentExports] = await Promise.all([
+        const [transactions, bills, subscriptions, prevTx, prevBills, prevSubs, recentExports,
+               ledgerStatements, prevLedgerStatements] = await Promise.all([
             ds.getTransactionsForPeriod(reportsState.user.uid, current.start_date, current.end_date),
             ds.getBillsForPeriod(reportsState.user.uid, current.start_date, current.end_date),
             ds.getSubscriptionsForPeriod(reportsState.user.uid, current.start_date, current.end_date),
@@ -241,7 +242,20 @@ async function loadReportData() {
             comparison
                 ? ds.getSubscriptionsForPeriod(reportsState.user.uid, comparison.start_date, comparison.end_date).catch(() => [])
                 : Promise.resolve(null),
-            ds.getRecentReportExports(reportsState.user.uid, 5).catch(() => [])
+            ds.getRecentReportExports(reportsState.user.uid, 5).catch(() => []),
+            // The exported P&L is sourced from the posted ledger so it agrees
+            // with the Accounting Center and the Trial Balance. Reports packages
+            // the books; it does not compute a second set of figures.
+            ds.getFinancialStatements(reportsState.user.uid, {
+                startPeriod: String(current.start_date).slice(0, 7),
+                endPeriod: String(current.end_date).slice(0, 7)
+            }).catch(() => null),
+            comparison
+                ? ds.getFinancialStatements(reportsState.user.uid, {
+                    startPeriod: String(comparison.start_date).slice(0, 7),
+                    endPeriod: String(comparison.end_date).slice(0, 7)
+                }).catch(() => null)
+                : Promise.resolve(null)
         ]);
         reportsState.sourceData = { transactions, bills, subscriptions };
         reportsState.comparisonSourceData = comparison
@@ -259,7 +273,9 @@ async function loadReportData() {
             previousPeriodBills: comparison ? (prevBills || []) : null,
             previousPeriodSubscriptions: comparison ? (prevSubs || []) : null,
             recurringRevenue: computeRecurringMonthlyRevenue(transactions, scope),
-            recurringRevenueSettings: reportsState.reportsSettings
+            recurringRevenueSettings: reportsState.reportsSettings,
+            ledgerIncomeStatement: ledgerStatements?.incomeStatement || null,
+            previousLedgerIncomeStatement: prevLedgerStatements?.incomeStatement || null
         });
         reportsState.recentExports = recentExports;
     } catch (err) {
@@ -638,7 +654,10 @@ function renderPreviewDrawer() {
     if (showFinancials) {
         el('drawer-revenue').textContent = formatRupiah(pack.profit_loss.revenue);
         el('drawer-opex').textContent = formatRupiah(pack.profit_loss.opex);
-        el('drawer-margin').textContent = pack.profit_loss.revenue === 0 ? 'Not available' : formatPercent(pack.profit_loss.grossMargin);
+        // Gross margin needs COGS, which only the posted ledger has.
+        el('drawer-margin').textContent = (pack.profit_loss.grossMargin === null || pack.profit_loss.revenue === 0)
+            ? 'Not available'
+            : formatPercent(pack.profit_loss.grossMargin);
         el('drawer-net').textContent = formatRupiah(pack.profit_loss.netResult);
     }
 

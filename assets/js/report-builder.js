@@ -313,49 +313,104 @@ export function formatPercent(value, digits = 1) {
 
 // ---------- Section calculations ----------
 
-export function calculateProfitLoss(transactions = []) {
-    transactions = activeTransactions(transactions);
+// The exported Profit & Loss.
+//
+// `ledgerIncomeStatement` is the ledger-derived Income Statement from
+// DataService.getFinancialStatements (statements-engine buildIncomeStatement).
+// When supplied it is the source of truth, so an exported P&L cannot disagree
+// with the Accounting Center or the Trial Balance — Reports packages and sends
+// the books, it does not compute a second set (docs/ACCOUNTING_CENTER_IA.md).
+//
+// The transactions path is kept as a fallback for callers that have no ledger
+// (and to keep this function pure and unit-testable), but it is a cash-basis
+// approximation: it excludes accrued bills/subscriptions and cannot see COGS.
+export function calculateProfitLoss(transactions = [], ledgerIncomeStatement = null) {
+    const ls = ledgerIncomeStatement;
+    const fromLedger = !!(ls && ls.hasData);
+
     let revenue = 0;
     let opex = 0;
+    let cogs = 0;
+    let netResult = 0;
     let revenueRecords = 0;
     let opexRecords = 0;
-    transactions.forEach(tx => {
-        const type = String(tx.type || '').toLowerCase();
-        const amount = Number(tx.amount || 0);
-        if (REVENUE_TYPES.has(type)) {
-            revenue += amount;
-            revenueRecords += 1;
-        } else if (OPEX_TYPES.has(type)) {
-            opex += Math.abs(amount);
-            opexRecords += 1;
-        }
-    });
 
-    const grossMargin = revenue > 0 ? ((revenue - opex) / revenue) * 100 : 0;
-    const netResult = revenue - opex;
+    if (fromLedger) {
+        revenue = Number(ls.totalRevenue) || 0;
+        opex = Number(ls.totalOpEx) || 0;
+        cogs = Number(ls.totalCogs) || 0;
+        netResult = Number(ls.netIncome) || 0;
+        revenueRecords = `${(ls.revenue || []).length} accounts`;
+        opexRecords = `${(ls.operatingExpenses || []).length} accounts`;
+    } else {
+        transactions = activeTransactions(transactions);
+        transactions.forEach(tx => {
+            const type = String(tx.type || '').toLowerCase();
+            const amount = Number(tx.amount || 0);
+            if (REVENUE_TYPES.has(type)) {
+                revenue += amount;
+                revenueRecords += 1;
+            } else if (OPEX_TYPES.has(type)) {
+                opex += Math.abs(amount);
+                opexRecords += 1;
+            }
+        });
+        netResult = revenue - opex;
+        revenueRecords = `${revenueRecords} records`;
+        opexRecords = `${opexRecords} records`;
+    }
+
+    // Gross margin is (Revenue − COGS) / Revenue. The previous implementation
+    // subtracted OpEx here, which is NET margin — it under-reported gross margin
+    // on any business with operating costs. Both are now reported separately.
+    // COGS only exists on the posted ledger. On the cash-basis fallback it is
+    // unknowable, so gross profit/margin are reported as unavailable rather than
+    // computed from a zero COGS — which would fabricate a flat 100% gross margin.
+    const grossProfit = fromLedger ? revenue - cogs : null;
+    const grossMargin = fromLedger && revenue > 0 ? (grossProfit / revenue) * 100 : null;
+    const netMargin = revenue > 0 ? (netResult / revenue) * 100 : 0;
+    const basisNote = fromLedger ? 'Posted ledger accounts' : 'FluxyOS records (cash basis)';
 
     return {
         revenue,
         opex,
+        cogs,
+        grossProfit,
         grossMargin,
+        netMargin,
         netResult,
+        basis: fromLedger ? 'ledger' : 'transactions',
         rows: [
-            { metric: 'Revenue', amount: revenue, basis: 'Income + selected receivable records', source_records: `${revenueRecords} records` },
-            { metric: 'OpEx', amount: opex, basis: 'Expense + fee + tax + selected payable records', source_records: `${opexRecords} records` },
-            { metric: 'Gross Margin', amount: grossMargin, basis: '(Revenue - OpEx) / Revenue', source_records: 'Calculated', is_percent: true },
-            { metric: 'Net Result', amount: netResult, basis: 'Revenue - OpEx', source_records: 'Calculated' }
+            { metric: 'Revenue', amount: revenue, basis: basisNote, source_records: revenueRecords },
+            // Gross profit lines appear only when the ledger can supply COGS.
+            ...(fromLedger ? [
+                { metric: 'Cost of Goods Sold', amount: cogs, basis: basisNote, source_records: 'Ledger' },
+                { metric: 'Gross Profit', amount: grossProfit, basis: 'Revenue - COGS', source_records: 'Calculated' }
+            ] : []),
+            { metric: 'OpEx', amount: opex, basis: basisNote, source_records: opexRecords },
+            ...(fromLedger ? [
+                { metric: 'Gross Margin', amount: grossMargin, basis: '(Revenue - COGS) / Revenue', source_records: 'Calculated', is_percent: true }
+            ] : []),
+            { metric: 'Net Margin', amount: netMargin, basis: 'Net Result / Revenue', source_records: 'Calculated', is_percent: true },
+            { metric: 'Net Result', amount: netResult, basis: fromLedger ? 'Ledger net income' : 'Revenue - OpEx', source_records: 'Calculated' }
         ],
         chart: [
             { name: 'Revenue', value: revenue, color: 'navy' },
             { name: 'OpEx', value: opex, color: 'orange' },
             { name: 'Net Result', value: netResult, color: 'green' }
         ],
-        calculation_note: 'Gross Margin = (Revenue - OpEx) / Revenue. If revenue is zero, FluxyOS shows 0% — never NaN or Infinity.',
+        calculation_note: fromLedger
+            ? 'Sourced from posted ledger accounts — these figures match the Accounting Center Income Statement and tie to the Trial Balance. Gross Margin = (Revenue - COGS) / Revenue; if revenue is zero FluxyOS shows 0%, never NaN or Infinity.'
+            : 'Cash-basis approximation from FluxyOS records: accrued bills and subscriptions are excluded and COGS is not available. Gross Margin = (Revenue - COGS) / Revenue; if revenue is zero FluxyOS shows 0%, never NaN or Infinity.',
         interpretation: revenue === 0
             ? 'No revenue recorded in this period. Add income transactions to enable margin analysis.'
             : (netResult >= 0
-                ? 'Period is profitable based on FluxyOS records. External handoff should still reconcile against bank/payment provider data.'
-                : 'Period closed at a loss based on FluxyOS records. Review the largest expense categories before external handoff.')
+                ? (fromLedger
+                    ? 'Period is profitable on the posted ledger. Figures agree with the Accounting Center Income Statement.'
+                    : 'Period is profitable based on FluxyOS records. External handoff should still reconcile against bank/payment provider data.')
+                : (fromLedger
+                    ? 'Period closed at a loss on the posted ledger. Review the largest expense accounts before external handoff.'
+                    : 'Period closed at a loss based on FluxyOS records. Review the largest expense categories before external handoff.'))
     };
 }
 
@@ -943,7 +998,12 @@ export function buildMonthlyReportPack({
     previousPeriodBills = null,
     previousPeriodSubscriptions = null,
     recurringRevenue = null,
-    recurringRevenueSettings = null
+    recurringRevenueSettings = null,
+    // Ledger-derived Income Statement for the selected period (and, when a
+    // comparison is requested, the prior one). Supplied by the page; when absent
+    // the P&L falls back to the cash-basis approximation.
+    ledgerIncomeStatement = null,
+    previousLedgerIncomeStatement = null
 }) {
     // Back-compat: callers may pass `period` only. Derive a monthly scope if
     // `scope` is not supplied so existing flows keep working.
@@ -957,9 +1017,9 @@ export function buildMonthlyReportPack({
     const isYtdMode = reportScope.mode === 'year_to_date' || reportScope.mode === 'quarter_to_date';
     const isYoYComparison = reportScope.comparison_mode === 'previous_year_to_date' || reportScope.comparison_mode === 'same_period_last_year';
 
-    const profit_loss = calculateProfitLoss(transactions);
+    const profit_loss = calculateProfitLoss(transactions, ledgerIncomeStatement);
     const previousPL = Array.isArray(previousPeriodTransactions)
-        ? calculateProfitLoss(previousPeriodTransactions)
+        ? calculateProfitLoss(previousPeriodTransactions, previousLedgerIncomeStatement)
         : null;
 
     // Monthly trend + YTD summary apply to YTD/QTD modes.
@@ -1383,11 +1443,24 @@ export function buildCsvFile(fileKey, pack, sourceData = {}) {
             rows.push(csvRow(['Period End', period.end]));
             rows.push(csvRow(['Generated At', pack.report_identity.generated_at]));
             rows.push('');
+            // Basis is stated in the file: an accountant must be able to tell at a
+            // glance whether these are posted-ledger figures or a cash-basis
+            // approximation, because the two legitimately differ.
+            rows.push(csvRow(['Basis', pack.profit_loss.basis === 'ledger'
+                ? 'Posted ledger (matches Accounting Center / Trial Balance)'
+                : 'FluxyOS records, cash basis (excludes accrued bills and subscriptions)']));
+            rows.push('');
             rows.push(csvRow(['Metric', 'Amount']));
             rows.push(csvRow(['Revenue', pack.profit_loss.revenue]));
+            if (pack.profit_loss.basis === 'ledger') {
+                rows.push(csvRow(['Cost of Goods Sold', pack.profit_loss.cogs]));
+                rows.push(csvRow(['Gross Profit', pack.profit_loss.grossProfit]));
+            }
             rows.push(csvRow(['OpEx', pack.profit_loss.opex]));
-            const margin = pack.profit_loss.revenue > 0 ? pack.profit_loss.grossMargin.toFixed(1) : 0;
-            rows.push(csvRow(['Gross Margin %', margin]));
+            const gm = pack.profit_loss.grossMargin === null ? 'N/A' : pack.profit_loss.grossMargin.toFixed(1);
+            const nm = pack.profit_loss.revenue > 0 ? pack.profit_loss.netMargin.toFixed(1) : 0;
+            rows.push(csvRow(['Gross Margin %', gm]));
+            rows.push(csvRow(['Net Margin %', nm]));
             rows.push(csvRow(['Net Result', pack.profit_loss.netResult]));
             return rows.join('\n');
         }
