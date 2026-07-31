@@ -20,6 +20,7 @@
 const admin = require('firebase-admin');
 const XLSX = require('xlsx');
 const { initAdmin } = require('./lib/notify-core');
+const { resolveFinanceScopes } = require('./lib/workspace-scope');
 
 const STORAGE_BUCKET = process.env.FIREBASE_STORAGE_BUCKET || 'fluxyos.firebasestorage.app';
 // PDF extraction uses OpenAI (the same key that powers bill scanning), reading
@@ -449,13 +450,15 @@ function reconcile(metadata, rows) {
 
 // Flag rows that look like an existing ledger transaction: same amount + same
 // direction within +/- 2 days. Reads only the statement period to stay cheap.
-async function detectDuplicates(db, uid, rows, metadata) {
+// `scope` is the draft's own parent path, so duplicates are matched against the
+// ledger the statement actually belongs to (see resolveDraft).
+async function detectDuplicates(db, scope, rows, metadata) {
     const start = metadata.statement_start_date || rows.map((r) => r.transaction_date).filter(Boolean).sort((a, b) => a - b)[0];
     const end = metadata.statement_end_date || rows.map((r) => r.transaction_date).filter(Boolean).sort((a, b) => b - a)[0];
     if (!start || !end) return;
     let existing = [];
     try {
-        const snap = await db.collection(`users/${uid}/transactions`)
+        const snap = await db.collection(`${scope}/transactions`)
             .where('timestamp', '>=', admin.firestore.Timestamp.fromDate(new Date(start.getTime() - 2 * 86400000)))
             .where('timestamp', '<=', admin.firestore.Timestamp.fromDate(new Date(end.getTime() + 2 * 86400000)))
             .get();
@@ -538,6 +541,25 @@ async function writeResults(db, draftRef, metadata, rows, recon) {
     });
 }
 
+// ---- Draft lookup ----------------------------------------------------------
+
+// bank_statement_imports is WORKSPACE-scoped: the panel creates the draft (and
+// uploads the file) under `workspaces/{workspaceId}/…` via DataService._scope,
+// so looking it up under `users/{uid}/…` finds nothing and extraction silently
+// never runs — the draft stays `pending` and the panel times out. Resolve the
+// owning scope the same way every other server-side finance reader does, and
+// keep the legacy user path last for pre-migration drafts.
+// See docs/PROJECT_BACKGROUND.md §4 and lib/workspace-scope.js.
+async function resolveDraft(db, uid, importId) {
+    const scopes = await resolveFinanceScopes(db, uid);
+    for (const scope of scopes) {
+        const ref = db.doc(`${scope}/bank_statement_imports/${importId}`);
+        const snap = await ref.get();
+        if (snap.exists) return { ref, scope, data: snap.data() || {} };
+    }
+    return null;
+}
+
 // ---- Handler ---------------------------------------------------------------
 
 exports.handler = async (event) => {
@@ -555,10 +577,11 @@ exports.handler = async (event) => {
         const importId = String((JSON.parse(event.body || '{}').importId) || '').slice(0, 200);
         if (!importId) return { statusCode: 400, body: 'missing importId' };
 
-        draftRef = db.doc(`users/${uid}/bank_statement_imports/${importId}`);
-        const snap = await draftRef.get();
-        if (!snap.exists) return { statusCode: 404, body: 'not found' };
-        const draft = snap.data() || {};
+        const resolved = await resolveDraft(db, uid, importId);
+        if (!resolved) return { statusCode: 404, body: 'not found' };
+        draftRef = resolved.ref;
+        const scope = resolved.scope;
+        const draft = resolved.data;
         if (!draft.storage_path) { await draftRef.update({ extraction_status: 'failed', updated_at: admin.firestore.FieldValue.serverTimestamp() }); return { statusCode: 400, body: 'no file' }; }
 
         await draftRef.update({ extraction_status: 'processing', updated_at: admin.firestore.FieldValue.serverTimestamp() });
@@ -573,7 +596,7 @@ exports.handler = async (event) => {
         console.log('[bank-statement-extract] extracted rows:', extracted.rows.length);
 
         const recon = reconcile(extracted.metadata, extracted.rows);
-        await detectDuplicates(db, uid, extracted.rows, extracted.metadata);
+        await detectDuplicates(db, scope, extracted.rows, extracted.metadata);
         await writeResults(db, draftRef, extracted.metadata, extracted.rows, recon);
 
         return { statusCode: 200, body: 'ok' };
@@ -594,3 +617,4 @@ exports.handler = async (event) => {
 };
 
 exports.MANUAL_REVIEW_MESSAGE = MANUAL_REVIEW_MESSAGE;
+exports.__test__ = { resolveDraft, detectDuplicates, extractFromSpreadsheet };

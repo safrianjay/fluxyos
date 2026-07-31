@@ -93,21 +93,29 @@ async function sendNotificationEmail({ db, uid, to, eventKey, templateKey, local
     );
 
     // Best-effort audit trail, consistent with the users/{uid}/audit_logs schema.
-    await db
-        .collection(`users/${uid}/audit_logs`)
-        .add({
+    // `templateKey` is undefined for `prebuilt` senders (the Weekly Digest and the
+    // announcement mailers), and Firestore rejects undefined field values — so
+    // this must mirror the placeholder's fallback. It must also be wrapped in a
+    // real try/catch: add() validates its payload SYNCHRONOUSLY, so a bad value
+    // throws before the promise exists and `.catch()` never attaches. That is how
+    // every digest send since 2026-06-14 threw *after* the email had already gone
+    // out, leaving the caller to record it as a failure.
+    try {
+        await db.collection(`users/${uid}/audit_logs`).add({
             actor_uid: uid,
             actor_role: null,
             action: 'notification.email_sent',
             target_collection: 'mail_log',
             target_id: eventKey,
             before: null,
-            after: { template: templateKey, to },
+            after: { template: templateKey || (prebuilt && prebuilt.template) || 'custom', to },
             reason: null,
             source: 'system',
             created_at: admin.firestore.FieldValue.serverTimestamp(),
-        })
-        .catch((e) => log.warn?.('Audit log write failed', { uid, eventKey, error: e.message }));
+        });
+    } catch (e) {
+        log.warn?.('Audit log write failed', { uid, eventKey, error: e.message });
+    }
 
     log.info?.('Email sent', { uid, eventKey, templateKey, providerId });
     return { sent: true, providerId };

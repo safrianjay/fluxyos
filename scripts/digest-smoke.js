@@ -25,14 +25,25 @@ global.fetch = async (url, opts) => {
 const admin = require('firebase-admin');
 Object.defineProperty(admin, 'auth', { configurable: true, value: () => ({ getUser: async () => { throw new Error('no auth in smoke'); } }) });
 
-const { generateWeeklyDigest, shouldDeliverNow, runWeeklyDigestSweep, getEffectivePrefs } = require('../netlify/functions/lib/digest-core');
+const { generateWeeklyDigest, shouldDeliverNow, runWeeklyDigestSweep, getEffectivePrefs, localCalendarDate } = require('../netlify/functions/lib/digest-core');
 
 const finance = require('../netlify/functions/api').digest;
 const NOW = new Date();
-// A timestamp guaranteed inside the digest period (last completed week).
-const IN_PERIOD = finance.startOfWeek(NOW).getTime() - 3 * 24 * 60 * 60 * 1000;
-const ts = (ms) => ({ seconds: Math.floor(ms / 1000) });
 const D = 24 * 60 * 60 * 1000;
+// A timestamp guaranteed inside the digest period (last completed week). Weeks
+// are the user's LOCAL weeks, so derive the boundary the same way the digest does
+// — using the server's UTC date parts drifts a whole week near midnight WIB.
+const THIS_WEEK_START = finance.startOfWeek(localCalendarDate(NOW, 'Asia/Jakarta'));
+const IN_PERIOD = THIS_WEEK_START.getTime() - 3 * D;
+const ts = (ms) => ({ seconds: Math.floor(ms / 1000) });
+
+// Firestore rejects undefined anywhere in a write payload; the double must too.
+function assertNoUndefined(value, path) {
+    if (value === undefined) throw new Error(`Value for argument "data" is not a valid Firestore document. Cannot use "undefined" as a Firestore value (found in field "${path}").`);
+    if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date) && !value._methodName && typeof value.toDate !== 'function') {
+        Object.entries(value).forEach(([k, v]) => assertNoUndefined(v, path ? `${path}.${k}` : k));
+    }
+}
 
 // In-memory Firestore double.
 function makeDb(seed) {
@@ -41,35 +52,67 @@ function makeDb(seed) {
     for (const [p, arr] of Object.entries(seed.colls || {})) colls.set(p, arr.map((r) => ({ ...r })));
     for (const [p, data] of Object.entries(seed.docs || {})) docs.set(p, { ...data });
 
-    const listing = (p) => { const arr = colls.get(p) || []; return { size: arr.length, docs: arr.map((r) => ({ id: r.id, data: () => r })) }; };
+    const listing = (p, sort) => {
+        let arr = colls.get(p) || [];
+        if (sort) {
+            const ms = (r) => { const v = r[sort.field]; return (v && typeof v.seconds === 'number') ? v.seconds : -Infinity; };
+            // Firestore skips documents missing the ordered field.
+            arr = arr.filter((r) => r[sort.field] !== undefined && r[sort.field] !== null)
+                .sort((a, b) => (sort.dir === 'desc' ? ms(b) - ms(a) : ms(a) - ms(b)));
+        }
+        return { size: arr.length, docs: arr.map((r) => ({ id: r.id, data: () => r })) };
+    };
     const docHandle = (p) => ({
         async create(data) { if (docs.has(p)) { const e = new Error('exists'); e.code = 6; throw e; } docs.set(p, { ...data }); },
         async set(data, opts) { const prev = (opts && opts.merge && docs.get(p)) || {}; docs.set(p, { ...prev, ...data }); },
         async delete() { docs.delete(p); },
         async get() { return { exists: docs.has(p), data: () => docs.get(p) }; },
     });
+    const query = (p, sort) => ({
+        orderBy: (field, dir = 'asc') => query(p, { field, dir }),
+        limit: () => ({ async get() { return listing(p, sort); } }),
+        async get() { return listing(p, sort); },
+        // NOT async on purpose: Firestore validates the payload SYNCHRONOUSLY and
+        // rejects undefined field values, so a bad write throws before any promise
+        // exists and a trailing `.catch()` never attaches. An async double turns
+        // that into a catchable rejection and a write that always fails in
+        // production looks green here — which is exactly what happened to every
+        // weekly digest send.
+        add(data) {
+            assertNoUndefined(data, '');
+            const a = colls.get(p) || [];
+            const id = 'a' + a.length;
+            a.push({ id, ...data });
+            colls.set(p, a);
+            return Promise.resolve({ id });
+        },
+    });
     return {
         _colls: colls, _docs: docs,
         doc: (p) => docHandle(p),
-        collection: (p) => ({
-            limit: () => ({ async get() { return listing(p); } }),
-            async get() { return listing(p); },
-            async add(data) { const a = colls.get(p) || []; a.push({ id: 'a' + a.length, ...data }); colls.set(p, a); },
-        }),
+        collection: (p) => query(p, null),
     };
 }
 
-function financeSeed(uid, weekMs) {
+// Finance data is workspace-scoped (migrated 2026-06-22). Seeding the legacy
+// `users/{uid}/…` path here is what let the workspace-scope regression ship
+// unnoticed, so the default seed is now workspace-scoped like production.
+function financeSeed(uid, weekMs, { scope = `workspaces/${uid}` } = {}) {
     return {
-        [`users/${uid}/transactions`]: [
+        [`${scope}/transactions`]: [
             { id: 't1', type: 'income', amount: 5000000, vendor_name: 'Client A', category: 'Revenue', status: 'Completed', timestamp: ts(weekMs) },
             { id: 't2', type: 'expense', amount: 2000000, vendor_name: 'AWS', category: 'Infrastructure', status: 'Completed', timestamp: ts(weekMs) },
             { id: 't3', type: 'expense', amount: 800000, vendor_name: 'Meta Ads', category: 'Marketing', status: 'Completed', timestamp: ts(weekMs) },
         ],
-        [`users/${uid}/bills`]: [{ id: 'b1', amount: 1200000, vendor_name: 'Office Rent', status: 'unpaid', due_date: ts(NOW.getTime() + 3 * D) }],
-        [`users/${uid}/subscriptions`]: [{ id: 's1', amount: 300000, vendor_name: 'Figma', status: 'active', renewal_date: ts(NOW.getTime() + 10 * D) }],
-        [`users/${uid}/budgets`]: [],
+        [`${scope}/bills`]: [{ id: 'b1', amount: 1200000, vendor_name: 'Office Rent', status: 'unpaid', due_date: ts(NOW.getTime() + 3 * D) }],
+        [`${scope}/subscriptions`]: [{ id: 's1', amount: 300000, vendor_name: 'Figma', status: 'active', renewal_date: ts(NOW.getTime() + 10 * D) }],
+        [`${scope}/budgets`]: [],
     };
+}
+
+// The reverse-lookup pointer the migration + invite acceptance write.
+function workspacePointer(uid, workspaceId = uid) {
+    return { [`user_workspaces/${uid}`]: { workspaceIds: [workspaceId], default: workspaceId } };
 }
 
 let failures = 0;
@@ -167,6 +210,59 @@ async function main() {
     });
     const sw = await runWeeklyDigestSweep(dbSweep, { now: NOW, logger: silent });
     check('sweep sent to the due user', sw.due === 1 && sw.sent === 1, `due=${sw.due} sent=${sw.sent}`);
+
+    // 8) WORKSPACE SCOPING (regression: the digest reported 0 for weeks that had
+    // data because it read the frozen pre-migration users/{uid} copy).
+    const revenueLine = (html) => (html.match(/Rp5\.000\.000/) ? 'Rp5.000.000' : null);
+
+    // 8a) Owner: data lives in workspaces/{uid}, pointer present.
+    const dbWs = makeDb({ colls: financeSeed('uWS', IN_PERIOD), docs: workspacePointer('uWS') });
+    const rWs = await generateWeeklyDigest(dbWs, 'uWS', { metrics: ALL, email: 'ws@example.com' }, { now: NOW, logger: silent, dryRun: true });
+    check('workspace-scoped ledger is read (not summary-only)', rWs.summaryOnly === false && rWs.coverage.record_counts.transactions === 3, `tx=${rWs.coverage.record_counts.transactions}`);
+    check('workspace-scoped revenue lands in the email', revenueLine(rWs.prebuilt.html) === 'Rp5.000.000');
+
+    // 8b) Invited member: pointer resolves to the OWNER's workspace, so the member
+    // gets the shared finance data (not an empty digest).
+    const dbMember = makeDb({ colls: financeSeed('ownerA', IN_PERIOD), docs: workspacePointer('memberB', 'ownerA') });
+    const rMember = await generateWeeklyDigest(dbMember, 'memberB', { metrics: ALL, email: 'm@example.com' }, { now: NOW, logger: silent, dryRun: true });
+    check('member reads the shared workspace ledger', rMember.summaryOnly === false && rMember.coverage.record_counts.transactions === 3, `tx=${rMember.coverage.record_counts.transactions}`);
+
+    // 8c) The stale legacy copy must never win: workspace holds this-period data,
+    // users/{uid} holds only pre-migration data.
+    const dbBoth = makeDb({
+        colls: { ...financeSeed('uBoth', IN_PERIOD), ...financeSeed('uBoth', NOW.getTime() - 90 * D, { scope: 'users/uBoth' }) },
+        docs: workspacePointer('uBoth'),
+    });
+    const rBoth = await generateWeeklyDigest(dbBoth, 'uBoth', { metrics: ALL, email: 'both@example.com' }, { now: NOW, logger: silent, dryRun: true });
+    check('workspace scope wins over the stale users/{uid} copy', rBoth.summaryOnly === false, `summaryOnly=${rBoth.summaryOnly}`);
+
+    // 8d) Pre-migration account (no workspace at all) still works via fallback.
+    const dbLegacy = makeDb({ colls: financeSeed('uLeg', IN_PERIOD, { scope: 'users/uLeg' }) });
+    const rLegacy = await generateWeeklyDigest(dbLegacy, 'uLeg', { metrics: ALL, email: 'leg@example.com' }, { now: NOW, logger: silent, dryRun: true });
+    check('legacy user-scoped account falls back correctly', rLegacy.summaryOnly === false && rLegacy.coverage.record_counts.transactions === 3, `tx=${rLegacy.coverage.record_counts.transactions}`);
+
+    // 9) Voided entries are reversed, not deleted — they must not inflate the week.
+    const voidSeed = financeSeed('uVoid', IN_PERIOD);
+    voidSeed['workspaces/uVoid/transactions'] = [
+        ...voidSeed['workspaces/uVoid/transactions'],
+        { id: 't4', type: 'expense', amount: 9000000, vendor_name: 'Cancelled PO', category: 'Operations', status: 'Voided', is_voided: true, timestamp: ts(IN_PERIOD) },
+    ];
+    const dbVoid = makeDb({ colls: voidSeed, docs: workspacePointer('uVoid') });
+    const rVoid = await generateWeeklyDigest(dbVoid, 'uVoid', { metrics: ALL, email: 'v@example.com' }, { now: NOW, logger: silent, dryRun: true });
+    check('voided transaction excluded from the digest', rVoid.coverage.record_counts.transactions === 3 && !rVoid.prebuilt.html.includes('Rp9.000.000'), `tx=${rVoid.coverage.record_counts.transactions}`);
+
+    // 10) Ordered read: on a ledger larger than the read cap, the most recent week
+    // must still be present (an unordered capped read can omit it entirely).
+    const bulkSeed = financeSeed('uBulk', IN_PERIOD);
+    const older = [];
+    for (let i = 0; i < 1200; i += 1) {
+        older.push({ id: `z${String(i).padStart(4, '0')}`, type: 'expense', amount: 1000, vendor_name: 'Old', category: 'Operations', status: 'Completed', timestamp: ts(NOW.getTime() - (60 + i) * D) });
+    }
+    // Recent records sort LAST by document id, so an unordered cap would drop them.
+    bulkSeed['workspaces/uBulk/transactions'] = [...older, ...bulkSeed['workspaces/uBulk/transactions']];
+    const dbBulk = makeDb({ colls: bulkSeed, docs: workspacePointer('uBulk') });
+    const rBulk = await generateWeeklyDigest(dbBulk, 'uBulk', { metrics: ALL, email: 'bulk@example.com' }, { now: NOW, logger: silent, dryRun: true });
+    check('capped read still includes the recapped week', rBulk.summaryOnly === false && revenueLine(rBulk.prebuilt.html) === 'Rp5.000.000', `summaryOnly=${rBulk.summaryOnly}`);
 
     console.log(`\nReal sends via mock: ${sent.length} (no network) | default Monday/09:00 matches now: ${isMonday9}`);
     console.log(failures === 0 ? 'DIGEST SMOKE PASS' : `DIGEST SMOKE FAIL (${failures})`);

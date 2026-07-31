@@ -207,7 +207,11 @@ FluxyOS design language.
 >    every recent period silently computes as 0 while old months still look
 >    plausible. That is exactly how the Fluxy AI answers and the Weekly Digest
 >    came to report Rp0 for weeks that had records (fixed 2026-07-30; regression
->    tests: `npm run check:ai-scope`, `npm run smoke:digest`).
+>    tests: `npm run check:ai-scope`, `npm run smoke:digest`). The same leak made
+>    bank statement extraction a no-op — the worker looked the draft up under
+>    `users/{uid}` while the panel created it under `workspaces/{ws}`, so every
+>    upload sat at `extraction_status: 'pending'` until the panel timed out
+>    (fixed 2026-07-31; regression test: `npm run check:bank-scope`).
 > 6. **Watch out for inline page queries.** Some pages build Firestore queries
 >    directly in the HTML (`collection(ds.db, …)`) instead of calling a
 >    DataService method — these bypass the seam and are the easiest place to

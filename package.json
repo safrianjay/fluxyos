@@ -5,7 +5,9 @@
     "smoke:notify": "node scripts/notify-smoke.js",
     "smoke:digest": "node scripts/digest-smoke.js",
     "smoke:announce": "node scripts/announce-smoke.js",
-    "smoke:invoice-email": "node scripts/invoice-email-smoke.js"
+    "smoke:invoice-email": "node scripts/invoice-email-smoke.js",
+    "check:ai-scope": "node tests/ai-finance-scope.check.js",
+    "check:bank-scope": "node tests/bank-statement-scope.check.js"
   },
   "dependencies": {
     "@netlify/functions": "^2.8.2",
