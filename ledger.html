@@ -390,6 +390,7 @@
     <script src="assets/js/money-format.js"></script>
     <script src="assets/js/document-capture.js"></script>
     <script src="assets/js/bank-statement-import.js"></script>
+    <script src="assets/js/journal-link-card.js"></script>
 
     <!-- AUTH GUARD & DATA -->
     <script type="module">
@@ -2775,96 +2776,17 @@
             `;
         }
 
-        // Journal Information — high-level metadata plus a deep link. The accounting
-        // detail (lines, debits/credits, totals, balances, audit history) lives on
-        // the Journal Detail page and is deliberately NOT duplicated here:
-        // Transaction Detail explains the business event, Journal Detail explains
-        // the accounting event.
-        const JOURNAL_STATUS_LABEL = {
-            posted: 'Posted', draft: 'Draft', reversal: 'Reversal', reversed: 'Reversed'
-        };
-        // Mirrors selectRule() in assets/js/accounting-engine.js. Used only to
-        // explain WHY no journal exists — never to decide posting.
-        const JOURNAL_POSTING_TYPES = new Set([
-            'income', 'revenue', 'refund', 'expense', 'fee', 'tax',
-            'pending_receivable', 'pending_payable'
-        ]);
-
-        function journalEmptyStateCopy(row) {
-            const status = String(row.accounting_status || '').toLowerCase();
-            const type = String(row.type || '').toLowerCase();
-            if (status === 'pending') {
-                return 'This transaction is queued for posting. Its journal appears once pending entries are posted from the Accounting Center.';
-            }
-            if (status === 'excluded') {
-                return 'This transaction is deliberately outside the IDR ledger, so no journal is generated for it.';
-            }
-            if (type && !JOURNAL_POSTING_TYPES.has(type)) {
-                return `Transactions of type "${type}" do not post to the ledger, so no journal is generated.`;
-            }
-            if (isVoidedTransaction(row)) {
-                return 'This transaction was voided. Any journal it produced was reversed in the ledger.';
-            }
-            return 'No journal has been generated for this transaction yet.';
-        }
-
+        // Journal Information — shared card (assets/js/journal-link-card.js).
+        // Transaction Detail explains the business event and links out; Journal
+        // Detail owns the accounting event.
         async function hydrateTxJournalCard(row) {
             const host = document.getElementById('tx-detail-journal-card');
             const user = auth.currentUser;
-            if (!host || !user) return;
-
-            let journal = null;
-            if (row.journal_ref) {
-                try {
-                    journal = await ds.getJournalById(user.uid, row.journal_ref);
-                } catch (_) { /* best-effort — fall through to the empty state */ }
-            }
-            // Guard against a stale paint after the user opened another record.
-            if (activeTxDetailRow?.id !== row.id) return;
-
-            if (!journal) {
-                host.innerHTML = `
-                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                        <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Journal information</p>
-                        <p class="text-[13px] text-gray-500 leading-relaxed">${escapeHtml(journalEmptyStateCopy(row))}</p>
-                    </div>`;
-                return;
-            }
-
-            const statusLabel = JOURNAL_STATUS_LABEL[String(journal.status || '').toLowerCase()] || journal.status || '—';
-            const method = journal.journal_type === 'manual' ? 'Manual' : 'Automatically generated';
-            const postedAt = journal.posted_at || journal.created_at || null;
-            const description = journal.description || journal.memo || '';
-            const href = `accounting-journal.html?id=${encodeURIComponent(journal.id)}`;
-
-            host.innerHTML = `
-                <a href="${href}" class="group block rounded-xl border border-gray-200 bg-gray-50 p-4 transition-colors hover:border-[#EA580C] hover:bg-orange-50/40">
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0">
-                            <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Journal information</p>
-                            <p class="truncate text-[14px] font-bold text-gray-900 group-hover:text-[#EA580C] transition-colors">${escapeHtml(journal.journal_number || 'Not numbered')}</p>
-                            <p class="mt-0.5 text-[12px] text-gray-500">${escapeHtml(statusLabel)} · ${escapeHtml(method)}</p>
-                        </div>
-                        <svg class="mt-1 h-4 w-4 flex-shrink-0 text-gray-400 group-hover:text-[#EA580C] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                        </svg>
-                    </div>
-                    <div class="mt-3 grid grid-cols-2 gap-3 border-t border-gray-200 pt-3">
-                        <div>
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Posting date</p>
-                            <p class="mt-0.5 text-[13px] font-semibold text-gray-800">${postedAt ? formatDetailDate(postedAt, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</p>
-                        </div>
-                        <div>
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Period</p>
-                            <p class="mt-0.5 text-[13px] font-semibold text-gray-800">${escapeHtml(journal.period_key || '—')}</p>
-                        </div>
-                        ${description ? `<div class="col-span-2">
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Description</p>
-                            <p class="mt-0.5 text-[13px] text-gray-700 leading-snug">${escapeHtml(description)}</p>
-                        </div>` : ''}
-                    </div>
-                    <p class="mt-3 text-[11px] text-gray-400">Open the journal for accounts, debits and credits, and audit history.</p>
-                </a>`;
+            if (!host || !user || !window.FluxyJournalCard) return;
+            await window.FluxyJournalCard.render({
+                hostEl: host, ds, userId: user.uid, record: row, context: 'transaction',
+                isStale: () => activeTxDetailRow?.id !== row.id
+            });
         }
 
         async function renderTxEditForm(row) {

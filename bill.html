@@ -310,6 +310,7 @@
     <script src="assets/js/date-range-picker.js"></script>
     <script src="assets/js/document-capture.js"></script>
     <script src="assets/js/document-attachment.js"></script>
+    <script src="assets/js/journal-link-card.js"></script>
 
     <script type="module">
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -886,10 +887,12 @@
                     </section>
 
                     <div id="bill-attachments"></div>
+                    <div id="bill-journal-card"></div>
                 </div>
             `;
 
             mountBillAttachments(bill);
+            mountBillJournalCard(bill);
             const markPaidBtn = document.getElementById('bill-mark-paid-btn');
             if (markPaidBtn) markPaidBtn.classList.toggle('hidden', isPaid);
             document.getElementById('bill-drawer-backdrop').classList.remove('hidden');
@@ -900,6 +903,17 @@
 
         // Source documents for this bill (supplier invoices, payment proof). The
         // shared component owns upload/preview/download/replace/detach.
+        // Journal Information — shared card (assets/js/journal-link-card.js).
+        // The bill explains the business event; Journal Detail owns the accounting.
+        async function mountBillJournalCard(bill) {
+            const host = document.getElementById('bill-journal-card');
+            const user = auth.currentUser;
+            if (!host || !user || !window.FluxyJournalCard) return;
+            await window.FluxyJournalCard.render({
+                hostEl: host, ds, userId: user.uid, record: bill, context: 'bill'
+            });
+        }
+
         async function mountBillAttachments(bill) {
             const host = document.getElementById('bill-attachments');
             const ds = window.__fluxyBillsContext?.ds;

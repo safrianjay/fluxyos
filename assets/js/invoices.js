@@ -1199,6 +1199,17 @@ export function initInvoicesPage({ ds, user }) {
         if (invoice.voided_at) activity.push(`Voided · ${formatDate(invoice.voided_at)} ${formatTime(invoice.voided_at)}`);
         el('detail-activity').innerHTML = activity.map(line => `<li class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-gray-300"></span>${esc(line)}</li>`).join('')
             || '<li class="text-gray-400">No activity yet.</li>';
+
+        // Journal Information — shared card (assets/js/journal-link-card.js). The
+        // invoice explains the business event; Journal Detail owns the accounting.
+        const journalHost = el('invoice-journal-card');
+        if (journalHost && window.FluxyJournalCard) {
+            window.FluxyJournalCard.render({
+                hostEl: journalHost, ds, userId: uid, record: invoice, context: 'invoice',
+                // The detail view is reused as the user clicks through invoices.
+                isStale: () => String(el('detail-number')?.textContent || '') !== String(invoice.invoice_number || '')
+            });
+        }
     }
 
     // POST to the backend enqueue function (auth token + resolved workspace id).
