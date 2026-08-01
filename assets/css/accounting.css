@@ -120,6 +120,14 @@
 .acct-subtab .acct-tab-count { background: #F3F4F6; color: #6B7280; }
 .acct-subtab.is-active .acct-tab-count { background: #FFEDD5; color: #C2410C; }
 
+/* --- Overview: two equal cards, stacking on narrow viewports --- */
+.acct-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 24px;
+    align-items: start;
+}
+
 /* --- KPI strip --- */
 .acct-kpi-grid {
     display: grid;

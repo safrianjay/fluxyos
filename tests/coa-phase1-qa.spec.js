@@ -20,7 +20,8 @@ test('CoA Phase 1: seed, taxonomy, archive round-trip (live rules)', async ({ pa
 
     await page.goto('/accounting.html');
     await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
-    await expect(page.locator('[data-acct-panel="income"]')).toBeVisible({ timeout: 30000 });
+    // Overview is the default landing since the IA restructure.
+    await expect(page.locator('[data-acct-panel="overview"]')).toBeVisible({ timeout: 30000 });
 
     // --- Chart of Accounts tab: full expanded seed present.
     await openAccountingTab(page, 'coa');

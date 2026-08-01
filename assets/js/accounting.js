@@ -13,8 +13,8 @@ const state = {
     startKey: null,
     endKey: null,
     picker: null,
-    activeTab: 'income',
-    activeGroup: 'reports',
+    activeTab: 'overview',
+    activeGroup: 'overview',
     lastTabByGroup: {},
     loading: false,
     data: null,
@@ -285,7 +285,7 @@ function openFluxyAI() {
     else window.showToast?.('Fluxy AI is still loading. Try again in a moment.', 'info');
 }
 
-const KERNEL_TABS = new Set(['journals', 'ledger', 'trial', 'coa', 'close']);
+const KERNEL_TABS = new Set(['overview', 'journals', 'ledger', 'trial', 'coa', 'close']);
 // Both ledger-statement views come from one getFinancialStatements() fetch.
 // Statements load eagerly with the page (the KPI strip reads the same figures),
 // so no tab needs a lazy statement fetch.
@@ -295,6 +295,7 @@ const KERNEL_TABS = new Set(['journals', 'ledger', 'trial', 'coa', 'close']);
 // Panel ids are unchanged — only the nav layer knows about grouping.
 // Full rationale: docs/ACCOUNTING_CENTER_IA.md
 const TAB_GROUPS = [
+    { id: 'overview', tabs: ['overview'] },
     { id: 'reports', tabs: ['income', 'balance', 'cashflow', 'aging'] },
     { id: 'ledger', tabs: ['journals', 'ledger', 'trial'] },
     { id: 'setup', tabs: ['coa', 'mapping', 'vendors'] },
@@ -318,7 +319,9 @@ function initialTab() {
         const t = new URL(window.location.href).searchParams.get('tab');
         if (t && GROUP_OF_TAB[t]) return t;
     } catch { /* fall through to default */ }
-    return 'income';
+    // Founders land on "are my books OK?" rather than on a statement they have to
+    // interpret; accountants deep-link or click straight through to Reports.
+    return 'overview';
 }
 
 // Selecting a group returns to the view last used inside it, defaulting to first.
@@ -351,6 +354,13 @@ function setTab(tab, { updateUrl = true } = {}) {
     document.querySelectorAll('[data-acct-panel]').forEach(panel => {
         panel.classList.toggle('hidden', panel.getAttribute('data-acct-panel') !== tab);
     });
+    // A child row holding a single button is filler — the group tab already said
+    // where you are. Hide the row entirely for single-view groups.
+    const subNav = document.querySelector('.acct-subtabs');
+    if (subNav) {
+        const g = TAB_GROUPS.find(x => x.id === group);
+        subNav.classList.toggle('hidden', !!g && g.tabs.length < 2);
+    }
 
     // Ledger views read the new accounting collections lazily — only when their
     // tab is first opened for the active period, so the page load stays light.
@@ -792,6 +802,101 @@ async function exportBalanceSheet() {
     }
 }
 
+// --- Overview: "can I trust these books, and can I close?" --------------------
+// Deliberately does NOT restate the KPI strip above it (that would be the
+// duplicated-content pattern DESIGN_SYSTEM §6 bans). It answers the one question
+// nothing else answers in one place: the three integrity checks live on three
+// different views, so today you must visit Reports, Ledger, and Close to
+// assemble them.
+
+function healthRow(label, state, detail, target) {
+    const tone = state === 'ok' ? 'success' : state === 'bad' ? 'danger' : 'neutral';
+    const text = state === 'ok' ? 'OK' : state === 'bad' ? 'Check' : 'Pending';
+    const clickable = target ? ` acct-row-link" data-overview-go="${escapeHtml(target)}" tabindex="0" role="link` : '';
+    return `<tr class="fluxy-table-row${clickable}">
+        <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${escapeHtml(label)}</span></td>
+        <td class="fluxy-table-cell"><span class="fluxy-table-cell-meta">${escapeHtml(detail)}</span></td>
+        <td class="fluxy-table-cell"><span class="fluxy-table-status fluxy-status-${tone}">${escapeHtml(text)}</span></td>
+    </tr>`;
+}
+
+function renderOverview() {
+    const healthWrap = el('overview-health');
+    const actionWrap = el('overview-actions');
+    if (!healthWrap || !actionWrap) return;
+    if (el('overview-period')) {
+        el('overview-period').textContent = state.statements
+            ? periodColumnLabel(state.statements.period.start, state.statements.period.end)
+            : currentPeriodKey();
+    }
+
+    const st = state.statements;
+    const kernelReady = state.kernel && state.kernel.loadedPeriod === currentPeriodKey();
+    const tb = kernelReady ? state.kernel.trial : null;
+    const bs = st?.balanceSheet;
+    const cf = st?.cashFlow;
+
+    // --- Books health.
+    const health = [
+        healthRow('Trial balance',
+            !tb ? 'wait' : (tb.balanced ? 'ok' : 'bad'),
+            !tb ? 'Loading…' : (tb.balanced ? 'Debits equal credits' : 'Debits and credits disagree'),
+            'trial'),
+        healthRow('Balance sheet ties out',
+            !bs?.hasData ? 'wait' : (bs.balanced ? 'ok' : 'bad'),
+            !bs?.hasData ? 'No ledger position yet' : (bs.balanced ? 'Assets = Liabilities + Equity' : `Out by ${signedRupiah(bs.tieOutDelta)}`),
+            'balance'),
+        healthRow('Cash flow ties to cash',
+            !cf?.hasData ? 'wait' : (cf.balanced ? 'ok' : 'bad'),
+            !cf?.hasData ? 'No cash movement yet' : (cf.balanced ? 'Net change matches cash accounts' : `Out by ${signedRupiah(cf.tieOutDelta)}`),
+            'cashflow')
+    ];
+    healthWrap.innerHTML = tableShell(
+        [{ label: 'Check' }, { label: 'Detail' }, { label: 'Status' }],
+        health.join('')
+    );
+
+    // --- Before you close: only real blockers, each with somewhere to go.
+    const readiness = state.data?.readiness;
+    const unposted = kernelReady ? (state.kernel.unposted || { blocking: 0, deferred: 0 }) : null;
+    const cleanupCount = readiness?.cleanupItems?.length || 0;
+    const periodStatus = kernelReady ? (state.kernel.period?.status || 'open') : null;
+
+    const items = [];
+    if (unposted && unposted.blocking > 0) {
+        items.push(healthRow('Entries not posted to the ledger',
+            'bad', `${unposted.blocking} to post — this blocks closing`, 'close'));
+    }
+    if (unposted && unposted.deferred > 0) {
+        items.push(healthRow('Invoice payments awaiting issuance',
+            'wait', `${unposted.deferred} deferred — does not block close`, 'close'));
+    }
+    if (cleanupCount > 0) {
+        items.push(healthRow('Records needing cleanup',
+            'wait', `${cleanupCount} to review`, 'cleanup'));
+    }
+    if (periodStatus === 'closed' || periodStatus === 'locked') {
+        items.push(healthRow('Period status', 'ok', `${currentPeriodKey()} is ${periodStatus}`, 'close'));
+    } else if (periodStatus && unposted && unposted.blocking === 0 && tb?.balanced) {
+        items.push(healthRow('Ready to close', 'ok', `${currentPeriodKey()} can be closed`, 'close'));
+    }
+
+    actionWrap.innerHTML = items.length
+        ? tableShell([{ label: 'Item' }, { label: 'Detail' }, { label: 'Status' }], items.join(''))
+        : emptyState('Nothing outstanding', 'No unposted entries and no cleanup items for this period.');
+
+    // Every row is a shortcut to the view that fixes it.
+    [healthWrap, actionWrap].forEach((wrap) => {
+        wrap.querySelectorAll('[data-overview-go]').forEach((row) => {
+            const go = () => setTab(row.getAttribute('data-overview-go'));
+            row.addEventListener('click', go);
+            row.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+            });
+        });
+    });
+}
+
 // --- Accounting export package -----------------------------------------------
 // The accountant hand-off: every statement plus the working papers behind them,
 // in one audited action. Definition of done for the accounting initiative is an
@@ -1105,6 +1210,7 @@ async function loadKernel(force = false) {
         renderLedgerSelector();
         renderClosePanel();
         renderCloseChecklist(); // refresh with the kernel gates now that they loaded
+        renderOverview();       // health + blockers depend on the kernel
     } catch (err) {
         console.error('Accounting kernel load failed:', err);
         state.kernel.loadedPeriod = null; // allow a retry on next tab open
@@ -1155,6 +1261,7 @@ function render(data) {
     renderKpis(data);
     if (state.statements) renderStatements(state.statements);
     else statementsError();
+    renderOverview();
 
     const readiness = data.readiness;
     if (readiness) {

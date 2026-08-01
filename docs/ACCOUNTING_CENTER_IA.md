@@ -326,9 +326,25 @@ exist. They are labelled by basis — "Income Statement" (transactions preview, 
 the default) and "Income Statement (Ledger)". This is deliberate: it surfaces the
 duplication rather than hiding it, and Phase 2 collapses the pair into one leaf.
 
-**Deferred to a later phase — Overview.** It is the one genuinely new view in the
-target IA, so bundling it would have broken Phase 1's "structure only" property. The
-default landing is Reports → Income Statement until it lands.
+**Overview — SHIPPED 2026-08-01** (deferred out of Phase 1 because it was the one
+genuinely new view, which would have broken that phase's "structure only" property).
+
+It deliberately does **not** restate the KPI strip above it — that would be the
+duplicated-content pattern `DESIGN_SYSTEM.md` §6 bans. It answers the one question
+nothing else answers in one place: **can I trust these books, and can I close?**
+
+- **Books health** — the three integrity checks (trial balance, balance-sheet
+  tie-out, cash-flow tie-out). These live on three separate views today, so
+  assembling this picture previously meant visiting Reports, Ledger, and Close.
+- **Before you close** — only real blockers, each with somewhere to go: unposted
+  entries (blocking), invoice-linked deferrals (non-blocking, labelled as such),
+  cleanup count, and period status. Empty state when nothing is outstanding.
+- Every row is a shortcut to the view that fixes it.
+
+**Overview is now the default landing**, so founders get "are my books OK?" before a
+statement they would have to interpret; accountants deep-link or click through to
+Reports. A group holding a single view hides its child row entirely — a one-button
+row is filler when the group tab already says where you are.
 
 ### Phase 2 — One Income Statement, ledger-derived ⚠️ CODE COMPLETE, CUTOVER BLOCKED
 

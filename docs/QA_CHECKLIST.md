@@ -769,7 +769,8 @@ banner/KPI, not the main card.
 | 4 | Page defaults to the current month; period control is the shared `FluxyDateRangePicker` |
 | 5 | Loading skeleton shows first, then the real/empty state (no flash of fake numbers) |
 | 6 | Account with no finance records → "No income statement data for this period" empty state, **no** fake report rows |
-| 7 | Nav is **two-level**: groups **Reports / Ledger / Setup / Close**, with a child row showing only the active group's views. Reports = Income Statement · Balance Sheet · Cash Flow · Aging; Ledger = Journals · General Ledger · Trial Balance; Setup = Chart of Accounts · Account Mapping · Vendors; Close = Close checklist · Cleanup. Default landing is Reports → Income Statement |
+| 7 | Nav is **two-level**: groups **Overview / Reports / Ledger / Setup / Close**, with a child row showing only the active group's views. Reports = Income Statement · Balance Sheet · Cash Flow · Aging; Ledger = Journals · General Ledger · Trial Balance; Setup = Chart of Accounts · Account Mapping · Vendors; Close = Close checklist · Cleanup. **Default landing is Overview**; a single-view group (Overview) hides its child row |
+| 7c | **Overview** shows Books health (trial balance, balance-sheet tie-out, cash-flow tie-out) and Before you close (unposted/deferred/cleanup/period status). Rows link to the view that fixes them. It must NOT restate the KPI strip |
 | 7a | Selecting a group returns to the view last used in it; `?tab=<id>` deep-links a view and the URL updates as you navigate; an unknown `?tab=` falls back to Income Statement |
 | 7b | Arrow keys traverse each nav row; the active item has a visible focus ring; out-of-group child buttons are absent from the row (not merely dimmed) |
 | 8 | Income Statement table renders real data; column headers show the selected period + comparison labels (e.g. "May 2026" / "Apr 2026") |

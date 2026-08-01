@@ -113,7 +113,8 @@
 
                     <!-- SECTION NAV (primary: groups) -->
                     <nav class="acct-tabs" role="tablist" aria-label="Accounting Center sections">
-                        <button type="button" class="acct-tab is-active" data-acct-group="reports" role="tab" aria-selected="true">Reports</button>
+                        <button type="button" class="acct-tab is-active" data-acct-group="overview" role="tab" aria-selected="true">Overview</button>
+                        <button type="button" class="acct-tab" data-acct-group="reports" role="tab" aria-selected="false">Reports</button>
                         <button type="button" class="acct-tab" data-acct-group="ledger" role="tab" aria-selected="false">Ledger</button>
                         <button type="button" class="acct-tab" data-acct-group="setup" role="tab" aria-selected="false">Setup</button>
                         <button type="button" class="acct-tab" data-acct-group="close" role="tab" aria-selected="false">Close <span class="acct-tab-count" id="tab-close-count">0</span></button>
@@ -121,7 +122,8 @@
 
                     <!-- VIEW NAV (secondary: children of the active group) -->
                     <nav class="acct-subtabs" role="tablist" aria-label="Accounting Center views">
-                        <button type="button" class="acct-subtab is-active" data-acct-tab="income" data-acct-parent="reports" role="tab" aria-selected="true">Income Statement</button>
+                        <button type="button" class="acct-subtab is-active" data-acct-tab="overview" data-acct-parent="overview" role="tab" aria-selected="true">Books health</button>
+                        <button type="button" class="acct-subtab" data-acct-tab="income" data-acct-parent="reports" role="tab" aria-selected="false" hidden>Income Statement</button>
                         <button type="button" class="acct-subtab" data-acct-tab="balance" data-acct-parent="reports" role="tab" aria-selected="false">Balance Sheet</button>
                         <button type="button" class="acct-subtab" data-acct-tab="cashflow" data-acct-parent="reports" role="tab" aria-selected="false">Cash Flow</button>
                         <button type="button" class="acct-subtab" data-acct-tab="aging" data-acct-parent="reports" role="tab" aria-selected="false">Aging</button>
@@ -137,6 +139,30 @@
                         <button type="button" class="acct-subtab" data-acct-tab="close" data-acct-parent="close" role="tab" aria-selected="false" hidden>Close checklist</button>
                         <button type="button" class="acct-subtab" data-acct-tab="cleanup" data-acct-parent="close" role="tab" aria-selected="false" hidden>Cleanup <span class="acct-tab-count" id="tab-cleanup-count">0</span></button>
                     </nav>
+
+                    <!-- OVERVIEW TAB — "can I trust these books, and can I close?" -->
+                    <div data-acct-panel="overview">
+                        <div class="acct-overview-grid">
+                            <section class="acct-card fluxy-table-card">
+                                <div class="fluxy-table-card-header">
+                                    <div>
+                                        <h2 class="fluxy-table-title">Books health</h2>
+                                        <p class="fluxy-table-subtitle">The three integrity checks behind every statement, for <span id="overview-period">this period</span>.</p>
+                                    </div>
+                                </div>
+                                <div id="overview-health" class="fluxy-table-scroll"></div>
+                            </section>
+                            <section class="acct-card fluxy-table-card">
+                                <div class="fluxy-table-card-header">
+                                    <div>
+                                        <h2 class="fluxy-table-title">Before you close</h2>
+                                        <p class="fluxy-table-subtitle">What still needs attention, and where to fix it.</p>
+                                    </div>
+                                </div>
+                                <div id="overview-actions" class="fluxy-table-scroll"></div>
+                            </section>
+                        </div>
+                    </div>
 
                     <!-- INCOME STATEMENT TAB (ledger-derived) -->
                     <div data-acct-panel="income">

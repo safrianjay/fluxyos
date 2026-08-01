@@ -6,7 +6,7 @@ const { openAccountingTab, GROUP_OF_TAB } = require('./helpers/accounting-nav');
 // every view reachable, groups mutually exclusive, views deep-linkable, and the
 // nav scrollable at 375px without the page scrolling horizontally.
 
-const GROUPS = ['reports', 'ledger', 'setup', 'close'];
+const GROUPS = ['overview', 'reports', 'ledger', 'setup', 'close'];
 
 test('every view is reachable and its panel is the only one visible', async ({ page }) => {
     const bad = [];
@@ -20,9 +20,10 @@ test('every view is reachable and its panel is the only one visible', async ({ p
     await page.goto('/accounting.html');
     await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
 
-    // Reports → Income Statement is the default landing.
-    await expect(page.locator('[data-acct-group="reports"]')).toHaveClass(/is-active/);
-    await expect(page.locator('[data-acct-panel="income"]')).toBeVisible();
+    // Overview is the default landing — founders get "are my books OK?" before a
+    // statement they would have to interpret.
+    await expect(page.locator('[data-acct-group="overview"]')).toHaveClass(/is-active/);
+    await expect(page.locator('[data-acct-panel="overview"]')).toBeVisible();
 
     for (const tab of Object.keys(GROUP_OF_TAB)) {
         await openAccountingTab(page, tab);
@@ -41,7 +42,8 @@ test('child row shows only the active group, and groups remember their last view
     await page.goto('/accounting.html');
     await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
 
-    const EXPECTED_VIEWS = { reports: 4, ledger: 3, setup: 3, close: 2 };
+    // Single-view groups hide the child row entirely (it would hold one button).
+    const EXPECTED_VIEWS = { overview: 0, reports: 4, ledger: 3, setup: 3, close: 2 };
     for (const group of GROUPS) {
         await page.locator(`[data-acct-group="${group}"]`).click();
         const visible = page.locator('[data-acct-tab]:visible');
@@ -66,6 +68,7 @@ test('KPI strip margins are percentages and tie to the Income Statement', async 
     await page.goto('/accounting.html');
     await page.waitForSelector('#accounting-content:not(.hidden)', { timeout: 60000 });
 
+    await openAccountingTab(page, 'income');
     const figures = await page.evaluate(() => ({
         revenue: document.getElementById('kpi-revenue-value').textContent.trim(),
         gross: document.getElementById('kpi-gross-value').textContent.trim(),
@@ -99,7 +102,7 @@ test('views are deep-linkable via ?tab= and the URL tracks navigation', async ({
 
     // An unknown tab falls back to the default view instead of a blank page.
     await page.goto('/accounting.html?tab=does-not-exist');
-    await expect(page.locator('[data-acct-panel="income"]')).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('[data-acct-panel="overview"]')).toBeVisible({ timeout: 30000 });
 });
 
 test('nav scrolls internally at 375px without the page scrolling horizontally', async ({ page }) => {

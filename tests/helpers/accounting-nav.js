@@ -8,6 +8,7 @@
 // openAccountingTab() instead of clicking `[data-acct-tab=…]` by hand.
 
 const GROUP_OF_TAB = {
+    overview: 'overview',
     income: 'reports',
     balance: 'reports',
     cashflow: 'reports',
@@ -31,7 +32,10 @@ async function openAccountingTab(page, tab) {
     const group = GROUP_OF_TAB[tab];
     if (!group) throw new Error(`Unknown Accounting Center tab: ${tab}`);
     await page.locator(`[data-acct-group="${group}"]`).click();
-    await page.locator(`[data-acct-tab="${tab}"]`).click();
+    // Single-view groups hide the child row (a one-button row is filler), so the
+    // group click alone selects the view — mirror what a user can actually do.
+    const child = page.locator(`[data-acct-tab="${tab}"]`);
+    if (await child.isVisible().catch(() => false)) await child.click();
     await page.waitForSelector(`[data-acct-panel="${tab}"]`, { state: 'visible' });
 }
 
