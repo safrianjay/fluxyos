@@ -152,15 +152,22 @@ FluxyOS design language.
   (`income`/`revenue`/`refund`/`pending_receivable` minus
   `expense`/`fee`/`tax`/`pending_payable`), so it is the absolute amount behind the
   Gross margin KPI and the two can never disagree. Beyond the shared scaffold the page
-  adds: a **revenue-vs-expenses composition**, a **bridge** (previous net profit →
-  revenue movement → expense movement → current, plus the top three category movers), a
-  **comparison-by-period table** with a Month/Quarter/Year grain toggle, and an
-  **AI insights panel**. The AI panel is *click-to-generate* (every `/api/v1/brain/chat`
-  call spends an AI credit) and posts `page_context: 'overview_summary'` with the page's
-  own KPI snapshot — that backend seam narrates the supplied numbers verbatim instead of
-  recomputing, which is what keeps the AI paragraph and the cards above it consistent.
-  Negative money on this page and on the Overview card renders `-Rp…` (red), not
+  adds: a **revenue-vs-expenses meter**, a **bridge** (previous net profit →
+  revenue movement → expense movement → current, plus the top three category movers),
+  and a **comparison-by-period table** with a Month/Quarter/Year grain toggle. There is
+  no in-page AI panel — the topbar Fluxy AI drawer covers it, and the page still
+  registers its live figures with `FluxyAIContext` so the drawer opens oriented on
+  profit. Negative money on this page and on the Overview card renders `-Rp…` (red), not
   parentheses and never a leading `+` — a level, not a delta.
+- **The revenue-vs-expenses meter is deliberately not a donut.** The question is a
+  single ratio against a limit ("how much of the money that came in stayed in"), and
+  expenses routinely exceed revenue — no ring can render a slice at 710% of itself, so a
+  2-slice donut breaks on exactly the periods that matter most. The track is revenue =
+  100%, the red segment is the share spent (clamped at the track), the green remainder
+  is what was kept, and the part of spend beyond revenue renders as a separate hatched
+  **over-run** bar with its own "Over revenue by Rp… · N% over" label. Red vs green is
+  ΔE 3.7 under deuteranopia, so every segment carries a text label and a 2px surface
+  gap — identity is never colour-alone.
 - **One period definition per board (invariant).** Every Overview KPI must answer for
   the same window, so `Revenue − OpEx` reconciles with `Net profit` in *every* period
   mode. This was violated at **All Time**: `getRevenuePeriodRange('all_time')` returned

@@ -201,6 +201,35 @@ test('net profit: comparison grain + record scope toggles work', async ({ page }
     expect((await page.locator('#profit-composition').innerHTML()).trim().length).toBeGreaterThan(0);
     expect((await page.locator('#profit-bridge').innerHTML()).trim().length).toBeGreaterThan(0);
 
+    // The composition is a meter, not a donut: expenses can exceed revenue (a
+    // ring cannot render a slice at 710% of itself). Segment widths must stay
+    // within the track, and a loss must surface an explicit over-run bar.
+    const meter = await page.evaluate(() => {
+        const segs = [...document.querySelectorAll('#profit-composition .np-meter-seg')]
+            .map((s) => ({ pct: parseFloat((s.style.flex.match(/([\d.]+)%/) || [])[1] || '0'), label: s.textContent.trim() }));
+        return {
+            segs,
+            total: segs.reduce((a, s) => a + s.pct, 0),
+            hasOverrun: !!document.querySelector('#profit-composition .np-overrun'),
+            overrunWidth: document.querySelector('#profit-composition .np-overrun')?.style.width || null,
+        };
+    });
+    console.log('[meter]', JSON.stringify(meter));
+    expect(meter.segs.length, 'meter renders segments').toBeGreaterThan(0);
+    expect(meter.total, 'segments never exceed the 100% track').toBeLessThanOrEqual(100.01);
+    // Every visible segment carries a text label — red/green is ΔE 3.7 under
+    // deuteranopia, so identity must never be colour-alone.
+    for (const s of meter.segs) {
+        if (s.pct >= 22) expect(s.label.length, 'wide segment is labelled').toBeGreaterThan(0);
+    }
+    if (meter.hasOverrun) {
+        expect(parseFloat(meter.overrunWidth), 'over-run bar stays inside its container').toBeLessThanOrEqual(100.01);
+        await expect(page.locator('#profit-composition')).toContainText('Over revenue by');
+    }
+
+    // The AI insights panel was removed — it must not come back by accident.
+    await expect(page.locator('#profit-ai-generate, #profit-ai-body')).toHaveCount(0);
+
     for (const grain of ['quarter', 'year', 'month']) {
         await page.locator(`[data-comparison-grain="${grain}"]`).click();
         await expect(page.locator(`[data-comparison-grain="${grain}"]`)).toHaveClass(/is-active/);
@@ -213,64 +242,7 @@ test('net profit: comparison grain + record scope toggles work', async ({ page }
         await expect(page.locator('#profit-table-body tr').first()).toBeVisible();
     }
 
-    // The AI panel is click-to-generate (each call spends a credit) — it must
-    // never auto-run on load.
-    await expect(page.locator('#profit-ai-generate')).toBeVisible();
     expect(errors, 'no uncaught errors on /net-profit').toEqual([]);
-});
-
-// The AI answer + quota paths are stubbed: the QA static server does not proxy
-// /api/v1, and a live call would spend a real AI credit. Stubbing keeps both
-// branches deterministic and free.
-test('net profit: AI panel renders an answer, and the quota-locked state', async ({ page }) => {
-    const errors = trackErrors(page);
-
-    await page.route('**/api/v1/brain/chat', (route) => route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-            success: true,
-            answer: {
-                direct_answer: 'Net profit for this month is Rp4.000.000.',
-                insights: [{ title: 'Expenses climbing', description: 'Infrastructure spend doubled.', severity: 'warning' }],
-                recommended_actions: [{ title: 'Review Infrastructure', description: 'Open the biggest three vendors.', priority: 'high' }],
-                limitations: ['This mirrors your Net Profit page for the selected period.'],
-            },
-            usage: { scope: 'plan', used: 3, limit: 20, remaining: 17 },
-        }),
-    }));
-
-    await page.goto('/net-profit?period=this_month');
-    await page.waitForSelector('#kpi-content:not(.hidden)', { timeout: 25_000 });
-    await page.locator('#profit-ai-generate').click();
-    await expect(page.locator('#profit-ai-body')).toContainText('Net profit for this month is Rp4.000.000.');
-    await expect(page.locator('#profit-ai-body')).toContainText('Expenses climbing');
-    await expect(page.locator('#profit-ai-body')).toContainText('Review Infrastructure');
-    await expect(page.locator('#profit-ai-body')).toContainText('17');
-    await expect(page.locator('#profit-ai-generate')).toContainText('Regenerate AI analysis');
-
-    // Changing the period resets the panel to idle — a stale narration must never
-    // sit above a different period's numbers.
-    await page.locator('[data-kpi-period="last_month"]').click();
-    await expect(page.locator('#profit-ai-body')).not.toContainText('Net profit for this month is Rp4.000.000.');
-    await expect(page.locator('#profit-ai-generate')).toContainText('Generate AI analysis');
-
-    // Quota exhausted → locked state + upgrade link, and the button is hidden.
-    await page.unroute('**/api/v1/brain/chat');
-    await page.route('**/api/v1/brain/chat', (route) => route.fulfill({
-        status: 402,
-        contentType: 'application/json',
-        body: JSON.stringify({ success: false, error: { code: 'ai_limit_reached', message: 'limit' } }),
-    }));
-    await page.locator('#profit-ai-generate').click();
-    await expect(page.locator('#profit-ai-body')).toContainText("You've reached your Fluxy AI limit.");
-    await expect(page.locator('#profit-ai-body a[href="/settings-billing"]')).toBeVisible();
-    await expect(page.locator('#profit-ai-generate')).toBeHidden();
-
-    // The stubbed 402 makes the browser log its own "Payment Required" resource
-    // error — that response is the scenario under test, not a defect.
-    const unexpected = errors.filter((e) => !/402 \(Payment Required\)/.test(e));
-    expect(unexpected, 'no uncaught errors from the AI panel').toEqual([]);
 });
 
 test('dashboard Upcoming rows deep-link to the record', async ({ page }) => {

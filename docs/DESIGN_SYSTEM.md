@@ -379,13 +379,34 @@ read as one system with the rest of the app. Do not invent a new look for them.
 - **A detail page must add analysis, not just re-present the KPI.** Beyond the shared
   scaffold, a drill-down should answer the question the card raises. Net Profit is the
   reference: composition (revenue vs expenses) → bridge (what moved it) → period
-  comparison → AI insights → source records.
-- **AI panels on detail pages are click-to-generate.** Every `/api/v1/brain/chat` call
-  spends the user's AI credit, so an AI insights panel renders an idle state with an
-  explicit "Generate AI analysis" action and never auto-runs on load. Handle the 402
-  quota response with a locked state + upgrade link (mirroring the Overview AI Finance
-  Summary card), and pass the page's own computed KPI snapshot so the narration cannot
-  disagree with the numbers on screen.
+  comparison → source records.
+- **No in-page AI panel on a drill-down.** The Fluxy AI drawer in the topbar is the
+  assistant surface on every app page; a second AI block inside the page duplicates it,
+  spends the user's AI credit for a narration of numbers already on screen, and pushes
+  the source records below the fold. Register the page's live figures with
+  `FluxyAIContext.register()` instead, so the drawer opens already oriented on the page.
+
+#### Ratio panels: meter, not donut
+
+A two-slice donut is banned for a revenue-vs-expenses style panel. Two reasons, and
+both generalize:
+
+1. **A donut asserts part-to-whole.** Expenses regularly exceed revenue, and no ring can
+   render a slice at 710% of itself — the chart breaks on exactly the loss-making
+   periods a user most needs to read.
+2. **A single ratio against a limit is a meter**, and a 2-slice pie is the documented
+   wrong form for it (the number itself is the chart; the meter is its context).
+
+The pattern to copy is `renderComposition` in `assets/js/net-profit.js`: a horizontal
+track = the base (revenue = 100%), a fill = the share consumed, the remainder = what is
+left, and anything past the limit rendered as a **separate hatched over-run bar** with
+its own label — never as a longer fill, which would imply it still fits.
+
+**Status green vs red is ΔE 3.7 under deuteranopia** — effectively identical. Wherever
+the two sit adjacent (this meter, stacked segments, paired bars), every segment must
+carry a text label and a 2px surface gap so identity is never colour-alone. Run
+`node scripts/validate_palette.js "<hex,hex>"` before shipping any new multi-colour
+chart rather than eyeballing it.
 
 ### 5. Dialog (Confirmation & Alert Popups)
 

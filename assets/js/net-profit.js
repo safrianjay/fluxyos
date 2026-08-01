@@ -33,10 +33,7 @@ const state = {
     grain: 'month',
     scope: 'all',      // records table scope: all | revenue | expense
     filter: null,      // active breakdown filter driving the table, or null
-    table: null,
-    aiUsage: null,
-    aiLocked: false,
-    aiRequestSeq: 0
+    table: null
 };
 
 const el = (id) => document.getElementById(id);
@@ -159,8 +156,6 @@ export function initNetProfitPage({ ds, user }) {
         applyTableFilter();
     });
 
-    el('profit-ai-generate')?.addEventListener('click', generateAiAnalysis);
-
     registerAiPageContext();
     loadAndRender();
 }
@@ -272,7 +267,6 @@ function render() {
     renderBridge(totals, prevTotals, hasComparison);
     renderMovers(hasComparison);
     renderComparison();
-    renderAiIdle();
     applyTableFilter();
 
     if (window.FluxyI18n?.getLang?.() === 'id') window.FluxyI18n.translate?.();
@@ -371,33 +365,87 @@ function renderComposition(totals) {
         host.innerHTML = '<p class="text-[13px] text-gray-500">No revenue or expenses recorded in this period yet.</p>';
         return;
     }
-    const scale = Math.max(totals.revenue, totals.expenses, 1);
-    const bar = (label, amount, colorCls, valueCls) => `
+    // The meter answers "how much of the money that came in stayed in": the track
+    // is revenue = 100%, the red segment is the share spent, the green remainder
+    // is what was kept. Deliberately not a donut — a ring cannot render a slice at
+    // 710% of itself, which is exactly what a loss-making period looks like.
+    const { revenue, expenses, netProfit } = totals;
+    const spentShare = revenue > 0 ? (expenses / revenue) * 100 : (expenses > 0 ? Infinity : 0);
+    const overspent = expenses > revenue;
+    // Segment widths only ever describe the part of spend covered by revenue.
+    const spentWidth = revenue > 0 ? Math.min(100, spentShare) : 100;
+    const keptWidth = Math.max(0, 100 - spentWidth);
+    // Show a label inside a segment only when it has room, so text never clips.
+    const segLabel = (width, text) => (width >= 22 ? escapeHtml(text) : '');
+
+    let meter;
+    if (revenue <= 0) {
+        meter = `
+            <div class="np-meter" role="img" aria-label="No revenue recorded, so there is no ratio to measure">
+                <div class="np-meter-seg np-meter-spent" style="flex:1 1 100%">${segLabel(100, 'All spend, no revenue')}</div>
+            </div>`;
+    } else {
+        meter = `
+            <div class="np-meter" role="img" aria-label="Of every rupiah of revenue, ${Math.round(spentWidth)} percent was spent">
+                <div class="np-meter-seg np-meter-spent" style="flex:0 0 ${spentWidth.toFixed(2)}%">${segLabel(spentWidth, 'Spent')}</div>
+                ${keptWidth > 0 ? `<div class="np-meter-seg np-meter-kept" style="flex:0 0 ${keptWidth.toFixed(2)}%">${segLabel(keptWidth, 'Kept')}</div>` : ''}
+            </div>`;
+    }
+
+    // Over-run: how far past revenue the spending went. Rendered as its own
+    // hatched bar rather than a longer red fill, because it is past the limit.
+    const overrunPct = overspent && revenue > 0 ? spentShare - 100 : 0;
+    const overrunWidth = Math.min(100, overrunPct);
+    const overrun = overspent ? `
+        <div class="mt-2">
+            <div class="flex items-center justify-between gap-3 text-[11px] font-semibold text-red-700">
+                <span>Over revenue by ${escapeHtml(formatRp(expenses - revenue))}</span>
+                ${revenue > 0 ? `<span class="tabular-nums">${escapeHtml(formatPercent(overrunPct))} over</span>` : ''}
+            </div>
+            <div class="np-overrun mt-1.5" style="width:${Math.max(6, overrunWidth).toFixed(2)}%" aria-hidden="true"></div>
+        </div>` : '';
+
+    const scale = Math.max(revenue, expenses, 1);
+    const figure = (label, amount, fillCls, dotCls, valueCls) => `
         <div>
             <div class="flex items-baseline justify-between gap-4">
-                <span class="text-[13px] font-semibold text-gray-700">${escapeHtml(label)}</span>
+                <span class="inline-flex items-center gap-2 text-[13px] font-semibold text-gray-700">
+                    <span class="np-dot ${dotCls}" aria-hidden="true"></span>${escapeHtml(label)}
+                </span>
                 <span class="text-[14px] font-bold tabular-nums ${valueCls}">${escapeHtml(formatRp(amount))}</span>
             </div>
-            <div class="np-bar-track mt-2">
-                <div class="np-bar-fill ${colorCls}" style="width:${Math.max(2, (amount / scale) * 100).toFixed(2)}%"></div>
+            <div class="np-bar-track mt-1.5">
+                <div class="np-bar-fill ${fillCls}" style="width:${Math.max(2, (amount / scale) * 100).toFixed(2)}%"></div>
             </div>
         </div>`;
+
     let keptCopy;
-    if (totals.revenue <= 0) keptCopy = 'No revenue to measure against';
-    else if (totals.netProfit < 0) keptCopy = `Expenses exceed revenue by ${escapeHtml(formatRp(Math.abs(totals.netProfit)))}`;
-    else keptCopy = `You kept ${escapeHtml(formatPercent((totals.netProfit / totals.revenue) * 100))} of every rupiah earned`;
+    if (revenue <= 0) keptCopy = 'No revenue to measure against';
+    else if (netProfit < 0) keptCopy = `Spending is ${escapeHtml(formatNumber(expenses / revenue))}× revenue this period`;
+    else keptCopy = `You kept ${escapeHtml(formatPercent((netProfit / revenue) * 100))} of every rupiah earned`;
+
     host.innerHTML = `
-        <div class="space-y-4">
-            ${bar('Revenue', totals.revenue, 'bg-emerald-500', 'text-emerald-600')}
-            ${bar('Expenses', totals.expenses, 'bg-red-500', 'text-red-600')}
+        <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Of every rupiah of revenue</p>
+        ${meter}
+        ${overrun}
+        <div class="mt-5 space-y-3">
+            ${figure('Revenue', revenue, 'bg-emerald-500', 'bg-emerald-500', 'text-emerald-600')}
+            ${figure('Expenses', expenses, 'bg-red-600', 'bg-red-600', 'text-red-600')}
         </div>
-        <div class="mt-5 flex items-baseline justify-between gap-4 border-t border-gray-100 pt-4">
+        <div class="mt-4 flex items-baseline justify-between gap-4 border-t border-gray-100 pt-4">
             <div class="min-w-0">
                 <p class="text-[13px] font-semibold text-gray-900">Net profit</p>
                 <p class="mt-0.5 text-[12px] text-gray-400">${keptCopy}</p>
             </div>
-            <span class="text-xl font-bold tabular-nums ${totals.netProfit < 0 ? 'text-red-600' : 'text-gray-900'}">${escapeHtml(formatProfit(totals.netProfit))}</span>
+            <span class="text-xl font-bold tabular-nums ${netProfit < 0 ? 'text-red-600' : 'text-gray-900'}">${escapeHtml(formatProfit(netProfit))}</span>
         </div>`;
+}
+
+// One decimal, for the "spending is 7.1× revenue" multiple.
+function formatNumber(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '—';
+    return n.toFixed(1);
 }
 
 // ── Why net profit changed (bridge) ─────────────────────────────────
@@ -528,138 +576,6 @@ function renderComparison() {
                 <td class="fluxy-table-cell fluxy-table-money"><span class="tabular-nums ${change === null ? 'text-gray-400' : toneClass(change)}">${escapeHtml(change === null ? '—' : formatDelta(change))}</span></td>
             </tr>`;
     }).join('');
-}
-
-// ── AI insights ─────────────────────────────────────────────────────
-function renderAiIdle() {
-    if (state.aiLocked) return; // a hit quota survives a period change
-    const host = el('profit-ai-body');
-    if (!host) return;
-    host.innerHTML = `
-        <p class="text-[13px] text-gray-500">Fluxy AI reads the revenue, expenses, net profit, and margin shown above for ${escapeHtml(state.period.label.toLowerCase())} and returns what changed, the main risk, and what to do next.</p>`;
-    const btn = el('profit-ai-generate');
-    if (btn) {
-        btn.disabled = false;
-        btn.classList.remove('hidden');
-        const label = btn.querySelector('[data-ai-btn-label]');
-        if (label) label.textContent = 'Generate AI analysis';
-    }
-}
-
-function renderAiLoading() {
-    const host = el('profit-ai-body');
-    if (host) host.innerHTML = '<p class="text-[13px] text-gray-400" role="status">Fluxy AI is analyzing this period…</p>';
-}
-
-function renderAiLocked() {
-    state.aiLocked = true;
-    const btn = el('profit-ai-generate');
-    if (btn) btn.classList.add('hidden');
-    const host = el('profit-ai-body');
-    if (!host) return;
-    host.innerHTML = `
-        <p class="text-[14px] font-semibold text-gray-900">You've reached your Fluxy AI limit.</p>
-        <p class="mt-1 text-[13px] text-gray-500">Your current plan includes a limited number of AI generations. Upgrade to keep using AI analysis.</p>
-        <a href="/settings-billing" class="mt-4 inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-[13px] font-bold text-white hover:bg-slate-800">Upgrade plan</a>`;
-}
-
-function renderAiError() {
-    const host = el('profit-ai-body');
-    if (host) host.innerHTML = '<p class="text-[13px] text-gray-500">AI analysis is unavailable right now. The numbers above are unaffected — try again in a moment.</p>';
-    const btn = el('profit-ai-generate');
-    if (btn) btn.disabled = false;
-}
-
-function renderAiAnswer(answer) {
-    const host = el('profit-ai-body');
-    if (!host) return;
-    const insights = (answer.insights || []).filter(i => i && (i.title || i.description)).slice(0, 3);
-    const actions = (answer.recommended_actions || []).filter(a => a && (a.title || a.description)).slice(0, 3);
-    const limitation = (answer.limitations || []).find(l => typeof l === 'string' && l.trim());
-    const usage = state.aiUsage;
-    host.innerHTML = `
-        <p class="text-[14px] leading-relaxed text-gray-900">${escapeHtml(answer.direct_answer || 'Not enough data for a grounded analysis yet.')}</p>
-        <div class="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
-            <div>
-                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Insights</p>
-                <ul class="mt-2 space-y-2">
-                    ${insights.length ? insights.map(i => `
-                        <li class="text-[13px] text-gray-600">
-                            <span class="font-semibold text-gray-900">${escapeHtml(i.title || 'Insight')}</span>${i.description ? ` — ${escapeHtml(i.description)}` : ''}
-                        </li>`).join('') : '<li class="text-[13px] text-gray-500">No specific risk stood out for this period.</li>'}
-                </ul>
-            </div>
-            <div>
-                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Recommended actions</p>
-                <ul class="mt-2 space-y-2">
-                    ${actions.length ? actions.map(a => `
-                        <li class="text-[13px] text-gray-600">
-                            <span class="font-semibold text-gray-900">${escapeHtml(a.title || 'Action')}</span>${a.description ? ` — ${escapeHtml(a.description)}` : ''}
-                        </li>`).join('') : '<li class="text-[13px] text-gray-500">Keep reviewing new records as they come in.</li>'}
-                </ul>
-            </div>
-        </div>
-        ${limitation ? `<p class="mt-4 text-[12px] text-gray-400">${escapeHtml(limitation)}</p>` : ''}
-        ${usage && !usage.unlimited && Number.isFinite(usage.remaining)
-            ? `<p class="mt-4 text-[12px] text-gray-400"><span class="tabular-nums font-semibold">${escapeHtml(String(usage.remaining))}</span> AI Finance generations left</p>`
-            : ''}`;
-    const btn = el('profit-ai-generate');
-    if (btn) {
-        btn.disabled = false;
-        const label = btn.querySelector('[data-ai-btn-label]');
-        if (label) label.textContent = 'Regenerate AI analysis';
-    }
-    if (window.FluxyI18n?.getLang?.() === 'id') window.FluxyI18n.translate?.();
-}
-
-// Ask Fluxy AI to narrate THIS page's numbers. `page_context: 'overview_summary'`
-// is the backend seam that narrates the KPI snapshot verbatim instead of
-// recomputing from its own read — that is what keeps the AI paragraph and the
-// cards above it from ever disagreeing. Generation is click-only because every
-// call consumes an AI credit.
-async function generateAiAnalysis() {
-    if (state.aiLocked || !state.totals) return;
-    const btn = el('profit-ai-generate');
-    if (btn) btn.disabled = true;
-    const seq = ++state.aiRequestSeq;
-    renderAiLoading();
-
-    try {
-        const token = await state.user.getIdToken();
-        const response = await fetch('/api/v1/brain/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({
-                message: 'Explain my net profit for this period: what drove it, whether revenue or expenses moved it most, and what I should do first.',
-                workspace_id: window.FluxyWorkspace?.id || null,
-                page_context: 'overview_summary',
-                language: window.FluxyI18n?.getLang?.() === 'id' ? 'id' : 'en',
-                period: { type: 'custom', start_date: state.period.start, end_date: state.period.end },
-                finance_snapshot: {
-                    kpis: {
-                        period_label: state.period.label,
-                        revenue: state.totals.revenue,
-                        revenue_records: state.rows.filter(isRevenue).length,
-                        opex: state.totals.expenses,
-                        net_profit: state.totals.netProfit,
-                        gross_margin: state.totals.margin
-                    }
-                }
-            })
-        });
-        const data = await response.json().catch(() => ({}));
-        if (seq !== state.aiRequestSeq) return;
-        if (response.status === 402 || ['trial_ai_limit_reached', 'ai_limit_reached'].includes(data?.error?.code)) {
-            renderAiLocked();
-            return;
-        }
-        if (!response.ok || data.success === false || !data.answer) throw new Error('AI analysis unavailable.');
-        if (data.usage) state.aiUsage = data.usage;
-        renderAiAnswer(data.answer);
-    } catch (error) {
-        if (seq !== state.aiRequestSeq) return;
-        renderAiError();
-    }
 }
 
 // Live page context for the Fluxy AI drawer, so opening it from this page starts

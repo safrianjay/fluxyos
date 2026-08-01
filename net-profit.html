@@ -12,10 +12,49 @@
     <style>
         body { font-family: Inter, sans-serif; }
         .kpi-breadcrumb a:hover { color: #EA580C; }
-        /* Revenue vs expenses composition bars — proportional to the larger side
-           so the gap between the two reads as the profit (or the loss). */
-        .np-bar-track { height: 10px; border-radius: 999px; background: #F1F5F9; overflow: hidden; }
+        /* Revenue vs expenses.
+           A meter, not a donut: the question is a single ratio against a limit
+           ("how much of the money that came in stayed in"), and expenses can
+           exceed revenue — no ring can render a slice at 710% of itself.
+           The track is revenue = 100%; the fill is the share spent.
+           Red/green alone is ΔE 3.7 under deuteranopia, so every segment carries
+           a text label and a 2px surface gap — identity is never colour-alone. */
+        .np-meter {
+            position: relative;
+            display: flex;
+            gap: 2px;                    /* surface gap between fills */
+            height: 34px;
+            border-radius: 8px;
+            background: #F1F5F9;
+            overflow: hidden;
+        }
+        .np-meter-seg {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            min-width: 0;
+            padding: 0 8px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #FFFFFF;
+            letter-spacing: 0.01em;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .np-meter-spent { background: #DC2626; }
+        .np-meter-kept  { background: #16A34A; justify-content: flex-start; }
+        /* Over-run: the part of spend that exceeded revenue. Hatched so it reads
+           as "past the limit" without relying on a second red. */
+        .np-overrun {
+            height: 12px;
+            border-radius: 6px;
+            background-color: #7F1D1D;
+            background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.28) 0 4px, transparent 4px 8px);
+        }
+        /* Proportional scale bars under each figure row. */
+        .np-bar-track { height: 6px; border-radius: 999px; background: #F1F5F9; overflow: hidden; }
         .np-bar-fill { height: 100%; border-radius: 999px; }
+        .np-dot { width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0; }
         /* Bridge rows: previous profit → revenue move → expense move → current. */
         .np-bridge-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #F1F5F9; }
         .np-bridge-row:last-child { border-bottom: 0; }
@@ -159,21 +198,6 @@
                                 <tbody id="profit-comparison-body"></tbody>
                             </table>
                         </div>
-                    </section>
-
-                    <!-- AI insights -->
-                    <section class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                        <div class="flex flex-col gap-3 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-                            <div class="min-w-0">
-                                <h2 class="text-[12px] font-semibold uppercase tracking-wide text-gray-600">AI insights and recommendations</h2>
-                                <p class="mt-1 text-[12px] text-gray-400">Fluxy AI reads the numbers on this page and tells you what to do about them.</p>
-                            </div>
-                            <button id="profit-ai-generate" type="button" class="flex-shrink-0 inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-2 text-[13px] font-bold text-white hover:bg-slate-800 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                <span data-ai-btn-label>Generate AI analysis</span>
-                            </button>
-                        </div>
-                        <div id="profit-ai-body" class="p-5 sm:p-6"></div>
                     </section>
 
                     <!-- Supporting table -->
