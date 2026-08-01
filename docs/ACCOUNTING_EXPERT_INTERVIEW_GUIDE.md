@@ -9,15 +9,27 @@
 
 FluxyOS is a Bahasa-first financial operations platform for Indonesian SMBs (static web app on Firebase; team workspaces with roles including a dedicated `accountant` role). What exists now:
 
-- **Recording:** transactions (income/expense/fee/tax/transfer/refund/accruals), bills with due dates, subscriptions, invoices (draft → finalized → paid/void; USD/SGD supported, converted to IDR at payment).
-- **A real double-entry kernel underneath:** every transaction/bill/invoice generates a balanced journal automatically against a seeded 19-account chart (Cash 1000, A/R 1100, A/P 2000, Retained Earnings 3000, Revenue 4000, expense accounts 61xx–6999, PPN/PPh tax accounts). Journals are immutable once posted (corrections by reversal), numbered `JE-YYYY-NNNNNN`. A trial balance accumulates per account per month. Manual journal entries exist (draft → post → reverse). Fiscal periods can be closed (net income rolls to Retained Earnings) and locked; edits into closed periods are blocked.
-- **Users never see debits/credits by default.** They pick from six categories (Revenue, Marketing, Infrastructure, Operations, SaaS, Others); a mapping table bridges categories to GL accounts. The Accounting Center (trial balance, journal register, account mapping, Income Statement preview) is where the double-entry surface lives.
+- **Recording:** transactions (income/expense/fee/tax/transfer/refund/accruals), bills with due dates and a vendor master, subscriptions, invoices (draft → finalized → partial → paid/void; USD/SGD supported, converted to IDR at payment). Partial and combined invoice payments are supported — one customer payment applied across several invoices.
+- **A real double-entry kernel underneath:** every transaction/bill/invoice generates a balanced journal automatically against a seeded **32-account SAK-aligned chart** (Cash 1000, A/R 1100, A/P 2000, Retained Earnings 3000, Owner Capital 3100, Prive 3200, Revenue 4000, COGS 5100, expense accounts 61xx–6999, PPN/PPh tax accounts). Journals are immutable once posted (corrections by reversal), numbered `JE-YYYY-NNNNNN`. A trial balance accumulates per account per month. Manual journal entries exist (draft → post → reverse). Fiscal periods close (net income rolls to Retained Earnings) and lock; edits into closed periods are blocked; reopening reverses the closing entry.
+- **Users never see debits/credits by default.** They pick a direction and an account (or a category, which a mapping table bridges to the GL). Suggestion order: vendor-master default → learned vendor memory → keyword rule → category chain. The **Accounting Center** is where the double-entry surface lives, organised as Overview / Reports / Ledger / Setup / Close.
+- **Statements are derived from the ledger, not from transactions.** Income Statement (with a period-over-period comparison column), Balance Sheet (full equity section — owner capital, retained earnings, prive, opening equity, current-period earnings — plus an automatic tie-out badge), and Cash Flow (indirect method, ties to actual cash movement by construction). Trial Balance and General Ledger sit alongside them, and every statement line drills account → GL → journal → source document.
+- **Close process:** a checklist gating on what actually blocks a close — every source posted to the ledger, trial balance in balance — plus cleanup signals. `closePeriod` refuses server-side if any source never reached the ledger, and offers a one-click "post them" remedy.
+- **A/R + A/P aging:** standard 30/60/90 as-of-today, composed to tie to the Balance Sheet's A/R and A/P lines.
+- **Bank reconciliation:** statement import (PDF/CSV/XLSX) with statement-line ↔ ledger matching, an unmatched queue, reconcile/un-reconcile, and a certify step that writes a balance snapshot.
 - **Tax:** an Indonesian Tax Center — PPN output/input, PPh withholding, UMKM 0.5% vs ordinary 22% regimes, monthly tax periods (compute → file → lock), SPT PPN and Bukti Potong CSV exports. Tax lines are derived onto the business document's journal (no parallel tax ledger).
-- **AI:** receipt/bill scanning and bank-statement extraction (PDF/CSV/XLSX) — always extract-to-review, never auto-saved. An AI analyst chat where a deterministic engine computes every number and the AI only narrates.
+- **AI:** receipt/bill scanning and bank-statement extraction — always extract-to-review, never auto-saved. An AI analyst chat where a deterministic engine computes every number and the AI only narrates.
 - **Commerce:** marketplace/store connectors normalize orders and write revenue, fees, and refunds to the ledger separately (not net payouts), with settlements tracked. (Flags currently off in production.)
-- **Reporting:** dashboard KPIs (revenue, opex, margin, cash position/pressure), an Income Statement *preview* built from transactions (labeled not statement-grade), a Phase-1 Balance Sheet (assets/liabilities/"net position" — no equity section yet), monthly report packs with PDF/CSV export. Budgets with category allocations and bill-commitment tracking.
+- **Reporting & export:** dashboard KPIs; report packs with PDF/CSV export; and an **accounting export package** — Income Statement, Balance Sheet, Cash Flow, Trial Balance, and General Ledger as CSVs, each stamped with its period, basis, and all three tie-out results.
 
-**Known gaps (so sessions don't rediscover them):** no statement-line ↔ ledger reconciliation matching yet (import exists, matching is deferred); no A/R–A/P aging; no COGS/inventory, fixed assets/depreciation, payroll, loans, deferred revenue, or owner-equity accounts; no close checklist; statements not yet derived from the trial balance; no partial invoice payments; journal posting happens client-side with server rules + a nightly-style reconciliation script as the integrity check.
+**Known gaps (so sessions don't rediscover them):**
+
+- **Posting authority is client-side.** Journals are written by the browser; Firestore rules verify that a journal's *totals* balance but cannot sum its lines. The compensating control is `scripts/reconcile-ledger-balances.js`, which recomputes every balance from the journal lines. **This is the most likely sign-off blocker — Session 4 Q7 probes it directly.**
+- No inventory. COGS exists as an account and fills only when a category/account is mapped to it; there is no periodic or perpetual costing.
+- No fixed-asset register or depreciation; no payroll (import is planned, not built); no loan amortization.
+- Deferred revenue exists as an account, but there are no amortization schedules and no recurring or auto-reversing journal entries.
+- Bank reconciliation matches one-to-one. Many-to-one (a payout covering several invoices), gateway/e-wallet settlement, and learned matching rules are not built.
+- Foreign-currency invoice settlements are deliberately excluded from the IDR kernel rather than translated.
+- Statutory filing beyond CSV export (Coretax) is blocked on DJP access.
 
 ---
 
@@ -67,7 +79,7 @@ FluxyOS is a Bahasa-first financial operations platform for Indonesian SMBs (sta
 4. When you classify a transaction, what's your actual mental sequence? What do you look at first — vendor, amount, description, history?
 
 **Decision-making**
-5. Show me (or describe) the chart of accounts you'd set up for a new services SMB versus a new commerce SMB. What accounts do you always create day one, and which do you add only when needed? *(Bring the FluxyOS 19-account seed printed; ask them to mark it up — what's missing, what's mislabeled, what would they rename in Indonesian practice. Feeds [CHART_OF_ACCOUNTS_STRATEGY.md](CHART_OF_ACCOUNTS_STRATEGY.md) §C.)*
+5. Show me (or describe) the chart of accounts you'd set up for a new services SMB versus a new commerce SMB. What accounts do you always create day one, and which do you add only when needed? *(Bring the FluxyOS 32-account SAK seed printed; ask them to mark it up — what's missing, what's mislabeled, what would they rename in Indonesian practice. Feeds [CHART_OF_ACCOUNTS_STRATEGY.md](CHART_OF_ACCOUNTS_STRATEGY.md) §C.)*
 6. How granular is too granular? Tell me about a client whose category/account structure was so detailed it became useless — and one that was too coarse.
 7. When a transaction could plausibly go to two accounts, how do you decide? How do you keep that decision consistent three months later, or across two staff members?
 
@@ -118,8 +130,9 @@ FluxyOS is a Bahasa-first financial operations platform for Indonesian SMBs (sta
 1. **Posting-rule review.** Enter a cash expense, a cash sale, a bill and its payment, an invoice (finalize, then mark paid). After each, open the generated journal in the Accounting Center. Ask: *Is this the entry you would have made? What's wrong or missing — accounts, timing, memo quality, anything?*
 2. **Trial balance & drill-down.** Open the trial balance. Pick any balance and try to trace it to journals to source documents. *Where does the chain break for you? What would an auditor ask for that you can't produce from here?*
 3. **Manual journal.** Book a real month-end adjustment you'd typically make (e.g., an accrual). *What's awkward? What's missing from the editor (recurring, auto-reverse, attachments)?*
-4. **Period close.** Run `closePeriod` on the demo month. *Before pressing this button in real life, what would you have verified? (List them — this is close-checklist v1.) Does the closing entry do what you expect? What's your reaction to edit-blocking on closed periods?*
-5. **Statement review.** Open the Income Statement preview and Balance Sheet. *Would you hand these to a bank? Mark every line you'd change — grouping, missing sections (equity!), labels, basis confusion.*
+4. **Period close.** Open the Close tab and read our checklist *before* pressing anything. *Does this match what you would verify? What is on your list that is missing from ours — and what on ours would you not bother with?* Then close the month. *Does the closing entry do what you expect? Reaction to edit-blocking on closed periods, and to reopening reversing the closing entry?*
+5. **Statement review.** Open Income Statement, Balance Sheet, and Cash Flow. *Would you hand these to a bank as they are? Mark every line you would change — grouping, ordering, labels, missing subtotals, basis disclosure.* Then press **Export package** and read the five CSVs as if they had arrived from a client. *Is this the hand-off you want? What is missing from it?*
+5b. **Aging & reconciliation.** Open A/R and A/P aging, then run a bank statement import. *Do the buckets and the matching behave as you expect? At what point would you stop trusting a suggested match?*
 6. **The sign-off question** (the session's core deliverable): *Suppose this workspace's owner asked you to formally sign off on this month. List everything — in priority order — that prevents you from signing today.*
 
 **Validation questions woven in:**
