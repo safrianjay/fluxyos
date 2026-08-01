@@ -204,6 +204,7 @@ function wireStaticControls() {
     el('journals-post-pending')?.addEventListener('click', () => onPostPending());
     el('coa-new-account')?.addEventListener('click', () => openCreateAccountDrawer());
     el('balance-sheet-export')?.addEventListener('click', () => exportBalanceSheet());
+    el('acct-export-package')?.addEventListener('click', () => exportAccountingPackage());
     el('post-unposted-btn')?.addEventListener('click', () => onPostUnposted());
 }
 
@@ -788,6 +789,196 @@ async function exportBalanceSheet() {
     } finally {
         state.exportInProgress = false;
         if (btn) { btn.disabled = false; btn.textContent = 'Export CSV'; }
+    }
+}
+
+// --- Accounting export package -----------------------------------------------
+// The accountant hand-off: every statement plus the working papers behind them,
+// in one audited action. Definition of done for the accounting initiative is an
+// external accountant signing off a month without exporting to Excel
+// (docs/ACCOUNTING_DISCOVERY_STRATEGY.md §10), which needs the statements AND
+// the Trial Balance and General Ledger they were drawn from.
+//
+// Every file carries a header stating the period, the basis, and the tie-out
+// results, so a reviewer can tell at a glance whether the books foot without
+// opening the other files.
+
+function pkgHeader(title, period, integrity) {
+    const rows = [
+        ['Report', title],
+        ['Period', period.start === period.end ? period.start : `${period.start} to ${period.end}`],
+        ['Basis', 'Posted double-entry ledger (ledger_balances)'],
+        ['Generated at', new Date().toISOString()],
+        ['Trial balance', integrity.trialBalanced ? 'In balance' : 'OUT OF BALANCE'],
+        ['Balance sheet tie-out', integrity.bsBalanced ? 'Balanced' : `Out by ${integrity.bsDelta}`],
+        ['Cash flow tie-out', integrity.cfBalanced ? 'Ties to cash' : `Out by ${integrity.cfDelta}`],
+        ['Amounts', 'Raw integer IDR — no formatting, no thousands separators']
+    ];
+    return rows.map(r => r.map(csvEscape).join(',')).join('\n') + '\n\n';
+}
+
+function accountingPackageFiles({ report, trial, ledger, integrity }) {
+    const slug = report.period.start === report.period.end
+        ? report.period.start
+        : `${report.period.start}_to_${report.period.end}`;
+    const line = (arr) => arr.map(csvEscape).join(',');
+    const files = [];
+
+    // 1. Income Statement — with the comparison column the UI shows.
+    {
+        const is = report.incomeStatement;
+        const prev = report.comparisonIncomeStatement || {};
+        const priorBy = {};
+        ['revenue', 'cogs', 'operatingExpenses', 'otherIncome', 'otherExpense']
+            .forEach(k => (prev[k] || []).forEach(l => { priorBy[l.code] = l.amount; }));
+        const rows = [line(['Section', 'Account code', 'Account', 'Amount (IDR)', 'Comparison (IDR)'])];
+        const push = (section, arr) => (arr || []).forEach(l =>
+            rows.push(line([section, l.code, l.name, l.amount, priorBy[l.code] || 0])));
+        push('Revenue', is.revenue);
+        rows.push(line(['Revenue', '', 'Total revenue', is.totalRevenue, prev.totalRevenue || 0]));
+        push('Cost of goods sold', is.cogs);
+        rows.push(line(['', '', 'Gross profit', is.grossProfit, prev.grossProfit || 0]));
+        push('Operating expenses', is.operatingExpenses);
+        rows.push(line(['Operating expenses', '', 'Total operating expenses', is.totalOpEx, prev.totalOpEx || 0]));
+        rows.push(line(['', '', 'Operating income', is.operatingIncome, prev.operatingIncome || 0]));
+        push('Other income', is.otherIncome);
+        push('Other expense', is.otherExpense);
+        rows.push(line(['', '', 'Net income', is.netIncome, prev.netIncome || 0]));
+        files.push({
+            filename: `income_statement_${slug}.csv`,
+            content: pkgHeader('Income Statement', report.period, integrity) + rows.join('\n')
+        });
+    }
+
+    // 2. Balance Sheet — reuses the standalone export so the two cannot diverge.
+    files.push({
+        filename: `balance_sheet_${slug}.csv`,
+        content: pkgHeader('Balance Sheet', report.period, integrity)
+            + balanceSheetCsv(report.balanceSheet, report.period)
+    });
+
+    // 3. Cash Flow.
+    {
+        const cf = report.cashFlow;
+        const rows = [line(['Section', 'Account code', 'Account', 'Cash effect (IDR)'])];
+        rows.push(line(['Operating', '', 'Net income', cf.netIncome]));
+        (cf.workingCapital || []).forEach(l => rows.push(line(['Operating', l.code, l.name, l.amount])));
+        rows.push(line(['Operating', '', 'Net cash from operating activities', cf.totalOperating]));
+        (cf.investing || []).forEach(l => rows.push(line(['Investing', l.code, l.name, l.amount])));
+        if ((cf.investing || []).length) rows.push(line(['Investing', '', 'Net cash from investing activities', cf.totalInvesting]));
+        (cf.financing || []).forEach(l => rows.push(line(['Financing', l.code, l.name, l.amount])));
+        if ((cf.financing || []).length) rows.push(line(['Financing', '', 'Net cash from financing activities', cf.totalFinancing]));
+        rows.push(line(['', '', 'Net change in cash', cf.netChangeInCash]));
+        rows.push(line(['', '', 'Movement in cash accounts', cf.cashMovement]));
+        files.push({
+            filename: `cash_flow_${slug}.csv`,
+            content: pkgHeader('Cash Flow (indirect method)', report.period, integrity) + rows.join('\n')
+        });
+    }
+
+    // 4. Trial Balance — the control the statements were drawn from.
+    {
+        const rows = [line(['Account code', 'Account', 'Type', 'Debit (IDR)', 'Credit (IDR)'])];
+        (trial.rows || []).forEach(r =>
+            rows.push(line([r.account_code, r.account_name, r.account_type, r.debit_amount, r.credit_amount])));
+        rows.push(line(['', 'TOTAL', '', trial.totalDebit, trial.totalCredit]));
+        files.push({
+            filename: `trial_balance_${slug}.csv`,
+            content: pkgHeader('Trial Balance', report.period, integrity) + rows.join('\n')
+        });
+    }
+
+    // 5. General Ledger — every posting behind every number above.
+    {
+        const rows = [line(['Account code', 'Account', 'Journal ID', 'Period', 'Posting rule',
+            'Source collection', 'Source ID', 'Memo', 'Debit (IDR)', 'Credit (IDR)', 'Running balance (IDR)'])];
+        (ledger || []).forEach(acc => (acc.entries || []).forEach(e => rows.push(line([
+            acc.account_code, acc.account_name, e.journal_id, e.period_key, e.posting_rule_id,
+            e.source?.collection || '', e.source?.id || '', e.memo,
+            e.debit, e.credit, e.running_balance
+        ]))));
+        files.push({
+            filename: `general_ledger_${slug}.csv`,
+            content: pkgHeader('General Ledger', report.period, integrity) + rows.join('\n')
+        });
+    }
+
+    return files;
+}
+
+async function exportAccountingPackage() {
+    const report = state.statements;
+    if (!report || !report.incomeStatement?.hasData) {
+        window.showToast?.('No ledger activity to export for this period.', 'info');
+        return;
+    }
+    if (state.exportInProgress) return;
+    const btn = el('acct-export-package');
+
+    const ok = await window.showConfirmDialog?.({
+        title: 'Export accounting package?',
+        body: 'Downloads the Income Statement, Balance Sheet, Cash Flow, Trial Balance, and General Ledger for this period as CSV files with raw IDR amounts. Each file states the period, basis, and tie-out results.',
+        confirmLabel: 'Export package', cancelLabel: 'Cancel', tone: 'default'
+    });
+    if (ok === false) return;
+
+    state.exportInProgress = true;
+    if (btn) { btn.disabled = true; btn.textContent = 'Exporting…'; }
+    try {
+        const pk = String(state.startKey || '').slice(0, 7);
+        // The button is global, so the kernel may not be loaded — fetch the
+        // working papers on demand rather than trusting state.kernel. max is
+        // raised well past listJournals' 200 default so a busy period is not
+        // silently truncated in an accountant's export.
+        const [trial, ledger] = await Promise.all([
+            state.ds.getTrialBalance(state.user.uid, { periodKey: pk }),
+            state.ds.getGeneralLedgerAll(state.user.uid, { periodKey: pk, max: 5000 })
+        ]);
+        const bs = report.balanceSheet;
+        const cf = report.cashFlow;
+        const integrity = {
+            trialBalanced: !!trial.balanced,
+            bsBalanced: !!bs.balanced, bsDelta: bs.tieOutDelta,
+            cfBalanced: !!cf.balanced, cfDelta: cf.tieOutDelta
+        };
+        const files = accountingPackageFiles({ report, trial, ledger, integrity });
+
+        const ref = await state.ds.addReportExport(state.user.uid, {
+            report_type: 'accounting_package',
+            period_start: report.period.start,
+            period_end: report.period.end,
+            formats: ['csv'],
+            status: 'generated',
+            included_sections: ['income_statement', 'balance_sheet', 'cash_flow', 'trial_balance', 'general_ledger'],
+            record_counts: { accounts: (trial.rows || []).length, ledger_accounts: (ledger || []).length },
+            warning_counts: {
+                trial_balance_out: integrity.trialBalanced ? 0 : 1,
+                balance_sheet_tie_out: bs.tieOutDelta || 0,
+                cash_flow_tie_out: cf.tieOutDelta || 0
+            },
+            limitations: integrity.trialBalanced && integrity.bsBalanced && integrity.cfBalanced
+                ? ['Posted double-entry ledger; trial balance, balance sheet, and cash flow all tie.']
+                : ['One or more integrity checks did NOT tie — see each file header before relying on these figures.'],
+            report_scope: { mode: 'accounting_package', source: 'ledger_balances', current_period: { ...report.period } }
+        });
+        await state.ds.createExportAuditLog(state.user.uid, {
+            target_id: ref.id,
+            after: {
+                report_type: 'accounting_package', period: report.period,
+                files: files.map(f => f.filename), integrity
+            },
+            reason: 'Accounting package export confirmed',
+            source: 'dashboard'
+        });
+
+        files.forEach(f => downloadFile(f.filename, f.content));
+        window.showToast?.(`Exported ${files.length} files and logged the export.`, 'success');
+    } catch (err) {
+        console.error('Accounting package export failed:', err);
+        window.showToast?.('Could not export the accounting package. Try again.', 'error');
+    } finally {
+        state.exportInProgress = false;
+        if (btn) { btn.disabled = false; btn.textContent = 'Export package'; }
     }
 }
 

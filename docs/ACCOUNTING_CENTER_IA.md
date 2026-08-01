@@ -540,7 +540,39 @@ all available from the same `ledger_balances` aggregates, so it ties to the Tria
 Balance by construction like the other two statements. Third child of Reports. ID
 label `Laporan Arus Kas` (`docs/LOCALIZATION_PLAN.md:502-510`).
 
-### Phase 5 — Accounting export package
+### Phase 5 — Accounting export package ✅ SHIPPED 2026-08-01
+
+The accountant hand-off, and the last phase. "Export package" is no longer a
+disabled Planned pill: it downloads five CSVs for the selected period —
+**Income Statement** (with the comparison column), **Balance Sheet**, **Cash Flow**,
+**Trial Balance**, and **General Ledger**.
+
+Design points:
+- **Every file is self-describing.** Each carries a header block with the period,
+  the basis (posted ledger), generation timestamp, and all three integrity results
+  — trial balance in/out, balance sheet tie-out, cash flow tie-out. A reviewer can
+  tell whether the books foot without opening the other files, and an export taken
+  while something is out of balance says so on its face.
+- **Statements plus the working papers behind them.** Trial Balance and General
+  Ledger are included precisely so an accountant can trace any statement figure to
+  its postings — the GL rows carry journal id, posting rule, and source
+  collection/id.
+- **Raw integers, never formatted currency.** Guarded by the spec; a
+  `Rp1.234.567` would break every spreadsheet it lands in.
+- The Balance Sheet file reuses `balanceSheetCsv()` from the standalone export, so
+  the two cannot diverge.
+- One `report_exports` entry (`report_type: 'accounting_package'`) plus one
+  `export.create` audit log, recording the file list and the integrity results.
+- `getGeneralLedgerAll` is called with `max: 5000` — `listJournals` defaults to
+  200, which would silently truncate an accountant's export on a busy period.
+
+This is what `docs/ACCOUNTING_DISCOVERY_STRATEGY.md` §10's definition of done
+required: an external accountant signing off a month without exporting to Excel.
+
+Guard: `tests/accounting-export-package.spec.js` (all five files arrive, each
+declares period/basis/tie-outs, no formatted currency, GL carries postings).
+
+### Phase 5 — original plan *(retained for reference)*
 
 Enable `#acct-export-package` (`accounting.html:41`). Bundle Income Statement +
 Balance Sheet + Cash Flow + Trial Balance + General Ledger as the accountant hand-off

@@ -4021,6 +4021,13 @@
         "Post every entry for this period before closing it.": "Posting semua entri periode ini sebelum menutupnya.",
         "Invoice payments awaiting issuance posting": "Pembayaran faktur menunggu posting penerbitan",
         "Post unposted entries": "Posting entri yang belum diposting",
+        // Accounting export package
+        "Export package": "Ekspor paket",
+        "Export Income Statement, Balance Sheet, Cash Flow, Trial Balance, and General Ledger as CSV": "Ekspor Laporan Laba Rugi, Neraca, Arus Kas, Neraca Saldo, dan Buku Besar sebagai CSV",
+        "Export accounting package?": "Ekspor paket akuntansi?",
+        "Downloads the Income Statement, Balance Sheet, Cash Flow, Trial Balance, and General Ledger for this period as CSV files with raw IDR amounts. Each file states the period, basis, and tie-out results.": "Mengunduh Laporan Laba Rugi, Neraca, Arus Kas, Neraca Saldo, dan Buku Besar untuk periode ini sebagai berkas CSV dengan nilai IDR mentah. Setiap berkas mencantumkan periode, dasar, dan hasil pemeriksaan kesesuaian.",
+        "No ledger activity to export for this period.": "Tidak ada aktivitas buku besar untuk diekspor pada periode ini.",
+        "Could not export the accounting package. Try again.": "Tidak dapat mengekspor paket akuntansi. Coba lagi.",
         // Cash Flow statement (indirect method)
         "Cash Flow": "Arus Kas",
         "Indirect method for": "Metode tidak langsung untuk",
@@ -4302,6 +4309,8 @@
         { re: /^Post (\d+) entr(?:y|ies)\?$/,
           id: function (m) { return 'Posting ' + m[1] + ' entri?'; } },
         { re: /^(\d+) not postable$/, id: function (m) { return m[1] + ' tidak dapat diposting'; } },
+        { re: /^Exported (\d+) files and logged the export\.$/,
+          id: function (m) { return 'Mengekspor ' + m[1] + ' berkas dan mencatat ekspor.'; } },
         { re: /^(\d+) deferred — does not block close$/,
           id: function (m) { return m[1] + ' ditangguhkan — tidak menghalangi tutup buku'; } },
         // Attachments section row meta: "<role> · Attached 28 Jul 2026". The role

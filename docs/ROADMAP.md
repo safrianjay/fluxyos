@@ -174,7 +174,7 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | Trial Balance | ✅ Shipped | Own tab; from `ledger_balances`, drills TB → General Ledger → Journal Detail → source |
 | **Cash Flow Statement** | ✅ Shipped 2026-07-31 | Reports → Cash Flow. Indirect method from the same `ledger_balances` movement rows, derived from the double-entry identity so it ties to actual cash movement by construction (tie-out badge). Handles closed periods without double-counting net income. `docs/ACCOUNTING_CENTER_IA.md` Phase 4 |
 | Bank reconciliation matching | ✅ Shipped Phases A+B | `recon-engine.js` tiers R1–R4, certify workflow, un-reconcile UI; `docs/BANK_RECONCILIATION_PLAN.md` |
-| Accounting export package | 📋 Planned | Topbar "Export package" still `disabled`. No statement in the Accounting Center is currently exportable; `docs/ACCOUNTING_CENTER_IA.md` Phase 5 |
+| Accounting export package | ✅ Shipped 2026-08-01 | Topbar "Export package" downloads Income Statement + Balance Sheet + Cash Flow + Trial Balance + General Ledger as CSV. Every file headers its period, basis, and all three tie-out results; raw integer amounts; one `report_exports` entry + audit log |
 | Accounting Center IA restructure (11 flat tabs → 5 grouped sections) | 📋 Planned | Full analysis, competitor teardown, and phased plan in `docs/ACCOUNTING_CENTER_IA.md` |
 
 ### Tax Center (Indonesia)
