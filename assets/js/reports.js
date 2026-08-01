@@ -229,7 +229,8 @@ async function loadReportData() {
     const comparison = scope.comparison_period;
     try {
         const [transactions, bills, subscriptions, prevTx, prevBills, prevSubs, recentExports,
-               ledgerStatements, prevLedgerStatements] = await Promise.all([
+               ledgerStatements, prevLedgerStatements,
+               ledgerSeries, prevLedgerSeries] = await Promise.all([
             ds.getTransactionsForPeriod(reportsState.user.uid, current.start_date, current.end_date),
             ds.getBillsForPeriod(reportsState.user.uid, current.start_date, current.end_date),
             ds.getSubscriptionsForPeriod(reportsState.user.uid, current.start_date, current.end_date),
@@ -255,6 +256,18 @@ async function loadReportData() {
                     startPeriod: String(comparison.start_date).slice(0, 7),
                     endPeriod: String(comparison.end_date).slice(0, 7)
                 }).catch(() => null)
+                : Promise.resolve(null),
+            // Per-month ledger statements so the YTD trend agrees with the
+            // Accounting Center. One ledger_balances read covers every month.
+            ds.getLedgerMonthlySeries(reportsState.user.uid, {
+                startPeriod: String(current.start_date).slice(0, 7),
+                endPeriod: String(current.end_date).slice(0, 7)
+            }).catch(() => null),
+            comparison
+                ? ds.getLedgerMonthlySeries(reportsState.user.uid, {
+                    startPeriod: String(comparison.start_date).slice(0, 7),
+                    endPeriod: String(comparison.end_date).slice(0, 7)
+                }).catch(() => null)
                 : Promise.resolve(null)
         ]);
         reportsState.sourceData = { transactions, bills, subscriptions };
@@ -275,7 +288,9 @@ async function loadReportData() {
             recurringRevenue: computeRecurringMonthlyRevenue(transactions, scope),
             recurringRevenueSettings: reportsState.reportsSettings,
             ledgerIncomeStatement: ledgerStatements?.incomeStatement || null,
-            previousLedgerIncomeStatement: prevLedgerStatements?.incomeStatement || null
+            previousLedgerIncomeStatement: prevLedgerStatements?.incomeStatement || null,
+            ledgerMonthlySeries: ledgerSeries,
+            previousLedgerMonthlySeries: prevLedgerSeries
         });
         reportsState.recentExports = recentExports;
     } catch (err) {

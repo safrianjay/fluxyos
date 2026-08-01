@@ -499,7 +499,7 @@ function renderMonthlyTrend(pack) {
                         <th class="amount">Revenue</th>
                         <th class="amount">OpEx</th>
                         <th class="amount">Net Result</th>
-                        <th class="amount">Gross Margin</th>
+                        <th class="amount">Net Margin</th>
                         <th class="amount">Records</th>
                         <th class="amount">Warnings</th>
                     </tr>
@@ -511,7 +511,7 @@ function renderMonthlyTrend(pack) {
                             <td class="amount">${Number(m.revenue).toLocaleString('id-ID')}</td>
                             <td class="amount">${Number(m.opex).toLocaleString('id-ID')}</td>
                             <td class="amount">${Number(m.netResult).toLocaleString('id-ID')}</td>
-                            <td class="amount">${m.revenue > 0 ? formatPercent(m.grossMargin) : '—'}</td>
+                            <td class="amount">${m.revenue > 0 ? formatPercent(m.netMargin) : '—'}</td>
                             <td class="amount">${m.recordCount}</td>
                             <td class="amount">${m.warnings}</td>
                         </tr>`).join('')}

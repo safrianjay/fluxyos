@@ -293,17 +293,26 @@ function composeReportTitle(mode, comparisonMode, currentPeriod) {
     return `${periodHuman} Financial Report`;
 }
 
+// Financial-statement convention: negatives render in parentheses
+// (docs/DESIGN_SYSTEM.md). These formatters previously returned Math.abs(), so a
+// Rp37m LOSS rendered identically to a Rp37m profit — in exported reports. Call
+// sites that pass a magnitude are unaffected; only genuinely negative values
+// change, and those were wrong before.
 export function formatRupiah(n) {
     const value = Number(n || 0);
-    return `Rp${Math.abs(value).toLocaleString('id-ID')}`;
+    const body = `Rp${Math.abs(value).toLocaleString('id-ID')}`;
+    return value < 0 ? `(${body})` : body;
 }
 
 export function formatRupiahCompact(n) {
-    const value = Math.abs(Number(n || 0));
-    if (value >= 1_000_000_000) return `Rp${(value / 1_000_000_000).toFixed(2)}B`;
-    if (value >= 1_000_000) return `Rp${(value / 1_000_000).toFixed(1)}M`;
-    if (value >= 1_000) return `Rp${(value / 1_000).toFixed(1)}K`;
-    return `Rp${value.toLocaleString('id-ID')}`;
+    const raw = Number(n || 0);
+    const value = Math.abs(raw);
+    let body;
+    if (value >= 1_000_000_000) body = `Rp${(value / 1_000_000_000).toFixed(2)}B`;
+    else if (value >= 1_000_000) body = `Rp${(value / 1_000_000).toFixed(1)}M`;
+    else if (value >= 1_000) body = `Rp${(value / 1_000).toFixed(1)}K`;
+    else body = `Rp${value.toLocaleString('id-ID')}`;
+    return raw < 0 ? `(${body})` : body;
 }
 
 export function formatPercent(value, digits = 1) {
@@ -583,7 +592,13 @@ function isCurrentMonthPartial(period, today = new Date()) {
 
 // Build a month-by-month trend across the period. transactions drive revenue/
 // opex/record-count; bills + subscriptions only contribute to record counts.
-export function calculateMonthlyTrend(transactions = [], bills = [], subscriptions = [], scope) {
+// `ledgerSeries` is [{ period_key, incomeStatement }] from
+// DataService.getLedgerMonthlySeries. When supplied, the FINANCIAL fields come
+// from the posted ledger so the trend agrees with the Accounting Center. The
+// record-quality fields (record counts, missing receipts, bill/sub counts) always
+// come from the records — "missing receipt" is a document attribute the ledger
+// has no concept of.
+export function calculateMonthlyTrend(transactions = [], bills = [], subscriptions = [], scope, ledgerSeries = null) {
     transactions = activeTransactions(transactions);
     const period = scope?.current_period || scope; // accept either shape
     const startKey = period?.start_date || period?.start;
@@ -635,19 +650,39 @@ export function calculateMonthlyTrend(transactions = [], bills = [], subscriptio
         if (bucket) bucket.subCount += 1;
     });
 
-    return Array.from(buckets.values()).map(m => ({
-        ...m,
-        netResult: m.revenue - m.opex,
-        grossMargin: m.revenue > 0 ? ((m.revenue - m.opex) / m.revenue) * 100 : 0,
-        warnings: m.missingReceipts
-    }));
+    const ledgerByMonth = {};
+    (ledgerSeries || []).forEach((e) => { ledgerByMonth[e.period_key] = e.incomeStatement; });
+
+    return Array.from(buckets.values()).map(m => {
+        const ls = ledgerByMonth[m.month];
+        const useLedger = !!(ls && ls.hasData);
+        const revenue = useLedger ? (Number(ls.totalRevenue) || 0) : m.revenue;
+        const opex = useLedger ? (Number(ls.totalOpEx) || 0) : m.opex;
+        const cogs = useLedger ? (Number(ls.totalCogs) || 0) : 0;
+        const netResult = useLedger ? (Number(ls.netIncome) || 0) : revenue - opex;
+        return {
+            ...m,
+            revenue,
+            opex,
+            cogs,
+            netResult,
+            basis: useLedger ? 'ledger' : 'transactions',
+            // The previous `grossMargin` here computed (Revenue − OpEx) / Revenue,
+            // which is NET margin under a gross-margin name — the same defect that
+            // was in calculateProfitLoss. Both are now named for what they are, and
+            // gross margin is null when COGS is unknowable.
+            netMargin: revenue > 0 ? (netResult / revenue) * 100 : 0,
+            grossMargin: useLedger && revenue > 0 ? ((revenue - cogs) / revenue) * 100 : null,
+            warnings: m.missingReceipts
+        };
+    });
 }
 
 // YTD aggregate metrics — extends profit_loss with averages, best/worst,
 // and partial-month flag. trend can be passed in to avoid recomputation.
-export function calculateYtdSummary(transactions = [], scope, trend = null) {
+export function calculateYtdSummary(transactions = [], scope, trend = null, ledgerIncomeStatement = null) {
     transactions = activeTransactions(transactions);
-    const pl = calculateProfitLoss(transactions);
+    const pl = calculateProfitLoss(transactions, ledgerIncomeStatement);
     const monthlyTrend = trend || calculateMonthlyTrend(transactions, [], [], scope);
     const elapsed = Math.max(1, elapsedMonthsInPeriod(scope?.current_period || scope));
     const monthsWithRevenue = monthlyTrend.filter(m => m.revenue > 0);
@@ -1003,7 +1038,10 @@ export function buildMonthlyReportPack({
     // comparison is requested, the prior one). Supplied by the page; when absent
     // the P&L falls back to the cash-basis approximation.
     ledgerIncomeStatement = null,
-    previousLedgerIncomeStatement = null
+    previousLedgerIncomeStatement = null,
+    // Per-month ledger Income Statements for the current and comparison ranges.
+    ledgerMonthlySeries = null,
+    previousLedgerMonthlySeries = null
 }) {
     // Back-compat: callers may pass `period` only. Derive a monthly scope if
     // `scope` is not supplied so existing flows keep working.
@@ -1024,10 +1062,10 @@ export function buildMonthlyReportPack({
 
     // Monthly trend + YTD summary apply to YTD/QTD modes.
     const monthly_trend = isYtdMode
-        ? calculateMonthlyTrend(transactions, bills, subscriptions, reportScope)
+        ? calculateMonthlyTrend(transactions, bills, subscriptions, reportScope, ledgerMonthlySeries)
         : null;
     const ytd_summary = isYtdMode
-        ? calculateYtdSummary(transactions, reportScope, monthly_trend)
+        ? calculateYtdSummary(transactions, reportScope, monthly_trend, ledgerIncomeStatement)
         : null;
 
     // YoY comparison reuses YTD summaries on both sides.
@@ -1035,13 +1073,13 @@ export function buildMonthlyReportPack({
     let monthly_trend_comparison = null;
     if (isYoYComparison && previousPeriodTransactions !== null) {
         const previousScope = { current_period: reportScope.comparison_period };
-        const previousMonthlyTrend = calculateMonthlyTrend(previousPeriodTransactions || [], previousPeriodBills || [], previousPeriodSubscriptions || [], previousScope);
-        const previousYtdSummary = calculateYtdSummary(previousPeriodTransactions || [], previousScope, previousMonthlyTrend);
+        const previousMonthlyTrend = calculateMonthlyTrend(previousPeriodTransactions || [], previousPeriodBills || [], previousPeriodSubscriptions || [], previousScope, previousLedgerMonthlySeries);
+        const previousYtdSummary = calculateYtdSummary(previousPeriodTransactions || [], previousScope, previousMonthlyTrend, previousLedgerIncomeStatement);
         const currentSummaryForCompare = isYtdMode
             ? ytd_summary
             : { ...profit_loss, avgMonthlyRevenue: profit_loss.revenue, avgMonthlyOpex: profit_loss.opex };
         yoy_comparison = calculateYoYComparison(currentSummaryForCompare, previousYtdSummary);
-        monthly_trend_comparison = calculateMonthlyTrendComparison(monthly_trend || calculateMonthlyTrend(transactions, [], [], reportScope), previousMonthlyTrend);
+        monthly_trend_comparison = calculateMonthlyTrendComparison(monthly_trend || calculateMonthlyTrend(transactions, [], [], reportScope, ledgerMonthlySeries), previousMonthlyTrend);
     }
 
     const period_comparison = (!isYoYComparison && previousPL)

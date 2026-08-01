@@ -4518,6 +4518,59 @@ class DataService {
         return Math.max(1, (ye - ys) * 12 + (me - ms) + 1);
     }
 
+    // Per-month ledger-derived Income Statements for a range.
+    //
+    // One read of ledger_balances covers every month — the collection is keyed
+    // `{period_key}__{account_code}`, so a monthly series costs the same as a
+    // single period. Used by the YTD/monthly-trend reporting so those figures
+    // agree with the Accounting Center instead of being recomputed from
+    // transactions on a different basis.
+    async getLedgerMonthlySeries(userId, { startPeriod = null, endPeriod = null } = {}) {
+        const end = endPeriod || acctPeriodKey(new Date());
+        const start = startPeriod || end;
+        const [snap, coa] = await Promise.all([
+            getDocs(collection(this.db, `${this._scope(userId)}/ledger_balances`)),
+            this.getChartOfAccounts(userId)
+        ]);
+        const meta = {};
+        coa.forEach((a) => {
+            meta[a.code] = { name: a.name, name_id: a.name_id || null, type: a.type, sak_category: a.sak_category || null };
+        });
+
+        const byPeriod = {};
+        snap.docs.forEach((d) => {
+            const b = d.data();
+            const pk = b.period_key;
+            if (!pk || pk < start || pk > end) return;
+            const m = meta[b.account_code] || {};
+            const bucket = byPeriod[pk] || (byPeriod[pk] = {});
+            const row = bucket[b.account_code] || (bucket[b.account_code] = {
+                account_code: b.account_code,
+                account_type: m.type || b.account_type || 'asset',
+                account_name: m.name || b.account_code,
+                account_name_id: m.name_id || null,
+                sak_category: m.sak_category || null,
+                debit_total: 0,
+                credit_total: 0
+            });
+            row.debit_total += Number(b.debit_total || 0);
+            row.credit_total += Number(b.credit_total || 0);
+        });
+
+        // Every month in the range, including ones with no activity, so the trend
+        // has no gaps.
+        const out = [];
+        let [y, mo] = String(start).split('-').map(Number);
+        const [ey, em] = String(end).split('-').map(Number);
+        while (y < ey || (y === ey && mo <= em)) {
+            const pk = `${y}-${String(mo).padStart(2, '0')}`;
+            out.push({ period_key: pk, incomeStatement: buildIncomeStatement(Object.values(byPeriod[pk] || {})) });
+            mo += 1;
+            if (mo > 12) { mo = 1; y += 1; }
+        }
+        return out;
+    }
+
     async getFinancialStatements(userId, { startPeriod = null, endPeriod = null } = {}) {
         const end = endPeriod || acctPeriodKey(new Date());
         const start = startPeriod || end;

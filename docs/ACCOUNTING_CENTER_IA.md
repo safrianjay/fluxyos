@@ -646,11 +646,27 @@ accountant signs off on a month without exporting to Excel."*
    rather than computed from a zero COGS, which would have fabricated a flat 100%
    gross margin. Guard: `tests/report-profit-loss-basis.spec.js`.
 
-   **Still transactions-basis, deliberately:** `calculateYtdSummary` /
-   `calculateMonthlyTrend` (best/worst month, average monthly revenue). These are
-   management analytics, not a statement, and re-basing them needs per-month ledger
-   aggregates. Not a correctness gap today, but they should follow if the YTD pack
-   ever starts being read as a statement.
+   **YTD / monthly trend re-based 2026-08-01.** `getLedgerMonthlySeries` returns
+   per-month ledger Income Statements from a *single* `ledger_balances` read (the
+   collection is keyed `{period_key}__{account_code}`, so a series costs the same as
+   one period). `calculateMonthlyTrend` and `calculateYtdSummary` now take it.
+
+   The split is deliberate: **financial** fields (revenue, COGS, opex, net, margins)
+   come from the ledger; **record-quality** fields (record counts, missing receipts,
+   bill/sub counts) still come from the records, because "missing receipt" is a
+   document attribute the ledger has no concept of. A month with no ledger activity
+   falls back rather than vanishing from the trend.
+
+   Two more defects fixed here:
+   - The trend's `grossMargin` column had the same mislabel as `calculateProfitLoss`
+     — `(Revenue − OpEx) / Revenue` is **net** margin. Both are now named for what
+     they are, and the report-preview column header was corrected to "Net Margin".
+   - **`formatRupiah` and `formatRupiahCompact` returned `Math.abs()`**, so a Rp37m
+     *loss* rendered identically to a Rp37m profit — in exported reports. Negatives
+     now render in parentheses per `DESIGN_SYSTEM.md`. Only genuinely negative values
+     change; call sites passing a magnitude are unaffected. This predates the IA work
+     but the ledger-derived P&L surfaced it, since ledger figures are legitimately
+     negative far more often than the old cash-basis ones were.
 3. Does Overview need real estate of its own, or is the existing global KPI strip
    plus a cleanup summary enough to justify the section?
 
