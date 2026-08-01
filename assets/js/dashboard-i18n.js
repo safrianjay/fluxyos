@@ -4022,6 +4022,19 @@
         "Post unposted entries": "Posting entri yang belum diposting",
         // Accounting export package
         "Export package": "Ekspor paket",
+        // Transaction Detail → Journal information card
+        "Journal information": "Informasi Jurnal",
+        "Not numbered": "Belum bernomor",
+        "Automatically generated": "Dibuat otomatis",
+        "Posting date": "Tanggal posting",
+        "Period": "Periode",
+        "Open the journal for accounts, debits and credits, and audit history.": "Buka jurnal untuk melihat akun, debit dan kredit, serta riwayat audit.",
+        "No journal has been generated for this transaction yet.": "Belum ada jurnal yang dibuat untuk transaksi ini.",
+        "This transaction is queued for posting. Its journal appears once pending entries are posted from the Accounting Center.": "Transaksi ini menunggu antrean posting. Jurnalnya muncul setelah entri tertunda diposting dari Pusat Akuntansi.",
+        "This transaction is deliberately outside the IDR ledger, so no journal is generated for it.": "Transaksi ini sengaja berada di luar buku besar IDR, sehingga tidak ada jurnal yang dibuat.",
+        "This transaction was voided. Any journal it produced was reversed in the ledger.": "Transaksi ini dibatalkan. Jurnal yang dihasilkannya telah dibalik di buku besar.",
+        "Reversal": "Pembalikan",
+        "Reversed": "Dibalik",
         // Accounting Center Overview
         "Books health": "Kesehatan Pembukuan",
         "The three integrity checks behind every statement, for": "Tiga pemeriksaan integritas di balik setiap laporan, untuk",
@@ -4330,6 +4343,17 @@
         { re: /^Post (\d+) entr(?:y|ies)\?$/,
           id: function (m) { return 'Posting ' + m[1] + ' entri?'; } },
         { re: /^(\d+) not postable$/, id: function (m) { return m[1] + ' tidak dapat diposting'; } },
+        // Transaction Detail journal card: "<status> · <method>" is composed in JS,
+        // so exact match cannot reach it.
+        { re: /^(Posted|Draft|Reversal|Reversed) · (Automatically generated|Manual)$/,
+          id: function (m) {
+              var st = { Posted: 'Diposting', Draft: 'Draf', Reversal: 'Pembalikan', Reversed: 'Dibalik' };
+              var me = { 'Automatically generated': 'Dibuat otomatis', Manual: 'Manual' };
+              return (st[m[1]] || m[1]) + ' · ' + (me[m[2]] || m[2]);
+          } },
+        // Journal empty state for a type that never posts.
+        { re: /^Transactions of type "(.+)" do not post to the ledger, so no journal is generated\.$/,
+          id: function (m) { return 'Transaksi bertipe "' + m[1] + '" tidak diposting ke buku besar, sehingga tidak ada jurnal yang dibuat.'; } },
         { re: /^Exported (\d+) files and logged the export\.$/,
           id: function (m) { return 'Mengekspor ' + m[1] + ' berkas dan mencatat ekspor.'; } },
         // Attachments section row meta: "<role> · Attached 28 Jul 2026". The role
