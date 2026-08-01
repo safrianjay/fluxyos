@@ -154,7 +154,11 @@ FluxyOS design language.
   Gross margin KPI and the two can never disagree. Beyond the shared scaffold the page
   adds: a **revenue-vs-expenses meter**, a **bridge** (previous net profit →
   revenue movement → expense movement → current, plus the top three category movers),
-  and a **comparison-by-period table** with a Month/Quarter/Year grain toggle. There is
+  and a **comparison-by-period chart** with a Month/Quarter/Year grain toggle — a
+  diverging column chart (`renderComparisonColumns`), not a table: reading whether a
+  business is improving means comparing shapes, not parsing six numeric columns. Each
+  column is direct-labelled and its tooltip carries revenue, expenses, net profit,
+  margin and change, so replacing the table lost no figure. There is
   no in-page AI panel — the topbar Fluxy AI drawer covers it, and the page still
   registers its live figures with `FluxyAIContext` so the drawer opens oriented on
   profit. Negative money on this page and on the Overview card renders `-Rp…` (red), not

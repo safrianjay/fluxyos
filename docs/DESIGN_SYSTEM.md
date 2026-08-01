@@ -92,7 +92,10 @@ default body · `1.5` long-form prose. KPI numbers themselves use `1`.
 
 Pre-existing `text-[11px]` / `text-[13px]` instances in the codebase
 are being migrated to `text-[12px]` / `text-[14px]` in scoped sweeps;
-new code must already be on-scale.
+new code must already be on-scale. **The KPI drill-down family
+(`revenue-overview`, `cash-position`, `cash-pressure`, `opex-budget`,
+`net-profit`, and `kpi-detail-shared.js`) completed that migration** — it is
+fully on-scale and must stay there.
 
 ---
 
@@ -401,6 +404,27 @@ The pattern to copy is `renderComposition` in `assets/js/net-profit.js`: a horiz
 track = the base (revenue = 100%), a fill = the share consumed, the remainder = what is
 left, and anything past the limit rendered as a **separate hatched over-run bar** with
 its own label — never as a longer fill, which would imply it still fits.
+
+#### Comparing a measure across periods
+
+Use `renderComparisonColumns` (`assets/js/kpi-detail-shared.js`) — a diverging column
+chart, one column per period around a shared zero baseline. Not a donut (that asserts
+part-to-whole and cannot draw a negative period) and not a line (that implies
+continuity between discrete buckets).
+
+Three rules the implementation encodes, all of which were wrong in a first pass:
+
+1. **One pixels-per-rupiah for both sides.** Scaling each side to its own maximum uses
+   the canvas better but makes a Rp30jt loss draw the same height as a Rp4.5B profit —
+   it destroys the single comparison the chart exists to make.
+2. **Place zero where zero falls**, not at 50%, so an absent or small side doesn't
+   reserve dead canvas — but floor the smaller side (`MINOR_RESERVE_PX`) or a
+   900×-smaller side collapses to sub-pixel and vanishes.
+3. **Only tick an axis side that is actually scaled to its data.** A side holding just
+   the reserve would print a value no bar comes near, and collide with the zero tick.
+
+Direct-label every column when the chart replaces a table — the figures must be
+readable without hover, or the chart is a downgrade.
 
 **Status green vs red is ΔE 3.7 under deuteranopia** — effectively identical. Wherever
 the two sit adjacent (this meter, stacked segments, paired bars), every segment must

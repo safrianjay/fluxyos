@@ -364,7 +364,7 @@ export function renderTrendChart(containerId, opts = {}) {
     if (!points.length || !hasValues) {
         host.innerHTML = `
             <div class="flex h-[240px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-5 text-center">
-                <p class="text-[13px] text-gray-500">${escapeHtml(opts.emptyText || 'No trend data yet for this period.')}</p>
+                <p class="text-[14px] text-gray-500">${escapeHtml(opts.emptyText || 'No trend data yet for this period.')}</p>
             </div>`;
         return;
     }
@@ -437,7 +437,7 @@ export function renderTrendChart(containerId, opts = {}) {
                     <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
                     ${n <= 16 ? pts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#fff" stroke="${p.v < 0 ? negColor : color}" stroke-width="2"></circle>`).join('') : ''}
                 </svg>
-                ${todayPct != null ? `<span class="absolute -translate-x-1/2 rounded bg-slate-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white" style="left:${todayPct.toFixed(2)}%; top:2px;">Today</span>` : ''}
+                ${todayPct != null ? `<span class="absolute -translate-x-1/2 rounded bg-slate-700 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white" style="left:${todayPct.toFixed(2)}%; top:2px;">Today</span>` : ''}
                 <div class="absolute inset-0 flex">
                     ${pts.map(p => `<div class="flex-1" data-chart-bar data-label="${escapeHtml(p.label)}" data-value="${p.v}" data-sub="${escapeHtml(p.sub || '')}"></div>`).join('')}
                 </div>
@@ -502,6 +502,147 @@ export function renderTrendChart(containerId, opts = {}) {
     }
 }
 
+// ── Period comparison columns ───────────────────────────────────────
+// A diverging column chart: one column per period, growing up or down from a
+// zero baseline. This is the form for "is this getting better or worse across
+// periods" — a donut cannot show a negative period, and a line implies
+// continuity between discrete buckets.
+//
+// It replaces a table, so every column is DIRECT-LABELLED with its value: the
+// figures have to be readable without hover or the chart is a downgrade. That
+// direct label plus the above/below-baseline position is also the secondary
+// encoding that makes the green/red pair legal — those two hues measure ΔE 3.7
+// under deuteranopia (see DESIGN_SYSTEM.md), so colour alone can never carry it.
+//
+// cols: [{ label, value, caption?, rows?: [{label, value, swatch?}] }]
+//   caption — small text under the axis label (e.g. the margin %)
+//   rows    — extra tooltip rows (the columns a replaced table used to show)
+export function renderComparisonColumns(containerId, opts = {}) {
+    const host = document.getElementById(containerId);
+    if (!host) return;
+    const cols = opts.cols || [];
+    const fmt = opts.formatValue || formatRp;
+    const posColor = opts.posColor || '#16A34A';
+    const negColor = opts.negColor || '#DC2626';
+
+    if (!cols.length) {
+        host.innerHTML = `
+            <div class="kpi-cmp-empty">
+                <p class="kpi-cmp-empty-title">${escapeHtml(opts.emptyTitle || 'Nothing to compare yet')}</p>
+                <p class="kpi-cmp-empty-desc">${escapeHtml(opts.emptyDesc || '')}</p>
+            </div>`;
+        return;
+    }
+
+    // Symmetric scale around zero so a positive and a negative column of equal
+    // size read as equal — the axis must not flatter one direction.
+    // ONE symmetric scale: a rupiah is the same number of pixels above and below
+    // the line, so a loss and a profit of equal size draw equal bars.
+    //
+    // Tempting alternatives, both rejected: scaling each side to its own maximum
+    // uses the canvas better but makes a Rp30jt loss look the same size as a
+    // Rp4.5B profit, which destroys the one comparison the chart exists to make;
+    // placing zero proportionally collapses the smaller side to sub-pixel. When
+    // one period genuinely dwarfs the others, "the others are slivers" is the
+    // honest reading — the direct labels carry the exact figures.
+    const values = cols.map(c => Number(c.value) || 0);
+    const peak = Math.max(...values.map(Math.abs), 1);
+    const hasNeg = values.some(v => v < 0);
+    const hasPos = values.some(v => v >= 0);
+    const maxPos = Math.max(0, ...values);
+    const maxNeg = Math.max(0, ...values.map(v => -v));
+
+    const TRACK_PX = 260;
+    // The zero line sits where zero actually falls in the range, so an unused or
+    // small side doesn't reserve dead canvas — but the smaller side keeps a
+    // floor of `MINOR_RESERVE_PX` so its bars and labels have somewhere to live
+    // (without it a 900×-smaller side collapses to sub-pixel and disappears).
+    const MINOR_RESERVE_PX = 26;
+    const minorMax = hasPos && hasNeg ? Math.min(maxPos, maxNeg) : 0;
+    const reserve = hasPos && hasNeg
+        ? Math.max(MINOR_RESERVE_PX, (minorMax / peak) * TRACK_PX)
+        : 0;
+    // One pixels-per-rupiah for BOTH sides — a loss and a profit of equal size
+    // draw equal bars. Scaling each side to its own max would use the canvas
+    // better but would make a Rp30jt loss look like a Rp4.5B profit, destroying
+    // the one comparison the chart exists to make.
+    const pxPerRp = (TRACK_PX - reserve) / peak;
+    const minorIsNeg = maxNeg <= maxPos;
+    const downPx = !hasNeg ? 0 : (minorIsNeg ? reserve || TRACK_PX : TRACK_PX - reserve);
+    const upPx = !hasPos ? 0 : (minorIsNeg ? TRACK_PX - reserve : reserve || TRACK_PX);
+    const total = upPx + downPx || TRACK_PX;
+    const upShare = (upPx / total) * 100;
+    const downShare = 100 - upShare;
+    // A side that only got the reserve carries no meaningful extent — ticking it
+    // would print a value no bar comes near (and collide with the Rp0 tick), so
+    // only label a side that is actually scaled to its data.
+    const showUpTick = hasPos && upPx > MINOR_RESERVE_PX;
+    const showDownTick = hasNeg && downPx > MINOR_RESERVE_PX;
+    // Floored so a real-but-tiny value stays a visible mark rather than rounding
+    // away to nothing, and capped so it can never overflow its side.
+    const barPx = (v, sidePx) => {
+        const a = Math.abs(Number(v) || 0);
+        if (a === 0 || sidePx <= 0) return 0;
+        return Math.min(Math.max(a * pxPerRp, 4), sidePx);
+    };
+
+    host.innerHTML = `
+        <div class="kpi-cmp">
+            <div class="kpi-cmp-axis" aria-hidden="true" style="height:${total}px">
+                <span>${showUpTick ? escapeHtml(formatRpCompact(upPx / pxPerRp)) : ''}</span>
+                <span style="position:absolute; top:${upShare.toFixed(2)}%; right:0; transform:translateY(-50%)">Rp0</span>
+                <span>${showDownTick ? escapeHtml('-' + formatRpCompact(downPx / pxPerRp)) : ''}</span>
+            </div>
+            <div class="kpi-cmp-scroll">
+                <div class="kpi-cmp-track" id="${containerId}-plot" style="min-width:${cols.length * 96}px; height:${total}px">
+                    <div class="kpi-cmp-zero" style="top:${upShare.toFixed(2)}%" aria-hidden="true"></div>
+                    ${cols.map(c => {
+                        const v = Number(c.value) || 0;
+                        const up = v >= 0;
+                        const h = barPx(v, up ? upPx : downPx);
+                        const tip = (c.rows || []).map(r => `
+                            <div class="chart-tooltip-row">
+                                ${r.swatch ? `<span class="chart-tooltip-swatch" style="background:${r.swatch}"></span>` : ''}
+                                <span class="chart-tooltip-label">${escapeHtml(r.label)}</span>
+                                <span class="chart-tooltip-value">${escapeHtml(r.value)}</span>
+                            </div>`).join('');
+                        return `
+                            <div class="kpi-cmp-col" data-chart-bar
+                                data-label="${escapeHtml(c.label)}"
+                                data-tip="${escapeHtml(tip)}">
+                                <div class="kpi-cmp-half kpi-cmp-half-up" style="height:${upShare.toFixed(2)}%">
+                                    ${up ? `<span class="kpi-cmp-value">${escapeHtml(fmt(v))}</span>
+                                            <span class="kpi-cmp-bar" style="height:${h.toFixed(1)}px;background:${posColor}"></span>` : ''}
+                                </div>
+                                <div class="kpi-cmp-half kpi-cmp-half-down" style="height:${downShare.toFixed(2)}%">
+                                    ${!up ? `<span class="kpi-cmp-bar" style="height:${h.toFixed(1)}px;background:${negColor}"></span>
+                                             <span class="kpi-cmp-value kpi-cmp-value-neg">${escapeHtml(fmt(v))}</span>` : ''}
+                                </div>
+                            </div>`;
+                    }).join('')}
+                </div>
+                <div class="kpi-cmp-labels" style="min-width:${cols.length * 96}px">
+                    ${cols.map(c => `
+                        <div class="kpi-cmp-label">
+                            <span class="kpi-cmp-label-name">${escapeHtml(c.label)}</span>
+                            ${c.caption ? `<span class="kpi-cmp-label-caption">${escapeHtml(c.caption)}</span>` : ''}
+                        </div>`).join('')}
+                </div>
+            </div>
+        </div>`;
+
+    const plot = document.getElementById(`${containerId}-plot`);
+    if (plot && typeof window.attachChartHover === 'function') {
+        window.attachChartHover(plot, {
+            bars: '[data-chart-bar]',
+            orientation: 'vertical',
+            buildTooltip: (barEl) => `
+                <div class="chart-tooltip-header">${escapeHtml(barEl.dataset.label || '')}</div>
+                ${barEl.dataset.tip || ''}`
+        });
+    }
+}
+
 // ── Breakdown contribution list ─────────────────────────────────────
 // rows: [{ name, amount, count?, meta? }] — sorted + bar widths relative to
 // the largest.
@@ -518,7 +659,7 @@ export function renderBreakdownList(containerId, { rows, total, selected, color 
     if (!host) return;
     const list = (rows || []).filter(r => Math.abs(Number(r.amount) || 0) > 0);
     if (!list.length) {
-        host.innerHTML = `<div class="px-2 py-8 text-center text-[13px] text-gray-500">${escapeHtml(emptyText || 'No breakdown data yet.')}</div>`;
+        host.innerHTML = `<div class="px-2 py-8 text-center text-[14px] text-gray-500">${escapeHtml(emptyText || 'No breakdown data yet.')}</div>`;
         return;
     }
     const max = Math.max(...list.map(r => Math.abs(Number(r.amount) || 0)), 1);
@@ -533,12 +674,12 @@ export function renderBreakdownList(containerId, { rows, total, selected, color 
             <div class="kpi-detail-breakdown-row ${interactive ? 'is-interactive' : ''} ${isSel ? 'is-selected' : ''}" data-breakdown-name="${escapeHtml(r.name)}"${attrs}>
                 <div class="flex items-start justify-between gap-4">
                     <div class="min-w-0">
-                        <p class="font-semibold text-[13px] text-gray-900 truncate">${escapeHtml(r.name)}</p>
-                        <p class="mt-0.5 text-[11px] text-gray-400">${r.count != null ? `${r.count} record${r.count === 1 ? '' : 's'}` : ''}${r.meta ? `${r.count != null ? ' · ' : ''}${escapeHtml(r.meta)}` : ''}</p>
+                        <p class="font-semibold text-[14px] text-gray-900 truncate">${escapeHtml(r.name)}</p>
+                        <p class="mt-0.5 text-[12px] text-gray-400">${r.count != null ? `${r.count} record${r.count === 1 ? '' : 's'}` : ''}${r.meta ? `${r.count != null ? ' · ' : ''}${escapeHtml(r.meta)}` : ''}</p>
                     </div>
                     <div class="text-right flex-shrink-0">
-                        <p class="text-[13px] font-bold text-gray-900 tabular-nums">${escapeHtml(valueFormat(amt))}</p>
-                        <p class="mt-0.5 text-[11px] text-gray-400 tabular-nums">${formatPercent(share)}</p>
+                        <p class="text-[14px] font-bold text-gray-900 tabular-nums">${escapeHtml(valueFormat(amt))}</p>
+                        <p class="mt-0.5 text-[12px] text-gray-400 tabular-nums">${formatPercent(share)}</p>
                     </div>
                 </div>
                 <div class="mt-2 h-1 rounded-full bg-gray-100 overflow-hidden">
@@ -634,7 +775,7 @@ export function createSupportingTable(config) {
             tbody.innerHTML = `
                 <tr><td colspan="${columns.length}" class="px-6 py-12 text-center">
                     <p class="text-[14px] font-semibold text-gray-900">${escapeHtml(config.emptyTitle || 'No records')}</p>
-                    <p class="mt-1 text-[13px] text-gray-500">${escapeHtml(config.emptyDesc || 'Nothing to show for this period.')}</p>
+                    <p class="mt-1 text-[14px] text-gray-500">${escapeHtml(config.emptyDesc || 'Nothing to show for this period.')}</p>
                 </td></tr>`;
             return;
         }

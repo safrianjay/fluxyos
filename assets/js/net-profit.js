@@ -11,8 +11,9 @@
 import {
     escapeHtml, formatRp, formatPercent, formatDate, recordDate,
     resolvePeriodFromUrl, mountPeriodControls, previousPeriod, resolvePeriod,
-    renderKpiStrip, bucketSeries, renderTrendChart,
-    renderBreakdownList, createSupportingTable, ledgerRecordUrl, parseKey, dayKey
+    renderKpiStrip, bucketSeries, renderTrendChart, renderComparisonColumns,
+    renderBreakdownList, createSupportingTable, ledgerRecordUrl, parseKey, dayKey,
+    formatRpCompact
 } from '/assets/js/kpi-detail-shared.js';
 
 const REVENUE_TYPES = new Set(['revenue', 'income', 'refund', 'pending_receivable']);
@@ -362,7 +363,7 @@ function renderComposition(totals) {
     const host = el('profit-composition');
     if (!host) return;
     if (totals.revenue === 0 && totals.expenses === 0) {
-        host.innerHTML = '<p class="text-[13px] text-gray-500">No revenue or expenses recorded in this period yet.</p>';
+        host.innerHTML = '<p class="text-[14px] text-gray-500">No revenue or expenses recorded in this period yet.</p>';
         return;
     }
     // The meter answers "how much of the money that came in stayed in": the track
@@ -398,7 +399,7 @@ function renderComposition(totals) {
     const overrunWidth = Math.min(100, overrunPct);
     const overrun = overspent ? `
         <div class="mt-2">
-            <div class="flex items-center justify-between gap-3 text-[11px] font-semibold text-red-700">
+            <div class="flex items-center justify-between gap-3 text-[12px] font-semibold text-red-700">
                 <span>Over revenue by ${escapeHtml(formatRp(expenses - revenue))}</span>
                 ${revenue > 0 ? `<span class="tabular-nums">${escapeHtml(formatPercent(overrunPct))} over</span>` : ''}
             </div>
@@ -409,10 +410,10 @@ function renderComposition(totals) {
     const figure = (label, amount, fillCls, dotCls, valueCls) => `
         <div>
             <div class="flex items-baseline justify-between gap-4">
-                <span class="inline-flex items-center gap-2 text-[13px] font-semibold text-gray-700">
+                <span class="inline-flex items-center gap-2 text-[14px] font-semibold text-gray-700">
                     <span class="np-dot ${dotCls}" aria-hidden="true"></span>${escapeHtml(label)}
                 </span>
-                <span class="text-[14px] font-bold tabular-nums ${valueCls}">${escapeHtml(formatRp(amount))}</span>
+                <span class="text-[16px] font-bold tabular-nums ${valueCls}">${escapeHtml(formatRp(amount))}</span>
             </div>
             <div class="np-bar-track mt-1.5">
                 <div class="np-bar-fill ${fillCls}" style="width:${Math.max(2, (amount / scale) * 100).toFixed(2)}%"></div>
@@ -425,7 +426,7 @@ function renderComposition(totals) {
     else keptCopy = `You kept ${escapeHtml(formatPercent((netProfit / revenue) * 100))} of every rupiah earned`;
 
     host.innerHTML = `
-        <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Of every rupiah of revenue</p>
+        <p class="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Of every rupiah of revenue</p>
         ${meter}
         ${overrun}
         <div class="mt-5 space-y-3">
@@ -434,7 +435,7 @@ function renderComposition(totals) {
         </div>
         <div class="mt-4 flex items-baseline justify-between gap-4 border-t border-gray-100 pt-4">
             <div class="min-w-0">
-                <p class="text-[13px] font-semibold text-gray-900">Net profit</p>
+                <p class="text-[14px] font-semibold text-gray-900">Net profit</p>
                 <p class="mt-0.5 text-[12px] text-gray-400">${keptCopy}</p>
             </div>
             <span class="text-xl font-bold tabular-nums ${netProfit < 0 ? 'text-red-600' : 'text-gray-900'}">${escapeHtml(formatProfit(netProfit))}</span>
@@ -453,7 +454,7 @@ function renderBridge(totals, prevTotals, hasComparison) {
     const host = el('profit-bridge');
     if (!host) return;
     if (!hasComparison) {
-        host.innerHTML = `<p class="text-[13px] text-gray-500">${state.period.mode === 'all_time'
+        host.innerHTML = `<p class="text-[14px] text-gray-500">${state.period.mode === 'all_time'
             ? 'Pick a specific period to compare it against the one before it.'
             : 'No records in the previous period of equal length, so there is nothing to compare against yet.'}</p>`;
         return;
@@ -467,10 +468,10 @@ function renderBridge(totals, prevTotals, hasComparison) {
     const row = (label, value, cls, meta) => `
         <div class="np-bridge-row">
             <div class="min-w-0">
-                <p class="text-[13px] font-semibold text-gray-700">${escapeHtml(label)}</p>
+                <p class="text-[14px] font-semibold text-gray-700">${escapeHtml(label)}</p>
                 ${meta ? `<p class="mt-0.5 text-[12px] text-gray-400">${escapeHtml(meta)}</p>` : ''}
             </div>
-            <span class="text-[14px] font-bold tabular-nums flex-shrink-0 ${cls}">${escapeHtml(value)}</span>
+            <span class="text-[16px] font-bold tabular-nums flex-shrink-0 ${cls}">${escapeHtml(value)}</span>
         </div>`;
 
     host.innerHTML = `
@@ -502,12 +503,12 @@ function renderMovers(hasComparison) {
 
     if (!movers.length) { host.innerHTML = ''; return; }
     host.innerHTML = `
-        <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Biggest movers by category</p>
+        <p class="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Biggest movers by category</p>
         <div class="mt-2 space-y-1.5">
             ${movers.map(m => `
                 <div class="flex items-center justify-between gap-4">
-                    <span class="text-[13px] text-gray-600 truncate">${escapeHtml(m.name)}</span>
-                    <span class="text-[13px] font-semibold tabular-nums flex-shrink-0 ${toneClass(m.delta)}">${escapeHtml(formatDelta(m.delta))}</span>
+                    <span class="text-[14px] text-gray-600 truncate">${escapeHtml(m.name)}</span>
+                    <span class="text-[14px] font-semibold tabular-nums flex-shrink-0 ${toneClass(m.delta)}">${escapeHtml(formatDelta(m.delta))}</span>
                 </div>`).join('')}
         </div>`;
 }
@@ -539,8 +540,6 @@ function comparisonBuckets(grain, anchorDate, count) {
 }
 
 function renderComparison() {
-    const body = el('profit-comparison-body');
-    if (!body) return;
     const grain = state.grain;
     const anchor = parseKey(state.period.end) || new Date();
     const buckets = comparisonBuckets(grain, anchor, COMPARISON_SPANS[grain] || 6)
@@ -554,28 +553,29 @@ function renderComparison() {
     const grainNoun = grain === 'month' ? 'months' : grain === 'quarter' ? 'quarters' : 'years';
     el('profit-comparison-subtitle').textContent = `Net profit across the last ${grainNoun} up to ${state.period.label.toLowerCase()}, so a single period is never read in isolation.`;
 
-    if (!visible.length) {
-        body.innerHTML = `
-            <tr><td colspan="6" class="px-6 py-12 text-center">
-                <p class="text-[14px] font-semibold text-gray-900">No comparable periods yet</p>
-                <p class="mt-1 text-[13px] text-gray-500">Record revenue or expenses to compare ${escapeHtml(grainNoun)} side by side.</p>
-            </td></tr>`;
-        return;
-    }
-
-    body.innerHTML = visible.map((b, i) => {
-        const prev = i > 0 ? visible[i - 1].totals : null;
-        const change = prev ? b.totals.netProfit - prev.netProfit : null;
-        return `
-            <tr class="fluxy-table-row">
-                <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${escapeHtml(b.label)}</span></td>
-                <td class="fluxy-table-cell fluxy-table-money"><span class="tabular-nums text-gray-600">${escapeHtml(formatRp(b.totals.revenue))}</span></td>
-                <td class="fluxy-table-cell fluxy-table-money"><span class="tabular-nums text-gray-600">${escapeHtml(formatRp(b.totals.expenses))}</span></td>
-                <td class="fluxy-table-cell fluxy-table-money"><span class="tabular-nums font-semibold ${b.totals.netProfit < 0 ? 'text-red-600' : 'text-gray-900'}">${escapeHtml(formatProfit(b.totals.netProfit))}</span></td>
-                <td class="fluxy-table-cell fluxy-table-money"><span class="tabular-nums text-gray-600">${escapeHtml(b.totals.margin === null ? 'N/A' : formatPercent(b.totals.margin))}</span></td>
-                <td class="fluxy-table-cell fluxy-table-money"><span class="tabular-nums ${change === null ? 'text-gray-400' : toneClass(change)}">${escapeHtml(change === null ? '—' : formatDelta(change))}</span></td>
-            </tr>`;
-    }).join('');
+    // The chart replaces a table, so each column carries its value as a direct
+    // label and the tooltip carries every column that table used to show.
+    renderComparisonColumns('profit-comparison-chart', {
+        cols: visible.map((b, i) => {
+            const prev = i > 0 ? visible[i - 1].totals : null;
+            const change = prev ? b.totals.netProfit - prev.netProfit : null;
+            return {
+                label: b.label,
+                value: b.totals.netProfit,
+                caption: b.totals.margin === null ? 'N/A' : formatPercent(b.totals.margin),
+                rows: [
+                    { label: 'Revenue', value: formatRp(b.totals.revenue), swatch: '#16A34A' },
+                    { label: 'Expenses', value: formatRp(b.totals.expenses), swatch: '#DC2626' },
+                    { label: 'Net profit', value: formatProfit(b.totals.netProfit) },
+                    { label: 'Margin', value: b.totals.margin === null ? 'N/A' : formatPercent(b.totals.margin) },
+                    { label: 'Change', value: change === null ? '\u2014' : formatDelta(change) }
+                ]
+            };
+        }),
+        formatValue: (v) => (v < 0 ? '-' : '') + formatRpCompact(Math.abs(v)),
+        emptyTitle: 'No comparable periods yet',
+        emptyDesc: `Record revenue or expenses to compare ${grainNoun} side by side.`
+    });
 }
 
 // Live page context for the Fluxy AI drawer, so opening it from this page starts
@@ -645,7 +645,7 @@ function renderError() {
     err.innerHTML = `
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-10 text-center">
             <h1 class="text-xl font-bold text-gray-900">Net profit could not be opened.</h1>
-            <p class="mt-2 text-[13px] text-gray-500">Refresh and try again.</p>
-            <a href="/dashboard" class="mt-5 inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-[13px] font-bold text-white hover:bg-slate-800">Back to Overview</a>
+            <p class="mt-2 text-[14px] text-gray-500">Refresh and try again.</p>
+            <a href="/dashboard" class="mt-5 inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-[14px] font-bold text-white hover:bg-slate-800">Back to Overview</a>
         </div>`;
 }

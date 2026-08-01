@@ -230,11 +230,40 @@ test('net profit: comparison grain + record scope toggles work', async ({ page }
     // The AI insights panel was removed — it must not come back by accident.
     await expect(page.locator('#profit-ai-generate, #profit-ai-body')).toHaveCount(0);
 
+    // Comparison by period is a diverging column chart, not a table: one column
+    // per period, above or below a shared zero baseline. Each column is
+    // direct-labelled because the chart replaced the table — the figures have to
+    // be readable without hover, and that label is also the secondary encoding
+    // the green/red pair requires (ΔE 3.7 under deuteranopia).
     for (const grain of ['quarter', 'year', 'month']) {
         await page.locator(`[data-comparison-grain="${grain}"]`).click();
         await expect(page.locator(`[data-comparison-grain="${grain}"]`)).toHaveClass(/is-active/);
-        await expect(page.locator('#profit-comparison-body tr').first()).toBeVisible();
+        await expect(page.locator('#profit-comparison-chart .kpi-cmp-col').first()).toBeVisible();
+        const chart = await page.evaluate(() => {
+            const cols = [...document.querySelectorAll('#profit-comparison-chart .kpi-cmp-col')];
+            const track = document.querySelector('#profit-comparison-chart .kpi-cmp-track');
+            const trackH = track ? track.getBoundingClientRect().height : 0;
+            return {
+                count: cols.length,
+                unlabelled: cols.filter(c => !c.querySelector('.kpi-cmp-value')?.textContent.trim()).length,
+                overflowing: cols.filter(c => {
+                    const b = c.querySelector('.kpi-cmp-bar');
+                    return b && b.getBoundingClientRect().height > trackH + 1;
+                }).length,
+                sides: cols.map(c => c.querySelector('.kpi-cmp-half-up .kpi-cmp-bar') ? 'up'
+                    : (c.querySelector('.kpi-cmp-half-down .kpi-cmp-bar') ? 'down' : 'zero')),
+                hasZeroLine: !!document.querySelector('#profit-comparison-chart .kpi-cmp-zero'),
+            };
+        });
+        expect(chart.count, `${grain}: renders columns`).toBeGreaterThan(0);
+        expect(chart.unlabelled, `${grain}: every column is direct-labelled`).toBe(0);
+        expect(chart.overflowing, `${grain}: no bar overflows the track`).toBe(0);
+        expect(chart.hasZeroLine, `${grain}: zero baseline present`).toBeTruthy();
+        // Sign must drive which side of the baseline a column sits on.
+        expect(chart.sides.every(s => ['up', 'down', 'zero'].includes(s))).toBeTruthy();
     }
+    // The table it replaced must not come back.
+    await expect(page.locator('#profit-comparison-body')).toHaveCount(0);
 
     for (const scope of ['revenue', 'expense', 'all']) {
         await page.locator(`[data-record-scope="${scope}"]`).click();

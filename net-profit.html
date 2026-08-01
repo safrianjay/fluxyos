@@ -34,7 +34,7 @@
             justify-content: flex-end;
             min-width: 0;
             padding: 0 8px;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 700;
             color: #FFFFFF;
             letter-spacing: 0.01em;
@@ -113,10 +113,10 @@
                         <div class="mt-2 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                             <div class="min-w-0">
                                 <h1 class="text-2xl leading-tight font-bold tracking-tight text-gray-900">Net Profit</h1>
-                                <p class="mt-1 text-[13px] text-gray-500">What you kept after every expense, what moved it since last period, and which records drove the result.</p>
+                                <p class="mt-1 text-[14px] text-gray-500">What you kept after every expense, what moved it since last period, and which records drove the result.</p>
                             </div>
                             <div class="text-left lg:text-right flex-shrink-0">
-                                <p class="text-[11px] uppercase tracking-wide text-gray-400" id="profit-period-label">This month</p>
+                                <p class="text-[12px] uppercase tracking-wide text-gray-400" id="profit-period-label">This month</p>
                                 <p class="text-2xl font-bold tracking-tight text-gray-900 tabular-nums" id="profit-headline">Rp0</p>
                                 <p class="mt-0.5 text-[12px] font-semibold" id="profit-compare">—</p>
                             </div>
@@ -140,9 +140,9 @@
                                 <div class="flex items-center justify-between gap-3">
                                     <h2 class="text-[12px] font-semibold uppercase tracking-wide text-gray-600">Breakdown</h2>
                                     <div class="inline-flex items-center gap-1 rounded-lg bg-gray-50 border border-gray-200 p-0.5">
-                                        <button type="button" data-breakdown-dim="contributors" class="kpi-dim-btn is-active px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Contributors</button>
-                                        <button type="button" data-breakdown-dim="expenses" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Expenses</button>
-                                        <button type="button" data-breakdown-dim="revenue" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Revenue</button>
+                                        <button type="button" data-breakdown-dim="contributors" class="kpi-dim-btn is-active px-2.5 py-1 rounded-md text-[12px] font-bold text-gray-500">Contributors</button>
+                                        <button type="button" data-breakdown-dim="expenses" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[12px] font-bold text-gray-500">Expenses</button>
+                                        <button type="button" data-breakdown-dim="revenue" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[12px] font-bold text-gray-500">Revenue</button>
                                     </div>
                                 </div>
                                 <p id="profit-breakdown-hint" class="mt-2 text-[12px] text-gray-400">Net effect on profit by category — revenue minus expenses.</p>
@@ -177,26 +177,14 @@
                             </div>
                             <div class="fluxy-table-actions">
                                 <div class="inline-flex items-center gap-1 rounded-lg bg-gray-50 border border-gray-200 p-0.5">
-                                    <button type="button" data-comparison-grain="month" class="kpi-dim-btn is-active px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Month</button>
-                                    <button type="button" data-comparison-grain="quarter" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Quarter</button>
-                                    <button type="button" data-comparison-grain="year" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Year</button>
+                                    <button type="button" data-comparison-grain="month" class="kpi-dim-btn is-active px-2.5 py-1 rounded-md text-[12px] font-bold text-gray-500">Month</button>
+                                    <button type="button" data-comparison-grain="quarter" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[12px] font-bold text-gray-500">Quarter</button>
+                                    <button type="button" data-comparison-grain="year" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[12px] font-bold text-gray-500">Year</button>
                                 </div>
                             </div>
                         </div>
-                        <div class="fluxy-table-scroll">
-                            <table class="fluxy-table min-w-[760px]">
-                                <thead>
-                                    <tr class="fluxy-table-header">
-                                        <th>Period</th>
-                                        <th class="fluxy-table-money">Revenue</th>
-                                        <th class="fluxy-table-money">Expenses</th>
-                                        <th class="fluxy-table-money">Net profit</th>
-                                        <th class="fluxy-table-money">Margin</th>
-                                        <th class="fluxy-table-money">Change</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="profit-comparison-body"></tbody>
-                            </table>
+                        <div class="p-5 sm:p-6">
+                            <div id="profit-comparison-chart"></div>
                         </div>
                     </section>
 
@@ -206,7 +194,7 @@
                             <div>
                                 <h2 class="fluxy-table-title">Profit and loss records</h2>
                                 <p class="fluxy-table-subtitle" id="profit-table-subtitle">Every record behind this net profit. Click a row to open it in the Ledger.</p>
-                                <button id="profit-filter-clear" type="button" class="hidden mt-2 items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-[11px] font-bold text-gray-600 hover:bg-gray-100 transition-colors">
+                                <button id="profit-filter-clear" type="button" class="hidden mt-2 items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-[12px] font-bold text-gray-600 hover:bg-gray-100 transition-colors">
                                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-[#EA580C]"></span>
                                     <span id="profit-filter-clear-label">Filtered</span>
                                     <span class="text-gray-400" aria-hidden="true">✕</span>
@@ -214,12 +202,12 @@
                             </div>
                             <div class="fluxy-table-actions">
                                 <div class="inline-flex items-center gap-1 rounded-lg bg-gray-50 border border-gray-200 p-0.5">
-                                    <button type="button" data-record-scope="all" class="kpi-dim-btn is-active px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">All</button>
-                                    <button type="button" data-record-scope="revenue" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Revenue</button>
-                                    <button type="button" data-record-scope="expense" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-gray-500">Expenses</button>
+                                    <button type="button" data-record-scope="all" class="kpi-dim-btn is-active px-2.5 py-1 rounded-md text-[12px] font-bold text-gray-500">All</button>
+                                    <button type="button" data-record-scope="revenue" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[12px] font-bold text-gray-500">Revenue</button>
+                                    <button type="button" data-record-scope="expense" class="kpi-dim-btn px-2.5 py-1 rounded-md text-[12px] font-bold text-gray-500">Expenses</button>
                                 </div>
-                                <input id="profit-search" type="search" placeholder="Search records…" class="px-3 py-2 border border-gray-200 rounded-lg text-[13px] w-full sm:w-56" aria-label="Search profit and loss records">
-                                <button id="profit-export" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95">Export CSV</button>
+                                <input id="profit-search" type="search" placeholder="Search records…" class="px-3 py-2 border border-gray-200 rounded-lg text-[14px] w-full sm:w-56" aria-label="Search profit and loss records">
+                                <button id="profit-export" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95">Export CSV</button>
                             </div>
                         </div>
                         <div class="fluxy-table-scroll">

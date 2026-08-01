@@ -1765,6 +1765,86 @@ main > header {
     .kpi-detail-record-row { grid-template-columns: 1fr; }
 }
 
+/* ── Period comparison columns (renderComparisonColumns) ──────────────
+   Diverging columns around a zero baseline. Every column is direct-labelled,
+   which is what lets this replace a table — and is the secondary encoding the
+   green/red pair requires (ΔE 3.7 under deuteranopia). */
+.kpi-cmp { display: flex; gap: 8px; }
+.kpi-cmp-axis {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-shrink: 0;
+    width: 64px;
+    font-size: 10px;
+    color: #9CA3AF;
+    font-variant-numeric: tabular-nums;
+}
+/* The track scrolls inside its own container so a long range can never make the
+   page scroll horizontally (DESIGN_SYSTEM.md §4a). */
+.kpi-cmp-scroll { flex: 1; min-width: 0; overflow-x: auto; }
+.kpi-cmp-track { position: relative; display: flex; }
+.kpi-cmp-zero {
+    position: absolute;
+    left: 0; right: 0; top: 50%;
+    border-top: 1px solid #CBD5E1;
+}
+.kpi-cmp-col {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0 6px;
+}
+.kpi-cmp-half { display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+.kpi-cmp-half-up { justify-content: flex-end; }
+.kpi-cmp-half-down { justify-content: flex-start; }
+.kpi-cmp-bar {
+    width: 100%;
+    max-width: 44px;
+    transition: filter 160ms ease;
+}
+.kpi-cmp-half-up .kpi-cmp-bar { border-radius: 4px 4px 0 0; }
+.kpi-cmp-half-down .kpi-cmp-bar { border-radius: 0 0 4px 4px; }
+.kpi-cmp-value {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 700;
+    color: #111827;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    margin-bottom: 4px;
+}
+.kpi-cmp-value-neg { margin: 4px 0 0; color: #DC2626; }
+.kpi-cmp-col.chart-bar-active .kpi-cmp-bar { filter: brightness(1.12); }
+.kpi-cmp-labels { display: flex; margin-top: 8px; }
+.kpi-cmp-label {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0 6px;
+}
+.kpi-cmp-label-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+}
+.kpi-cmp-label-caption {
+    font-size: 10px;
+    color: #9CA3AF;
+    font-variant-numeric: tabular-nums;
+}
+.kpi-cmp-empty { padding: 48px 20px; text-align: center; }
+.kpi-cmp-empty-title { font-size: 14px; font-weight: 600; color: #111827; }
+.kpi-cmp-empty-desc { margin-top: 4px; font-size: 12px; color: #6B7280; }
+
 /* Period strip for KPI detail topbars (self-contained copy of the Overview
    period control so detail pages don't need to load dashboard.css). */
 .kpi-period-controls {
