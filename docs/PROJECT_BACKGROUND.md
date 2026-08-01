@@ -1340,8 +1340,9 @@ view and rolls up to the Close group badge.
 `DataService.countUnpostedSources`, not `countPendingPostings` — the latter matches
 `accounting_status:'pending'` only, so a **never-queued** source (no flag at all) was
 invisible and periods could be closed over an incomplete ledger. Terminal states are
-`'posted'` **and** `'excluded'`; invoice-linked sources are reported as `deferred`
-(surfaced, never blocking, since `INV-PAY` cannot post while `INV-ISSUE` is unwired).
+`'posted'` **and** `'excluded'`; invoice-linked sources block like any
+other — `INV-ISSUE` is wired (`Dr A/R / Cr Revenue`), so an unposted `INV-PAY` is an
+ordinary gap (corrected 2026-08-01; see `docs/ACCOUNTING_CENTER_IA.md` §11).
 `closePeriod()` enforces the same rule server-side — the UI gate mirrors it. The
 remedy is `postUnpostedSources()`, exposed as "Post N unposted entries" on the Close
 panel and folded into the Journals banner; it shares `_collectUnpostedSources()` with

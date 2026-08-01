@@ -653,3 +653,34 @@ accountant signs off on a month without exporting to Excel."*
    ever starts being read as a statement.
 3. Does Overview need real estate of its own, or is the existing global KPI strip
    plus a cleanup summary enough to justify the section?
+
+---
+
+## 11. Corrections
+
+**`INV-ISSUE` was never unwired (corrected 2026-08-01).** A comment in
+`scripts/backfill-journals.js` stated that invoice issuance "is not wired yet", and
+that claim was carried into the close gate, the docs, and memory without being
+checked. It is wrong: `INV-ISSUE` posts `Dr A/R / Cr Revenue` on issue and `INV-PAY`
+posts `Dr Cash / Cr A/R` on payment — the QA workspace holds 329 and 224 of them
+respectively.
+
+Consequences fixed:
+
+- `countUnpostedSources` carved invoice-linked settlements out as `deferred`
+  (surfaced, never blocking) on that false premise. Since issuance *does* raise the
+  receivable, an unposted `INV-PAY` is an ordinary gap and now **blocks a close**
+  like anything else. `deferred` stays in the return shape but is always 0.
+- `backfill-journals.js` skipped every `INV-PAY` unconditionally. The risk there is
+  real but for a different reason: `invoices` is not in its default `--collections`,
+  so a run could post a settlement against a receivable it never raised. The skip is
+  now **conditional** — a settlement posts once its invoice has a journal, either
+  already or planned earlier in the same run.
+
+Unrelated and still correct: the QA transactions carrying `accounting_status:
+'excluded'` are **foreign-currency** invoice payments, deliberately outside the IDR
+kernel. That exclusion stands.
+
+**Lesson:** the stale comment was load-bearing for a gate whose whole job is
+refusing to close over an incomplete ledger. Verify a claim before building a
+carve-out on it.

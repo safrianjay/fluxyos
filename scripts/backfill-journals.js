@@ -13,9 +13,11 @@
 //   • Reuses the REAL posting engine (assets/js/accounting-engine.js) via a
 //     data-URL import — no rule duplication, no drift.
 //   • Skips CLOSED/LOCKED periods (never backfills into a closed book).
-//   • Skips invoice-linked settlements (INV-PAY) because invoice issuance
-//     (INV-ISSUE) is not wired yet — posting the settlement alone would drive
-//     Accounts Receivable negative. These are marked 'pending' for later.
+//   • Skips an invoice settlement (INV-PAY) only when its invoice has no journal.
+//     INV-ISSUE IS wired in the app, but `invoices` is not in this script's default
+//     --collections, so a run could otherwise post a settlement against a
+//     receivable it never raised and drive Accounts Receivable negative. Pass
+//     --collections invoices,transactions,... to post issuance in the same run.
 //   • Batched (≤100 source docs/batch) to stay well under the 500-write ceiling.
 //
 // Usage:
@@ -109,7 +111,15 @@ async function main() {
                 continue;
             }
             if (!journal) { skipped.noPost++; continue; }
-            if (String(journal.posting_rule_id).startsWith('INV-PAY')) { skipped.invoiceLinked++; continue; }
+            // Safe to post the settlement once its invoice exists in the ledger —
+            // either already posted, or planned earlier in this same run.
+            if (String(journal.posting_rule_id).startsWith('INV-PAY')) {
+                const invId = document.linked_invoice_id;
+                const issued = invId
+                    && (alreadyPosted.has(`invoices:${invId}`)
+                        || plan.some((p) => p.collection === 'invoices' && p.id === invId));
+                if (!issued) { skipped.invoiceLinked++; continue; }
+            }
             if (closedPeriods.has(journal.period_key)) { skipped.closedPeriod++; continue; }
             plan.push({ collection, id: d.id, ref: d.ref, journal });
             byPeriod[journal.period_key] = byPeriod[journal.period_key] || { count: 0, debit: 0 };

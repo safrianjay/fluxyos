@@ -35,7 +35,7 @@ test('countUnpostedSources separates blocking, deferred, and terminal states', a
             { id: 'e', type: 'expense', amount: 10, accounting_status: 'excluded' },    // deliberate    -> ignored
             { id: 'f', type: 'transfer', amount: 999 },                                 // never posts   -> ignored
             { id: 'g', type: 'adjustment', amount: 999 },                               // never posts   -> ignored
-            { id: 'h', type: 'income', amount: 70, linked_invoice_id: 'INV-1' }         // INV-PAY       -> deferred
+            { id: 'h', type: 'income', amount: 70, linked_invoice_id: 'INV-1' }         // INV-PAY       -> blocking
         ];
         ds.getTransactionsForPeriod = async () => txs;
         ds.getBillsForPeriod = async () => [
@@ -48,10 +48,10 @@ test('countUnpostedSources separates blocking, deferred, and terminal states', a
         return await ds.countUnpostedSources('uid', '2026-07-01', '2026-07-31');
     });
 
-    // a, b, b1, s1
-    expect(out.blocking, 'blocking count').toBe(4);
-    // h — cannot post until INV-ISSUE is wired, so it must never block a close
-    expect(out.deferred, 'deferred (invoice-linked) count').toBe(1);
+    // a, b, h, b1, s1 — invoice-linked settlements block too: INV-ISSUE is wired
+    // (Dr A/R / Cr Revenue on issue), so an unposted INV-PAY is an ordinary gap.
+    expect(out.blocking, 'blocking count').toBe(5);
+    expect(out.deferred, 'nothing is deferred any more').toBe(0);
     expect(out.total).toBe(5);
 });
 

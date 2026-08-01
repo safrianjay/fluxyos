@@ -231,7 +231,7 @@ async function onPostUnposted() {
     if (!blocking) return;
     const ok = await window.showConfirmDialog?.({
         title: `Post ${blocking} entr${blocking === 1 ? 'y' : 'ies'}?`,
-        body: 'This posts double-entry journals for entries in this period that never reached the ledger. Closed periods and invoice payments awaiting issuance are skipped.',
+        body: 'This posts double-entry journals for entries in this period that never reached the ledger. Entries in closed periods are skipped.',
         confirmLabel: 'Post entries', cancelLabel: 'Cancel', tone: 'default'
     });
     if (ok === false) return;
@@ -866,10 +866,6 @@ function renderOverview() {
     if (unposted && unposted.blocking > 0) {
         items.push(healthRow('Entries not posted to the ledger',
             'bad', `${unposted.blocking} to post — this blocks closing`, 'close'));
-    }
-    if (unposted && unposted.deferred > 0) {
-        items.push(healthRow('Invoice payments awaiting issuance',
-            'wait', `${unposted.deferred} deferred — does not block close`, 'close'));
     }
     if (cleanupCount > 0) {
         items.push(healthRow('Records needing cleanup',
@@ -1605,15 +1601,10 @@ function renderCloseChecklist() {
         // to pass this gate silently. See countUnpostedSources.
         const un = kernel.unposted || { blocking: 0, deferred: 0 };
         const blocking = Number(un.blocking) || 0;
-        const deferred = Number(un.deferred) || 0;
         const hint = blocking > 0
             ? `${blocking} not posted${pending > 0 ? ` (${pending} queued)` : ''}`
             : (pending > 0 ? `${pending} pending` : 'Up to date');
         rows.push(checkRow('All entries posted to the ledger', pending === 0 && blocking === 0, hint));
-        if (deferred > 0) {
-            rows.push(checkRow('Invoice payments awaiting issuance posting', false,
-                `${deferred} deferred — does not block close`));
-        }
         const tb = kernel.trial;
         if (tb) {
             rows.push(checkRow('Trial balance is in balance', !!tb.balanced,

@@ -3685,11 +3685,12 @@ class DataService {
     // hundreds of transactions had never posted; a workspace closed two periods on
     // incomplete books that way (docs/LEDGER_BACKFILL_RUNBOOK.md).
     //
-    // Returns { blocking, deferred, total }:
-    //   blocking — the system could post these; they must not be closed over.
-    //   deferred — linked to an invoice, so they post via INV-PAY, which stays
-    //              unposted while INV-ISSUE is unwired. Surfaced, never blocking,
-    //              or the period could never be closed at all.
+    // Returns { blocking, deferred, total }. `deferred` is retained in the shape
+    // for callers but is now always 0: it previously carved out invoice-linked
+    // settlements on the belief that INV-ISSUE was unwired, so posting INV-PAY
+    // alone would drive A/R negative. INV-ISSUE *is* wired (Dr A/R / Cr Revenue on
+    // issue, Dr Cash / Cr A/R on payment), so an unposted INV-PAY is an ordinary
+    // gap and must block a close like any other.
     // 'posted' and 'excluded' are both terminal (excluded = deliberately outside
     // the IDR kernel, e.g. foreign-currency bills) and never count as unposted.
     // Single enumeration behind BOTH the Close gate and the "post them" remedy, so
@@ -3713,10 +3714,7 @@ class DataService {
         txs.forEach((t) => {
             if (!POSTABLE_TX_TYPES.has(String(t.type || '').toLowerCase())) return;
             if (!unposted(t)) return;
-            const item = { collection: 'transactions', id: t.id, data: t };
-            // INV-PAY settles a receivable that INV-ISSUE has not raised yet;
-            // posting it alone would drive A/R negative. Surfaced, never posted.
-            if (t.linked_invoice_id) deferred.push(item); else blocking.push(item);
+            blocking.push({ collection: 'transactions', id: t.id, data: t });
         });
         bills.forEach((b) => { if (unposted(b)) blocking.push({ collection: 'bills', id: b.id, data: b }); });
         subs.forEach((s) => { if (unposted(s)) blocking.push({ collection: 'subscriptions', id: s.id, data: s }); });

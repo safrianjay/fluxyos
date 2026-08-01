@@ -4019,7 +4019,6 @@
         "Close checklist": "Daftar Periksa Tutup Buku",
         // Close gate — unposted-source detection
         "Post every entry for this period before closing it.": "Posting semua entri periode ini sebelum menutupnya.",
-        "Invoice payments awaiting issuance posting": "Pembayaran faktur menunggu posting penerbitan",
         "Post unposted entries": "Posting entri yang belum diposting",
         // Accounting export package
         "Export package": "Ekspor paket",
@@ -4038,7 +4037,6 @@
         "No ledger position yet": "Belum ada posisi buku besar",
         "No cash movement yet": "Belum ada pergerakan kas",
         "Entries not posted to the ledger": "Entri belum diposting ke buku besar",
-        "Invoice payments awaiting issuance": "Pembayaran faktur menunggu penerbitan",
         "Records needing cleanup": "Catatan yang perlu dirapikan",
         "Period status": "Status periode",
         "Ready to close": "Siap ditutup",
@@ -4065,7 +4063,7 @@
         "No cash movement for this period": "Tidak ada pergerakan kas untuk periode ini",
         "The cash flow statement appears once journals have posted.": "Laporan arus kas muncul setelah jurnal diposting.",
         "Ties to cash ✓": "Sesuai dengan kas ✓",
-        "This posts double-entry journals for entries in this period that never reached the ledger. Closed periods and invoice payments awaiting issuance are skipped.": "Tindakan ini memposting jurnal berpasangan untuk entri periode ini yang belum masuk buku besar. Periode tertutup dan pembayaran faktur yang menunggu penerbitan dilewati.",
+        "This posts double-entry journals for entries in this period that never reached the ledger. Entries in closed periods are skipped.": "Tindakan ini memposting jurnal berpasangan untuk entri periode ini yang belum masuk buku besar. Entri pada periode tertutup dilewati.",
         "Could not post these entries": "Tidak dapat memposting entri ini",
         // Balance Sheet CSV export (ported from the retired /balance-sheet page)
         "This logs an export action and downloads the ledger-derived Balance Sheet with raw IDR amounts.": "Tindakan ini mencatat aktivitas ekspor dan mengunduh Neraca dari buku besar dengan nilai IDR mentah.",
@@ -4334,8 +4332,6 @@
         { re: /^(\d+) not postable$/, id: function (m) { return m[1] + ' tidak dapat diposting'; } },
         { re: /^Exported (\d+) files and logged the export\.$/,
           id: function (m) { return 'Mengekspor ' + m[1] + ' berkas dan mencatat ekspor.'; } },
-        { re: /^(\d+) deferred — does not block close$/,
-          id: function (m) { return m[1] + ' ditangguhkan — tidak menghalangi tutup buku'; } },
         // Attachments section row meta: "<role> · Attached 28 Jul 2026". The role
         // half is a fixed set, so translate it through the dictionary and leave the
         // locale-formatted date alone.
