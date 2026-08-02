@@ -2,7 +2,7 @@ import { getFirestore, initializeFirestore, collection, query, where, getDocs, g
 import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
 import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, assertManualJournalPolicy, GL, glError, CHART_OF_ACCOUNTS_SEED, CHART_SEED_VERSION, accountPolicy, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, suggestCategorizingAccount, periodKey as acctPeriodKey } from "./accounting-engine.js";
-import { buildTaxAppendix, TAX_RATES } from "./tax-engine.js";
+import { buildTaxAppendix, billWithheldAmount, TAX_RATES } from "./tax-engine.js";
 import { computeAging } from "./aging-engine.js";
 import { buildIncomeStatement, buildBalanceSheet, buildCashFlow } from "./statements-engine.js";
 
@@ -579,11 +579,19 @@ class DataService {
     // Remaining amount owed on a bill: 0 when fully paid, else the stored
     // outstanding_amount, falling back to amount − amount_paid for legacy bills
     // (which predate the field).
+    // What the VENDOR is still owed — which is not the same as what the bill is
+    // worth. When PPh is withheld, BILL-ACCRUE credits A/P net (Dr A/P / Cr 2110)
+    // because the withheld portion goes to DJP, not the supplier. Reporting the
+    // gross here made a payment settle more A/P than was ever accrued, leaving the
+    // control account permanently short and cash overstated by the withheld amount.
+    // This is the spec's JE-P3: the supplier is paid net, 2110 is remitted apart.
     _billOutstanding(bill) {
         if (!bill || bill.payment_status === 'paid') return 0;
         const amt = Math.round(Math.abs(Number(bill.amount) || 0));
-        if (bill.outstanding_amount != null) return Math.max(0, Math.round(Math.abs(Number(bill.outstanding_amount) || 0)));
-        return Math.max(0, amt - Math.round(Math.abs(Number(bill.amount_paid) || 0)));
+        const gross = bill.outstanding_amount != null
+            ? Math.max(0, Math.round(Math.abs(Number(bill.outstanding_amount) || 0)))
+            : Math.max(0, amt - Math.round(Math.abs(Number(bill.amount_paid) || 0)));
+        return Math.max(0, gross - billWithheldAmount(bill));
     }
 
     async addBill(userId, data) {

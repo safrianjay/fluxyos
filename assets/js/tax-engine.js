@@ -368,6 +368,29 @@ export function buildTaxAppendix({ baseJournal, collection, document, profile, m
 // PPN by month-end; the annual SPT Tahunan Badan is due 30 April. Pure — `now`
 // is injectable for tests. Returns [{ code, period, due, days_left }] sorted by
 // urgency (past deadlines are dropped; the UI is a reminder, not an audit).
+// PPh we withhold from a supplier bill — the amount that goes to DJP instead of
+// to the vendor. Mirrors the withholding graft in buildTaxAppendix exactly
+// (base × rate, base net of PPN), and exists so the PAYMENT path cannot compute
+// it differently from the ACCRUAL path.
+//
+// It has to be shared: BILL-ACCRUE credits A/P net of this (Dr A/P / Cr 2110),
+// but _billOutstanding used to report the gross, so paying a withheld bill
+// debited A/P more than was ever owed. A real workspace ended up Rp72.072 short
+// in A/P with a matching phantom cash payment, which is the spec's JE-P3 — the
+// supplier is paid net, and the withheld portion is remitted separately.
+export function billWithheldAmount(bill) {
+    const rate = Number(bill && bill.withholding_rate) || 0;
+    if (rate <= 0) return 0;
+    const total = toInt(bill.amount);
+    if (total <= 0) return 0;
+    // Prefer the base actually stamped on the bill at accrual; only derive it when
+    // absent, so a rate change after posting cannot silently re-base the figure.
+    const ppnRate = Number(bill.tax_rate_percent) || 0;
+    const stored = toInt(bill.taxable_base);
+    const base = stored > 0 ? stored : (ppnRate > 0 ? Math.round(total / (1 + ppnRate / 100)) : total);
+    return Math.round((base * rate) / 100);
+}
+
 export function upcomingTaxDeadlines(nowInput, { max = 4 } = {}) {
     const now = nowInput instanceof Date && !Number.isNaN(nowInput.getTime()) ? nowInput : new Date();
     const [y, mo, d] = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }).split('-').map(Number);

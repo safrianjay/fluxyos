@@ -82,11 +82,34 @@ async function expectedReceivables(base) {
     return { total, count };
 }
 
-// Expected A/P: unpaid IDR bills (net of part-payments) + pending_payable accruals.
+// PPh withheld from a supplier bill. Mirrors billWithheldAmount() in
+// assets/js/tax-engine.js — duplicated rather than imported because that is
+// browser ESM and this runs as CommonJS in a function. Keep the two in step.
+function billWithheld(bill) {
+    const rate = Number(bill && bill.withholding_rate) || 0;
+    if (rate <= 0) return 0;
+    const total = toInt(bill.amount);
+    if (total <= 0) return 0;
+    const ppnRate = Number(bill.tax_rate_percent) || 0;
+    const stored = toInt(bill.taxable_base);
+    const base = stored > 0 ? stored : (ppnRate > 0 ? Math.round(total / (1 + ppnRate / 100)) : total);
+    return Math.round((base * rate) / 100);
+}
+
+// Expected A/P: what the SUBLEDGERS say is still owed — unpaid IDR bills net of
+// part-payments AND net of withheld PPh, plus pending_payable accruals, plus
+// subscription accruals.
+//
+// Two corrections learned from a real false-negative pair on one workspace:
+//   • Withheld PPh is credited to 2110 at accrual, so A/P never owed it. Counting
+//     the gross made a correctly-posted withheld bill look like a discrepancy.
+//   • SUB-ACCRUE credits A/P too. Ignoring subscriptions made every workspace with
+//     one report a permanent gap of exactly the subscription balance.
 async function expectedPayables(base) {
-    const [bills, accruals] = await Promise.all([
+    const [bills, accruals, subs] = await Promise.all([
         base.collection('bills').get(),
-        base.collection('transactions').where('type', '==', 'pending_payable').get()
+        base.collection('transactions').where('type', '==', 'pending_payable').get(),
+        base.collection('subscriptions').get()
     ]);
     let total = 0;
     let count = 0;
@@ -94,9 +117,10 @@ async function expectedPayables(base) {
         const bill = d.data() || {};
         if (bill.payment_status === 'paid' || bill.linked_transaction_id) return;
         if (bill.currency && bill.currency !== 'IDR') return;
-        const outstanding = bill.outstanding_amount != null
+        const gross = bill.outstanding_amount != null
             ? Math.max(0, toInt(Math.abs(bill.outstanding_amount)))
             : Math.max(0, toInt(Math.abs(bill.amount)) - toInt(Math.abs(bill.amount_paid)));
+        const outstanding = Math.max(0, gross - billWithheld(bill));
         if (!outstanding) return;
         total += outstanding;
         count += 1;
@@ -106,6 +130,14 @@ async function expectedPayables(base) {
         if (tx.is_voided) return;
         if (tx.accounting_status === 'excluded') return;
         total += toInt(tx.amount);
+        count += 1;
+    });
+    subs.forEach((d) => {
+        const s = d.data() || {};
+        if (s.is_voided) return;
+        if (s.accounting_status === 'excluded') return;
+        if (s.currency && s.currency !== 'IDR') return;
+        total += toInt(s.amount);
         count += 1;
     });
     return { total, count };
