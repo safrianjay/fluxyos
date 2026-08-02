@@ -310,7 +310,10 @@ export const GL = {
     DIRECT_BLOCKED: 'GL_011',    // allow_direct_transaction === false
     ARCHIVED: 'GL_012',          // account is archived
     PERIOD_LOCKED: 'GL_020',     // period status 'locked'
-    PERIOD_CLOSED: 'GL_021'      // period status 'closed'
+    PERIOD_CLOSED: 'GL_021',     // period status 'closed'
+    // GL_070+ is the FluxyOS-local extension range — deliberately clear of the
+    // spec's own 001–060 so adopting more of its codes later cannot collide.
+    REVERSAL_OF_REVERSAL: 'GL_070'
 };
 
 // Build an Error carrying a GL code plus the values that were interpolated into

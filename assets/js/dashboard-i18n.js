@@ -3997,6 +3997,7 @@
         "Spend in Other Expense is under control": "Pengeluaran di Beban Lainnya masih terkendali",
         "gl.GL_020": "Periode {period_key} sudah dikunci. Buka kembali periodenya, atau pakai tanggal di periode yang masih terbuka.",
         "gl.GL_021": "Periode akuntansi {period_key} sudah ditutup. Buka kembali periodenya, atau pakai tanggal di periode yang masih terbuka.",
+        "gl.GL_070": "Entri ini sendiri adalah pembalikan — membalikkannya akan menerapkan ulang entri aslinya. Buat entri koreksi baru saja.",
         // SAK classification labels (CoA tab column values). "Receivable",
         // "Payable", and "Other Income" already exist in the shared dictionary.
         "Other Current Asset": "Aset Lancar Lainnya",

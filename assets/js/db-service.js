@@ -5358,6 +5358,17 @@ class DataService {
         if (!original) throw new Error('Journal not found');
         if (original.status === 'draft') throw new Error('Draft journals cannot be reversed — edit or discard the draft instead');
         if (original.reversed_by_journal_id) throw new Error('This journal has already been reversed');
+        // Reversing a REVERSAL re-applies the entry it undid. On a control account
+        // that is silent corruption: it was reversing a REVERSAL:INV-PAY that left
+        // one production workspace with a NEGATIVE Accounts Receivable balance, off
+        // by exactly the re-applied amount, with the aging report still looking
+        // fine. The original is already neutralised — the correct action is a new
+        // entry, not an undo of the undo.
+        if (original.status === 'reversal') {
+            throw glError(GL.REVERSAL_OF_REVERSAL,
+                'This entry is itself a reversal — reversing it would re-apply the original. Post a correcting entry instead.',
+                { journal_number: original.journal_number || null });
+        }
         const targetPeriod = await this._openTargetPeriod(userId, original.period_key);
         const reversal = buildReversalJournal({ ...original, id: journalId }, { targetPeriodKey: targetPeriod });
         this._assignJournalNumbers([reversal], await this._reserveJournalNumbers(userId, { [String(reversal.period_key).slice(0, 4)]: 1 }));

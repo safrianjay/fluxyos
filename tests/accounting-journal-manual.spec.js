@@ -105,3 +105,38 @@ test('general ledger "All accounts" renders one section per account', async ({ p
 
     expect(bad, `console/page errors:\n${bad.join('\n')}`).toEqual([]);
 });
+
+test('reversing a reversal is refused', async ({ page }) => {
+    // A reversal already neutralises its original. Reversing it re-APPLIES the
+    // entry, which on a control account is silent corruption — this is what left a
+    // production workspace with a negative Accounts Receivable balance, off by
+    // exactly the re-applied amount, while the aging report still looked fine.
+    await page.goto('/accounting.html');
+    await page.waitForSelector('#accounting-content:not(.hidden)', { timeout: 60000 });
+
+    const out = await page.evaluate(async () => {
+        const { getApps } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+        const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+        const DataService = (await import('/assets/js/db-service.js?v=' + Date.now())).default;
+        const app = getApps()[0];
+        const ds = new DataService(app);
+        const auth = getAuth(app);
+        const user = auth.currentUser || await new Promise((r) => {
+            const stop = onAuthStateChanged(auth, (u) => { if (u) { stop(); r(u); } });
+            setTimeout(() => r(null), 20000);
+        });
+        if (!user) return { error: 'not signed in' };
+        // Stub the read so this asserts the GUARD, not a particular workspace's data.
+        ds.getJournalById = async () => ({
+            id: 'j1', status: 'reversal', journal_number: 'JE-2026-000123',
+            period_key: '2026-08', lines: [], posting_rule_id: 'REVERSAL:INV-PAY'
+        });
+        try { await ds.reverseJournal(user.uid, 'j1'); return { threw: false }; }
+        catch (err) { return { threw: true, code: err.code, message: String(err.message) }; }
+    });
+
+    expect(out.error).toBeUndefined();
+    expect(out.threw, 'a reversal must not be reversible').toBe(true);
+    expect(out.code).toBe('GL_070');
+    expect(out.message).toMatch(/itself a reversal/i);
+});
