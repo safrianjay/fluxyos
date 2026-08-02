@@ -114,7 +114,12 @@ function mapSettlement(settlement, { account = null, timestamp = new Date() } = 
             created_via: LEDGER_CREATED_VIA,
             commerce_order_id: null,
             commerce_account_id: settlement.account_id,
-            accounting_status: 'excluded', // cash movement — no P&L journal
+            // Posts CM-SETTLE (Dr 1000 Cash / Cr 1030 Clearing) via the sweep. It
+            // was 'excluded' while orders debited Cash directly — the payout would
+            // then have double-counted. Now that orders land in 1030, the payout is
+            // the ONLY thing that moves cash, and skipping it would strand the
+            // float forever. No P&L impact either way: both legs are balance sheet.
+            accounting_status: 'pending',
             amount: settlement.amount,
             category: 'Others',
             type: 'transfer',

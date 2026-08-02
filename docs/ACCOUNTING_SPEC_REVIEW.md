@@ -404,11 +404,12 @@ verified by stashing. Not introduced here.
 2. `firebase deploy --only firestore:rules` — the `ledger_integrity_reports` block.
 3. `LEDGER_ASSERT_ENABLED=true` on the **app** site only.
 
-### 7.4b 🔴 Commerce revenue debits Cash at order time — account seeded, NOT wired
+### 7.4b ✅ Commerce settlement float — FIXED 2026-08-03
 
-Found 2026-08-03 while adding the clearing account. **This is a live defect**, not
-a latent one: `COMMERCE_ENABLED` and `COMMERCE_SYNC_ENABLED` are both `true` in
-production.
+Found while adding the clearing account, and live in production
+(`COMMERCE_ENABLED` / `COMMERCE_SYNC_ENABLED` both `true`). **The wiring has since
+landed**; the original defect is recorded below because the historical journals
+still carry it.
 
 `finance-map.js` emits the order-level revenue entry as `type: 'income'`
 ([finance-map.js:62](netlify/functions/lib/commerce/finance-map.js#L62)), which
@@ -428,21 +429,36 @@ policy (hand-codeable, closed to manual journals) and `sak_category:
 'other_current_asset'` — deliberately not `cash_bank`, or it would re-create the
 same overstatement one level down.
 
-**It is seeded only. Wiring is a separate, QA'd change**, because it cannot be
-done through the existing seams:
+**The fix.** Four rules gated on `source: 'commerce'` (`isCommerceSourced`), so no
+ordinary entry changes behaviour:
 
-- `account_code` on a document overrides the *categorizing* (revenue) leg, not the
-  cash leg, so the debit side cannot be redirected by mapping alone. It needs a new
-  posting rule (`TXN-INC-CLEARING`: Dr 1030 / Cr Revenue) selected off a commerce
-  marker such as `source: LEDGER_SOURCE`.
-- Settlements must start posting `Dr 1000 Bank / Cr 1030` instead of being a
-  non-posting `transfer`.
-- Fees should clear against 1030, not cash (spec §5.1's two-step gateway example).
-- Orders already posted the old way stay Dr Cash, so the change needs a decision
-  about backfilling them or accepting a dated cutover.
+| Rule | Posting |
+|---|---|
+| `CM-ORDER-REV` | Dr 1030 / Cr Revenue — earned, not yet in the bank |
+| `CM-ORDER-FEE` | Dr fee account / Cr 1030 — the platform nets it out of the payout |
+| `CM-ORDER-REFUND` | Dr 4900 contra-revenue / Cr 1030 |
+| `CM-SETTLE` | Dr 1000 Cash / Cr 1030 — the payout lands |
 
-Until that lands, treat `bank_balance` findings on commerce-connected workspaces as
-expected, and do not "fix" them by adjusting the bank snapshot.
+1030 therefore nets to exactly the unsettled float and the payout clears it; cash
+moves only when money reaches a bank account. `mapSettlement` now emits
+`accounting_status: 'pending'` instead of `'excluded'` — while orders debited Cash
+directly a posting payout would have double-counted, but now it is the only thing
+that moves cash and excluding it would strand the float permanently. Both legs are
+balance sheet, so there is no P&L effect either way.
+
+**A second defect fixed alongside it.** Marketplace refunds went through the
+generic `refund` type, which in FluxyOS means *a refund received* — so
+`TXN-INC-CASH` posted Dr Cash / Cr Revenue and every marketplace return **increased**
+revenue and cash. It now posts to `4900 Sales Discounts & Returns` (contra-revenue),
+restoring the commerce model's own invariant `income − fee − refund = netRevenue`,
+which `tests/accounting-engine.spec.js` asserts end to end.
+
+> ⚠️ **Historical journals are NOT backfilled.** Orders posted before this change
+> still sit as Dr 1000 Cash, and their settlements are `excluded`. Until that is
+> reconciled, commerce-connected workspaces will show a `bank_balance` gap from the
+> old rows — do not "fix" it by adjusting the bank snapshot. Backfilling means
+> reversing and reposting the affected commerce journals; scope it with
+> `scripts/ledger-assert-report.js` first.
 
 ### 7.5 What the document has no place for — protect these
 

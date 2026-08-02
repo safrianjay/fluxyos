@@ -249,3 +249,59 @@ test('accounting engine: partial invoice payments settle the receivable to zero'
     expect(r.pay2ArCredit).toBe(600000);
     expect(r.arNet).toBe(0); // receivable fully drawn down
 });
+
+// Marketplace money never touches a bank account until the platform pays out.
+// Before 1030 Clearing existed, an order posted Dr 1000 Cash on the ORDER date, so
+// cash was overstated by the whole unsettled balance and the bank reconciliation
+// could never tie; the payout was a non-posting `transfer`, and refunds went
+// through the generic `refund` type — which means "a refund RECEIVED" and so
+// *increased* revenue and cash on every marketplace return.
+test('commerce settles through 1030 Clearing and nets to zero on payout', async ({ page }) => {
+    await page.goto('/pricing');
+    const r = await page.evaluate(async () => {
+        const e = await import('/assets/js/accounting-engine.js');
+        const at = new Date('2026-08-01T03:00:00Z');
+        const cm = (type, amount, category) => e.buildJournal({
+            collection: 'transactions', id: 'cm_' + type, date: at,
+            document: { source: 'commerce', type, amount, category: category || 'Revenue', timestamp: at }
+        });
+        // gross 1,000,000 · fee 120,000 · refund 200,000 ⇒ payout 680,000
+        const legs = { rev: cm('income', 1000000), fee: cm('fee', 120000, 'Operations'),
+                       rf: cm('refund', 200000), stl: cm('transfer', 680000) };
+        const net = {};
+        Object.values(legs).forEach((j) => j.lines.forEach((l) => {
+            net[l.account_code] = (net[l.account_code] || 0) + l.debit - l.credit;
+        }));
+        return {
+            rules: Object.fromEntries(Object.entries(legs).map(([k, j]) => [k, j.posting_rule_id])),
+            balanced: Object.values(legs).every((j) => j.is_balanced),
+            net,
+            // Non-commerce rows must be completely untouched by the new branch.
+            plainIncome: e.buildJournal({ collection: 'transactions', id: 'p1', date: at,
+                document: { type: 'income', amount: 500000, category: 'Revenue', timestamp: at } }).posting_rule_id,
+            plainRefund: e.buildJournal({ collection: 'transactions', id: 'p2', date: at,
+                document: { type: 'refund', amount: 1000, category: 'Revenue', timestamp: at } }).posting_rule_id,
+            plainTransfer: e.buildJournal({ collection: 'transactions', id: 'p3', date: at,
+                document: { type: 'transfer', amount: 1000, timestamp: at } })
+        };
+    });
+
+    expect(r.rules).toEqual({ rev: 'CM-ORDER-REV', fee: 'CM-ORDER-FEE', rf: 'CM-ORDER-REFUND', stl: 'CM-SETTLE' });
+    expect(r.balanced).toBe(true);
+
+    // The invariant that proves the model: once the payout lands, the float is
+    // fully cleared and cash holds exactly what the bank actually received.
+    expect(r.net['1030'], '1030 clearing must net to zero after payout').toBe(0);
+    expect(r.net['1000'], 'cash moves only on payout').toBe(680000);
+    // Revenue is net of returns: 1,000,000 − 200,000. 4900 is contra (debit).
+    expect(-r.net['4000']).toBe(1000000);
+    expect(r.net['4900']).toBe(200000);
+    expect(r.net['6600']).toBe(120000);
+    // income − fee − refund == payout, the commerce model's own invariant.
+    expect(1000000 - 120000 - 200000).toBe(r.net['1000']);
+
+    // Regression: the commerce branch must not leak into ordinary entries.
+    expect(r.plainIncome).toBe('TXN-INC-CASH');
+    expect(r.plainRefund).toBe('TXN-INC-CASH');
+    expect(r.plainTransfer, 'a plain transfer still does not post').toBeNull();
+});

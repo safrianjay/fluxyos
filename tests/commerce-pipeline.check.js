@@ -171,7 +171,12 @@ check('settlement maps to neutral cash movement', () => {
     assert.strictEqual(entries[0].data.type, 'transfer');
     assert.strictEqual(entries[0].data.cash_direction, 'in');
     assert.strictEqual(entries[0].data.cash_source, 'integration');
-    assert.strictEqual(entries[0].data.accounting_status, 'excluded'); // no P&L journal
+    // Posts CM-SETTLE (Dr 1000 Cash / Cr 1030 Clearing) through the sweep. It was
+    // 'excluded' while orders debited Cash directly, when a posting payout would
+    // have double-counted. Now orders land in 1030 and the payout is the only thing
+    // that moves cash — excluding it would strand the float permanently. Still no
+    // P&L impact: both legs are balance sheet.
+    assert.strictEqual(entries[0].data.accounting_status, 'pending');
 });
 
 console.log('\n— jobs backoff —');

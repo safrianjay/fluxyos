@@ -167,11 +167,13 @@ const CHART_SEED_INDEX = CHART_OF_ACCOUNTS_SEED.reduce((acc, a) => { acc[a.code]
 
 // Fixed account codes used by the posting rules.
 const CASH = '1000';
+const CLEARING = '1030';   // marketplace/gateway settlement float
 const AR = '1100';
 const AP = '2000';
 const RETAINED_EARNINGS = '3000';
 const OPENING_EQUITY = '3900';
 const REVENUE = '4000';
+const SALES_RETURNS = '4900';  // contra-revenue (debit normal) — refunds/returns
 const FEE_EXPENSE = '6600';
 const TAX_EXPENSE = '6500';
 const UNMAPPED_EXPENSE = '6999';
@@ -419,12 +421,39 @@ export function suggestCategorizingAccount(document, mappings) {
 // invoice still in draft). Payment transactions that carry a linked_bill_id /
 // linked_invoice_id post the *settlement* rule (Dr A/P or Cr A/R) so the accrual
 // they settle is not double-counted as a fresh expense/revenue.
+// A row the commerce integration wrote (netlify/functions/lib/commerce — the
+// `source: 'commerce'` marker). These settle through the marketplace, never
+// directly through a bank account, so they post against 1030 Clearing.
+function isCommerceSourced(doc) {
+    return String(doc && doc.source || '').trim().toLowerCase() === 'commerce';
+}
+
 export function selectRule(collection, document) {
     const doc = document || {};
     if (collection === 'transactions') {
         if (doc.linked_bill_id) return 'BILL-PAY';
         if (doc.linked_invoice_id) return 'INV-PAY';
         const type = String(doc.type || '').trim().toLowerCase();
+        // Commerce settles through the platform, not the bank. Posting an order to
+        // Cash on the order date overstates cash by the whole unsettled balance and
+        // makes the bank reconciliation untieable — the money is still with the
+        // marketplace until payout. Route the whole cycle through 1030 instead, so
+        // its balance IS the unsettled float and the payout clears it.
+        if (isCommerceSourced(doc)) {
+            switch (type) {
+                case 'income':
+                case 'revenue':
+                    return 'CM-ORDER-REV';
+                case 'fee':
+                    return 'CM-ORDER-FEE';
+                case 'refund':
+                    return 'CM-ORDER-REFUND';
+                case 'transfer':
+                    return 'CM-SETTLE';
+                default:
+                    break; // anything else falls through to the standard rules
+            }
+        }
         switch (type) {
             case 'income':
             case 'revenue':
@@ -470,6 +499,37 @@ const RULES = {
         const acct = explicitAccount(doc)
             || TYPE_EXPENSE_DEFAULTS[String(doc.type || '').toLowerCase()] || UNMAPPED_EXPENSE;
         return [line(acct, amt, 0, doc.type), line(CASH, 0, amt, 'Cash paid')];
+    },
+    // --- Commerce settlement cycle (1030 Payment Gateway Clearing) ------------
+    // Order:      Dr 1030 / Cr Revenue      — earned, not yet in the bank
+    // Fee:        Dr Fee expense / Cr 1030  — the platform nets it out of the payout
+    // Refund:     Dr 4900 / Cr 1030         — reduces revenue AND the float
+    // Settlement: Dr 1000 / Cr 1030         — the payout finally lands
+    // 1030 therefore nets to exactly the unsettled balance, and the settlement
+    // clears it. Cash only moves when money actually reaches a bank account.
+    'CM-ORDER-REV': (doc) => {
+        const amt = requireAmount(doc.amount, 'commerce order revenue');
+        const acct = explicitAccount(doc) || REVENUE;
+        return [line(CLEARING, amt, 0, 'Marketplace receivable'), line(acct, 0, amt, doc.category || 'Revenue')];
+    },
+    'CM-ORDER-FEE': (doc, ctx) => {
+        const amt = requireAmount(doc.amount, 'commerce fee');
+        // Honour a mapping if one exists (a seller may route platform fees to a
+        // COGS account — they sit above the gross-margin line), else bank fees.
+        const acct = explicitAccount(doc) || (ctx && ctx.mappings && ctx.mappings[`category:${doc.category}`]) || FEE_EXPENSE;
+        return [line(acct, amt, 0, doc.category || 'Marketplace fee'), line(CLEARING, 0, amt, 'Netted from payout')];
+    },
+    'CM-ORDER-REFUND': (doc) => {
+        const amt = requireAmount(doc.amount, 'commerce refund');
+        // Contra-revenue, not negative income: a refund reduces net revenue and the
+        // amount the platform will pay out. Posting it as income (what the generic
+        // `refund` type does — it means "a refund RECEIVED" elsewhere in the app)
+        // inflated both revenue and cash on every marketplace return.
+        return [line(SALES_RETURNS, amt, 0, 'Marketplace refund'), line(CLEARING, 0, amt, 'Deducted from payout')];
+    },
+    'CM-SETTLE': (doc) => {
+        const amt = requireAmount(doc.amount, 'commerce settlement');
+        return [line(CASH, amt, 0, 'Marketplace payout received'), line(CLEARING, 0, amt, 'Float cleared')];
     },
     'TXN-ACCRUE-AR': (doc) => {
         const amt = requireAmount(doc.amount, 'pending receivable');
@@ -520,6 +580,10 @@ const RULE_DESCRIPTIONS = {
     'SUB-ACCRUE': 'Subscription accrued',
     'INV-ISSUE': 'Invoice issued',
     'INV-PAY': 'Invoice paid',
+    'CM-ORDER-REV': 'Marketplace order',
+    'CM-ORDER-FEE': 'Marketplace fee',
+    'CM-ORDER-REFUND': 'Marketplace refund',
+    'CM-SETTLE': 'Marketplace payout',
     'OPENING': 'Opening balance',
     'CLOSE': 'Period close'
 };
