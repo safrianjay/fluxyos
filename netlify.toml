@@ -20,6 +20,15 @@
 # chromium's binary is loaded from disk at runtime, so it must be copied whole
 # (not tree-shaken/inlined). Scoped to this one function so no other function's
 # bundling changes. See netlify/functions/invoice-email-background.js.
+# Scheduled-function registration. The in-code schedule() wrapper from
+# @netlify/functions is what every other cron here uses, but it silently failed to
+# register this one: seven other scheduled functions fired in the same window while
+# this logged zero times, and neither a redeploy nor a clear-cache rebuild fixed it.
+# Declaring the cron in netlify.toml is the explicit route and does not depend on
+# build-time static detection of the wrapper.
+[functions."ledger-integrity-sweep"]
+  schedule = "*/10 * * * *"
+
 [functions."invoice-email-background"]
   node_bundler = "esbuild"
   external_node_modules = ["@sparticuz/chromium", "puppeteer-core"]
