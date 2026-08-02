@@ -125,6 +125,7 @@ const SCHEDULED_FUNCTIONS = [
     'commerce-sync-worker.js',
     'digest-broadcast-worker.js',
     'invoice-email-worker.js',
+    'ledger-integrity-sweep.js',
     'notify-sweep.js',
     'payment-reminders.js',
     'trial-reminders.js',
@@ -167,6 +168,34 @@ function assertClassification() {
         (f) => !rootHtml.includes(f)
     );
     if (missing.length) fail(`classified page(s) missing from repo root: ${missing.join(', ')}`);
+
+    assertScheduledFunctionsClassified();
+}
+
+// Every cron-registering function must be listed in SCHEDULED_FUNCTIONS, or the
+// marketing build stops pruning it and the cron registers on BOTH sites. Unlike
+// the page lists this used to be unguarded, so a new scheduled function was a
+// silent double-registration — the failure mode being guarded against is a
+// duplicate nightly run, which is invisible until it does damage.
+function assertScheduledFunctionsClassified() {
+    const dir = path.join(ROOT, 'netlify', 'functions');
+    if (!fs.existsSync(dir)) return;
+    const declared = new Set(SCHEDULED_FUNCTIONS);
+    const scheduled = fs.readdirSync(dir)
+        .filter((f) => f.endsWith('.js'))
+        .filter((f) => /\bschedule\s*\(/.test(fs.readFileSync(path.join(dir, f), 'utf8')));
+
+    const unlisted = scheduled.filter((f) => !declared.has(f));
+    if (unlisted.length) {
+        fail(
+            `scheduled function(s) missing from SCHEDULED_FUNCTIONS: ${unlisted.join(', ')}\n` +
+            'Add each one to SCHEDULED_FUNCTIONS in scripts/prepare-deploy.js, or its cron\n' +
+            'will also register on the marketing site.'
+        );
+    }
+
+    const stale = SCHEDULED_FUNCTIONS.filter((f) => !fs.existsSync(path.join(dir, f)));
+    if (stale.length) fail(`SCHEDULED_FUNCTIONS lists missing file(s): ${stale.join(', ')}`);
 }
 
 // Expand a page list into explicit /page + /page.html cross-origin 301 pairs.

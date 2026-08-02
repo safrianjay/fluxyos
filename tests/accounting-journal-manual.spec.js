@@ -27,12 +27,15 @@ test('manual journal: draft posts with a JE number and opens in Journal Detail',
     await expect(page.locator('#mj-number')).toHaveText('Auto-generated on post');
 
     await page.locator('#mj-description').fill('QA manual journal — automated smoke');
-    // Two default lines: debit an expense, credit cash, balanced.
+    // Two default lines: accrue an expense against a liability, balanced. Cash is
+    // deliberately NOT available here — 1000 is closed to manual journals so every
+    // cash movement keeps a reconcilable statement counterpart. An accrual is what
+    // this workflow is actually for.
     const rows = page.locator('#mj-lines tr');
     await expect(rows).toHaveCount(2);
     await rows.nth(0).locator('.mj-acct').selectOption('6400');
     await rows.nth(0).locator('.mj-debit').fill('1000');
-    await rows.nth(1).locator('.mj-acct').selectOption('1000');
+    await rows.nth(1).locator('.mj-acct').selectOption('2500');
     await rows.nth(1).locator('.mj-credit').fill('1000');
 
     // Balance flag flips to ready and Post enables.

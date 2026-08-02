@@ -47,12 +47,26 @@
     }
 
     // Whether an account can be picked as a categorizing account: active, and not a
-    // structural system account (Cash, A/P, A/R, Retained Earnings, tax control —
-    // marked mappable:false). The Direction type filter narrows further.
+    // structural account the posting engine owns (Cash, A/R, A/P, Retained
+    // Earnings, opening equity, tax control). The Direction type filter narrows
+    // further.
+    //
+    // `allow_direct_transaction === false` is the real control — coding a
+    // transaction straight to A/R or A/P bypasses the invoice/bill subledger and
+    // breaks the tie between the aging report and the balance sheet. The flag
+    // arrives via DataService._withAccountPolicy, which overlays it onto Firestore
+    // rows; absent = permitted, so user-created accounts are never hidden.
+    //
+    // The old test was `is_system && mappable === false`, which conflated two
+    // different questions. `mappable` means "auto-mapping TARGET", and an account
+    // can legitimately be a bad auto-mapping target while still being hand-
+    // codeable — 2800 Suspense is exactly that: nothing should ever be auto-mapped
+    // to it, but parking an unidentified bank receipt there is the whole point.
+    // Deciding pickability from `mappable` would have hidden it.
     function isSelectable(a) {
         if (!a) return false;
         if (a.is_active === false) return false;
-        if (a.is_system && a.mappable === false) return false;
+        if (a.allow_direct_transaction === false) return false;
         return true;
     }
 

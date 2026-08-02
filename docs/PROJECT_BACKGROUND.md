@@ -1508,7 +1508,7 @@ hardcode `users/`):
 
 | Collection | Doc id | Key fields |
 |---|---|---|
-| `chart_of_accounts` | `{code}` | `code, name, type (asset/liability/equity/revenue/expense), subtype, parent_code, normal_balance, is_active, currency, entity_id, opening_balance, created_at`. Seeded idempotently by `seedChartOfAccounts()` from `CHART_OF_ACCOUNTS_SEED`. Archive via `is_active`; **never deleted**. |
+| `chart_of_accounts` | `{code}` | `code, name, type (asset/liability/equity/revenue/expense), subtype, parent_code, normal_balance, is_active, currency, entity_id, opening_balance, created_at`, plus the policy flags `mappable`, `allow_manual_journal`, `allow_direct_transaction` and a `seed_version` stamp. Seeded idempotently by `seedChartOfAccounts()` from `CHART_OF_ACCOUNTS_SEED` (33 accounts). Archive via `is_active`; **never deleted**. |
 | `journals` | auto | `journal_number ('JE-YYYY-NNNNNN'), journal_seq (int), journal_type ('system'\|'manual'), manual_subtype, posting_rule_id, source:{collection,id}, source_number, period_key 'YYYY-MM', status (draft/posted/reversal/reversed), description, reference, entity_id, currency, memo, lines[], total_debit, total_credit, is_balanced, reverses_journal_id, reversed_by_journal_id, created_by, generated_by, posted_by, posted_at, created_at`. Posted entries are **immutable** (rules allow only `reversed_by_journal_id` to change; no delete) and created only into a **non-closed** period. `journal_type:'manual'` `status:'draft'` rows are editable/deletable until posted. |
 | `counters` | `journal-{YYYY}` | `seq (int, monotonic), entity_id, updated_at`. Per-year journal-number sequence, reserved in a `runTransaction` before the posting batch (`_reserveJournalNumbers`). Rules enforce `seq` only ever grows; no delete. |
 | `ledger_balances` | `{period_key}__{account_code}` | `period_key, account_code, account_type, entity_id, currency, debit_total, credit_total, updated_at`. Running per-account/period totals, written via `FieldValue.increment` alongside each journal. **The trial-balance source** — never sum all journal lines. |
@@ -1518,6 +1518,75 @@ Foresight fields present on every journal/account now (multi-entity/-currency UI
 deferred): `entity_id` (= workspaceId), `currency` ('IDR'), `fx_rate` (1),
 `functional_amount`. Source documents gain `journal_ref` + `accounting_status`
 (`posted`/`pending`/`excluded`) for drill-down.
+
+**Account posting policy (the control layer, 2026-08-02).** Four independent flags
+per account, all defaulting to PERMISSIVE when absent (fail-open — a user-created
+account carries none of them and must stay pickable):
+
+| Flag | Gates |
+|---|---|
+| `is_system` | rename/archive is locked |
+| `mappable` | eligible as an **auto-mapping / categorization target** |
+| `allow_manual_journal` | a human may name it on a **manual journal** line |
+| `allow_direct_transaction` | a human may pick it on a **transaction/bill** line |
+
+They are **not** implied by one another — `2800 Suspense` is deliberately
+unmappable but hand-codeable. Eleven structural accounts (`1000`, `1100`, `2000`,
+`3000`, `3900`, and the six tax control accounts) are closed to both human
+surfaces, so A/R and A/P can only move through the invoice/bill subledgers and the
+aging report keeps tying to the balance sheet.
+
+Enforced at three layers: `fluxy-account-picker.js` `isSelectable()` (entry
+drawer), `accounting-journal-new.js` (manual-journal option list), and the engine
+itself — `assertManualJournalPolicy()` (GL_010/GL_012) and `explicitAccount()`
+(GL_011), which **throws** rather than silently resolving to a default account.
+`subtype: 'opening'` is exempt: opening balances are the one legitimate human path
+into cash/equity, and the Manual Journal editor is the only in-app way to record
+them (`buildOpeningJournal` has no caller).
+
+⚠️ **Never gate inside `buildManualJournal`.** The Tax Center posts through it
+directly (`recordCorporateTaxPayment`, `postAnnualCorporateTax`) using the very
+accounts the policy blocks; the gate belongs in `postManualJournal` (the human
+path) only. `tests/accounting-engine.spec.js` guards this.
+
+**Reading the flags.** `seedChartOfAccounts` writes them, but correctness does
+**not** depend on that having run: `getChartOfAccounts` overlays the seed's policy
+onto every Firestore row via `_withAccountPolicy` (**seed wins**). This is
+deliberate — the previous `mappable`-only guard was inert on every seeded
+workspace precisely because the seeder never persisted the field. Safe only
+because nothing writes the merged object back; `saveAccount` builds explicit
+payloads and must never `setDoc(ref, {...account})`. Bump `CHART_SEED_VERSION`
+when the seed gains fields the seeder must backfill (the heal predicate is a
+version stamp, not an "is field X missing?" test). Proven by
+`tests/coa-account-policy.spec.js`, which reads back through Firestore — a
+seed-only assertion cannot catch this class of bug.
+
+**Structured errors (`GL_*`).** `accounting-engine.js` exports `GL` + `glError()`;
+every kernel throw carries `err.code`, `err.domain = 'accounting'`, and
+`err.details` (the interpolated values). Codes: `GL_001` unbalanced · `GL_002`
+too few lines · `GL_003` zero amount · `GL_010` manual-journal blocked · `GL_011`
+direct-transaction blocked · `GL_012` archived · `GL_020` period locked · `GL_021`
+period closed. Callers discriminate on the **code**, never on message prose —
+`document-capture.js` used to decide whether to show the real reason by
+regex-matching English, so translating a string would have silently changed
+control flow. Render via `window.formatFluxyError(err, title)`
+(`shared-dashboard.js`), which resolves `gl.<CODE>` through `FluxyI18n.t()` with
+`err.details` as vars and returns an **escaped** body. Add a `gl.<CODE>` key to
+`dashboard-i18n.js` for every new code — `scripts/i18n-audit.js` cannot see
+`new Error('…')` strings, so `tests/dashboard-i18n.spec.js` asserts the coverage.
+
+**Nightly integrity assertions.** `netlify/functions/ledger-integrity-sweep.js`
+(cron `0 20 * * *` = 03:00 WIB, default-off `LEDGER_ASSERT_ENABLED`) runs the
+five reconciliations per workspace and writes
+`workspaces/{id}/ledger_integrity_reports/{YYYY-MM-DD}` (client read-only; the
+admin SDK bypasses rules). Checks: A/R ties to open invoices, A/P ties to unpaid
+bills, global Σdebit == Σcredit, `ledger_balances` vs journal lines, journal
+coverage, plus an informational bank-vs-snapshot signal. Read-only — repair stays
+with `scripts/reconcile-ledger-balances.js --commit`, which now shares the
+recompute via `netlify/functions/lib/ledger-assert.js` so detector and repair
+cannot disagree. It enumerates `workspaces` **directly** rather than resolving
+scope per-uid, which sidesteps the stale `users/{uid}` copy entirely. Unit-tested
+without credentials: `npm run check:ledger-assert`.
 
 **Posting rules** (`selectRule` → rule table in `accounting-engine.js`): expense→
 Dr expense/Cr Cash; income→Dr Cash/Cr Revenue; `pending_payable`→Dr expense/Cr A/P;

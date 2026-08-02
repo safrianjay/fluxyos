@@ -24,6 +24,7 @@
 // =============================================================================
 
 const admin = require('firebase-admin');
+const { recomputeFromJournalLines } = require('../netlify/functions/lib/ledger-assert');
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -52,28 +53,13 @@ async function main() {
     console.log(`\nWorkspace ${WORKSPACE}${ONLY_PERIOD ? ` · period ${ONLY_PERIOD}` : ''} · ${COMMIT ? 'COMMIT' : 'DRY-RUN'}\n`);
 
     // 1) Recompute expected balances from journal LINES (drafts excluded).
-    const journalsSnap = await base.collection('journals').get();
-    const expected = {}; // key `${period}__${account}` -> { period_key, account_code, account_type, debit, credit }
-    let globalDebit = 0;
-    let globalCredit = 0;
-    let counted = 0;
-    journalsSnap.forEach((d) => {
-        const j = d.data();
-        if (j.status === 'draft') return; // drafts never post
-        if (ONLY_PERIOD && j.period_key !== ONLY_PERIOD) return;
-        (j.lines || []).forEach((l) => {
-            const key = `${j.period_key}__${l.account_code}`;
-            const e = expected[key] || (expected[key] = {
-                period_key: j.period_key, account_code: l.account_code,
-                account_type: l.account_type, debit: 0, credit: 0
-            });
-            e.debit += toInt(l.debit);
-            e.credit += toInt(l.credit);
-            globalDebit += toInt(l.debit);
-            globalCredit += toInt(l.credit);
-        });
-        counted += 1;
-    });
+    // Shared with the nightly sweep (netlify/functions/ledger-integrity-sweep.js)
+    // so the detector and this repair tool can never disagree about what the
+    // balances SHOULD be — a divergence there would mean the sweep reports drift
+    // that --commit then "fixes" to a different number.
+    const {
+        expected, globalDebit, globalCredit, posted: counted
+    } = await recomputeFromJournalLines(base, { onlyPeriod: ONLY_PERIOD });
 
     // 2) Load stored ledger_balances.
     const balSnap = await base.collection('ledger_balances').get();

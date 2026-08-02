@@ -1,9 +1,10 @@
 const { test, expect } = require('@playwright/test');
 
 // Pure-logic unit test for CoA Phase 1: seed integrity of the expanded
-// 32-account chart, the SAK validators, and a posting-behavior regression
-// (the seed expansion must not change what the engine posts). Same pattern as
-// accounting-engine.spec.js — import the ESM module in the browser, no I/O.
+// 33-account chart, the SAK validators, the posting-policy matrix, and a
+// posting-behavior regression (the seed expansion must not change what the
+// engine posts). Same pattern as accounting-engine.spec.js — import the ESM
+// module in the browser, no I/O.
 
 test('chart of accounts seed is internally consistent', async ({ page }) => {
     await page.goto('/pricing');
@@ -25,6 +26,18 @@ test('chart of accounts seed is internally consistent', async ({ page }) => {
             contraOverrides: seed.filter((a) => a.normal_balance).map((a) => a.code),
             missingNameId: seed.filter((a) => !a.name_id).map((a) => a.code),
             mappableCount: seed.filter((a) => a.mappable !== false).length,
+            seedVersion: e.CHART_SEED_VERSION,
+            // Posting policy per account — the control layer. Asserted as an
+            // explicit matrix rather than a derived rule: `mappable`,
+            // allow_manual_journal, and allow_direct_transaction gate three
+            // different things and do NOT imply one another (2800 Suspense is
+            // deliberately unmappable but hand-codeable), so any "X implies Y"
+            // invariant would encode an accident of today's seed.
+            blockedManual: seed.filter((a) => a.allow_manual_journal === false).map((a) => a.code).sort(),
+            blockedDirect: seed.filter((a) => a.allow_direct_transaction === false).map((a) => a.code).sort(),
+            policyDefaults: e.accountPolicy({ code: '6510', name: 'User made this' }),
+            policyLocked: e.accountPolicy(byCode['1100']),
+            policySuspense: e.accountPolicy(byCode['2800']),
             draftChecks: {
                 validChild: e.validateAccountDraft(
                     { code: '6470', type: 'expense', name: 'Depreciation Expense', sak_category: 'operating_expense', parent_code: '6400' },
@@ -42,8 +55,8 @@ test('chart of accounts seed is internally consistent', async ({ page }) => {
         };
     });
 
-    // 32 unique, well-formed accounts.
-    expect(r.count).toBe(32);
+    // 33 unique, well-formed accounts.
+    expect(r.count).toBe(33);
     expect(new Set(r.codes).size).toBe(r.count);
     expect(r.badCodes).toEqual([]);
     expect(r.badTypes).toEqual([]);
@@ -56,13 +69,33 @@ test('chart of accounts seed is internally consistent', async ({ page }) => {
     // Contra normal-balance overrides exist ONLY on 3200 and 4900.
     expect(r.contraOverrides.sort()).toEqual(['3200', '4900']);
     // System set covers every code the engines/defaults hardcode.
-    const requiredSystem = ['1000', '1100', '2000', '3000', '3900', '4000',
+    const requiredSystem = ['1000', '1100', '2000', '2800', '3000', '3900', '4000',
         '6100', '6200', '6300', '6400', '6500', '6600', '6999',
         '1130', '1140', '1150', '2100', '2110', '2200'];
     expect([...r.systemCodes].sort()).toEqual([...requiredSystem].sort());
-    // 16-value SAK enum; catalog derivation admits 23 mappable accounts.
+    // 16-value SAK enum; catalog derivation admits 21 mappable accounts
+    // (1100 A/R and 2000 A/P became unmappable with the control layer, and
+    // 2800 Suspense is seeded unmappable).
     expect(r.sakCategories.length).toBe(16);
-    expect(r.mappableCount).toBe(23);
+    expect(r.mappableCount).toBe(21);
+
+    // --- Posting control layer -------------------------------------------
+    // The subledger, cash, equity, and tax-control accounts must be closed to
+    // BOTH human surfaces: a manual journal to 1100 breaks the tie between the
+    // aging report and the balance sheet with no audit path back to a customer.
+    const structural = ['1000', '1100', '2000', '3000', '3900',
+        '1130', '1140', '1150', '2100', '2110', '2200'].sort();
+    expect(r.blockedManual).toEqual(structural);
+    expect(r.blockedDirect).toEqual(structural);
+    // Fail-OPEN by default: a user-created account carries no flags and must stay
+    // fully postable, or creating an account would make it unusable.
+    expect(r.policyDefaults).toEqual({ mappable: true, allow_manual_journal: true, allow_direct_transaction: true });
+    expect(r.policyLocked).toEqual({ mappable: false, allow_manual_journal: false, allow_direct_transaction: false });
+    // Suspense: never an auto-mapping target, but codeable by hand and clearable
+    // by manual journal — that is the whole workflow.
+    expect(r.policySuspense).toEqual({ mappable: false, allow_manual_journal: true, allow_direct_transaction: true });
+    // Bump CHART_SEED_VERSION whenever the seed gains fields the seeder backfills.
+    expect(r.seedVersion).toBeGreaterThanOrEqual(2);
     // Validators.
     expect(r.draftChecks.validChild.ok).toBe(true);
     for (const key of ['badCode', 'wrongBlockType', 'crossTypeParent', 'selfParent', 'badSak']) {

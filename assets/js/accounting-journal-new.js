@@ -37,7 +37,7 @@ function canManualJournal() {
     return true;
 }
 
-const state = { ds: null, user: null, draftId: null, coa: [], accountOptions: '', dirty: false };
+const state = { ds: null, user: null, draftId: null, coa: [], accountOptions: '', postableCodes: null, dirty: false };
 
 export async function initManualJournalPage({ ds, user }) {
     state.ds = ds;
@@ -57,8 +57,7 @@ export async function initManualJournalPage({ ds, user }) {
     try {
         state.coa = await ds.getChartOfAccounts(user.uid).catch(() => []);
     } catch (_) { state.coa = []; }
-    state.accountOptions = `<option value="">Select account…</option>` +
-        (state.coa || []).map(a => `<option value="${escapeHtml(a.code)}">${escapeHtml(a.code)} · ${escapeHtml(a.name)}</option>`).join('');
+    rebuildAccountOptions();
 
     bindControls();
 
@@ -73,6 +72,9 @@ export async function initManualJournalPage({ ds, user }) {
 
 function bindControls() {
     el('mj-date')?.addEventListener('change', syncPeriod);
+    // The `opening` subtype exempts cash/equity from the manual-journal block, so
+    // the option list has to follow the subtype.
+    el('mj-subtype')?.addEventListener('change', rebuildAccountOptions);
     el('mj-add-line')?.addEventListener('click', () => { addLine(); recalc(); });
     el('mj-save-draft')?.addEventListener('click', onSaveDraft);
     el('mj-post')?.addEventListener('click', onPost);
@@ -109,6 +111,54 @@ function syncPeriod() {
     el('mj-period').value = String(d).slice(0, 7);
 }
 
+// Accounts a human may name on a manual journal line: active, and not owned by
+// the posting engine (A/R, A/P, cash, retained earnings, tax control). This
+// mirrors assertManualJournalPolicy in accounting-engine.js — the editor hides
+// what the engine would reject, so a violation is never a surprise at Post time.
+// The `opening` subtype is exempt: opening balances are the one legitimate human
+// path into cash and equity, and this editor is the only in-app way to record
+// them. Absent flag = permitted, so user-created accounts stay available.
+function postableAccounts() {
+    const exempt = (el('mj-subtype')?.value || '') === 'opening';
+    return (state.coa || []).filter(a =>
+        a.is_active !== false && (exempt || a.allow_manual_journal !== false));
+}
+
+// Rebuild the shared <option> markup and re-apply it to every existing line,
+// preserving each line's current value. Called on load and whenever the subtype
+// changes (which moves the `opening` exemption in or out).
+function rebuildAccountOptions() {
+    const list = postableAccounts();
+    state.postableCodes = new Set(list.map(a => String(a.code)));
+    state.accountOptions = `<option value="">Select account…</option>` +
+        list.map(a => `<option value="${escapeHtml(a.code)}">${escapeHtml(a.code)} · ${escapeHtml(a.name)}</option>`).join('');
+    document.querySelectorAll('#mj-lines .mj-acct').forEach((sel) => {
+        const keep = sel.value;
+        sel.innerHTML = state.accountOptions;
+        applyAccountValue(sel, keep);
+    });
+}
+
+// Set a select to `code`, retaining an out-of-list code as a disabled option
+// instead of silently blanking the line. A saved draft may hold an account that
+// has since been archived or locked down; dropping it to "" would look like the
+// user's own data vanished, and would re-post as an unbalanced journal.
+function applyAccountValue(sel, code) {
+    if (!sel) return;
+    const value = String(code || '');
+    if (!value) { sel.value = ''; return; }
+    if (!state.postableCodes || !state.postableCodes.has(value)) {
+        const known = (state.coa || []).find(a => String(a.code) === value);
+        const label = known ? `${value} · ${known.name}` : value;
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = `${label} (locked)`;
+        opt.disabled = true;
+        sel.appendChild(opt);
+    }
+    sel.value = value;
+}
+
 function addLine(line) {
     const tbody = el('mj-lines');
     const tr = document.createElement('tr');
@@ -121,7 +171,7 @@ function addLine(line) {
         <td class="fluxy-table-cell" style="text-align:right;"><button type="button" class="mj-remove acct-link" aria-label="Remove line">Remove</button></td>`;
     tbody.appendChild(tr);
     if (line) {
-        tr.querySelector('.mj-acct').value = line.account_code || '';
+        applyAccountValue(tr.querySelector('.mj-acct'), line.account_code);
         tr.querySelector('.mj-memo').value = line.memo || '';
         if (toInt(line.debit) > 0) tr.querySelector('.mj-debit').value = toInt(line.debit);
         if (toInt(line.credit) > 0) tr.querySelector('.mj-credit').value = toInt(line.credit);
@@ -196,7 +246,7 @@ async function onSaveDraft() {
         window.showToast?.('Draft saved.', 'success');
     } catch (err) {
         console.error('Save draft failed:', err);
-        window.showAlertDialog?.({ title: 'Could not save draft', body: err?.message || 'Please try again.', tone: 'danger' });
+        window.showAlertDialog?.({ ...window.formatFluxyError(err, 'Could not save draft'), tone: 'danger' });
     } finally {
         btn.disabled = false; btn.textContent = 'Save draft';
     }
@@ -214,7 +264,7 @@ async function onPost() {
         window.location.href = `accounting-journal.html?id=${encodeURIComponent(state.draftId)}`;
     } catch (err) {
         console.error('Post failed:', err);
-        window.showAlertDialog?.({ title: 'Could not post journal', body: err?.message || 'Please try again.', tone: 'danger' });
+        window.showAlertDialog?.({ ...window.formatFluxyError(err, 'Could not post journal'), tone: 'danger' });
         btn.disabled = false; btn.textContent = 'Post journal';
     }
 }
@@ -235,7 +285,7 @@ async function onDiscard() {
         window.location.href = '/accounting';
     } catch (err) {
         console.error('Discard failed:', err);
-        window.showAlertDialog?.({ title: 'Could not discard', body: err?.message || 'Please try again.', tone: 'danger' });
+        window.showAlertDialog?.({ ...window.formatFluxyError(err, 'Could not discard'), tone: 'danger' });
     }
 }
 
@@ -254,7 +304,10 @@ async function loadDraft() {
         if (j.period_key) { el('mj-date').value = `${j.period_key}-01`; syncPeriod(); }
         el('mj-description').value = j.description && j.description !== 'Manual journal' ? j.description : '';
         el('mj-reference').value = j.reference || '';
-        if (j.manual_subtype) el('mj-subtype').value = j.manual_subtype;
+        // Set the subtype BEFORE the lines render: an `opening` draft needs the
+        // cash/equity exemption applied to the option list first, or its own saved
+        // accounts would come back as "(locked)".
+        if (j.manual_subtype) { el('mj-subtype').value = j.manual_subtype; rebuildAccountOptions(); }
         el('mj-lines').innerHTML = '';
         (j.lines || []).forEach(line => addLine(line));
         if (!el('mj-lines').children.length) { addLine(); addLine(); }

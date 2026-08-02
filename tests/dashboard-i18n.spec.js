@@ -74,3 +74,32 @@ test('onboarding renders in Bahasa Indonesia (pre-redirect rail)', async ({ page
         throw e;
     }
 });
+
+test('every accounting error code has an Indonesian message', async ({ page }) => {
+    // scripts/i18n-audit.js is structurally blind to these: it harvests string
+    // literals from toasts/dialog props, and an error message originates in a
+    // `throw new Error(...)` inside db-service/accounting-engine, then reaches the
+    // UI as a variable. So the audit would report zero gaps while every accounting
+    // failure spoke English to a Bahasa-first user. This closes that hole by
+    // asserting coverage against the code table itself, which cannot drift.
+    await page.addInitScript(() => localStorage.setItem('fluxyos-lang', 'id'));
+    await page.goto('/accounting.html');
+    await page.waitForFunction(() => !!window.FluxyI18n, null, { timeout: 20000 });
+
+    const out = await page.evaluate(async () => {
+        const { GL } = await import('/assets/js/accounting-engine.js?v=' + Date.now());
+        const missing = [];
+        Object.values(GL).forEach((code) => {
+            const key = `gl.${code}`;
+            // t() returns the key itself when it has no translation.
+            if (window.FluxyI18n.t(key) === key) missing.push(key);
+        });
+        // Interpolation must actually substitute, or users see a raw {period_key}.
+        const sample = window.FluxyI18n.t(`gl.${GL.PERIOD_CLOSED}`, { period_key: '2026-07' });
+        return { missing, sample };
+    });
+
+    expect(out.missing, `missing Indonesian keys: ${out.missing.join(', ')}`).toEqual([]);
+    expect(out.sample).toContain('2026-07');
+    expect(out.sample).not.toContain('{period_key}');
+});

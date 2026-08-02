@@ -2691,6 +2691,37 @@ window.showAddTransactionModal = function(options = {}) {
 /**
  * Global Toast System
  */
+// Render an accounting-kernel error for display: one place that resolves the
+// GL_* code to a translated message and escapes the result.
+//
+// Three problems this collapses. (1) Three surfaces rendered `err.message` three
+// different ways — showToast and showAlertDialog took it raw into innerHTML while
+// accounting.js escaped it, so the same string was safe on one path and injected
+// on another. (2) Error text never reached the Indonesian dictionary: interpolated
+// messages ("… period (2026-06) …") can't be matched by the MutationObserver's
+// exact-string swap, and the audit script can't even see `new Error('…')`.
+// (3) Nothing carried a code, so callers matched English prose to make decisions.
+//
+// `gl.<CODE>` keys live in dashboard-i18n.js and interpolate from err.details.
+// FluxyI18n.t() returns the KEY when it has no translation *and* when the UI is
+// English, so the `translated === key` check is what falls back to the original
+// message — without it, English users would see the literal string "gl.GL_020".
+window.formatFluxyError = function (err, fallbackTitle) {
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const code = err && err.code ? String(err.code) : '';
+    const raw = (err && err.message) ? String(err.message) : 'Please try again.';
+    let text = raw;
+    if (code) {
+        const key = `gl.${code}`;
+        try {
+            const translated = window.FluxyI18n?.t(key, (err && err.details) || {});
+            if (translated && translated !== key) text = translated;
+        } catch (_) { /* fall back to the English message */ }
+    }
+    return { title: fallbackTitle || 'Something went wrong', body: esc(text), code };
+};
+
 window.showToast = function(message, type = 'info') {
     let container = document.getElementById('toast-container');
     if (!container) {

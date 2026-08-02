@@ -3981,6 +3981,22 @@
         "System accounts cannot be archived.": "Akun sistem tidak dapat diarsipkan.",
         "System accounts cannot be edited.": "Akun sistem tidak dapat diubah.",
         "Could not update the account. Try again.": "Tidak dapat memperbarui akun. Coba lagi.",
+        // --- Accounting kernel error codes (GL_*) ---------------------------
+        // Keyed by CODE, not by English text: these messages interpolate values
+        // (period key, account code, totals), so the MutationObserver's exact-
+        // string swap can never match them. window.formatFluxyError looks up
+        // `gl.<CODE>` via FluxyI18n.t() and fills {vars} from err.details.
+        // Codes are defined in accounting-engine.js — keep the two in step; a
+        // spec asserts every GL code has a key here.
+        "gl.GL_001": "Jurnal belum seimbang: total debit {debit} dan total kredit {credit} harus sama.",
+        "gl.GL_002": "Jurnal butuh minimal dua baris yang berisi nominal. Saat ini baru {line_count}.",
+        "gl.GL_003": "Nominal harus lebih besar dari nol.",
+        "gl.GL_010": "{account_code} {account_name} dikelola otomatis oleh sistem dan tidak bisa dipakai di jurnal manual.",
+        "gl.GL_011": "{account_code} {account_name} dikelola otomatis oleh sistem dan tidak bisa dipilih pada transaksi.",
+        "gl.GL_012": "{account_code} {account_name} sudah diarsipkan dan tidak bisa dipakai.",
+        "Spend in Other Expense is under control": "Pengeluaran di Beban Lainnya masih terkendali",
+        "gl.GL_020": "Periode {period_key} sudah dikunci. Buka kembali periodenya, atau pakai tanggal di periode yang masih terbuka.",
+        "gl.GL_021": "Periode akuntansi {period_key} sudah ditutup. Buka kembali periodenya, atau pakai tanggal di periode yang masih terbuka.",
         // SAK classification labels (CoA tab column values). "Receivable",
         // "Payable", and "Other Income" already exist in the shared dictionary.
         "Other Current Asset": "Aset Lancar Lainnya",
@@ -4353,6 +4369,13 @@
         { re: /^Post (\d+) entr(?:y|ies)\?$/,
           id: function (m) { return 'Posting ' + m[1] + ' entri?'; } },
         { re: /^(\d+) not postable$/, id: function (m) { return m[1] + ' tidak dapat diposting'; } },
+        // Manual journal editor: an account on a saved draft that is no longer
+        // selectable (archived, or closed to manual journals) is retained as a
+        // disabled "<code> · <name> (locked)" option rather than blanking the line.
+        { re: /^(.+) \(locked\)$/, id: function (m) { return m[1] + ' (terkunci)'; } },
+        // Close checklist: "0.8% unexplained (target 2%)" on the Other Expense row.
+        { re: /^([\d.]+)% unexplained \(target ([\d.]+)%\)$/,
+          id: function (m) { return m[1] + '% tidak terjelaskan (target ' + m[2] + '%)'; } },
         // Transaction Detail journal card: "<status> · <method>" is composed in JS,
         // so exact match cannot reach it.
         { re: /^(Posted|Draft|Reversal|Reversed) · (Automatically generated|Manual)$/,

@@ -9,6 +9,9 @@ test('accounting engine posts a balanced journal for every business event', asyn
     await page.goto('/pricing');
     const r = await page.evaluate(async () => {
         const e = await import('/assets/js/accounting-engine.js');
+        // Capture a throw as a plain, structured-cloneable object.
+        const cap = (fn) => { try { return { ok: true, value: fn() ? 'built' : null }; }
+            catch (err) { return { ok: false, code: err && err.code || null, message: String(err && err.message || err) }; } };
         const d = new Date('2026-06-15T03:00:00Z');
         const j = (collection, id, document, mappings) => e.buildJournal({ collection, id, document, mappings, date: document.timestamp });
         return {
@@ -29,7 +32,34 @@ test('accounting engine posts a balanced journal for every business event', asyn
             pkJakarta: e.periodKey(new Date('2026-06-30T17:30:00Z')),
             signedAsset: e.signedBalance('asset', 5000, 2000),
             signedLiability: e.signedBalance('liability', 2000, 9000),
-            manualUnbalanced: (() => { try { e.buildManualJournal({ period_key: '2026-06', lines: [{ account_code: '6400', debit: 100 }] }); return 'no-throw'; } catch (_) { return 'threw'; } })()
+            // An Error cannot cross the page.evaluate boundary — stringify the
+            // parts we assert on INSIDE the browser and return a plain object.
+            manualUnbalanced: cap(() => e.buildManualJournal({ period_key: '2026-06',
+                lines: [{ account_code: '6400', debit: 100 }, { account_code: '4000', credit: 60 }] })),
+            manualSingleLine: cap(() => e.buildManualJournal({ period_key: '2026-06',
+                lines: [{ account_code: '6400', debit: 100 }] })),
+            // Policy gate: the human path refuses subledger/cash/equity accounts...
+            policyBlocksAR: cap(() => e.assertManualJournalPolicy([{ account_code: '1100', debit: 100 }])),
+            policyBlocksCash: cap(() => e.assertManualJournalPolicy([{ account_code: '1000', credit: 100 }])),
+            policyAllowsOpex: cap(() => e.assertManualJournalPolicy([{ account_code: '6400', debit: 100 }])),
+            // ...except for opening balances, the one legitimate human path in.
+            policyAllowsOpening: cap(() => e.assertManualJournalPolicy(
+                [{ account_code: '1000', debit: 100 }, { account_code: '3900', credit: 100 }], { subtype: 'opening' })),
+            policyBlocksArchived: cap(() => e.assertManualJournalPolicy([{ account_code: '6510', debit: 100 }],
+                { accounts: { '6510': { name: 'Custom', type: 'expense', is_active: false } } })),
+            // The Tax Center posts through buildManualJournal DIRECTLY with the
+            // very accounts the policy blocks. If the gate ever moves inside the
+            // builder, monthly tax posting breaks silently — this is that alarm.
+            taxInstalmentPosts: cap(() => e.buildManualJournal({ period_key: '2026-06', subtype: 'tax_instalment',
+                lines: [{ account_code: '1140', debit: 500000 }, { account_code: '1000', credit: 500000 }] })),
+            taxAnnualPosts: cap(() => e.buildManualJournal({ period_key: '2026-12', subtype: 'corporate_annual',
+                lines: [{ account_code: '6500', debit: 900000 }, { account_code: '1140', credit: 400000 },
+                        { account_code: '2200', credit: 500000 }] })),
+            // GL_011: a structural account hand-picked onto a document is refused
+            // rather than silently redirected to the default account.
+            explicitBlocked: cap(() => e.explicitAccount({ account_code: '1100' })),
+            explicitAllowed: cap(() => e.explicitAccount({ account_code: '6420' }, 'expense')),
+            glCodes: e.GL
         };
     });
 
@@ -48,7 +78,30 @@ test('accounting engine posts a balanced journal for every business event', asyn
     expect(r.manual.journal_type).toBe('manual');
     expect(r.manual.manual_subtype).toBe('depreciation');
     expect(r.manual.posting_rule_id).toBe('MANUAL');
-    expect(r.manualUnbalanced).toBe('threw');
+    // Structured error codes: callers discriminate on err.code, never on prose.
+    expect(r.manualUnbalanced.ok).toBe(false);
+    expect(r.manualUnbalanced.code).toBe(r.glCodes.UNBALANCED);
+    // A one-line journal is GL_002, not "unbalanced (Dr 100 / Cr 0)" — the real
+    // problem is the missing line, and the old wording sent people hunting for a
+    // rounding difference that did not exist.
+    expect(r.manualSingleLine.ok).toBe(false);
+    expect(r.manualSingleLine.code).toBe(r.glCodes.TOO_FEW_LINES);
+
+    // Manual-journal policy gate.
+    expect(r.policyBlocksAR.code).toBe(r.glCodes.MANUAL_BLOCKED);
+    expect(r.policyBlocksCash.code).toBe(r.glCodes.MANUAL_BLOCKED);
+    expect(r.policyBlocksArchived.code).toBe(r.glCodes.ARCHIVED);
+    expect(r.policyAllowsOpex.ok).toBe(true);
+    expect(r.policyAllowsOpening.ok, 'opening balances stay possible in-app').toBe(true);
+
+    // Tax Center regression — buildManualJournal itself must NOT enforce policy.
+    expect(r.taxInstalmentPosts.ok, 'PPh 25 instalment must still post').toBe(true);
+    expect(r.taxAnnualPosts.ok, 'annual corporate tax must still post').toBe(true);
+
+    // GL_011 on hand-picked accounts.
+    expect(r.explicitBlocked.ok).toBe(false);
+    expect(r.explicitBlocked.code).toBe(r.glCodes.DIRECT_BLOCKED);
+    expect(r.explicitAllowed.ok).toBe(true);
     // Rule selection.
     expect(r.expense.posting_rule_id).toBe('TXN-EXP-CASH');
     expect(r.income.posting_rule_id).toBe('TXN-INC-CASH');
@@ -89,9 +142,19 @@ test('accounting engine honors an explicit account_code, falling back safely', a
             feeExplicit: debitCode(j('transactions', 'a4', { type: 'fee', amount: 2500, account_code: '6440' })),
             // Unknown code → falls back to the resolution chain (Marketing → 6100).
             expBadCode: debitCode(j('transactions', 'a5', { type: 'expense', amount: 150000, category: 'Marketing', account_code: '9999' })),
-            // An explicit pick is honored regardless of type — the drawer picker gates
-            // what's offered per direction, so the engine trusts a real chosen code.
-            incAnyType: creditCode(j('transactions', 'a6', { type: 'income', amount: 5000000, account_code: '2100' })),
+            // An explicit pick is honored regardless of TYPE — an asset or liability
+            // account is a legitimate choice on either direction (buying an asset,
+            // paying down a loan).
+            incAnyType: creditCode(j('transactions', 'a6', { type: 'income', amount: 5000000, account_code: '2500' })),
+            // ...but NOT regardless of POLICY. 2100 PPN Keluaran is fed exclusively
+            // by the tax engine; crediting income straight to it would break the
+            // PPN reconciliation. The engine refuses rather than quietly resolving
+            // to the default account — a silent redirect posts somewhere the user
+            // did not choose, which is worse than an error.
+            incBlocked: (() => {
+                try { j('transactions', 'a8', { type: 'income', amount: 5000000, account_code: '2100' }); return { ok: true }; }
+                catch (err) { return { ok: false, code: err && err.code || null }; }
+            })(),
             // No account_code → unchanged legacy behavior (income credits 4000).
             incNoCode: creditCode(j('transactions', 'a7', { type: 'income', amount: 5000000 })),
             explicitHelper: e.explicitAccount({ account_code: '6420' }, 'expense')
@@ -102,7 +165,9 @@ test('accounting engine honors an explicit account_code, falling back safely', a
     expect(r.arExplicit).toBe('7100');
     expect(r.feeExplicit).toBe('6440');
     expect(r.expBadCode).toBe('6100');
-    expect(r.incAnyType).toBe('2100');
+    expect(r.incAnyType).toBe('2500');
+    expect(r.incBlocked.ok).toBe(false);
+    expect(r.incBlocked.code).toBe('GL_011');
     expect(r.incNoCode).toBe('4000');
     expect(r.explicitHelper).toBe('6420');
 });

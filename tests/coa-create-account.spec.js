@@ -149,13 +149,18 @@ test('Edit lock: an account with posted activity locks category + parent but sta
     await expect(page.locator('#ca-drawer-panel')).toBeHidden({ timeout: 15000 });
 
     // 2) Post a balanced manual journal touching it → ledger_balances activity.
+    // The counter-line is 2500 Deferred Revenue, not 1000 Cash: cash is closed to
+    // manual journals (allow_manual_journal: false), because a manual entry against
+    // a bank account creates a GL movement with no statement line behind it and
+    // sits in the reconciliation queue forever. Moving cash goes through a
+    // transaction; opening balances go through the exempt `opening` subtype.
     await page.goto('/accounting-journal-new.html');
     await expect(page.locator('#mj-form')).toBeVisible({ timeout: 30000 });
     await page.locator('#mj-description').fill('QA activity for edit-lock');
     const rows = page.locator('#mj-lines tr');
     await rows.nth(0).locator('.mj-acct').selectOption(code);
     await rows.nth(0).locator('.mj-debit').fill('1000');
-    await rows.nth(1).locator('.mj-acct').selectOption('1000');
+    await rows.nth(1).locator('.mj-acct').selectOption('2500');
     await rows.nth(1).locator('.mj-credit').fill('1000');
     await expect(page.locator('#mj-post')).toBeEnabled({ timeout: 10000 });
     await page.locator('#mj-post').click();

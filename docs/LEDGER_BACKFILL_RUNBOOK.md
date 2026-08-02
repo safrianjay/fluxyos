@@ -29,6 +29,26 @@ GOOGLE_APPLICATION_CREDENTIALS=./sa.json node scripts/ledger-coverage-report.js
 It reads *every* journal, per workspace, and warns if any transaction is flagged
 posted but has no journal (the backfill skips those, so it could not close their gap).
 
+**For the full integrity picture — not just coverage — run the assertion report:**
+
+```bash
+GOOGLE_APPLICATION_CREDENTIALS=./sa.json node scripts/ledger-assert-report.js
+GOOGLE_APPLICATION_CREDENTIALS=./sa.json node scripts/ledger-assert-report.js --workspace <wsId>
+```
+
+Read-only (no `--commit` exists). Exits 1 if any workspace has a finding, so it can
+gate a cutover step. It runs the **same** `assertWorkspaceLedger()` the nightly
+sweep runs (`netlify/functions/lib/ledger-assert.js`), so its output is exactly
+what the cron will report — run it **before** setting `LEDGER_ASSERT_ENABLED=true`,
+or the first night's report will be your first look at the findings.
+
+It adds four checks coverage alone cannot see, each printed with its remedy:
+A/R ties to open invoices · A/P ties to unpaid bills · Σdebit == Σcredit across
+journal **lines** (the check Firestore rules structurally cannot perform) ·
+`ledger_balances` vs the journal lines they were incremented from. A
+`ledger_balances_drift` finding points at §4; a `journal_coverage` finding points
+back here. `--json` emits the raw reports.
+
 Do **not** measure this through `DataService.listJournals` — it defaults to
 `max: 200` and filters `periodKey` **client-side**, so on a busy workspace it sees a
 fraction of the journals and reports a false gap. That mistake once reported 16.2%

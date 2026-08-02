@@ -1537,8 +1537,14 @@
             // expired session can never be fixed by "try again". The scanned date
             // is editable, so the closed-period message tells the user exactly what
             // to change (move the date to an open period, or reopen the period).
+            // GL_020/GL_021 are the stable signal; the message regex stays for one
+            // release as a fallback for any path not yet emitting a code. Matching
+            // on English was the only thing keeping this branch alive, which meant
+            // translating the message would have silently downgraded it to the
+            // generic retry prompt.
             let toast = 'Could not save. Please try again.';
-            if (/closed accounting period|closed or locked period/i.test(msg)) toast = msg;
+            if (err?.code === 'GL_020' || err?.code === 'GL_021'
+                || /closed accounting period|closed or locked period/i.test(msg)) toast = msg;
             else if (/permission-denied/i.test(msg) || err?.code === 'permission-denied') toast = 'Permission denied — check your access, then try again.';
             else if (/session expired/i.test(msg)) toast = 'Session expired. Please log in again.';
             window.showToast?.(toast, 'error');

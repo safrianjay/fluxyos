@@ -1,7 +1,7 @@
 import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
-import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, CHART_OF_ACCOUNTS_SEED, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, suggestCategorizingAccount, periodKey as acctPeriodKey } from "./accounting-engine.js";
+import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, assertManualJournalPolicy, GL, glError, CHART_OF_ACCOUNTS_SEED, CHART_SEED_VERSION, accountPolicy, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, suggestCategorizingAccount, periodKey as acctPeriodKey } from "./accounting-engine.js";
 import { buildTaxAppendix, TAX_RATES } from "./tax-engine.js";
 import { computeAging } from "./aging-engine.js";
 import { buildIncomeStatement, buildBalanceSheet, buildCashFlow } from "./statements-engine.js";
@@ -49,6 +49,17 @@ const ACCOUNTING_ACCOUNT_CATALOG = Object.fromEntries(
         .filter((a) => a.mappable !== false)
         .map((a) => [a.code, { name: a.name, type: a.type }])
 );
+// Full seed index — EVERY account, including the unmappable structural ones.
+// Use this to RESOLVE a code's name/type; use ACCOUNTING_ACCOUNT_CATALOG above
+// only to decide ELIGIBILITY as a mapping target. Resolving through the filtered
+// catalog silently relabels a real account (e.g. 1100 A/R) as "Other Expense",
+// which is how an unmappable-but-valid code used to disappear from the mapping
+// preview. Two different questions, two different tables.
+const ACCOUNTING_ACCOUNT_INDEX = Object.fromEntries(
+    CHART_OF_ACCOUNTS_SEED.map((a) => [a.code, { name: a.name, type: a.type }])
+);
+// Whole seed entries by code — the policy source for _withAccountPolicy.
+const CHART_SEED_BY_CODE = Object.fromEntries(CHART_OF_ACCOUNTS_SEED.map((a) => [a.code, a]));
 // Built-in category → account code. Only these categories are considered
 // confidently mappable by default; anything else (custom / "Others") is treated
 // as unmapped until the user saves an explicit mapping.
@@ -2698,11 +2709,15 @@ class DataService {
     // mapping preview, and a close-readiness checklist for the selected period.
     // Reads only user-scoped collections; never invents numbers.
 
+    // Resolve a code to its display name/type. Resolves against the FULL seed
+    // index, so a structural account (1100 A/R, 2000 A/P, cash, tax control)
+    // renders as itself rather than being silently rewritten to 6999 Other
+    // Expense. The 6999 fallback now means only what it says: unknown code.
     _accountInfo(code) {
-        const acct = ACCOUNTING_ACCOUNT_CATALOG[code];
+        const acct = ACCOUNTING_ACCOUNT_INDEX[code];
         return acct
             ? { code, name: acct.name, type: acct.type }
-            : { code: ACCOUNTING_UNMAPPED_FALLBACK_CODE, ...{ name: ACCOUNTING_ACCOUNT_CATALOG[ACCOUNTING_UNMAPPED_FALLBACK_CODE].name, type: 'expense' } };
+            : { code: ACCOUNTING_UNMAPPED_FALLBACK_CODE, name: ACCOUNTING_ACCOUNT_INDEX[ACCOUNTING_UNMAPPED_FALLBACK_CODE].name, type: 'expense' };
     }
 
     // Resolve the source key + default account suggestion for a transaction-like
@@ -2752,7 +2767,7 @@ class DataService {
         if (!sourceValue) throw new Error('source_value required');
         const code = this._nullableString(data.target_account_code, 12);
         if (!code) throw new Error('target_account_code required');
-        const catalog = ACCOUNTING_ACCOUNT_CATALOG[code];
+        const catalog = ACCOUNTING_ACCOUNT_INDEX[code];
         const targetName = this._nullableString(data.target_account_name, 80) || (catalog ? catalog.name : null);
         const targetType = data.target_account_type || (catalog ? catalog.type : null);
         if (!targetName || !targetType) throw new Error('target account name/type required');
@@ -3514,7 +3529,11 @@ class DataService {
         if (!pk) return;
         const period = await this.getPeriod(userId, pk);
         if (period.status === 'closed' || period.status === 'locked') {
-            throw new Error(`This transaction is in a closed accounting period (${pk}). Reopen the period before editing or voiding it.`);
+            throw glError(
+                period.status === 'locked' ? GL.PERIOD_LOCKED : GL.PERIOD_CLOSED,
+                `This transaction is in a closed accounting period (${pk}). Reopen the period before editing or voiding it.`,
+                { period_key: pk }
+            );
         }
     }
 
@@ -3608,7 +3627,11 @@ class DataService {
         const pk = acctPeriodKey(date);
         const period = await this.getPeriod(userId, pk);
         if (period.status === 'closed' || period.status === 'locked') {
-            throw new Error(`Cannot post to a closed accounting period (${pk}). Reopen the period, or use a date in an open period.`);
+            throw glError(
+                period.status === 'locked' ? GL.PERIOD_LOCKED : GL.PERIOD_CLOSED,
+                `Cannot post to a closed accounting period (${pk}). Reopen the period, or use a date in an open period.`,
+                { period_key: pk }
+            );
         }
     }
 
@@ -3665,7 +3688,15 @@ class DataService {
             });
             return journalRef.id;
         } catch (err) {
-            if (err && typeof err.message === 'string' && /cannot post to a closed accounting period/i.test(err.message)) {
+            // A closed period must surface to the user, not be swallowed as
+            // `pending` — the document would save with nothing said. Discriminate
+            // on the GL code; the message regex is kept for one release as a
+            // belt-and-braces fallback and is removed once the specs pin the code.
+            // (Defensive here either way: _assertOpenPostingPeriod runs ABOVE this
+            // try, so today the period error never actually reaches this catch.)
+            const code = err && err.code;
+            if (code === GL.PERIOD_CLOSED || code === GL.PERIOD_LOCKED
+                || (err && typeof err.message === 'string' && /cannot post to a closed accounting period/i.test(err.message))) {
                 throw err;
             }
             console.warn('[accounting] posting skipped, marked pending:', err && err.message ? err.message : err);
@@ -3794,11 +3825,24 @@ class DataService {
         const toExclude = [];
         let skippedClosed = 0;
         let skippedNoRule = 0;
+        let skippedError = 0;
         for (const it of items) {
-            const journal = buildJournal({
-                collection: it.collection, id: it.id, document: it.data, mappings, accounts,
-                date: it.data.timestamp || it.data.due_date || it.data.renewal_date || null
-            });
+            // Per-item guard: buildJournal throws on a malformed source (zero
+            // amount, too few lines). Unguarded, ONE bad document aborted the whole
+            // sweep and left the rest of the backlog unposted with only a partial
+            // count to show for it. A thrower stays `pending` and is retried next
+            // sweep, which is the same outcome as inline posting having failed.
+            let journal;
+            try {
+                journal = buildJournal({
+                    collection: it.collection, id: it.id, document: it.data, mappings, accounts,
+                    date: it.data.timestamp || it.data.due_date || it.data.renewal_date || null
+                });
+            } catch (err) {
+                console.warn('[accounting] sweep skipped a source:', it.collection, it.id, err && err.code ? `${err.code} ${err.message}` : err);
+                skippedError++;
+                continue;
+            }
             if (!journal) { toExclude.push(it.ref); skippedNoRule++; continue; }
             if (closed.has(journal.period_key)) { skippedClosed++; continue; }
             journal.source_number = this._sourceNumberOf(it.collection, it.data);
@@ -3835,18 +3879,27 @@ class DataService {
             excluded += slice.length;
         }
         if (posted || excluded) {
-            await this._auditCreateBestEffort(userId, 'journal.sweep', 'journals', '', { posted, excluded, skipped_closed: skippedClosed });
+            await this._auditCreateBestEffort(userId, 'journal.sweep', 'journals', '', { posted, excluded, skipped_closed: skippedClosed, skipped_error: skippedError });
         }
-        return { posted, excluded, skippedClosed, skippedNoRule };
+        return { posted, excluded, skippedClosed, skippedNoRule, skippedError };
     }
 
     // Idempotent Chart of Accounts seed. Writes only the accounts that don't yet
     // exist, so it is safe to call on every Accounting Center load. Existing docs
-    // that predate the SAK metadata (no sak_category) get a one-time merge
-    // backfill of the classification fields only — user-editable fields (name,
-    // type, is_active, opening_balance) are never touched, so the backfill can
-    // never undo an edit. Once every doc carries sak_category, the call is a
-    // single read again.
+    // below the current CHART_SEED_VERSION get a one-time merge backfill of the
+    // platform-owned fields only — user-editable fields (name, type, is_active,
+    // opening_balance) are never touched, so the backfill can never undo an edit.
+    // Once every doc is at version, the call is a single read again.
+    //
+    // The heal predicate is a VERSION STAMP, not "is field X missing?". The old
+    // `!current.sak_category` test silently stopped healing the moment
+    // sak_category shipped, so the next batch of seed fields (the policy flags)
+    // would never have reached workspaces seeded after that. Bump
+    // CHART_SEED_VERSION when the seed gains fields the seeder must backfill.
+    //
+    // This is durability, NOT the correctness path: it only runs when someone with
+    // write access opens Accounting Center. _withAccountPolicy is what makes the
+    // policy flags correct on read for everyone.
     async seedChartOfAccounts(userId) {
         const scope = this._scope(userId);
         const existing = await getDocs(collection(this.db, `${scope}/chart_of_accounts`));
@@ -3870,6 +3923,8 @@ class DataService {
                     sak_category: a.sak_category || null,
                     parent_code: a.parent_code || null,
                     is_system: !!a.is_system,
+                    ...accountPolicy(a),
+                    seed_version: CHART_SEED_VERSION,
                     normal_balance: normalBalance,
                     is_active: true,
                     currency: 'IDR',
@@ -3878,11 +3933,13 @@ class DataService {
                     created_at: serverTimestamp()
                 });
                 created += 1;
-            } else if (!current.sak_category) {
+            } else if (Number(current.seed_version || 0) < CHART_SEED_VERSION) {
                 batch.set(ref, {
-                    sak_category: a.sak_category || null,
+                    sak_category: current.sak_category || a.sak_category || null,
                     parent_code: current.parent_code ?? (a.parent_code || null),
                     is_system: !!a.is_system,
+                    ...accountPolicy(a),
+                    seed_version: CHART_SEED_VERSION,
                     name_id: current.name_id || a.name_id || a.name,
                     updated_at: serverTimestamp()
                 }, { merge: true });
@@ -3991,6 +4048,12 @@ class DataService {
     // edits here (posting engines denormalize their names); type/normal_balance
     // are never editable in Phase 1. Update allowlist: name, name_id,
     // sak_category, parent_code.
+    //
+    // ⚠️ Build the write payload EXPLICITLY — never `setDoc(ref, { ...account })`
+    // from a chart row you read. getChartOfAccounts returns rows with the seed's
+    // policy flags merged over them (_withAccountPolicy); spreading one back would
+    // start persisting that merged view and make the overlay self-fulfilling
+    // instead of a safety net.
     async saveAccount(userId, data = {}, { create = false } = {}) {
         if (!userId) throw new Error('userId required');
         const code = String(data.code || '').trim();
@@ -4081,6 +4144,12 @@ class DataService {
             description: data.description ? String(data.description).trim().slice(0, 255) : null,
             tax_code: (data.tax_code && TAX_RATES[data.tax_code]) ? data.tax_code : null,
             is_system: false,
+            // User-created accounts are fully postable. Written explicitly rather
+            // than left absent so every doc states its own policy — absent still
+            // reads as permitted, but a stored value is what a future rules-level
+            // bool check can validate.
+            ...accountPolicy({}),
+            seed_version: CHART_SEED_VERSION,
             normal_balance: (draft.type === 'asset' || draft.type === 'expense') ? 'debit' : 'credit',
             is_active: true,
             currency: 'IDR',
@@ -4138,11 +4207,40 @@ class DataService {
         return { id: key, ...current, is_active: active };
     }
 
+    // Overlay the seed's POSTING POLICY onto rows read from Firestore.
+    //
+    // Why this exists: workspaces seeded before the policy flags shipped have docs
+    // with no `mappable` / `allow_manual_journal` / `allow_direct_transaction`
+    // field at all, and every consumer defaults an absent flag to permissive. The
+    // guard in fluxy-account-picker.js was therefore inert on every seeded
+    // workspace — A/R, A/P, cash, and equity were pickable as ordinary
+    // categorizing accounts. Merging here makes the control correct the moment
+    // this file deploys, for every workspace, including viewers and workspaces
+    // that never open Accounting Center (the seeder only runs from accounting.js).
+    //
+    // SEED WINS: these are platform policy, not user data. Safe precisely because
+    // nothing writes the merged object back — saveAccount builds an explicit
+    // payload and never spreads a read doc. Keep it that way, or this merge starts
+    // persisting itself. Codes outside the seed (user-created) are untouched and
+    // stay permissive.
+    _withAccountPolicy(list) {
+        return (list || []).map((a) => {
+            const seed = a && a.code ? CHART_SEED_BY_CODE[a.code] : null;
+            if (!seed) return a;
+            return {
+                ...a,
+                mappable: seed.mappable !== false,
+                allow_manual_journal: seed.allow_manual_journal !== false,
+                allow_direct_transaction: seed.allow_direct_transaction !== false
+            };
+        });
+    }
+
     async getChartOfAccounts(userId) {
         const snap = await getDocs(collection(this.db, `${this._scope(userId)}/chart_of_accounts`));
-        return snap.docs
-            .map((d) => ({ id: d.id, ...d.data() }))
-            .sort((a, b) => String(a.code).localeCompare(String(b.code)));
+        return this._withAccountPolicy(
+            snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        ).sort((a, b) => String(a.code).localeCompare(String(b.code)));
     }
 
     // Live Chart of Accounts for the entry-drawer Account picker. Falls back to
@@ -4159,7 +4257,8 @@ class DataService {
             list = CHART_OF_ACCOUNTS_SEED.map((a) => ({
                 id: a.code, code: a.code, name: a.name, name_id: a.name_id || a.name,
                 type: a.type, sak_category: a.sak_category || null,
-                is_system: !!a.is_system, mappable: a.mappable !== false, is_active: true
+                is_system: !!a.is_system, is_active: true,
+                ...accountPolicy(a)
             }));
         }
         this._chartPickerCache[key] = list;
@@ -4211,7 +4310,7 @@ class DataService {
         const vkey = normalizeVendorKey(vendor_name);
         const code = this._nullableString(account_code, 12);
         if (!userId || !vkey || !code || code === ACCOUNTING_UNMAPPED_FALLBACK_CODE) return null;
-        const catalog = ACCOUNTING_ACCOUNT_CATALOG[code];
+        const catalog = ACCOUNTING_ACCOUNT_INDEX[code];
         const name = this._nullableString(account_name, 80) || (catalog ? catalog.name : code);
         const type = account_type || (catalog ? catalog.type : null);
         if (!type) return null;
@@ -4343,7 +4442,7 @@ class DataService {
 
     _vendorPayload(data, prev) {
         const code = this._nullableString(data.default_account_code, 12);
-        const catalog = code ? ACCOUNTING_ACCOUNT_CATALOG[code] : null;
+        const catalog = code ? ACCOUNTING_ACCOUNT_INDEX[code] : null;
         const terms = ['due_on_receipt', 'due_in_7_days', 'due_in_14_days', 'due_in_30_days'];
         return {
             default_account_code: code || null,
@@ -5191,7 +5290,16 @@ class DataService {
         if (draft.status !== 'draft') throw new Error('Journal is not a draft');
         const coa = await this.getChartOfAccounts(userId);
         const accountIndex = {};
-        coa.forEach((a) => { accountIndex[a.code] = { name: a.name, type: a.type }; });
+        const policyIndex = {};
+        coa.forEach((a) => {
+            accountIndex[a.code] = { name: a.name, type: a.type };
+            policyIndex[a.code] = a; // full row — assertManualJournalPolicy needs the flags
+        });
+        // Refuse accounts the posting engine owns (A/R, A/P, cash, equity, tax
+        // control) BEFORE building, so the user gets "1100 A/R cannot be used in a
+        // manual journal" instead of a downstream imbalance. This is the human
+        // path; the Tax Center's own buildManualJournal calls stay unguarded.
+        assertManualJournalPolicy(draft.lines, { accounts: policyIndex, subtype: draft.manual_subtype || null });
         // Throws on imbalance — a draft must be balanced before it can post.
         const built = buildManualJournal({
             lines: draft.lines,
@@ -5203,7 +5311,13 @@ class DataService {
         });
         const period = await this.getPeriod(userId, built.period_key);
         if (period.status === 'closed' || period.status === 'locked') {
-            throw new Error('Cannot post into a closed period');
+            // Same wording as _assertOpenPostingPeriod — this used to be a third
+            // phrasing of the same condition.
+            throw glError(
+                period.status === 'locked' ? GL.PERIOD_LOCKED : GL.PERIOD_CLOSED,
+                `Cannot post to a closed accounting period (${built.period_key}). Reopen the period, or use a date in an open period.`,
+                { period_key: built.period_key }
+            );
         }
         this._assignJournalNumbers([built], await this._reserveJournalNumbers(userId, { [String(built.period_key).slice(0, 4)]: 1 }));
         const batch = writeBatch(this.db);
@@ -5485,13 +5599,41 @@ class DataService {
             limitations.push('No bank statement imported yet — bank reconciliation readiness is not included.');
         }
 
+        // --- Dumping-ground health -----------------------------------------
+        // 6999 Other Expense is where the resolution ladder gives up. Spend that
+        // lands there isn't wrong, but it is unexplained — and until now it was
+        // invisible, so the number could grow indefinitely without anyone seeing
+        // it. Surfacing the share (target <2%, docs/CHART_OF_ACCOUNTS_STRATEGY.md
+        // §E) turns the dumping ground into a workable queue.
+        //
+        // WARN, don't block: 6999 is a legitimate expense account, so this informs
+        // the close rather than gating it. The hard gates stay balanced-trial-
+        // balance and zero-unposted, both enforced server-side in closePeriod().
+        const UNMAPPED_TARGET_PCT = 2;
+        let unmappedSpend = 0;
+        let totalSpend = 0;
+        transactions.forEach((tx) => {
+            const type = String(tx.type || '').toLowerCase();
+            if (!['expense', 'fee', 'tax', 'pending_payable'].includes(type)) return;
+            const amount = Math.abs(Math.round(Number(tx.amount) || 0));
+            if (!amount) return;
+            totalSpend += amount;
+            if (this._resolveAccountingSource(tx).account.code === ACCOUNTING_UNMAPPED_FALLBACK_CODE) {
+                unmappedSpend += amount;
+            }
+        });
+        const unmappedSpendPct = totalSpend > 0
+            ? Math.round((unmappedSpend / totalSpend) * 1000) / 10
+            : 0;
+
         const closeChecklist = {
             transactions_reviewed: transactions.length > 0
                 && cleanupItems.filter(i => i.source_collection === 'transactions').length === 0,
             missing_receipts_resolved: cleanupItems.filter(i => i.type === 'missing_receipt').length === 0,
             bills_reviewed: cleanupItems.filter(i => i.source_collection === 'bills').length === 0,
             bank_imports_reviewed: pendingImports.length === 0,
-            categories_mapped: unmappedSources.size === 0
+            categories_mapped: unmappedSources.size === 0,
+            dumping_ground_clear: unmappedSpendPct <= UNMAPPED_TARGET_PCT
         };
 
         return {
@@ -5505,6 +5647,9 @@ class DataService {
                 records_total: recordsTotal,
                 records_reviewed: recordsReviewed,
                 unmapped_records: unmappedRecordCount,
+                unmapped_spend_pct: unmappedSpendPct,
+                unmapped_spend_amount: unmappedSpend,
+                unmapped_spend_target_pct: UNMAPPED_TARGET_PCT,
                 close_status: closeStatus
             },
             counts: {

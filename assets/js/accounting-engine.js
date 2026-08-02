@@ -41,24 +41,46 @@ export const SAK_CATEGORIES = [
 
 // Canonical Chart of Accounts seed — the single source of truth shared by the
 // seeder, db-service catalogs, and the mapping UI so they can never drift.
-// Per entry: `is_system` marks accounts the posting/tax engines or default
-// resolution depend on (rename/archive locked); `mappable: false` keeps
-// structural accounts (cash, equity, tax) out of the category-mapping catalog;
+//
+// FOUR independent flags per entry — do not conflate them, they gate different
+// things (docs/ACCOUNTING_SPEC_REVIEW.md §7):
+//   `is_system`               rename/archive is locked (the engines hardcode it)
+//   `mappable: false`         not an auto-mapping / categorization TARGET
+//   `allow_manual_journal`    a human may NOT name it on a manual journal line
+//   `allow_direct_transaction` a human may NOT pick it on a transaction/bill line
+// The last two are the control layer: subledger accounts (A/R, A/P), cash,
+// equity, and the tax control accounts must be moved by the posting engine only,
+// or the aging report stops tying to the balance sheet. All four DEFAULT TO
+// PERMISSIVE when absent — fail-open is deliberate, since a user-created account
+// carries none of them and must stay pickable.
+//
 // `normal_balance` is only stated on contra accounts (3200, 4900) — everything
 // else derives from type. `name_id` is the Bahasa display name (data for
 // reports/AI; UI localization still flows through dashboard-i18n.js).
 export const CHART_OF_ACCOUNTS_SEED = [
     // --- Assets
-    { code: '1000', name: 'Cash & Bank', name_id: 'Kas & Bank', type: 'asset', sak_category: 'cash_bank', is_system: true, mappable: false },
-    { code: '1100', name: 'Accounts Receivable', name_id: 'Piutang Usaha', type: 'asset', sak_category: 'accounts_receivable', is_system: true },
+    { code: '1000', name: 'Cash & Bank', name_id: 'Kas & Bank', type: 'asset', sak_category: 'cash_bank', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
+    { code: '1100', name: 'Accounts Receivable', name_id: 'Piutang Usaha', type: 'asset', sak_category: 'accounts_receivable', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
     // --- Liabilities
-    { code: '2000', name: 'Accounts Payable', name_id: 'Utang Usaha', type: 'liability', sak_category: 'accounts_payable', is_system: true },
+    { code: '2000', name: 'Accounts Payable', name_id: 'Utang Usaha', type: 'liability', sak_category: 'accounts_payable', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
     { code: '2500', name: 'Deferred Revenue', name_id: 'Pendapatan Diterima di Muka', type: 'liability', sak_category: 'other_current_liability' },
+    // Suspense — where money that arrived but cannot yet be identified parks,
+    // instead of guessing an account. A LIABILITY on purpose: 6999 Other Expense
+    // is the fallback for "an expense we couldn't classify further", which is a
+    // different thing, and parking an unidentified RECEIPT there would understate
+    // net income. Seeded dormant (nothing posts here yet), the way the tax accounts
+    // were seeded ahead of tax-engine.js. Hand-codeable so a bank row can be parked
+    // here, and clearable by manual journal — that is the entire workflow.
+    { code: '2800', name: 'Suspense', name_id: 'Akun Sementara', type: 'liability', sak_category: 'other_current_liability', is_system: true, mappable: false },
     // --- Equity
-    { code: '3000', name: 'Retained Earnings', name_id: 'Laba Ditahan', type: 'equity', sak_category: 'equity', is_system: true, mappable: false },
+    { code: '3000', name: 'Retained Earnings', name_id: 'Laba Ditahan', type: 'equity', sak_category: 'equity', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
     { code: '3100', name: 'Owner Capital', name_id: 'Modal Pemilik', type: 'equity', sak_category: 'equity' },
     { code: '3200', name: 'Owner Drawings (Prive)', name_id: 'Prive', type: 'equity', sak_category: 'equity', normal_balance: 'debit' },
-    { code: '3900', name: 'Opening Balance Equity', name_id: 'Ekuitas Saldo Awal', type: 'equity', sak_category: 'equity', is_system: true, mappable: false },
+    // 3900 blocks manual journals EXCEPT the `opening` subtype — see
+    // assertManualJournalPolicy: opening balances are the one legitimate human
+    // path into cash/equity, and the Manual Journal editor is the only in-app way
+    // to record them (buildOpeningJournal has no caller).
+    { code: '3900', name: 'Opening Balance Equity', name_id: 'Ekuitas Saldo Awal', type: 'equity', sak_category: 'equity', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
     // --- Revenue
     { code: '4000', name: 'Revenue', name_id: 'Pendapatan', type: 'revenue', sak_category: 'revenue', is_system: true },
     { code: '4900', name: 'Sales Discounts & Returns', name_id: 'Diskon & Retur Penjualan', type: 'revenue', sak_category: 'revenue', parent_code: '4000', normal_balance: 'debit' },
@@ -85,13 +107,38 @@ export const CHART_OF_ACCOUNTS_SEED = [
     // --- Indonesia Tax Center accounts (see docs/INDONESIA_TAX_CENTER_ARCHITECTURE.md
     // §5). Inactive for posting until tax-engine.js emits lines against them; seeded so
     // the chart is complete and tax journals resolve account names without a lookup.
-    { code: '1130', name: 'PPN Masukan (Input VAT)', name_id: 'PPN Masukan', type: 'asset', sak_category: 'other_current_asset', is_system: true, mappable: false },
-    { code: '1140', name: 'Prepaid PPh 25', name_id: 'PPh 25 Dibayar di Muka', type: 'asset', sak_category: 'other_current_asset', is_system: true, mappable: false },
-    { code: '1150', name: 'PPh Dipotong Pihak Lain', name_id: 'PPh Dipotong Pihak Lain', type: 'asset', sak_category: 'other_current_asset', is_system: true, mappable: false },
-    { code: '2100', name: 'PPN Keluaran (Output VAT)', name_id: 'PPN Keluaran', type: 'liability', sak_category: 'other_current_liability', is_system: true, mappable: false },
-    { code: '2110', name: 'PPh Payable', name_id: 'Utang PPh', type: 'liability', sak_category: 'other_current_liability', is_system: true, mappable: false },
-    { code: '2200', name: 'PPh 29 Payable', name_id: 'Utang PPh 29', type: 'liability', sak_category: 'other_current_liability', is_system: true, mappable: false }
+    // The tax control accounts are fed by tax-engine.js and the Tax Center's own
+    // posting paths (recordCorporateTaxPayment / postAnnualCorporateTax), which
+    // call buildManualJournal directly and are NOT subject to the human policy
+    // gate — that gate lives in postManualJournal only.
+    { code: '1130', name: 'PPN Masukan (Input VAT)', name_id: 'PPN Masukan', type: 'asset', sak_category: 'other_current_asset', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
+    { code: '1140', name: 'Prepaid PPh 25', name_id: 'PPh 25 Dibayar di Muka', type: 'asset', sak_category: 'other_current_asset', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
+    { code: '1150', name: 'PPh Dipotong Pihak Lain', name_id: 'PPh Dipotong Pihak Lain', type: 'asset', sak_category: 'other_current_asset', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
+    { code: '2100', name: 'PPN Keluaran (Output VAT)', name_id: 'PPN Keluaran', type: 'liability', sak_category: 'other_current_liability', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
+    { code: '2110', name: 'PPh Payable', name_id: 'Utang PPh', type: 'liability', sak_category: 'other_current_liability', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
+    { code: '2200', name: 'PPh 29 Payable', name_id: 'Utang PPh 29', type: 'liability', sak_category: 'other_current_liability', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false }
 ];
+
+// Bumped whenever CHART_OF_ACCOUNTS_SEED gains fields the seeder must backfill
+// onto already-seeded workspaces. seedChartOfAccounts heals any doc whose stored
+// seed_version is lower, so the next change is a one-line bump rather than a new
+// ad-hoc "is this field missing?" predicate.
+//   1 → implicit (pre-versioning, healed off `!sak_category`)
+//   2 → allow_manual_journal / allow_direct_transaction / mappable persisted
+export const CHART_SEED_VERSION = 2;
+
+// Resolve the posting policy of an account row from EITHER the seed or a live
+// Firestore doc. Every flag defaults to permissive when absent: a user-created
+// account carries none of them, and fail-closed would make the entry drawer
+// unusable. Structural accounts are locked down explicitly in the seed instead.
+export function accountPolicy(account) {
+    const a = account || {};
+    return {
+        mappable: a.mappable !== false,
+        allow_manual_journal: a.allow_manual_journal !== false,
+        allow_direct_transaction: a.allow_direct_transaction !== false
+    };
+}
 
 // Codes whose rename/archive is locked: the posting/tax engines hardcode them
 // or default resolution can post to them. Derived so guards/tests share one list.
@@ -104,6 +151,10 @@ const ACCOUNT_INDEX = CHART_OF_ACCOUNTS_SEED.reduce((acc, a) => {
     acc[a.code] = { name: a.name, name_id: a.name_id || a.name, type: a.type, sak_category: a.sak_category || null };
     return acc;
 }, {});
+
+// Whole seed entries by code, INCLUDING the policy flags — ACCOUNT_INDEX above
+// deliberately carries display fields only, so policy checks must use this.
+const CHART_SEED_INDEX = CHART_OF_ACCOUNTS_SEED.reduce((acc, a) => { acc[a.code] = a; return acc; }, {});
 
 // Fixed account codes used by the posting rules.
 const CASH = '1000';
@@ -231,10 +282,46 @@ function toInt(value) {
     return Number.isFinite(n) ? n : 0;
 }
 
+// --- structured errors ----------------------------------------------------
+
+// Stable codes for every way posting can be refused. Callers discriminate on
+// `err.code`, never on the English message: before this existed, the scan drawer
+// decided whether to show a real reason by regex-matching the message text, so
+// translating a string would silently have changed control flow.
+//
+// Codes follow the GL_* taxonomy in docs/ACCOUNTING_SPEC_REVIEW.md §7 so the
+// finance spec and the implementation share one vocabulary.
+export const GL = {
+    UNBALANCED: 'GL_001',        // Σdebit ≠ Σcredit
+    TOO_FEW_LINES: 'GL_002',     // fewer than two posting lines (incl. all-blank)
+    ZERO_AMOUNT: 'GL_003',       // a rule produced a non-positive amount
+    MANUAL_BLOCKED: 'GL_010',    // allow_manual_journal === false
+    DIRECT_BLOCKED: 'GL_011',    // allow_direct_transaction === false
+    ARCHIVED: 'GL_012',          // account is archived
+    PERIOD_LOCKED: 'GL_020',     // period status 'locked'
+    PERIOD_CLOSED: 'GL_021'      // period status 'closed'
+};
+
+// Build an Error carrying a GL code plus the values that were interpolated into
+// the message. `details` is what makes the message translatable at the render
+// site (FluxyI18n.t('gl.GL_020', details)) without parsing English back out.
+// A factory rather than a subclass: keeps `instanceof Error`, stays structured-
+// cloneable-ish for tests, and adds no dependency to this file.
+export function glError(code, message, details) {
+    const err = new Error(message);
+    err.code = code;
+    err.domain = 'accounting';
+    err.details = details || {};
+    return err;
+}
+
 // Positive integer amount or throw — posting must never silently drop a value.
 function requireAmount(value, context) {
     const n = toInt(value);
-    if (n <= 0) throw new Error(`accounting-engine: non-positive amount for ${context} (${value})`);
+    if (n <= 0) {
+        throw glError(GL.ZERO_AMOUNT, `accounting-engine: non-positive amount for ${context} (${value})`,
+            { context, value: String(value) });
+    }
     return n;
 }
 
@@ -262,6 +349,18 @@ export function explicitAccount(document, requiredType) {
     if (!code) return null;
     const acct = acctInfo(code);
     if (!acct) return null;
+    // GL_011: a structural account the posting engine owns (A/R, A/P, cash,
+    // equity, tax control) may never be hand-picked onto a document line. The
+    // picker already hides these, so reaching here means a crafted payload or a
+    // stale cached chart. THROW rather than return null: falling through to the
+    // default resolution chain would silently post to a different account than the
+    // user chose, which is worse than a refusal.
+    const seed = CHART_SEED_INDEX[code];
+    if (seed && seed.allow_direct_transaction === false) {
+        throw glError(GL.DIRECT_BLOCKED,
+            `${code} ${seed.name} is maintained by the posting engine and cannot be selected on a transaction.`,
+            { account_code: code, account_name: seed.name });
+    }
     if (requiredType && acct.type !== requiredType) return null;
     return code;
 }
@@ -425,12 +524,21 @@ export function describeRule(id) {
 // --- public builders ------------------------------------------------------
 
 // Assert balance and assemble totals. Throws on imbalance so a bug can never
-// post a lopsided journal.
+// post a lopsided journal. An empty or all-zero journal is reported as GL_002
+// rather than GL_001 — "unbalanced (Dr 0 / Cr 0)" was the single most confusing
+// message in the editor, because the real problem is that nothing was entered.
 function finalize(lines, meta) {
     const totalDebit = lines.reduce((s, l) => s + toInt(l.debit), 0);
     const totalCredit = lines.reduce((s, l) => s + toInt(l.credit), 0);
+    if (lines.length < 2 || (totalDebit === 0 && totalCredit === 0)) {
+        throw glError(GL.TOO_FEW_LINES,
+            `accounting-engine: a journal requires at least two lines with an amount (got ${lines.length}) for ${meta.posting_rule_id}`,
+            { line_count: lines.length, rule: meta.posting_rule_id || '' });
+    }
     if (totalDebit !== totalCredit || totalDebit <= 0) {
-        throw new Error(`accounting-engine: unbalanced journal (Dr ${totalDebit} / Cr ${totalCredit}) for ${meta.posting_rule_id}`);
+        throw glError(GL.UNBALANCED,
+            `accounting-engine: unbalanced journal (Dr ${totalDebit} / Cr ${totalCredit}) for ${meta.posting_rule_id}`,
+            { debit: totalDebit, credit: totalCredit, rule: meta.posting_rule_id || '' });
     }
     return {
         ...meta,
@@ -555,6 +663,38 @@ export function buildReversalJournal(original, { targetPeriodKey } = {}) {
         status: 'reversal',
         reverses_journal_id: original.id || original.journal_id || null,
         memo: original.memo ? `Reversal: ${original.memo}` : 'Reversal'
+    });
+}
+
+// Refuse a HUMAN-entered journal that names an account the posting engine owns.
+//
+// Call this from the human path only. buildManualJournal itself must stay
+// unguarded: the Tax Center posts through it too (recordCorporateTaxPayment,
+// postAnnualCorporateTax) using exactly the accounts blocked here — 1140, 1150,
+// 2200, 1000. Gating inside the builder would break monthly tax posting silently.
+//
+// `accounts` is code → row from the live chart (so user-created accounts resolve
+// and archived ones are visible); it falls back to the static seed. `subtype`
+// 'opening' is exempt: recording opening balances legitimately debits cash and
+// credits opening equity, and the Manual Journal editor is the only in-app path
+// to it (buildOpeningJournal has no caller).
+export function assertManualJournalPolicy(lines, { accounts, subtype } = {}) {
+    if (subtype === 'opening') return;
+    const idx = accounts || null;
+    (lines || []).forEach((l) => {
+        const code = String((l && l.account_code) || '').trim();
+        if (!code) return;
+        const account = (idx && idx[code]) || CHART_SEED_INDEX[code] || null;
+        if (!account) return; // unknown code — finalize()/rules reject it downstream
+        if (account.is_active === false) {
+            throw glError(GL.ARCHIVED, `${code} ${account.name || ''}`.trim() + ' is archived and cannot be used.',
+                { account_code: code, account_name: account.name || code });
+        }
+        if (account.allow_manual_journal === false) {
+            throw glError(GL.MANUAL_BLOCKED,
+                `${code} ${account.name || ''}`.trim() + ' is maintained by the posting engine and cannot be used in a manual journal.',
+                { account_code: code, account_name: account.name || code });
+        }
     });
 }
 

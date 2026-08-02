@@ -247,8 +247,7 @@ async function onPostUnposted() {
     } catch (err) {
         console.error('Post unposted failed:', err);
         await window.showAlertDialog?.({
-            title: 'Could not post these entries',
-            body: escapeHtml(err.message || 'Please try again.'), tone: 'danger'
+            ...window.formatFluxyError(err, 'Could not post these entries'), tone: 'danger'
         });
         if (btn) { btn.disabled = false; btn.textContent = 'Post unposted entries'; }
     }
@@ -274,7 +273,7 @@ async function onPostPending() {
         await loadKernel(true);
     } catch (err) {
         console.error('Post pending failed:', err);
-        await window.showAlertDialog?.({ title: 'Could not post pending entries', body: escapeHtml(err.message || 'Please try again.'), tone: 'danger' });
+        await window.showAlertDialog?.({ ...window.formatFluxyError(err, 'Could not post pending entries'), tone: 'danger' });
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = 'Post pending entries'; }
     }
@@ -481,7 +480,7 @@ async function handleSaveVendor() {
         await renderVendors();
     } catch (err) {
         console.error('Save vendor failed:', err);
-        window.showToast?.(err?.message || 'Could not save the vendor. Try again.', 'error');
+        window.showToast?.(window.formatFluxyError(err).body || 'Could not save the vendor. Try again.', 'error');
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = el('vendor-edit-id').value ? 'Update vendor' : 'Save vendor'; }
     }
@@ -1549,7 +1548,7 @@ async function handleSaveKeywordRule() {
         await renderKeywordRules();
     } catch (err) {
         console.error('Save keyword rule failed:', err);
-        window.showToast?.(err?.message || 'Could not save the rule. Try again.', 'error');
+        window.showToast?.(window.formatFluxyError(err).body || 'Could not save the rule. Try again.', 'error');
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = (el('kw-rule-edit-original')?.value ? 'Update rule' : 'Add rule'); }
     }
@@ -1623,6 +1622,18 @@ function renderCloseChecklist() {
         rows.push(checkRow('Bills reviewed', c.bills_reviewed));
         rows.push(checkRow('Categories mapped to accounts', c.categories_mapped));
         rows.push(checkRow('Bank imports reviewed', c.bank_imports_reviewed));
+        // Unexplained spend. Advisory, not a gate — 6999 is a real expense
+        // account, so a non-zero share is normal; an unnoticed GROWING share is
+        // not. The hint carries the number so the row is actionable rather than a
+        // bare red cross.
+        const k = state.data?.readiness?.kpis;
+        if (k && typeof k.unmapped_spend_pct === 'number') {
+            rows.push(checkRow(
+                'Spend in Other Expense is under control',
+                c.dumping_ground_clear,
+                `${k.unmapped_spend_pct}% unexplained (target ${k.unmapped_spend_target_pct}%)`
+            ));
+        }
     }
 
     wrap.innerHTML = rows.length
@@ -2284,7 +2295,7 @@ async function handleCoaToggle(code, isActive) {
         await loadKernel(true);
     } catch (err) {
         console.error('CoA toggle failed:', err);
-        window.showToast?.(err?.message || 'Could not update the account. Try again.', 'error');
+        window.showToast?.(window.formatFluxyError(err).body || 'Could not update the account. Try again.', 'error');
     }
 }
 
@@ -2488,7 +2499,7 @@ async function onClosePeriod() {
         await loadKernel(true);
     } catch (err) {
         console.error('Close period failed:', err);
-        await window.showAlertDialog?.({ title: 'Could not close period', body: escapeHtml(err.message || 'Please try again.'), tone: 'danger' });
+        await window.showAlertDialog?.({ ...window.formatFluxyError(err, 'Could not close period'), tone: 'danger' });
         renderClosePanel();
     }
 }
@@ -2513,7 +2524,7 @@ async function onReopenPeriod() {
         await loadKernel(true);
     } catch (err) {
         console.error('Reopen period failed:', err);
-        await window.showAlertDialog?.({ title: 'Could not reopen period', body: escapeHtml(err.message || 'Please try again.'), tone: 'danger' });
+        await window.showAlertDialog?.({ ...window.formatFluxyError(err, 'Could not reopen period'), tone: 'danger' });
         renderClosePanel();
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = 'Reopen this period'; }

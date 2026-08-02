@@ -3704,6 +3704,16 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Nightly ledger-integrity reports, one doc per day
+      // (netlify/functions/ledger-integrity-sweep.js). Written ONLY by the
+      // scheduled sweep through the admin SDK, which bypasses rules — so clients
+      // get read access and nothing else. A client-writable integrity report could
+      // be used to mask the very drift it exists to surface.
+      match /ledger_integrity_reports/{dayKey} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow write: if false;
+      }
+
       // --- TAX CENTER (Indonesia) -----------------------------------------
       // Derived layer over the accounting kernel; see
       // docs/INDONESIA_TAX_CENTER_ARCHITECTURE.md. Tax data is workspace-scoped and

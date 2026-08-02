@@ -17,7 +17,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator, signInAnonymously } from 'firebase/auth';
 import {
     getFirestore, connectFirestoreEmulator, doc, collection, setDoc, updateDoc,
-    deleteDoc, serverTimestamp, writeBatch, increment
+    deleteDoc, getDoc, serverTimestamp, writeBatch, increment
 } from 'firebase/firestore';
 
 const require = createRequire(import.meta.url);
@@ -101,6 +101,27 @@ async function main() {
         }));
     await expectOutcome('hard-delete an account is denied', false, () =>
         deleteDoc(doc(db, `workspaces/${WS}/chart_of_accounts/6300`)));
+    // The posting-policy flags are additive and unvalidated by rules (the block has
+    // no hasOnly allowlist), so an account carrying them must still write. If this
+    // ever fails, someone tightened chart_of_accounts and broke seeding on every
+    // workspace at once.
+    await expectOutcome('an account carrying the posting-policy flags writes', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/chart_of_accounts/6310`), {
+            code: '6310', name: 'Policy Flags', type: 'expense', normal_balance: 'debit',
+            is_active: true, mappable: false, allow_manual_journal: false,
+            allow_direct_transaction: false, seed_version: 2
+        }));
+
+    console.log('\n— ledger_integrity_reports —');
+    // Written ONLY by the nightly sweep through the admin SDK (which bypasses
+    // rules). A client-writable integrity report could be used to mask the very
+    // drift it exists to surface, so clients get read and nothing else.
+    await expectOutcome('a member can read an integrity report', true, () =>
+        getDoc(doc(db, `workspaces/${WS}/ledger_integrity_reports/2026-08-02`)));
+    await expectOutcome('a client cannot write an integrity report', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/ledger_integrity_reports/2026-08-02`), {
+            workspace_id: WS, ok: true, checks: []
+        }));
 
     // REGRESSION: the posting engine stamps journal_ref + accounting_status onto
     // the source document. The document validators must allow these keys, or the
