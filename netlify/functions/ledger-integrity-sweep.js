@@ -17,7 +17,9 @@ const { assertWorkspaceLedger } = require('./lib/ledger-assert');
 // up by the next night's sweep.
 const MAX_WORKSPACES = 200;
 
-exports.handler = schedule('0 20 * * *', async () => {
+// TEMPORARY: */10 while verifying that Netlify actually registered this cron.
+// Reverted to '0 20 * * *' (03:00 WIB) once a firing is observed in the logs.
+exports.handler = schedule('*/10 * * * *', async () => {
     // Default-off kill switch: must be explicitly "true" to run.
     if (process.env.LEDGER_ASSERT_ENABLED !== 'true') {
         console.log('ledger-integrity-sweep skipped: LEDGER_ASSERT_ENABLED !== "true"');
