@@ -1584,7 +1584,14 @@ bills, global Σdebit == Σcredit, `ledger_balances` vs journal lines, journal
 coverage, plus an informational bank-vs-snapshot signal. Read-only — repair stays
 with `scripts/reconcile-ledger-balances.js --commit`, which now shares the
 recompute via `netlify/functions/lib/ledger-assert.js` so detector and repair
-cannot disagree. It enumerates `workspaces` **directly** rather than resolving
+cannot disagree.
+
+**Log level tracks actionability, not check result.** `console.error` is reserved
+for a crashed sweep, a failed report write, and `trial_balance` failing (journal
+lines that don't foot can only be an engine bug). Coverage gaps and
+`ledger_balances` drift log at `console.warn` — they are known states with named
+remedies, and logging them at ERROR nightly produces a permanently-red stream that
+people stop reading, which defeats the point of automating the assertions. It enumerates `workspaces` **directly** rather than resolving
 scope per-uid, which sidesteps the stale `users/{uid}` copy entirely. Unit-tested
 without credentials: `npm run check:ledger-assert`.
 

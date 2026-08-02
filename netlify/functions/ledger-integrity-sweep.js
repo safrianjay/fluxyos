@@ -46,8 +46,22 @@ exports.handler = schedule('0 20 * * *', async () => {
             failing += 1;
             const broken = report.checks.filter((c) => !c.ok && c.severity !== 'info');
             failures.push({ workspace: ws.id, checks: broken.map((c) => `${c.id} (Δ${c.delta})`) });
-            // console.error so this reaches the Netlify function log's error stream.
-            console.error(`[ledger-assert] DRIFT ${ws.id}:`, JSON.stringify(broken));
+
+            // Log level reflects whether a HUMAN needs to act, not merely that a
+            // check returned false. A coverage gap on a workspace nobody has
+            // backfilled yet is a known, expected state that would otherwise log
+            // at ERROR every night forever — and a permanently-red error stream
+            // is one people stop reading, which defeats the entire point of
+            // running these assertions automatically.
+            //
+            // ERROR is reserved for the finding that means the posting engine
+            // itself is wrong: journal LINES that do not foot cannot be explained
+            // by missing data, only by a bug. Everything else is a WARN with a
+            // named remedy.
+            const enginebug = broken.some((c) => c.id === 'trial_balance');
+            const line = `[ledger-assert] ${ws.id}: ${JSON.stringify(broken)}`;
+            if (enginebug) console.error(`UNBALANCED LEDGER — ${line}`);
+            else console.warn(`findings — ${line}`);
         }
         try {
             await db.collection('workspaces').doc(ws.id)
@@ -60,5 +74,7 @@ exports.handler = schedule('0 20 * * *', async () => {
 
     const summary = { day: dayKey, scanned, failing, failures };
     console.log('[ledger-assert] sweep complete:', JSON.stringify(summary));
+    // Full detail always lands in workspaces/{id}/ledger_integrity_reports/{day};
+    // the log is a pointer, not the record.
     return { statusCode: 200, body: JSON.stringify(summary) };
 });
