@@ -453,7 +453,19 @@ revenue and cash. It now posts to `4900 Sales Discounts & Returns` (contra-reven
 restoring the commerce model's own invariant `income − fee − refund = netRevenue`,
 which `tests/accounting-engine.spec.js` asserts end to end.
 
-> ⚠️ **Historical journals are NOT backfilled.** Orders posted before this change
+> **Backfill tool: `scripts/backfill-commerce-clearing.js`** (dry-run default,
+> `--workspace`, `--commit`, idempotent). Reverses each old commerce journal and
+> reposts it under the CM-* rules, reusing the real engine via the data-URL import
+> so the repost cannot drift from what the app writes today. **Closed books are
+> never rewritten** — both legs land in the earliest open period at or after the
+> source's own, falling back to the current month. Emulator-verified end to end:
+> a seeded order/fee/refund/settlement set corrects to cash 680,000, clearing 0,
+> net revenue 800,000; re-running changes nothing; with 2026-07 closed the
+> corrections move to 2026-08. After `--commit`, run
+> `backfill-journal-numbers.js`, then `reconcile-ledger-balances.js`, then
+> `ledger-assert-report.js`.
+>
+> ⚠️ **Historical journals are NOT backfilled until you run it.** Orders posted before this change
 > still sit as Dr 1000 Cash, and their settlements are `excluded`. Until that is
 > reconciled, commerce-connected workspaces will show a `bank_balance` gap from the
 > old rows — do not "fix" it by adjusting the bank snapshot. Backfilling means
