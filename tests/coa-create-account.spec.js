@@ -19,6 +19,25 @@ const collectErrors = (page) => {
     return bad;
 };
 
+// Custom accounts are archive-only in the product, so every run of the three
+// creating tests below used to leak a permanent account into the QA workspace —
+// the picker had accumulated ~130 of them. Archiving what a test created keeps the
+// suite re-runnable AND self-cleaning. Best-effort: a failure here must never mask
+// the assertion the test actually made.
+async function archiveCreated(page, code) {
+    if (!code) return;
+    await page.evaluate(async (c) => {
+        try {
+            const { getApps } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+            const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            const DataService = (await import('/assets/js/db-service.js')).default;
+            const app = getApps()[0];
+            const uid = getAuth(app).currentUser?.uid;
+            if (uid) await new DataService(app).archiveAccount(uid, c);
+        } catch (_) { /* leaves one stray account; scripts/cleanup-qa-test-data.js --accounts sweeps it */ }
+    }, code).catch(() => {});
+}
+
 async function openCoaDrawer(page) {
     await page.goto('/accounting.html');
     await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
@@ -58,6 +77,7 @@ test('New Account drawer creates a custom account; it lands in the CoA table and
     await expect(page.locator('.mj-acct').first()).toBeVisible({ timeout: 30000 });
     await expect(page.locator(`.mj-acct option[value="${code}"]`).first()).toHaveCount(1);
 
+    await archiveCreated(page, code);
     expect(bad, `console/page errors: ${bad.join(' | ')}`).toHaveLength(0);
 });
 
@@ -134,6 +154,7 @@ test('Edit drawer opens for a user-created account (code immutable) and renames 
     await expect(page.locator(`#coa-content a.acct-link[href="/accounting-account?code=${code}"]`))
         .toHaveText(newName, { timeout: 15000 });
 
+    await archiveCreated(page, code);
     expect(bad, `console/page errors: ${bad.join(' | ')}`).toHaveLength(0);
 });
 
@@ -186,5 +207,8 @@ test('Edit lock: an account with posted activity locks category + parent but sta
     await expect(page.locator(`#coa-content a.acct-link[href="/accounting-account?code=${code}"]`))
         .toHaveText(newName, { timeout: 15000 });
 
+    // This one carries a posted journal, so it can only be archived — its journal
+    // lines denormalize the code and deleting it would dead-end a GL drill-down.
+    await archiveCreated(page, code);
     expect(bad, `console/page errors: ${bad.join(' | ')}`).toHaveLength(0);
 });

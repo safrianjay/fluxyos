@@ -404,6 +404,46 @@ verified by stashing. Not introduced here.
 2. `firebase deploy --only firestore:rules` — the `ledger_integrity_reports` block.
 3. `LEDGER_ASSERT_ENABLED=true` on the **app** site only.
 
+### 7.4b 🔴 Commerce revenue debits Cash at order time — account seeded, NOT wired
+
+Found 2026-08-03 while adding the clearing account. **This is a live defect**, not
+a latent one: `COMMERCE_ENABLED` and `COMMERCE_SYNC_ENABLED` are both `true` in
+production.
+
+`finance-map.js` emits the order-level revenue entry as `type: 'income'`
+([finance-map.js:62](netlify/functions/lib/commerce/finance-map.js#L62)), which
+selects `TXN-INC-CASH` → **Dr 1000 Cash & Bank / Cr 4000 Revenue**. But at order
+time the money is still with the marketplace. The payout arrives later as a
+settlement, mapped to `type: 'transfer'` — and transfers **do not post at all**.
+
+Consequences for any workspace with a marketplace connected:
+- **Cash is overstated** from order date onward, by the full unsettled balance.
+- **The bank reconciliation can never tie** — GL cash includes money that is not
+  in any bank account, so assertion #5 in the nightly sweep is structurally
+  unsatisfiable for these workspaces.
+- Platform fees post as ordinary `fee` expense against cash that was never there.
+
+**`1030 Payment Gateway Clearing` is now seeded for this**, with the spec's §6.1
+policy (hand-codeable, closed to manual journals) and `sak_category:
+'other_current_asset'` — deliberately not `cash_bank`, or it would re-create the
+same overstatement one level down.
+
+**It is seeded only. Wiring is a separate, QA'd change**, because it cannot be
+done through the existing seams:
+
+- `account_code` on a document overrides the *categorizing* (revenue) leg, not the
+  cash leg, so the debit side cannot be redirected by mapping alone. It needs a new
+  posting rule (`TXN-INC-CLEARING`: Dr 1030 / Cr Revenue) selected off a commerce
+  marker such as `source: LEDGER_SOURCE`.
+- Settlements must start posting `Dr 1000 Bank / Cr 1030` instead of being a
+  non-posting `transfer`.
+- Fees should clear against 1030, not cash (spec §5.1's two-step gateway example).
+- Orders already posted the old way stay Dr Cash, so the change needs a decision
+  about backfilling them or accepting a dated cutover.
+
+Until that lands, treat `bank_balance` findings on commerce-connected workspaces as
+expected, and do not "fix" them by adjusting the bank snapshot.
+
 ### 7.5 What the document has no place for — protect these
 
 The doc is Xero-shaped and has no concept of: the **AI mapping resolution ladder** and vendor

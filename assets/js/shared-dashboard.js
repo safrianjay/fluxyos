@@ -1229,6 +1229,7 @@ window.showAddTransactionModal = function(options = {}) {
     let cashBankAccounts = [];        // loaded once per drawer open
     let accountPicker = null;         // FluxyAccountPicker controller (CoA account)
     let accountUserTouched = false;   // true once the user manually picks an account
+    let accountSuggestSeq = 0;        // drops stale/overtaken suggestion responses
     let csvImportState = {
         file: null,
         csvText: '',
@@ -1775,6 +1776,13 @@ window.showAddTransactionModal = function(options = {}) {
             const okType = filter === 'in' ? cur && cur.type === 'revenue' : cur && cur.type === 'expense';
             if (okType) return; // keep the user's still-valid pick
         }
+        // Same in-flight race as the Edit drawer (see ledger.html): the suggestion
+        // is an async round-trip, so a reply can land after the user has already
+        // picked. Applying it then would overwrite their choice AND reset
+        // accountUserTouched, which silently re-enables re-suggestion for every
+        // later edit. Drop superseded and overtaken responses.
+        const seq = ++accountSuggestSeq;
+        const touchedAtStart = accountUserTouched;
         try {
             const { ds, scopeId } = await resolveTxServiceWhenReady();
             const baseType = context === 'bill' ? (typeSelectEl?.value || 'expense') : (DIRECTION_TO_TYPE[dir] || 'expense');
@@ -1785,6 +1793,8 @@ window.showAddTransactionModal = function(options = {}) {
                 category: catEl ? catEl.value : defaultCategory,
                 vendor_name: vendorEl ? vendorEl.value : ''  // vendor memory (Phase 3): pre-fill the account last used for this vendor
             });
+            if (seq !== accountSuggestSeq) return;               // superseded
+            if (accountUserTouched !== touchedAtStart) return;   // picked mid-flight
             if (sug && sug.code) { accountPicker.setValue(sug.code); accountUserTouched = false; setDerivedCategory(accountPicker.getAccount()); }
         } catch (_) { /* non-fatal — the field simply stays empty */ }
     }

@@ -2914,8 +2914,24 @@
                     ? `<span class="ml-1 text-[10px] font-semibold normal-case text-gray-400">${escapeHtml(label)}</span>`
                     : '';
             };
+            // Suggestion requests are async (a Firestore round-trip), so a response
+            // can land AFTER the user has already picked an account by hand. Two
+            // guards below, both load-bearing:
+            //   seq  — a stale response from an earlier edit must not overwrite a
+            //          newer one (rapid category typing fires several).
+            //   touched-during-flight — the mount fires refreshEditAccount(TRUE) for
+            //          any record with no account_code, and if the user picks while
+            //          that is in flight the late reply used to (a) clobber their
+            //          choice and (b) reset accountUserTouched to false, so every
+            //          LATER category edit silently re-suggested too. That is the
+            //          bug behind "an account chosen by hand survives a later
+            //          category edit": pick 6999, change the category, and the field
+            //          quietly became the category default.
+            let accountReqSeq = 0;
             const refreshEditAccount = async (force) => {
                 if (!accountPicker || (!force && accountUserTouched)) return;
+                const seq = ++accountReqSeq;
+                const touchedAtStart = accountUserTouched;
                 try {
                     accountPicker.setDirection(editAccountDirection());
                     const sug = await ds.suggestAccountForEntry(editUser.uid, {
@@ -2923,6 +2939,8 @@
                         category: document.getElementById('tx-edit-category')?.value || '',
                         vendor_name: document.getElementById('tx-edit-vendor')?.value || ''
                     });
+                    if (seq !== accountReqSeq) return;               // superseded
+                    if (accountUserTouched !== touchedAtStart) return; // picked mid-flight
                     if (sug && sug.code) {
                         accountPicker.setValue(sug.code);
                         accountUserTouched = false;

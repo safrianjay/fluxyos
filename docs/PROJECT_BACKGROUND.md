@@ -1519,6 +1519,15 @@ deferred): `entity_id` (= workspaceId), `currency` ('IDR'), `fx_rate` (1),
 `functional_amount`. Source documents gain `journal_ref` + `accounting_status`
 (`posted`/`pending`/`excluded`) for drill-down.
 
+**⚠️ Commerce revenue debits Cash at order time (live defect, 2026-08-03).** The
+order-level revenue entry from `finance-map.js` is `type:'income'` → `TXN-INC-CASH`
+→ Dr `1000` / Cr `4000`, but the money is still with the marketplace; the payout is
+a non-posting `transfer`. Cash is overstated and the bank rec cannot tie for any
+commerce-connected workspace. `1030 Payment Gateway Clearing` is **seeded for this
+but not wired** — the fix needs a new posting rule, since `account_code` overrides
+the categorizing leg, not the cash leg. Full writeup + wiring shape:
+`docs/ACCOUNTING_SPEC_REVIEW.md` §7.4b.
+
 **Account posting policy (the control layer, 2026-08-02).** Four independent flags
 per account, all defaulting to PERMISSIVE when absent (fail-open — a user-created
 account carries none of them and must stay pickable):

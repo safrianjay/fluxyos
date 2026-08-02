@@ -61,6 +61,15 @@ export const CHART_OF_ACCOUNTS_SEED = [
     // --- Assets
     { code: '1000', name: 'Cash & Bank', name_id: 'Kas & Bank', type: 'asset', sak_category: 'cash_bank', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
     { code: '1100', name: 'Accounts Receivable', name_id: 'Piutang Usaha', type: 'asset', sak_category: 'accounts_receivable', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
+    // Marketplace / payment-gateway settlement float: money a customer has paid
+    // that the platform has NOT yet deposited. Deliberately NOT sak_category
+    // 'cash_bank' — it is not spendable, and grouping it with cash would overstate
+    // the cash position and make the bank reconciliation untieable by design.
+    // Hand-codeable (a settlement row gets coded here) but closed to manual
+    // journals: it clears by matching gross settlement to net deposit, and a manual
+    // entry leaves residue nothing can ever match off.
+    // ⚠️ Seeded but NOT yet wired — see docs/ACCOUNTING_SPEC_REVIEW.md §7.4b.
+    { code: '1030', name: 'Payment Gateway Clearing', name_id: 'Dana Mengendap Gateway', type: 'asset', sak_category: 'other_current_asset', is_system: true, mappable: false, allow_manual_journal: false },
     // --- Liabilities
     { code: '2000', name: 'Accounts Payable', name_id: 'Utang Usaha', type: 'liability', sak_category: 'accounts_payable', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
     { code: '2500', name: 'Deferred Revenue', name_id: 'Pendapatan Diterima di Muka', type: 'liability', sak_category: 'other_current_liability' },

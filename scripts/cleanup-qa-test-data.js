@@ -36,6 +36,8 @@
 //   --scope <s>        'workspaces' (default) or 'users' (pre-migration/user-scoped QA).
 //   --bills            also delete test bills + linked payment txns + journals.
 //   --invoices         also delete test invoices + INV-PAY txns + journals + items.
+//   --accounts         prune QA chart-of-accounts rows: DELETE the ones that never
+//                      posted, ARCHIVE (never delete) any that carry journal lines.
 //   --commit           actually delete (default is dry-run — nothing is written).
 // =============================================================================
 
@@ -48,6 +50,7 @@ const SCOPE = argVal('--scope', 'workspaces');
 const COMMIT = args.includes('--commit');
 const WITH_BILLS = args.includes('--bills');
 const WITH_INVOICES = args.includes('--invoices');
+const WITH_ACCOUNTS = args.includes('--accounts');
 
 if (!WS) { console.error('Required: --workspace <workspaceId or owner uid>'); process.exit(1); }
 if (SCOPE !== 'workspaces' && SCOPE !== 'users') { console.error("--scope must be 'workspaces' or 'users'"); process.exit(1); }
@@ -62,6 +65,12 @@ const isTestBillVendor = (n) => typeof n === 'string' && /^QA (Bill|Vendor PPN|V
 // Invoice e2es all use a "QA …" customer_name (QA Inv Partial, QA Combine, QA USD,
 // QA Receive, QA Invoice Pay/Void, QA PPN/WHT Customer, QA Customer).
 const isTestInvoiceCustomer = (n) => typeof n === 'string' && /^QA /.test(n);
+// Chart-of-accounts rows the CoA e2es create. Every run of coa-create-account.spec.js
+// leaks one account per creating test — custom accounts are archive-only in the
+// product, so nothing reclaims them and the QA picker fills with noise.
+const isTestAccount = (a) => typeof a.name === 'string'
+    && /^QA (Custom Expense|Locked|Editable|Renamed)/i.test(a.name)
+    && a.is_system !== true;
 const isTestMapping = (m) =>
     (m.source_type === 'vendor' && /^qa /i.test(String(m.source_value || '')))
     || (m.source_type === 'keyword' && /^(scan|kw)\d/i.test(String(m.source_value || '')));
@@ -136,7 +145,34 @@ async function main() {
         if (iDel.length && COMMIT) console.log(`\n  ⚠ Rebuild balances now:  node scripts/reconcile-ledger-balances.js --commit  (see that script's --help)`);
     }
 
-    console.log(`\n${COMMIT ? 'Done.' : 'Dry-run only — re-run with --commit to delete (add --bills / --invoices to include them).'}\n`);
+    // N) Chart of accounts — the ONLY collection here where deletion can orphan
+    // history, so it is split two ways: an account with no journal line and no
+    // ledger_balances row never posted anything and is deleted outright; one that
+    // DID post is archived (is_active:false), never deleted, because its journal
+    // lines denormalize the code and a General Ledger drill-down would dead-end.
+    // That mirrors the product rule — archive via is_active, never hard-delete.
+    if (WITH_ACCOUNTS) {
+        const accts = (await db.collection(`${base}/chart_of_accounts`).get()).docs.filter((d) => isTestAccount(d.data()));
+        const used = new Set();
+        (await db.collection(`${base}/ledger_balances`).get()).forEach((d) => {
+            const c = d.data().account_code;
+            if (c && (Number(d.data().debit_total) || Number(d.data().credit_total))) used.add(String(c));
+        });
+        (await db.collection(`${base}/journals`).get()).forEach((d) => {
+            (d.data().lines || []).forEach((l) => { if (l.account_code) used.add(String(l.account_code)); });
+        });
+        const toArchive = accts.filter((d) => used.has(String(d.data().code)) && d.data().is_active !== false);
+        const toDelete = accts.filter((d) => !used.has(String(d.data().code)));
+        const alreadyArchived = accts.length - toArchive.length - toDelete.length;
+        console.log(`Accounts: ${accts.length} test docs → ${toDelete.length} unused (delete), ${toArchive.length} used (archive), ${alreadyArchived} already archived`
+            + preview(toDelete, (d) => d.data().code));
+        if (COMMIT) {
+            for (const d of toDelete) await d.ref.delete();
+            for (const d of toArchive) await d.ref.set({ is_active: false, updated_at: new Date() }, { merge: true });
+        }
+    }
+
+    console.log(`\n${COMMIT ? 'Done.' : 'Dry-run only — re-run with --commit to delete (add --bills / --invoices / --accounts to include them).'}\n`);
     process.exit(0);
 }
 

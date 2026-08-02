@@ -38,6 +38,7 @@ test('chart of accounts seed is internally consistent', async ({ page }) => {
             policyDefaults: e.accountPolicy({ code: '6510', name: 'User made this' }),
             policyLocked: e.accountPolicy(byCode['1100']),
             policySuspense: e.accountPolicy(byCode['2800']),
+            policyClearing: e.accountPolicy(byCode['1030']),
             draftChecks: {
                 validChild: e.validateAccountDraft(
                     { code: '6470', type: 'expense', name: 'Depreciation Expense', sak_category: 'operating_expense', parent_code: '6400' },
@@ -55,8 +56,8 @@ test('chart of accounts seed is internally consistent', async ({ page }) => {
         };
     });
 
-    // 33 unique, well-formed accounts.
-    expect(r.count).toBe(33);
+    // 34 unique, well-formed accounts.
+    expect(r.count).toBe(34);
     expect(new Set(r.codes).size).toBe(r.count);
     expect(r.badCodes).toEqual([]);
     expect(r.badTypes).toEqual([]);
@@ -69,7 +70,7 @@ test('chart of accounts seed is internally consistent', async ({ page }) => {
     // Contra normal-balance overrides exist ONLY on 3200 and 4900.
     expect(r.contraOverrides.sort()).toEqual(['3200', '4900']);
     // System set covers every code the engines/defaults hardcode.
-    const requiredSystem = ['1000', '1100', '2000', '2800', '3000', '3900', '4000',
+    const requiredSystem = ['1000', '1030', '1100', '2000', '2800', '3000', '3900', '4000',
         '6100', '6200', '6300', '6400', '6500', '6600', '6999',
         '1130', '1140', '1150', '2100', '2110', '2200'];
     expect([...r.systemCodes].sort()).toEqual([...requiredSystem].sort());
@@ -85,8 +86,13 @@ test('chart of accounts seed is internally consistent', async ({ page }) => {
     // aging report and the balance sheet with no audit path back to a customer.
     const structural = ['1000', '1100', '2000', '3000', '3900',
         '1130', '1140', '1150', '2100', '2110', '2200'].sort();
-    expect(r.blockedManual).toEqual(structural);
     expect(r.blockedDirect).toEqual(structural);
+    // 1030 Payment Gateway Clearing additionally blocks manual journals while
+    // staying hand-codeable: a settlement row is coded to it, but it clears by
+    // matching gross settlement to net deposit, so a manual entry leaves residue
+    // nothing can match off. Proof the two flags are genuinely independent.
+    expect(r.blockedManual).toEqual([...structural, '1030'].sort());
+    expect(r.policyClearing).toEqual({ mappable: false, allow_manual_journal: false, allow_direct_transaction: true });
     // Fail-OPEN by default: a user-created account carries no flags and must stay
     // fully postable, or creating an account would make it unusable.
     expect(r.policyDefaults).toEqual({ mappable: true, allow_manual_journal: true, allow_direct_transaction: true });
