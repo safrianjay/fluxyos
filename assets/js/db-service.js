@@ -3554,11 +3554,19 @@ class DataService {
             let oldJournalId = existing && existing.journal_ref;
             if (oldJournalId) {
                 const oldJournal = await this.getJournalById(userId, oldJournalId);
-                if (oldJournal && !oldJournal.reversed_by_journal_id) {
+                // Never reverse a REVERSAL. It has already neutralised its original,
+                // so reversing it re-applies that entry — silent corruption on a
+                // control account. This is the automatic twin of the guard in
+                // reverseJournal(): a production workspace ended up with a negative
+                // Accounts Receivable balance this way, and reversed_by_journal_id
+                // alone does not catch it (a reversal that nothing has reversed yet
+                // passes that test happily). Degrade safely: treat it as nothing to
+                // reverse and just repost.
+                if (oldJournal && oldJournal.status !== 'reversal' && !oldJournal.reversed_by_journal_id) {
                     targetPeriod = await this._openTargetPeriod(userId, oldJournal.period_key);
                     reversal = buildReversalJournal({ ...oldJournal, id: oldJournalId }, { targetPeriodKey: targetPeriod });
                 } else {
-                    oldJournalId = null; // already reversed / nothing to reverse
+                    oldJournalId = null; // already reversed, or is itself a reversal
                 }
             }
             let fresh = null;
