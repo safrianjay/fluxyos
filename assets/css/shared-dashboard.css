@@ -682,6 +682,12 @@ main > header {
    corners, elevated with an all-around shadow — reads as a floating workspace
    rather than an extension of the page. The slide-in still rides the Tailwind
    `translate-x-full` transform, unaffected by the margin. */
+/* Every flex child between the panel and the scrolling body needs min-height:0
+   for the same reason — the chain is panel > form > body, and one un-hardened
+   link is enough to break the pinning. */
+.fluxy-drawer-panel > form,
+.fluxy-drawer-panel > form > .fluxy-drawer-body { min-height: 0; }
+
 .fluxy-drawer-panel {
     position: relative;
     z-index: 10;
@@ -864,6 +870,13 @@ main > header {
 /* Body + section cards */
 .fluxy-drawer-body {
     flex: 1;
+    /* min-height:0 is required on a scrolling flex child. Without it the child's
+       automatic minimum size is its CONTENT height, so a tall item (an attachment
+       preview, a long form) can size the body to its content instead of to the
+       space available — leaving the footer stranded mid-panel with empty space
+       below it. Browsers differ on when this bites, which is why it reproduces on
+       some machines and not others. */
+    min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding: 32px;
