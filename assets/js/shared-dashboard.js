@@ -468,7 +468,7 @@ window.FluxyCashImpact = (function () {
                 </div>
             </div>
             <div>
-                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Link cash account <span class="normal-case font-normal">(optional)</span></label>
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Link cash account</label>
                 ${bankAccounts && bankAccounts.length
                     ? `<select data-fci="account" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#EA580C] text-[13px]"><option value="">No account linked</option>${accountOptions}</select>`
                     : `<p class="text-[13px] text-gray-500 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl">No bank accounts added yet. Add one in Settings → Cash &amp; Bank Accounts.</p>`}
@@ -613,6 +613,34 @@ window.FluxyCashImpact = (function () {
 
     // Badge + optional cash-account select. No impact/direction tabs: those are
     // derived from the type shown right above this in every drawer.
+    // Which cash account to PRE-SELECT. The account is a real user choice, but
+    // defaulting it to "No account linked" meant 91% of transactions were saved
+    // unattributed — nobody opts in to a field that is already filled with a valid
+    // answer. Unattributed cash is what makes the bank reconciliation approximate
+    // instead of exact, so the default has to be the useful one.
+    //
+    // Order: an explicit value (editing an existing row) → the last account this
+    // workspace used → the only active account, if there is exactly one. With
+    // several accounts and no history there is a genuine choice, so ask.
+    // "No account linked" stays available; it just stops being the default.
+    const LAST_ACCOUNT_KEY = 'fluxy_last_cash_account';
+    function rememberAccount(scopeId, accountId) {
+        try {
+            if (!accountId) return;
+            localStorage.setItem(`${LAST_ACCOUNT_KEY}:${scopeId || 'default'}`, String(accountId));
+        } catch (_) { /* private mode — the default just falls back a tier */ }
+    }
+    function defaultAccountId(bankAccounts, { explicit = '', scopeId = null } = {}) {
+        const active = (bankAccounts || []).filter(a => a.status === 'active');
+        const isActive = (id) => !!id && active.some(a => a.id === id);
+        if (isActive(explicit)) return explicit;
+        try {
+            const remembered = localStorage.getItem(`${LAST_ACCOUNT_KEY}:${scopeId || 'default'}`);
+            if (isActive(remembered)) return remembered;
+        } catch (_) { /* ignore */ }
+        return active.length === 1 ? active[0].id : '';
+    }
+
     function buildDerivedHtml({ type, accountId = '', bankAccounts = [], showAccount = true } = {}) {
         const b = badgeForType(type);
         const accounts = (bankAccounts || []).filter(a => a.status === 'active');
@@ -630,7 +658,7 @@ window.FluxyCashImpact = (function () {
             </div>
             ${showAccount && needsAccount ? `
             <div data-fci-account-field>
-                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Link cash account <span class="normal-case font-normal">(optional)</span></label>
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Link cash account</label>
                 ${accounts.length
                     ? `<select data-fci="account" ${accounts.length > 5 ? 'data-fluxy-search' : ''} class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#EA580C] text-[13px]"><option value="">No account linked</option>${options}</select>`
                     : `<p class="text-[13px] text-gray-500 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl">No bank accounts added yet. Add one in Settings → Cash &amp; Bank Accounts.</p>`}
@@ -659,7 +687,8 @@ window.FluxyCashImpact = (function () {
     return {
         buildHtml, wire, derive, stateFromRecord,
         impactForType, directionForType, deriveFromType, isDerivable,
-        badgeForType, explainForType, buildDerivedHtml, refreshDerived, accountIdFrom
+        badgeForType, explainForType, buildDerivedHtml, refreshDerived, accountIdFrom,
+        defaultAccountId, rememberAccount
     };
 })();
 
@@ -1227,6 +1256,7 @@ window.showAddTransactionModal = function(options = {}) {
     let txAllocationReload = null;  // () => Promise, re-fetches allocations on date change
     let bulkAllocationContext = null; // { budget, allocations } | null — CSV apply-to-all
     let cashBankAccounts = [];        // loaded once per drawer open
+    let cashScopeId = null;           // workspace id — scopes the remembered cash account
     let accountPicker = null;         // FluxyAccountPicker controller (CoA account)
     let accountUserTouched = false;   // true once the user manually picks an account
     let accountSuggestSeq = 0;        // drops stale/overtaken suggestion responses
@@ -1862,7 +1892,10 @@ window.showAddTransactionModal = function(options = {}) {
         const renderCashControl = () => {
             if (!FCI || !cashControl) return;
             const typeVal = typeSelectEl?.value || defaultType;
-            const keepAccount = FCI.accountIdFrom(cashControl);
+            // Keep whatever is on screen if the user already chose; otherwise fall
+            // back to the resolved default (last used, or the only active account).
+            const keepAccount = FCI.accountIdFrom(cashControl)
+                || FCI.defaultAccountId(cashBankAccounts, { scopeId: cashScopeId });
             cashControl.innerHTML = FCI.buildDerivedHtml({
                 type: typeVal, accountId: keepAccount, bankAccounts: cashBankAccounts
             });
@@ -1892,8 +1925,12 @@ window.showAddTransactionModal = function(options = {}) {
             try {
                 const { ds, user } = await getTransactionDataService();
                 if (user && typeof ds.getBankAccounts === 'function') {
+                    cashScopeId = (typeof ds._resolvedScopeId === 'function' ? ds._resolvedScopeId(user.uid) : null) || user.uid;
                     cashBankAccounts = (await ds.getBankAccounts(user.uid)) || [];
-                    if (cashBankAccounts.length) { renderCashControl(); updateCashImpactSection(); }
+                    // Re-render even when the list is empty so a workspace that has
+                    // since added an account picks the default up on the next open.
+                    renderCashControl();
+                    updateCashImpactSection();
                 }
             } catch (_) {}
         })();
@@ -2558,7 +2595,11 @@ window.showAddTransactionModal = function(options = {}) {
             // Append optional cash-impact fields for transaction context.
             // Does not write to bank_accounts or bank_balance_snapshots.
             if (context === 'transaction') {
-                Object.assign(data, buildCashImpactFields(txType, window.FluxyCashImpact.accountIdFrom(document.getElementById('tx-cash-impact-control')), data.timestamp));
+                const chosenCashAccount = window.FluxyCashImpact.accountIdFrom(document.getElementById('tx-cash-impact-control'));
+                // Remember it so the next entry defaults to the same account — the
+                // single biggest lever on cash attribution, which bank rec depends on.
+                window.FluxyCashImpact.rememberAccount(cashScopeId, chosenCashAccount);
+                Object.assign(data, buildCashImpactFields(txType, chosenCashAccount, data.timestamp));
             }
 
             // Shared document attachment (Phase 1):
