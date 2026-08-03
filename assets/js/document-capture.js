@@ -1539,8 +1539,16 @@
                 window.showToast?.(cfg.toastSuccess, 'success');
             }
             closeDrawer();
+            // Same page-global problem as the Add Transaction drawer: cfg.refreshFn
+            // names ONE function that only exists on that record's own page, so a
+            // scan saved from anywhere else refreshed nothing. Keep it for the host
+            // page, and announce the change so every other surface reloads too.
             const refresh = window[cfg.refreshFn];
             if (typeof refresh === 'function') refresh();
+            window.FluxyDataSync?.emit({
+                kind: state.mode === 'bill' ? 'bill' : (state.mode === 'subscription' ? 'subscription' : 'transaction'),
+                action: 'create', source: 'scan'
+            });
         } catch (err) {
             const msg = err?.message || '';
             console.error('[document-capture] save failed:', msg || err);

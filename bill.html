@@ -387,6 +387,9 @@
                 billRangeStart = start;
                 billRangeEnd = end;
                 window.loadBills();
+                // Bills depend on transactions (a bill payment IS a transaction), so reload
+                // whenever anything financial changes anywhere in the app.
+                window.FluxyDataSync?.onChange(() => window.loadBills());
             }
         });
 

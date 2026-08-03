@@ -901,6 +901,7 @@ export function initInvoicesPage({ ds, user }) {
             editor.lastSavedAt = new Date();
             invoicesLoaded = false;
             loadInvoices();
+            window.FluxyDataSync?.onChange(() => loadInvoices());
             if (!silent) window.showToast?.(editor.status === 'open' ? 'Invoice changes saved.' : 'Invoice draft saved.', 'success');
             return true;
         } catch (error) {

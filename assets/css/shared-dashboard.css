@@ -2520,3 +2520,22 @@ main > header {
     .fluxy-filter-rail { width: 132px; padding: 10px 6px; }
     .fluxy-filter-rail-item { gap: 8px; padding: 8px; }
 }
+
+/* ── Newly-created row highlight ──────────────────────────────────────
+   A save used to close the drawer and leave the table looking identical, so
+   users re-read the whole list to confirm their record arrived. This marks the
+   new row for ~2.5s: a brand-tinted wash that fades out, plus a left rule that
+   persists a moment longer so the eye can find it after the wash clears.
+   Honors prefers-reduced-motion — the tint still appears and fades, it just
+   does not slide. */
+@keyframes fluxy-row-land {
+    0%   { background-color: rgba(234, 88, 12, 0.14); }
+    70%  { background-color: rgba(234, 88, 12, 0.09); }
+    100% { background-color: transparent; }
+}
+.fluxy-row-new > td { animation: fluxy-row-land 2.5s ease-out forwards; }
+.fluxy-row-new > td:first-child { box-shadow: inset 3px 0 0 0 #EA580C; transition: box-shadow 0.4s ease-out 2.1s; }
+.fluxy-row-new-done > td:first-child { box-shadow: inset 3px 0 0 0 transparent; }
+@media (prefers-reduced-motion: reduce) {
+    .fluxy-row-new > td { animation-duration: 1.2s; }
+}

@@ -159,6 +159,10 @@ export function initNetProfitPage({ ds, user }) {
 
     registerAiPageContext();
     loadAndRender();
+    // Reload when any page saves a transaction/bill/invoice. Without this a save
+    // made from the entry drawer here wrote to Firestore and left every figure on
+    // screen stale, which reads as "it didn't save".
+    window.FluxyDataSync?.onChange(() => loadAndRender());
 }
 
 async function loadAndRender() {

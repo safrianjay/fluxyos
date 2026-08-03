@@ -2501,8 +2501,7 @@ window.showAddTransactionModal = function(options = {}) {
                 btn.innerText = `Uploading ${transactions.length}...`;
                 await ds.addTransactions(scopeId, transactions);
                 setCsvFeedback(`${transactions.length} transactions imported successfully.`, 'success');
-                if (window.loadDashboard) await window.loadDashboard();
-                if (window.loadLedger) await window.loadLedger();
+                window.FluxyDataSync?.emit({ kind: 'transaction', action: 'create', count: transactions.length });
                 window.showToast(`${transactions.length} transactions imported from CSV.`, "success");
                 btn.innerText = 'Uploaded';
                 keepSubmitState = true;
@@ -2702,8 +2701,16 @@ window.showAddTransactionModal = function(options = {}) {
                         try { await ds.linkDocumentTarget(user.uid, attachedDocId, 'transactions', txRef.id); } catch (_) {}
                     }
                     window.closeAddTransactionModal();
-                    if (window.loadDashboard) await window.loadDashboard();
-                    if (window.loadLedger) await window.loadLedger();
+                    // Announce it once; every page decides how it reloads. This
+                    // replaces the two hardcoded globals that only existed on
+                    // Dashboard and Ledger — the reason a save looked like a no-op
+                    // everywhere else. FluxyDataSync.emit still calls those two for
+                    // back-compat, so nothing regresses.
+                    window.FluxyDataSync?.emit({
+                        kind: 'transaction', action: 'create', id: txRef?.id || null, record: data
+                    });
+                    // Find and flag the new row once the table has re-rendered.
+                    window.FluxyDataSync?.highlightRow(txRef?.id);
                     window.showToast("Transaction successfully deployed to your live ledger!", "success");
                 }
                 // Vendor memory (Phase 3): remember the account chosen for this vendor
@@ -2771,6 +2778,119 @@ window.formatFluxyError = function (err, fallbackTitle) {
         } catch (_) { /* fall back to the English message */ }
     }
     return { title: fallbackTitle || 'Something went wrong', body: esc(text), code };
+};
+
+// ── Data sync bus ───────────────────────────────────────────────────
+// Saving a transaction used to refresh the page by calling two hardcoded
+// globals, window.loadDashboard and window.loadLedger. Those exist on exactly
+// two pages — but the Add Transaction drawer is hosted on ~40 (every page that
+// loads this file). So on Net Profit, Revenue Overview, Cash Position, the
+// Accounting Center, Bills, Invoices, Reports and the rest, a save wrote to
+// Firestore and nothing on screen moved. The record was there; the page just
+// never asked again. That is the "did it save?" feeling.
+//
+// The fix is an event, not more globals: a mutation announces itself once, and
+// any page says how IT reloads. New pages and new entry points (CSV import, AI
+// scan, bill payment) join by subscribing, without editing this file.
+//
+// Deliberately NOT Firestore onSnapshot listeners on every collection: this app
+// is ~40 static pages, and live listeners on transactions/bills/invoices would
+// multiply reads on every open tab for a problem that is really "refetch after a
+// write I already know about". Emit-on-write is cheaper and precise.
+window.FluxyDataSync = (function () {
+    const EVENT = 'fluxy:data-changed';
+
+    // Announce a mutation. `detail` describes what changed so a subscriber can
+    // decide whether it cares: { kind: 'transaction'|'bill'|'invoice'|…,
+    // action: 'create'|'update'|'delete', id, record }.
+    function emit(detail = {}) {
+        const payload = { kind: 'unknown', action: 'update', ...detail, at: Date.now() };
+        try { window.dispatchEvent(new CustomEvent(EVENT, { detail: payload })); } catch (_) { /* older browsers */ }
+        // Back-compat: the two pages that already exposed a global reloader keep
+        // working without subscribing.
+        try { if (typeof window.loadDashboard === 'function') window.loadDashboard(); } catch (_) {}
+        try { if (typeof window.loadLedger === 'function') window.loadLedger(); } catch (_) {}
+    }
+
+    // Subscribe. Returns an unsubscribe fn. Handlers are wrapped so one throwing
+    // page never blocks the others — a broken widget must not stop the dashboard
+    // from refreshing.
+    function onChange(handler, { kinds = null } = {}) {
+        if (typeof handler !== 'function') return () => {};
+        const wrapped = (e) => {
+            const d = (e && e.detail) || {};
+            if (kinds && !kinds.includes(d.kind)) return;
+            try { handler(d); } catch (err) { console.warn('[data-sync] subscriber failed:', err); }
+        };
+        window.addEventListener(EVENT, wrapped);
+        return () => window.removeEventListener(EVENT, wrapped);
+    }
+
+    // Mark a freshly-created row so the user can find it without re-reading the
+    // table. Called by pages after they re-render; the id survives the reload
+    // because the emit carries it.
+    function highlightRow(id, { selector = '[data-ledger-id]', attr = 'data-ledger-id' } = {}) {
+        if (!id) return;
+        // The reload triggered by the same emit REPLACES the table's rows, so
+        // applying the class once loses it the moment the fresh markup lands —
+        // which is exactly what happened the first time this shipped. Keep
+        // re-applying across the settling window, then let the animation finish.
+        const sel = `${selector}[${attr}="${CSS.escape(String(id))}"]`;
+        const SETTLE_MS = 1800;   // covers the refetch + re-render
+        const started = Date.now();
+        let scrolled = false;
+        let found = false;
+
+        const tick = () => {
+            const row = document.querySelector(sel);
+            if (row) {
+                found = true;
+                // Re-add after a re-render wiped it; no-op when already present.
+                row.classList.add('fluxy-row-new');
+                if (!scrolled) {
+                    scrolled = true;
+                    try {
+                        const r = row.getBoundingClientRect();
+                        if (r.top < 0 || r.bottom > window.innerHeight) {
+                            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    } catch (_) {}
+                }
+            }
+            if (Date.now() - started < SETTLE_MS) return setTimeout(tick, 120);
+            if (!found) return; // filtered out, or on another page of the table
+            // Settled: run the fade-out from here so the full animation is seen.
+            setTimeout(() => document.querySelector(sel)?.classList.add('fluxy-row-new-done'), 2100);
+            setTimeout(() => {
+                const r = document.querySelector(sel);
+                r?.classList.remove('fluxy-row-new', 'fluxy-row-new-done');
+            }, 3200);
+        };
+        tick();
+    }
+
+    return { EVENT, emit, onChange, highlightRow };
+})();
+
+// Count a number up to its new value. Used for KPI figures so a change reads as
+// something that HAPPENED rather than a value that was always there.
+// Respects prefers-reduced-motion, and skips the animation for tiny deltas where
+// it would just look like a glitch.
+window.animateValue = function (el, from, to, { duration = 650, format = (n) => Math.round(n).toLocaleString('id-ID') } = {}) {
+    if (!el) return;
+    const start = Number(from) || 0;
+    const end = Number(to) || 0;
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced || start === end || Math.abs(end - start) < 1) { el.textContent = format(end); return; }
+    const t0 = performance.now();
+    // easeOutCubic — fast start, gentle settle. Matches the drawer/toast motion.
+    const ease = (t) => 1 - Math.pow(1 - t, 3);
+    function frame(now) {
+        const t = Math.min(1, (now - t0) / duration);
+        el.textContent = format(start + (end - start) * ease(t));
+        if (t < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
 };
 
 window.showToast = function(message, type = 'info') {

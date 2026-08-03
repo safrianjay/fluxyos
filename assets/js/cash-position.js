@@ -104,6 +104,10 @@ export function initCashPositionPage({ ds, user }) {
     });
 
     loadAndRender();
+    // Reload when any page saves a transaction/bill/invoice. Without this a save
+    // made from the entry drawer here wrote to Firestore and left every figure on
+    // screen stale, which reads as "it didn't save".
+    window.FluxyDataSync?.onChange(() => loadAndRender());
 }
 
 // A breakdown row was clicked — toggle it as the table filter. Only the In/Out

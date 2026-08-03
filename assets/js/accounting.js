@@ -159,6 +159,9 @@ export function initAccountingPage({ ds, user }) {
     mountPicker();
     wireStaticControls();
     load();
+    // A transaction saved anywhere feeds the ledger, so the statements, KPI strip
+    // and close checklist here all go stale on a save made from another page.
+    window.FluxyDataSync?.onChange(() => { load(); loadKernel(true); });
 }
 
 // The accounting period these ledger views scope to: the month of the selected
