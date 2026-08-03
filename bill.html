@@ -223,7 +223,6 @@
                         <div id="bill-pay-date"></div>
                     </div>
                     <div>
-                        <label class="block text-[12px] font-semibold text-gray-500 mb-1.5">Cash impact</label>
                         <div id="bill-pay-cash"></div>
                     </div>
                 </div>
@@ -261,8 +260,7 @@
                             <div id="vendor-pay-date"></div>
                         </div>
                         <div>
-                            <label class="block text-[12px] font-semibold text-gray-500 mb-1.5">Cash impact</label>
-                            <div id="vendor-pay-cash"></div>
+                                <div id="vendor-pay-cash"></div>
                         </div>
                     </div>
                 </div>
@@ -1074,11 +1072,17 @@
                     <span class="text-[13px] text-gray-700 truncate">${escapeHtml(allocName)}</span>
                 </div>` : ''}`;
 
-            // Cash impact: default actual cash-out, optional bank account.
+            // Cash impact: always actual cash-OUT (a bill payment has no other
+            // direction), pre-linked to the workspace's account when there is only
+            // one. cash_account_id is what bank reconciliation groups by, so
+            // leaving it null silently hides the payment from bank rec.
             let bankAccounts = [];
             try { bankAccounts = (await ds.getBankAccounts(auth.currentUser.uid)) || []; } catch (_) { bankAccounts = []; }
             const cashHost = document.getElementById('bill-pay-cash');
-            cashHost.innerHTML = window.FluxyCashImpact.buildHtml({ impact: 'actual', direction: 'out', bankAccounts });
+            cashHost.innerHTML = window.FluxyCashImpact.buildHtml({
+                impact: 'actual', direction: 'out', bankAccounts,
+                accountId: window.FluxyCashImpact.defaultAccountId(bankAccounts, { scopeId: billCashScopeId() }), lockDirection: true
+            });
             payCashController = window.FluxyCashImpact.wire(cashHost, { impact: 'actual', direction: 'out' });
 
             // Single-date picker, default today, today-or-earlier. For a foreign bill
@@ -1188,6 +1192,7 @@
             try {
                 const paymentDate = dayKeyToDate(payPickerSelectedKey);
                 const cashState = payCashController?.getState?.() || { impact: 'actual', direction: 'out', accountId: '' };
+                window.FluxyCashImpact.rememberAccount(billCashScopeId(), cashState.accountId);
                 const cashFields = window.FluxyCashImpact.derive(cashState, Timestamp.fromDate(paymentDate));
                 const opts = { paymentDate, cashFields };
                 if (isForeignBill(payModalBill)) {
@@ -1262,7 +1267,12 @@
             sel.value = startKey;
             vendorPayState.vendorKey = startKey;
             vendorPayState.dateKey = todayDayKey();
-            vendorPayState.inFlight = false;
+            // Reset BEFORE rendering: resetVendorPayConfirm() unconditionally
+            // disables the button, so running it after renderVendorUnpaidBills()
+            // clobbered the enable that recomputeVendorPayTotal() had just done —
+            // the modal opened with a bill checked, a total shown, and "Pay
+            // selected" dead until the user toggled a checkbox.
+            resetVendorPayConfirm();
 
             renderVendorUnpaidBills(startKey);
 
@@ -1270,7 +1280,10 @@
                 let bankAccounts = [];
                 try { bankAccounts = (await ds.getBankAccounts(auth.currentUser.uid)) || []; } catch (_) {}
                 const cashHost = document.getElementById('vendor-pay-cash');
-                cashHost.innerHTML = window.FluxyCashImpact.buildHtml({ impact: 'actual', direction: 'out', bankAccounts });
+                cashHost.innerHTML = window.FluxyCashImpact.buildHtml({
+                    impact: 'actual', direction: 'out', bankAccounts,
+                    accountId: window.FluxyCashImpact.defaultAccountId(bankAccounts, { scopeId: billCashScopeId() }), lockDirection: true
+                });
                 vendorPayState.cashController = window.FluxyCashImpact.wire(cashHost, { impact: 'actual', direction: 'out' });
             })();
             document.getElementById('vendor-pay-date').innerHTML = '';
@@ -1280,7 +1293,6 @@
                 onChange: ({ start }) => { vendorPayState.dateKey = start; }
             });
 
-            resetVendorPayConfirm();
             document.getElementById('vendor-pay-modal').classList.remove('hidden');
             document.body.classList.add('overflow-hidden');
         }
@@ -1315,6 +1327,13 @@
                     </label>`;
                 }).join('');
             recomputeVendorPayTotal();
+        }
+
+        // Mirrors the scope key shared-dashboard.js uses for the remembered cash
+        // account, so paying a bill and adding a transaction share one memory.
+        function billCashScopeId() {
+            const uid = auth.currentUser?.uid || null;
+            return (typeof ds._resolvedScopeId === 'function' ? ds._resolvedScopeId(uid) : null) || uid;
         }
 
         function parseVendorAmount(str) { return Math.round(Math.abs(Number(String(str || '').replace(/[^\d]/g, '')) || 0)); }
@@ -1362,6 +1381,7 @@
             try {
                 const paymentDate = dayKeyToDate(vendorPayState.dateKey);
                 const cashState = vendorPayState.cashController?.getState?.() || { impact: 'actual', direction: 'out', accountId: '' };
+                window.FluxyCashImpact.rememberAccount(billCashScopeId(), cashState.accountId);
                 const cashFields = window.FluxyCashImpact.derive(cashState, Timestamp.fromDate(paymentDate));
                 const { paidCount, totalPaid, results } = await ds.markBillsPaid(auth.currentUser.uid, payments, { paymentDate, cashFields });
                 const failed = results.filter(r => !r.ok);
