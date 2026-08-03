@@ -3995,6 +3995,9 @@
         "gl.GL_011": "{account_code} {account_name} dikelola otomatis oleh sistem dan tidak bisa dipilih pada transaksi.",
         "gl.GL_012": "{account_code} {account_name} sudah diarsipkan dan tidak bisa dipakai.",
         "Spend in Other Expense is under control": "Pengeluaran di Beban Lainnya masih terkendali",
+        "Ledger integrity check is current": "Pemeriksaan integritas buku besar terkini",
+        "Checked overnight": "Diperiksa semalam",
+        "Never run": "Belum pernah dijalankan",
         "gl.GL_020": "Periode {period_key} sudah dikunci. Buka kembali periodenya, atau pakai tanggal di periode yang masih terbuka.",
         "gl.GL_021": "Periode akuntansi {period_key} sudah ditutup. Buka kembali periodenya, atau pakai tanggal di periode yang masih terbuka.",
         "gl.GL_070": "Entri ini sendiri adalah pembalikan — membalikkannya akan menerapkan ulang entri aslinya. Buat entri koreksi baru saja.",
@@ -4377,6 +4380,9 @@
         // Close checklist: "0.8% unexplained (target 2%)" on the Other Expense row.
         { re: /^([\d.]+)% unexplained \(target ([\d.]+)%\)$/,
           id: function (m) { return m[1] + '% tidak terjelaskan (target ' + m[2] + '%)'; } },
+        // Ledger-integrity liveness hints on the Close panel.
+        { re: /^Last checked (\d+)h ago$/, id: function (m) { return 'Terakhir diperiksa ' + m[1] + ' jam lalu'; } },
+        { re: /^(\d+) finding\(s\)$/, id: function (m) { return m[1] + ' temuan'; } },
         // Transaction Detail journal card: "<status> · <method>" is composed in JS,
         // so exact match cannot reach it.
         { re: /^(Posted|Draft|Reversal|Reversed) · (Automatically generated|Manual)$/,

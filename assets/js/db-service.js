@@ -5101,6 +5101,53 @@ class DataService {
         return d.getTime();
     }
 
+    // Is the nightly integrity sweep actually running, and what did it last say?
+    //
+    // The assertions are only worth having if they run, and they can't report their
+    // own absence. The sweep silently failed to register as a cron for eight hours
+    // after it shipped — every check passing, nothing checking — and nothing in the
+    // product would ever have said so. This turns "no news" into a visible state:
+    // a report older than STALE_HOURS is itself a finding.
+    //
+    // Read-only. `ledger_integrity_reports` is written solely by the sweep through
+    // the admin SDK; clients have read access and nothing else.
+    async getLedgerIntegrityStatus(userId) {
+        const STALE_HOURS = 36; // a nightly job missing one run is worth surfacing
+        try {
+            // Order by checked_at, not by document id: '__name__' is not a usable
+            // field path from the JS SDK and throws, which the catch below would
+            // have swallowed into a permanent "Never run" — the liveness check
+            // itself reporting a false outage.
+            const snap = await getDocs(query(
+                collection(this.db, `${this._scope(userId)}/ledger_integrity_reports`),
+                orderBy('checked_at', 'desc'), limit(1)
+            ));
+            if (snap.empty) {
+                return { hasReport: false, stale: true, ageHours: null, ok: null, findings: [], day: null };
+            }
+            const doc0 = snap.docs[0];
+            const report = doc0.data() || {};
+            const checkedAt = report.checked_at ? new Date(report.checked_at) : null;
+            const ageHours = checkedAt && !isNaN(checkedAt.getTime())
+                ? Math.max(0, Math.round((Date.now() - checkedAt.getTime()) / 36e5))
+                : null;
+            const findings = (report.checks || [])
+                .filter((c) => !c.ok && c.severity !== 'info')
+                .map((c) => ({ id: c.id, detail: c.detail || '', delta: c.delta || 0 }));
+            return {
+                hasReport: true,
+                day: doc0.id,
+                ageHours,
+                stale: ageHours == null || ageHours > STALE_HOURS,
+                ok: report.ok === true && !findings.length,
+                findings
+            };
+        } catch (_) {
+            // Never let a missing collection or a rules gap break the Close panel.
+            return { hasReport: false, stale: true, ageHours: null, ok: null, findings: [], day: null };
+        }
+    }
+
     async getPeriod(userId, pk) {
         if (!pk) return { period_key: pk, status: 'open' };
         const s = await getDoc(doc(this.db, `${this._scope(userId)}/periods/${pk}`));

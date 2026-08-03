@@ -1186,7 +1186,7 @@ async function loadKernel(force = false) {
     state.kernel.loadedPeriod = pk; // claim early to avoid duplicate fetches
     try {
         await state.seedPromise; // ensure the chart exists before the first read
-        const [coa, journals, trial, period, pending, unposted] = await Promise.all([
+        const [coa, journals, trial, period, pending, unposted, integrity] = await Promise.all([
             state.ds.getChartOfAccounts(state.user.uid),
             state.ds.listJournals(state.user.uid, { periodKey: pk, includeDrafts: true }),
             state.ds.getTrialBalance(state.user.uid, { periodKey: pk }),
@@ -1195,9 +1195,13 @@ async function loadKernel(force = false) {
             // Never-queued sources are invisible to countPendingPostings — this is
             // what actually proves the ledger is complete for the period.
             state.ds.countUnpostedSources(state.user.uid, state.startKey, state.endKey)
-                .catch(() => ({ blocking: 0, deferred: 0, total: 0 }))
+                .catch(() => ({ blocking: 0, deferred: 0, total: 0 })),
+            // Whether the nightly integrity sweep is actually running. It cannot
+            // report its own absence, so the product has to.
+            state.ds.getLedgerIntegrityStatus(state.user.uid)
+                .catch(() => ({ hasReport: false, stale: true, findings: [] }))
         ]);
-        state.kernel = { loadedPeriod: pk, coa, journals, trial, period, pending, unposted };
+        state.kernel = { loadedPeriod: pk, coa, journals, trial, period, pending, unposted, integrity };
         renderJournals();
         renderPendingBanner();
         renderTrialBalance();
@@ -1608,6 +1612,18 @@ function renderCloseChecklist() {
         if (tb) {
             rows.push(checkRow('Trial balance is in balance', !!tb.balanced,
                 tb.balanced ? 'Balanced' : 'Out of balance'));
+        }
+        // Liveness of the nightly assertions. A stale or missing report is itself a
+        // finding: the sweep once failed to register as a cron and ran nowhere for
+        // hours while every in-app check still read green. "No news" is not good news.
+        const ig = kernel.integrity;
+        if (ig) {
+            const hint = !ig.hasReport
+                ? 'Never run'
+                : (ig.stale
+                    ? `Last checked ${ig.ageHours == null ? 'unknown' : ig.ageHours + 'h'} ago`
+                    : (ig.findings.length ? `${ig.findings.length} finding(s)` : 'Checked overnight'));
+            rows.push(checkRow('Ledger integrity check is current', !!(ig.hasReport && !ig.stale && ig.ok), hint));
         }
         const period = kernel.period;
         if (period && (period.status === 'closed' || period.status === 'locked')) {
