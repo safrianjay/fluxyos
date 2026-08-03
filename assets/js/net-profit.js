@@ -417,7 +417,7 @@ function renderComposition(totals) {
                 <span class="inline-flex items-center gap-2 text-[14px] font-semibold text-gray-700">
                     <span class="np-dot ${dotCls}" aria-hidden="true"></span>${escapeHtml(label)}
                 </span>
-                <span class="text-[16px] font-bold tabular-nums ${valueCls}">${escapeHtml(formatRp(amount))}</span>
+                <span class="text-[14px] font-semibold tabular-nums ${valueCls}">${escapeHtml(formatRp(amount))}</span>
             </div>
             <div class="np-bar-track mt-1.5">
                 <div class="np-bar-fill ${fillCls}" style="width:${Math.max(2, (amount / scale) * 100).toFixed(2)}%"></div>
@@ -442,7 +442,7 @@ function renderComposition(totals) {
                 <p class="text-[14px] font-semibold text-gray-900">Net profit</p>
                 <p class="mt-0.5 text-[12px] text-gray-400">${keptCopy}</p>
             </div>
-            <span class="text-xl font-bold tabular-nums ${netProfit < 0 ? 'text-red-600' : 'text-gray-900'}">${escapeHtml(formatProfit(netProfit))}</span>
+            <span class="text-[16px] font-semibold tabular-nums ${netProfit < 0 ? 'text-red-600' : 'text-gray-900'}">${escapeHtml(formatProfit(netProfit))}</span>
         </div>`;
 }
 
@@ -475,7 +475,7 @@ function renderBridge(totals, prevTotals, hasComparison) {
                 <p class="text-[14px] font-semibold text-gray-700">${escapeHtml(label)}</p>
                 ${meta ? `<p class="mt-0.5 text-[12px] text-gray-400">${escapeHtml(meta)}</p>` : ''}
             </div>
-            <span class="text-[16px] font-bold tabular-nums flex-shrink-0 ${cls}">${escapeHtml(value)}</span>
+            <span class="text-[14px] font-semibold tabular-nums flex-shrink-0 ${cls}">${escapeHtml(value)}</span>
         </div>`;
 
     host.innerHTML = `

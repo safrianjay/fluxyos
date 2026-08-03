@@ -696,7 +696,7 @@ export function renderBreakdownList(containerId, { rows, total, selected, color 
                         <p class="mt-0.5 text-[12px] text-gray-400">${r.count != null ? `${r.count} record${r.count === 1 ? '' : 's'}` : ''}${r.meta ? `${r.count != null ? ' · ' : ''}${escapeHtml(r.meta)}` : ''}</p>
                     </div>
                     <div class="text-right flex-shrink-0">
-                        <p class="text-[14px] font-bold text-gray-900 tabular-nums">${escapeHtml(valueFormat(amt))}</p>
+                        <p class="text-[14px] font-semibold text-gray-900 tabular-nums">${escapeHtml(valueFormat(amt))}</p>
                         <p class="mt-0.5 text-[12px] text-gray-400 tabular-nums">${formatPercent(share)}</p>
                     </div>
                 </div>
