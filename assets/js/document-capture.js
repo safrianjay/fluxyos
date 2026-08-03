@@ -1055,7 +1055,19 @@
         // Manual rate override — pins the rate so a later refresh cannot clobber it.
         const rateInput = $('scan-fx-rate');
         rateInput?.addEventListener('input', () => {
+            // Reassigning .value resets the caret to the end, so a mid-string
+            // correction sends the cursor away and the next digit lands in the
+            // wrong place. Re-anchor by digit count, not character index — the
+            // separators shift as the grouping changes. (The amount field above
+            // only handles the caret-at-end case; this is the general form.)
+            const before = rateInput.value.slice(0, rateInput.selectionStart ?? rateInput.value.length);
+            const digitsBefore = (before.match(/\d/g) || []).length;
             rateInput.value = formatAmountInput(rateInput.value, 'IDR');
+            let pos = 0;
+            for (let seen = 0; pos < rateInput.value.length && seen < digitsBefore; pos += 1) {
+                if (/\d/.test(rateInput.value[pos])) seen += 1;
+            }
+            rateInput.setSelectionRange(pos, pos);
             const parsed = amountToMinor(rateInput.value, 'IDR');
             state.fx.userTouched = true;
             state.fx.rate = parsed > 0 ? parsed : null;
