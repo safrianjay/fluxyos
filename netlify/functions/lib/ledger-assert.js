@@ -82,18 +82,17 @@ async function expectedReceivables(base) {
     return { total, count };
 }
 
-// PPh withheld from a supplier bill. Mirrors billWithheldAmount() in
-// assets/js/tax-engine.js — duplicated rather than imported because that is
-// browser ESM and this runs as CommonJS in a function. Keep the two in step.
+// PPh actually withheld on a bill — the amount stamped at accrual, never derived
+// from withholding_rate. Mirrors billWithheldAmount() in assets/js/tax-engine.js
+// (duplicated because that is browser ESM and this is CommonJS).
+//
+// Deriving it from the rate is wrong: the tax appendix is skipped entirely when a
+// workspace has no tax profile, so a bill can carry a rate while its journal
+// withheld nothing. One workspace reported a Rp1.038.013 phantom A/P gap that way
+// — the assertion inventing a discrepancy on a perfectly correct ledger, which is
+// the worst failure mode a checker has.
 function billWithheld(bill) {
-    const rate = Number(bill && bill.withholding_rate) || 0;
-    if (rate <= 0) return 0;
-    const total = toInt(bill.amount);
-    if (total <= 0) return 0;
-    const ppnRate = Number(bill.tax_rate_percent) || 0;
-    const stored = toInt(bill.taxable_base);
-    const base = stored > 0 ? stored : (ppnRate > 0 ? Math.round(total / (1 + ppnRate / 100)) : total);
-    return Math.round((base * rate) / 100);
+    return Math.max(0, toInt(bill && bill.withholding_amount));
 }
 
 // Expected A/P: what the SUBLEDGERS say is still owed — unpaid IDR bills net of

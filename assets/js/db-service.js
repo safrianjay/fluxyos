@@ -594,6 +594,11 @@ class DataService {
         return Math.max(0, gross - billWithheldAmount(bill));
     }
 
+    // Kept for callers that need the figure without an outstanding calculation.
+    _billWithheld(bill) {
+        return billWithheldAmount(bill);
+    }
+
     async addBill(userId, data) {
         const { timestamp, ...rest } = data;
         const amountInt = Math.round(Math.abs(Number(rest.amount) || 0));
@@ -3392,6 +3397,18 @@ class DataService {
                 baseJournal: journal, collection: sourceCollection, document: payload, profile, mappings
             });
             if (!appendix || !appendix.lines.length) return [];
+            // Record what was ACTUALLY withheld on the bill itself. The appendix is
+            // skipped entirely when a workspace has no tax profile, so a bill can
+            // carry withholding_rate while its journal never withheld anything —
+            // deriving the figure later from the rate then subtracts tax that was
+            // never posted. One workspace with a rate but no profile reported a
+            // Rp1.038.013 phantom A/P gap exactly that way. Stamp it, never re-derive.
+            if (sourceCollection === 'bills' && payload) {
+                const withheld = (appendix.tax_transactions || [])
+                    .filter((t) => t.direction === 'withheld_by_us')
+                    .reduce((sum, t) => sum + (Number(t.tax_amount) || 0), 0);
+                if (withheld > 0) payload.withholding_amount = Math.round(withheld);
+            }
             journal.lines = journal.lines.concat(appendix.lines);
             journal.total_debit = journal.lines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
             journal.total_credit = journal.lines.reduce((s, l) => s + (Number(l.credit) || 0), 0);

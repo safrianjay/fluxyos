@@ -379,16 +379,13 @@ export function buildTaxAppendix({ baseJournal, collection, document, profile, m
 // in A/P with a matching phantom cash payment, which is the spec's JE-P3 — the
 // supplier is paid net, and the withheld portion is remitted separately.
 export function billWithheldAmount(bill) {
-    const rate = Number(bill && bill.withholding_rate) || 0;
-    if (rate <= 0) return 0;
-    const total = toInt(bill.amount);
-    if (total <= 0) return 0;
-    // Prefer the base actually stamped on the bill at accrual; only derive it when
-    // absent, so a rate change after posting cannot silently re-base the figure.
-    const ppnRate = Number(bill.tax_rate_percent) || 0;
-    const stored = toInt(bill.taxable_base);
-    const base = stored > 0 ? stored : (ppnRate > 0 ? Math.round(total / (1 + ppnRate / 100)) : total);
-    return Math.round((base * rate) / 100);
+    // ONLY the amount the accrual actually posted to 2110, stamped by
+    // _applyTaxAppendix. Never derived from withholding_rate: the appendix is
+    // skipped when a workspace has no tax profile, so a rate on the bill does not
+    // mean anything was withheld. Deriving it there subtracts tax that was never
+    // posted and invents an A/P discrepancy on a perfectly correct ledger.
+    // Bills accrued before this stamp existed report 0 and are simply not netted.
+    return Math.max(0, toInt(bill && bill.withholding_amount));
 }
 
 export function upcomingTaxDeadlines(nowInput, { max = 4 } = {}) {
